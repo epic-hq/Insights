@@ -1,5 +1,5 @@
 import React, { createContext } from "react"
-import type { Decorator } from "@storybook/react"
+import type { Decorator } from "@storybook/react-vite"
 import type { GetAccount, Project, UUID } from "../app/types"
 
 // Re-create the CurrentProjectContext type for Storybook

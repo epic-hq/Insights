@@ -60,6 +60,7 @@ export function AppSidebar() {
 	const { state } = useSidebar()
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
 	const { hasAnalysisData } = useProjectDataAvailability()
+	const { isEnabled: icpFeatureEnabled } = usePostHogFeatureFlag("ffICP")
 	const { project } = useCurrentProjectData()
 	const { showValidationView, setShowValidationView } = useValidationView()
 	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
@@ -200,6 +201,9 @@ export function AppSidebar() {
 			.map((section) => ({
 				...section,
 				items: section.items.filter((item) => {
+					if (!icpFeatureEnabled && ["insights", "segments", "product-lens"].includes(item.key)) {
+						return false
+					}
 					// Hide "Insights" item when sales CRM is enabled
 					if (item.key === "insights" && salesCrmEnabled) {
 						return false
@@ -212,14 +216,23 @@ export function AppSidebar() {
 				}),
 			}))
 			.filter((section) => section.items.length > 0) // Remove sections with no items
-	}, [visibleSections, salesSection, salesCrmEnabled])
+	}, [visibleSections, salesSection, salesCrmEnabled, icpFeatureEnabled])
 
 	// ────────────────────────────────────────────────────────────────
 	// Counts → show small badges on matching items
 	// Map your item keys to count keys (leave unmapped to skip)
 	const COUNT_KEY_BY_ITEM: Record<
 		string,
-		"encounters" | "personas" | "themes" | "insights" | "people" | "organizations" | "accounts" | "deals" | "contacts" | "opportunities"
+		| "encounters"
+		| "personas"
+		| "themes"
+		| "insights"
+		| "people"
+		| "organizations"
+		| "accounts"
+		| "deals"
+		| "contacts"
+		| "opportunities"
 	> = {
 		// Discovery (your current keys)
 		conversations: "encounters", // your "Conversations" list = encounters
@@ -235,7 +248,7 @@ export function AppSidebar() {
 		accounts: "accounts",
 		deals: "deals",
 		contacts: "contacts",
-		opportunities: "opportunities"
+		opportunities: "opportunities",
 	}
 
 	const { counts, loading: countsLoading } = useSidebarCounts(effectiveProjectId, project?.workflow_type)

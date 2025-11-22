@@ -1,5 +1,6 @@
 import consola from "consola"
-import { Outlet, redirect, useLoaderData } from "react-router"
+import { Loader2 } from "lucide-react"
+import { Outlet, redirect, useLoaderData, useNavigation } from "react-router"
 import { z } from "zod"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { currentProjectContext } from "~/server/current-project-context"
@@ -159,10 +160,17 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function CurrentProjectLayout() {
 	const currentProject = useLoaderData<typeof loader>()
+	const navigation = useNavigation()
+	const isLoading = navigation.state === "loading"
 	consola.log("Current project:", currentProject)
 
 	return (
 		<CurrentProjectProvider>
+			{isLoading && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+				</div>
+			)}
 			<Outlet />
 		</CurrentProjectProvider>
 	)

@@ -1,0 +1,1 @@
+-- Placeholder to satisfy migration history (version 20251121005824 reverted remotely)

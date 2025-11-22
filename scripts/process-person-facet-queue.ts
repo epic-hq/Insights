@@ -1,10 +1,18 @@
 /**
  * Manually process person_facet embedding queue
  * Run with: npx tsx scripts/process-person-facet-queue.ts
+ * For production: npx tsx scripts/process-person-facet-queue.ts production
  */
 
+import dotenvx from "@dotenvx/dotenvx"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
+
+// Load environment variables
+const env = process.argv.find((arg) => arg === "production" || arg === "prod") ? "production" : ""
+const envPath = `.env${env ? `.${env}` : ""}`
+dotenvx.config({ path: envPath })
+consola.info(`Loaded environment from ${envPath}`)
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!

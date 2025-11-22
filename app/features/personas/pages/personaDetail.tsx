@@ -158,7 +158,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					"id, name, category, pain, details, desired_outcome, evidence, journey_stage, emotional_response, project_id, interview_id, created_at, updated_at"
 				)
 				.in("id", personaInsightIds),
-			supabase.from("insight_tags").select("insight_id, tags(tag, term, definition)").in("insight_id", personaInsightIds),
+			supabase
+				.from("insight_tags")
+				.select("insight_id, tags(tag, term, definition)")
+				.in("insight_id", personaInsightIds),
 		])
 
 		if (themesError) {

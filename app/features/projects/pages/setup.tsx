@@ -10,8 +10,11 @@ import { userContext } from "~/server/user-context"
 
 type TemplatePrefill = {
 	template_key: string
+	customer_problem: string
 	target_orgs: string[]
 	target_roles: string[]
+	offerings: string
+	competitors: string[]
 	research_goal: string
 	research_goal_details: string
 	decision_questions: string[]
@@ -33,8 +36,11 @@ function fallbackPrefill(templateKey: string, projectName: string, signup: Signu
 
 	const pre: TemplatePrefill = {
 		template_key: templateKey,
+		customer_problem: "",
 		target_orgs: [],
 		target_roles: [],
+		offerings: "",
+		competitors: [],
 		research_goal: goalFromSignup || "",
 		research_goal_details: challenges || "",
 		decision_questions: [],
@@ -93,8 +99,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			// Basic normalization/guards
 			prefill = {
 				template_key: filled.template_key || template_key,
+				customer_problem: filled.customer_problem || prefill.customer_problem,
 				target_orgs: (filled.target_orgs || []).slice(0, 3),
 				target_roles: (filled.target_roles || []).slice(0, 8),
+				offerings: filled.offerings || prefill.offerings,
+				competitors: (filled.competitors || []).slice(0, 8),
 				research_goal: filled.research_goal || prefill.research_goal,
 				research_goal_details: filled.research_goal_details || prefill.research_goal_details,
 				decision_questions: (filled.decision_questions || prefill.decision_questions).slice(0, 6),

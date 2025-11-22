@@ -430,42 +430,24 @@ function isGenericPersonLabel(label: string | null | undefined): boolean {
 	return GENERIC_PERSON_LABEL_PATTERNS.some((pattern) => pattern.test(normalized))
 }
 
-function generateParticipantHash(options: {
-	accountId: string
-	projectId?: string | null
-	interviewId?: string | null
-	personKey: string
-	index: number
-}): string {
-	const { accountId, projectId, interviewId, personKey, index } = options
-	const hashInput = [
-		accountId || "unknown-account",
-		projectId || "no-project",
-		interviewId || "no-interview",
-		personKey || "no-key",
-		index.toString(),
-	].join("|")
-	return createHash("sha1").update(hashInput).digest("hex").slice(0, 10)
-}
+/**
+ * Parse a full name into firstname and lastname
+ * Returns { firstname, lastname } with lastname being null for single-word names
+ */
+function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
+	const trimmed = fullName.trim()
+	if (!trimmed) return { firstname: "", lastname: null }
 
-function appendHashToName(name: string, hash: string): string {
-	const trimmed = name.trim()
-	return trimmed.length ? `${trimmed} #${hash}` : hash
-}
+	const parts = trimmed.split(/\s+/)
+	if (parts.length === 1) {
+		return { firstname: parts[0], lastname: null }
+	}
 
-function shouldAttachHash(
-	resolution: { name: string; source: NameResolutionSource },
-	participant: NormalizedParticipant
-): boolean {
-	if (!resolution.name.trim()) return true
-	if (resolution.source === "person_key" || resolution.source === "fallback") return true
-
-	if (isGenericPersonLabel(resolution.name)) return true
-	if (isGenericPersonLabel(participant.person_key)) return true
-	if (isGenericPersonLabel(participant.display_name)) return true
-	if (isGenericPersonLabel(participant.inferred_name)) return true
-
-	return false
+	// firstname is the first part, lastname is everything else joined
+	return {
+		firstname: parts[0],
+		lastname: parts.slice(1).join(" "),
+	}
 }
 
 interface ExtractEvidenceOptions {
@@ -1308,13 +1290,15 @@ export async function extractEvidenceAndPeopleCore({
 	}
 
 	const upsertPerson = async (
-		name: string,
+		fullName: string,
 		overrides: Partial<PeopleInsert> = {}
 	): Promise<{ id: string; name: string }> => {
+		const { firstname, lastname } = parseFullName(fullName)
 		const payload: PeopleInsert = {
 			account_id: metadata.accountId,
 			project_id: metadata.projectId,
-			name: name.trim(),
+			firstname: firstname || null,
+			lastname: lastname || null,
 			description: overrides.description ?? null,
 			segment: overrides.segment ?? metadata.segment ?? null,
 			contact_info: overrides.contact_info ?? null,
@@ -1324,11 +1308,11 @@ export async function extractEvidenceAndPeopleCore({
 		const { data: upserted, error: upsertErr } = await db
 			.from("people")
 			.upsert(payload, { onConflict: "account_id,name_hash" })
-			.select("id, name")
+			.select("id, name, firstname, lastname")
 			.single()
-		if (upsertErr) throw new Error(`Failed to upsert person ${name}: ${upsertErr.message}`)
-		if (!upserted?.id) throw new Error(`Person upsert returned no id for ${name}`)
-		return { id: upserted.id, name: upserted.name ?? name.trim() }
+		if (upsertErr) throw new Error(`Failed to upsert person ${fullName}: ${upsertErr.message}`)
+		if (!upserted?.id) throw new Error(`Person upsert returned no id for ${fullName}`)
+		return { id: upserted.id, name: upserted.name ?? fullName.trim() }
 	}
 
 	let primaryPersonId: string | null = null
@@ -1351,25 +1335,11 @@ export async function extractEvidenceAndPeopleCore({
 				company: participant.organization ?? null,
 				role: participant.role ?? null,
 			}
-			const needsHash = shouldAttachHash(resolved, participant)
-			const personNameForDb = needsHash
-				? appendHashToName(
-						resolved.name,
-						generateParticipantHash({
-							accountId: metadata.accountId,
-							projectId: metadata.projectId,
-							interviewId: interviewRecord.id,
-							personKey: participantKey,
-							index,
-						})
-					)
-				: resolved.name
-			const personRecord = await upsertPerson(personNameForDb, participantOverrides)
+			const personRecord = await upsertPerson(resolved.name, participantOverrides)
 			personIdByKey.set(participantKey, personRecord.id)
 			personNameByKey.set(participantKey, personRecord.name)
 			keyByPersonId.set(personRecord.id, participantKey)
-			const preferredDisplayName =
-				participant.display_name?.trim() || (needsHash ? resolved.name : personRecord.name) || null
+			const preferredDisplayName = participant.display_name?.trim() || personRecord.name || null
 			if (preferredDisplayName) {
 				displayNameByKey.set(participantKey, preferredDisplayName)
 			}

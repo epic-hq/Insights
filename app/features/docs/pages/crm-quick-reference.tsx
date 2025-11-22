@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Zap, AlertCircle, BarChart3 } from "lucide-react"
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, Zap } from "lucide-react"
 import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -173,8 +173,8 @@ export default function CRMQuickReference() {
 								<table className="w-full text-sm">
 									<thead>
 										<tr className="border-b">
-											<th className="pb-2 pr-4 text-left font-medium">Code</th>
-											<th className="pb-2 pr-4 text-left font-medium">Role</th>
+											<th className="pr-4 pb-2 text-left font-medium">Code</th>
+											<th className="pr-4 pb-2 text-left font-medium">Role</th>
 											<th className="pb-2 text-left font-medium">When to Use</th>
 										</tr>
 									</thead>
@@ -218,8 +218,8 @@ export default function CRMQuickReference() {
 								<table className="w-full text-sm">
 									<thead>
 										<tr className="border-b">
-											<th className="pb-2 pr-4 text-left font-medium">Level</th>
-											<th className="pb-2 pr-4 text-left font-medium">Meaning</th>
+											<th className="pr-4 pb-2 text-left font-medium">Level</th>
+											<th className="pr-4 pb-2 text-left font-medium">Meaning</th>
 											<th className="pb-2 text-left font-medium">Examples</th>
 										</tr>
 									</thead>
@@ -250,8 +250,8 @@ export default function CRMQuickReference() {
 								<table className="w-full text-sm">
 									<thead>
 										<tr className="border-b">
-											<th className="pb-2 pr-4 text-left font-medium">Stage</th>
-											<th className="pb-2 pr-4 text-left font-medium">Description</th>
+											<th className="pr-4 pb-2 text-left font-medium">Stage</th>
+											<th className="pr-4 pb-2 text-left font-medium">Description</th>
 											<th className="pb-2 text-left font-medium">Typical Activities</th>
 										</tr>
 									</thead>
@@ -375,7 +375,7 @@ export default function CRMQuickReference() {
 						<div className="rounded-lg border border-border/60 bg-muted/10 p-3">
 							<h4 className="mb-1 font-semibold text-foreground">Issue: No stakeholders after linking</h4>
 							<p className="mb-2 text-muted-foreground">Quick Fix:</p>
-							<ol className="space-y-1 pl-5 text-muted-foreground list-decimal">
+							<ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
 								<li>Wait 2 minutes for processing</li>
 								<li>Refresh page</li>
 								<li>Check if conversation actually linked (see "Linked Interviews")</li>
@@ -386,7 +386,7 @@ export default function CRMQuickReference() {
 						<div className="rounded-lg border border-border/60 bg-muted/10 p-3">
 							<h4 className="mb-1 font-semibold text-foreground">Issue: AI Advisor says "insufficient data"</h4>
 							<p className="mb-2 text-muted-foreground">Quick Fix:</p>
-							<ol className="space-y-1 pl-5 text-muted-foreground list-decimal">
+							<ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
 								<li>Ensure at least 1 conversation linked</li>
 								<li>Add 2-3 stakeholders (even manual)</li>
 								<li>Add at least 1 next step</li>
@@ -397,7 +397,7 @@ export default function CRMQuickReference() {
 						<div className="rounded-lg border border-border/60 bg-muted/10 p-3">
 							<h4 className="mb-1 font-semibold text-foreground">Issue: Next steps seem wrong</h4>
 							<p className="mb-2 text-muted-foreground">Quick Fix:</p>
-							<ol className="space-y-1 pl-5 text-muted-foreground list-decimal">
+							<ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
 								<li>Review source evidence (hover to see)</li>
 								<li>Edit description inline</li>
 								<li>Delete if completely wrong</li>
@@ -408,7 +408,7 @@ export default function CRMQuickReference() {
 						<div className="rounded-lg border border-border/60 bg-muted/10 p-3">
 							<h4 className="mb-1 font-semibold text-foreground">Issue: Can't find opportunity</h4>
 							<p className="mb-2 text-muted-foreground">Quick Fix:</p>
-							<ol className="space-y-1 pl-5 text-muted-foreground list-decimal">
+							<ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
 								<li>Check you're in right project (top nav)</li>
 								<li>Use search bar on opportunities page</li>
 								<li>Check other stages on kanban board</li>

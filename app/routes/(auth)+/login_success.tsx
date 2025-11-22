@@ -3,6 +3,8 @@ import { type LoaderFunctionArgs, redirect } from "react-router"
 import { getPostHogServerClient } from "~/lib/posthog.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import type { SupabaseClient } from "~/types"
+import { generateTwoWordSlug } from "~/utils/random-name"
+import { createProjectRoutes } from "~/utils/routes.server"
 import type { UtmParams } from "~/utils/utm"
 import { clearUtmCookie, collectPersistedUtmParams, extractUtmParamsFromRequest } from "~/utils/utm.server"
 
@@ -46,7 +48,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const shouldUseLastUsed = isDefaultHomeDestination(next, requestUrl.origin)
 	let destination = inviteRedirect ?? next
 
-	if (!inviteRedirect && shouldUseLastUsed) {
+	if (isNewUser && !inviteRedirect && shouldUseLastUsed) {
+		const defaultProjectPath = await ensureDefaultAccountAndProject({ supabase, userId: user.id })
+		if (defaultProjectPath) {
+			destination = defaultProjectPath
+		}
+	} else if (!inviteRedirect && shouldUseLastUsed) {
 		const lastUsedPath = await resolveLastUsedProjectRedirect({ supabase, userId: user.id })
 		if (lastUsedPath) {
 			destination = lastUsedPath
@@ -84,6 +91,90 @@ async function checkIfNewUser(supabase: SupabaseClient, userId: string): Promise
 	}
 }
 
+type AccountWithProjects = {
+	account_id: string
+	personal_account?: boolean | null
+	projects?: Array<{
+		id: string
+	}>
+}
+
+async function ensureDefaultAccountAndProject({
+	supabase,
+	userId,
+}: {
+	supabase: SupabaseClient
+	userId: string
+}): Promise<string | null> {
+	try {
+		const { data: rawAccounts, error: accountsError } = await supabase.rpc("get_user_accounts")
+		if (accountsError) {
+			consola.warn("[LOGIN_SUCCESS] Failed to load user accounts for default selection:", accountsError.message)
+			return null
+		}
+
+		const accounts: AccountWithProjects[] = Array.isArray(rawAccounts) ? (rawAccounts as AccountWithProjects[]) : []
+		if (accounts.length === 0) {
+			consola.warn("[LOGIN_SUCCESS] No accounts available for new user when ensuring default account/project")
+			return null
+		}
+
+		// Prefer non-personal account when available, otherwise first account
+		const currentAccount = accounts.find((acc) => acc.personal_account === false) ?? accounts[0]
+		const accountId = currentAccount.account_id
+		const projects = Array.isArray(currentAccount.projects) ? currentAccount.projects : []
+
+		let projectId: string | null = null
+
+		if (projects.length > 0) {
+			projectId = projects[0]?.id ?? null
+		} else {
+			// Auto-create a minimal default project for brand new users
+			const defaultName = generateTwoWordSlug()
+			const { data: createdProject, error: createError } = await supabase
+				.from("projects")
+				.insert({
+					account_id: accountId,
+					name: defaultName,
+					status: "planning",
+				})
+				.select("id")
+				.single()
+
+			if (createError || !createdProject) {
+				consola.error("[LOGIN_SUCCESS] Failed to auto-create default project for new user:", createError)
+				return null
+			}
+
+			projectId = createdProject.id
+		}
+
+		if (!projectId) {
+			return null
+		}
+
+		// Persist last-used account/project for this user to align sidebar and future redirects
+		const { error: settingsError } = await supabase.from("user_settings").upsert(
+			{
+				user_id: userId,
+				last_used_account_id: accountId,
+				last_used_project_id: projectId,
+			},
+			{ onConflict: "user_id" }
+		)
+
+		if (settingsError) {
+			consola.warn("[LOGIN_SUCCESS] Failed to persist default account/project in user_settings:", settingsError.message)
+		}
+
+		const projectRoutes = createProjectRoutes(accountId, projectId)
+		return projectRoutes.projects.setup()
+	} catch (error) {
+		consola.warn("[LOGIN_SUCCESS] Error ensuring default account/project:", error)
+		return null
+	}
+}
+
 /**
  * Capture account_signed_up event to PostHog
  * This only fires once per user, on their first successful authentication
@@ -116,8 +207,9 @@ async function captureSignupEvent({
 		) as Record<string, string>
 
 		// Get user's account info
-		const { data: accounts } = await supabase.rpc("get_user_accounts")
-		const accountId = Array.isArray(accounts) && accounts.length > 0 ? accounts[0].account_id : undefined
+		const { data: rawAccounts } = await supabase.rpc("get_user_accounts")
+		const accounts: AccountWithProjects[] = Array.isArray(rawAccounts) ? (rawAccounts as AccountWithProjects[]) : []
+		const accountId = accounts.length > 0 ? accounts[0].account_id : undefined
 
 		// Get user settings for additional context
 		const { data: userSettings } = await supabase
@@ -283,8 +375,10 @@ async function resolveLastUsedProjectRedirect({
 		const accountId = settings?.last_used_account_id
 		const projectId = settings?.last_used_project_id
 
+		// If no last_used preferences, try to set defaults from available accounts/projects
 		if (!accountId || !projectId) {
-			return null
+			consola.log("[LOGIN_SUCCESS] No last_used preferences, attempting to set defaults")
+			return await ensureDefaultAccountAndProject({ supabase, userId })
 		}
 
 		const { data: project, error: projectError } = await supabase
@@ -295,12 +389,12 @@ async function resolveLastUsedProjectRedirect({
 			.single()
 
 		if (projectError || !project) {
-			consola.warn("[LOGIN_SUCCESS] Last used project unavailable, falling back to home", {
+			consola.warn("[LOGIN_SUCCESS] Last used project unavailable, setting new defaults", {
 				accountId,
 				projectId,
 				error: projectError?.message,
 			})
-			return null
+			return await ensureDefaultAccountAndProject({ supabase, userId })
 		}
 
 		return `/a/${accountId}/${project.id}`

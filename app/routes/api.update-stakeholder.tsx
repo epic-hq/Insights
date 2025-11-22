@@ -43,7 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		const currentLabels = (currentStakeholder?.labels as string[]) || []
 		// Remove any existing type labels
-		const filteredLabels = currentLabels.filter(l => !["DM", "I", "B"].includes(l))
+		const filteredLabels = currentLabels.filter((l) => !["DM", "I", "B"].includes(l))
 		// Add new type if provided
 		const newLabels = value ? [...filteredLabels, value] : filteredLabels
 		updateData.labels = newLabels

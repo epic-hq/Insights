@@ -484,8 +484,11 @@ class ResearchQuestionSuggestions {
 
 // ---------- Inputs ----------
 class GenerateInputs {
+  customer_problem string? @description("The business/customer problem being solved or addressed.")
   target_org string? @description("Target organization context (industry, size, market).")
   target_roles string? @description("Primary user roles/segments to interview (comma-separated or natural language).")
+  offerings string? @description("Products and services offered to customers.")
+  competitors string? @description("Other products or solutions customers are using or considering.")
   research_goal string @description("Short statement of the overarching research goal.")
   research_goal_details string? @description("Specific details and hypotheses relevant to this study.")
   assumptions string? @description("Key assumptions the team currently holds.")
@@ -508,11 +511,17 @@ function GenerateResearchStructure(
   prompt #"
   You are a research strategist helping to structure a user research study. Generate a complete research structure with decision questions, research questions, and interview prompts.
 
+  BUSINESS CONTEXT:
+  CUSTOMER PROBLEM: {{ inputs.customer_problem }}
+  OFFERINGS: {{ inputs.offerings }}
+  COMPETITORS: {{ inputs.competitors }}
+  TARGET ORGS: {{ inputs.target_org }}
+  TARGET ROLES: {{ inputs.target_roles }}
+
+  RESEARCH CONTEXT:
   RESEARCH GOAL: {{ inputs.research_goal }}
   DETAILS: {{ inputs.research_goal_details }}
   RESEARCH MODE: {{ inputs.research_mode or "exploratory" }}
-  TARGET ROLES: {{ inputs.target_roles }}
-  TARGET ORGS: {{ inputs.target_org }}
   ASSUMPTIONS: {{ inputs.assumptions }}
   UNKNOWNS: {{ inputs.unknowns }}
 
@@ -542,6 +551,16 @@ function GenerateResearchStructure(
   - Avoid leading questions or yes/no questions
   - Generate unique IDs for all items (use crypto.randomUUID() style)
   - Ensure all items have proper relationships (research questions link to decision questions, etc.)
+
+  QUESTION DIVERSITY - Create a balanced mix covering:
+  - Background/Context: Current situation, existing solutions (especially competitors), tools being used
+  - Goals & Outcomes: What they're trying to achieve, success metrics, desired outcomes
+  - Pain Points: Frustrations with current solutions (including competitors), unmet needs, blockers
+  - Workflow & Behavior: Day-to-day processes, specific scenarios, decision-making patterns
+  - Constraints & Barriers: Budget limitations, technical constraints, organizational challenges
+  - Value & Willingness to Pay: What they'd pay for, ROI expectations, budget allocation
+  - Demographics/Firmographics: Company size, industry, role details, team structure
+
   - If the research mode is "validation":
       * Create exactly four research questions aligned to validation gates: Pain Exists, Awareness, Quantified Impact, Taking Action.
       * Use deterministic IDs for those research questions: "pain_exists", "awareness", "quantified", "acting".
@@ -587,6 +606,9 @@ function GenerateQuestionSet(
 	Generate 25% more questions than can fit to give the interviewer options and backups.
 
   BACKGROUND CONTEXT (use only if it aligns with custom instructions above):
+  - Customer Problem: {{ inputs.customer_problem }}
+  - Offerings: {{ inputs.offerings }}
+  - Competitors: {{ inputs.competitors }}
   - Target Org: {{ inputs.target_org }}
   - Roles/Segments: {{ inputs.target_roles }}
   - Research Goal: {{ inputs.research_goal }}

@@ -5,6 +5,8 @@ import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilo
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { userContext } from "~/server/user-context"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 export const meta: MetaFunction = () => [{ title: "Interview Realtime | Insights" }]
 
 export async function loader({ context, params }: LoaderFunctionArgs) {

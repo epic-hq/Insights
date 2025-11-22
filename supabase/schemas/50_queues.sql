@@ -195,7 +195,7 @@ begin
       'Authorization', 'Bearer ' || supabase_anon_key,
       'Content-Type', 'application/json'
     ),
-    2000  -- timeout in milliseconds
+    15000  -- timeout in milliseconds
   );
 end;
 $$;

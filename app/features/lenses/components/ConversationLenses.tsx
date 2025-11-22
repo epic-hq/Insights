@@ -1,5 +1,17 @@
 import type { LucideIcon } from "lucide-react"
-import { AlertTriangle, BarChart3, CheckCircle2, Cpu, Headset, Heart, Map, Sparkles, Target, Users, XCircle } from "lucide-react"
+import {
+	AlertTriangle,
+	BarChart3,
+	CheckCircle2,
+	Cpu,
+	Headset,
+	Heart,
+	Map,
+	Sparkles,
+	Target,
+	Users,
+	XCircle,
+} from "lucide-react"
 import { type ReactNode, useMemo } from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
@@ -72,15 +84,31 @@ const CUSTOM_LENS_ICON_MAP: Record<string, { icon: LucideIcon; color: string; ba
 // Helper to get confidence badge
 function getConfidenceBadge(confidence: number | null | undefined) {
 	if (confidence === null || confidence === undefined) {
-		return <Badge variant="outline" className="text-[0.65rem] bg-gray-100 text-gray-600">Unknown</Badge>
+		return (
+			<Badge variant="outline" className="bg-gray-100 text-[0.65rem] text-gray-600">
+				Unknown
+			</Badge>
+		)
 	}
 	if (confidence >= 0.7) {
-		return <Badge variant="outline" className="text-[0.65rem] bg-emerald-100 text-emerald-700">High</Badge>
+		return (
+			<Badge variant="outline" className="bg-emerald-100 text-[0.65rem] text-emerald-700">
+				High
+			</Badge>
+		)
 	}
 	if (confidence >= 0.4) {
-		return <Badge variant="outline" className="text-[0.65rem] bg-amber-100 text-amber-700">Medium</Badge>
+		return (
+			<Badge variant="outline" className="bg-amber-100 text-[0.65rem] text-amber-700">
+				Medium
+			</Badge>
+		)
 	}
-	return <Badge variant="outline" className="text-[0.65rem] bg-rose-100 text-rose-700">Low</Badge>
+	return (
+		<Badge variant="outline" className="bg-rose-100 text-[0.65rem] text-rose-700">
+			Low
+		</Badge>
+	)
 }
 
 // Helper to render a compact framework field
@@ -88,7 +116,7 @@ function CompactFrameworkField({
 	label,
 	slot,
 	frameworkId,
-	onUpdateField
+	onUpdateField,
 }: {
 	label: string
 	slot?: LensSlotValue
@@ -99,14 +127,19 @@ function CompactFrameworkField({
 	const Icon = hasValue ? CheckCircle2 : XCircle
 	const iconColor = hasValue ? "text-emerald-600" : "text-gray-400"
 
-	const displayValue = slot?.summary || slot?.textValue || (slot?.numericValue !== null && slot?.numericValue !== undefined ? String(slot?.numericValue) : null) || slot?.dateValue || ""
+	const displayValue =
+		slot?.summary ||
+		slot?.textValue ||
+		(slot?.numericValue !== null && slot?.numericValue !== undefined ? String(slot?.numericValue) : null) ||
+		slot?.dateValue ||
+		""
 
 	// Always allow editing, even if slot doesn't exist yet
 	return (
 		<div className="flex items-start gap-3 rounded-lg border border-border/50 bg-background p-3">
-			<Icon className={cn("h-4 w-4 mt-0.5 flex-shrink-0", iconColor)} />
-			<div className="flex-1 min-w-0">
-				<div className="flex items-center justify-between gap-2 mb-1">
+			<Icon className={cn("mt-0.5 h-4 w-4 flex-shrink-0", iconColor)} />
+			<div className="min-w-0 flex-1">
+				<div className="mb-1 flex items-center justify-between gap-2">
 					<p className="font-medium text-foreground text-sm">{label}</p>
 					{hasValue && slot && getConfidenceBadge(slot.confidence)}
 				</div>
@@ -121,11 +154,13 @@ function CompactFrameworkField({
 								onUpdateField(slot.id, field, value)
 							} else {
 								// TODO: Handle creating new slot when it doesn't exist
-								console.warn(`Cannot save ${label} - slot not found in database. Refresh the page after interview analysis completes.`)
+								console.warn(
+									`Cannot save ${label} - slot not found in database. Refresh the page after interview analysis completes.`
+								)
 							}
 						}}
 						submitOnBlur
-						textClassName={cn("text-sm break-words", hasValue ? "text-foreground/90" : "text-muted-foreground italic")}
+						textClassName={cn("break-words text-sm", hasValue ? "text-foreground/90" : "text-muted-foreground italic")}
 						inputClassName="text-sm"
 					/>
 				</div>
@@ -139,17 +174,31 @@ function renderBantCompactView(
 	framework: InterviewLensFramework,
 	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
 ): ReactNode {
-	const budget = framework.slots.find(s => s.fieldKey === 'budget' || s.fieldKey.toLowerCase().includes('budget'))
-	const authority = framework.slots.find(s => s.fieldKey === 'authority' || s.fieldKey.toLowerCase().includes('authority'))
-	const need = framework.slots.find(s => s.fieldKey === 'need' || s.fieldKey.toLowerCase().includes('need'))
-	const timeline = framework.slots.find(s => s.fieldKey === 'timeline' || s.fieldKey.toLowerCase().includes('timeline'))
+	const budget = framework.slots.find((s) => s.fieldKey === "budget" || s.fieldKey.toLowerCase().includes("budget"))
+	const authority = framework.slots.find(
+		(s) => s.fieldKey === "authority" || s.fieldKey.toLowerCase().includes("authority")
+	)
+	const need = framework.slots.find((s) => s.fieldKey === "need" || s.fieldKey.toLowerCase().includes("need"))
+	const timeline = framework.slots.find(
+		(s) => s.fieldKey === "timeline" || s.fieldKey.toLowerCase().includes("timeline")
+	)
 
 	return (
 		<div className="grid gap-3 sm:grid-cols-2">
 			<CompactFrameworkField label="Budget" slot={budget} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Authority" slot={authority} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField
+				label="Authority"
+				slot={authority}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
 			<CompactFrameworkField label="Need" slot={need} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Timeline" slot={timeline} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField
+				label="Timeline"
+				slot={timeline}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
 		</div>
 	)
 }
@@ -159,27 +208,68 @@ function renderMeddicCompactView(
 	framework: InterviewLensFramework,
 	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
 ): ReactNode {
-	const metrics = framework.slots.find(s => s.fieldKey === 'metrics' || s.fieldKey.toLowerCase().includes('metric'))
-	const economicBuyer = framework.slots.find(s => s.fieldKey === 'economic_buyer' || s.fieldKey.toLowerCase().includes('economic'))
-	const decisionCriteria = framework.slots.find(s => s.fieldKey === 'decision_criteria' || s.fieldKey.toLowerCase().includes('criteria'))
-	const decisionProcess = framework.slots.find(s => s.fieldKey === 'decision_process' || s.fieldKey.toLowerCase().includes('process'))
-	const pain = framework.slots.find(s => s.fieldKey === 'pain' || s.fieldKey.toLowerCase().includes('pain'))
-	const champion = framework.slots.find(s => s.fieldKey === 'champion' || s.fieldKey.toLowerCase().includes('champion'))
+	const metrics = framework.slots.find((s) => s.fieldKey === "metrics" || s.fieldKey.toLowerCase().includes("metric"))
+	const economicBuyer = framework.slots.find(
+		(s) => s.fieldKey === "economic_buyer" || s.fieldKey.toLowerCase().includes("economic")
+	)
+	const decisionCriteria = framework.slots.find(
+		(s) => s.fieldKey === "decision_criteria" || s.fieldKey.toLowerCase().includes("criteria")
+	)
+	const decisionProcess = framework.slots.find(
+		(s) => s.fieldKey === "decision_process" || s.fieldKey.toLowerCase().includes("process")
+	)
+	const pain = framework.slots.find((s) => s.fieldKey === "pain" || s.fieldKey.toLowerCase().includes("pain"))
+	const champion = framework.slots.find(
+		(s) => s.fieldKey === "champion" || s.fieldKey.toLowerCase().includes("champion")
+	)
 
 	return (
 		<div className="grid gap-3 sm:grid-cols-2">
-			<CompactFrameworkField label="Metrics" slot={metrics} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Economic Buyer" slot={economicBuyer} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Decision Criteria" slot={decisionCriteria} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Decision Process" slot={decisionProcess} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Identify Pain" slot={pain} frameworkId={framework.name} onUpdateField={onUpdateField} />
-			<CompactFrameworkField label="Champion" slot={champion} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField
+				label="Metrics"
+				slot={metrics}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
+			<CompactFrameworkField
+				label="Economic Buyer"
+				slot={economicBuyer}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
+			<CompactFrameworkField
+				label="Decision Criteria"
+				slot={decisionCriteria}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
+			<CompactFrameworkField
+				label="Decision Process"
+				slot={decisionProcess}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
+			<CompactFrameworkField
+				label="Identify Pain"
+				slot={pain}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
+			<CompactFrameworkField
+				label="Champion"
+				slot={champion}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+			/>
 		</div>
 	)
 }
 
 // Render Next Steps view showing milestones
-function renderNextStepsView(nextSteps?: Array<{ id: string; description: string; ownerName: string | null; dueDate: string | null }>, milestones?: Array<{ id: string; label: string; status: string; ownerName: string | null; dueDate: string | null }>): ReactNode {
+function renderNextStepsView(
+	nextSteps?: Array<{ id: string; description: string; ownerName: string | null; dueDate: string | null }>,
+	milestones?: Array<{ id: string; label: string; status: string; ownerName: string | null; dueDate: string | null }>
+): ReactNode {
 	const hasNextSteps = (nextSteps?.length ?? 0) > 0
 	const hasMilestones = (milestones?.length ?? 0) > 0
 

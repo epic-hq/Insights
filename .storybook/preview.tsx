@@ -1,4 +1,4 @@
-import type { Preview } from "@storybook/react"
+import type { Preview } from "@storybook/react-vite"
 import React from "react"
 import { withCurrentProject, withMockEnv } from "./decorators"
 // import "../app/tailwind.css" // Disabled - using inline styles in preview-head.html for now

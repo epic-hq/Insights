@@ -10,12 +10,14 @@ import {
 	MessageCircleQuestionIcon,
 	MoreVertical,
 	SparkleIcon,
+	Trash2,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
+import { LinkPersonDialog } from "~/components/dialogs/LinkPersonDialog"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -32,6 +34,7 @@ import { SalesLensesSection } from "~/features/lenses/components/ConversationLen
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
+import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -43,6 +46,22 @@ import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
+
+export const handle = { hideProjectStatusAgent: true } as const
+
+// Helper to parse full name into first and last
+function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
+	const trimmed = fullName.trim()
+	if (!trimmed) return { firstname: "", lastname: null }
+	const parts = trimmed.split(/\s+/)
+	if (parts.length === 1) {
+		return { firstname: parts[0], lastname: null }
+	}
+	return {
+		firstname: parts[0],
+		lastname: parts.slice(1).join(" "),
+	}
+}
 
 // Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
 function normalizeMultilineText(value: unknown): string {
@@ -136,7 +155,8 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 	}
 
 	const formData = await request.formData()
-	const intent = formData.get("intent")?.toString()
+	// Support both "intent" (existing forms) and "_action" (LinkPersonDialog)
+	const intent = (formData.get("intent") || formData.get("_action"))?.toString()
 
 	try {
 		switch (intent) {
@@ -186,8 +206,10 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				if (error) throw new Error(error.message)
 				return Response.json({ ok: true, removed: true })
 			}
-			case "add-participant": {
-				const personId = formData.get("personId")?.toString()
+			case "add-participant":
+			case "link-person": {
+				// Handle both existing form (add-participant) and LinkPersonDialog (link-person)
+				const personId = (formData.get("personId") || formData.get("person_id"))?.toString()
 				if (!personId) {
 					return Response.json({ ok: false, error: "Select a person to add" }, { status: 400 })
 				}
@@ -218,6 +240,69 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				})
 				if (error) throw new Error(error.message)
 				return Response.json({ ok: true, created: true })
+			}
+			case "create-and-link-person": {
+				const name = (formData.get("name") as string | null)?.trim()
+				if (!name) {
+					return Response.json({ ok: false, error: "Person name is required" }, { status: 400 })
+				}
+
+				const { firstname, lastname } = parseFullName(name)
+				const primaryEmail = (formData.get("primary_email") as string | null)?.trim() || null
+				const title = (formData.get("title") as string | null)?.trim() || null
+				const role = (formData.get("role") as string | null)?.trim() || null
+
+				// Create the person
+				const { data: newPerson, error: createError } = await supabase
+					.from("people")
+					.insert({
+						account_id: accountId,
+						project_id: projectId,
+						firstname,
+						lastname,
+						primary_email: primaryEmail,
+						title,
+					})
+					.select()
+					.single()
+
+				if (createError || !newPerson) {
+					consola.error("Failed to create person:", createError)
+					return Response.json({ ok: false, error: "Failed to create person" }, { status: 500 })
+				}
+
+				// Link person to project
+				await supabase.from("project_people").insert({
+					project_id: projectId,
+					person_id: newPerson.id,
+				})
+
+				// If title was provided, sync it to job_function facet
+				if (title) {
+					await syncTitleToJobFunctionFacet({
+						supabase,
+						personId: newPerson.id,
+						accountId,
+						title,
+					})
+				}
+
+				// Link the person to the interview
+				const { error: linkError } = await supabase.from("interview_people").insert({
+					interview_id: interviewId,
+					project_id: projectId,
+					person_id: newPerson.id,
+					role,
+					transcript_key: null,
+					display_name: null,
+				})
+
+				if (linkError) {
+					consola.error("Failed to link person to interview:", linkError)
+					return Response.json({ ok: false, error: "Person created but failed to link to interview" }, { status: 500 })
+				}
+
+				return Response.json({ ok: true, created: true, personId: newPerson.id })
 			}
 			default:
 				return Response.json({ ok: false, error: "Unknown intent" }, { status: 400 })
@@ -385,27 +470,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							project_id: string | null
+							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -1810,81 +1895,34 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 															type="submit"
 															name="intent"
 															value="remove-participant"
-															className="rounded-md px-3 py-1.5 text-red-600 text-sm hover:bg-red-50"
+															className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-destructive"
+															title="Remove participant"
 														>
-															Remove
+															<Trash2 className="h-4 w-4" />
 														</button>
 													</div>
 												</participantFetcher.Form>
 											))}
 
 											<div className="border-t pt-4">
-												<participantFetcher.Form method="post" className="space-y-3">
+												<div className="space-y-3">
 													<h4 className="font-semibold text-sm">Add Participant</h4>
-
-													<div className="space-y-2">
-														<label className="text-muted-foreground text-xs uppercase tracking-wide">Person</label>
-														<select
-															name="personId"
-															defaultValue=""
-															className="w-full rounded-md border border-input bg-background p-2 text-sm"
-														>
-															<option value="">Select a person</option>
-															{peopleOptions.map((personOption) => (
-																<option key={personOption.id} value={personOption.id}>
-																	{personOption.name || "Unnamed"}
-																</option>
-															))}
-														</select>
-													</div>
-
-													<div className="grid grid-cols-2 gap-2">
-														<div className="space-y-1">
-															<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
-															<input
-																name="role"
-																type="text"
-																placeholder="participant"
-																className="w-full rounded-md border border-input bg-background p-2 text-sm"
-															/>
-														</div>
-														<div className="space-y-1">
-															<label className="text-muted-foreground text-xs uppercase tracking-wide">Speaker</label>
-															<select
-																name="transcriptKey"
-																defaultValue=""
-																className="w-full rounded-md border border-input bg-background p-2 text-sm"
-															>
-																<option value="">None</option>
-																<option value="A">A</option>
-																<option value="B">B</option>
-																<option value="C">C</option>
-																<option value="D">D</option>
-															</select>
-														</div>
-													</div>
-
-													<div className="space-y-1">
-														<label className="text-muted-foreground text-xs uppercase tracking-wide">
-															Display Name (Optional)
-														</label>
-														<input
-															name="displayName"
-															type="text"
-															placeholder="Override transcript label"
-															className="w-full rounded-md border border-input bg-background p-2 text-sm"
-														/>
-													</div>
-
-													<button
-														type="submit"
-														name="intent"
-														value="add-participant"
-														className="w-full rounded-md border border-input px-3 py-2 font-medium text-sm hover:bg-accent"
-													>
-														Add Participant
-													</button>
-												</participantFetcher.Form>
+													<LinkPersonDialog
+														entityId={interview.id}
+														entityType="interview"
+														availablePeople={peopleOptions.filter(
+															(p) => !participants.some((participant) => participant.people?.id === p.id)
+														)}
+														triggerButton={
+															<button className="w-full rounded-md border border-input px-3 py-2 font-medium text-sm hover:bg-accent">
+																Link Person
+															</button>
+														}
+													/>
+													<p className="text-muted-foreground text-xs">
+														After linking, use the edit form above to set role, speaker, and display name.
+													</p>
+												</div>
 											</div>
 										</div>
 									</PopoverContent>

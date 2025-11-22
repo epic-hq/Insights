@@ -1,10 +1,19 @@
 /**
  * Generate embeddings for a specific project's person_facets
  * Bypasses the global queue to prioritize one project
+ * Run with: npx tsx scripts/generate-embeddings-for-project.ts
+ * For production: npx tsx scripts/generate-embeddings-for-project.ts production
  */
 
+import dotenvx from "@dotenvx/dotenvx"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
+
+// Load environment variables
+const env = process.argv.find((arg) => arg === "production" || arg === "prod") ? "production" : ""
+const envPath = `.env${env ? `.${env}` : ""}`
+dotenvx.config({ path: envPath })
+consola.info(`Loaded environment from ${envPath}`)
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!

@@ -218,10 +218,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 			let topDesiredOutcomes: string[] = []
 
 			if (insightIds.length) {
-				const { data: themeDetails } = await db
-					.from("themes")
-					.select("id, pain, desired_outcome")
-					.in("id", insightIds)
+				const { data: themeDetails } = await db.from("themes").select("id, pain, desired_outcome").in("id", insightIds)
 
 				const themeMap = new Map(themeDetails?.map((row) => [row.id, row]))
 
@@ -285,10 +282,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 			let supportingNames: string[] = []
 
 			if (supportingIds.length) {
-				const { data: themeNames } = await db
-					.from("themes")
-					.select("id, name")
-					.in("id", supportingIds)
+				const { data: themeNames } = await db.from("themes").select("id, name").in("id", supportingIds)
 
 				const nameMap = new Map(themeNames?.map((row) => [row.id, row.name || ""]))
 				supportingNames = supportingIds.map((id) => nameMap.get(id) || "").filter((name) => name.length > 0)

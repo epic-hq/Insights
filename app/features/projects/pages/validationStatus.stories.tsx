@@ -1,5 +1,5 @@
 import { withRouter } from ".storybook/with-router"
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import { AnalyzeStageValidation } from "./validationStatus"
 
 const meta = {

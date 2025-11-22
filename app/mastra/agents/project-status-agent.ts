@@ -14,11 +14,9 @@ import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-con
 import { fetchSegmentsTool } from "../tools/fetch-segments"
 import { fetchThemesTool } from "../tools/fetch-themes"
 import { generateProjectRoutesTool } from "../tools/generate-project-routes"
-import {
-	createOpportunityTool,
-	fetchOpportunitiesTool,
-	updateOpportunityTool,
-} from "../tools/manage-opportunities"
+import { manageAnnotationsTool } from "../tools/manage-annotations"
+import { manageDocumentsTool } from "../tools/manage-documents"
+import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { upsertPersonTool } from "../tools/upsert-person"
@@ -55,11 +53,13 @@ Workflow:
 3. For detailed interview breakdowns or transcripts, follow up by calling "fetchInterviewContext" for the interview IDs you discovered (use includeEvidence=true unless the user prefers otherwise).
 4. When the user wants to log a new deal or assign follow-up work to sales, call "createOpportunity" with the information they provided (title, description, stage, value, close date, linked interviews). Confirm the new opportunity back to them.
 5. When they want to change deal state (e.g., move to Validate, adjust forecast, update close date), confirm which opportunity they're referencing (via link or fetch) and call "updateOpportunity" with the fields they requested.
-6. When the user provides contact information or demographic details about a person (name, email, phone, title, company, etc.), call "upsertPerson" with the relevant fields to create or update the person record. This handles all basic person information.
-7. When the user shares qualitative insights about a person's traits, behaviors, or characteristics, call "upsertPersonFacets" with that transcript plus the specific person_id to capture the facets in the database.
-8. When they describe employer or partner organizations for a person, call "manage-person-organizations" with the transcript so you can create/link the organization and record the relationship (role, status, primary flag).
-9. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
-10. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
+6. When the user provides contact information or demographic details about a person (name, email, phone, title, location, etc.), call "upsertPerson" with the relevant fields to create or update the person record. This handles basic person data ONLY.
+7. When the user wants to update where someone works or their organizational relationships (e.g., "Tim works at Acme Corp"), FIRST use "fetchPeopleDetails" to get the person's ID, THEN call "manage-person-organizations" with personId and a transcript describing the relationship. This creates proper organization links, not just text fields.
+8. When the user shares qualitative insights about a person's traits, behaviors, or characteristics, call "upsertPersonFacets" with that transcript plus the specific person_id to capture the facets in the database.
+9. When users ask you to save, create, write, or document something (e.g., "save our positioning", "create an SEO strategy", "write up meeting notes"), use "manageDocuments" with operation="upsert" and translate natural language to appropriate document kinds. The tool has full vocabulary mapping - just use natural language and it will handle the translation.
+10. When users want to add notes, comments, or reminders to specific entities (people, organizations, opportunities, interviews), use "manageAnnotations" to create annotations. Examples: "add a note to this person", "remind me to follow up with this org", "flag this opportunity as high priority". Annotations are for entity-level notes and todos, different from project-level documents managed by manageDocuments.
+11. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
+12. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
 
 **Linking to Entities**: When mentioning specific personas, people, opportunities, organizations, themes, evidence, insights, interviews, or segments in your responses, always include clickable links. After successfully using tools like "fetchPeopleDetails", "fetchPersonas", or similar that return entity data, use the "generateProjectRoutes" tool to get the correct URL for that specific entity, then format the link as a regular markdown link: **[Entity Name](\`route-from-tool\`)**. The tool returns both a relative \`route\` (preferred for in-product links) and an \`absoluteRoute\` (for sharing outside the app). If the route generation fails, continue with your response without the link rather than failing completely.
 
@@ -102,6 +102,8 @@ I recommend checking your project settings or trying a simpler query to help dia
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
 		upsertPerson: upsertPersonTool,
+		manageDocuments: manageDocumentsTool,
+		manageAnnotations: manageAnnotationsTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

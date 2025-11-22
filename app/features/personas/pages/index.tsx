@@ -3,10 +3,9 @@ import { LayoutGrid, Sparkle, Table as TableIcon, UserCircle, Users } from "luci
 import { useEffect, useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link, useFetcher } from "react-router-dom"
+import { toast } from "sonner"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
@@ -102,7 +101,6 @@ export default function Personas() {
 		<>
 			<PersonaPeopleSubnav />
 			<PageContainer className="space-y-6">
-				<PersonaAdvisorSection />
 				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 					<div className="flex items-center gap-3">
 						<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -111,7 +109,7 @@ export default function Personas() {
 						<div>
 							<h1 className="font-semibold text-3xl text-foreground">Personas</h1>
 							<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-								Research-based archetypes summarizing motivations, pains, and patterns across your interviews.
+								Identify your ideal customers and create personas from AI recommendations or build them manually.
 							</p>
 						</div>
 					</div>
@@ -152,7 +150,8 @@ export default function Personas() {
 							</div>
 							<h3 className="font-semibold text-foreground text-xl">No personas yet</h3>
 							<p className="text-muted-foreground text-sm">
-								Generate personas from your research data or create them manually to understand your users better.
+								Get started by generating AI-powered persona recommendations from your research data or create personas
+								manually.
 							</p>
 							<div className="flex justify-center gap-3">
 								<GeneratePersonasButton />
@@ -178,21 +177,28 @@ export default function Personas() {
 
 function GeneratePersonasButton() {
 	const fetcher = useFetcher()
+	const { projectId } = useCurrentProject()
 	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
 
 	useEffect(() => {
-		if (fetcher.data?.success) {
-			window.location.reload()
+		if (fetcher.data) {
+			if (fetcher.data.success) {
+				const count = fetcher.data.personas?.length || 0
+				toast.success(`Successfully generated ${count} persona${count === 1 ? "" : "s"}!`)
+				setTimeout(() => window.location.reload(), 1000)
+			} else {
+				toast.error(fetcher.data.message || "Failed to generate personas. Please try again.")
+			}
 		}
 	}, [fetcher.data])
 
 	const handleGenerate = () => {
-		const confirmed = window.confirm(
-			"⚠️ This will generate additional personas based on your research data. This feature is experimental and may create duplicate or similar personas. Do you want to proceed?"
-		)
-		if (confirmed) {
-			fetcher.submit({}, { method: "post", action: "api/generate-personas" })
-		}
+		if (!projectId) return
+
+		const formData = new FormData()
+		formData.append("projectId", projectId)
+
+		fetcher.submit(formData, { method: "post", action: "/api/generate-icp-recommendations" })
 	}
 
 	return (
@@ -200,65 +206,5 @@ function GeneratePersonasButton() {
 			<Sparkle className="mr-2 h-4 w-4" />
 			{isGenerating ? "Generating..." : "Generate Personas"}
 		</Button>
-	)
-}
-
-function PersonaAdvisorSection() {
-	const fetcher = useFetcher<{ ok: boolean; report?: string; error?: string; message?: string }>()
-	const { accountId, projectId } = useCurrentProject()
-	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
-	const hasReport = Boolean(fetcher.data?.ok && fetcher.data.report)
-	const serverMessage = fetcher.data?.message
-	const apiError = fetcher.data && !fetcher.data.ok ? fetcher.data.error || serverMessage : null
-
-	const handleGenerate = () => {
-		if (!accountId || !projectId) return
-		fetcher.submit({ accountId, projectId }, { method: "post", action: "api/persona-advisor" })
-	}
-
-	return (
-		<Card className="space-y-2 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50/70 via-white to-white shadow">
-			<CardHeader className="space-y-2 ">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<Sparkle className="h-5 w-5 text-sky-600" />
-						<CardTitle className="font-medium text-sm text-foreground">
-							AI Persona Advisor
-						</CardTitle>
-						<Badge variant="outline" className="text-xs text-sky-600">
-							AI
-						</Badge>
-					</div>
-					<Button
-						size="sm"
-						variant="secondary"
-						onClick={handleGenerate}
-						disabled={isGenerating || !accountId || !projectId}
-						className="gap-2"
-					>
-						{isGenerating ? "Generating..." : hasReport ? "Refresh report" : "Generate report"}
-					</Button>
-				</div>
-				<p className="text-xs text-muted-foreground">
-					Summarize persona facets, scales, and themes into a structured markdown report.
-				</p>
-			</CardHeader>
-			<CardContent>
-				{hasReport ? (
-					<div className="max-h-[420px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-relaxed text-slate-800 shadow-sm">
-						<pre className="whitespace-pre-wrap text-[0.78rem]" aria-live="polite">
-							{fetcher.data?.report}
-						</pre>
-					</div>
-				) : (
-					<p className="text-sm text-muted-foreground">
-						{apiError
-							? apiError
-							: serverMessage ?? "Generate the report to see shared values, themes, and positioning guidance."
-						}
-					</p>
-				)}
-			</CardContent>
-		</Card>
 	)
 }

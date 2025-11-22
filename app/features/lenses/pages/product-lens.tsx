@@ -5,7 +5,7 @@
 
 import consola from "consola"
 import { useState } from "react"
-import { Form, type LoaderFunctionArgs, useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router"
+import { Form, type LoaderFunctionArgs, useFetcher, useLoaderData, useNavigate, useNavigation } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { getSegmentKindSummaries } from "~/features/segments/services/segmentData.server"

@@ -93,6 +93,42 @@ like People, PeopleInsert, PeopleUpdate
 VS Code tip
 Add this path to tsconfig.json typeRoots so IntelliSense auto-completes column names.
 
+## Repairing 11/20/25
+
+The db pull command still has the pooler SCRAM issue (that's a Supabase CLI limitation). But the good
+  news is your local development workflow is now fixed:
+
+  ✅ Fixed Issues
+
+  1. supabase db reset - ✓ Works perfectly
+  2. supabase db diff - ✓ Works perfectly
+  3. Storage migration errors - ✓ Fixed with exception handlers
+  4. Mastra database connection - ✓ Works with IPv4 pooler
+
+  Remaining Limitation
+
+  - supabase db pull/push - Still has SCRAM auth issue due to CLI using transaction pooler internally
+
+  Workarounds for schema sync:
+
+  Option 1: Use the declarative schema workflow (recommended):
+  # 1. Edit supabase/schemas/*.sql
+  # 2. Apply locally
+  supabase db reset
+
+  # 3. Generate migration
+  supabase db diff -f my_change
+
+  # 4. Push to remote using psql
+  PGPASSWORD="..." psql "postgresql://..." -f supabase/migrations/TIMESTAMP_my_change.sql
+
+  # 5. Register migration
+  psql "..." -c "INSERT INTO supabase_migrations.schema_migrations ..."
+
+  Option 2: Use remote Supabase Studio for quick schema changes
+
+  Your normal development workflow (db reset, db diff) is fully functional now!
+
 ## Reapairing 7/28
 
 - [x] re-created schema `35_junction_tables.sql` - was missing

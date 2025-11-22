@@ -81,7 +81,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 									</Badge>
 								))}
 								{persona.tags.length > 2 ? (
-									<span className="text-[10px] text-muted-foreground">+{persona.tags.length - 2} more</span>
+									<span className="text-[10px] text-foreground/60">+{persona.tags.length - 2} more</span>
 								) : null}
 							</div>
 						</div>
@@ -100,7 +100,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 					return (
 						<ul className="list-inside list-disc space-y-1 text-sm">
 							{goals.map((goal, index) => (
-								<li key={`${row.original.id}-goal-${index}`} className="text-muted-foreground">
+								<li key={`${row.original.id}-goal-${index}`} className="text-foreground">
 									{goal}
 								</li>
 							))}
@@ -120,7 +120,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 					return (
 						<ul className="list-inside list-disc space-y-1 text-sm">
 							{pains.map((pain, index) => (
-								<li key={`${row.original.id}-pain-${index}`} className="text-muted-foreground">
+								<li key={`${row.original.id}-pain-${index}`} className="text-foreground">
 									{pain}
 								</li>
 							))}
@@ -132,7 +132,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 			{
 				accessorKey: "linkedPeople",
 				header: "Linked People",
-				cell: ({ getValue }) => <span className="font-medium text-sm">{getValue<number>()}</span>,
+				cell: ({ getValue }) => <span className="font-medium text-foreground text-sm">{getValue<number>()}</span>,
 				enableSorting: true,
 			},
 			{

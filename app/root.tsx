@@ -10,6 +10,7 @@ import {
 	Meta,
 	type MetaFunction,
 	Outlet,
+	redirect,
 	Scripts,
 	ScrollRestoration,
 	useRouteError,
@@ -23,10 +24,16 @@ import { ThemeProvider } from "~/contexts/ThemeContext"
 import { ValidationViewProvider } from "~/contexts/ValidationViewContext"
 import { getClientEnv } from "~/env.server"
 import { loadContext } from "~/server/load-context"
+import { loader as authCallbackLoader } from "./routes/auth.callback"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
+	const requestUrl = new URL(request.url)
+	if (requestUrl.pathname === "/" && requestUrl.searchParams.has("code")) {
+		return authCallbackLoader({ request, params: {} })
+	}
+
 	let lang = "en"
 	let clientEnv: Record<string, unknown> | undefined
 

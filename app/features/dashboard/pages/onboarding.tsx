@@ -150,7 +150,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 						id: row.insight_id,
 						name: nameMap.get(row.insight_id) || "",
 						title: nameMap.get(row.insight_id) || "",
-				  }
+					}
 				: null,
 		})) || []
 
@@ -166,33 +166,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	// Process insight-tag relationships
 	if (insightTags) {
-		insightTags.forEach((record: { tag: string | null; insights: { id: string; name?: string; title?: string } | null }) => {
-			const tag = record.tag
-			const insight = record.insights
+		insightTags.forEach(
+			(record: { tag: string | null; insights: { id: string; name?: string; title?: string } | null }) => {
+				const tag = record.tag
+				const insight = record.insights
 
-			if (!tag || !insight) {
-				return
-			}
+				if (!tag || !insight) {
+					return
+				}
 
-			if (!tagMap.has(tag)) {
-				tagMap.set(tag, {
-					name: tag,
-					value: 0,
-					children: [],
-					fill: "",
-				})
-			}
+				if (!tagMap.has(tag)) {
+					tagMap.set(tag, {
+						name: tag,
+						value: 0,
+						children: [],
+						fill: "",
+					})
+				}
 
-			const tagNode = tagMap.get(tag)
-			if (tagNode) {
-				tagNode.value += 1
-				tagNode.children?.push({
-					name: insight.name || insight.title || `Insight ${insight.id.slice(0, 6)}`,
-					value: 1,
-					fill: "",
-				})
+				const tagNode = tagMap.get(tag)
+				if (tagNode) {
+					tagNode.value += 1
+					tagNode.children?.push({
+						name: insight.name || insight.title || `Insight ${insight.id.slice(0, 6)}`,
+						value: 1,
+						fill: "",
+					})
+				}
 			}
-		})
+		)
 	}
 
 	// Sort and apply colors to top N tags

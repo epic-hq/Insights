@@ -101,16 +101,16 @@ export default function PeopleIndexPage() {
 				segment: person.segment ?? null,
 				persona: persona
 					? {
-						id: persona.id,
-						name: persona.name,
-					}
+							id: persona.id,
+							name: persona.name,
+						}
 					: null,
 				personaColor: persona?.color_hex || null,
 				organization: primaryOrganization
 					? {
-						id: primaryOrganization.id,
-						name: primaryOrganization.name || primaryOrganization.website_url || null,
-					}
+							id: primaryOrganization.id,
+							name: primaryOrganization.name || primaryOrganization.website_url || null,
+						}
 					: null,
 				interviewCount: person.interview_people?.length ?? 0,
 				keySignals: facets.map((facet) => facet.label),
@@ -211,9 +211,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-												name: pp.personas.name,
-												color_hex: pp.personas.color_hex || undefined,
-											}
+													name: pp.personas.name,
+													color_hex: pp.personas.color_hex || undefined,
+												}
 											: undefined,
 									})),
 								}}

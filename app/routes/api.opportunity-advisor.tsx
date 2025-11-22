@@ -61,10 +61,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Fetch next steps (from sales_lens_slots)
 		let nextSteps: any[] = []
 		if (summaryIds.length > 0) {
-			const { data: slotsData } = await supabase
-				.from("sales_lens_slots")
-				.select("*")
-				.in("summary_id", summaryIds)
+			const { data: slotsData } = await supabase.from("sales_lens_slots").select("*").in("summary_id", summaryIds)
 
 			const slots = slotsData || []
 			nextSteps = slots
@@ -204,7 +201,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	} catch (error) {
 		consola.error("Failed to generate opportunity advisor recommendation", error)
 		return Response.json(
-			{ ok: false, error: "Failed to generate recommendation", details: error instanceof Error ? error.message : "Unknown error" },
+			{
+				ok: false,
+				error: "Failed to generate recommendation",
+				details: error instanceof Error ? error.message : "Unknown error",
+			},
 			{ status: 500 }
 		)
 	}

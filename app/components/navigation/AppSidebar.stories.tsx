@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import {
 	BookOpen,
 	Briefcase,
@@ -127,7 +127,6 @@ function AppSidebarPreview({
 					{/* Toggle button - always visible, moves to center when collapsed */}
 					<SidebarTrigger className="transition-all duration-200" />
 				</div>
-
 			</SidebarHeader>
 
 			{/* Content */}

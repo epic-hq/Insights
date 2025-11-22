@@ -1,12 +1,13 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { Grid, List, MessageSquare, MessagesSquare, Upload } from "lucide-react"
+import { FileText, Grid, List, MessageSquare, MessagesSquare, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
+import { Link, useFetcher, useLoaderData } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { Button } from "~/components/ui/button"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
@@ -17,6 +18,8 @@ import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadg
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Interview } from "~/types"
+
+export const handle = { hideProjectStatusAgent: true } as const
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
@@ -86,7 +89,40 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const { interviews, segmentData } = useLoaderData<typeof loader>()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
-	const [viewMode, setViewMode] = useState<"cards" | "table">("table")
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+	const fetcher = useFetcher()
+
+	const handleSaveNote = async (note: {
+		title: string
+		content: string
+		noteType: string
+		associations: Record<string, unknown>
+		tags: string[]
+	}) => {
+		const projectId = projectPath?.split("/")[2] // Extract project ID from path
+
+		// Submit as JSON
+		const response = await fetch("/api/notes/create", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				projectId,
+				title: note.title,
+				content: note.content,
+				noteType: note.noteType,
+				associations: note.associations,
+				tags: note.tags,
+			}),
+		})
+
+		if (!response.ok) {
+			console.error("Failed to save note")
+			throw new Error("Failed to save note")
+		}
+	}
 
 	return (
 		<div className="relative min-h-screen bg-background">
@@ -121,6 +157,10 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									<List className="h-4 w-4" />
 								</ToggleGroupItem>
 							</ToggleGroup>
+							<Button variant="outline" onClick={() => setNoteDialogOpen(true)} className="w-full text-sm sm:w-auto">
+								<FileText className="h-4 w-4" />
+								Quick Note
+							</Button>
 							<Button
 								asChild
 								variant="default"
@@ -185,7 +225,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											Participant
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-											Interview
+											Type
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Persona
@@ -218,17 +258,15 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												</Link>
 											</td>
 											<td className="px-4 py-3">
-												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
-													<div className="text-foreground/70 text-sm">
-														{interview.title || `Interview with ${interview.participant}`}
-													</div>
-													<div className="mt-1">
-														<MediaTypeIcon
-															mediaType={interview.media_type}
-															iconClassName="h-3 w-3"
-															labelClassName="text-xs"
-														/>
-													</div>
+												<Link
+													to={routes.interviews.detail(interview.id)}
+													className="inline-flex items-center gap-2 text-foreground/70 text-sm hover:text-blue-600"
+												>
+													<MediaTypeIcon
+														mediaType={interview.media_type}
+														iconClassName="h-4 w-4"
+														labelClassName="text-xs font-medium"
+													/>
 												</Link>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
@@ -270,6 +308,17 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					</div>
 				)}
 			</PageContainer>
+
+			{/* Quick Note Dialog */}
+			<QuickNoteDialog
+				open={noteDialogOpen}
+				onOpenChange={setNoteDialogOpen}
+				onSave={handleSaveNote}
+				// TODO: Load available people, orgs, and opportunities from loader
+				availablePeople={[]}
+				availableOrgs={[]}
+				availableOpportunities={[]}
+			/>
 		</div>
 	)
 }

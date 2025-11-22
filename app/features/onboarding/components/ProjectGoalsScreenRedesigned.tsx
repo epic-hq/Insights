@@ -37,10 +37,12 @@ import ContextualSuggestions from "./ContextualSuggestions"
 
 type TemplatePrefill = {
 	template_key: string
+	customer_problem: string
 	target_orgs: string[]
 	target_roles: string[]
+	offerings: string[]
+	competitors: string[]
 	research_goal: string
-	research_goal_details: string
 	decision_questions: string[]
 	assumptions: string[]
 	unknowns: string[]
@@ -51,14 +53,16 @@ type TemplatePrefill = {
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
+	customer_problem: z.string().min(1, "Customer problem is required"),
 	// Organizations are optional - user can specify none
 	target_orgs: z.array(z.string()).default([]),
 	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
+	offerings: z.array(z.string()).default([]),
+	competitors: z.array(z.string()).default([]),
 	research_goal: z.string().min(1, "Research goal is required"),
-	research_goal_details: z.string().optional(),
 	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
-	assumptions: z.array(z.string()),
-	unknowns: z.array(z.string()),
+	assumptions: z.array(z.string()).default([]),
+	unknowns: z.array(z.string()).min(1, "At least one unknown is required"),
 	custom_instructions: z.string().optional(),
 })
 
@@ -72,10 +76,12 @@ type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
 interface ProjectGoalsScreenProps {
 	onNext: (data: {
+		customer_problem: string
 		target_orgs: string[]
 		target_roles: string[]
+		offerings: string[]
+		competitors: string[]
 		research_goal: string
-		research_goal_details: string
 		decision_questions: string[]
 		assumptions: string[]
 		unknowns: string[]
@@ -101,12 +107,16 @@ export default function ProjectGoalsScreen({
 	templateKey,
 	prefill,
 }: ProjectGoalsScreenProps) {
+	const [customer_problem, setCustomerProblem] = useState("")
 	const [target_orgs, setTargetOrgs] = useState<string[]>([])
 	const [target_roles, setTargetRoles] = useState<string[]>([])
+	const [offerings, setOfferings] = useState<string[]>([])
+	const [competitors, setCompetitors] = useState<string[]>([])
 	const [newOrg, setNewOrg] = useState("")
 	const [newRole, setNewRole] = useState("")
+	const [newOffering, setNewOffering] = useState("")
+	const [newCompetitor, setNewCompetitor] = useState("")
 	const [research_goal, setResearchGoal] = useState("")
-	const [research_goal_details, setResearchGoalDetails] = useState("")
 	const [decision_questions, setDecisionQuestions] = useState<string[]>([])
 	const [newDecisionQuestion, setNewDecisionQuestion] = useState("")
 	const [assumptions, setAssumptions] = useState<string[]>([])
@@ -128,10 +138,13 @@ export default function ProjectGoalsScreen({
 	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
-	const [_showAssumptionSuggestions, _setShowAssumptionSuggestions] = useState(false)
+	const [showOfferingSuggestions, setShowOfferingSuggestions] = useState(false)
+	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
 	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
+	const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+	const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
 	const supabase = createClient()
 
 	// Feature flag for chat setup button
@@ -162,7 +175,7 @@ export default function ProjectGoalsScreen({
 	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
 	const orgInputRef = useRef<HTMLTextAreaElement>(null)
 	const roleInputRef = useRef<HTMLTextAreaElement>(null)
-	const _assumptionInputRef = useRef<HTMLTextAreaElement>(null)
+	const assumptionInputRef = useRef<HTMLTextAreaElement>(null)
 	const unknownInputRef = useRef<HTMLTextAreaElement>(null)
 
 	// Construct the protected API path
@@ -171,18 +184,9 @@ export default function ProjectGoalsScreen({
 			? `/a/${accountId}/${currentProjectId}/api/contextual-suggestions`
 			: "/api/contextual-suggestions" // fallback
 
-	const {
-		saveTargetOrgs,
-		saveTargetRoles,
-		saveResearchGoal,
-		saveAssumptions,
-		saveUnknowns,
-		saveDecisionQuestions,
-		saveCustomInstructions,
-		saveProjectSection,
-		isSaving,
-	} = useAutoSave({
+	const { saveSection, isSaving } = useAutoSave({
 		projectId: currentProjectId || "",
+		debounceMs: 2000,
 		onSaveStart: () => {
 			consola.log("🔄 Auto-save started", { projectId: currentProjectId })
 		},
@@ -198,9 +202,9 @@ export default function ProjectGoalsScreen({
 	const saveSettings = useCallback(
 		(updates: { target_conversations?: number; research_mode?: ResearchMode; interview_duration?: number }) => {
 			const payload = updates.research_mode ? { ...updates, conversation_type: updates.research_mode } : updates
-			saveProjectSection("settings", payload)
+			saveSection("settings", payload)
 		},
-		[saveProjectSection]
+		[saveSection]
 	)
 
 	const ensureResearchStructure = useCallback(
@@ -227,9 +231,11 @@ export default function ProjectGoalsScreen({
 				formData.append("project_id", projectIdToUse)
 				formData.append("research_goal", research_goal)
 				formData.append("research_mode", researchMode)
-				if (research_goal_details.trim()) formData.append("research_goal_details", research_goal_details)
+				if (customer_problem.trim()) formData.append("customer_problem", customer_problem)
 				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
 				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
+				if (offerings.length > 0) formData.append("offerings", offerings.join(", "))
+				if (competitors.length > 0) formData.append("competitors", competitors.join(", "))
 				if (assumptions.length > 0) formData.append("assumptions", assumptions.join("\n"))
 				if (unknowns.length > 0) formData.append("unknowns", unknowns.join("\n"))
 				if (custom_instructions.trim()) formData.append("custom_instructions", custom_instructions)
@@ -259,10 +265,12 @@ export default function ProjectGoalsScreen({
 		},
 		[
 			assumptions,
+			competitors,
 			custom_instructions,
+			customer_problem,
 			ensuringStructure,
+			offerings,
 			research_goal,
-			research_goal_details,
 			researchMode,
 			target_orgs,
 			target_roles,
@@ -282,7 +290,6 @@ export default function ProjectGoalsScreen({
 					target_orgs: target_orgs,
 					target_roles: target_roles,
 					research_goal: research_goal,
-					research_goal_details: research_goal_details,
 				})
 			)
 
@@ -304,9 +311,9 @@ export default function ProjectGoalsScreen({
 				consola.log("🎯 Created project on first input:", newProjectId)
 
 				setTimeout(() => {
-					if (assumptions.length > 0) saveAssumptions(assumptions)
-					if (unknowns.length > 0) saveUnknowns(unknowns)
-					if (research_goal.trim()) saveResearchGoal(research_goal, research_goal_details)
+					if (assumptions.length > 0) saveSection("assumptions", assumptions)
+					if (unknowns.length > 0) saveSection("unknowns", unknowns)
+					if (research_goal.trim()) saveSection("research_goal", research_goal)
 				}, 200)
 
 				return newProjectId
@@ -323,12 +330,10 @@ export default function ProjectGoalsScreen({
 		target_orgs,
 		target_roles,
 		research_goal,
-		research_goal_details,
 		assumptions,
 		unknowns,
-		saveAssumptions,
-		saveUnknowns,
-		saveResearchGoal,
+
+		saveSection,
 	])
 
 	const loadProjectData = useCallback(async () => {
@@ -341,8 +346,12 @@ export default function ProjectGoalsScreen({
 			if (ctx?.merged) {
 				const m = ctx.merged as Record<string, unknown>
 				const hasAny =
+					(typeof m.customer_problem === "string" && (m.customer_problem as string).length > 0) ||
 					(Array.isArray(m.target_orgs) && (m.target_orgs as unknown[]).length > 0) ||
 					(Array.isArray(m.target_roles) && (m.target_roles as unknown[]).length > 0) ||
+					(Array.isArray(m.offerings) && (m.offerings as unknown[]).length > 0) ||
+					(typeof m.offerings === "string" && (m.offerings as string).length > 0) ||
+					(Array.isArray(m.competitors) && (m.competitors as unknown[]).length > 0) ||
 					(typeof m.research_goal === "string" && (m.research_goal as string).length > 0) ||
 					(Array.isArray(m.decision_questions) && (m.decision_questions as unknown[]).length > 0) ||
 					(Array.isArray(m.assumptions) && (m.assumptions as unknown[]).length > 0) ||
@@ -350,10 +359,20 @@ export default function ProjectGoalsScreen({
 					(typeof m.custom_instructions === "string" && (m.custom_instructions as string).length > 0)
 
 				if (hasAny) {
+					setCustomerProblem((m.customer_problem as string) ?? "")
 					setTargetOrgs((m.target_orgs as string[]) ?? [])
 					setTargetRoles((m.target_roles as string[]) ?? [])
+					// Handle offerings - convert string to array if needed, guard against null
+					const loadedOfferings = m.offerings
+					if (Array.isArray(loadedOfferings)) {
+						setOfferings(loadedOfferings)
+					} else if (typeof loadedOfferings === "string" && loadedOfferings.trim()) {
+						setOfferings([loadedOfferings])
+					} else {
+						setOfferings([])
+					}
+					setCompetitors((m.competitors as string[]) ?? [])
 					setResearchGoal((m.research_goal as string) ?? "")
-					setResearchGoalDetails((m.research_goal_details as string) ?? "")
 					setAssumptions((m.assumptions as string[]) ?? [])
 					setDecisionQuestions((m.decision_questions as string[]) ?? [])
 					setUnknowns((m.unknowns as string[]) ?? [])
@@ -373,10 +392,19 @@ export default function ProjectGoalsScreen({
 				const result = await response.json()
 				if (result.success && result.data) {
 					const data = result.data
+					setCustomerProblem(data.customer_problem || "")
 					setTargetOrgs(data.target_orgs || [])
 					setTargetRoles(data.target_roles || [])
+					// Handle offerings - convert string to array if needed, guard against null
+					if (Array.isArray(data.offerings)) {
+						setOfferings(data.offerings)
+					} else if (typeof data.offerings === "string" && data.offerings.trim()) {
+						setOfferings([data.offerings])
+					} else {
+						setOfferings([])
+					}
+					setCompetitors(data.competitors || [])
 					setResearchGoal(data.research_goal || "")
-					setResearchGoalDetails(data.research_goal_details || "")
 					setAssumptions(data.assumptions || [])
 					setDecisionQuestions(data.decision_questions || [])
 					setUnknowns(data.unknowns || [])
@@ -415,10 +443,19 @@ export default function ProjectGoalsScreen({
 			!custom_instructions
 
 		if (noData) {
+			setCustomerProblem(prefill.customer_problem || "")
 			setTargetOrgs(prefill.target_orgs || [])
 			setTargetRoles(prefill.target_roles || [])
+			// Handle offerings - convert string to array if needed, guard against null
+			if (Array.isArray(prefill.offerings)) {
+				setOfferings(prefill.offerings)
+			} else if (typeof prefill.offerings === "string" && prefill.offerings.trim()) {
+				setOfferings([prefill.offerings])
+			} else {
+				setOfferings([])
+			}
+			setCompetitors(prefill.competitors || [])
 			setResearchGoal(prefill.research_goal || "")
-			setResearchGoalDetails(prefill.research_goal_details || "")
 			setAssumptions(prefill.assumptions || [])
 			setUnknowns(prefill.unknowns || [])
 			setCustomInstructions(prefill.custom_instructions || "")
@@ -427,30 +464,31 @@ export default function ProjectGoalsScreen({
 			}
 
 			if (currentProjectId) {
-				if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
-				if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
-				if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
-				if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
-				if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
-				if (prefill.custom_instructions) saveCustomInstructions(prefill.custom_instructions)
+				if (prefill.customer_problem) saveSection("customer_problem", prefill.customer_problem)
+				if ((prefill.target_orgs || []).length > 0) saveSection("target_orgs", prefill.target_orgs)
+				if ((prefill.target_roles || []).length > 0) saveSection("target_roles", prefill.target_roles)
+				if ((prefill.offerings || []).length > 0) saveSection("offerings", prefill.offerings)
+				if ((prefill.competitors || []).length > 0) saveSection("competitors", prefill.competitors)
+				if (prefill.research_goal) saveSection("research_goal", prefill.research_goal)
+				if ((prefill.assumptions || []).length > 0) saveSection("assumptions", prefill.assumptions)
+				if ((prefill.unknowns || []).length > 0) saveSection("unknowns", prefill.unknowns)
+				if (prefill.custom_instructions) saveSection("custom_instructions", prefill.custom_instructions)
 			}
 		}
 	}, [
 		prefill,
 		contextLoaded,
+		customer_problem,
 		target_orgs.length,
 		target_roles.length,
+		offerings,
+		competitors.length,
 		research_goal,
 		assumptions.length,
 		unknowns.length,
 		custom_instructions,
 		currentProjectId,
-		saveTargetOrgs,
-		saveTargetRoles,
-		saveResearchGoal,
-		saveAssumptions,
-		saveUnknowns,
-		saveCustomInstructions,
+		saveSection,
 	])
 
 	const addOrg = async () => {
@@ -459,14 +497,14 @@ export default function ProjectGoalsScreen({
 			const newOrgs = [...target_orgs, newOrg.trim()]
 			setTargetOrgs(newOrgs)
 			setNewOrg("")
-			saveTargetOrgs(newOrgs)
+			saveSection("target_orgs", newOrgs)
 		}
 	}
 
 	const removeOrg = (org: string) => {
 		const newOrgs = target_orgs.filter((o) => o !== org)
 		setTargetOrgs(newOrgs)
-		saveTargetOrgs(newOrgs)
+		saveSection("target_orgs", newOrgs)
 	}
 
 	const addRole = async () => {
@@ -475,14 +513,23 @@ export default function ProjectGoalsScreen({
 			const newRoles = [...target_roles, newRole.trim()]
 			setTargetRoles(newRoles)
 			setNewRole("")
-			saveTargetRoles(newRoles)
+			saveSection("target_roles", newRoles)
 		}
 	}
 
 	const removeRole = (role: string) => {
 		const newRoles = target_roles.filter((r) => r !== role)
 		setTargetRoles(newRoles)
-		saveTargetRoles(newRoles)
+		saveSection("target_roles", newRoles)
+	}
+
+	// Helper to focus input and move cursor to end
+	const focusInputAtEnd = (ref: React.RefObject<HTMLTextAreaElement | null>) => {
+		if (ref.current) {
+			ref.current.focus()
+			const len = ref.current.value.length
+			ref.current.setSelectionRange(len, len)
+		}
 	}
 
 	const addDecisionQuestion = async () => {
@@ -491,7 +538,7 @@ export default function ProjectGoalsScreen({
 			const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
 			setDecisionQuestions(newQuestions)
 			setNewDecisionQuestion("")
-			saveDecisionQuestions(newQuestions)
+			saveSection("decision_questions", newQuestions)
 		}
 	}
 
@@ -501,32 +548,32 @@ export default function ProjectGoalsScreen({
 		const updated = [...decision_questions]
 		updated[index] = v
 		setDecisionQuestions(updated)
-		saveDecisionQuestions(updated)
+		saveSection("decision_questions", updated)
 	}
 
 	const removeDecisionQuestion = (index: number) => {
 		const newQuestions = decision_questions.filter((_, i) => i !== index)
 		setDecisionQuestions(newQuestions)
-		saveDecisionQuestions(newQuestions)
+		saveSection("decision_questions", newQuestions)
 	}
 
-	const _addAssumption = async () => {
+	const addAssumption = async () => {
 		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
 			await createProjectIfNeeded()
 			const newAssumptions = [...assumptions, newAssumption.trim()]
 			setAssumptions(newAssumptions)
 			setNewAssumption("")
-			saveAssumptions(newAssumptions)
+			saveSection("assumptions", newAssumptions)
 		}
 	}
 
-	const _updateAssumption = (index: number, value: string) => {
+	const updateAssumption = (index: number, value: string) => {
 		const v = value.trim()
 		if (!v) return
 		const updated = [...assumptions]
 		updated[index] = v
 		setAssumptions(updated)
-		saveAssumptions(updated)
+		saveSection("assumptions", updated)
 	}
 
 	const addUnknown = async () => {
@@ -535,7 +582,7 @@ export default function ProjectGoalsScreen({
 			const newUnknowns = [...unknowns, newUnknown.trim()]
 			setUnknowns(newUnknowns)
 			setNewUnknown("")
-			saveUnknowns(newUnknowns)
+			saveSection("unknowns", newUnknowns)
 		}
 	}
 
@@ -545,58 +592,136 @@ export default function ProjectGoalsScreen({
 		const updated = [...unknowns]
 		updated[index] = v
 		setUnknowns(updated)
-		saveUnknowns(updated)
+		saveSection("unknowns", updated)
 	}
 
-	const _removeAssumption = (index: number) => {
+	const removeAssumption = (index: number) => {
 		const newAssumptions = assumptions.filter((_, i) => i !== index)
 		setAssumptions(newAssumptions)
-		saveAssumptions(newAssumptions)
+		saveSection("assumptions", newAssumptions)
 	}
 
 	const removeUnknown = (index: number) => {
 		const newUnknowns = unknowns.filter((_, i) => i !== index)
 		setUnknowns(newUnknowns)
-		saveUnknowns(newUnknowns)
+		saveSection("unknowns", newUnknowns)
 	}
 
 	const handleNext = useCallback(async () => {
-		if (target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
-			try {
-				const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
-				if (!resolvedProjectId) {
-					toast.error("Unable to determine project. Please try again.")
-					return
+		setHasAttemptedNext(true)
+
+		// Validate using Zod schema
+		const validationResult = projectGoalsSchema.safeParse({
+			customer_problem,
+			target_orgs,
+			target_roles,
+			offerings,
+			competitors,
+			research_goal,
+			decision_questions,
+			assumptions,
+			unknowns,
+			custom_instructions,
+		})
+
+		consola.log("[ProjectGoals] Validation result:", validationResult)
+
+		if (!validationResult.success) {
+			// Extract and set validation errors
+			const errors: Record<string, string> = {}
+			const missingFields: string[] = []
+
+			consola.log("[ProjectGoals] Raw validation errors:", validationResult.error.issues)
+
+			validationResult.error?.issues?.forEach((err) => {
+				consola.log("[ProjectGoals] Processing error:", err)
+				const path = err.path.join(".")
+				consola.log("[ProjectGoals] Path:", path, "Message:", err.message)
+				errors[path] = err.message
+
+				// Map field names to user-friendly labels
+				const fieldLabels: Record<string, string> = {
+					customer_problem: "Customer Problem",
+					target_roles: "Target Roles",
+					research_goal: "Research Goal",
+					decision_questions: "Key Decisions",
+					unknowns: "Unknowns",
 				}
 
-				await ensureResearchStructure(resolvedProjectId)
-				saveResearchGoal(research_goal, research_goal_details, false)
-				onNext({
-					target_orgs,
-					target_roles,
-					research_goal,
-					research_goal_details,
-					decision_questions,
-					assumptions,
-					unknowns,
-					custom_instructions: custom_instructions || undefined,
-					projectId: resolvedProjectId,
+				const fieldLabel = fieldLabels[path]
+				consola.log("[ProjectGoals] Field label for", path, ":", fieldLabel)
+				if (fieldLabel && !missingFields.includes(fieldLabel)) {
+					missingFields.push(fieldLabel)
+					consola.log("[ProjectGoals] Added missing field:", fieldLabel)
+				}
+			})
+
+			setValidationErrors(errors)
+
+			consola.log("[ProjectGoals] Final validation errors:", errors)
+			consola.log("[ProjectGoals] Final missing fields:", missingFields)
+
+			// Show error with missing fields - ALWAYS show the toast
+			const errorMessage =
+				missingFields.length > 0
+					? `Missing required fields: ${missingFields.join(", ")}`
+					: "Please fill in all required fields"
+
+			consola.log("[ProjectGoals] About to show toast with message:", errorMessage)
+
+			try {
+				toast.error(errorMessage, {
+					duration: 5000,
 				})
-			} catch (error) {
-				consola.error("[ProjectGoals] Unable to proceed to questions", error)
+				consola.log("[ProjectGoals] Toast.error called successfully")
+			} catch (toastError) {
+				consola.error("[ProjectGoals] Error calling toast.error:", toastError)
 			}
+
+			return
+		}
+
+		// Clear validation errors if validation passes
+		setValidationErrors({})
+
+		try {
+			const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
+			if (!resolvedProjectId) {
+				toast.error("Unable to determine project. Please try again.")
+				return
+			}
+
+			await ensureResearchStructure(resolvedProjectId)
+			saveSection("research_goal", research_goal)
+			onNext({
+				customer_problem,
+				target_orgs,
+				target_roles,
+				offerings,
+				competitors,
+				research_goal,
+				decision_questions,
+				assumptions,
+				unknowns,
+				custom_instructions: custom_instructions || undefined,
+				projectId: resolvedProjectId,
+			})
+		} catch (error) {
+			consola.error("[ProjectGoals] Unable to proceed to questions", error)
 		}
 	}, [
 		assumptions,
+		competitors,
 		createProjectIfNeeded,
 		currentProjectId,
 		custom_instructions,
+		customer_problem,
 		decision_questions,
 		ensureResearchStructure,
+		offerings,
 		onNext,
 		research_goal,
-		research_goal_details,
-		saveResearchGoal,
+		saveSection,
 		target_orgs,
 		target_roles,
 		unknowns,
@@ -605,19 +730,14 @@ export default function ProjectGoalsScreen({
 	const handleResearchGoalBlur = async () => {
 		if (!research_goal.trim()) return
 		if (!currentProjectId) await createProjectIfNeeded()
-		saveResearchGoal(research_goal, research_goal_details, false)
+		saveSection("research_goal", research_goal)
 	}
 
 	const handleCustomInstructionsBlur = () => {
-		if (custom_instructions.trim()) {
-			saveCustomInstructions(custom_instructions)
-		}
+		saveSection("custom_instructions", custom_instructions, { debounced: true })
 	}
 
 	// Removed contextualSuggestions fallback - rely only on AI-generated suggestions
-
-	const isValid =
-		target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0 && unknowns.length > 0
 
 	const onboardingSteps = [
 		{ id: "goals", title: "Project Goals" },
@@ -693,15 +813,15 @@ export default function ProjectGoalsScreen({
 
 				{/* Main Content - Single Column Accordion Layout */}
 				<div className="mx-auto max-w-4xl space-y-4">
-					{/* Research Goal Accordion */}
-
+					{/* 1. Customer Problem Section */}
 					<Card>
-						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+						<CardHeader className="p-4">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
-									<Target className="h-5 w-5 text-blue-600" />
+									<HelpCircle className="h-5 w-5 text-orange-600" />
 									<h2 className="font-semibold text-lg">
-										{templateKey === "understand_customer_needs" ? "Business Goal" : "Primary Goal"}
+										What is the customer's problem?
+										<span className="ml-1 text-red-600">*</span>
 									</h2>
 									<Tooltip>
 										<TooltipTrigger asChild>
@@ -710,9 +830,46 @@ export default function ProjectGoalsScreen({
 											</span>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
-											<p>
-												What problem would you like to solve? This will guide your research and interview questions.
-											</p>
+											<p>Tell us about your business and the customer problem you're addressing.</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</div>
+						</CardHeader>
+
+						<CardContent className="p-6 pt-0">
+							<Textarea
+								placeholder="e.g., Small businesses struggle to manage customer relationships efficiently without expensive CRM tools"
+								value={customer_problem}
+								onChange={(e) => {
+									setCustomerProblem(e.target.value)
+									saveSection("customer_problem", e.target.value, { debounced: true })
+								}}
+								rows={3}
+								className="min-h-[80px]"
+							/>
+						</CardContent>
+					</Card>
+
+					{/* 5. Research Goal Accordion */}
+
+					<Card>
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Target className="h-5 w-5 text-blue-600" />
+									<h2 className="font-semibold text-lg">
+										What goal are you trying to achieve?
+										<span className="ml-1 text-red-600">*</span>
+									</h2>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>Define your research goal - what you're trying to learn or validate.</p>
 										</TooltipContent>
 									</Tooltip>
 								</div>
@@ -741,204 +898,6 @@ export default function ProjectGoalsScreen({
 						</CardContent>
 					</Card>
 
-					{/* Type & Scope Section - Collapsible */}
-					<Collapsible
-						open={openAccordion === "type-scope"}
-						onOpenChange={() => setOpenAccordion(openAccordion === "type-scope" ? null : "type-scope")}
-					>
-						<Card>
-							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
-									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-2">
-											<Clock className="h-5 w-5 text-green-600" />
-											<h2 className="font-semibold text-lg">Type & Scope</h2>
-											<span className="rounded-md bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
-												{getResearchModeDisplay(researchMode)} • {interview_duration} min
-											</span>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<span className="inline-flex">
-														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-													</span>
-												</TooltipTrigger>
-												<TooltipContent className="max-w-xs">
-													<p>Set the interview type, duration, and target number to guide question generation.</p>
-												</TooltipContent>
-											</Tooltip>
-										</div>
-										{openAccordion === "type-scope" ? (
-											<ChevronDown className="h-4 w-4" />
-										) : (
-											<ChevronRight className="h-4 w-4" />
-										)}
-									</div>
-								</CardHeader>
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<CardContent className="p-6 pt-0">
-									<div className="grid gap-8 md:grid-cols-2">
-										{/* Left Column */}
-										<div className="space-y-6">
-											{/* Interview Type */}
-											<div>
-												<label className="mb-3 block font-semibold text-foreground text-sm">Conversation Type</label>
-												<ToggleGroup
-													type="single"
-													value={researchMode}
-													onValueChange={(value) => {
-														if (value) {
-															const newType = value as ResearchMode
-															setResearchMode(newType)
-															saveSettings({ research_mode: newType })
-														}
-													}}
-													className="grid w-full grid-cols-1 gap-2"
-												>
-													<ToggleGroupItem
-														value="exploratory"
-														aria-label="Exploratory"
-														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-													>
-														<div className="flex w-full items-center justify-between">
-															<span className="font-medium">Exploratory</span>
-															<span className="text-muted-foreground text-xs">Discovery</span>
-														</div>
-													</ToggleGroupItem>
-													<ToggleGroupItem
-														value="validation"
-														aria-label="Validation"
-														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-													>
-														<div className="flex w-full items-center justify-between">
-															<span className="font-medium">Validation</span>
-															<span className="text-muted-foreground text-xs">Testing</span>
-														</div>
-													</ToggleGroupItem>
-													<ToggleGroupItem
-														value="user_testing"
-														aria-label="User Testing"
-														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-													>
-														<div className="flex w-full items-center justify-between">
-															<span className="font-medium">User Testing</span>
-															<span className="text-muted-foreground text-xs">Usability</span>
-														</div>
-													</ToggleGroupItem>
-												</ToggleGroup>
-												<p className="mt-2 text-muted-foreground text-xs leading-relaxed">
-													{researchMode === "exploratory" && "🔍 Discover problems, needs, and opportunities"}
-													{researchMode === "validation" && "✓ Test hypotheses and validate solutions"}
-													{researchMode === "user_testing" && "👤 Evaluate usability and gather feedback"}
-												</p>
-											</div>
-										</div>
-
-										{/* Right Column */}
-										<div className="space-y-6">
-											{/* Interview Duration */}
-											<div>
-												<label className="mb-3 block font-semibold text-foreground text-sm">
-													Duration
-													<span className="ml-2 font-normal text-muted-foreground text-xs">(min per session)</span>
-												</label>
-												<div className="space-y-3">
-													<ToggleGroup
-														type="single"
-														value={[15, 30, 45, 60].includes(interview_duration) ? String(interview_duration) : ""}
-														onValueChange={(value) => {
-															if (value) {
-																const newDuration = Number.parseInt(value, 10)
-																setInterviewDuration(newDuration)
-																saveSettings({ interview_duration: newDuration })
-															}
-														}}
-														className="grid w-full grid-cols-4 gap-2"
-													>
-														<ToggleGroupItem
-															value="15"
-															aria-label="15 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-														>
-															15
-														</ToggleGroupItem>
-														<ToggleGroupItem
-															value="30"
-															aria-label="30 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-														>
-															30
-														</ToggleGroupItem>
-														<ToggleGroupItem
-															value="45"
-															aria-label="45 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-														>
-															45
-														</ToggleGroupItem>
-														<ToggleGroupItem
-															value="60"
-															aria-label="60 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-														>
-															60
-														</ToggleGroupItem>
-													</ToggleGroup>
-													<div className="flex items-center gap-2">
-														<Input
-															type="number"
-															min="5"
-															max="120"
-															placeholder="Custom"
-															value={[15, 30, 45, 60].includes(interview_duration) ? "" : String(interview_duration)}
-															onChange={(e) => {
-																const value = Number.parseInt(e.target.value, 10)
-																if (!Number.isNaN(value) && value >= 5 && value <= 120) {
-																	setInterviewDuration(value)
-																}
-															}}
-															onBlur={() => {
-																if (interview_duration >= 5 && interview_duration <= 120) {
-																	saveSettings({ interview_duration })
-																}
-															}}
-															className="w-20 text-center text-sm"
-														/>
-														<span className="text-muted-foreground text-xs">minutes (custom)</span>
-													</div>
-												</div>
-											</div>
-
-											{/* Target Conversations */}
-											<div>
-												<label className="mb-3 block font-semibold text-foreground text-sm">How many?</label>
-												<div className="flex items-center gap-3">
-													<Input
-														type="number"
-														min="1"
-														max="100"
-														value={target_conversations}
-														onChange={(e) => {
-															const value = Number.parseInt(e.target.value, 10) || 10
-															setTargetConversations(value)
-														}}
-														onBlur={() => saveSettings({ target_conversations })}
-														className="w-24 text-center font-semibold text-lg"
-													/>
-													<div className="flex flex-col">
-														<span className="text-muted-foreground text-xs">
-															~{Math.round((target_conversations * interview_duration) / 60)} hours total
-														</span>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</CardContent>
-							</CollapsibleContent>
-						</Card>
-					</Collapsible>
-
 					{/* Target Market Accordion */}
 					<Collapsible
 						open={openAccordion === "target-market"}
@@ -950,7 +909,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											<h2 className="font-semibold text-lg">Who are we talking to?</h2>
+											<h2 className="font-semibold text-lg">Who are your ideal customers?</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
@@ -961,10 +920,7 @@ export default function ProjectGoalsScreen({
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
-													<p>
-														Define the types of organizations and roles you want to research. This helps target the
-														right interview participants.
-													</p>
+													<p>Identify the organizations and roles of people you want to interview.</p>
 												</TooltipContent>
 											</Tooltip>
 										</div>
@@ -980,12 +936,12 @@ export default function ProjectGoalsScreen({
 								<CardContent className="p-6 pt-0">
 									{/* Organizations */}
 									<div className="mb-6">
-										<label className="mb-3 block font-medium text-foreground text-sm">Organizations</label>
+										<label className="mb-3 block font-semibold text-base text-foreground">Organizations</label>
 										<div className="mb-3 flex flex-wrap gap-2">
 											{target_orgs.map((org, index) => (
 												<div
 													key={`${org}-${index}`}
-													className="group flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
+													className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 												>
 													<InlineEdit
 														value={org}
@@ -995,16 +951,16 @@ export default function ProjectGoalsScreen({
 															const list = [...target_orgs]
 															list[index] = v
 															setTargetOrgs(list)
-															saveTargetOrgs(list)
+															saveSection("target_orgs", list)
 														}}
-														textClassName="flex-shrink-0 font-medium text-green-800 dark:text-green-300"
-														inputClassName="h-6 py-0 text-green-900 dark:text-green-200"
+														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
 													/>
 													<button
 														onClick={() => removeOrg(org)}
-														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 													>
-														<X className="h-3 w-3 text-green-700 dark:text-green-400" />
+														<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 													</button>
 												</div>
 											))}
@@ -1063,7 +1019,7 @@ export default function ProjectGoalsScreen({
 															await createProjectIfNeeded()
 															const newOrgs = [...target_orgs, suggestion.trim()]
 															setTargetOrgs(newOrgs)
-															saveTargetOrgs(newOrgs)
+															saveSection("target_orgs", newOrgs)
 														}
 													}}
 													onSuggestionShown={(suggestions) => {
@@ -1072,7 +1028,7 @@ export default function ProjectGoalsScreen({
 														}
 														setShownSuggestionsByType((prev) => ({
 															...prev,
-															organizations: [...(prev.organizations || []), ...suggestions],
+															organizations: suggestions,
 														}))
 													}}
 												/>
@@ -1082,12 +1038,14 @@ export default function ProjectGoalsScreen({
 
 									{/* Roles */}
 									<div>
-										<label className="mb-3 block font-medium text-foreground text-sm">People's Roles</label>
+										<label className="mb-3 block font-semibold text-base text-foreground">
+											People's Roles <span className="text-red-600">*</span>
+										</label>
 										<div className="mb-3 flex flex-wrap gap-2">
 											{target_roles.map((role, index) => (
 												<div
 													key={`${role}-${index}`}
-													className="group flex items-center gap-2 rounded-md border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200 dark:border-purple-700 dark:bg-purple-900/20 dark:hover:bg-purple-800/30"
+													className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 												>
 													<InlineEdit
 														value={role}
@@ -1097,16 +1055,16 @@ export default function ProjectGoalsScreen({
 															const list = [...target_roles]
 															list[index] = v
 															setTargetRoles(list)
-															saveTargetRoles(list)
+															saveSection("target_roles", list)
 														}}
-														textClassName="flex-shrink-0 font-medium text-purple-800 dark:text-purple-300"
-														inputClassName="h-6 py-0 text-purple-900 dark:text-purple-200"
+														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
 													/>
 													<button
 														onClick={() => removeRole(role)}
-														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-purple-700"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 													>
-														<X className="h-3 w-3 text-purple-700 dark:text-purple-400" />
+														<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 													</button>
 												</div>
 											))}
@@ -1165,7 +1123,7 @@ export default function ProjectGoalsScreen({
 															await createProjectIfNeeded()
 															const newRoles = [...target_roles, suggestion.trim()]
 															setTargetRoles(newRoles)
-															saveTargetRoles(newRoles)
+															saveSection("target_roles", newRoles)
 														}
 													}}
 													onSuggestionShown={(suggestions) => {
@@ -1186,7 +1144,187 @@ export default function ProjectGoalsScreen({
 						</Card>
 					</Collapsible>
 
-					{/* Key Decisions to make Accordion */}
+					{/* 3. Offerings Section */}
+					<Card>
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<GraduationCapIcon className="h-5 w-5 text-indigo-600" />
+									<h2 className="font-semibold text-lg">What products and services do you offer?</h2>
+									<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+										{offerings.length}
+									</span>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>Describe your solutions - the products and services that address the customer problem.</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</div>
+						</CardHeader>
+
+						<CardContent className="p-6 pt-0">
+							<div className="mb-3 flex flex-wrap gap-2">
+								{offerings.map((offering, index) => (
+									<div
+										key={`${offering}-${index}`}
+										className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
+									>
+										<InlineEdit
+											value={offering}
+											onSubmit={(val) => {
+												const v = val.trim()
+												if (!v) return
+												const list = [...offerings]
+												list[index] = v
+												setOfferings(list)
+												saveSection("offerings", list)
+											}}
+											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
+										/>
+										<button
+											onClick={() => {
+												const newOfferings = offerings.filter((_, i) => i !== index)
+												setOfferings(newOfferings)
+												saveSection("offerings", newOfferings)
+											}}
+											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
+										>
+											<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
+										</button>
+									</div>
+								))}
+							</div>
+							<div className="flex gap-2">
+								<Input
+									placeholder="e.g., Cloud CRM platform, Mobile app, Integration marketplace"
+									value={newOffering}
+									onChange={(e) => setNewOffering(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && newOffering.trim()) {
+											const newOfferings = [...offerings, newOffering.trim()]
+											setOfferings(newOfferings)
+											setNewOffering("")
+											saveSection("offerings", newOfferings)
+										}
+									}}
+									className="flex-1"
+								/>
+								<Button
+									onClick={() => {
+										if (newOffering.trim()) {
+											const newOfferings = [...offerings, newOffering.trim()]
+											setOfferings(newOfferings)
+											setNewOffering("")
+											saveSection("offerings", newOfferings)
+										}
+									}}
+									variant="outline"
+									size="sm"
+								>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* 4. Competitors Section */}
+					<Card>
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Users className="h-5 w-5 text-red-600" />
+									<h2 className="font-semibold text-lg">What other products are customers using?</h2>
+									<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+										{competitors.length}
+									</span>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>List the competitive alternatives or solutions customers might be using or considering.</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</div>
+						</CardHeader>
+
+						<CardContent className="p-6 pt-0">
+							<div className="mb-3 flex flex-wrap gap-2">
+								{competitors.map((competitor, index) => (
+									<div
+										key={`${competitor}-${index}`}
+										className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
+									>
+										<InlineEdit
+											value={competitor}
+											onSubmit={(val) => {
+												const v = val.trim()
+												if (!v) return
+												const list = [...competitors]
+												list[index] = v
+												setCompetitors(list)
+												saveSection("competitors", list)
+											}}
+											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
+										/>
+										<button
+											onClick={() => {
+												const newCompetitors = competitors.filter((_, i) => i !== index)
+												setCompetitors(newCompetitors)
+												saveSection("competitors", newCompetitors)
+											}}
+											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
+										>
+											<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
+										</button>
+									</div>
+								))}
+							</div>
+							<div className="flex gap-2">
+								<Input
+									placeholder="e.g., Salesforce, HubSpot, Excel spreadsheets"
+									value={newCompetitor}
+									onChange={(e) => setNewCompetitor(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && newCompetitor.trim()) {
+											const newCompetitors = [...competitors, newCompetitor.trim()]
+											setCompetitors(newCompetitors)
+											setNewCompetitor("")
+											saveSection("competitors", newCompetitors)
+										}
+									}}
+									className="flex-1"
+								/>
+								<Button
+									onClick={() => {
+										if (newCompetitor.trim()) {
+											const newCompetitors = [...competitors, newCompetitor.trim()]
+											setCompetitors(newCompetitors)
+											setNewCompetitor("")
+											saveSection("competitors", newCompetitors)
+										}
+									}}
+									variant="outline"
+									size="sm"
+								>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* 7. Key Decisions to make Accordion */}
 					<Collapsible
 						open={openAccordion === "key-questions"}
 						onOpenChange={() => setOpenAccordion(openAccordion === "key-questions" ? null : "key-questions")}
@@ -1197,7 +1335,10 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Option className="h-5 w-5 text-green-600" />
-											<h2 className="font-semibold text-lg">What Decisions Need to be Made?</h2>
+											<h2 className="font-semibold text-lg">
+												What key decisions are you facing?
+												<span className="ml-1 text-red-600">*</span>
+											</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{" "}
 												{decision_questions.length}
@@ -1228,10 +1369,10 @@ export default function ProjectGoalsScreen({
 										{decision_questions.map((question, index) => (
 											<div
 												key={`decision-${index}-${question.slice(0, 10)}`}
-												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
+												className="group flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-all duration-200 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 											>
 												<div className="mt-1 flex-shrink-0">
-													<div className="h-2 w-2 rounded-md bg-green-500" />
+													<div className="h-2 w-2 rounded-md bg-blue-500" />
 												</div>
 												<InlineEdit
 													value={question}
@@ -1244,9 +1385,9 @@ export default function ProjectGoalsScreen({
 												/>
 												<button
 													onClick={() => removeDecisionQuestion(index)}
-													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
+													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 												>
-													<X className="h-3 w-3 text-green-700 dark:text-green-400" />
+													<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 												</button>
 											</div>
 										))}
@@ -1313,7 +1454,7 @@ export default function ProjectGoalsScreen({
 														await createProjectIfNeeded()
 														const newQuestions = [...decision_questions, suggestion.trim()]
 														setDecisionQuestions(newQuestions)
-														saveDecisionQuestions(newQuestions)
+														saveSection("decision_questions", newQuestions)
 													}
 												}}
 												onSuggestionShown={(suggestions) => {
@@ -1344,7 +1485,11 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<GraduationCapIcon className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">What do we need to Learn?</h2>
+											<h2 className="font-semibold text-lg">Assumptions & Unknowns</h2>
+											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+												{" "}
+												{unknowns.length}
+											</span>
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
@@ -1352,7 +1497,7 @@ export default function ProjectGoalsScreen({
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
-													<p>What do we need to learn in order to make decisions?</p>
+													<p>Address your riskiest assumptions to gain confidence in your decisions.</p>
 												</TooltipContent>
 											</Tooltip>
 										</div>
@@ -1368,8 +1513,8 @@ export default function ProjectGoalsScreen({
 								<CardContent className="p-6 pt-0">
 									<div className="mb-6">
 										{/* Assumptions */}
-										{/* <div className="mb-6">
-											<label className="mb-3 block font-medium text-foreground text-sm">Assumptions</label>
+										<div className="mb-6">
+											<label className="mb-3 block font-semibold text-base text-foreground">Assumptions</label>
 											<div className="mb-3 space-y-2">
 												{assumptions.map((assumption, index) => (
 													<div
@@ -1461,19 +1606,21 @@ export default function ProjectGoalsScreen({
 													/>
 												</div>
 											)}
-										</div> */}
+										</div>
 
 										{/* Unknowns -> Research Questions */}
 										<div>
-											{/* <label className="mb-3 block font-medium text-foreground text-sm">Research Questions (Unknowns)</label> */}
+											<label className="mb-3 block font-semibold text-base text-foreground">
+												Unknowns <span className="text-red-600">*</span>
+											</label>
 											<div className="mb-3 space-y-2">
 												{unknowns.map((unknown, index) => (
 													<div
 														key={`unknown-${index}-${unknown.slice(0, 10)}`}
-														className="group flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 transition-all hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-800/30"
+														className="group flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-all hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 													>
 														<div className="mt-0.5 flex-shrink-0">
-															<HelpCircle className="h-4 w-4 text-amber-600" />
+															<HelpCircle className="h-4 w-4 text-blue-600" />
 														</div>
 														<InlineEdit
 															value={unknown}
@@ -1486,9 +1633,9 @@ export default function ProjectGoalsScreen({
 														/>
 														<button
 															onClick={() => removeUnknown(index)}
-															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-amber-700"
+															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 														>
-															<X className="h-3 w-3 text-amber-700 dark:text-amber-400" />
+															<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 														</button>
 													</div>
 												))}
@@ -1547,7 +1694,7 @@ export default function ProjectGoalsScreen({
 																await createProjectIfNeeded()
 																const newUnknowns = [...unknowns, suggestion.trim()]
 																setUnknowns(newUnknowns)
-																saveUnknowns(newUnknowns)
+																saveSection("unknowns", newUnknowns)
 															}
 														}}
 														onSuggestionShown={(suggestions) => {
@@ -1562,6 +1709,150 @@ export default function ProjectGoalsScreen({
 													/>
 												</div>
 											)}
+										</div>
+									</div>
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+
+					{/* Interview Type & Scope Section - Collapsible (relocated) */}
+					<Collapsible
+						open={openAccordion === "type-scope"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "type-scope" ? null : "type-scope")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Clock className="h-5 w-5 text-green-600" />
+											<h2 className="font-semibold text-lg">Interview Type & Scope</h2>
+											<span className="rounded-md bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
+												{getResearchModeDisplay(researchMode)} • {interview_duration} min
+											</span>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+													</span>
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>Set the interview type, duration, and target number to guide question generation.</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "type-scope" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									<div className="grid gap-8 md:grid-cols-2">
+										<div className="space-y-6">
+											<div>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Conversation Type</label>
+												<ToggleGroup
+													className="grid w-full grid-cols-1 gap-2"
+													onValueChange={(value) => {
+														if (!value) return
+														const mode = value as ResearchMode
+														setResearchMode(mode)
+														saveSettings({ research_mode: mode })
+													}}
+													type="single"
+													value={researchMode}
+												>
+													<ToggleGroupItem
+														value="exploratory"
+														aria-label="Exploratory"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+													>
+														<div className="flex w-full items-center justify-between">
+															<span className="font-medium">Exploratory</span>
+															<span className="text-muted-foreground text-xs">Discovery</span>
+														</div>
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="validation"
+														aria-label="Validation"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+													>
+														<div className="flex w-full items-center justify-between">
+															<span className="font-medium">Validation</span>
+															<span className="text-muted-foreground text-xs">Testing</span>
+														</div>
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="user_testing"
+														aria-label="User Testing"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+													>
+														<div className="flex w-full items-center justify-between">
+															<span className="font-medium">User Testing</span>
+															<span className="text-muted-foreground text-xs">Usability</span>
+														</div>
+													</ToggleGroupItem>
+												</ToggleGroup>
+											</div>
+
+											<div>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Interview Duration</label>
+												<div className="flex items-center gap-3">
+													<Input
+														value={interview_duration}
+														onChange={(e) => {
+															const value = Number(e.target.value)
+															if (!Number.isNaN(value)) {
+																setInterviewDuration(value)
+																saveSettings({ interview_duration: value })
+															}
+														}}
+														type="number"
+														min={15}
+														max={90}
+														step={5}
+														className="w-24"
+													/>
+													<span className="text-muted-foreground text-sm">minutes</span>
+												</div>
+											</div>
+										</div>
+
+										<div className="space-y-6">
+											<div>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Target Conversations</label>
+												<div className="items center flex gap-3">
+													<Input
+														value={target_conversations}
+														onChange={(e) => {
+															const value = Number(e.target.value)
+															if (!Number.isNaN(value)) {
+																setTargetConversations(value)
+																saveSettings({ target_conversations: value })
+															}
+														}}
+														type="number"
+														min={5}
+														max={100}
+														className="w-24"
+													/>
+													<span className="text-muted-foreground text-sm">interviews</span>
+												</div>
+											</div>
+
+											<div className="rounded-lg border border-muted-foreground/30 border-dashed p-4">
+												<p className="mb-2 font-semibold text-foreground text-sm">Mode guidance</p>
+												<ul className="list-disc space-y-2 pl-5 text-muted-foreground text-sm">
+													<li>Exploratory: Use when you're still framing the problem.</li>
+													<li>Validation: Use when testing specific hypotheses.</li>
+													<li>User Testing: Use when refining usability or adoption.</li>
+												</ul>
+											</div>
 										</div>
 									</div>
 								</CardContent>
@@ -1609,12 +1900,7 @@ export default function ProjectGoalsScreen({
 				{showNextButton && (
 					<div className="mt-8 border-border border-t pt-8">
 						<div className="flex items-center justify-center">
-							<Button
-								onClick={handleNext}
-								disabled={!isValid || isLoading || ensuringStructure}
-								size="lg"
-								className="px-8 py-3"
-							>
+							<Button onClick={handleNext} disabled={isLoading || ensuringStructure} size="lg" className="px-8 py-3">
 								{ensuringStructure ? (
 									<>
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1622,7 +1908,7 @@ export default function ProjectGoalsScreen({
 									</>
 								) : (
 									<>
-										Next
+										Conversation Prompts
 										<ChevronRight className="ml-2 h-4 w-4" />
 									</>
 								)}

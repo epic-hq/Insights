@@ -10,8 +10,8 @@ import { InsightsDataTable } from "~/features/insights/components/InsightsDataTa
 import { getInsights } from "~/features/insights/db"
 import { PersonaThemeMatrix } from "~/features/themes/components/PersonaThemeMatrix"
 import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
-import { userContext } from "~/server/user-context"
 import { cn } from "~/lib/utils"
+import { userContext } from "~/server/user-context"
 import type { Insight } from "~/types"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -208,7 +208,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	return { themes: enriched, matrixData, insights }
 }
 
-
 export default function ThemesIndex() {
 	const { themes, matrixData, insights } = useLoaderData<typeof loader>()
 	const params = useParams()
@@ -238,9 +237,9 @@ export default function ThemesIndex() {
 
 	const filteredCardInsights = useMemo(() => {
 		const normalized = searchQuery.trim().toLowerCase()
-		if (!normalized) return insights
+		if (!normalized) return visibleInsights
 
-	return visibleInsights.filter((insight: Insight & { [key: string]: any }) => {
+		return visibleInsights.filter((insight: Insight & { [key: string]: any }) => {
 			const haystack = [
 				insight.name,
 				insight.pain,
@@ -257,7 +256,7 @@ export default function ThemesIndex() {
 
 			return haystack.some((text) => typeof text === "string" && text.toLowerCase().includes(normalized))
 		})
-	}, [insights, searchQuery])
+	}, [visibleInsights, searchQuery])
 
 	// Show generate button when no themes exist
 	if (themes.length === 0) {
@@ -275,10 +274,7 @@ export default function ThemesIndex() {
 		<PageContainer className="space-y-8">
 			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div>
-					<h1 className="font-semibold text-3xl text-foreground">Topics by Persona</h1>
-					<p className="max-w-2xl text-foreground/70 text-sm">
-						See where each persona over-indexes so you can decide which wedges to double down on next.
-					</p>
+					<h1 className="font-semibold text-3xl text-foreground">Insight Themes</h1>
 				</div>
 				<div className="relative w-full max-w-md">
 					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
@@ -290,11 +286,11 @@ export default function ThemesIndex() {
 					/>
 				</div>
 			</div>
-		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-1.5">
-					<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
+					<h2 className="font-medium text-foreground text-xl">Insights Filtering</h2>
 					<p className="max-w-2xl text-foreground/70 text-sm">
-						Scan validated findings, then vote or comment directly in the table when you need to drive alignment.
+						Review insights, vote or comment to drive alignment and prioritize actions.
 					</p>
 				</div>
 				<div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
@@ -309,8 +305,10 @@ export default function ThemesIndex() {
 								size="sm"
 								onClick={() => setViewMode(mode as "table" | "cards")}
 								className={cn(
-									"gap-2 rounded-full px-3 text-xs font-semibold tracking-wide transition-all focus-visible:ring-2 focus-visible:ring-ring",
-									viewMode === mode ? "bg-secondary text-secondary-foreground shadow" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+									"gap-2 rounded-full px-3 font-semibold text-xs tracking-wide transition-all focus-visible:ring-2 focus-visible:ring-ring",
+									viewMode === mode
+										? "bg-secondary text-secondary-foreground shadow"
+										: "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 								)}
 								aria-pressed={viewMode === mode}
 							>
@@ -319,8 +317,8 @@ export default function ThemesIndex() {
 							</Button>
 						))}
 					</div>
+				</div>
 			</div>
-		</div>
 
 			{viewMode === "table" ? (
 				<InsightsDataTable data={insightsTableData} />

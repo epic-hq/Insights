@@ -18,7 +18,7 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 
 	return (
 		<SidebarProvider>
-			{showMainNav && <AppSidebar />}
+			{showMainNav && !isMobile && <AppSidebar />}
 			<SidebarInset>
 				<main
 					className={cn("flex min-h-screen flex-1 flex-col", isMobile && showJourneyNav && showMainNav ? "pb-20" : "")}

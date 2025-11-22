@@ -49,8 +49,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const { client: supabase } = getServerClient(request)
 
 		// Extract form parameters
+		const customer_problem = formData.get("customer_problem") as string
 		const target_orgs = formData.get("target_orgs") as string
 		const target_roles = formData.get("target_roles") as string
+		const offerings = formData.get("offerings") as string
+		const competitors = formData.get("competitors") as string
 		const research_goal = formData.get("research_goal") as string
 		const research_goal_details = formData.get("research_goal_details") as string
 		const assumptions = formData.get("assumptions") as string
@@ -101,8 +104,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		// Prepare inputs for BAML
 		const inputs = {
+			customer_problem:
+				customer_problem || (mergedContext?.customer_problem as string) || projectContext?.customer_problem || "",
 			target_org: target_orgs || (mergedContext?.target_orgs as string) || projectContext?.target_orgs || "",
 			target_roles: target_roles || (mergedContext?.target_roles as string) || projectContext?.target_roles || "",
+			offerings: offerings || (mergedContext?.offerings as string) || projectContext?.offerings || "",
+			competitors: competitors || (mergedContext?.competitors as string) || projectContext?.competitors || "",
 			research_goal: research_goal || (mergedContext?.research_goal as string) || projectContext?.research_goal || "",
 			research_goal_details:
 				research_goal_details ||

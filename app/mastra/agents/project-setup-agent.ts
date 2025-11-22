@@ -3,24 +3,38 @@ import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { Memory } from "@mastra/memory"
 import { z } from "zod"
+import { PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
+import { generateResearchStructureTool } from "../tools/generate-research-structure"
+import { manageAnnotationsTool } from "../tools/manage-annotations"
+import { manageDocumentsTool } from "../tools/manage-documents"
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
 
-const ProjectSetupState = z.object({
-	projectSetup: z
-		.object({
-			research_goal: z.string().optional(),
-			decision_questions: z.array(z.string()).optional(),
-			assumptions: z.array(z.string()).optional(),
-			unknowns: z.array(z.string()).optional(),
-			target_orgs: z.array(z.string()).optional(),
-			target_roles: z.array(z.string()).optional(),
-			completed: z.boolean().optional(),
-		})
-		.optional(),
-})
+// Dynamically build ProjectSetupState from section config
+const buildProjectSetupStateSchema = () => {
+	const stateFields: Record<string, z.ZodTypeAny> = {}
+
+	for (const section of PROJECT_SECTIONS) {
+		if (section.kind === "research_goal") {
+			stateFields.research_goal = z.string().optional()
+			stateFields.research_goal_details = z.string().optional()
+		} else if (section.type === "string[]") {
+			stateFields[section.kind] = z.array(z.string()).optional()
+		} else if (section.type === "string") {
+			stateFields[section.kind] = z.string().optional()
+		}
+	}
+
+	stateFields.completed = z.boolean().optional()
+
+	return z.object({
+		projectSetup: z.object(stateFields).optional(),
+	})
+}
+
+const ProjectSetupState = buildProjectSetupStateSchema()
 
 const navigateToPageTool = createTool({
 	id: "navigate-to-page",
@@ -40,34 +54,55 @@ export const projectSetupAgent = new Agent({
 			.select("project_id, kind, meta, content_md")
 			.eq("project_id", projectId)
 		return `
-You are a project setup assistant. Ask the six core questions in order, one at a time, and keep responses short and friendly. Format responses with proper markdown for better readability.
+You are a project setup assistant. Ask the following core questions in order, one at a time, and keep responses short and friendly. Format responses with proper markdown for better readability.
 
 Core questions (in order):
-1) What business objective are you trying to achieve? (research_goal)
-2) What key decisions do you think you might need to make? (decision_questions)
-3) What are your current assumptions? (assumptions)
-4) What do we not know and need to learn? (unknowns)
-5) Who are ideal companies or organizations? (target_orgs)
-6) Who could be ideal target users or buyers? (target_roles)
+1) Tell me about your business, what problem are you solving? (customer_problem)
+2) Who are your ideal customers, organizations and roles? (target_orgs, target_roles)
+3) What products and services do you offer? (offerings)
+4) What other products or solutions are your customers likely using or considering? (competitors)
+5) What goal are you trying to achieve with this research? (research_goal)
+6) What do you need to learn? (unknowns)
+7) What key decisions are you facing? (decision_questions)
+8) What are your riskiest assumptions? (assumptions)
 
 Rules:
 - Always store each answer in memory under the matching key.
-- Save each answer to the database using the "saveProjectSectionsData" tool with runtimeContext.project_id.
-- For decision_questions, assumptions, unknowns, target_orgs, and target_roles, prefer arrays (split if necessary).
-- For research_goal, save the main sentence; add research_goal_details only if the user adds context.
-- Keep replies concise. If the user seems uncertain, suggest 2–3 concrete examples to choose from.
-- **Format responses with markdown**: Use **bold** for emphasis, bullet points for lists, and proper formatting for readability.
-- When all six are answered, set completed=true in memory and thank the user.
+- Save each answer individually as you discover them to the database using the "saveProjectSectionsData"
+- When all eight questions are answered:
+  1. Call the "generateResearchStructure" tool to generate the research plan and interview prompts
+  2. Set completed=true in memory
+  3. Thank the user and let them know their research plan and conversation prompts have been generated
+
+Responses:
+- Keep replies concise, bulleted when appropriate, and factual.
+- Don't repeat the question or summarize the answer.
+- If the user seems uncertain, suggest 2–3 concrete examples.
+
+Document Management:
+- When users ask to "save", "create", "write", or "document" something, use the manageDocuments tool
+- Understand natural language: "save our positioning" → kind: "positioning_statement"
+- Examples of user requests you should handle:
+  * "Save this as our positioning" → positioning_statement
+  * "Create an SEO strategy doc" → seo_strategy
+  * "Document the pricing discussion" → pricing_strategy
+  * "Write up the meeting notes" → meeting_notes
+  * "Save the competitive analysis" → competitive_analysis
+- The manageDocuments tool has full vocabulary mapping built-in
+
 
 Existing project sections snapshot (for context):
 ${JSON.stringify(existing)}
 `
 	},
-	model: openai("gpt-4.1"),
+	model: openai("gpt-5.1"),
 	tools: {
 		saveProjectSectionsData: saveProjectSectionsDataTool,
 		displayUserQuestions: displayUserQuestionsTool,
 		navigateToPage: navigateToPageTool,
+		generateResearchStructure: generateResearchStructureTool,
+		manageDocuments: manageDocumentsTool,
+		manageAnnotations: manageAnnotationsTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

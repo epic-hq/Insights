@@ -296,6 +296,31 @@ export type Database = {
       [_ in never]: never
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -345,6 +370,94 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      actions: {
+        Row: {
+          account_id: string
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          evidence_ids: string[] | null
+          id: string
+          impact_score: number | null
+          insight_id: string | null
+          lens_type: string | null
+          metadata: Json | null
+          owner_user_id: string | null
+          priority: string | null
+          project_id: string
+          status: string
+          theme_id: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          evidence_ids?: string[] | null
+          id?: string
+          impact_score?: number | null
+          insight_id?: string | null
+          lens_type?: string | null
+          metadata?: Json | null
+          owner_user_id?: string | null
+          priority?: string | null
+          project_id: string
+          status?: string
+          theme_id?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          evidence_ids?: string[] | null
+          id?: string
+          impact_score?: number | null
+          insight_id?: string | null
+          lens_type?: string | null
+          metadata?: Json | null
+          owner_user_id?: string | null
+          priority?: string | null
+          project_id?: string
+          status?: string
+          theme_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actions_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       analysis_jobs: {
         Row: {
@@ -540,13 +653,6 @@ export type Database = {
             columns: ["insight_id"]
             isOneToOne: false
             referencedRelation: "insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "comments_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "insights_with_priority"
             referencedColumns: ["id"]
           },
         ]
@@ -749,6 +855,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           does: string[] | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
           feels: string[] | null
           gains: string[] | null
           gist: string | null
@@ -785,6 +894,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           does?: string[] | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           feels?: string[] | null
           gains?: string[] | null
           gist?: string | null
@@ -821,6 +933,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           does?: string[] | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           feels?: string[] | null
           gains?: string[] | null
           gist?: string | null
@@ -1211,6 +1326,44 @@ export type Database = {
         }
         Relationships: []
       }
+      icp_recommendations: {
+        Row: {
+          created_at: string
+          generated_at: string
+          generated_by_user_id: string | null
+          id: string
+          project_id: string
+          recommendations: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          generated_by_user_id?: string | null
+          id?: string
+          project_id: string
+          recommendations?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          generated_by_user_id?: string | null
+          id?: string
+          project_id?: string
+          recommendations?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icp_recommendations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insight_tags: {
         Row: {
           account_id: string
@@ -1244,14 +1397,7 @@ export type Database = {
             foreignKeyName: "insight_tags_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
-            referencedRelation: "insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "insight_tags_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "insights_with_priority"
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
           {
@@ -1281,6 +1427,8 @@ export type Database = {
           desired_outcome: string | null
           details: string | null
           embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
           emotional_response: string | null
           evidence: string | null
           id: string
@@ -1308,6 +1456,8 @@ export type Database = {
           desired_outcome?: string | null
           details?: string | null
           embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           emotional_response?: string | null
           evidence?: string | null
           id?: string
@@ -1335,6 +1485,8 @@ export type Database = {
           desired_outcome?: string | null
           details?: string | null
           embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           emotional_response?: string | null
           evidence?: string | null
           id?: string
@@ -2333,14 +2485,7 @@ export type Database = {
             foreignKeyName: "opportunity_insights_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
-            referencedRelation: "insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunity_insights_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "insights_with_priority"
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
           {
@@ -2541,6 +2686,7 @@ export type Database = {
           default_organization_id: string | null
           description: string | null
           education: string | null
+          firstname: string | null
           gender: string | null
           id: string
           image_url: string | null
@@ -2548,6 +2694,7 @@ export type Database = {
           industry: string | null
           job_function: string | null
           languages: string[] | null
+          lastname: string | null
           life_stage: string | null
           lifecycle_stage: string | null
           linkedin_url: string | null
@@ -2578,6 +2725,7 @@ export type Database = {
           default_organization_id?: string | null
           description?: string | null
           education?: string | null
+          firstname?: string | null
           gender?: string | null
           id?: string
           image_url?: string | null
@@ -2585,6 +2733,7 @@ export type Database = {
           industry?: string | null
           job_function?: string | null
           languages?: string[] | null
+          lastname?: string | null
           life_stage?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
@@ -2615,6 +2764,7 @@ export type Database = {
           default_organization_id?: string | null
           description?: string | null
           education?: string | null
+          firstname?: string | null
           gender?: string | null
           id?: string
           image_url?: string | null
@@ -2622,6 +2772,7 @@ export type Database = {
           industry?: string | null
           job_function?: string | null
           languages?: string[] | null
+          lastname?: string | null
           life_stage?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
@@ -2807,6 +2958,9 @@ export type Database = {
           account_id: string
           confidence: number | null
           created_at: string
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
           evidence_id: string | null
           facet_account_id: number
           noted_at: string | null
@@ -2819,6 +2973,9 @@ export type Database = {
           account_id: string
           confidence?: number | null
           created_at?: string
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           evidence_id?: string | null
           facet_account_id: number
           noted_at?: string | null
@@ -2831,6 +2988,9 @@ export type Database = {
           account_id?: string
           confidence?: number | null
           created_at?: string
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           evidence_id?: string | null
           facet_account_id?: number
           noted_at?: string | null
@@ -2856,6 +3016,66 @@ export type Database = {
           },
           {
             foreignKeyName: "person_facet_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_facet_summaries: {
+        Row: {
+          account_id: string
+          created_at: string
+          generated_at: string
+          id: string
+          kind_slug: string
+          input_hash: string | null
+          model_version: string | null
+          person_id: string
+          project_id: string
+          summary: string
+          supporting_evidence: Json | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          kind_slug: string
+          input_hash?: string | null
+          model_version?: string | null
+          person_id: string
+          project_id: string
+          summary: string
+          supporting_evidence?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          kind_slug?: string
+          input_hash?: string | null
+          model_version?: string | null
+          person_id?: string
+          project_id?: string
+          summary?: string
+          supporting_evidence?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_facet_summaries_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_facet_summaries_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2956,14 +3176,7 @@ export type Database = {
             foreignKeyName: "persona_insights_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
-            referencedRelation: "insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "persona_insights_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "insights_with_priority"
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
           {
@@ -4321,6 +4534,9 @@ export type Database = {
           anti_examples: string[] | null
           created_at: string
           created_by: string | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
           exclusion_criteria: string | null
           id: string
           inclusion_criteria: string | null
@@ -4336,6 +4552,9 @@ export type Database = {
           anti_examples?: string[] | null
           created_at?: string
           created_by?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           exclusion_criteria?: string | null
           id?: string
           inclusion_criteria?: string | null
@@ -4351,6 +4570,9 @@ export type Database = {
           anti_examples?: string[] | null
           created_at?: string
           created_by?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           exclusion_criteria?: string | null
           id?: string
           inclusion_criteria?: string | null
@@ -4678,59 +4900,6 @@ export type Database = {
           },
         ]
       }
-      insights_with_priority: {
-        Row: {
-          account_id: string | null
-          category: string | null
-          confidence: string | null
-          contradictions: string | null
-          created_at: string | null
-          created_by: string | null
-          desired_outcome: string | null
-          details: string | null
-          embedding: string | null
-          emotional_response: string | null
-          evidence: string | null
-          id: string | null
-          impact: number | null
-          interview_id: string | null
-          journey_stage: string | null
-          jtbd: string | null
-          motivation: string | null
-          name: string | null
-          novelty: number | null
-          opportunity_ideas: string[] | null
-          pain: string | null
-          priority: number | null
-          project_id: string | null
-          related_tags: string[] | null
-          updated_at: string | null
-          updated_by: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "insights_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "insights_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "interviews"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "insights_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       persona_distribution: {
         Row: {
           account_id: string | null
@@ -4927,35 +5096,58 @@ export type Database = {
         Returns: Json
       }
       delete_invitation: { Args: { invitation_id: string }; Returns: undefined }
-      find_facet_clusters: {
+      find_duplicate_themes: {
+        Args: { project_id_param: string; similarity_threshold?: number }
+        Returns: {
+          similarity: number
+          theme_id_1: string
+          theme_id_2: string
+          theme_name_1: string
+          theme_name_2: string
+        }[]
+      }
+      find_person_facet_clusters: {
         Args: {
           kind_slug_param: string
           project_id_param: string
           similarity_threshold?: number
         }
         Returns: {
-          combined_evidence_count: number
-          facet_id_1: string
-          facet_id_2: string
+          combined_person_count: number
+          facet_account_id_1: number
+          facet_account_id_2: number
           label_1: string
           label_2: string
+          person_facet_id_1: string
+          person_facet_id_2: string
           similarity: number
         }[]
       }
-      find_similar_facets: {
+      find_similar_evidence: {
         Args: {
-          kind_slug_param: string
           match_count?: number
           match_threshold?: number
           project_id_param: string
           query_embedding: string
         }
         Returns: {
-          evidence_count: number
           id: string
-          kind_slug: string
-          label: string
           similarity: number
+          verbatim: string
+        }[]
+      }
+      find_similar_themes: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          name: string
+          similarity: number
+          statement: string
         }[]
       }
       get_account: { Args: { account_id: string }; Returns: Json }
@@ -5038,6 +5230,7 @@ export type Database = {
       }
       process_embedding_queue: { Args: never; Returns: string }
       process_facet_embedding_queue: { Args: never; Returns: string }
+      process_person_facet_embedding_queue: { Args: never; Returns: string }
       process_transcribe_queue: { Args: never; Returns: string }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
@@ -5267,6 +5460,9 @@ export const Constants = {
         "unpaid",
       ],
     },
+  },
+  graphql_public: {
+    Enums: {},
   },
   public: {
     Enums: {

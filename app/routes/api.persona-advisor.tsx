@@ -1,9 +1,9 @@
 import { b } from "baml_client"
+import type { PersonaAdvisorThemeInput } from "baml_client/types"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
-import type { PersonaAdvisorThemeInput } from "baml_client/types"
 
 const toStringArray = (value: unknown): string[] => {
 	if (Array.isArray(value)) {
@@ -48,10 +48,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	const { client: supabase } = getServerClient(request)
 
 	try {
-		const [
-			{ data: project, error: projectError },
-			{ data: personas, error: personasError },
-		] = await Promise.all([
+		const [{ data: project, error: projectError }, { data: personas, error: personasError }] = await Promise.all([
 			supabase
 				.from("projects")
 				.select("id, name, description")
@@ -113,8 +110,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		const facetPromise = personIds.length
 			? supabase
-				.from("person_facet")
-				.select(`
+					.from("person_facet")
+					.select(`
 					person_id,
 					source,
 					confidence,
@@ -128,24 +125,24 @@ export async function action({ request, context }: ActionFunctionArgs) {
 						)
 					)
 				`)
-				.in("person_id", personIds)
-				.eq("project_id", projectId)
-				.eq("account_id", accountId)
+					.in("person_id", personIds)
+					.eq("project_id", projectId)
+					.eq("account_id", accountId)
 			: Promise.resolve({ data: [], error: null })
 
 		const scalePromise = personIds.length
 			? supabase
-				.from("person_scale")
-				.select("person_id, kind_slug, score, band, source, confidence")
-				.in("person_id", personIds)
-				.eq("project_id", projectId)
-				.eq("account_id", accountId)
+					.from("person_scale")
+					.select("person_id, kind_slug, score, band, source, confidence")
+					.in("person_id", personIds)
+					.eq("project_id", projectId)
+					.eq("account_id", accountId)
 			: Promise.resolve({ data: [], error: null })
 
 		const personaInsightsPromise = personIds.length
 			? supabase
-				.from("persona_insights")
-				.select(`
+					.from("persona_insights")
+					.select(`
 					persona_id,
 					insight:insights_with_priority!inner(
 						id,
@@ -160,9 +157,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 						priority
 					)
 				`)
-				.in("persona_id", personaIds)
-				.eq("project_id", projectId)
-				.eq("account_id", accountId)
+					.in("persona_id", personaIds)
+					.eq("project_id", projectId)
+					.eq("account_id", accountId)
 			: Promise.resolve({ data: [], error: null })
 
 		const researchPromise = supabase
@@ -187,7 +184,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		if (personaInsightsError) consola.warn("Persona Advisor persona insights error", personaInsightsError)
 		if (researchError) consola.warn("Persona Advisor research insights error", researchError)
 
-		const personaFacetBuckets = new Map<string, Map<string, { label: string; kind_slug: string; totalConfidence: number; count: number; sources: Set<string> }>>()
+		const personaFacetBuckets = new Map<
+			string,
+			Map<string, { label: string; kind_slug: string; totalConfidence: number; count: number; sources: Set<string> }>
+		>()
 		for (const row of facetRows ?? []) {
 			const personId = row.person_id
 			if (!personId) continue
@@ -202,7 +202,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					personaFacetBuckets.set(personaId, new Map())
 				}
 
-				const bucket = personaFacetBuckets.get(personaId) as Map<string, { label: string; kind_slug: string; totalConfidence: number; count: number; sources: Set<string> }>
+				const bucket = personaFacetBuckets.get(personaId) as Map<
+					string,
+					{ label: string; kind_slug: string; totalConfidence: number; count: number; sources: Set<string> }
+				>
 				const key = `${kindSlug}|${label}`
 				const existing = bucket.get(key)
 				if (existing) {
@@ -221,7 +224,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			}
 		}
 
-		const personaScaleBuckets = new Map<string, Map<string, { kind_slug: string; scoreTotal: number; scoreCount: number; band?: string | null; sources: Set<string>; confidenceTotal: number; confidenceCount: number }>>()
+		const personaScaleBuckets = new Map<
+			string,
+			Map<
+				string,
+				{
+					kind_slug: string
+					scoreTotal: number
+					scoreCount: number
+					band?: string | null
+					sources: Set<string>
+					confidenceTotal: number
+					confidenceCount: number
+				}
+			>
+		>()
 		for (const row of scaleRows ?? []) {
 			const personId = row.person_id
 			if (!personId) continue
@@ -235,7 +252,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					personaScaleBuckets.set(personaId, new Map())
 				}
 
-				const bucket = personaScaleBuckets.get(personaId) as Map<string, { kind_slug: string; scoreTotal: number; scoreCount: number; band?: string | null; sources: Set<string>; confidenceTotal: number; confidenceCount: number }>
+				const bucket = personaScaleBuckets.get(personaId) as Map<
+					string,
+					{
+						kind_slug: string
+						scoreTotal: number
+						scoreCount: number
+						band?: string | null
+						sources: Set<string>
+						confidenceTotal: number
+						confidenceCount: number
+					}
+				>
 				const key = row.kind_slug || "scale"
 				const existing = bucket.get(key)
 				if (existing) {
@@ -347,7 +375,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				}))
 
 			const scales = Array.from(personaScaleBuckets.get(persona.id)?.values() ?? [])
-				.sort((a, b) => (b.scoreTotal / Math.max(b.scoreCount, 1)) - (a.scoreTotal / Math.max(a.scoreCount, 1)))
+				.sort((a, b) => b.scoreTotal / Math.max(b.scoreCount, 1) - a.scoreTotal / Math.max(a.scoreCount, 1))
 				.slice(0, 4)
 				.map((scale) => ({
 					kind_slug: scale.kind_slug,

@@ -1,0 +1,3 @@
+1. Inspect queue metrics and cron trigger status.
+2. Validate process_person_facet_embedding_queue function execution and RPC logs.
+3. Verify embed-person-facet edge function success (OpenAI responses, DB updates).

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import InterviewDetailStorybook from "./detail.storybook"
 
 const meta = {
@@ -56,7 +56,10 @@ const mockInterview = {
 			{
 				priority: "medium" as const,
 				summary: "Security concerns around third-party integrations",
-				evidence_snippets: ["We need to be careful about what tools we integrate with", "SOC 2 compliance is critical for us"],
+				evidence_snippets: [
+					"We need to be careful about what tools we integrate with",
+					"SOC 2 compliance is critical for us",
+				],
 			},
 		],
 		open_questions: [

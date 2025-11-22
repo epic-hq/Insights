@@ -722,22 +722,13 @@ export default function ProjectStatusScreen({
 									{/* Interview Progress */}
 									<CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-4">
 										<div className="w-full space-y-2">
-											<div className="flex items-center justify-between text-sm">
-												<span className="font-medium text-muted-foreground">
-													Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}%
-												</span>
-												<span
-													className={cn(
-														"font-semibold",
-														(displayData.totalInterviews / targetConversations) * 100 >= 100
-															? "text-green-600"
-															: "text-foreground"
-													)}
-												>
-													{displayData.totalInterviews} / {targetConversations}
+											<div className="flex items-center justify-end text-sm">
+												<span className="gap-4 font-medium text-muted-foreground">
+													Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}% (
+													{displayData.totalInterviews} / {targetConversations})
 												</span>
 											</div>
-											<div className="h-2 w-full rounded-full bg-muted">
+											{/* <div className="h-2 w-full rounded-full bg-muted">
 												<div
 													className={cn(
 														"h-2 rounded-full transition-all duration-300",
@@ -749,7 +740,7 @@ export default function ProjectStatusScreen({
 														width: `${Math.min((displayData.totalInterviews / targetConversations) * 100, 100)}%`,
 													}}
 												/>
-											</div>
+											</div> */}
 										</div>
 
 										{/* Goal Actions */}

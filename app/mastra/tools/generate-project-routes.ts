@@ -130,45 +130,45 @@ export const generateProjectRoutesTool = createTool({
 				case "theme":
 					route = action === "edit" ? routes.themes.edit(entityId) : routes.themes.detail(entityId)
 					break
-			case "evidence":
-				route = action === "edit" ? routes.evidence.edit(entityId) : routes.evidence.detail(entityId)
-				break
-			case "insight":
-				route = action === "edit" ? routes.insights.edit(entityId) : routes.insights.detail(entityId)
-				break
-			case "interview":
-				route = action === "edit" ? routes.interviews.edit(entityId) : routes.interviews.detail(entityId)
-				break
-			case "segment":
-				route = routes.segments.detail(entityId) // segments don't have edit
-				break
-			default:
-				return {
-					success: false,
-					error: `Unknown entity type: ${entityType}`,
-					route: null,
-					absoluteRoute: null,
-				}
-		}
+				case "evidence":
+					route = action === "edit" ? routes.evidence.edit(entityId) : routes.evidence.detail(entityId)
+					break
+				case "insight":
+					route = action === "edit" ? routes.insights.edit(entityId) : routes.insights.detail(entityId)
+					break
+				case "interview":
+					route = action === "edit" ? routes.interviews.edit(entityId) : routes.interviews.detail(entityId)
+					break
+				case "segment":
+					route = routes.segments.detail(entityId) // segments don't have edit
+					break
+				default:
+					return {
+						success: false,
+						error: `Unknown entity type: ${entityType}`,
+						route: null,
+						absoluteRoute: null,
+					}
+			}
 
-		const absoluteRoute = `${HOST}${route}`
+			const absoluteRoute = `${HOST}${route}`
 
-		return {
-			success: true,
-			route,
-			absoluteRoute,
-			entityType,
-			entityId,
-			action,
+			return {
+				success: true,
+				route,
+				absoluteRoute,
+				entityType,
+				entityId,
+				action,
+			}
+		} catch (error) {
+			console.error("generate-project-routes: Unexpected error", error)
+			return {
+				success: false,
+				error: "Unexpected error generating route",
+				route: null,
+				absoluteRoute: null,
+			}
 		}
-	} catch (error) {
-		console.error("generate-project-routes: Unexpected error", error)
-		return {
-			success: false,
-			error: "Unexpected error generating route",
-			route: null,
-			absoluteRoute: null,
-		}
-	}
 	},
 })

@@ -1,5 +1,5 @@
 import { withRouter } from ".storybook/with-router"
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import OpportunitiesIndex from "./index"
 
 const meta = {

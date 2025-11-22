@@ -3806,102 +3806,102 @@ export type Database = {
 				]
 			}
 			themes: {
-			Row: {
-				account_id: string
-				anti_examples: string[] | null
-				category: string | null
-				confidence: string | null
-				contradictions: string | null
-				created_at: string
-				created_by: string | null
-				desired_outcome: string | null
-				details: string | null
-				embedding: string | null
-				emotional_response: string | null
-				evidence: string | null
-				exclusion_criteria: string | null
-				id: string
-				impact: number | null
-				inclusion_criteria: string | null
-				interview_id: string | null
-				journey_stage: string | null
-				jtbd: string | null
-				motivation: string | null
-				name: string
-				novelty: number | null
-				opportunity_ideas: string[] | null
-				pain: string | null
-				project_id: string | null
-				related_tags: string[] | null
-				statement: string | null
-				synonyms: string[] | null
-				updated_at: string
-				updated_by: string | null
-			}
-			Insert: {
-				account_id: string
-				anti_examples?: string[] | null
-				category?: string | null
-				confidence?: string | null
-				contradictions?: string | null
-				created_at?: string
-				created_by?: string | null
-				desired_outcome?: string | null
-				details?: string | null
-				embedding?: string | null
-				emotional_response?: string | null
-				evidence?: string | null
-				exclusion_criteria?: string | null
-				id?: string
-				impact?: number | null
-				inclusion_criteria?: string | null
-				interview_id?: string | null
-				journey_stage?: string | null
-				jtbd?: string | null
-				motivation?: string | null
-				name: string
-				novelty?: number | null
-				opportunity_ideas?: string[] | null
-				pain?: string | null
-				project_id?: string | null
-				related_tags?: string[] | null
-				statement?: string | null
-				synonyms?: string[] | null
-				updated_at?: string
-				updated_by?: string | null
-			}
-			Update: {
-				account_id?: string
-				anti_examples?: string[] | null
-				category?: string | null
-				confidence?: string | null
-				contradictions?: string | null
-				created_at?: string
-				created_by?: string | null
-				desired_outcome?: string | null
-				details?: string | null
-				embedding?: string | null
-				emotional_response?: string | null
-				evidence?: string | null
-				exclusion_criteria?: string | null
-				id?: string
-				impact?: number | null
-				inclusion_criteria?: string | null
-				interview_id?: string | null
-				journey_stage?: string | null
-				jtbd?: string | null
-				motivation?: string | null
-				name?: string
-				novelty?: number | null
-				opportunity_ideas?: string[] | null
-				pain?: string | null
-				project_id?: string | null
-				related_tags?: string[] | null
-				statement?: string | null
-				synonyms?: string[] | null
-				updated_at?: string
-				updated_by?: string | null
-			}
+				Row: {
+					account_id: string
+					anti_examples: string[] | null
+					category: string | null
+					confidence: string | null
+					contradictions: string | null
+					created_at: string
+					created_by: string | null
+					desired_outcome: string | null
+					details: string | null
+					embedding: string | null
+					emotional_response: string | null
+					evidence: string | null
+					exclusion_criteria: string | null
+					id: string
+					impact: number | null
+					inclusion_criteria: string | null
+					interview_id: string | null
+					journey_stage: string | null
+					jtbd: string | null
+					motivation: string | null
+					name: string
+					novelty: number | null
+					opportunity_ideas: string[] | null
+					pain: string | null
+					project_id: string | null
+					related_tags: string[] | null
+					statement: string | null
+					synonyms: string[] | null
+					updated_at: string
+					updated_by: string | null
+				}
+				Insert: {
+					account_id: string
+					anti_examples?: string[] | null
+					category?: string | null
+					confidence?: string | null
+					contradictions?: string | null
+					created_at?: string
+					created_by?: string | null
+					desired_outcome?: string | null
+					details?: string | null
+					embedding?: string | null
+					emotional_response?: string | null
+					evidence?: string | null
+					exclusion_criteria?: string | null
+					id?: string
+					impact?: number | null
+					inclusion_criteria?: string | null
+					interview_id?: string | null
+					journey_stage?: string | null
+					jtbd?: string | null
+					motivation?: string | null
+					name: string
+					novelty?: number | null
+					opportunity_ideas?: string[] | null
+					pain?: string | null
+					project_id?: string | null
+					related_tags?: string[] | null
+					statement?: string | null
+					synonyms?: string[] | null
+					updated_at?: string
+					updated_by?: string | null
+				}
+				Update: {
+					account_id?: string
+					anti_examples?: string[] | null
+					category?: string | null
+					confidence?: string | null
+					contradictions?: string | null
+					created_at?: string
+					created_by?: string | null
+					desired_outcome?: string | null
+					details?: string | null
+					embedding?: string | null
+					emotional_response?: string | null
+					evidence?: string | null
+					exclusion_criteria?: string | null
+					id?: string
+					impact?: number | null
+					inclusion_criteria?: string | null
+					interview_id?: string | null
+					journey_stage?: string | null
+					jtbd?: string | null
+					motivation?: string | null
+					name?: string
+					novelty?: number | null
+					opportunity_ideas?: string[] | null
+					pain?: string | null
+					project_id?: string | null
+					related_tags?: string[] | null
+					statement?: string | null
+					synonyms?: string[] | null
+					updated_at?: string
+					updated_by?: string | null
+				}
 				Relationships: [
 					{
 						foreignKeyName: "themes_project_id_fkey"

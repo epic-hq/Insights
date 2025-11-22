@@ -160,19 +160,19 @@ export default function OpportunitiesIndexPage() {
 				<Card>
 					<CardHeader>
 						<p className="text-muted-foreground text-sm">Total pipeline</p>
-						<h2 className="text-3xl font-bold">{currencyFormatter.format(totalAmount)}</h2>
+						<h2 className="font-bold text-3xl">{currencyFormatter.format(totalAmount)}</h2>
 					</CardHeader>
 				</Card>
 				<Card>
 					<CardHeader>
 						<p className="text-muted-foreground text-sm">Active deals</p>
-						<h2 className="text-3xl font-bold">{opportunities.length}</h2>
+						<h2 className="font-bold text-3xl">{opportunities.length}</h2>
 					</CardHeader>
 				</Card>
 				<Card>
 					<CardHeader>
 						<p className="text-muted-foreground text-sm">Avg. deal size</p>
-						<h2 className="text-3xl font-bold">{averageDeal}</h2>
+						<h2 className="font-bold text-3xl">{averageDeal}</h2>
 					</CardHeader>
 				</Card>
 			</section>
@@ -224,27 +224,25 @@ function KanbanGrid({
 					<CardHeader>
 						<div className="flex items-center justify-between">
 							<div>
-								<CardTitle className="text-base font-semibold">{column.label}</CardTitle>
-								{column.description && (
-									<p className="text-muted-foreground text-xs">{column.description}</p>
-								)}
+								<CardTitle className="font-semibold text-base">{column.label}</CardTitle>
+								{column.description && <p className="text-muted-foreground text-xs">{column.description}</p>}
 							</div>
 							<div className="text-right">
 								<p className="text-muted-foreground text-xs uppercase tracking-wide">Total</p>
 								<p className="font-semibold">{currencyFormatter.format(column.total)}</p>
 							</div>
 						</div>
-						<div className="text-muted-foreground text-xs">{column.count} deal{column.count === 1 ? "" : "s"}</div>
+						<div className="text-muted-foreground text-xs">
+							{column.count} deal{column.count === 1 ? "" : "s"}
+						</div>
 					</CardHeader>
 					<CardContent className="flex flex-1 flex-col gap-3">
 						{column.deals.length === 0 ? (
-							<p className="rounded-md border border-dashed border-border/60 p-4 text-center text-muted-foreground text-sm">
+							<p className="rounded-md border border-border/60 border-dashed p-4 text-center text-muted-foreground text-sm">
 								{emptyLabel}
 							</p>
 						) : (
-							column.deals.map((deal) => (
-								<OpportunityCard key={deal.id} deal={deal} routes={routes} />
-							))
+							column.deals.map((deal) => <OpportunityCard key={deal.id} deal={deal} routes={routes} />)
 						)}
 					</CardContent>
 				</Card>
@@ -272,9 +270,7 @@ function OpportunityCard({ deal, routes }: { deal: OpportunityRecord; routes: Re
 				<div className="mb-1">
 					<p className="font-semibold text-sm leading-snug">{deal.title}</p>
 				</div>
-				{deal.description && (
-					<p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{deal.description}</p>
-				)}
+				{deal.description && <p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{deal.description}</p>}
 				<div className="flex items-center justify-between text-xs">
 					<div>
 						<p className="text-muted-foreground">Value</p>

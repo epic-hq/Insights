@@ -77,7 +77,7 @@ export default function InterviewDetailStorybook({ data }: { data: MockInterview
 						<BackButton />
 						<div>
 							<div className="flex items-center gap-2">
-								<InlineEdit value={interview.title} onSave={() => { }} className="font-semibold text-2xl" />
+								<InlineEdit value={interview.title} onSave={() => {}} className="font-semibold text-2xl" />
 								<Badge variant="secondary">{interview.status}</Badge>
 							</div>
 							{interview.description && <p className="mt-1 text-muted-foreground text-sm">{interview.description}</p>}

@@ -127,6 +127,7 @@ const routes = [
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
 	route("api/update-field", "./routes/api.update-field.tsx"),
+	route("api/update-person-facet-summary", "./routes/api.update-person-facet-summary.tsx"),
 	route("api/update-lens", "./routes/api.update-lens.tsx"),
 	route("api/update-slot", "./routes/api.update-slot.tsx"),
 	route("api/update-stakeholder", "./routes/api.update-stakeholder.tsx"),

@@ -15,6 +15,8 @@ import {
 	MessageCircleQuestion,
 	MoreHorizontal,
 	Plus,
+	RecycleIcon,
+	RefreshCcw,
 	Settings,
 	Star,
 	Trash2,
@@ -24,6 +26,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useFetcher } from "react-router"
 import { toast } from "sonner"
 import { z } from "zod"
+import { createQuestionQueueStore, useQuestionQueueStore } from "~/components/questions/stores/questionQueueStore"
+import type { Question } from "~/components/questions/types"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -68,27 +72,6 @@ interface InterviewQuestionsManagerProps {
 		text: string
 	}) => undefined | ((questions: { id: string; text: string }[]) => void)
 	onSelectedQuestionsChange?: (questions: { id: string; text: string }[]) => void
-}
-
-interface Question {
-	id: string
-	text: string
-	categoryId: string
-	scores: { importance: number; goalMatch: number; novelty: number }
-	rationale?: string
-	status: "proposed" | "asked" | "answered" | "skipped" | "rejected" | "selected" | "backup" | "deleted"
-	timesAnswered: number
-	source?: "ai" | "user" // Track whether question is AI-generated or user-created
-	isMustHave?: boolean // Track if question is marked as must-have
-	qualityFlag?: {
-		assessment: "red" | "yellow" | "green"
-		score: number
-		description: string
-		color?: string // Optional custom color override
-	}
-	estimatedMinutes?: number
-	selectedOrder?: number | null
-	isSelected?: boolean
 }
 
 const questionCategories = [
@@ -252,7 +235,21 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const [generating, setGenerating] = useState(false)
 	const [saving, setSaving] = useState(false)
 	const [questions, setQuestions] = useState<Question[]>([])
-	const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([])
+
+	// Zustand store for question queue management
+	const store = useMemo(() => createQuestionQueueStore(), [])
+	const orderedIds = useQuestionQueueStore(store, (s) => s.orderedIds)
+	const backlogIds = useQuestionQueueStore(store, (s) => s.backlogIds)
+	const mustHavesOnly = useQuestionQueueStore(store, (s) => s.mustHavesOnly)
+	const setOrderedQuestionIds = useQuestionQueueStore(store, (s) => s.setOrderedIds)
+	const setBacklogIds = useQuestionQueueStore(store, (s) => s.setBacklogIds)
+	const initializeStore = useQuestionQueueStore(store, (s) => s.initialize)
+	const setMustHavesOnly = useQuestionQueueStore(store, (s) => s.setMustHavesOnly)
+	const appendIds = useQuestionQueueStore(store, (s) => s.appendIds)
+	const insertOrderedIds = useQuestionQueueStore(store, (s) => s.insertAfter)
+	const removeOrderedIds = useQuestionQueueStore(store, (s) => s.removeIds)
+	const reorderVisible = useQuestionQueueStore(store, (s) => s.reorderVisible)
+
 	const [hasInitialized, setHasInitialized] = useState(false)
 	const [skipDebounce, setSkipDebounce] = useState(false)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
@@ -268,18 +265,18 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const [showingFollowupFor, setShowingFollowupFor] = useState<string | null>(null)
 	const [followupInput, setFollowupInput] = useState("")
 	const [followupCategory, setFollowupCategory] = useState("context")
-	const [mustHavesOnly, setMustHavesOnly] = useState(false)
 	const [showHelp, setShowHelp] = useState(false)
 	const [improvingId, setImprovingId] = useState<string | null>(null)
 	const [improveOptions, setImproveOptions] = useState<string[]>([])
 	const [evaluatingId, setEvaluatingId] = useState<string | null>(null)
+	const [showRegenerateDialog, setShowRegenerateDialog] = useState(false)
+	const [regenerateInstructions, setRegenerateInstructions] = useState("")
 	// Category-focused enhancements
 	const [categoryTimeAllocations, setCategoryTimeAllocations] = useState<Record<string, number>>({})
 	const [generatingCategoryId, setGeneratingCategoryId] = useState<string | null>(null)
 	// How many new questions to generate when user clicks "Generate More"
 	// Default "Generate More" count to 8 instead of 3
 	const [moreCount, setMoreCount] = useState<number>(3)
-	const previousSelectionRef = React.useRef<string[] | null>(null)
 	const recentlyAddedTimeoutsRef = React.useRef<Record<string, number>>({})
 	const [recentlyAddedQuestionIds, setRecentlyAddedQuestionIds] = useState<string[]>([])
 	const [pendingGeneratedQuestions, setPendingGeneratedQuestions] = useState<Question[]>([])
@@ -368,16 +365,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const supabase = createClient()
 
 	const getBaseSelectedIds = useCallback((): string[] => {
-		if (mustHavesOnly) {
-			const stored = previousSelectionRef.current
-			if (stored && stored.length > 0) return [...stored]
-		}
 		console.log("🧾 getBaseSelectedIds()", {
 			mustHavesOnly,
-			selectedQuestionIds,
+			orderedIds,
 		})
-		return [...selectedQuestionIds]
-	}, [mustHavesOnly, selectedQuestionIds])
+		return orderedIds
+	}, [mustHavesOnly, orderedIds])
 
 	const commitSelection = useCallback(
 		(nextBaseIds: string[]) => {
@@ -386,19 +379,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				nextBaseIds,
 				mustHaveCandidates: questions.filter((q) => q.isMustHave).map((q) => q.id),
 			})
-			previousSelectionRef.current = [...nextBaseIds]
-			if (mustHavesOnly) {
-				const filtered = nextBaseIds.filter((id) => {
-					const q = questions.find((question) => question.id === id)
-					return q?.isMustHave
-				})
-				console.log("🧮 commitSelection -> filtered (mustHavesOnly)", filtered)
-				setSelectedQuestionIds(filtered)
-			} else {
-				setSelectedQuestionIds(nextBaseIds)
-			}
+			setOrderedQuestionIds(nextBaseIds)
 		},
-		[mustHavesOnly, questions]
+		[mustHavesOnly, questions, setOrderedQuestionIds]
 	)
 
 	// Extract loadQuestions as a standalone function so it can be called from generateQuestions
@@ -590,19 +573,21 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			)
 
 			setQuestions(deduped)
-			if (selectedIds.length > 0) {
-				setSelectedQuestionIds(selectedIds)
-				commitSelection(selectedIds)
-				setHasInitialized(true)
-			} else {
-				setSelectedQuestionIds([])
-			}
+			// Calculate backlog (questions not selected)
+			const selectedSet = new Set(selectedIds)
+			const backlog = deduped
+				.filter((q) => !selectedSet.has(q.id) && q.status !== "deleted" && q.status !== "rejected")
+				.map((q) => q.id)
+
+			// Initialize store with ordered and backlog IDs
+			initializeStore(selectedIds, backlog)
+			setHasInitialized(true)
 		} catch (error) {
 			consola.error("Error loading questions:", error)
 		} finally {
 			setLoading(false)
 		}
-	}, [projectId, supabase, commitSelection])
+	}, [projectId, supabase, initializeStore])
 
 	const markQuestionAsRecentlyAdded = useCallback((id: string) => {
 		setRecentlyAddedQuestionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
@@ -793,6 +778,31 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		unknowns,
 	])
 
+	const handleRegenerateAll = useCallback(async () => {
+		try {
+			// Update custom instructions only if new instructions provided
+			if (regenerateInstructions.trim()) {
+				setCustomInstructions(regenerateInstructions)
+			}
+
+			// Clear existing questions
+			setQuestions([])
+			setOrderedQuestionIds([])
+
+			// Close dialog
+			setShowRegenerateDialog(false)
+
+			// Trigger regeneration
+			setAutoGenerateInitial(true)
+			await generateQuestions()
+
+			toast.success(`Regenerating questions${regenerateInstructions.trim() ? " with new instructions" : ""}`)
+		} catch (error) {
+			console.error("Error regenerating questions:", error)
+			toast.error("Failed to regenerate questions")
+		}
+	}, [regenerateInstructions, generateQuestions, setOrderedQuestionIds])
+
 	const calculateCompositeScore = useCallback((q: Question): number => {
 		const categoryWeight = questionCategories.find((c) => c.id === q.categoryId)?.weight || 1
 		const s = q.scores
@@ -808,24 +818,37 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		}
 
 		const tc = targetCounts[timeMinutes]
-		const validationBoost = researchMode === "validation" ? tc.validation : 0
-		const targetCount = Math.max(4, tc.base + validationBoost + (familiarity === "cold" ? tc.cold : 0))
+		const defaultConfig = { base: Math.max(4, Math.floor(timeMinutes / 5)), validation: +1, cold: 0 }
+		const config = tc ?? defaultConfig
+		const validationBoost = researchMode === "validation" ? config.validation : 0
+		const targetCount = Math.max(4, config.base + validationBoost + (familiarity === "cold" ? config.cold : 0))
 
 		const allQuestionsWithScores = questions
-			.filter((q) => q.status === "proposed" || q.status === "selected") // Include proposed and selected questions, exclude rejected/deleted
+			.filter((q) => q.status === "proposed" || q.status === "selected")
 			.map((q) => ({
 				...q,
 				compositeScore: calculateCompositeScore(q),
 				estimatedMinutes: estimateMinutesPerQuestion(q, researchMode, familiarity),
 			}))
 
-		// Quick lookup map for id → question
 		const byId = new Map(allQuestionsWithScores.map((q) => [q.id, q]))
+		const sanitizeIds = (ids: string[]) => {
+			const seen = new Set<string>()
+			const result: string[] = []
+			for (const id of ids) {
+				if (!id) continue
+				if (seen.has(id)) continue
+				if (!byId.has(id)) continue
+				seen.add(id)
+				result.push(id)
+			}
+			return result
+		}
 
+		let canonicalIds = orderedIds
 		let autoSelectedIds: string[] = []
-		if (selectedQuestionIds.length === 0) {
+		if (canonicalIds.length === 0) {
 			let selected: typeof allQuestionsWithScores = []
-
 			if (goDeepMode) {
 				selected = [...allQuestionsWithScores]
 					.sort((a, b) => b.compositeScore - a.compositeScore)
@@ -862,24 +885,18 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			}
 
 			autoSelectedIds = selected.map((q) => q.id)
+			canonicalIds = autoSelectedIds
 		}
 
-		const idsToUseRaw = selectedQuestionIds.length > 0 ? selectedQuestionIds : autoSelectedIds
-		// Sanitize: keep only ids that exist, preserve order, and de-dupe
-		const seen = new Set<string>()
-		const idsToUse: string[] = []
-		for (const id of idsToUseRaw) {
-			if (!byId.has(id)) continue
-			if (seen.has(id)) continue
-			seen.add(id)
-			idsToUse.push(id)
-		}
+		const canonicalSanitized = sanitizeIds(canonicalIds)
+		const mustHaveSet = new Set(questions.filter((q) => q.isMustHave && q.status !== "rejected").map((q) => q.id))
+		const visibleIdsRaw = mustHavesOnly ? canonicalSanitized.filter((id) => mustHaveSet.has(id)) : canonicalSanitized
+		const visibleIds = sanitizeIds(visibleIdsRaw)
 
-		const orderedSelectedQuestions = idsToUse.map((id) => byId.get(id)).filter(Boolean) as typeof allQuestionsWithScores
-
+		const orderedSelectedQuestions = visibleIds
+			.map((id) => byId.get(id))
+			.filter(Boolean) as typeof allQuestionsWithScores
 		const totalEstimatedTime = orderedSelectedQuestions.reduce((sum, q) => sum + q.estimatedMinutes, 0)
-
-		// Compute overflow index (first index where cumulative time exceeds target)
 		let overflowIndex = -1
 		let running = 0
 		for (let i = 0; i < orderedSelectedQuestions.length; i++) {
@@ -890,15 +907,13 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			}
 		}
 		const belowCount = overflowIndex >= 0 ? orderedSelectedQuestions.length - overflowIndex : 0
-
-		// Remaining = simple set difference for correctness and speed
-		const selectedSet = new Set(idsToUse)
+		const selectedSet = new Set(canonicalSanitized)
 		const remainingQuestions = allQuestionsWithScores.filter((q) => !selectedSet.has(q.id))
 
 		console.log("📦 questionPack()", {
-			selectedQuestionIds,
+			orderedIds,
 			autoSelectedIds,
-			idsToUse,
+			visibleIds,
 			orderedCount: orderedSelectedQuestions.length,
 			totalQuestions: allQuestionsWithScores.length,
 			exampleIds: orderedSelectedQuestions.slice(0, 5).map((q) => q.id),
@@ -906,6 +921,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 		return {
 			questions: orderedSelectedQuestions,
+			visibleIds,
+			baseIds: canonicalSanitized,
+			autoSelectedIds,
 			totalEstimatedTime,
 			targetTime: timeMinutes,
 			remainingQuestions,
@@ -918,7 +936,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		familiarity,
 		goDeepMode,
 		questions,
-		selectedQuestionIds,
+		orderedIds,
+		mustHavesOnly,
 		calculateCompositeScore,
 		estimateMinutesPerQuestion,
 	])
@@ -930,14 +949,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		[baseSelectedIdsForModal, questions]
 	)
 
-	// Initialize selected questions once after computing the pack (no state changes inside useMemo)
 	useEffect(() => {
-		if (!hasInitialized && selectedQuestionIds.length === 0 && questionPack.questions.length > 0) {
-			const ids = questionPack.questions.map((q) => q.id)
-			commitSelection(ids)
+		if (!hasInitialized && orderedIds.length === 0 && questionPack.baseIds.length > 0) {
+			commitSelection(questionPack.baseIds)
 			setHasInitialized(true)
 		}
-	}, [hasInitialized, selectedQuestionIds.length, questionPack.questions, commitSelection])
+	}, [hasInitialized, orderedIds.length, questionPack.baseIds, commitSelection])
 
 	// Time used per category for currently selected questions
 	const _usedMinutesByCategory = useMemo(() => {
@@ -1311,8 +1328,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 	const removeQuestion = useCallback(
 		(id: string) => {
-			const baseIds = getBaseSelectedIds().filter((qId) => qId !== id)
-			commitSelection(baseIds)
+			// Use store action to remove from ordered list
+			removeOrderedIds(id)
 
 			// Create form data for the API
 			const formData = new FormData()
@@ -1333,57 +1350,60 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				description: "The question has been moved to deleted status",
 			})
 		},
-		[getBaseSelectedIds, commitSelection, deleteFetcher]
+		[removeOrderedIds, deleteFetcher]
 	)
 
 	const moveQuestion = useCallback(
 		async (fromIndex: number, toIndex: number) => {
-			const visibleIds = selectedQuestionIds.length > 0 ? selectedQuestionIds : questionPack.questions.map((q) => q.id)
-			const reorderedVisible = [...visibleIds]
-			const [removed] = reorderedVisible.splice(fromIndex, 1)
-			reorderedVisible.splice(toIndex, 0, removed)
+			const visibleIds = questionPack.visibleIds
 
-			// Rebuild questions array to reflect new visible ordering while keeping non-visible items in place
-			const questionById = new Map(questions.map((q) => [q.id, q]))
-			const baseIds = getBaseSelectedIds()
-			const visibleSet = new Set(visibleIds)
-			let visiblePointer = 0
-			const newBaseIds = baseIds.map((id) => {
-				if (!visibleSet.has(id)) return id
-				const replacement = reorderedVisible[visiblePointer++]
-				return replacement
-			})
-			const targetVisibleOrder = [...reorderedVisible]
-			const reorderedQuestions = questions.map((question) => {
-				if (!visibleSet.has(question.id)) {
-					return question
-				}
-				const replacementId = targetVisibleOrder.shift()
-				if (!replacementId) {
-					return question
-				}
-				const replacement = questionById.get(replacementId)
-				return replacement ?? question
-			})
-			commitSelection(newBaseIds)
-			setQuestions(reorderedQuestions)
-			if (removed) {
-				markQuestionAsRecentlyAdded(removed)
+			// Use store action to handle reordering
+			const newBaseIds = reorderVisible(visibleIds, fromIndex, toIndex)
+
+			// Mark moved question as recently added for visual feedback
+			const movedId = visibleIds[fromIndex]
+			if (movedId) {
+				markQuestionAsRecentlyAdded(movedId)
 			}
+
 			setHasInitialized(true)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(reorderedQuestions, newBaseIds)
+			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[
-			selectedQuestionIds,
-			questionPack.questions,
-			getBaseSelectedIds,
-			commitSelection,
-			questions,
-			saveQuestionsToDatabase,
-			markQuestionAsRecentlyAdded,
-		]
+		[questionPack.visibleIds, questions, reorderVisible, saveQuestionsToDatabase, markQuestionAsRecentlyAdded]
+	)
+
+	const insertQuestionAfter = useCallback(
+		async (anchorId: string, newQuestion: Question) => {
+			// Use store action to insert after anchor
+			const newBaseIds = insertOrderedIds(anchorId, newQuestion.id)
+
+			// Add to questions list
+			const updatedQuestions: Question[] = []
+			let inserted = false
+			for (const existing of questions) {
+				updatedQuestions.push(existing)
+				if (!inserted && existing.id === anchorId) {
+					updatedQuestions.push(newQuestion)
+					inserted = true
+				}
+			}
+			if (!inserted) {
+				updatedQuestions.push(newQuestion)
+			}
+
+			setQuestions(updatedQuestions)
+			setHasInitialized(true)
+			markQuestionAsRecentlyAdded(newQuestion.id)
+			setSkipDebounce(true)
+			try {
+				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+			} finally {
+				setTimeout(() => setSkipDebounce(false), 1500)
+			}
+		},
+		[questions, insertOrderedIds, markQuestionAsRecentlyAdded, saveQuestionsToDatabase]
 	)
 
 	const onDragEnd = (result: DropResult) => {
@@ -1394,16 +1414,17 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 	const addQuestionFromReserve = useCallback(
 		async (question: Question) => {
-			const baseIds = getBaseSelectedIds()
-			if (baseIds.includes(question.id)) return
-			const newBaseIds = [...baseIds, question.id]
-			commitSelection(newBaseIds)
+			if (orderedIds.includes(question.id)) return
+
+			// Use store action to append to end of ordered list
+			const newBaseIds = appendIds(question.id)
+
 			setHasInitialized(true)
 			setSkipDebounce(true)
 			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[getBaseSelectedIds, commitSelection, questions, saveQuestionsToDatabase]
+		[orderedIds, appendIds, questions, saveQuestionsToDatabase]
 	)
 
 	const _addCustomQuestion = useCallback(async () => {
@@ -2019,7 +2040,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 										className={showCategoryTime ? "border-blue-200 bg-blue-50" : ""}
 									>
 										{showCategoryTime ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-										<span className="ml-1 hidden sm:inline">{showCategoryTime ? "Hide" : "Show"} Categories</span>
+										{/* <span className="ml-1 hidden sm:inline">{showCategoryTime ? "Hide" : "Show"} Categories</span> */}
 									</Button>
 								</TooltipTrigger>
 								<TooltipContent>{showCategoryTime ? "Hide" : "Show"} category and time information</TooltipContent>
@@ -2033,21 +2054,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 										variant="outline"
 										size="sm"
 										onClick={() => {
-											if (!mustHavesOnly) {
-												// Save current selection before filtering
-												previousSelectionRef.current =
-													selectedQuestionIds.length > 0
-														? [...selectedQuestionIds]
-														: questionPack.questions.map((q) => q.id)
-												// Filter to must-haves from interview_prompts table only
-												const mustHaveIds = questions
-													.filter((q) => q.isMustHave && q.status !== "rejected")
-													.map((q) => q.id)
-												setSelectedQuestionIds(mustHaveIds)
-											} else {
-												// Restore previous selection
-												setSelectedQuestionIds(previousSelectionRef.current || [])
-											}
+											// Just toggle the view filter - don't modify orderedIds
+											// The questionPack already filters visibleIds based on mustHavesOnly
 											setMustHavesOnly(!mustHavesOnly)
 										}}
 										className={mustHavesOnly ? "border-orange-200 bg-orange-50" : ""}
@@ -2135,74 +2143,94 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 			{/* Main Question List Section */}
 			<div className="space-y-4">
-				{/* Simple Add Question Button */}
-				<div className="flex items-center justify-between">
-					{!showContextualInput ? (
-						<Button onClick={() => setShowContextualInput(true)} variant="outline" size="sm" className="border-dashed">
-							<Plus className="mr-2 h-4 w-4" />
-							Add Prompt
-						</Button>
-					) : (
-						<div>
-							<div className="flex flex-row items-center gap-2">
-								<Button
-									onClick={() => setShowContextualInput(false)}
-									variant="outline"
-									size="sm"
-									className="border-dashed"
-								>
-									<Plus className="mr-2 h-4 w-4" />
-									Add Prompt
-								</Button>
-								<Select value={contextualCategory} onValueChange={setContextualCategory}>
-									<SelectTrigger className="w-48">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{questionCategories.map((cat) => (
-											<SelectItem key={cat.id} value={cat.id}>
-												{cat.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="flex w-full items-center gap-2">
-								<Textarea
-									ref={contextualInputRef}
-									placeholder="e.g., What challenges do you face with your current solution?"
-									value={contextualInput}
-									onChange={(e) => setContextualInput(e.target.value)}
-									onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAddContextualQuestion()}
-									className="flex-1 resize-none"
-									rows={2}
-									autoFocus
-								/>
-								<div className="flex flex-col gap-1">
+				{/* Simple Add Question Button + Regenerate control */}
+				<div className="flex flex-wrap items-start gap-3">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => {
+							setRegenerateInstructions(customInstructions)
+							setShowRegenerateDialog(true)
+						}}
+						disabled={generating}
+						className="flex items-center gap-2"
+					>
+						<RefreshCcw className="h-4 w-4" />
+						Regenerate Prompts
+					</Button>
+					<div className="min-w-[260px] flex-1">
+						{!showContextualInput ? (
+							<Button
+								onClick={() => setShowContextualInput(true)}
+								variant="outline"
+								size="sm"
+								className="border-dashed"
+							>
+								<Plus className="mr-2 h-4 w-4" />
+								Add Prompt
+							</Button>
+						) : (
+							<div>
+								<div className="flex flex-wrap items-center gap-2">
 									<Button
-										onClick={handleAddContextualQuestion}
+										onClick={() => setShowContextualInput(false)}
 										variant="outline"
 										size="sm"
-										disabled={!contextualInput.trim() || addingCustomQuestion}
-										className="h-8 w-8 p-0"
+										className="border-dashed"
 									>
-										<Check className="h-4 w-4" />
+										<Plus className="mr-2 h-4 w-4" />
+										Add Prompt
 									</Button>
-									<Button
-										onClick={() => {
-											setShowContextualInput(false)
-											setContextualInput("")
-										}}
-										variant="ghost"
-										size="sm"
-										className="h-8 w-8 p-0"
-									>
-										<X className="h-4 w-4" />
-									</Button>
+									<Select value={contextualCategory} onValueChange={setContextualCategory}>
+										<SelectTrigger className="w-48">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{questionCategories.map((cat) => (
+												<SelectItem key={cat.id} value={cat.id}>
+													{cat.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+								<div className="mt-2 flex w-full items-center gap-2">
+									<Textarea
+										ref={contextualInputRef}
+										placeholder="e.g., What challenges do you face with your current solution?"
+										value={contextualInput}
+										onChange={(e) => setContextualInput(e.target.value)}
+										onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAddContextualQuestion()}
+										className="flex-1 resize-none"
+										rows={2}
+										autoFocus
+									/>
+									<div className="flex flex-col gap-1">
+										<Button
+											onClick={handleAddContextualQuestion}
+											variant="outline"
+											size="sm"
+											disabled={!contextualInput.trim() || addingCustomQuestion}
+											className="h-8 w-8 p-0"
+										>
+											<Check className="h-4 w-4" />
+										</Button>
+										<Button
+											onClick={() => {
+												setShowContextualInput(false)
+												setContextualInput("")
+											}}
+											variant="ghost"
+											size="sm"
+											className="h-8 w-8 p-0"
+										>
+											<X className="h-4 w-4" />
+										</Button>
+									</div>
 								</div>
 							</div>
-						</div>
-					)}
+						)}
+					</div>
 				</div>
 
 				{/* Contextual Suggestions - only show when input is active */}
@@ -2294,6 +2322,35 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 							) : (
 								<div className="text-muted-foreground text-sm">No suggestions yet.</div>
 							)}
+						</div>
+					</DialogContent>
+				</Dialog>
+
+				{/* Regenerate All Dialog */}
+				<Dialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
+					<DialogContent className="sm:max-w-lg">
+						<DialogHeader>
+							<DialogTitle>Regenerate All Questions</DialogTitle>
+						</DialogHeader>
+						<div className="space-y-4">
+							<p className="text-muted-foreground text-sm">
+								Replaces existing questions with new set. Custom instructions optional.
+							</p>
+							<Textarea
+								placeholder="(Optional) e.g., Focus on technical challenges, include questions about budget constraints, prioritize workflow automation topics..."
+								value={regenerateInstructions}
+								onChange={(e) => setRegenerateInstructions(e.target.value)}
+								rows={6}
+								className="resize-none"
+							/>
+							<div className="flex justify-end gap-2">
+								<Button variant="outline" onClick={() => setShowRegenerateDialog(false)}>
+									Cancel
+								</Button>
+								<Button onClick={handleRegenerateAll} disabled={generating}>
+									{generating ? "Generating..." : "Regenerate All"}
+								</Button>
+							</div>
 						</div>
 					</DialogContent>
 				</Dialog>
@@ -2545,7 +2602,6 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							setShowingFollowupFor(question.id)
 																							setFollowupCategory(question.categoryId)
 																							setFollowupInput("")
-																							setFollowupCategory(question.categoryId)
 																						}}
 																					>
 																						<ArrowDownFromLine className="mr-2 h-4 w-4" />
@@ -2669,21 +2725,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																			<Button
 																				onClick={async () => {
 																					const trimmedInput = followupInput.trim()
-																					console.log("🔍 DEBUG: Button clicked, input:", trimmedInput)
 																					if (!trimmedInput) return
-
-																					let nextFollowup: Question | null = null
+																					setAddingCustomQuestion(true)
 																					try {
-																						console.groupCollapsed(
-																							`🧩 FOLLOWUP ADDITION [${question.id.slice(0, 8)} -> ${question.text.slice(0, 40)}]`
-																						)
-																						console.log("• mustHavesOnly:", mustHavesOnly)
-																						console.log("• existing selectedQuestionIds:", selectedQuestionIds)
-																						console.log("• base ids before add:", getBaseSelectedIds())
-																						setAddingCustomQuestion(true)
-																						console.log("🔍 DEBUG: Starting followup addition")
-
-																						// Create the follow-up question
 																						const followupQuestion: Question = {
 																							id: crypto.randomUUID(),
 																							text: trimmedInput,
@@ -2693,7 +2737,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							status: "selected",
 																							timesAnswered: 0,
 																							source: "user",
-																							isMustHave: false,
+																							isMustHave: mustHavesOnly,
 																							estimatedMinutes: estimateMinutesPerQuestion(
 																								{ categoryId: followupCategory } as Question,
 																								researchMode,
@@ -2702,115 +2746,15 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							selectedOrder: null,
 																							isSelected: true,
 																						}
-																						nextFollowup = followupQuestion
-																						console.log("🔍 DEBUG: Created followup question:", followupQuestion)
-
-																						// Insert after the current question
-																						const baseIds = getBaseSelectedIds()
-																						const currentIndex = baseIds.indexOf(question.id)
-																						console.log(
-																							"🔍 DEBUG: Current question position:",
-																							currentIndex,
-																							"in",
-																							baseIds
-																						)
-
-																						let newBaseIds =
-																							currentIndex >= 0
-																								? [
-																										...baseIds.slice(0, currentIndex + 1),
-																										followupQuestion.id,
-																										...baseIds.slice(currentIndex + 1),
-																									]
-																								: [...baseIds, followupQuestion.id]
-																						if (!newBaseIds.includes(followupQuestion.id)) {
-																							newBaseIds = [...newBaseIds, followupQuestion.id]
-																							console.warn(
-																								"⚠️ Follow-up ID missing from computed baseIds. Appending manually.",
-																								{
-																									originalBaseIds: baseIds,
-																									appendedId: followupQuestion.id,
-																									result: newBaseIds,
-																								}
-																							)
-																						}
-																						console.log("🔍 DEBUG: New baseIds:", newBaseIds)
-
-																						let updatedQuestions: Question[] = []
-																						let insertionIndexRef = -1
-																						setQuestions((prevQuestions) => {
-																							const insertionIndex = prevQuestions.findIndex(
-																								(q) => q.id === question.id
-																							)
-																							insertionIndexRef = insertionIndex
-																							const nextQuestions =
-																								insertionIndex >= 0
-																									? [
-																											...prevQuestions.slice(0, insertionIndex + 1),
-																											followupQuestion,
-																											...prevQuestions.slice(insertionIndex + 1),
-																										]
-																									: [...prevQuestions, followupQuestion]
-																							updatedQuestions = nextQuestions
-																							return nextQuestions
-																						})
-																						if (!updatedQuestions.length) {
-																							updatedQuestions = [...questions, followupQuestion]
-																							console.warn(
-																								"⚠️ FOLLOWUP fallback path triggered; using previous questions snapshot.",
-																								{
-																									fallbackCount: updatedQuestions.length,
-																								}
-																							)
-																						}
-																						console.log(
-																							"🔍 DEBUG: Updated questions count:",
-																							updatedQuestions.length,
-																							"insertionIndex:",
-																							insertionIndexRef
-																						)
-																						console.log(
-																							"🧾 FOLLOWUP UPDATED QUESTIONS SNAPSHOT",
-																							updatedQuestions.map((q, idx) => ({
-																								idx,
-																								id: q.id,
-																								textPreview: q.text.slice(0, 40),
-																								rationalePreview: q.rationale?.slice(0, 60) ?? null,
-																								status: q.status,
-																							}))
-																						)
-
-																						setHasInitialized(true)
-																						commitSelection(newBaseIds)
-																						markQuestionAsRecentlyAdded(followupQuestion.id)
-																						console.log("• selection after commit:", newBaseIds)
-																						console.log("• followup payload:", followupQuestion)
-
-																						// Prevent debounced save from racing this change
-																						suppressDeletionRef.current = true
-																						setSkipDebounce(true)
-																						console.log("🔍 DEBUG: About to save to database")
-																						await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
-																						console.log("✅ Follow-up persisted successfully")
-
+																						await insertQuestionAfter(question.id, followupQuestion)
 																						setFollowupInput("")
 																						setFollowupCategory(question.categoryId)
 																						setShowingFollowupFor(null)
 																						toast.success("Follow-up question added")
-																						console.log("DEBUG: Followup addition completed")
-
-																						window.setTimeout(() => {
-																							setSkipDebounce(false)
-																							suppressDeletionRef.current = false
-																						}, 3000) // longer timeout to prevent debounced save override
 																					} catch (error) {
 																						console.error("Error adding follow-up:", error)
-																						console.log("• followupDraft:", nextFollowup)
 																						toast.error("Failed to add follow-up question")
-																						setSkipDebounce(false)
-																						suppressDeletionRef.current = false
 																					} finally {
-																						console.groupEnd()
 																						setAddingCustomQuestion(false)
 																					}
 																				}}

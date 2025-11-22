@@ -9,6 +9,10 @@ interface UseAutoSaveOptions {
 	onSaveError?: (error: unknown) => void
 }
 
+interface SaveSectionOptions {
+	debounced?: boolean
+}
+
 export function useAutoSave({
 	projectId,
 	debounceMs = 1000,
@@ -94,7 +98,7 @@ export function useAutoSave({
 			lastQueuedRef.current = { kind: sectionKind, data: sectionData }
 			// Set new timeout
 			timeoutRef.current = setTimeout(() => {
-				saveSectionWithLatest(sectionKind, sectionData)
+				void saveSectionWithLatest(sectionKind, sectionData)
 				lastQueuedRef.current = null
 			}, debounceMs)
 		},
@@ -111,85 +115,21 @@ export function useAutoSave({
 		}
 	}, [projectId, saveSectionWithLatest])
 
-	const saveTargetOrgs = useCallback(
-		(target_orgs: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveSectionWithLatest("target_orgs", target_orgs)
-		},
-		[saveSectionWithLatest]
-	)
-
-	const saveTargetRoles = useCallback(
-		(target_roles: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveSectionWithLatest("target_roles", target_roles)
-		},
-		[saveSectionWithLatest]
-	)
-
 	// Generic save function for any project section
-	const saveProjectSection = useCallback(
-		(sectionKind: string, sectionData: unknown, debounced = false) => {
-			if (debounced) {
+	const saveSection = useCallback(
+		(sectionKind: string, sectionData: unknown, options?: SaveSectionOptions) => {
+			const shouldDebounce = options?.debounced ?? false
+			if (shouldDebounce) {
 				debouncedSave(sectionKind, sectionData)
 			} else {
-				saveSectionWithLatest(sectionKind, sectionData)
+				void saveSectionWithLatest(sectionKind, sectionData)
 			}
 		},
-		[saveSectionWithLatest, debouncedSave]
-	)
-
-	const saveResearchGoal = useCallback(
-		(research_goal: string, research_goal_details: string, debounced = true) => {
-			if (research_goal.trim()) {
-				saveProjectSection("research_goal", { research_goal, research_goal_details }, debounced)
-			}
-		},
-		[saveProjectSection]
-	)
-
-	const saveAssumptions = useCallback(
-		(assumptions: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveProjectSection("assumptions", assumptions)
-		},
-		[saveProjectSection]
-	)
-
-	const saveUnknowns = useCallback(
-		(unknowns: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveProjectSection("unknowns", unknowns)
-		},
-		[saveProjectSection]
-	)
-
-	const saveDecisionQuestions = useCallback(
-		(decision_questions: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveProjectSection("decision_questions", decision_questions)
-		},
-		[saveProjectSection]
-	)
-
-	const saveCustomInstructions = useCallback(
-		(custom_instructions: string) => {
-			if (custom_instructions.trim()) {
-				saveProjectSection("custom_instructions", custom_instructions, true)
-			}
-		},
-		[saveProjectSection]
+		[debouncedSave, saveSectionWithLatest]
 	)
 
 	return {
-		saveTargetOrgs,
-		saveTargetRoles,
-		saveResearchGoal,
-		saveAssumptions,
-		saveUnknowns,
-		saveDecisionQuestions,
-		saveCustomInstructions,
-		saveProjectSection,
+		saveSection,
 		isSaving,
 	}
 }

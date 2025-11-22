@@ -5,10 +5,30 @@ import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
+/**
+ * Parse a full name into firstname and lastname
+ * Returns { firstname, lastname } with lastname being null for single-word names
+ */
+function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
+	const trimmed = fullName.trim()
+	if (!trimmed) return { firstname: "", lastname: null }
+
+	const parts = trimmed.split(/\s+/)
+	if (parts.length === 1) {
+		return { firstname: parts[0], lastname: null }
+	}
+
+	// firstname is the first part, lastname is everything else joined
+	return {
+		firstname: parts[0],
+		lastname: parts.slice(1).join(" "),
+	}
+}
+
 export const upsertPersonTool = createTool({
 	id: "upsert-person",
 	description:
-		"Create or update a person's information including contact details, demographics, and professional info. Use this when the user provides new information about a person.",
+		"Create or update a person's basic information including contact details (email, phone), demographics, and title. Use this for simple person data updates. NOTE: To link a person to an organization (employer/affiliation), use 'manage-person-organizations' instead.",
 	inputSchema: z.object({
 		personId: z.string().optional().describe("Person ID if updating an existing person"),
 		name: z.string().optional().describe("Full name of the person"),
@@ -88,7 +108,11 @@ export const upsertPersonTool = createTool({
 			// Build the update object with only provided fields
 			const updateData: Record<string, string | null> = {}
 
-			if (name !== undefined) updateData.name = name
+			if (name !== undefined) {
+				const { firstname, lastname } = parseFullName(name)
+				updateData.firstname = firstname || null
+				updateData.lastname = lastname || null
+			}
 			if (title !== undefined) updateData.title = title
 			if (role !== undefined) updateData.role = role
 			if (company !== undefined) updateData.company = company

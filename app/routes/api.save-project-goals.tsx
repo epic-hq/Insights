@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { upsertProjectSection } from "~/features/projects/db"
+import { getSectionConfig } from "~/features/projects/section-config"
 import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
@@ -24,12 +25,6 @@ const sectionFormatters = {
 		meta: { [fieldName]: data },
 	}),
 
-	goal_with_details: (goal: string, details: string) => ({
-		// Store only the user's goal as content_md; keep details in meta
-		content_md: goal,
-		meta: { research_goal: goal, research_goal_details: details || "" },
-	}),
-
 	plain_text: (text: string, fieldName: string) => ({
 		content_md: text,
 		meta: { [fieldName]: text },
@@ -40,66 +35,53 @@ const sectionFormatters = {
 function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "project_id"> | null {
 	consola.log(`🔍 processSection: kind=${kind}, data=`, data, `type=${typeof data}, isArray=${Array.isArray(data)}`)
 
-	switch (kind) {
-		case "target_orgs":
-		case "target_roles":
-		case "decision_questions":
-			if (Array.isArray(data)) {
-				// Always save arrays, including empty ones to handle deletions
-				const formatted = sectionFormatters.array_numbered(data, kind)
-				consola.log("✅ Array section formatted:", formatted)
-				return { kind, ...formatted }
+	// Special case for settings (not in PROJECT_SECTIONS config)
+	if (kind === "settings") {
+		if (typeof data === "object" && data) {
+			return {
+				kind,
+				content_md: JSON.stringify(data),
+				meta: data as Record<string, unknown>,
 			}
-			consola.log(`❌ Expected array for ${kind}, got ${typeof data}:`, data)
-			break
-
-		case "research_goal":
-			if (typeof data === "object" && data && "research_goal" in data) {
-				const goalData = data as { research_goal: string; research_goal_details?: string }
-				if (goalData.research_goal?.trim()) {
-					const formatted = sectionFormatters.goal_with_details(
-						goalData.research_goal,
-						goalData.research_goal_details || ""
-					)
-					return { kind, ...formatted }
-				}
-			}
-			break
-
-		case "assumptions":
-		case "unknowns":
-			if (Array.isArray(data)) {
-				// Always save arrays, including empty ones to handle deletions
-				const formatted = sectionFormatters.array_spaced(data, kind)
-				consola.log("✅ Spaced array section formatted:", formatted)
-				return { kind, ...formatted }
-			}
-			consola.log(`❌ Expected array for ${kind}, got ${typeof data}:`, data)
-			break
-
-		case "custom_instructions":
-			if (typeof data === "string" && data.trim()) {
-				const formatted = sectionFormatters.plain_text(data, kind)
-				return { kind, ...formatted }
-			}
-			break
-
-		case "settings":
-			if (typeof data === "object" && data) {
-				const formatted = {
-					content_md: JSON.stringify(data),
-					meta: data,
-				}
-				return { kind, ...formatted }
-			}
-			break
-
-		default:
-			// Log unknown section types for debugging
-			console.log(`Unknown section type: ${kind}, data:`, data)
-			break
+		}
+		return null
 	}
 
+	// Get section configuration
+	const config = getSectionConfig(kind)
+	if (!config) {
+		consola.log(`❌ Unknown section type: ${kind}`)
+		return null
+	}
+
+	// Handle based on type
+	if (config.type === "string[]") {
+		if (!Array.isArray(data)) {
+			consola.log(`❌ Expected array for ${kind}, got ${typeof data}:`, data)
+			return null
+		}
+		// Always save arrays, including empty ones to handle deletions
+		const formatter =
+			config.arrayFormatter === "spaced" ? sectionFormatters.array_spaced : sectionFormatters.array_numbered
+		const formatted = formatter(data, kind)
+		consola.log(`✅ Array section formatted (${config.arrayFormatter}):`, formatted)
+		return { kind, ...formatted }
+	}
+
+	if (config.type === "string") {
+		if (typeof data !== "string") {
+			consola.log(`❌ Expected string for ${kind}, got ${typeof data}:`, data)
+			return null
+		}
+		// Allow empty strings if configured
+		if (data.trim() || config.allowEmpty) {
+			const formatted = sectionFormatters.plain_text(data, kind)
+			return { kind, ...formatted }
+		}
+		return null
+	}
+
+	consola.log(`❌ Unhandled section type for ${kind}:`, config.type)
 	return null
 }
 
@@ -258,11 +240,12 @@ export async function action({ request }: ActionFunctionArgs) {
 				consola.log(`Saving single section: ${sectionKind}`)
 				const result = await saveSingleSection(supabase, projectId, sectionKind, sectionData)
 
-				if ("error" in result) {
-					const { error } = result as { error?: string | null }
-					if (error) {
-						return Response.json({ error }, { status: 400 })
-					}
+				if ("error" in result && result.error) {
+					// Handle both string errors and Supabase error objects
+					const errorMessage =
+						typeof result.error === "string" ? result.error : result.error?.message || JSON.stringify(result.error)
+					consola.error(`❌ Save failed for ${sectionKind}:`, errorMessage)
+					return Response.json({ error: errorMessage }, { status: 400 })
 				}
 
 				// Mark that the user has visited project setup for this project (per-project flag)
@@ -285,10 +268,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const formFields = {
 					target_orgs: safeParseArray(formData.get("target_orgs") as string),
 					target_roles: safeParseArray(formData.get("target_roles") as string),
-					research_goal: {
-						research_goal: (formData.get("research_goal") as string) || "",
-						research_goal_details: (formData.get("research_goal_details") as string) || "",
-					},
+					research_goal: (formData.get("research_goal") as string) || "",
 					assumptions: safeParseArray(formData.get("assumptions") as string),
 					unknowns: safeParseArray(formData.get("unknowns") as string),
 					custom_instructions: (formData.get("custom_instructions") as string) || "",
@@ -323,8 +303,10 @@ export async function action({ request }: ActionFunctionArgs) {
 						})
 
 						if ("error" in result && result.error) {
-							consola.error(`Failed to save section ${section.kind}:`, result.error)
-							return Response.json({ error: `Failed to save ${section.kind}: ${result.error}` }, { status: 400 })
+							const errorMessage =
+								typeof result.error === "string" ? result.error : result.error?.message || JSON.stringify(result.error)
+							consola.error(`Failed to save section ${section.kind}:`, errorMessage)
+							return Response.json({ error: `Failed to save ${section.kind}: ${errorMessage}` }, { status: 400 })
 						}
 
 						results.push(result)

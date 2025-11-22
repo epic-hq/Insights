@@ -101,7 +101,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	}
 
 	// Handle update
-	const name = formData.get("name") as string
+	const firstname = formData.get("firstname") as string
+	const lastname = formData.get("lastname") as string
 	const description = formData.get("description") as string
 	const segment = formData.get("segment") as string
 	const image_url = formData.get("image_url") as string
@@ -115,8 +116,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const newFacetSynonyms = formData.get("newFacetSynonyms")?.toString().trim() ?? ""
 	const newFacetNotes = formData.get("newFacetNotes")?.toString().trim() ?? ""
 
-	if (!name?.trim()) {
-		return { error: "Name is required" }
+	if (!firstname?.trim()) {
+		return { error: "First name is required" }
 	}
 
 	try {
@@ -127,7 +128,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			data: {
-				name: name.trim(),
+				firstname: firstname.trim(),
+				lastname: lastname?.trim() || null,
 				description: description?.trim() || null,
 				segment: segment?.trim() || null,
 				image_url: image_url?.trim() || null,
@@ -290,17 +292,30 @@ export default function EditPerson() {
 			</div>
 
 			<Form method="post" className="space-y-6">
-				<div>
-					<Label htmlFor="name">Name *</Label>
-					<Input
-						id="name"
-						name="name"
-						type="text"
-						required
-						defaultValue={person.name || ""}
-						placeholder="Enter person's name"
-						className="mt-1"
-					/>
+				<div className="grid gap-4 sm:grid-cols-2">
+					<div>
+						<Label htmlFor="firstname">First Name *</Label>
+						<Input
+							id="firstname"
+							name="firstname"
+							type="text"
+							required
+							defaultValue={person.firstname || ""}
+							placeholder="First name"
+							className="mt-1"
+						/>
+					</div>
+					<div>
+						<Label htmlFor="lastname">Last Name</Label>
+						<Input
+							id="lastname"
+							name="lastname"
+							type="text"
+							defaultValue={person.lastname || ""}
+							placeholder="Last name"
+							className="mt-1"
+						/>
+					</div>
 				</div>
 
 				<div>

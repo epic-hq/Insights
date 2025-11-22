@@ -1,4 +1,4 @@
-import type { Decorator } from "@storybook/react"
+import type { Decorator } from "@storybook/react-vite"
 import React from "react"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
