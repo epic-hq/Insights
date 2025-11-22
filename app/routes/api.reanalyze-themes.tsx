@@ -316,19 +316,72 @@ export async function action({ request }: ActionFunctionArgs) {
 			evidenceFacetKinds,
 		}
 
-		const payload = {
-			metadata: analysisMetadata,
-			interview,
-			fullTranscript,
-			userCustomInstructions: customInstructions ?? undefined,
-			evidenceResult,
-			analysisJobId: analysisJob.id,
-		}
+		// Check if we should use the v2 modular workflow
+		const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
 
-		const handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>(
-			"interview.analyze-themes-and-persona",
-			payload
-		)
+		let handle: { id: string }
+
+		if (useV2Workflow) {
+			// Use v2 orchestrator with resumeFrom: "insights"
+			consola.info("Using v2 orchestrator with resumeFrom: 'insights'")
+
+			// Generate fresh presigned URL from R2 key if needed
+			let mediaUrlForTask = interview.media_url || ""
+			if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
+				const { createR2PresignedUrl } = await import("~/utils/r2.server")
+				const presigned = createR2PresignedUrl({
+					key: mediaUrlForTask,
+					expiresInSeconds: 24 * 60 * 60, // 24 hours
+				})
+				if (presigned) {
+					mediaUrlForTask = presigned.url
+					consola.log(`Generated presigned URL for theme reprocessing: ${interviewId}`)
+				}
+			}
+
+			// Store evidence units in workflow state so v2 orchestrator can use them
+			await admin
+				.from("analysis_jobs")
+				.update({
+					workflow_state: {
+						interviewId,
+						evidenceIds,
+						evidenceUnits: validatedEvidenceUnits,
+						personId: primaryPersonId,
+						completedSteps: ["upload", "evidence"],
+						currentStep: "insights",
+						lastUpdated: new Date().toISOString(),
+					} as any,
+				})
+				.eq("id", analysisJob.id)
+
+			handle = await tasks.trigger("interview.v2.orchestrator", {
+				analysisJobId: analysisJob.id,
+				metadata: analysisMetadata,
+				transcriptData: sanitizedTranscript,
+				mediaUrl: mediaUrlForTask,
+				existingInterviewId: interviewId,
+				userCustomInstructions: customInstructions ?? undefined,
+				resumeFrom: "insights", // Skip upload/transcription/evidence, start from insights
+			})
+		} else {
+			// Use v1 task (legacy)
+			consola.info("Using v1 analyze-themes-and-persona task")
+
+			const payload = {
+				metadata: analysisMetadata,
+				interview,
+				fullTranscript,
+				userCustomInstructions: customInstructions ?? undefined,
+				evidenceResult,
+				analysisJobId: analysisJob.id,
+			}
+
+			handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>(
+				"interview.analyze-themes-and-persona",
+				payload
+			)
+		}
 
 		await admin
 			.from("analysis_jobs")
@@ -339,7 +392,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			})
 			.eq("id", analysisJob.id)
 
-		consola.info(`Re-analyze themes triggered for interview ${interviewId}: ${handle.id}`)
+		consola.info(`Re-analyze themes triggered for interview ${interviewId}: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`)
 		return Response.json({ success: true, runId: handle.id })
 	} catch (error) {
 		consola.error("Re-analyze themes API error:", error)

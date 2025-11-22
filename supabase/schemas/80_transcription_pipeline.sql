@@ -21,7 +21,7 @@ create table upload_jobs (
   updated_at timestamptz default now()
 );
 
--- Analysis jobs queue - handles BAML insight extraction  
+-- Analysis jobs queue - handles BAML insight extraction
 create table analysis_jobs (
   id uuid primary key default gen_random_uuid(),
   interview_id uuid not null references interviews(id) on delete cascade,
@@ -33,6 +33,13 @@ create table analysis_jobs (
   status job_status not null default 'pending',
   status_detail text,
   trigger_run_id text,
+
+  -- V2 modular workflow fields
+  workflow_state jsonb,      -- Full workflow state for resume capability
+  completed_steps text[],    -- Array of completed step names
+  current_step text,         -- Current workflow step
+  evidence_count int,        -- Number of evidence units extracted
+
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -70,24 +77,30 @@ create policy "Users can update upload jobs for their interviews" on upload_jobs
 create policy "Users can view analysis jobs for their interviews" on analysis_jobs
   for select using (
     interview_id in (
-      select id from interviews 
-      where account_id = auth.uid()
+      select id from interviews
+      where account_id in (
+        select account_id from accounts.account_user where user_id = auth.uid()
+      )
     )
   );
 
 create policy "Users can insert analysis jobs for their interviews" on analysis_jobs
   for insert with check (
     interview_id in (
-      select id from interviews 
-      where account_id = auth.uid()
+      select id from interviews
+      where account_id in (
+        select account_id from accounts.account_user where user_id = auth.uid()
+      )
     )
   );
 
 create policy "Users can update analysis jobs for their interviews" on analysis_jobs
   for update using (
     interview_id in (
-      select id from interviews 
-      where account_id = auth.uid()
+      select id from interviews
+      where account_id in (
+        select account_id from accounts.account_user where user_id = auth.uid()
+      )
     )
   );
 

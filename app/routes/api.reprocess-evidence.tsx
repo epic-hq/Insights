@@ -81,36 +81,72 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			consola.info("Triggering evidence extraction directly (skipping transcription)")
 
-			// Extract the necessary fields from transcript_formatted
-			const transcriptFormatted = interview.transcript_formatted as any
-			const language = transcriptFormatted?.language || transcriptFormatted?.detected_language || "en"
+			// Check if we should use the v2 modular workflow
+			const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
 
-			// Get speaker transcripts with timing
-			const speakerTranscriptsRaw = (formattedTranscriptData.speaker_transcripts ?? []) as any[]
-			const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
-				? speakerTranscriptsRaw.map((u: any) => ({
-						speaker: u.speaker ?? "",
-						text: u.text ?? "",
-						start: u.start ?? null,
-						end: u.end ?? null,
-					}))
-				: []
+			let handle: { id: string }
 
-			consola.info(` Passing ${speakerTranscripts.length} speaker utterances with timing to AI for reprocessing`)
+			if (useV2Workflow) {
+				// Use v2 orchestrator with resumeFrom: "evidence"
+				consola.info("Using v2 orchestrator with resumeFrom: 'evidence'")
 
-			const handle = await tasks.trigger<typeof extractEvidenceAndPeopleTask>("interview.extract-evidence-and-people", {
-				interview: interview as any,
-				transcriptData: formattedTranscriptData as any,
-				fullTranscript: "", // Legacy field, not used in AI extraction
-				language,
-				metadata,
-				analysisJobId: analysisJob.id,
-				userCustomInstructions: null,
-			})
+				// Generate fresh presigned URL from R2 key if needed
+				let mediaUrlForTask = interview.media_url || ""
+				if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
+					const { createR2PresignedUrl } = await import("~/utils/r2.server")
+					const presigned = createR2PresignedUrl({
+						key: mediaUrlForTask,
+						expiresInSeconds: 24 * 60 * 60, // 24 hours
+					})
+					if (presigned) {
+						mediaUrlForTask = presigned.url
+						consola.log(`Generated presigned URL for evidence reprocessing: ${interviewId}`)
+					}
+				}
+
+				handle = await tasks.trigger("interview.v2.orchestrator", {
+					analysisJobId: analysisJob.id,
+					metadata,
+					transcriptData: formattedTranscriptData as any,
+					mediaUrl: mediaUrlForTask,
+					existingInterviewId: interviewId,
+					resumeFrom: "evidence", // Skip upload/transcription, start from evidence extraction
+				})
+			} else {
+				// Use v1 task (legacy)
+				consola.info("Using v1 extract-evidence-and-people task")
+
+				// Extract the necessary fields from transcript_formatted
+				const transcriptFormatted = interview.transcript_formatted as any
+				const language = transcriptFormatted?.language || transcriptFormatted?.detected_language || "en"
+
+				// Get speaker transcripts with timing
+				const speakerTranscriptsRaw = (formattedTranscriptData.speaker_transcripts ?? []) as any[]
+				const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
+					? speakerTranscriptsRaw.map((u: any) => ({
+							speaker: u.speaker ?? "",
+							text: u.text ?? "",
+							start: u.start ?? null,
+							end: u.end ?? null,
+						}))
+					: []
+
+				consola.info(` Passing ${speakerTranscripts.length} speaker utterances with timing to AI for reprocessing`)
+
+				handle = await tasks.trigger<typeof extractEvidenceAndPeopleTask>("interview.extract-evidence-and-people", {
+					interview: interview as any,
+					transcriptData: formattedTranscriptData as any,
+					fullTranscript: "", // Legacy field, not used in AI extraction
+					language,
+					metadata,
+					analysisJobId: analysisJob.id,
+					userCustomInstructions: null,
+				})
+			}
 
 			await admin.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
 
-			consola.info(`Evidence reprocessing triggered: ${handle.id}`)
+			consola.info(`Evidence reprocessing triggered: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`)
 
 			return Response.json({ success: true, runId: handle.id })
 		} catch (e) {

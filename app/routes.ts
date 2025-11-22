@@ -173,6 +173,7 @@ const routes = [
 	route("api/teams/create", "./routes/api.teams.create.tsx"),
 	route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
 	route("api.reanalyze-themes", "./routes/api.reanalyze-themes.tsx"),
+	route("api/cancel-analysis", "./routes/api.cancel-analysis.tsx"),
 	route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
 
 	// Lens architecture test routes

@@ -1,3 +1,4 @@
+import { runs } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server"
@@ -40,23 +41,29 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// Check if the analysis job is in a cancellable state
-		const cancellableStatuses = ["pending", "in_progress"]
+		const cancellableStatuses = ["pending", "in_progress", "queued"]
 		if (!cancellableStatuses.includes(analysisJob.status)) {
 			return Response.json({ error: "Analysis job is not in a cancellable state" }, { status: 400 })
 		}
 
-		// TODO: Call Trigger.dev API to cancel the run
-		// For now, we'll just update the database status
-		// This needs to be implemented once we confirm Trigger.dev cancel API
-
 		consola.info(`Cancelling analysis run ${runId} for job ${analysisJobId}`)
 
-		// Update analysis job status to cancelled (using error status since cancelled is not in enum)
+		// Cancel the Trigger.dev run
+		try {
+			await runs.cancel(runId)
+			consola.info(`Successfully canceled Trigger.dev run ${runId}`)
+		} catch (cancelError) {
+			consola.warn(`Failed to cancel Trigger.dev run:`, cancelError)
+			// Continue anyway to mark job as canceled in our database
+		}
+
+		// Update analysis job status to canceled
 		const { error: updateError } = await adminClient
 			.from("analysis_jobs" as any)
 			.update({
-				status: "error",
-				status_detail: "Cancelled by user",
+				status: "canceled",
+				status_detail: "Canceled by user",
+				last_error: "Analysis canceled by user",
 				updated_at: new Date().toISOString(),
 			})
 			.eq("id", analysisJobId)
@@ -66,11 +73,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Failed to update analysis job" }, { status: 500 })
 		}
 
-		// Update interview status back to ready (or appropriate status)
+		// Update interview status to error
 		const { error: interviewUpdateError } = await adminClient
 			.from("interviews" as any)
 			.update({
-				status: "ready", // Or whatever the previous status was
+				status: "error",
 				updated_at: new Date().toISOString(),
 			})
 			.eq("id", analysisJob.interview_id)

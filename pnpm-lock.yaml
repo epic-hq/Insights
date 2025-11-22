@@ -149,14 +149,14 @@ importers:
         specifier: 8.21.3
         version: 8.21.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@trigger.dev/build':
-        specifier: 4.1.0
-        version: 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
+        specifier: 4.1.1
+        version: 4.1.1(magicast@0.3.5)(typescript@5.8.3)
       '@trigger.dev/react-hooks':
-        specifier: 4.1.0
-        version: 4.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.3)
+        specifier: 4.1.1
+        version: 4.1.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.3)
       '@trigger.dev/sdk':
-        specifier: 4.1.0
-        version: 4.1.0(ai@5.0.87(zod@4.1.11))(typescript@5.8.3)(zod@4.1.11)
+        specifier: 4.1.1
+        version: 4.1.1(ai@5.0.87(zod@4.1.11))(typescript@5.8.3)(zod@4.1.11)
       '@types/jsdom':
         specifier: 27.0.0
         version: 27.0.0
@@ -2425,6 +2425,9 @@ packages:
   '@posthog/core@1.5.2':
     resolution: {integrity: sha512-iedUP3EnOPPxTA2VaIrsrd29lSZnUV+ZrMnvY56timRVeZAXoYCkmjfIs3KBAsF8OUT5h1GXLSkoQdrV0r31OQ==}
 
+  '@prisma/config@6.19.0':
+    resolution: {integrity: sha512-zwCayme+NzI/WfrvFEtkFhhOaZb/hI+X8TTjzjJ252VbPxAl2hWHK5NMczmnG9sXck2lsXrxIZuK524E25UNmg==}
+
   '@protobuf-ts/runtime@2.11.1':
     resolution: {integrity: sha512-KuDaT1IfHkugM2pyz+FwiY80ejWrkH1pAtOBOZFuR6SXEFTsnb/jiQWQ1rCIrcKx2BtyxnxW6BWwsVSA/Ie+WQ==}
 
@@ -3867,12 +3870,20 @@ packages:
     resolution: {integrity: sha512-1GDBv2D//CImAQ7fU253olxZyUzO1QGselRmW5gjmY1zkdshdI09F1vkDT79wut59iqzxbc+WMi3fBhTmAJGZQ==}
     engines: {node: '>=18.20.0'}
 
+  '@trigger.dev/build@4.1.1':
+    resolution: {integrity: sha512-WGVod5JHIBW5ds0Nr4QbVTYNCRKj0bp62xuxcpZimzlHrIK17JDCHylvfqczua7P6k78x88FlvhwcdUvQvBuqQ==}
+    engines: {node: '>=18.20.0'}
+
   '@trigger.dev/core@4.1.0':
     resolution: {integrity: sha512-CS2wMGw1ZR5moHUe0xIOqy9LUGm0wBo4FWEzptSZvyoLvfoP3bnFyR24bzNHqFgb6UGGDxURyeZGuQsKT04TNg==}
     engines: {node: '>=18.20.0'}
 
-  '@trigger.dev/react-hooks@4.1.0':
-    resolution: {integrity: sha512-QJtHnxVHiVdBOc+oROQoCvrvKj4tpd2rPezHrqLIFX6Qvh7cr2wubwlZRJFiw/mmXKl0J6muOR4AlqM1D1lnEA==}
+  '@trigger.dev/core@4.1.1':
+    resolution: {integrity: sha512-j17zAwBqzPmNqg4SRLyA33Q9z2o67+EyRU3w7CiX9kfwcjzdN7pbR4QYcbe1Jf/oIXkU4oTBpppj+GN41eYnuw==}
+    engines: {node: '>=18.20.0'}
+
+  '@trigger.dev/react-hooks@4.1.1':
+    resolution: {integrity: sha512-JykYqaCMuLkpTL7CUc0O1sZQkRExFvUWjkWNC+6MzLIuHCxvX/d/sCOpQmjdDzt78rkSkZBRV/YIK7IHPx/Fjg==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       react: 19.2.0
@@ -3899,8 +3910,8 @@ packages:
       valibot:
         optional: true
 
-  '@trigger.dev/sdk@4.1.0':
-    resolution: {integrity: sha512-+HJb/1TpBpfFwMYdPveGJ6876xSuLyjnXKjOT+8VeZuHWptlIbc/2vVK/Dj9QBIWB5InFU0k+6JlvCrEomfuLg==}
+  '@trigger.dev/sdk@4.1.1':
+    resolution: {integrity: sha512-wgO6zVW/TG+33F/Mxidn4rnkq7E0kZlBYwG8r1E3twDbvewtqAEVOtkuKfN13Q1sqryDbqCzpNvlLFe6gzNCmw==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       ai: ^4.2.0 || ^5.0.0
@@ -4588,6 +4599,14 @@ packages:
       magicast:
         optional: true
 
+  c12@3.1.0:
+    resolution: {integrity: sha512-uWoS8OU1MEIsOv8p/5a82c3H31LsWVR5qiyXVfBNOzfffjUWtPnhAb4BYI2uG2HfGmZmFjCtui5XNWaps+iFuw==}
+    peerDependencies:
+      magicast: ^0.3.5
+    peerDependenciesMeta:
+      magicast:
+        optional: true
+
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
     engines: {node: '>=8'}
@@ -5178,6 +5197,10 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
+  deepmerge-ts@7.1.5:
+    resolution: {integrity: sha512-HOJkrhaYsweh+W+e74Yn7YStZOilkoPb6fycpwNLKzSPtruFs48nYis0zy5yJz1+ktUhHxoRDJ27RQAWLIJVJw==}
+    engines: {node: '>=16.0.0'}
+
   deepmerge@4.3.1:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
     engines: {node: '>=0.10.0'}
@@ -5731,6 +5754,10 @@ packages:
 
   giget@1.2.5:
     resolution: {integrity: sha512-r1ekGw/Bgpi3HLV3h1MRBIlSAdHoIMklpaQ3OQLFcRw9PwAj2rqigvIbg+dBUI51OxVI2jsEtDywDBjSiuf7Ug==}
+    hasBin: true
+
+  giget@2.0.0:
+    resolution: {integrity: sha512-L5bGsVkxJbJgdnwyuheIunkGatUF/zssUoxxjACCseZYAVbaqdh9Tsmmlkl8vYan09H7sbvKt4pS8GqKLBrEzA==}
     hasBin: true
 
   git-last-commit@1.0.1:
@@ -7027,6 +7054,9 @@ packages:
 
   ohash@1.1.6:
     resolution: {integrity: sha512-TBu7PtV8YkAZn0tSxobKY2n2aAQva936lhRrj6957aDaCf9IEtqsKbgMzXE/F/sjqYOwmrukeORHNLe5glk7Cg==}
+
+  ohash@2.0.11:
+    resolution: {integrity: sha512-RdR9FQrFwNBNXAr4GixM8YaRZRJ5PUWbKYbE5eOsrwAjJW0q2REGcf79oYPsLyskQCZG1PLN+S/K1V00joZAoQ==}
 
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
@@ -11252,6 +11282,15 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
 
+  '@prisma/config@6.19.0(magicast@0.3.5)':
+    dependencies:
+      c12: 3.1.0(magicast@0.3.5)
+      deepmerge-ts: 7.1.5
+      effect: 3.18.4
+      empathic: 2.0.0
+    transitivePeerDependencies:
+      - magicast
+
   '@protobuf-ts/runtime@2.11.1': {}
 
   '@protobufjs/aspromise@1.1.2': {}
@@ -12658,6 +12697,22 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@trigger.dev/build@4.1.1(magicast@0.3.5)(typescript@5.8.3)':
+    dependencies:
+      '@prisma/config': 6.19.0(magicast@0.3.5)
+      '@trigger.dev/core': 4.1.1(typescript@5.8.3)
+      mlly: 1.8.0
+      pkg-types: 1.3.1
+      resolve: 1.22.10
+      tinyglobby: 0.2.15
+      tsconfck: 3.1.3(typescript@5.8.3)
+    transitivePeerDependencies:
+      - bufferutil
+      - magicast
+      - supports-color
+      - typescript
+      - utf-8-validate
+
   '@trigger.dev/core@4.1.0(supports-color@10.2.2)(typescript@5.8.3)':
     dependencies:
       '@bugsnag/cuid': 3.2.1
@@ -12699,9 +12754,50 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/react-hooks@4.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.3)':
+  '@trigger.dev/core@4.1.1(typescript@5.8.3)':
     dependencies:
-      '@trigger.dev/core': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
+      '@bugsnag/cuid': 3.2.1
+      '@electric-sql/client': 1.0.14
+      '@google-cloud/precise-date': 4.0.0
+      '@jsonhero/path': 1.0.21
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/api-logs': 0.203.0
+      '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-logs-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation': 0.203.0(@opentelemetry/api@1.9.0)(supports-color@10.2.2)
+      '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-logs': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/semantic-conventions': 1.36.0
+      '@s2-dev/streamstore': 0.17.3(typescript@5.8.3)
+      dequal: 2.0.3
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      execa: 8.0.1
+      humanize-duration: 3.33.1
+      jose: 5.10.0
+      nanoid: 3.3.8
+      prom-client: 15.1.3
+      socket.io: 4.7.4(supports-color@10.2.2)
+      socket.io-client: 4.7.5(supports-color@10.2.2)
+      std-env: 3.10.0
+      superjson: 2.2.2
+      tinyexec: 0.3.2
+      uncrypto: 0.1.3
+      zod: 3.25.76
+      zod-error: 1.5.0
+      zod-validation-error: 1.5.0(zod@3.25.76)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
+
+  '@trigger.dev/react-hooks@4.1.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.3)':
+    dependencies:
+      '@trigger.dev/core': 4.1.1(typescript@5.8.3)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       swr: 2.3.6(react@19.2.0)
@@ -12726,11 +12822,11 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/sdk@4.1.0(ai@5.0.87(zod@4.1.11))(typescript@5.8.3)(zod@4.1.11)':
+  '@trigger.dev/sdk@4.1.1(ai@5.0.87(zod@4.1.11))(typescript@5.8.3)(zod@4.1.11)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.36.0
-      '@trigger.dev/core': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
+      '@trigger.dev/core': 4.1.1(typescript@5.8.3)
       chalk: 5.6.2
       cronstrue: 2.59.0
       debug: 4.4.3(supports-color@10.2.2)
@@ -13566,6 +13662,23 @@ snapshots:
     optionalDependencies:
       magicast: 0.3.5
 
+  c12@3.1.0(magicast@0.3.5):
+    dependencies:
+      chokidar: 4.0.3
+      confbox: 0.2.2
+      defu: 6.1.4
+      dotenv: 16.6.1
+      exsolve: 1.0.7
+      giget: 2.0.0
+      jiti: 2.6.1
+      ohash: 2.0.11
+      pathe: 2.0.3
+      perfect-debounce: 1.0.0
+      pkg-types: 2.3.0
+      rc9: 2.1.2
+    optionalDependencies:
+      magicast: 0.3.5
+
   cac@6.7.14: {}
 
   call-bind-apply-helpers@1.0.2:
@@ -14164,6 +14277,8 @@ snapshots:
   deep-eql@5.0.2: {}
 
   deep-is@0.1.4: {}
+
+  deepmerge-ts@7.1.5: {}
 
   deepmerge@4.3.1: {}
 
@@ -14856,6 +14971,15 @@ snapshots:
       nypm: 0.5.4
       pathe: 2.0.3
       tar: 6.2.1
+
+  giget@2.0.0:
+    dependencies:
+      citty: 0.1.6
+      consola: 3.4.2
+      defu: 6.1.4
+      node-fetch-native: 1.6.7
+      nypm: 0.6.0
+      pathe: 2.0.3
 
   git-last-commit@1.0.1: {}
 
@@ -16352,6 +16476,8 @@ snapshots:
   object-treeify@1.1.33: {}
 
   ohash@1.1.6: {}
+
+  ohash@2.0.11: {}
 
   on-exit-leak-free@2.1.2: {}
 

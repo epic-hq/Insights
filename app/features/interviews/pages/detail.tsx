@@ -1382,9 +1382,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{showProcessingBanner && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<div>
+								<div className="flex-1">
 									<p className="font-semibold text-primary text-xs uppercase tracking-wide">Analysis in progress</p>
 									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
+									{progressInfo.currentStep && progressInfo.completedSteps && progressInfo.completedSteps.length > 0 && (
+										<p className="mt-1 text-muted-foreground text-xs">
+											Completed: {progressInfo.completedSteps.join(" → ")}
+										</p>
+									)}
 								</div>
 								<div className="flex flex-col items-end gap-2">
 									<div className="flex items-center gap-3">
@@ -1396,27 +1401,51 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										</div>
 										<span className="font-medium text-primary text-sm">{progressPercent}%</span>
 									</div>
-									{analysisState?.trigger_run_id && (
-										<button
-											type="button"
-											onClick={() => {
-												if (confirm("Are you sure you want to cancel this analysis? This action cannot be undone.")) {
-													try {
-														fetcher.submit(
-															{ runId: analysisState.trigger_run_id, analysisJobId: analysisState.id },
-															{ method: "post", action: "/api.cancel-analysis-run" }
-														)
-													} catch (e) {
-														consola.error("Cancel analysis submit failed", e)
+									<div className="flex items-center gap-2">
+										{/* Cancel button - show if we have trigger run ID OR if interview is processing */}
+										{(progressInfo.canCancel && progressInfo.triggerRunId && progressInfo.analysisJobId) ||
+											(isProcessing && (progressInfo.analysisJobId || interview.id)) ? (
+											<button
+												type="button"
+												onClick={() => {
+													if (confirm("Are you sure you want to cancel this analysis? This action cannot be undone.")) {
+														try {
+															fetcher.submit(
+																{
+																	runId: progressInfo.triggerRunId || "",
+																	analysisJobId: progressInfo.analysisJobId || "",
+																	interview_id: interview.id
+																},
+																{ method: "post", action: "/api/cancel-analysis" }
+															)
+														} catch (e) {
+															consola.error("Cancel analysis submit failed", e)
+														}
 													}
-												}
-											}}
-											disabled={fetcher.state !== "idle"}
-											className="inline-flex items-center gap-2 border border-red-500/20 bg-red-50 px-3 py-1.5 font-medium text-red-700 text-xs hover:bg-red-100 disabled:opacity-60"
-										>
-											{fetcher.state !== "idle" ? "Cancelling..." : "Cancel"}
-										</button>
-									)}
+												}}
+												disabled={fetcher.state !== "idle"}
+												className="inline-flex items-center gap-2 rounded-md border border-red-500/20 bg-red-50 px-3 py-1.5 font-medium text-red-700 text-xs transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+											>
+												{fetcher.state !== "idle" ? "Canceling..." : "Cancel Analysis"}
+											</button>
+										) : null}
+										{analysisState?.trigger_run_id && (
+											<button
+												type="button"
+												onClick={() => {
+													if (analysisState.trigger_run_id) {
+														window.open(
+															`https://cloud.trigger.dev/orgs/${process.env.TRIGGER_ORG_ID}/projects/${process.env.TRIGGER_PROJECT_ID}/runs/${analysisState.trigger_run_id}`,
+															"_blank"
+														)
+													}
+												}}
+												className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-xs transition-colors hover:bg-muted"
+											>
+												View in Trigger.dev →
+											</button>
+										)}
+									</div>
 								</div>
 							</div>
 							{isRealtime ? (

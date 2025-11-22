@@ -9,10 +9,19 @@ import { getLangfuseClient } from "~/lib/langfuse.server"
 type AdminClient = SupabaseClient<Database>
 
 const INTERVIEW_PIPELINE_TASKS = [
+	// V1 tasks
 	"interview.upload-media-and-transcribe",
 	"interview.extract-evidence-and-people",
 	"interview.analyze-themes-and-persona",
 	"interview.attribute-answers",
+	// V2 modular tasks
+	"interview.v2.orchestrator",
+	"interview.v2.upload-and-transcribe",
+	"interview.v2.extract-evidence",
+	"interview.v2.generate-insights",
+	"interview.v2.assign-personas",
+	"interview.v2.attribute-answers",
+	"interview.v2.finalize-interview",
 ] as const
 
 export async function createRunAccessToken(runId: string): Promise<string | null> {
@@ -170,16 +179,37 @@ export async function createAndProcessAnalysisJob({
 		const triggerEnv = process.env.TRIGGER_SECRET_KEY?.startsWith("tr_dev_") ? "dev" : "prod"
 		consola.info(`Triggering interview pipeline in ${triggerEnv} environment`, { runId: analysisJob.id })
 
-		consola.log("About to trigger uploadMediaAndTranscribeTask...")
-		const handle = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
-			analysisJobId: analysisJob.id,
-			metadata,
-			transcriptData,
-			mediaUrl: mediaUrl || interview.media_url || "",
-			existingInterviewId: interviewId,
-			userCustomInstructions: customInstructions,
-		})
-		consola.log("Trigger.dev task triggered successfully with handle:", handle.id)
+		// Check if we should use the v2 modular workflow
+		const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
+
+		consola.log(
+			`About to trigger ${useV2Workflow ? "v2 orchestrator" : "v1 uploadMediaAndTranscribeTask"}...`
+		)
+
+		const handle = useV2Workflow
+			? await tasks.trigger("interview.v2.orchestrator", {
+					analysisJobId: analysisJob.id,
+					metadata,
+					transcriptData,
+					mediaUrl: mediaUrl || interview.media_url || "",
+					existingInterviewId: interviewId,
+					userCustomInstructions: customInstructions,
+			  })
+			: await tasks.trigger<typeof uploadMediaAndTranscribeTask>(
+					"interview.upload-media-and-transcribe",
+					{
+						analysisJobId: analysisJob.id,
+						metadata,
+						transcriptData,
+						mediaUrl: mediaUrl || interview.media_url || "",
+						existingInterviewId: interviewId,
+						userCustomInstructions: customInstructions,
+					}
+			  )
+
+		consola.log(
+			`Trigger.dev task triggered successfully with handle: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`
+		)
 
 		await adminClient.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
 

@@ -124,16 +124,20 @@ DECLARE
     persona_record RECORD;
     relevance_score_var DECIMAL(3,2);
 BEGIN
-    -- Find personas for people involved in the interview that generated this insight
+    -- Find personas for people involved in interviews that have evidence linked to this theme
+    -- Themes don't have interview_id - they're linked via theme_evidence -> evidence -> interview
     FOR persona_record IN
         SELECT DISTINCT pp.persona_id, p.name as persona
-        FROM themes i
-        JOIN interviews iv ON i.interview_id = iv.id
+        FROM themes t
+        -- Link through theme_evidence junction to get to interviews
+        JOIN theme_evidence te ON t.id = te.theme_id
+        JOIN evidence e ON te.evidence_id = e.id
+        JOIN interviews iv ON e.interview_id = iv.id
         JOIN interview_people ip ON iv.id = ip.interview_id
         JOIN people pe ON ip.person_id = pe.id
         JOIN people_personas pp ON pe.id = pp.person_id
         JOIN personas p ON pp.persona_id = p.id AND pe.account_id = p.account_id
-        WHERE i.id = p_insight_id
+        WHERE t.id = p_insight_id
         AND pp.persona_id IS NOT NULL
     LOOP
         -- Calculate relevance score (simplified - could be more sophisticated)
