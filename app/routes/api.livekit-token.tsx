@@ -27,14 +27,20 @@ export async function action({ request }: ActionFunctionArgs) {
         }
 
         let projectId: string | null = null
+        let accountId: string | null = null
         try {
-                const payload = (await request.json()) as { projectId?: string | null }
+                const payload = (await request.json()) as { projectId?: string | null; accountId?: string | null }
                 projectId = payload.projectId ?? null
+                accountId = payload.accountId ?? null
         } catch {
                 projectId = null
+                accountId = null
         }
 
-        const roomName = `u_${user.sub}_${randomUUID()}`
+        // Encode project context in room name for agent access
+        const roomName = projectId && accountId
+                ? `p_${projectId}_a_${accountId}_u_${user.sub}_${randomUUID()}`
+                : `u_${user.sub}_${randomUUID()}`
         const ttlSeconds = Number.isFinite(Number(LIVEKIT_TTL_SECONDS))
                 ? Math.min(Number(LIVEKIT_TTL_SECONDS), 3600)
                 : 300
@@ -58,6 +64,8 @@ export async function action({ request }: ActionFunctionArgs) {
                 roomName,
                 userId: user.sub,
                 projectId,
+                accountId,
+                hasProjectContext: !!(projectId && accountId),
                 ttlSeconds,
         })
 

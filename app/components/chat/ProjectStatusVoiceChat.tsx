@@ -30,15 +30,22 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
         }, [])
 
         const startVoiceChat = async () => {
-                if (!projectId || !accountId) return
+                console.log("[VoiceChat] Starting voice chat", { projectId, accountId, hasProjectId: !!projectId, hasAccountId: !!accountId })
+                if (!projectId || !accountId) {
+                        console.warn("[VoiceChat] Missing required context", { projectId, accountId })
+                        return
+                }
                 setIsLoading(true)
                 setError(null)
                 try {
+                        console.log("[VoiceChat] Requesting LiveKit token", { projectId, accountId })
                         const response = await fetch(`/api.livekit-token`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ projectId, accountId }),
                         })
+
+                        console.log("[VoiceChat] Token response status", { status: response.status, ok: response.ok })
 
                         if (!response.ok) {
                                 const payload = await response.json().catch(() => ({}))
@@ -46,9 +53,11 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
                         }
 
                         const payload = (await response.json()) as LiveKitSession
+                        console.log("[VoiceChat] Received session", { roomName: payload.roomName, url: payload.url, identity: payload.identity })
                         setSession(payload)
                         setIsOpen(true)
                 } catch (tokenError) {
+                        console.error("[VoiceChat] Error starting voice chat", tokenError)
                         const message = tokenError instanceof Error ? tokenError.message : "Unable to request LiveKit token"
                         setError(message)
                 } finally {

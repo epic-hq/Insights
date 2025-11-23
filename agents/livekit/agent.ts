@@ -13,18 +13,47 @@ import * as livekit from "@livekit/agents-plugin-livekit"
 import * as deepgram from "@livekit/agents-plugin-deepgram"
 import * as openai from "@livekit/agents-plugin-openai"
 import * as silero from "@livekit/agents-plugin-silero"
+import { createMastraTools } from './mastra-integration'
 
 const resolvedLivekitUrl = process.env.LIVEKIT_URL || process.env.LIVEKIT_SFU_URL
 
 class Assistant extends voice.Agent {
-	constructor() {
+	public projectId: string | null = null
+	public accountId: string | null = null
+	public userId: string | null = null
+
+	constructor(tools: any = {}) {
+		const hasTools = Object.keys(tools).length > 0
+		const toolList = Object.keys(tools).join(", ")
+
+		consola.info("Assistant constructor", {
+			hasTools,
+			toolCount: Object.keys(tools).length,
+			toolNames: toolList
+		})
+
 		super({
-			instructions:
-				`You are a knowledgeable researcher for Upsight.
+			instructions: hasTools
+				? `You are a knowledgeable researcher for Upsight.
+				Keep replies short, casual, and actionable. Do not overexplain. Talk to me like a friend using 10th grade english.
+				use an island intonation.
+
+				You have access to these tools to help answer questions about the project:
+				- getProjectStatus: Get project status, insights, themes, evidence, personas
+				- getPeopleDetails: Get information about people and contacts
+				- manageOpportunities: View and manage sales opportunities
+				- manageTasks: View and manage tasks
+
+				When the user asks about the project, people, opportunities, or tasks, USE THESE TOOLS to get accurate information.
+				Don't say you don't know - use the tools to find the answer.`
+				: `You are a knowledgeable researcher for Upsight.
 				Keep replies short, casual, and actionable. Do not overexplain. Talk to me like a friend using 10th grade english.
 				use an island intonation.
 				If you dont know something, just say oh sorry i dont know. `,
+			tools,
 		})
+
+		consola.info("Assistant created with tools", { toolNames: toolList })
 	}
 }
 
@@ -43,8 +72,15 @@ export default defineAgent({
 	},
 	entry: async (ctx: JobContext) => {
 		try {
+			// Get room name from job context (available immediately, before connecting)
+			const roomName = (ctx as any).job?.room?.name || ctx.room.name
+
 			consola.info("LiveKit agent entry called", {
-				roomName: ctx.room.name,
+				roomName,
+				jobRoomName: (ctx as any).job?.room?.name,
+				ctxRoomName: ctx.room.name,
+				hasJob: !!(ctx as any).job,
+				hasJobRoom: !!(ctx as any).job?.room,
 				hasApiKey: Boolean(process.env.LIVEKIT_API_KEY),
 				hasApiSecret: Boolean(process.env.LIVEKIT_API_SECRET),
 				hasUrl: Boolean(resolvedLivekitUrl),
@@ -58,6 +94,57 @@ export default defineAgent({
 					hasUrl: Boolean(resolvedLivekitUrl),
 				})
 				throw new Error("Missing LiveKit configuration")
+			}
+
+			// Extract project context from room name BEFORE creating assistant
+			let assistant: Assistant
+			try {
+				// Parse format: p_{projectId}_a_{accountId}_u_{userId}_{uuid}
+				const match = roomName?.match(/^p_([^_]+)_a_([^_]+)_u_([^_]+)_/)
+				if (match) {
+					const projectId = match[1]
+					const accountId = match[2]
+					const userId = match[3]
+
+					consola.success("✓ Project context extracted from room name", {
+						roomName,
+						projectId,
+						accountId,
+						userId,
+					})
+
+					// Create Mastra tools with project context
+					const mastraTools = createMastraTools({
+						projectId,
+						accountId,
+						userId,
+					})
+
+					consola.info("Created Mastra tools", {
+						toolCount: Object.keys(mastraTools).length,
+						toolNames: Object.keys(mastraTools),
+						toolStructure: Object.keys(mastraTools).map(name => ({
+							name,
+							hasDescription: !!mastraTools[name].description,
+							hasParameters: !!mastraTools[name].parameters,
+							hasExecute: typeof mastraTools[name].execute === 'function'
+						}))
+					})
+
+					// Create Assistant WITH tools
+					assistant = new Assistant(mastraTools)
+					assistant.projectId = projectId
+					assistant.accountId = accountId
+					assistant.userId = userId
+
+					consola.success("✓ Assistant created with Mastra tools and project context")
+				} else {
+					consola.warn("Room name does not contain project context, creating assistant without tools", { roomName })
+					assistant = new Assistant()
+				}
+			} catch (error) {
+				consola.error("Error parsing room name for context", error)
+				assistant = new Assistant()
 			}
 
 			consola.info("Creating agent session...")
@@ -97,24 +184,35 @@ export default defineAgent({
 				consola.error("Uncaught exception in LiveKit agent", error)
 			})
 
-			consola.info("Starting agent session...")
+			// Start the session with the configured assistant
+			consola.info("Starting agent session with assistant...")
 			await session.start({
-				agent: new Assistant(),
+				agent: assistant,
 				room: ctx.room,
 			})
-			consola.success("LiveKit agent session started")
+			consola.success("LiveKit agent session started with tools")
 
+			// Connect to room AFTER session is started
 			consola.info("Connecting to room...")
 			await ctx.connect()
 			consola.success("Connected to LiveKit room", { roomName: ctx.room.name })
 
 			consola.info("Generating initial greeting...")
+			consola.info("Session state before greeting", {
+				hasAgent: !!session.agent,
+				agentHasTools: session.agent && Object.keys((session.agent as any)._tools || {}).length > 0,
+			})
+
 			await session.generateReply({
 				instructions:
-					"Greet the user by saying: 'Hi, would you like me to analyze a live conversation, recording, or create a customer discovery guide with prompts?'",
+					"Greet the user by saying: 'Hi, what can I help you with?'",
 			})
 
 			consola.success("Agent ready and listening")
+			consola.info("Assistant tools after session start", {
+				toolCount: Object.keys((assistant as any)._tools || {}).length,
+				toolNames: Object.keys((assistant as any)._tools || {}),
+			})
 		} catch (error) {
 			consola.error("FATAL ERROR in agent entry:", {
 				error,
