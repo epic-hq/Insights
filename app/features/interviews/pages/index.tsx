@@ -19,8 +19,6 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Interview } from "~/types"
 
-export const handle = { hideProjectStatusAgent: true } as const
-
 export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
 }

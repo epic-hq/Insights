@@ -10,6 +10,11 @@ import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { generateResearchStructureTool } from "../tools/generate-research-structure"
 import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { manageDocumentsTool } from "../tools/manage-documents"
+import {
+	deleteProjectSectionMetaKeyTool,
+	fetchProjectSectionTool,
+	updateProjectSectionMetaTool,
+} from "../tools/manage-project-sections"
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
 
 // Dynamically build ProjectSetupState from section config
@@ -98,6 +103,9 @@ ${JSON.stringify(existing)}
 	model: openai("gpt-5.1"),
 	tools: {
 		saveProjectSectionsData: saveProjectSectionsDataTool,
+		fetchProjectSection: fetchProjectSectionTool,
+		updateProjectSectionMeta: updateProjectSectionMetaTool,
+		deleteProjectSectionMetaKey: deleteProjectSectionMetaKeyTool,
 		displayUserQuestions: displayUserQuestionsTool,
 		navigateToPage: navigateToPageTool,
 		generateResearchStructure: generateResearchStructureTool,

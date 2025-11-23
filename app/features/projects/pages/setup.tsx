@@ -82,7 +82,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (extra && extra.trim().length > 0) {
 			signup.custom_instructions = String(extra)
 		}
-	} catch {}
+	} catch { }
 
 	let prefill: TemplatePrefill = fallbackPrefill(template_key, projectResult.data.name || "Project", signup)
 	try {
@@ -138,7 +138,7 @@ export default function ProjectSetupPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50">
+		<div className="min-h-screen">
 			<PageContainer size="lg" padded={false} className="max-w-4xl px-4 py-8">
 				<ProjectGoalsScreenRedesigned
 					onNext={handleNext}
