@@ -22,10 +22,10 @@ primary_region = 'sjc'
   # Note: Fly.io default is 100MB, we're increasing it for audio/video uploads
   max_request_body_size = '500M'
 
-  # Increase timeout for large file uploads (5 minutes)
+  # Increase timeout for large file uploads (10 minutes for very large files)
   [http_service.http_options]
-    response_timeout = 300
-    idle_timeout = 300
+    response_timeout = 600
+    idle_timeout = 600
 
   [[http_service.checks]]
     grace_period = "10s"

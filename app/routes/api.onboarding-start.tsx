@@ -41,6 +41,9 @@ type OnboardingData = LegacyOnboardingData | NewOnboardingData
 type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
 
 export async function action({ request }: ActionFunctionArgs) {
+	const startTime = Date.now()
+	consola.info("🎬 [ONBOARDING] Request received", { timestamp: new Date().toISOString() })
+
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
@@ -51,6 +54,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	let triggerRunInfo: { runId: string; publicToken: string | null } | null = null
 
 	try {
+		consola.info("🔐 [ONBOARDING] Authenticating user...")
 		// Get authenticated user and their team account
 		const user = await getAuthenticatedUser(request)
 		if (!user) {
@@ -82,11 +86,20 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "No team account found" }, { status: 500 })
 		}
 
+		consola.info("📦 [ONBOARDING] Parsing form data...")
 		const formData = await request.formData()
 		const file = formData.get("file") as File | null
 		const onboardingDataStr = formData.get("onboardingData") as string
 		const projectId = formData.get("projectId") as UUID
 		const personId = formData.get("personId") as string | null
+
+		consola.info("✅ [ONBOARDING] Form data parsed", {
+			hasFile: !!file,
+			fileName: file?.name,
+			fileSize: file ? `${(file.size / 1024 / 1024).toFixed(2)}MB` : null,
+			fileType: file?.type,
+			elapsedMs: Date.now() - startTime,
+		})
 
 		trace = (langfuse as any).trace?.({
 			name: "api.onboarding-start",
@@ -453,12 +466,27 @@ Please extract insights that specifically address these research questions and h
 					type: file.type,
 				},
 			})
+
 			// Store audio file in Cloudflare R2 first using shared utility
+			consola.info("💾 [ONBOARDING] Converting file to buffer...", {
+				fileName: file.name,
+				fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+				elapsedMs: Date.now() - startTime,
+			})
 			const fileBuffer = await file.arrayBuffer()
 			const fileBlob = new Blob([fileBuffer], { type: file.type })
 			const _assemblyPayload = Buffer.from(fileBuffer)
 
-			consola.log("Uploading audio to R2...")
+			consola.info("✅ [ONBOARDING] Buffer conversion complete", {
+				bufferSize: `${(fileBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
+				elapsedMs: Date.now() - startTime,
+			})
+
+			consola.info("☁️ [ONBOARDING] Starting R2 upload...", {
+				fileName: file.name,
+				fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+				elapsedMs: Date.now() - startTime,
+			})
 
 			// Upload to R2 first (with multipart + retry for large files)
 			const storageResult = await storeAudioFile({
@@ -475,7 +503,9 @@ Please extract insights that specifically address these research questions and h
 			const storageError = storageResult.error
 
 			if (storageError || !r2Key || !presignedUrl) {
-				consola.error("R2 upload failed:", storageError)
+				consola.error("❌ [ONBOARDING] R2 upload failed:", storageError, {
+					elapsedMs: Date.now() - startTime,
+				})
 				audioSpan?.end?.({
 					level: "ERROR",
 					statusMessage: storageError ?? "Failed to store audio file",
@@ -484,7 +514,10 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
 			}
 
-			consola.log("Audio file stored successfully in R2. Key:", r2Key)
+			consola.info("✅ [ONBOARDING] R2 upload complete", {
+				r2Key,
+				elapsedMs: Date.now() - startTime,
+			})
 			audioSpan?.end?.({
 				output: {
 					r2Key,
@@ -521,7 +554,11 @@ Please extract insights that specifically address these research questions and h
 
 				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`
 
-				consola.info("Submitting to Assembly AI:", { webhookUrl, presignedUrl })
+				consola.info("🎙️ [ONBOARDING] Submitting to Assembly AI...", {
+					webhookUrl,
+					presignedUrl: presignedUrl.substring(0, 100) + "...",
+					elapsedMs: Date.now() - startTime,
+				})
 
 				const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
 					method: "POST",
@@ -542,11 +579,20 @@ Please extract insights that specifically address these research questions and h
 
 				if (!transcriptResponse.ok) {
 					const errorText = await transcriptResponse.text()
+					consola.error("❌ [ONBOARDING] Assembly AI submission failed:", {
+						status: transcriptResponse.status,
+						error: errorText,
+						elapsedMs: Date.now() - startTime,
+					})
 					throw new Error(`AssemblyAI request failed: ${transcriptResponse.status} ${errorText}`)
 				}
 
 				const transcriptData = await transcriptResponse.json()
-				consola.info("Assembly AI job created:", { id: transcriptData.id, status: transcriptData.status })
+				consola.info("✅ [ONBOARDING] Assembly AI job created", {
+					transcriptId: transcriptData.id,
+					status: transcriptData.status,
+					elapsedMs: Date.now() - startTime,
+				})
 
 				// Create upload_job to track transcription
 				const { data: uploadJob, error: uploadJobError } = await supabaseAdmin
