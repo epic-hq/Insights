@@ -41,3 +41,7 @@ export function useProjectStatusAgent() {
 	}
 	return context
 }
+
+export function useOptionalProjectStatusAgent() {
+	return useContext(ProjectStatusAgentContext)
+}

@@ -18,6 +18,7 @@ import {
 	RecycleIcon,
 	RefreshCcw,
 	Settings,
+	Sparkles,
 	Star,
 	Trash2,
 	X,
@@ -41,6 +42,7 @@ import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions"
 import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
+import { useOptionalProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
@@ -306,6 +308,32 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const contextualInputRef = useRef<HTMLTextAreaElement>(null)
 	const contextualSuggestionsApiPath =
 		projectPath && projectPath.length > 0 ? `${projectPath}/api/contextual-suggestions` : "/api/contextual-suggestions"
+
+	const projectStatusAgent = useOptionalProjectStatusAgent()
+
+	const sendQuestionsToAgent = useCallback(() => {
+		if (!projectStatusAgent) {
+			toast.error("Project Copilot is unavailable in this view.")
+			return
+		}
+
+		const sample = questions
+			.filter((q) => q.status !== "deleted")
+			.slice(0, 8)
+			.map((q, idx) => `${idx + 1}. [${q.status || "proposed"}] ${q.text}`)
+			.join("\n")
+
+		const prompt = [
+			"Review the current interview prompts and help curate them.",
+			"You can call fetchInterviewPrompts/createInterviewPrompt/updateInterviewPrompt/deleteInterviewPrompt to add, rewrite, reorder, or mark must-haves. Keep rationale, categories, and time estimates intact when useful.",
+			sample.length ? `Current prompts:\n${sample}` : "We do not have prompts yet—propose a concise, must-have set tailored to the project.",
+		]
+			.filter(Boolean)
+			.join("\n\n")
+
+		projectStatusAgent.insertText(prompt)
+		toast.success("Sent to Project Copilot")
+	}, [projectStatusAgent, questions])
 
 	// Load research goal from API
 	useEffect(() => {
@@ -1984,6 +2012,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						<h1 className="whitespace-nowrap font-bold text-2xl text-foreground">Conversation Prompts</h1>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
+						{projectStatusAgent && (
+							<Button variant="outline" size="sm" onClick={sendQuestionsToAgent} className="hidden sm:inline-flex">
+								<Sparkles className="h-4 w-4" />
+								Ask Project Copilot
+							</Button>
+						)}
 						{generating ? (
 							<StatusPill variant="active">
 								Generating <ProgressDots className="ml-1" />
