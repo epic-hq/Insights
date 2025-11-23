@@ -68,6 +68,8 @@ See `docs/features/task-system-technical-design.md` for full implementation deta
 [ ] Fully remove `research_goal_details` across app/routes, BAML schemas, onboarding flows, and project section loaders once higher-priority onboarding changes land.
 [ ] Break `app/utils/processInterview.server.ts` into modular Trigger.dev tasks under `src/trigger/interviews/*` (see `docs/refactoring/interview-processing-optimization.md` and `docs/interview-processing-flows.md` for the staged plan) so we can share the pipeline with regeneration + batch jobs.
 
+[ ] Ship client-side R2 upload progress UI using `app/utils/r2-upload.client.ts` (single + multipart) and surface it in upload flows with percent + cancel support.
+
 <!-- TRIGGER.DEV basic START -->
 # Trigger.dev Basic Tasks (v4)
 

@@ -107,6 +107,12 @@ async function uploadToR2Single({
 	contentType?: string
 	config: R2Config
 }): Promise<UploadResult> {
+	// Timeout for single uploads (2 minutes for files up to 100MB)
+	const SINGLE_UPLOAD_TIMEOUT = 120000
+
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), SINGLE_UPLOAD_TIMEOUT)
+
 	try {
 		const { endpoint, accessKeyId, secretAccessKey, bucket, region } = config
 		const encodedKey = encodeKey(key)
@@ -149,7 +155,10 @@ async function uploadToR2Single({
 			method: "PUT",
 			headers,
 			body: Buffer.from(body),
+			signal: controller.signal,
 		})
+
+		clearTimeout(timeoutId)
 
 		if (!response.ok) {
 			const errorText = await safeRead(response)
@@ -159,6 +168,13 @@ async function uploadToR2Single({
 
 		return { success: true }
 	} catch (error) {
+		clearTimeout(timeoutId)
+
+		if (error instanceof Error && error.name === "AbortError") {
+			consola.error(`R2 upload timed out after ${SINGLE_UPLOAD_TIMEOUT}ms (${(body.length / 1024 / 1024).toFixed(2)}MB)`)
+			return { success: false, error: `Upload timed out after ${SINGLE_UPLOAD_TIMEOUT / 1000}s` }
+		}
+
 		const message = error instanceof Error ? error.message : "Unknown error"
 		consola.error("Unexpected error uploading to R2:", error)
 		return { success: false, error: message }
