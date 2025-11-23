@@ -17,6 +17,7 @@ create table upload_jobs (
   last_error text,
   status job_status not null default 'pending',
   status_detail text,        -- Granular status messages for UI
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

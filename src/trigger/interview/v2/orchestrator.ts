@@ -70,6 +70,7 @@ export const processInterviewOrchestratorV2 = task({
 		if (!state) {
 			// Initialize new workflow
 			consola.info(`[Orchestrator] Initializing new workflow for job ${analysisJobId}`)
+			consola.info(`[Orchestrator] existingInterviewId:`, existingInterviewId || "NOT PROVIDED")
 			state = {
 				interviewId: existingInterviewId || "",
 				completedSteps: [],
@@ -79,6 +80,7 @@ export const processInterviewOrchestratorV2 = task({
 		} else {
 			consola.info(
 				`[Orchestrator] Resuming workflow for job ${analysisJobId}`,
+				`InterviewId: ${state.interviewId || "MISSING"}`,
 				`Current step: ${state.currentStep}`,
 				`Completed: ${state.completedSteps.join(", ")}`
 			)
@@ -132,16 +134,38 @@ export const processInterviewOrchestratorV2 = task({
 					analysisJobId,
 				})
 
+				if (!result.ok) {
+					throw new Error(`Upload and transcribe failed: ${result.error}`)
+				}
+
+				consola.info("[Orchestrator] Upload result received:", {
+					interviewId: result.output.interviewId,
+					fullTranscriptLength: result.output.fullTranscript?.length ?? 0,
+					language: result.output.language,
+				})
+
 				// Update state
-				state.interviewId = result.interviewId
-				state.fullTranscript = result.fullTranscript
-				state.language = result.language
-				state.transcriptData = result.transcriptData
+				state.interviewId = result.output.interviewId
+				state.fullTranscript = result.output.fullTranscript
+				state.language = result.output.language
+				state.transcriptData = result.output.transcriptData
 				state.completedSteps = [...new Set([...state.completedSteps, "upload"])]
 				state.currentStep = "upload"
 
+				consola.info("[Orchestrator] Saving state after upload:", {
+					interviewId: state.interviewId,
+					completedSteps: state.completedSteps,
+				})
+
 				await saveWorkflowState(client, analysisJobId, state)
-				consola.success("[Orchestrator] ✓ Upload & Transcribe complete")
+
+				// Reload state to get merged values (in case triggerAndWait returned undefined)
+				const reloadedState = await loadWorkflowState(client, analysisJobId)
+				if (reloadedState) {
+					state = reloadedState
+				}
+
+				consola.success("[Orchestrator] ✓ Upload & Transcribe complete, state saved")
 			} else {
 				consola.info("[Orchestrator] Skipping: Upload & Transcribe")
 			}
@@ -153,17 +177,37 @@ export const processInterviewOrchestratorV2 = task({
 			) {
 				consola.info("[Orchestrator] Executing: Extract Evidence")
 
+				// Validate required state before proceeding
+				if (!state.interviewId) {
+					const errorMsg = `Cannot execute evidence extraction: interviewId is missing from workflow state. ` +
+						`State has: ${JSON.stringify({ interviewId: state.interviewId, completedSteps: state.completedSteps })}`
+					consola.error(`[Orchestrator] ${errorMsg}`)
+					throw new Error(errorMsg)
+				}
+
+				if (!state.fullTranscript) {
+					const errorMsg = `Cannot execute evidence extraction: fullTranscript is missing from workflow state`
+					consola.error(`[Orchestrator] ${errorMsg}`)
+					throw new Error(errorMsg)
+				}
+
+				consola.info(`[Orchestrator] State validation passed: interviewId=${state.interviewId}`)
+
 				const result = await extractEvidenceTaskV2.triggerAndWait({
 					interviewId: state.interviewId,
-					fullTranscript: state.fullTranscript!,
-					language: state.language!,
+					fullTranscript: state.fullTranscript,
+					language: state.language || "en",
 					analysisJobId,
 				})
 
+				if (!result.ok) {
+					throw new Error(`Evidence extraction failed: ${result.error}`)
+				}
+
 				// Update state
-				state.evidenceIds = result.evidenceIds
-				state.evidenceUnits = result.evidenceUnits
-				state.personId = result.personId || undefined
+				state.evidenceIds = result.output.evidenceIds
+				state.evidenceUnits = result.output.evidenceUnits
+				state.personId = result.output.personId || undefined
 				state.completedSteps = [...new Set([...state.completedSteps, "evidence"])]
 				state.currentStep = "evidence"
 
@@ -188,8 +232,12 @@ export const processInterviewOrchestratorV2 = task({
 					metadata,
 				})
 
+				if (!result.ok) {
+					throw new Error(`Generate insights failed: ${result.error}`)
+				}
+
 				// Update state
-				state.insightIds = result.insightIds
+				state.insightIds = result.output.insightIds
 				state.completedSteps = [...new Set([...state.completedSteps, "insights"])]
 				state.currentStep = "insights"
 
@@ -217,8 +265,12 @@ export const processInterviewOrchestratorV2 = task({
 					analysisJobId,
 				})
 
+				if (!result.ok) {
+					throw new Error(`Assign personas failed: ${result.error}`)
+				}
+
 				// Update state
-				state.personaIds = result.personaIds
+				state.personaIds = result.output.personaIds
 				state.completedSteps = [...new Set([...state.completedSteps, "personas"])]
 				state.currentStep = "personas"
 

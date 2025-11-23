@@ -589,7 +589,7 @@ export class AsyncHttpRequest {
   }
   
   async GenerateKeyTakeawaysFromEvidence(
-      evidence: types.EvidenceUnit[],userCustomInstructions: string,
+      evidence: types.EvidenceTurn[],userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -1470,7 +1470,7 @@ export class AsyncHttpStreamRequest {
   }
   
   async GenerateKeyTakeawaysFromEvidence(
-      evidence: types.EvidenceUnit[],userCustomInstructions: string,
+      evidence: types.EvidenceTurn[],userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {

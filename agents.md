@@ -1,6 +1,9 @@
 
 # Agents.md also for use by claude.ai (consider this claude.md)
 
+For difficult problems, generate a confidence level based on an outside assessment of your work,
+which seeks to identify logic bugs, incorrect assumptions, and bad patterns. Iterate until you have a high confidence.
+
 ## Code conventions
 
 Tech stack includes ReactJS, typescript, vite, remix / react-router, supabase, zod, zustand, dotenvx for secrets. The production app is deployed to fly.io, cloudflare r2 storage for media. LivekitServer is hosted on fly.io as well providing rooms.
@@ -9,7 +12,7 @@ We leverage remix conventions like loaders and actions for apis, and store code 
 
 HTML/CSS we use tailwindcss, shadcnui and themes.
 
-- supabase we use declarative schemas in supabase/schemas, and implement here first, then generate migrations. See `docs/supabase-howto.md` for the process, and be sure to generate types after changing db.
+- any database changes -- in supabase we use declarative schemas in supabase/schemas, and implement here first, then generate migrations. See `docs/supabase-howto.md` for the process, and be sure to generate types after changing db.
 - React-router does not export JSON. and we don't need to wrap it in a response. we can just return the data and it will be serialized automatically.
 - do not use console.log, use consola.log instead and `import consola from "consola"`
 when making database changes, use the supabase declarative schema approach, and edit supabase/schemas/ file instead of creating a migration directly. Follow the process [here](`docs/@supabase/howto/declarative-schemas.md`)

@@ -6,6 +6,7 @@
  */
 
 import { task } from "@trigger.dev/sdk"
+import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { extractEvidenceAndPeopleCore, workflowRetryConfig } from "~/utils/processInterview.server"
 import {
@@ -23,6 +24,22 @@ export const extractEvidenceTaskV2 = task({
 		const { interviewId, fullTranscript, language, analysisJobId } = payload
 		const client = createSupabaseAdminClient()
 
+		consola.info("[extractEvidence] Task started with payload:", {
+			interviewId,
+			fullTranscriptLength: fullTranscript?.length ?? 0,
+			language,
+			analysisJobId,
+		})
+
+		// Validate payload
+		if (!interviewId || interviewId === "undefined") {
+			const errorMsg = `Invalid interviewId received: "${interviewId}". ` +
+				`This indicates a bug in the orchestrator or state management. ` +
+				`Full payload: ${JSON.stringify(payload, null, 2)}`
+			consola.error("[extractEvidence]", errorMsg)
+			throw new Error(errorMsg)
+		}
+
 		try {
 			// Update progress
 			await updateAnalysisJobProgress(client, analysisJobId, {
@@ -32,6 +49,7 @@ export const extractEvidenceTaskV2 = task({
 			})
 
 			// Load interview data
+			consola.info(`[extractEvidence] Loading interview: ${interviewId}`)
 			const { data: interview, error: interviewError } = await client
 				.from("interviews")
 				.select("*")
@@ -41,6 +59,8 @@ export const extractEvidenceTaskV2 = task({
 			if (interviewError || !interview) {
 				throw new Error(`Interview ${interviewId} not found: ${interviewError?.message}`)
 			}
+
+			consola.success(`[extractEvidence] Loaded interview: ${interview.id}`)
 
 			// Delete existing evidence for idempotency
 			const { error: deleteError } = await client.from("evidence").delete().eq("interview_id", interviewId)
@@ -57,7 +77,7 @@ export const extractEvidenceTaskV2 = task({
 					projectId: interview.project_id || undefined,
 				},
 				interviewRecord: interview as any,
-				transcriptData: interview.transcript_data as any,
+				transcriptData: interview.transcript_formatted as any,
 				language,
 				fullTranscript,
 			})

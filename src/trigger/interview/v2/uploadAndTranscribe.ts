@@ -11,6 +11,7 @@
  */
 
 import { task } from "@trigger.dev/sdk"
+import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { uploadMediaAndTranscribeCore, workflowRetryConfig } from "~/utils/processInterview.server"
 import {
@@ -46,6 +47,17 @@ export const uploadAndTranscribeTaskV2 = task({
 				client,
 			})
 
+			consola.info("[uploadAndTranscribe] Core function returned:", {
+				hasResult: !!result,
+				hasInterview: !!result?.interview,
+				interviewId: result?.interview?.id,
+				fullTranscriptLength: result?.fullTranscript?.length ?? 0,
+				language: result?.language,
+				hasTranscriptData: !!result?.transcriptData,
+				resultKeys: result ? Object.keys(result) : [],
+				interviewKeys: result?.interview ? Object.keys(result.interview) : [],
+			})
+
 			// Initialize workflow state for this interview
 			if (analysisJobId) {
 				await initializeWorkflowState(client, analysisJobId, result.interview.id)
@@ -66,12 +78,21 @@ export const uploadAndTranscribeTaskV2 = task({
 				})
 			}
 
-			return {
+			const returnValue = {
 				interviewId: result.interview.id,
 				fullTranscript: result.fullTranscript,
 				language: result.language,
 				transcriptData: result.transcriptData,
 			}
+
+			consola.info("[uploadAndTranscribe] Returning to orchestrator:", {
+				interviewId: returnValue.interviewId,
+				fullTranscriptLength: returnValue.fullTranscript?.length ?? 0,
+				language: returnValue.language,
+				hasTranscriptData: !!returnValue.transcriptData,
+			})
+
+			return returnValue
 		} catch (error) {
 			await updateAnalysisJobError(client, analysisJobId, {
 				currentStep: "upload",

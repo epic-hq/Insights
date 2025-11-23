@@ -377,7 +377,7 @@ function CreateSet(instructions: string) -> Set {
 	"#
 }
 
-function GenerateKeyTakeawaysFromEvidence(evidence: EvidenceUnit[], userCustomInstructions: string) -> InterviewExtraction {
+function GenerateKeyTakeawaysFromEvidence(evidence: EvidenceTurn[], userCustomInstructions: string) -> InterviewExtraction {
   client "CustomGPT4oMini"
   prompt #"
     Generate targeted insights and key takeaways from this structured interview evidence data.

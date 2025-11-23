@@ -65,15 +65,48 @@ export async function saveWorkflowState(
 ): Promise<void> {
 	const now = new Date().toISOString()
 
+	consola.info(`[saveWorkflowState] Saving state for job ${analysisJobId}`)
+	consola.info(`[saveWorkflowState] Incoming state:`, {
+		interviewId: state.interviewId || "MISSING",
+		completedSteps: state.completedSteps,
+		currentStep: state.currentStep,
+		hasFullTranscript: !!state.fullTranscript,
+	})
+
 	// Load existing state
 	const existing = await loadWorkflowState(db, analysisJobId)
 
-	// Merge with existing state
+	consola.info(`[saveWorkflowState] Existing state:`, {
+		interviewId: existing?.interviewId || "MISSING",
+		completedSteps: existing?.completedSteps,
+		currentStep: existing?.currentStep,
+	})
+
+	// Merge with existing state - only overwrite defined values
 	const merged: WorkflowState = {
 		...(existing || {}),
-		...state,
 		lastUpdated: now,
 	} as WorkflowState
+
+	// Only merge in defined values from incoming state
+	if (state.interviewId !== undefined) merged.interviewId = state.interviewId
+	if (state.fullTranscript !== undefined) merged.fullTranscript = state.fullTranscript
+	if (state.language !== undefined) merged.language = state.language
+	if (state.transcriptData !== undefined) merged.transcriptData = state.transcriptData
+	if (state.evidenceIds !== undefined) merged.evidenceIds = state.evidenceIds
+	if (state.evidenceUnits !== undefined) merged.evidenceUnits = state.evidenceUnits
+	if (state.personId !== undefined) merged.personId = state.personId
+	if (state.insightIds !== undefined) merged.insightIds = state.insightIds
+	if (state.personaIds !== undefined) merged.personaIds = state.personaIds
+	if (state.completedSteps !== undefined) merged.completedSteps = state.completedSteps
+	if (state.currentStep !== undefined) merged.currentStep = state.currentStep
+
+	consola.info(`[saveWorkflowState] Merged state:`, {
+		interviewId: merged.interviewId || "MISSING",
+		completedSteps: merged.completedSteps,
+		currentStep: merged.currentStep,
+		hasFullTranscript: !!merged.fullTranscript,
+	})
 
 	const { error } = await db
 		.from("analysis_jobs")
@@ -89,6 +122,8 @@ export async function saveWorkflowState(
 		consola.error(`Failed to save workflow state for job ${analysisJobId}:`, error)
 		throw new Error(`Failed to save workflow state: ${error.message}`)
 	}
+
+	consola.success(`[saveWorkflowState] State saved successfully for job ${analysisJobId}`)
 }
 
 /**

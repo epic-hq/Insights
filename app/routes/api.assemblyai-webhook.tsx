@@ -206,30 +206,107 @@ export async function action({ request }: ActionFunctionArgs) {
 				})
 				.eq("id", uploadJob.id)
 
-			// Create analysis job and process immediately
 			const customInstructions = uploadJob.custom_instructions || ""
 
+			// Check if analysis_job already exists (from onboarding flow)
+			const { data: existingAnalysisJob } = await supabase
+				.from("analysis_jobs")
+				.select("id, status, current_step")
+				.eq("interview_id", interviewId)
+				.eq("status", "pending")
+				.eq("current_step", "transcription")
+				.maybeSingle()
+
 			try {
-				const { createAndProcessAnalysisJob } = await import("~/utils/processInterviewAnalysis.server")
+				if (existingAnalysisJob) {
+					// Update existing job and trigger orchestrator
+					consola.info("Found existing analysis_job, updating:", existingAnalysisJob.id)
 
-				await createAndProcessAnalysisJob({
-					interviewId,
-					transcriptData: formattedTranscriptData,
-					customInstructions,
-					adminClient: supabase,
-					initiatingUserId: uploadJob?.created_by ?? null,
-					langfuseParent: trace,
-				})
+					await supabase
+						.from("analysis_jobs")
+						.update({
+							transcript_data: formattedTranscriptData,
+							status: "in_progress" as const,
+							status_detail: "Transcription complete, starting analysis",
+							current_step: "upload",
+						})
+						.eq("id", existingAnalysisJob.id)
 
-				consola.log("createAndProcessAnalysisJob for interview:", interviewId)
-				trace?.event?.({
-					name: "analysis.processed",
-					metadata: {
+					// Trigger orchestrator
+					const { tasks } = await import("@trigger.dev/sdk")
+					const { data: interview } = await supabase
+						.from("interviews")
+						.select("account_id, project_id, title")
+						.eq("id", interviewId)
+						.single()
+
+					const metadata = {
+						accountId: interview?.account_id,
+						userId: uploadJob.created_by ?? undefined,
+						projectId: interview?.project_id ?? undefined,
+						interviewTitle: interview?.title ?? undefined,
+						fileName: uploadJob.file_name ?? undefined,
+					}
+
+					const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
+
+					const handle = useV2Workflow
+						? await tasks.trigger("interview.v2.orchestrator", {
+								analysisJobId: existingAnalysisJob.id,
+								metadata,
+								transcriptData: formattedTranscriptData,
+								mediaUrl: uploadJob.external_url || "",
+								existingInterviewId: interviewId,
+								userCustomInstructions: customInstructions,
+						  })
+						: await tasks.trigger("interview.upload-media-and-transcribe", {
+								analysisJobId: existingAnalysisJob.id,
+								metadata,
+								transcriptData: formattedTranscriptData,
+								mediaUrl: uploadJob.external_url || "",
+								existingInterviewId: interviewId,
+								userCustomInstructions: customInstructions,
+						  })
+
+					await supabase
+						.from("analysis_jobs")
+						.update({ trigger_run_id: handle.id })
+						.eq("id", existingAnalysisJob.id)
+
+					consola.success("Triggered orchestrator:", handle.id)
+					trace?.event?.({
+						name: "analysis.orchestrator-triggered",
+						metadata: {
+							interviewId,
+							analysisJobId: existingAnalysisJob.id,
+							runId: handle.id,
+						},
+					})
+				} else {
+					// No existing job - create new one (backwards compatibility)
+					consola.info("No existing analysis_job, creating new one")
+
+					const { createAndProcessAnalysisJob } = await import("~/utils/processInterviewAnalysis.server")
+
+					await createAndProcessAnalysisJob({
 						interviewId,
-					},
-				})
+						transcriptData: formattedTranscriptData,
+						customInstructions,
+						adminClient: supabase,
+						initiatingUserId: uploadJob?.created_by ?? null,
+						langfuseParent: trace,
+					})
+
+					consola.log("createAndProcessAnalysisJob for interview:", interviewId)
+					trace?.event?.({
+						name: "analysis.processed",
+						metadata: {
+							interviewId,
+						},
+					})
+				}
 			} catch (analysisError) {
-				consola.error("createAndProcessAnalysisJob failed:", analysisError)
+				consola.error("Analysis job processing failed:", analysisError)
 				// Continue webhook processing - don't fail the webhook for analysis errors
 				consola.log("Webhook completed despite analysis error")
 				trace?.event?.({

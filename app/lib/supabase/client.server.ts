@@ -6,7 +6,10 @@ const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SE
 
 export const getServerClient = (request: Request) => {
 	const headers = new Headers()
-	const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+	const requestUrl = new URL(request.url)
+	const isProduction = requestUrl.hostname === "getupsight.com" || requestUrl.hostname.endsWith(".getupsight.com")
+
+	const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll() {
 				return parseCookieHeader(request.headers.get("Cookie") ?? "") as {
@@ -16,9 +19,25 @@ export const getServerClient = (request: Request) => {
 			},
 			setAll(cookiesToSet) {
 				cookiesToSet.forEach(({ name, value, options }) => {
-					headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
+					// Configure cookie options for OAuth flow compatibility
+					const cookieOptions = {
+						...options,
+						// SameSite=Lax allows cookies to be sent on top-level navigation (OAuth redirects)
+						sameSite: "lax" as const,
+						// Secure must be true in production for SameSite to work properly
+						secure: isProduction,
+						// Ensure cookie is accessible across the entire domain
+						path: options?.path ?? "/",
+						// Set reasonable maxAge if not specified (7 days)
+						maxAge: options?.maxAge ?? 60 * 60 * 24 * 7,
+					}
+					headers.append("Set-Cookie", serializeCookieHeader(name, value, cookieOptions))
 				})
 			},
+		},
+		auth: {
+			// Explicitly use PKCE flow for OAuth (more secure and reliable)
+			flowType: "pkce",
 		},
 	})
 

@@ -11,19 +11,51 @@ import { clearUtmCookie, collectPersistedUtmParams, extractUtmParamsFromRequest 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
 	const next = requestUrl.searchParams.get("next") || "/home"
+	const timestamp = new Date().toISOString()
+
+	consola.log("[LOGIN_SUCCESS] ===== LOGIN SUCCESS HANDLER =====")
+	consola.log("[LOGIN_SUCCESS] Timestamp:", timestamp)
+	consola.log("[LOGIN_SUCCESS] URL:", requestUrl.toString())
+	consola.log("[LOGIN_SUCCESS] Next redirect:", next)
+
+	// Log incoming cookies to verify session was preserved
+	const incomingCookies = request.headers.get("Cookie")
+	consola.log("[LOGIN_SUCCESS] Incoming cookies:", incomingCookies ? "present" : "MISSING")
+	if (incomingCookies) {
+		const cookieNames = incomingCookies.split(";").map(c => c.trim().split("=")[0])
+		consola.log("[LOGIN_SUCCESS] Cookie names:", cookieNames)
+	} else {
+		consola.error("[LOGIN_SUCCESS] ⚠️  NO COOKIES RECEIVED - This is the bug!")
+	}
 
 	const { client: supabase, headers } = getServerClient(request)
 	const utmParams = collectPersistedUtmParams(request, extractUtmParamsFromRequest(request))
 	headers.append("Set-Cookie", clearUtmCookie())
 
+	const getUserStartTime = Date.now()
 	const {
 		data: { user },
+		error: getUserError,
 	} = await supabase.auth.getUser()
+	const getUserDuration = Date.now() - getUserStartTime
+
+	consola.log("[LOGIN_SUCCESS] getUser took:", getUserDuration, "ms")
+
+	if (getUserError) {
+		consola.error("[LOGIN_SUCCESS] getUser error:", {
+			message: getUserError.message,
+			name: getUserError.name,
+			status: getUserError.status,
+		})
+	}
 
 	if (!user) {
-		consola.warn("[LOGIN_SUCCESS] No authenticated user found, redirecting to login")
+		consola.warn("[LOGIN_SUCCESS] ⚠️  No authenticated user found - session lost between callback and login_success")
+		consola.warn("[LOGIN_SUCCESS] Redirecting back to login")
 		return redirect(`/login?next=${encodeURIComponent(next)}`)
 	}
+
+	consola.log("[LOGIN_SUCCESS] ✅ User authenticated:", user.email, "ID:", user.id)
 
 	// Check if this is a new user signup (first time login)
 	const isNewUser = await checkIfNewUser(supabase, user.id)

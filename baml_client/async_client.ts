@@ -1082,7 +1082,7 @@ export class BamlAsyncClient {
   }
   
   async GenerateKeyTakeawaysFromEvidence(
-      evidence: types.EvidenceUnit[],userCustomInstructions: string,
+      evidence: types.EvidenceTurn[],userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
   ): Promise<types.InterviewExtraction> {
     try {
@@ -3067,7 +3067,7 @@ class BamlStreamClient {
   }
   
   GenerateKeyTakeawaysFromEvidence(
-      evidence: types.EvidenceUnit[],userCustomInstructions: string,
+      evidence: types.EvidenceTurn[],userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
   ): BamlStream<partial_types.InterviewExtraction, types.InterviewExtraction> {
     try {

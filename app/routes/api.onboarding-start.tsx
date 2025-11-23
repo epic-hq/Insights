@@ -500,41 +500,124 @@ Please extract insights that specifically address these research questions and h
 			// Update interview with R2 key (not presigned URL)
 			await supabase.from("interviews").update({ media_url: r2Key }).eq("id", interview.id)
 
-			// Create empty transcript data for Trigger.dev task (will be populated during transcription)
-			const transcriptData = safeSanitizeTranscriptPayload({
-				full_transcript: "",
-				confidence: 0,
-				audio_duration: null,
-				processing_duration: 0,
-				file_type: "audio",
-				original_filename: file.name,
+			// Submit to Assembly AI for async transcription with webhook
+			const assemblySpan = audioSpan?.span?.({
+				name: "assemblyai.submit",
+				metadata: {
+					interviewId: interview.id,
+				},
 			})
 
 			try {
-				const runInfo = await createAndProcessAnalysisJob({
-					interviewId: interview.id,
-					transcriptData,
-					customInstructions,
-					adminClient: supabaseAdmin,
-					mediaUrl: presignedUrl, // Use presigned URL for immediate transcription
-					initiatingUserId: user.sub,
-					langfuseParent: audioSpan ?? trace,
-				})
-				if (runInfo && "runId" in runInfo) {
-					triggerRunInfo = runInfo
+				const apiKey = process.env.ASSEMBLYAI_API_KEY
+				if (!apiKey) {
+					throw new Error("ASSEMBLYAI_API_KEY not configured")
 				}
+
+				// Use PUBLIC_TUNNEL_URL for local dev, otherwise infer from request
+				const baseUrl = process.env.PUBLIC_TUNNEL_URL
+					? `https://${process.env.PUBLIC_TUNNEL_URL}`
+					: new URL(request.url).origin
+
+				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`
+
+				consola.info("Submitting to Assembly AI:", { webhookUrl, presignedUrl })
+
+				const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+					method: "POST",
+					headers: {
+						authorization: apiKey,
+						"content-type": "application/json",
+					},
+					body: JSON.stringify({
+						audio_url: presignedUrl,
+						webhook_url: webhookUrl,
+						speech_model: "slam-1",
+						speaker_labels: true,
+						format_text: true,
+						punctuate: true,
+						sentiment_analysis: false,
+					}),
+				})
+
+				if (!transcriptResponse.ok) {
+					const errorText = await transcriptResponse.text()
+					throw new Error(`AssemblyAI request failed: ${transcriptResponse.status} ${errorText}`)
+				}
+
+				const transcriptData = await transcriptResponse.json()
+				consola.info("Assembly AI job created:", { id: transcriptData.id, status: transcriptData.status })
+
+				// Create upload_job to track transcription
+				const { data: uploadJob, error: uploadJobError } = await supabaseAdmin
+					.from("upload_jobs")
+					.insert({
+						interview_id: interview.id,
+						file_name: file.name,
+						file_type: file.type,
+						external_url: presignedUrl,
+						assemblyai_id: transcriptData.id,
+						custom_instructions: customInstructions,
+						status: "in_progress" as const,
+						status_detail: "Transcribing with Assembly AI",
+						created_by: user.sub,
+					})
+					.select()
+					.single()
+
+				if (uploadJobError || !uploadJob) {
+					throw new Error(`Failed to create upload job: ${uploadJobError?.message}`)
+				}
+
+				assemblySpan?.end?.({
+					output: {
+						assemblyaiId: transcriptData.id,
+						uploadJobId: uploadJob.id,
+					},
+				})
+
+				// Create pending analysis_job so frontend has a runId to track
+				// Webhook will trigger the orchestrator when transcription completes
+				const { data: analysisJob, error: analysisJobError } = await supabaseAdmin
+					.from("analysis_jobs")
+					.insert({
+						interview_id: interview.id,
+						transcript_data: { status: "pending_transcription" },
+						custom_instructions: customInstructions,
+						status: "pending" as const,
+						status_detail: "Waiting for transcription to complete",
+						current_step: "transcription",
+					})
+					.select()
+					.single()
+
+				if (analysisJobError || !analysisJob) {
+					throw new Error(`Failed to create analysis job: ${analysisJobError?.message}`)
+				}
+
+				// Return job info for frontend tracking
+				triggerRunInfo = {
+					runId: analysisJob.id,
+					publicToken: null, // Will be set when orchestrator starts
+				}
+
+				consola.success("Transcription job queued, webhook will trigger processing when complete")
 			} catch (analysisError) {
-				const message = analysisError instanceof Error ? analysisError.message : "Failed to queue analysis"
-				consola.error("Failed to queue analysis job:", analysisError)
+				const message = analysisError instanceof Error ? analysisError.message : "Failed to submit for transcription"
+				consola.error("Assembly AI submission failed:", analysisError)
+				assemblySpan?.end?.({
+					level: "ERROR",
+					statusMessage: message,
+				})
 				audioSpan?.event?.({
-					name: "trigger-dev.error",
+					name: "assemblyai.error",
 					metadata: {
 						interviewId: interview.id,
 						message,
 					},
 				})
 				traceEndPayload = { level: "ERROR", statusMessage: message }
-				return Response.json({ error: "Failed to queue analysis" }, { status: 500 })
+				return Response.json({ error: "Failed to submit for transcription" }, { status: 500 })
 			}
 		}
 

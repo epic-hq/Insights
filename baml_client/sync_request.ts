@@ -586,7 +586,7 @@ export class HttpRequest {
   }
   
   GenerateKeyTakeawaysFromEvidence(
-      evidence: types.EvidenceUnit[],userCustomInstructions: string,
+      evidence: types.EvidenceTurn[],userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -1467,7 +1467,7 @@ export class HttpStreamRequest {
   }
   
   GenerateKeyTakeawaysFromEvidence(
-      evidence: types.EvidenceUnit[],userCustomInstructions: string,
+      evidence: types.EvidenceTurn[],userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {

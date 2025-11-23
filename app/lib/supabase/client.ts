@@ -27,8 +27,15 @@ export function createClient(): SupabaseClient<Database> {
 		throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in client environment")
 	}
 
-	// Create the client with proper cookie handling for SSR
-	supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+	// Create the client with proper cookie handling for SSR and PKCE flow
+	supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+		auth: {
+			// Use PKCE flow for OAuth (more secure and reliable for cross-domain auth)
+			flowType: "pkce",
+			// Detect session changes across tabs and in URL params
+			detectSessionInUrl: true,
+		},
+	})
 
 	return supabaseClient
 }
