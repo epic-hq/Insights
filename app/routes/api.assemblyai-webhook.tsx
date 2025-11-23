@@ -22,6 +22,12 @@ interface AssemblyAIWebhookPayload {
 
 type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
 
+// Assembly AI validates webhook endpoints with GET requests
+export async function loader() {
+	consola.info("Assembly AI webhook endpoint validation (GET request)")
+	return Response.json({ status: "ok", service: "assemblyai-webhook" }, { status: 200 })
+}
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
