@@ -19,12 +19,21 @@ const envSchema = z.object({
 	SIGNUP_CHAT_REQUIRED: z.string().optional(),
 	LANGFUSE_PUBLIC_KEY: z.string().optional(),
 	LANGFUSE_SECRET_KEY: z.string().optional(),
-	LANGFUSE_HOST: z.string().optional(),
-	RESEND_API_KEY: z.string().optional(),
-	ENGAGE_API_KEY: z.string().optional(),
-	ENGAGE_API_SECRET: z.string().optional(),
-	DEFAULT_FROM_EMAIL: z.email().optional(),
-	DEFAULT_FROM_EMAIL_NAME: z.string().optional(),
+        LANGFUSE_HOST: z.string().optional(),
+        RESEND_API_KEY: z.string().optional(),
+        ENGAGE_API_KEY: z.string().optional(),
+        ENGAGE_API_SECRET: z.string().optional(),
+        DEFAULT_FROM_EMAIL: z.email().optional(),
+        DEFAULT_FROM_EMAIL_NAME: z.string().optional(),
+
+        // LiveKit
+        LIVEKIT_SFU_URL: z.string().optional(),
+        LIVEKIT_API_KEY: z.string().optional(),
+        LIVEKIT_API_SECRET: z.string().optional(),
+        LIVEKIT_TTL_SECONDS: z.string().optional(),
+
+        // Voice pipelines
+        DEEPGRAM_API_KEY: z.string().optional(),
 
 	// Cloudflare R2
 	R2_ACCOUNT_ID: z.string().optional(),

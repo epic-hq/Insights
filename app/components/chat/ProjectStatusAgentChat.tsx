@@ -6,6 +6,7 @@ import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
+import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { cn } from "~/lib/utils"
@@ -464,12 +465,14 @@ export function ProjectStatusAgentChat({
 									<div ref={messagesEndRef} />
 								</div>
 							)}
-						</div>
+                                                </div>
 
-						<div className="mt-3 flex-shrink-0">
-							<form onSubmit={handleSubmit} className="space-y-2">
-								<Textarea
-									ref={textareaRef}
+                                                <div className="mt-3 flex-shrink-0">
+                                                        <ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
+
+                                                        <form onSubmit={handleSubmit} className="space-y-2">
+                                                                <Textarea
+                                                                        ref={textareaRef}
 									value={input}
 									onChange={(event) => setInput(event.currentTarget.value)}
 									onKeyDown={handleKeyDown}
