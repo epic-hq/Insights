@@ -38,7 +38,7 @@ COPY package.json pnpm-lock.yaml ./
 # Only production deps + runtime tools
 RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
     pnpm install --prod --frozen-lockfile \
-    && pnpm add concurrently mastra@0.10.21
+    && pnpm add concurrently mastra@0.10.21 tsx
 
 ############################
 # Runtime (slim)
@@ -68,6 +68,10 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public
 COPY --from=build /app/.mastra ./.mastra
+COPY --from=build /app/agents ./agents
+COPY --from=build /app/app ./app
+COPY --from=build /app/baml_client ./baml_client
+COPY --from=build /app/supabase/types.ts ./supabase/types.ts
 
 # Minimal runtime data dir
 RUN mkdir -p /app/data
@@ -78,5 +82,5 @@ COPY --chown=node:node .env.production ./.env.production
 USER node
 EXPOSE 3000
 
-# Using shell-installed dotenvx with proper permissions
-CMD ["/usr/local/bin/dotenvx", "run", "-f", ".env.production", "--", "npx", "concurrently", "-n", "App,Mastra", "--c", "green,cyan", "pnpm", "start", "npx", "mastra", "dev", "--dir", "app/mastra"]
+# Using shell-installed dotenvx with proper permissions - now includes LiveKit agent
+CMD ["/usr/local/bin/dotenvx", "run", "-f", ".env.production", "--", "npx", "concurrently", "-n", "App,Mastra,Agent", "--c", "green,cyan,magenta", "pnpm", "start", "npx", "mastra", "dev", "--dir", "app/mastra", "npx", "tsx", "agents/livekit/agent.ts", "dev"]

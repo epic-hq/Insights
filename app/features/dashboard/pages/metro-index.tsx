@@ -399,24 +399,24 @@ export default function MetroIndex() {
 	return (
 		<div className="relative flex min-h-screen bg-background text-foreground">
 			{/* Main Content */}
-			<div className={`flex-1 transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
-				<div className="flex justify-center px-4">
-					<PageContainer className="mx-auto flex flex-col justify-center">
-						{/* Project Status */}
-						<ProjectStatusScreen
-							projectName={project?.name || ""}
-							icp={project?.icp || ""}
-							projectId={projectId}
-							accountId={accountId}
-							statusData={projectStatusData}
-							personas={personas}
-							insights={insights}
-							initialChatMessages={assistantMessages}
-						/>
+			<div className={`flex flex-1 flex-col transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
+				<div className="flex min-h-0 flex-1 justify-center overflow-auto">
+					<PageContainer>
+					{/* Project Status */}
+					<ProjectStatusScreen
+						projectName={project?.name || ""}
+						icp={project?.icp || ""}
+						projectId={projectId}
+						accountId={accountId}
+						statusData={projectStatusData}
+						personas={personas}
+						insights={insights}
+						initialChatMessages={assistantMessages}
+					/>
 
-						{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}
+					{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}
 
-						<div className="p-3 pb-24">
+					<div className="p-3 pb-24">
 							{/* Expanded List */}
 							{showExpandedSection && expandedSection && !fullScreenContent && (
 								<div className="space-y-3">

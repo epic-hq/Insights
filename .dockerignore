@@ -23,3 +23,6 @@ build-cache
 *.log
 # Allow .env.production for deployment
 # Keep public and build artifacts—build stage copies them
+docs
+temp
+tests

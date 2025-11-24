@@ -2148,14 +2148,34 @@ export async function uploadMediaAndTranscribeCore({
 	let interviewRecord: Interview
 	consola.log("assembly audio_duration ", sanitizedTranscriptData.audio_duration)
 	if (existingInterviewId) {
+		consola.info("uploadMediaAndTranscribeCore: fetching existing interview", { existingInterviewId })
 		const { data: existing, error: fetchErr } = await client
 			.from("interviews")
 			.select("*")
 			.eq("id", existingInterviewId)
-			.single()
-		if (fetchErr || !existing) {
-			throw new Error(`Existing interview ${existingInterviewId} not found: ${fetchErr?.message}`)
+			.maybeSingle()
+
+		if (fetchErr) {
+			consola.error("uploadMediaAndTranscribeCore: error fetching existing interview", {
+				existingInterviewId,
+				error: fetchErr,
+				code: fetchErr.code,
+				details: fetchErr.details,
+				hint: fetchErr.hint
+			})
+			throw new Error(`Error fetching existing interview ${existingInterviewId}: ${fetchErr.message}`)
 		}
+
+		if (!existing) {
+			consola.error("uploadMediaAndTranscribeCore: existing interview not found", { existingInterviewId })
+			throw new Error(`Existing interview ${existingInterviewId} not found in database`)
+		}
+
+		consola.info("uploadMediaAndTranscribeCore: updating existing interview", {
+			existingInterviewId,
+			currentStatus: existing.status
+		})
+
 		const { data: updated, error: updateErr } = await client
 			.from("interviews")
 			.update({
@@ -2166,11 +2186,29 @@ export async function uploadMediaAndTranscribeCore({
 			})
 			.eq("id", existingInterviewId)
 			.select("*")
-			.single()
-		if (updateErr || !updated) {
-			throw new Error(`Failed to update existing interview: ${updateErr?.message}`)
+			.maybeSingle()
+
+		if (updateErr) {
+			consola.error("uploadMediaAndTranscribeCore: error updating existing interview", {
+				existingInterviewId,
+				error: updateErr,
+				code: updateErr.code,
+				details: updateErr.details,
+				hint: updateErr.hint
+			})
+			throw new Error(`Failed to update existing interview: ${updateErr.message}`)
 		}
+
+		if (!updated) {
+			consola.error("uploadMediaAndTranscribeCore: update returned no data", { existingInterviewId })
+			throw new Error(`Failed to update existing interview ${existingInterviewId} - no data returned`)
+		}
+
 		interviewRecord = updated as unknown as Interview
+		consola.info("uploadMediaAndTranscribeCore: successfully updated existing interview", {
+			interviewId: interviewRecord.id,
+			status: interviewRecord.status
+		})
 	} else {
 		const interviewData: InterviewInsert = {
 			account_id: normalizedMetadata.accountId,

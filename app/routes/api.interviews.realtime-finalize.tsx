@@ -22,7 +22,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			})
 		}
 
-		const { interviewId, transcript, transcriptFormatted, mediaUrl, audioDuration } = await request.json()
+		const { interviewId, transcript, transcriptFormatted, mediaUrl, audioDuration, attachType, entityId } =
+			await request.json()
 		if (!interviewId || typeof interviewId !== "string") {
 			return new Response(JSON.stringify({ error: "interviewId is required" }), {
 				status: 400,
@@ -48,6 +49,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		const update: Record<string, unknown> = {
 			status: "transcribed",
 			updated_at: new Date().toISOString(),
+			source_type: "realtime_recording",
 		}
 		if (typeof transcript === "string") update.transcript = transcript
 		if (incomingSanitized) {
@@ -57,6 +59,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		}
 		if (typeof mediaUrl === "string" && mediaUrl) update.media_url = mediaUrl
 		if (typeof audioDuration === "number" && audioDuration > 0) update.duration_sec = audioDuration
+
+		// Link to person/org if provided
+		if (attachType === "existing" && typeof entityId === "string" && entityId) {
+			update.person_id = entityId
+		} else if (attachType === "new" && typeof entityId === "string" && entityId) {
+			update.person_id = entityId
+		}
 
 		const { error } = await supabase.from("interviews").update(update).eq("id", interviewId).eq("project_id", projectId)
 

@@ -163,7 +163,9 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 		return (
 			<div className="flex h-dvh min-h-0 w-full overflow-hidden">
 				<div className="flex min-h-0 min-w-0 flex-1 overflow-auto">
-					<Outlet />
+					<div className="mx-auto h-full w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+						<Outlet />
+					</div>
 				</div>
 			</div>
 		)
@@ -174,7 +176,9 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 			<ResizablePanelGroup direction="horizontal" autoSaveId="project-status-layout" className="flex h-full w-full">
 				<ResizablePanel tagName="main" defaultSize={70} minSize={45} className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<div className="min-h-0 min-w-0 flex-1 overflow-auto">
-						<Outlet />
+						<div className="mx-auto h-full w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+							<Outlet />
+						</div>
 					</div>
 				</ResizablePanel>
 

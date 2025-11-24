@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData } from "react-router"
+import { useLoaderData, useSearchParams } from "react-router"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { userContext } from "~/server/user-context"
@@ -40,6 +40,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function InterviewRealtimePage() {
 	const { projectId, interviewId } = useLoaderData<typeof loader>()
+	const [searchParams] = useSearchParams()
+	const autostart = searchParams.get("autostart") === "true"
+	const mode = (searchParams.get("mode") as "notes" | "interview") || "interview"
+	const attachType = searchParams.get("attachType")
+	const entityId = searchParams.get("entityId")
 
 	useEffect(() => {
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -59,7 +64,14 @@ export default function InterviewRealtimePage() {
 	return (
 		// Fill available outlet height from AppLayout, avoid double 100vh under header
 		<div className="h-full min-h-0 bg-background">
-			<InterviewCopilot projectId={projectId} interviewId={interviewId} />
+			<InterviewCopilot
+				projectId={projectId}
+				interviewId={interviewId}
+				autostart={autostart}
+				mode={mode}
+				attachType={attachType || undefined}
+				entityId={entityId || undefined}
+			/>
 		</div>
 	)
 }

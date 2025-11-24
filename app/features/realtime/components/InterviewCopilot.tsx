@@ -34,6 +34,10 @@ import { createClient } from "~/lib/supabase/client"
 interface InterviewCopilotProps {
 	projectId: string
 	interviewId?: string
+	autostart?: boolean
+	mode?: "notes" | "interview"
+	attachType?: string
+	entityId?: string
 }
 
 interface AISuggestion {
@@ -44,7 +48,14 @@ interface AISuggestion {
 	timestamp: Date
 }
 
-export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotProps) {
+export function InterviewCopilot({
+	projectId,
+	interviewId,
+	autostart = false,
+	mode = "interview",
+	attachType,
+	entityId,
+}: InterviewCopilotProps) {
 	const [_selectedQuestions, _setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
 	const [isRecording, setIsRecording] = useState(false)
 	// Store finalized turns with timing to support 15s replay
@@ -505,6 +516,18 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		startDurationTimer,
 	])
 
+	// Auto-start recording if autostart param is true (must be after startStreaming is defined)
+	useEffect(() => {
+		if (autostart && !isRecording && streamStatus === "idle") {
+			// Small delay to ensure component is fully mounted and audio devices are loaded
+			const timer = setTimeout(() => {
+				startStreaming()
+				setIsRecording(true)
+			}, 500)
+			return () => clearTimeout(timer)
+		}
+	}, [autostart, isRecording, streamStatus, startStreaming])
+
 	// Pause without finalizing; keeps WS alive if possible
 	const pauseStreaming = useCallback(() => {
 		if (timerRef.current) {
@@ -758,6 +781,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 									},
 									mediaUrl,
 									audioDuration,
+									attachType,
+									entityId,
 								}),
 							})
 						} catch (e) {

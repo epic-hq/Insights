@@ -5,6 +5,7 @@ import { useNavigate, useRouteLoaderData } from "react-router"
 interface RecordNowOptions {
 	projectId?: string
 	redirect?: boolean
+	urlParams?: string
 }
 
 interface RecordNowResult {
@@ -25,7 +26,7 @@ export function useRecordNow() {
 	const [isRecording, setIsRecording] = useState(false)
 
 	const recordNow = useCallback(
-		async ({ projectId, redirect = true }: RecordNowOptions = {}): Promise<RecordNowResult | null> => {
+		async ({ projectId, redirect = true, urlParams = "" }: RecordNowOptions = {}): Promise<RecordNowResult | null> => {
 			if (!accountId || !accountBase) {
 				consola.error("Record Now error: missing account context")
 				return null
@@ -43,7 +44,9 @@ export function useRecordNow() {
 					const data = await res.json()
 					if (!res.ok) throw new Error(data?.error || "Failed to start interview")
 
-					const path = `${accountBase}/${projectId}/interviews/${data.interviewId}/realtime`
+					const baseParams = "autostart=true&mode=notes"
+					const fullParams = urlParams ? `${baseParams}&${urlParams}` : baseParams
+					const path = `${accountBase}/${projectId}/interviews/${data.interviewId}/realtime?${fullParams}`
 					if (redirect) navigate(path)
 					return { projectId, interviewId: data.interviewId, path }
 				}
@@ -54,7 +57,9 @@ export function useRecordNow() {
 
 				const { projectId: newProjectId, interviewId } = data || {}
 				if (newProjectId && interviewId) {
-					const path = `${accountBase}/${newProjectId}/interviews/${interviewId}/realtime`
+					const baseParams = "autostart=true&mode=notes"
+					const fullParams = urlParams ? `${baseParams}&${urlParams}` : baseParams
+					const path = `${accountBase}/${newProjectId}/interviews/${interviewId}/realtime?${fullParams}`
 					if (redirect) navigate(path)
 					return { projectId: newProjectId, interviewId, path }
 				}
