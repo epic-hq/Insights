@@ -1,4 +1,4 @@
-import { ChevronsUpDown, LogOut, User, Users } from "lucide-react"
+import { ChevronsUpDown, LogOut, Settings, User, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -38,7 +38,7 @@ interface UserProfileProps {
 export function UserProfile({ collapsed = false, className }: UserProfileProps) {
 	const [open, setOpen] = useState(false)
 	const { user, signOut } = useAuth()
-	const { projectPath } = useCurrentProject()
+	const { projectPath, accountId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
 	if (!user) return null
@@ -47,6 +47,7 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 	const email = user.email ?? ""
 	const avatarUrl = user.user_metadata?.avatar_url ?? ""
 	const initials = getInitials(displayName || email || "U")
+	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null
 
 	const handleSignOut = async () => {
 		try {
@@ -105,6 +106,14 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 									<span>Manage Team</span>
 								</Link>
 							</DropdownMenuItem>
+							{accountSettingsPath && (
+								<DropdownMenuItem asChild>
+									<Link to={accountSettingsPath} className="flex items-center gap-2">
+										<Settings className="h-4 w-4" />
+										<span>Account Settings</span>
+									</Link>
+								</DropdownMenuItem>
+							)}
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem className="flex items-center justify-between">

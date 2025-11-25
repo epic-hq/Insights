@@ -18,6 +18,28 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 // })
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+function logMeta(req: Request, extra?: Record<string, unknown>) {
+	try {
+		const url = new URL(req.url)
+		const h = req.headers
+		return {
+			method: req.method,
+			url: req.url,
+			host: h.get("host"),
+			origin: h.get("origin"),
+			referer: h.get("referer"),
+			forwarded: h.get("forwarded"),
+			xfwdFor: h.get("x-forwarded-for"),
+			xfwdProto: h.get("x-forwarded-proto"),
+			xfwdHost: h.get("x-forwarded-host"),
+			authority: `${url.protocol}//${url.host}`,
+			extra,
+		}
+	} catch (_e) {
+		return { method: req.method, url: req.url, extra }
+	}
+}
+
 Deno.serve(async (req) => {
 	// Debug: Log Authorization header specifically
 	const authHeader = req.headers.get("authorization")
@@ -31,6 +53,7 @@ Deno.serve(async (req) => {
 	}
 
 	try {
+		console.log("[embed] request meta", JSON.stringify(logMeta(req)))
 		const { id, name, pain } = await req.json()
 		if (!id || !name || !pain) {
 			return new Response("Missing `id`, `name` or `pain`", { status: 400 })
@@ -68,7 +91,8 @@ Deno.serve(async (req) => {
 			headers: { "Content-Type": "application/json" },
 		})
 	} catch (err) {
-		return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
+		console.error("[embed] exception", err)
+		return new Response(JSON.stringify({ success: false, message: (err as Error).message, stack: (err as Error).stack }), {
 			status: 500,
 			headers: { "Content-Type": "application/json" },
 		})

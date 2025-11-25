@@ -10,6 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOpportunities } from "~/features/opportunities/db"
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
+import {
+	ensureStageValue,
+	normalizeStageId,
+	stageLabelForValue,
+	type OpportunityStageConfig,
+} from "~/features/opportunities/stage-config"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
@@ -33,16 +40,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Error loading opportunities", { status: 500 })
 	}
 
-	return { opportunities: opportunities || [] }
+	const { stages } = await loadOpportunityStages({ supabase, accountId })
+
+	return { opportunities: opportunities || [], stages }
 }
 
 type OpportunityRecord = Awaited<ReturnType<typeof loader>>["opportunities"][number]
-
-const STAGE_COLUMNS = [
-	{ key: "Explore", label: "Explore", description: "Problem discovery" },
-	{ key: "Validate", label: "Validate", description: "Signal validation" },
-	{ key: "Build", label: "Build", description: "Solution delivery" },
-]
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
@@ -51,7 +54,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 })
 
 export default function OpportunitiesIndexPage() {
-	const { opportunities } = useLoaderData<typeof loader>()
+	const { opportunities, stages } = useLoaderData<typeof loader>()
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 	const [viewMode, setViewMode] = useState<"stage" | "month">("stage")
@@ -63,10 +66,13 @@ export default function OpportunitiesIndexPage() {
 	)
 
 	const stageColumns = useMemo(() => {
-		const baseColumns = STAGE_COLUMNS.map((stage) => {
-			const deals = opportunities.filter((opp) => (opp.kanban_status || "Explore") === stage.key)
+		const defaultStageId = ensureStageValue(null, stages)
+		const baseColumns = stages.map((stage) => {
+			const deals = opportunities.filter(
+				(opp) => normalizeStageId(opp.kanban_status || opp.stage || defaultStageId) === stage.id
+			)
 			return {
-				key: stage.key,
+				key: stage.id,
 				label: stage.label,
 				description: stage.description,
 				total: sumAmounts(deals),
@@ -76,7 +82,7 @@ export default function OpportunitiesIndexPage() {
 		})
 
 		const uncategorized = opportunities.filter(
-			(opp) => !STAGE_COLUMNS.some((stage) => stage.key === (opp.kanban_status || ""))
+			(opp) => !stages.some((stage) => stage.id === normalizeStageId(opp.kanban_status || opp.stage || ""))
 		)
 		if (uncategorized.length > 0) {
 			baseColumns.push({
@@ -90,7 +96,7 @@ export default function OpportunitiesIndexPage() {
 		}
 
 		return baseColumns
-	}, [opportunities])
+	}, [opportunities, stages])
 
 	const monthColumns = useMemo(() => {
 		const start = startOfMonth(new Date())
@@ -191,9 +197,9 @@ export default function OpportunitiesIndexPage() {
 					</CardContent>
 				</Card>
 			) : viewMode === "stage" ? (
-				<KanbanGrid columns={stageColumns} routes={routes} />
+				<KanbanGrid columns={stageColumns} routes={routes} stages={stages} />
 			) : (
-				<KanbanGrid columns={monthColumns} routes={routes} emptyLabel="No deals scheduled" />
+				<KanbanGrid columns={monthColumns} routes={routes} stages={stages} emptyLabel="No deals scheduled" />
 			)}
 		</div>
 	)
@@ -211,10 +217,12 @@ type KanbanColumn = {
 function KanbanGrid({
 	columns,
 	routes,
+	stages,
 	emptyLabel = "No opportunities",
 }: {
 	columns: KanbanColumn[]
 	routes: ReturnType<typeof useProjectRoutes>
+	stages: OpportunityStageConfig[]
 	emptyLabel?: string
 }) {
 	return (
@@ -242,7 +250,9 @@ function KanbanGrid({
 								{emptyLabel}
 							</p>
 						) : (
-							column.deals.map((deal) => <OpportunityCard key={deal.id} deal={deal} routes={routes} />)
+							column.deals.map((deal) => (
+								<OpportunityCard key={deal.id} deal={deal} routes={routes} stages={stages} />
+							))
 						)}
 					</CardContent>
 				</Card>
@@ -251,15 +261,24 @@ function KanbanGrid({
 	)
 }
 
-function OpportunityCard({ deal, routes }: { deal: OpportunityRecord; routes: ReturnType<typeof useProjectRoutes> }) {
+function OpportunityCard({
+	deal,
+	routes,
+	stages,
+}: {
+	deal: OpportunityRecord
+	routes: ReturnType<typeof useProjectRoutes>
+	stages: OpportunityStageConfig[]
+}) {
 	const amountDisplay = deal.amount ? currencyFormatter.format(Number(deal.amount)) : "—"
 	const closeDisplay = deal.close_date ? format(new Date(deal.close_date), "MMM d") : "No date"
+	const stageLabel = stageLabelForValue(deal.stage || deal.kanban_status, stages)
 	return (
 		<div>
-			{deal.stage && (
+			{stageLabel && (
 				<div className="mb-1 px-1">
 					<Badge variant="outline" className="bg-muted/50 text-[10px] uppercase tracking-wide">
-						{deal.stage}
+						{stageLabel}
 					</Badge>
 				</div>
 			)}

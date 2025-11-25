@@ -1,6 +1,6 @@
-import { useId } from "react"
-import type { ActionFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLocation } from "react-router-dom"
+import { useId, useState } from "react"
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
+import { Form, redirect, useActionData, useLoaderData, useLocation } from "react-router-dom"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -9,10 +9,27 @@ import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
 import { createOpportunity } from "~/features/opportunities/db"
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
+import { ensureStageValue } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "New Opportunity | Insights" }, { name: "description", content: "Create a new opportunity" }]
+}
+
+export async function loader({ context, params }: LoaderFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
+	const projectId = params.projectId
+	const accountId = params.accountId
+
+	if (!projectId || !accountId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
+
+	const { stages } = await loadOpportunityStages({ supabase, accountId })
+
+	return { stages }
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
@@ -30,7 +47,6 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const formData = await request.formData()
 	const title = formData.get("title") as string
 	const description = formData.get("description") as string
-	const kanbanStatus = formData.get("kanban_status") as string
 	const stage = formData.get("stage") as string
 	const amount = formData.get("amount") as string
 	const closeDate = formData.get("close_date") as string
@@ -41,20 +57,25 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	}
 
 	try {
+		const { stages } = await loadOpportunityStages({ supabase, accountId })
+		const normalizedStage = ensureStageValue(stage || null, stages)
+
 		// Build metadata to store interview link temporarily
 		// TODO: Automatically run BANT extraction if interview_id is provided
 		const metadata = interviewId ? { linked_interview_id: interviewId } : {}
 
 		const createData: any = {
 			title: title.trim(),
-			kanban_status: kanbanStatus || "Explore",
 			account_id: accountId,
 			project_id: projectId,
 			metadata,
 		}
 
 		if (description?.trim()) createData.description = description.trim()
-		if (stage?.trim()) createData.stage = stage.trim()
+		if (normalizedStage) {
+			createData.stage = normalizedStage
+			createData.kanban_status = normalizedStage
+		}
 		if (amount) createData.amount = Number(amount)
 		if (closeDate) createData.close_date = closeDate
 
@@ -87,6 +108,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 export default function NewOpportunity() {
 	const actionData = useActionData<typeof action>()
 	const location = useLocation()
+	const { stages } = useLoaderData<typeof loader>()
+	const [selectedStage, setSelectedStage] = useState(() => ensureStageValue(null, stages))
 
 	// Get interview context from location state if navigating from interview detail
 	const interviewTitle = (location.state as { interviewTitle?: string })?.interviewTitle
@@ -140,29 +163,33 @@ export default function NewOpportunity() {
 				</div>
 
 				<div className="grid gap-6 md:grid-cols-2">
-					<div>
-						<Label htmlFor="kanban_status">Status</Label>
-						<Select name="kanban_status" defaultValue="Explore">
+					<div className="md:col-span-2">
+						<Label htmlFor="stage">Sales Stage</Label>
+						<Select
+							name="stage"
+							value={selectedStage}
+							onValueChange={(value) => setSelectedStage(ensureStageValue(value, stages))}
+						>
 							<SelectTrigger className="mt-1">
-								<SelectValue placeholder="Select status" />
+								<SelectValue placeholder="Select stage" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="Explore">Explore</SelectItem>
-								<SelectItem value="Validate">Validate</SelectItem>
-								<SelectItem value="Build">Build</SelectItem>
+								{stages.map((stage) => (
+									<SelectItem key={stage.id} value={stage.id}>
+										<div className="flex flex-col items-start">
+											<span className="font-medium">{stage.label}</span>
+											{stage.description && (
+												<span className="text-muted-foreground text-xs">{stage.description}</span>
+											)}
+										</div>
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
-					</div>
-
-					<div>
-						<Label htmlFor="stage">Sales Stage</Label>
-						<Input
-							id={useId()}
-							name="stage"
-							type="text"
-							placeholder="e.g., Discovery, Proposal, Negotiation"
-							className="mt-1"
-						/>
+						<input type="hidden" name="kanban_status" value={selectedStage} />
+						<p className="mt-2 text-muted-foreground text-xs">
+							Stages control the kanban columns and dropdowns for this project.
+						</p>
 					</div>
 				</div>
 

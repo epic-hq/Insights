@@ -10,6 +10,12 @@ import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "../../app/lib/supabase/client.server"
 import { getPeople } from "../../app/features/people/db"
+import { getProjectById } from "../../app/features/projects/db"
+import { getThemes } from "../../app/features/themes/db"
+import { getInsights } from "../../app/features/insights/db"
+import { getTasks, updateTask, createTask } from "../../app/features/tasks/db"
+import { getOpportunities } from "../../app/features/opportunities/db"
+import { getInterviews } from "../../app/features/interviews/db"
 
 const PEOPLE_CACHE_TTL_MS = 30_000
 const peopleDatasetCache = new Map<string, { fetchedAt: number; people: any[] }>()
@@ -182,6 +188,397 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 					return response
 				} catch (error) {
 					consola.error("Error fetching people", error)
+					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Get project status including themes, insights, and project details
+		getProjectStatus: llm.tool({
+			description: 'Get comprehensive project information including themes, insights, research goals, and project setup. Use this when the user asks about the project, research themes, insights, or project status.',
+			parameters: z.object({
+				includeThemes: z.boolean().optional().describe('Include research themes in the response. Default true.'),
+				includeInsights: z.boolean().optional().describe('Include recent insights/evidence in the response. Default true.'),
+			}),
+			execute: async ({ includeThemes = true, includeInsights = true }: { includeThemes?: boolean; includeInsights?: boolean }) => {
+				try {
+					consola.info("getProjectStatus: fetching project data", { projectId, accountId, includeThemes, includeInsights })
+
+					// Fetch project details
+					const { data: project, error: projectError } = await getProjectById({
+						supabase: supabaseAdmin as any,
+						id: projectId,
+					})
+
+					if (projectError || !project) {
+						consola.error("Database error fetching project", projectError)
+						return "Sorry, I had trouble fetching the project information."
+					}
+
+					const response: string[] = []
+
+					// Project overview
+					response.push(`Project: ${project.name}`)
+					if (project.description) {
+						response.push(`Description: ${project.description}`)
+					}
+
+					// Fetch themes if requested
+					if (includeThemes) {
+						const { data: themes, error: themesError } = await getThemes({
+							supabase: supabaseAdmin as any,
+							projectId,
+						})
+
+						if (!themesError && themes && themes.length > 0) {
+							const themeList = themes.slice(0, 5).map((t: any) => `"${t.name}"`).join(", ")
+							response.push(`Research themes (${themes.length} total): ${themeList}${themes.length > 5 ? ", and more" : ""}`)
+						} else {
+							response.push("No research themes identified yet.")
+						}
+					}
+
+					// Fetch recent insights if requested
+					if (includeInsights) {
+						const { data: insights, error: insightsError } = await getInsights({
+							supabase: supabaseAdmin as any,
+							accountId,
+							projectId,
+						})
+
+						if (!insightsError && insights && insights.length > 0) {
+							const topInsights = insights.slice(0, 5)
+							response.push(`Recent insights (${insights.length}): ${topInsights.map((i: any) => i.name || i.statement?.slice(0, 50)).join("; ")}`)
+						}
+					}
+
+					return response.join(". ")
+				} catch (error) {
+					consola.error("Error fetching project status", error)
+					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Get tasks in the project
+		getTasks: llm.tool({
+			description: 'Get tasks and todos in the project. Use this when the user asks about tasks, todos, action items, or what needs to be done.',
+			parameters: z.object({
+				status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked', 'archived']).optional().describe('Filter by task status. If not specified, returns all active tasks (todo and in_progress).'),
+				limit: z.number().optional().describe('Maximum number of tasks to return. Default 10.'),
+			}),
+			execute: async ({ status, limit = 10 }: { status?: 'backlog' | 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived'; limit?: number }) => {
+				try {
+					consola.info("getTasks: fetching tasks", { projectId, accountId, status, limit })
+
+					// Build options for getTasks
+					const options: any = { limit }
+					if (status) {
+						options.filters = { status }
+					} else {
+						// Default: show todo and in_progress tasks
+						options.filters = { status: ['todo', 'in_progress'] }
+					}
+
+					const tasks = await getTasks({
+						supabase: supabaseAdmin as any,
+						projectId,
+						options,
+					})
+
+					if (!tasks || tasks.length === 0) {
+						const statusText = status ? ` with status "${status}"` : ""
+						return `No tasks found${statusText}. ${status === 'done' ? "All tasks are still pending." : "No pending tasks right now."}`
+					}
+
+					// Format response with task IDs so the agent can reference them for updates
+					const tasksList = tasks.slice(0, Math.min(5, tasks.length)).map((task: any) => {
+						const parts = []
+						if (task.title) parts.push(`"${task.title}"`)
+						if (task.status) parts.push(`status: ${task.status}`)
+						if (task.assigned_to && task.assigned_to.length > 0) {
+							const assignee = task.assigned_to[0]
+							if (assignee.user_name) parts.push(`assigned to ${assignee.user_name}`)
+						}
+						// Include task ID for reference
+						parts.push(`[ID: ${task.id}]`)
+						return parts.join(" ")
+					})
+
+					const statusText = status ? ` with status "${status}"` : ""
+					return `Found ${tasks.length} tasks${statusText}: ${tasksList.join("; ")}${tasks.length > 5 ? `. Plus ${tasks.length - 5} more tasks not shown` : ""}`
+				} catch (error) {
+					consola.error("Error fetching tasks", error)
+					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Update a task (change status, priority, assignment, etc.)
+		updateTask: llm.tool({
+			description: 'Update a task - change status (backlog, todo, in_progress, done, blocked, archived), priority, title, description, or assignment. Use this when the user asks to change, update, or modify a task.',
+			parameters: z.object({
+				taskId: z.string().describe('The ID of the task to update'),
+				updates: z.object({
+					status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked', 'archived']).optional().describe('New task status'),
+					priority: z.number().min(1).max(5).optional().describe('New priority (1=highest, 5=lowest)'),
+					title: z.string().optional().describe('New title'),
+					description: z.string().optional().describe('New description'),
+				}).describe('Fields to update'),
+			}),
+			execute: async ({ taskId, updates }: { taskId: string; updates: any }) => {
+				try {
+					consola.info("updateTask: updating task", { projectId, accountId, taskId, updates })
+
+					const updatedTask = await updateTask({
+						supabase: supabaseAdmin as any,
+						taskId,
+						userId: userId, // Use the userId from context
+						updates,
+					})
+
+					// Format success response
+					const parts = [`Task "${updatedTask.title}" updated`]
+					if (updates.status) parts.push(`Status: ${updates.status}`)
+					if (updates.priority) parts.push(`Priority: ${updates.priority}`)
+
+					return parts.join(". ")
+				} catch (error) {
+					consola.error("Error updating task", error)
+					return `Sorry, I couldn't update that task: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Create a new task
+		createTask: llm.tool({
+			description: 'Create a new task. Use this when the user asks to create, add, or make a new task or todo item.',
+			parameters: z.object({
+				title: z.string().describe('Task title'),
+				description: z.string().optional().describe('Task description'),
+				status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked']).optional().describe('Initial status (default: backlog)'),
+				priority: z.number().min(1).max(5).optional().describe('Priority 1-5 (1=highest, 5=lowest, default: 3)'),
+			}),
+			execute: async ({ title, description, status, priority }: { title: string; description?: string; status?: string; priority?: number }) => {
+				try {
+					consola.info("createTask: creating task", { projectId, accountId, title, status, priority })
+
+					const newTask = await createTask({
+						supabase: supabaseAdmin as any,
+						accountId,
+						projectId,
+						userId: userId,
+						data: {
+							title,
+							description: description || null,
+							status: status || 'backlog',
+							priority: priority || 3,
+						},
+					})
+
+					return `Created task: "${newTask.title}" (Status: ${newTask.status}, Priority: ${newTask.priority})`
+				} catch (error) {
+					consola.error("Error creating task", error)
+					return `Sorry, I couldn't create that task: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Get sales opportunities in the project
+		getOpportunities: llm.tool({
+			description: 'Get sales opportunities, deals, and pipeline information. Use this when the user asks about opportunities, deals, sales pipeline, or potential customers.',
+			parameters: z.object({
+				stage: z.enum(['discovery', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']).optional().describe('Filter by opportunity stage.'),
+			}),
+			execute: async ({ stage }: { stage?: 'discovery' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost' }) => {
+				try {
+					consola.info("getOpportunities: fetching opportunities", { projectId, accountId, stage })
+
+					const { data: opportunities, error } = await getOpportunities({
+						supabase: supabaseAdmin as any,
+						accountId,
+						projectId,
+					})
+
+					if (error || !opportunities) {
+						consola.error("Database error fetching opportunities", error)
+						return "Sorry, I had trouble fetching the opportunities."
+					}
+
+					// Filter by stage if specified
+					let filteredOpps = opportunities
+					if (stage) {
+						filteredOpps = opportunities.filter((opp: any) => opp.stage === stage)
+					}
+
+					if (filteredOpps.length === 0) {
+						const stageText = stage ? ` in stage "${stage}"` : ""
+						return `No opportunities found${stageText}.`
+					}
+
+					// Format response with key details
+					const oppsList = filteredOpps.slice(0, 10).map((opp: any) => {
+						const parts = [opp.name]
+						if (opp.stage) parts.push(`stage: ${opp.stage}`)
+						if (opp.amount) parts.push(`value: $${opp.amount.toLocaleString()}`)
+						if (opp.close_date) parts.push(`closes: ${new Date(opp.close_date).toLocaleDateString()}`)
+						return parts.join(", ")
+					})
+
+					const stageText = stage ? ` in stage "${stage}"` : ""
+					return `Found ${filteredOpps.length} opportunities${stageText}: ${oppsList.join("; ")}${filteredOpps.length > 10 ? `, and ${filteredOpps.length - 10} more` : ""}`
+				} catch (error) {
+					consola.error("Error fetching opportunities", error)
+					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Get research themes in the project
+		getThemes: llm.tool({
+			description: 'Get research themes and topics identified in the project. Themes are patterns, topics, or insights discovered across interviews and evidence.',
+			parameters: z.object({
+				limit: z.number().optional().describe('Maximum number of themes to return. Default 10.'),
+			}),
+			execute: async ({ limit = 10 }: { limit?: number }) => {
+				try {
+					consola.info("getThemes: fetching themes", { projectId, accountId, limit })
+
+					const { data: themes, error } = await getThemes({
+						supabase: supabaseAdmin as any,
+						projectId,
+					})
+
+					if (error || !themes) {
+						consola.error("Database error fetching themes", error)
+						return "Sorry, I had trouble fetching the themes."
+					}
+
+					if (themes.length === 0) {
+						return "No research themes identified yet in this project."
+					}
+
+					// Limit results
+					const limitedThemes = themes.slice(0, limit)
+
+					// Format response with theme details
+					const themesList = limitedThemes.map((theme: any) => {
+						const parts = [`"${theme.name}"`]
+						if (theme.statement) parts.push(`- ${theme.statement}`)
+						return parts.join(" ")
+					})
+
+					return `Found ${themes.length} research themes: ${themesList.join("; ")}${themes.length > limit ? `, and ${themes.length - limit} more` : ""}`
+				} catch (error) {
+					consola.error("Error fetching themes", error)
+					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Get evidence and insights from interviews
+		getEvidence: llm.tool({
+			description: 'Get evidence, insights, and findings from research interviews. Use this to find specific quotes, observations, or data points collected during research.',
+			parameters: z.object({
+				limit: z.number().optional().describe('Maximum number of evidence items to return. Default 10.'),
+			}),
+			execute: async ({ limit = 10 }: { limit?: number }) => {
+				try {
+					consola.info("getEvidence: fetching insights/evidence", { projectId, accountId, limit })
+
+					const { data: insights, error } = await getInsights({
+						supabase: supabaseAdmin as any,
+						accountId,
+						projectId,
+					})
+
+					if (error || !insights) {
+						consola.error("Database error fetching evidence", error)
+						return "Sorry, I had trouble fetching the evidence."
+					}
+
+					if (insights.length === 0) {
+						return "No evidence found. Try collecting more interview data."
+					}
+
+					// Limit results
+					const limitedInsights = insights.slice(0, limit)
+
+					// Format response with evidence details
+					const evidenceList = limitedInsights.slice(0, 5).map((insight: any) => {
+						const parts = []
+						if (insight.name) parts.push(`"${insight.name}"`)
+						if (insight.statement) parts.push(insight.statement.slice(0, 100))
+						return parts.join(": ")
+					})
+
+					return `Found ${insights.length} pieces of evidence: ${evidenceList.join("; ")}${insights.length > 5 ? `, and ${insights.length - 5} more` : ""}`
+				} catch (error) {
+					consola.error("Error fetching evidence", error)
+					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
+		// Get interviews and research recordings
+		getInterviews: llm.tool({
+			description: 'Get list of interviews, recordings, and research sessions. Use this to see who has been interviewed, when interviews took place, and interview status.',
+			parameters: z.object({
+				limit: z.number().optional().describe('Maximum number of interviews to return. Default 10.'),
+			}),
+			execute: async ({ limit = 10 }: { limit?: number }) => {
+				try {
+					consola.info("getInterviews: fetching interviews", { projectId, accountId, limit })
+
+					const { data: interviews, error } = await getInterviews({
+						supabase: supabaseAdmin as any,
+						accountId,
+						projectId,
+					})
+
+					if (error || !interviews) {
+						consola.error("Database error fetching interviews", error)
+						return "Sorry, I had trouble fetching the interviews."
+					}
+
+					if (interviews.length === 0) {
+						return "No interviews conducted yet in this project."
+					}
+
+					// Limit results
+					const limitedInterviews = interviews.slice(0, limit)
+
+					// Format response with interview details
+					const interviewsList = limitedInterviews.map((interview: any) => {
+						const parts = []
+
+						// Get participant name from interview_people
+						const primaryParticipant = interview.interview_people?.[0]
+						const participantName = primaryParticipant?.people?.name || interview.title || "Unknown participant"
+						parts.push(participantName)
+
+						// Add date if available
+						if (interview.interview_date) {
+							const date = new Date(interview.interview_date)
+							parts.push(`on ${date.toLocaleDateString()}`)
+						}
+
+						// Add evidence count
+						if (interview.evidence_count && interview.evidence_count > 0) {
+							parts.push(`(${interview.evidence_count} evidence items)`)
+						}
+
+						// Add status
+						if (interview.status && interview.status !== "ready") {
+							parts.push(`[${interview.status}]`)
+						}
+
+						return parts.join(" ")
+					})
+
+					return `Found ${interviews.length} interviews: ${interviewsList.join("; ")}${interviews.length > limit ? `, and ${interviews.length - limit} more` : ""}`
+				} catch (error) {
+					consola.error("Error fetching interviews", error)
 					return `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`
 				}
 			},

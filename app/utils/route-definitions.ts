@@ -119,6 +119,11 @@ export interface RouteDefinitions {
 		researchWorkflow: () => string
 	}
 
+	// Teams
+	team: {
+		members: () => string
+	}
+
 	// Projects (note: these are at account level, not project level)
 	projects: {
 		index: () => string

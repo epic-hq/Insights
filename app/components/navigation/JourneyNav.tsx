@@ -1,6 +1,7 @@
 import { ChevronRight, Command, Lightbulb, MessageSquare, Mic, TrendingUp, User, Users } from "lucide-react"
 import { useState } from "react"
 import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router"
+import { UserProfile } from "~/components/auth/UserProfile"
 import { Button } from "~/components/ui/button"
 import {
 	CommandEmpty,
@@ -234,16 +235,16 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 				route: "/interviews",
 			},
 			{
+				key: "people",
+				title: "People",
+				icon: Users,
+				route: "/people",
+			},
+			{
 				key: "chat",
 				title: "Chat",
 				icon: MessageSquare,
 				route: "/assistant",
-			},
-			{
-				key: "account",
-				title: "Account",
-				icon: User,
-				route: "/login",
 			},
 		]
 
@@ -264,15 +265,19 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 							key={item.key}
 							to={getRouteUrl(item.route)}
 							className={cn(
-								"flex min-w-0 flex-1 flex-col items-center space-y-1 rounded-lg px-3 py-2 font-medium text-xs transition-colors",
+								"flex min-w-0 flex-1 flex-col items-center rounded-lg px-3 py-2 transition-colors",
 								isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent hover:text-foreground"
 							)}
 						>
-							<Icon className="h-5 w-5" />
-							<span className="truncate">{item.title}</span>
+							<Icon className="h-6 w-6" />
 						</NavLink>
 					)
 				})}
+
+				{/* Account - UserProfile Dropdown */}
+				<div className="flex min-w-0 flex-1 justify-center">
+					<UserProfile collapsed={true} className="w-auto" />
+				</div>
 			</nav>
 		)
 	}

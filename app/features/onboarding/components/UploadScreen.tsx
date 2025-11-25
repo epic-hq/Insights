@@ -304,7 +304,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 			/>
 
 			{/* Main Content */}
-			<div className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+			<div className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-4 sm:px-6 sm:py-12 lg:px-8">
 				{/* Header */}
 				{/* <div className="mb-12 text-center">
 					<h1 className="mb-3 font-bold text-4xl text-slate-900 tracking-tight dark:text-white">
@@ -339,59 +339,61 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 
 				{/* Main Options */}
 				<div className="w-full space-y-4">
-					{/* Record Card */}
-					<div
-						onClick={handleRecordNow}
-						className={cn(
-							"group w-full rounded-3xl border border-slate-200/60 bg-white/80 p-10 shadow-slate-900/5 shadow-xl backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-slate-900/10 dark:border-slate-800/60 dark:bg-slate-900/80",
-							"cursor-pointer hover:scale-[1.01]",
-							isRecording && "cursor-not-allowed opacity-50"
-						)}
-					>
-						<div className="flex items-center gap-6">
-							<div
-								className={cn(
-									"flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300",
-									recordMode === "conversation"
-										? "bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/40"
-										: "bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 group-hover:shadow-red-500/40",
-									"group-hover:scale-105 group-hover:shadow-xl",
-									isRecording && "animate-pulse"
-								)}
-							>
-								{recordMode === "conversation" ? (
-									<Users className="h-9 w-9 text-white" />
-								) : (
-									<Mic className="h-9 w-9 text-white" />
-								)}
-							</div>
-							<div className="flex-1 text-left">
-								<h3 className="mb-2 font-semibold text-slate-900 text-xl dark:text-white">Record Now</h3>
-								<div className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 p-1 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-									{recordModeOptions.map((option) => (
-										<button
-											key={option.value}
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation()
-												setRecordMode(option.value)
-											}}
-											className={cn(
-												"relative rounded-full px-4 py-1.5 font-medium transition",
-												recordMode === option.value
-													? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm"
-													: "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-											)}
-										>
-											<div className="flex flex-col leading-tight">
-												<span>{option.label}</span>
-												<span className="font-normal text-xs opacity-80">{option.helper}</span>
-											</div>
-										</button>
-									))}
+					{/* Record Mode Selection - Mobile Friendly */}
+					<div className="space-y-3">
+						<h3 className="font-semibold text-center text-slate-900 text-xl sm:text-2xl dark:text-white">Record Now</h3>
+
+						{/* Voice Memo Button */}
+						<button
+							type="button"
+							onClick={() => {
+								setRecordMode("voice_memo")
+								handleRecordNow()
+							}}
+							disabled={isRecording}
+							className={cn(
+								"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/10 dark:border-slate-800/60 dark:bg-slate-900/80",
+								"cursor-pointer hover:scale-[1.01]",
+								recordMode === "voice_memo" && "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-950",
+								isRecording && recordMode === "voice_memo" && "cursor-not-allowed opacity-50 animate-pulse"
+							)}
+						>
+							<div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+								<div className="flex h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-all duration-300 group-hover:scale-105 group-hover:shadow-red-500/40 group-hover:shadow-xl">
+									<Mic className="h-8 w-8 sm:h-9 sm:w-9 text-white" />
+								</div>
+								<div className="flex-1 text-center sm:text-left">
+									<h4 className="mb-1 font-semibold text-lg text-slate-900 dark:text-white">Voice Memo</h4>
+									<p className="text-slate-600 text-sm dark:text-slate-400">Updates, Notes, Todos, etc.</p>
 								</div>
 							</div>
-						</div>
+						</button>
+
+						{/* Live Conversation Button */}
+						<button
+							type="button"
+							onClick={() => {
+								setRecordMode("conversation")
+								handleRecordNow()
+							}}
+							disabled={isRecording}
+							className={cn(
+								"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/10 dark:border-slate-800/60 dark:bg-slate-900/80",
+								"cursor-pointer hover:scale-[1.01]",
+								recordMode === "conversation" && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-950",
+								isRecording && recordMode === "conversation" && "cursor-not-allowed opacity-50 animate-pulse"
+							)}
+						>
+							<div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+								<div className="flex h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 transition-all duration-300 group-hover:scale-105 group-hover:shadow-blue-500/40 group-hover:shadow-xl">
+									<Users className="h-8 w-8 sm:h-9 sm:w-9 text-white" />
+								</div>
+								<div className="flex-1 text-center sm:text-left">
+									<h4 className="mb-1 font-semibold text-lg text-slate-900 dark:text-white">Live Conversation</h4>
+									<p className="text-slate-600 text-sm dark:text-slate-400">Calls, meetings, interviews</p>
+								</div>
+							</div>
+						</button>
 					</div>
 
 					{/* Divider */}
@@ -405,7 +407,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 					<div
 						onClick={selectedFile ? undefined : triggerFileInput}
 						className={cn(
-							"group cursor-pointer rounded-3xl border-2 border-dashed p-10 transition-all duration-300",
+							"group cursor-pointer rounded-2xl border-2 border-dashed p-6 sm:p-10 transition-all duration-300",
 							"bg-white/80 shadow-slate-900/5 shadow-xl backdrop-blur-sm",
 							"dark:bg-slate-900/80",
 							isDragOver
@@ -420,26 +422,26 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 					>
 						{selectedFile ? (
 							/* Selected File Display */
-							<div className="fade-in slide-in-from-bottom-2 flex animate-in items-center gap-6 duration-300">
-								<div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-500/30 shadow-lg">
+							<div className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-center gap-4 duration-300 sm:flex-row sm:gap-6">
+								<div className="flex h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-500/30 shadow-lg">
 									{getFileIcon(selectedFile)}
 								</div>
-								<div className="min-w-0 flex-1">
-									<h3 className="truncate font-semibold text-slate-900 text-xl dark:text-white">{selectedFile.name}</h3>
-									<p className="text-slate-600 dark:text-slate-400">{formatFileSize(selectedFile.size)}</p>
+								<div className="min-w-0 flex-1 text-center sm:text-left">
+									<h3 className="truncate font-semibold text-lg text-slate-900 sm:text-xl dark:text-white">{selectedFile.name}</h3>
+									<p className="text-slate-600 text-sm dark:text-slate-400">{formatFileSize(selectedFile.size)}</p>
 								</div>
-								<CheckCircle className="h-10 w-10 flex-shrink-0 text-green-500" />
+								<CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 text-green-500" />
 							</div>
 						) : (
 							/* Upload Prompt */
-							<div className="flex items-center gap-6">
-								<div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-slate-200 bg-slate-50 transition-all duration-300 group-hover:border-blue-300 group-hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-800 dark:group-hover:border-blue-700 dark:group-hover:bg-blue-950/30">
-									<Upload className="h-9 w-9 text-slate-400 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+							<div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+								<div className="flex h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-slate-200 bg-slate-50 transition-all duration-300 group-hover:border-blue-300 group-hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-800 dark:group-hover:border-blue-700 dark:group-hover:bg-blue-950/30">
+									<Upload className="h-8 w-8 sm:h-9 sm:w-9 text-slate-400 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
 								</div>
-								<div className="flex-1 text-left">
-									<h3 className="mb-1 font-semibold text-slate-900 text-xl dark:text-white">Upload File</h3>
-									<p className="text-slate-600 dark:text-slate-400">
-										Audio, video, or transcript, document, URL or virtually any background material. Drag n drop.
+								<div className="flex-1 text-center sm:text-left">
+									<h3 className="mb-1 font-semibold text-lg text-slate-900 sm:text-xl dark:text-white">Upload File</h3>
+									<p className="text-slate-600 text-sm dark:text-slate-400">
+										Audio, video, transcript, document, or virtually any material. Drag & drop.
 									</p>
 								</div>
 							</div>
@@ -462,7 +464,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 
 			{/* Attachment Selection Dialog for Voice Memos */}
 			<Dialog open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
-				<DialogContent className="sm:max-w-md">
+				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
 					{attachmentStep === "select" ? (
 						<>
 							<DialogHeader>
@@ -474,9 +476,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								{/* Todo Option */}
 								<button
 									onClick={() => handleAttachmentSelect("todo")}
-									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500 dark:hover:bg-blue-950"
+									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-blue-500 hover:bg-blue-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500 dark:hover:bg-blue-950"
 								>
-									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white">
 										<ListTodo className="h-6 w-6" />
 									</div>
 									<div className="flex-1">
@@ -488,9 +490,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								{/* Existing Contact/Org Option */}
 								<button
 									onClick={handleShowSearch}
-									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-green-500 hover:bg-green-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-green-500 dark:hover:bg-green-950"
+									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-green-500 hover:bg-green-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-green-500 dark:hover:bg-green-950"
 								>
-									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
 										<Users className="h-6 w-6" />
 									</div>
 									<div className="flex-1">
@@ -504,9 +506,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								{/* New Contact/Org Option */}
 								<button
 									onClick={handleShowCreateForm}
-									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-purple-500 hover:bg-purple-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-purple-500 dark:hover:bg-purple-950"
+									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-purple-500 hover:bg-purple-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-purple-500 dark:hover:bg-purple-950"
 								>
-									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white">
 										<UserPlus className="h-6 w-6" />
 									</div>
 									<div className="flex-1">
@@ -520,9 +522,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								{/* General Note Option */}
 								<button
 									onClick={() => handleAttachmentSelect("general")}
-									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-slate-400 hover:bg-slate-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500 dark:hover:bg-slate-800"
 								>
-									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-500 to-slate-600 text-white">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-500 to-slate-600 text-white">
 										<File className="h-6 w-6" />
 									</div>
 									<div className="flex-1">
@@ -538,7 +540,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 							<div className="border-slate-300 border-t pt-3 dark:border-slate-700">
 								<Button
 									variant="ghost"
-									className="w-full text-muted-foreground"
+									className="w-full text-muted-foreground text-sm"
 									onClick={() => handleAttachmentSelect("skip")}
 								>
 									Skip for now - I'll link it later

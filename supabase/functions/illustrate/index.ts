@@ -5,6 +5,28 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
+const logger = (req: Request, extra?: Record<string, unknown>) => {
+	try {
+		const url = new URL(req.url)
+		const headers = req.headers
+		return {
+			method: req.method,
+			url: req.url,
+			host: headers.get("host"),
+			origin: headers.get("origin"),
+			referer: headers.get("referer"),
+			forwarded: headers.get("forwarded"),
+			xfwdFor: headers.get("x-forwarded-for"),
+			xfwdProto: headers.get("x-forwarded-proto"),
+			xfwdHost: headers.get("x-forwarded-host"),
+			authority: `${url.protocol}//${url.host}`,
+			extra,
+		}
+	} catch (_e) {
+		return { method: req.method, url: req.url, extra }
+	}
+}
+
 Deno.serve(async (req) => {
 	// const { name } = await req.json()
 	// const data = {
@@ -16,9 +38,12 @@ Deno.serve(async (req) => {
 
 		const isPngAccept = (req.headers.get("accept") || "").toLowerCase().includes("image/png")
 
-		const { prompt, size = "1024x1024", returnMode, localSave = false, filename } = (await req.json()) as Body
+		const body = (await req.json()) as Body
+		const { prompt, size = "1024x1024", returnMode, localSave = false, filename } = body
 
 		if (!prompt) return new Response("Missing prompt", { status: 400 })
+
+		console.log("[illustrate] request meta", JSON.stringify(logger(req, { size, returnMode, localSave, filename })))
 
 		// 1) Generate transparent PNG (base64)
 		const genRes = await fetch("https://api.openai.com/v1/images/generations", {
@@ -39,6 +64,7 @@ Deno.serve(async (req) => {
 
 		if (!genRes.ok) {
 			const err = await genRes.text()
+			console.error("[illustrate] openai_error", err)
 			return new Response(JSON.stringify({ error: "openai_failed", details: err }), {
 				status: 502,
 				headers: { "Content-Type": "application/json" },
@@ -48,6 +74,7 @@ Deno.serve(async (req) => {
 		const genJson = await genRes.json()
 		const b64: string | undefined = genJson?.data?.[0]?.b64_json
 		if (!b64) {
+			console.error("[illustrate] no_image_data", genJson)
 			return new Response(JSON.stringify({ error: "no_image_data", raw: genJson }), {
 				status: 502,
 				headers: { "Content-Type": "application/json" },
@@ -84,6 +111,7 @@ Deno.serve(async (req) => {
 			headers: { "Content-Type": "application/json" },
 		})
 	} catch (e) {
+		console.error("[illustrate] exception", e)
 		return new Response(JSON.stringify({ error: "exception", message: String(e) }), {
 			status: 500,
 			headers: { "Content-Type": "application/json" },

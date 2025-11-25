@@ -1,4 +1,4 @@
-import { useId } from "react"
+import { useId, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { BackButton } from "~/components/ui/back-button"
@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea"
 
 import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db"
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
+import { ensureStageValue } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -43,7 +45,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			throw new Response("Opportunity not found", { status: 404 })
 		}
 
-		return { opportunity }
+		const { stages } = await loadOpportunityStages({ supabase, accountId })
+
+		return { opportunity, stages }
 	} catch (_error) {
 		throw new Response("Failed to load opportunity", { status: 500 })
 	}
@@ -98,13 +102,17 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	}
 
 	try {
+		const { stages } = await loadOpportunityStages({ supabase, accountId })
+		const normalizedStage = ensureStageValue(stage || kanbanStatus || null, stages)
 		const updateData: any = {
 			title: title.trim(),
-			kanban_status: kanbanStatus || "Explore",
 		}
 
 		if (description?.trim()) updateData.description = description.trim()
-		if (stage?.trim()) updateData.stage = stage.trim()
+		if (normalizedStage) {
+			updateData.stage = normalizedStage
+			updateData.kanban_status = normalizedStage
+		}
 		if (amount) updateData.amount = Number(amount)
 		if (closeDate) updateData.close_date = closeDate
 
@@ -128,8 +136,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function EditOpportunity() {
-	const { opportunity } = useLoaderData<typeof loader>()
+	const { opportunity, stages } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const [selectedStage, setSelectedStage] = useState(() => ensureStageValue(opportunity.stage || opportunity.kanban_status, stages))
 
 	return (
 		<div className="container mx-auto max-w-3xl px-4 py-8">
@@ -166,30 +175,33 @@ export default function EditOpportunity() {
 				</div>
 
 				<div className="grid gap-6 md:grid-cols-2">
-					<div>
-						<Label htmlFor="kanban_status">Status</Label>
-						<Select name="kanban_status" defaultValue={opportunity.kanban_status || "Explore"}>
-							<SelectTrigger className="mt-1" id="kanban_status">
-								<SelectValue placeholder="Select status" />
+					<div className="md:col-span-2">
+						<Label htmlFor="stage">Sales Stage</Label>
+						<Select
+							name="stage"
+							value={selectedStage}
+							onValueChange={(value) => setSelectedStage(ensureStageValue(value, stages))}
+						>
+							<SelectTrigger className="mt-1" id="stage">
+								<SelectValue placeholder="Select stage" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="Explore">Explore</SelectItem>
-								<SelectItem value="Validate">Validate</SelectItem>
-								<SelectItem value="Build">Build</SelectItem>
+								{stages.map((stage) => (
+									<SelectItem key={stage.id} value={stage.id}>
+										<div className="flex flex-col items-start">
+											<span className="font-medium">{stage.label}</span>
+											{stage.description && (
+												<span className="text-muted-foreground text-xs">{stage.description}</span>
+											)}
+										</div>
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
-					</div>
-
-					<div>
-						<Label htmlFor="stage">Sales Stage</Label>
-						<Input
-							id="stage"
-							name="stage"
-							type="text"
-							defaultValue={opportunity.stage || ""}
-							placeholder="e.g., Discovery, Proposal, Negotiation"
-							className="mt-1"
-						/>
+						<input type="hidden" name="kanban_status" value={selectedStage} />
+						<p className="mt-2 text-muted-foreground text-xs">
+							Updating the stage moves this deal across your kanban columns.
+						</p>
 					</div>
 				</div>
 

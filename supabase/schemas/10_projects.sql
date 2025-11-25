@@ -16,6 +16,7 @@ create table if not exists projects (
   description text,
         workflow_type public.project_workflow_type not null default 'research',
         status text default 'new',
+        project_settings jsonb not null default '{}'::jsonb,
         constraint projects_account_id_slug_unique unique (account_id, slug),
   created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()

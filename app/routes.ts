@@ -42,6 +42,7 @@ const routes = [
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
 			// Account home/dashboard
 			route("home", "./features/home/pages/index.tsx"),
+			route("settings", "./features/accounts/pages/settings.tsx"),
 			// Projects under account - REMOVED duplicate layout
 			...projectsRoutes,
 			// Account-scoped team routes

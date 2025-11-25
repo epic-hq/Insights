@@ -9,7 +9,7 @@ create table if not exists opportunities (
   organization_id uuid references public.organizations (id) on delete set null,
   primary_contact_id uuid references public.people (id) on delete set null,
   description text,
-  kanban_status text check (kanban_status in ('Explore','Validate','Build')),
+  kanban_status text,
   stage text,
   forecast_category text,
   amount numeric,

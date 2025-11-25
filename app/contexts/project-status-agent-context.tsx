@@ -1,4 +1,6 @@
-import { createContext, useContext, type ReactNode, useState } from "react"
+import { createContext, useContext, useEffect, type ReactNode, useState } from "react"
+import { useLocation } from "react-router"
+import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 
 interface ProjectStatusAgentContextType {
 	isExpanded: boolean
@@ -11,8 +13,20 @@ interface ProjectStatusAgentContextType {
 const ProjectStatusAgentContext = createContext<ProjectStatusAgentContextType | null>(null)
 
 export function ProjectStatusAgentProvider({ children }: { children: ReactNode }) {
-	const [isExpanded, setIsExpanded] = useState(true)
+	const location = useLocation()
+	const { isMobile } = useDeviceDetection()
+
+	// On mobile and interviews route, default to collapsed
+	const shouldDefaultCollapsed = isMobile && location.pathname.includes("/interviews")
+	const [isExpanded, setIsExpanded] = useState(!shouldDefaultCollapsed)
 	const [pendingInput, setPendingInput] = useState<string | null>(null)
+
+	// Auto-collapse when navigating to interviews on mobile
+	useEffect(() => {
+		if (isMobile && location.pathname.includes("/interviews")) {
+			setIsExpanded(false)
+		}
+	}, [location.pathname, isMobile])
 
 	const insertText = (text: string) => {
 		setPendingInput(text)

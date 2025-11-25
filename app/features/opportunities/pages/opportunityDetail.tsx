@@ -24,6 +24,12 @@ import { isOpportunityAdvice } from "~/features/annotations/types"
 import { getOpportunityById } from "~/features/opportunities/db"
 import type { OpportunitySalesLensData } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
 import { loadOpportunitySalesLens } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
+import {
+	normalizeStageId,
+	type OpportunityStageConfig,
+	stageLabelForValue,
+} from "~/features/opportunities/stage-config"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
@@ -95,13 +101,29 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			})
 			.filter((rec): rec is NonNullable<typeof rec> => rec !== null)
 
-		return { opportunity, salesLensData, aiRecommendations }
+		const { stages } = await loadOpportunityStages({ supabase, accountId })
+
+		return { opportunity, salesLensData, aiRecommendations, stages }
 	} catch (_error) {
 		throw new Response("Failed to load opportunity", { status: 500 })
 	}
 }
 
-const getKanbanStatusColor = (kanbanStatus: string | null) => {
+const STAGE_BADGE_COLORS = [
+	"bg-blue-50 text-blue-700 border-blue-200",
+	"bg-amber-50 text-amber-700 border-amber-200",
+	"bg-emerald-50 text-emerald-700 border-emerald-200",
+	"bg-purple-50 text-purple-700 border-purple-200",
+	"bg-rose-50 text-rose-700 border-rose-200",
+	"bg-slate-100 text-slate-800 border-slate-200",
+]
+
+const getKanbanStatusColor = (kanbanStatus: string | null, stages: OpportunityStageConfig[]) => {
+	const normalized = normalizeStageId(kanbanStatus || "")
+	const stageIndex = stages.findIndex((stage) => stage.id === normalized)
+	if (stageIndex >= 0) {
+		return STAGE_BADGE_COLORS[stageIndex % STAGE_BADGE_COLORS.length]
+	}
 	switch (kanbanStatus) {
 		case "Explore":
 			return "bg-blue-50 text-blue-700 border-blue-200"
@@ -115,10 +137,12 @@ const getKanbanStatusColor = (kanbanStatus: string | null) => {
 }
 
 export default function OpportunityDetail() {
-	const { opportunity, salesLensData, aiRecommendations } = useLoaderData<typeof loader>()
+	const { opportunity, salesLensData, aiRecommendations, stages } = useLoaderData<typeof loader>()
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 	const opportunityFetcher = useFetcher()
+	const stageLabel = stageLabelForValue(opportunity.stage || opportunity.kanban_status, stages)
+	const kanbanLabel = stageLabel || opportunity.kanban_status || "Unknown"
 
 	const handleOpportunityUpdate = (field: string, value: string) => {
 		if (!currentProjectContext?.accountId || !currentProjectContext?.projectId) return
@@ -157,14 +181,9 @@ export default function OpportunityDetail() {
 						<h1 className="text-balance font-bold text-4xl tracking-tight">{opportunity.title}</h1>
 					</div>
 					<div className="mt-3 flex items-center gap-2">
-						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status)}>
-							{opportunity.kanban_status || "Unknown"}
+						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status, stages)}>
+							{kanbanLabel}
 						</Badge>
-						{opportunity.stage && (
-							<Badge variant="outline" className="bg-muted text-muted-foreground">
-								{opportunity.stage}
-							</Badge>
-						)}
 					</div>
 				</div>
 				<div className="flex gap-2">
@@ -204,14 +223,14 @@ export default function OpportunityDetail() {
 						</CardContent>
 					</Card>
 				)}
-				{opportunity.stage && (
+				{stageLabel && (
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="font-medium text-sm">Sales Stage</CardTitle>
 							<TrendingUp className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
-							<div className="font-bold text-2xl">{opportunity.stage}</div>
+							<div className="font-bold text-2xl">{stageLabel}</div>
 						</CardContent>
 					</Card>
 				)}
@@ -542,15 +561,14 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 										onValueChange={(value) => handleStakeholderUpdate(stakeholder.id, "influence", value)}
 									>
 										<SelectTrigger
-											className={`h-7 w-24 text-xs ${
-												stakeholder.influence === "high"
+											className={`h-7 w-24 text-xs ${stakeholder.influence === "high"
 													? "border-emerald-600 bg-emerald-50 text-emerald-700"
 													: stakeholder.influence === "medium"
 														? "border-amber-600 bg-amber-50 text-amber-700"
 														: stakeholder.influence === "low"
 															? "border-gray-400 bg-gray-50 text-gray-700"
 															: ""
-											}`}
+												}`}
 										>
 											<SelectValue placeholder="Select" />
 										</SelectTrigger>
