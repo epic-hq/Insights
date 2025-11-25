@@ -122,7 +122,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 			setSearchQuery("")
 		} else {
 			// For conversation mode, start recording directly
-			recordNow({ projectId })
+			recordNow({ projectId, mode: "interview" })
 		}
 	}, [projectId, recordNow, recordMode])
 
@@ -179,7 +179,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 			params.set("attachType", attachmentType)
 			if (finalEntityId) params.set("entityId", finalEntityId)
 
-			recordNow({ projectId, urlParams: params.toString() })
+			recordNow({ projectId, urlParams: params.toString(), mode: "notes" })
 		},
 		[
 			projectId,

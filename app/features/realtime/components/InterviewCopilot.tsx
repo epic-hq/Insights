@@ -25,11 +25,13 @@ import {
 } from "~/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { deleteInterview } from "~/features/interviews/db"
 import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
 
 interface InterviewCopilotProps {
 	projectId: string
@@ -1058,168 +1060,199 @@ export function InterviewCopilot({
 	}
 
 	return (
-		// Use viewport height minus navigation space. Add small-screen bottom padding safety for bottom nav.
-		<div className="relative flex min-h-0 flex-col pb-14 md:pb-0" style={{ height: "calc(100vh - 4rem)" }}>
-			{/* Header with responsive layout for title, audio source, timer, and actions */}
-			<div className="flex flex-shrink-0 border-b bg-background p-3">
-				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-					{/* Left cluster: title + audio source + timer (wraps on small) */}
-					<div className="flex flex-wrap items-center gap-2">
-						<h1 className="font-semibold text-lg">Interview</h1>
-						{/* Audio source selector */}
-						<div className="flex items-center gap-2">
-							<span className="text-muted-foreground text-xs">Audio source</span>
-							<Select
-								value={audioSource === "system" ? "system" : `mic:${micDeviceId}`}
-								onValueChange={(val) => {
-									if (val === "system") {
-										setAudioSource("system")
-									} else if (val.startsWith("mic:")) {
-										const id = val.slice(4) || "default"
-										setAudioSource("microphone")
-										setMicDeviceId((id as any) || "default")
-									}
-								}}
-								disabled={isRecording || streamStatus === "paused" || streamStatus === "streaming"}
-							>
-								<SelectTrigger className="h-8 w-44 text-xs sm:w-56">
-									<SelectValue placeholder="Select audio source" />
-								</SelectTrigger>
-								<SelectContent className="text-sm">
-									<SelectItem value="mic:default">Microphone (default)</SelectItem>
-									{audioDevices.map((d, idx) => (
-										<SelectItem key={d.deviceId || idx} value={`mic:${d.deviceId}`}>
-											{d.label || `Microphone ${idx + 1}`}
-										</SelectItem>
-									))}
-									<SelectItem value="system">Share tab/system audio…</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-						{(isRecording || streamStatus === "paused") && (
-							<div className="flex items-center gap-2 text-sm">
-								<WaveformAnimation isRecording={streamStatus === "streaming"} />
-								<span className="font-mono text-muted-foreground">{formatDuration(recordingDuration)}</span>
-							</div>
-						)}
-					</div>
-
-					{/* Right cluster: actions (wrap on small) */}
-					<div className="flex flex-wrap items-center gap-2">
-						<Button variant="outline" size="sm" onClick={handleCancel}>
-							Cancel
-						</Button>
-						<Button size="sm" onClick={handleFinish} disabled={isFinishing}>
-							{isFinishing ? (
-								<>
-									<Loader2 className="mr-2 h-3 w-3 animate-spin" /> Finishing...
-								</>
-							) : (
-								"Finish"
-							)}
-						</Button>
-					</div>
+		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+			<PageContainer size="lg" className="max-w-5xl py-8">
+				{/* Header */}
+				<div className="mb-8 text-center">
+					<h1 className="mb-2 font-bold text-3xl text-slate-900 dark:text-white">
+						{mode === "notes" ? "Voice Memo" : "Live Interview"}
+					</h1>
+					<p className="text-muted-foreground text-sm">
+						{mode === "notes" ? "Capture your thoughts and insights" : "Record and transcribe your interview in real-time"}
+					</p>
 				</div>
-			</div>
 
-			{/* Main Content Area */}
-			<div className="min-h-0 flex-1 overflow-hidden">
-				<div className="flex h-full flex-col gap-4 p-4 lg:flex-row">
-					{/* Left Side - Questions */}
-					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:max-w-md">
-						<MinimalQuestionView projectId={projectId} interviewId={interviewId} />
+				{/* Processing Notification */}
+				{isFinishing && (
+					<div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 backdrop-blur-sm dark:border-blue-800 dark:bg-blue-950/30">
+						<div className="flex items-center gap-3">
+							<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+							<div>
+								<p className="font-medium text-blue-900 text-sm dark:text-blue-100">Processing your recording...</p>
+								<p className="text-blue-700 text-xs dark:text-blue-300">Storing audio file and generating insights.</p>
+							</div>
+						</div>
 					</div>
+				)}
 
-					{/* Right Side - Notes (collapsible on mobile) */}
-					<div className="flex min-h-0 flex-col space-y-2 md:flex-1">
-						{/* Processing Notification */}
-						{isFinishing && (
-							<Card className="flex-shrink-0 border-blue-200 bg-blue-50">
-								<CardContent className="p-3">
-									<div className="flex items-center gap-3">
-										<Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-										<div>
-											<p className="font-medium text-blue-900 text-sm">Processing your recording...</p>
-											<p className="text-blue-700 text-xs">Storing audio file and generating insights.</p>
+				{/* Main Recording Card */}
+				<div
+					className={cn(
+						"group mb-6 rounded-3xl border border-slate-200/60 bg-white/80 p-8 shadow-slate-900/5 shadow-xl backdrop-blur-sm transition-all dark:border-slate-800/60 dark:bg-slate-900/80",
+						(isRecording || streamStatus === "paused") && "border-red-200 shadow-red-500/10 dark:border-red-900/50"
+					)}
+				>
+					{/* Recording Status & Timer */}
+					<div className="mb-6 flex items-center justify-between">
+						<div className="flex items-center gap-3">
+							{isRecording || streamStatus === "paused" ? (
+								<>
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30">
+										<Mic className="h-6 w-6 text-white" />
+									</div>
+									<div>
+										<Badge variant="destructive" className={cn("mb-1", streamStatus === "streaming" && "animate-pulse")}>
+											{streamStatus === "streaming" ? "LIVE" : "PAUSED"}
+										</Badge>
+										<div className="flex items-center gap-2">
+											<WaveformAnimation isRecording={streamStatus === "streaming"} />
+											<span className="font-mono font-semibold text-slate-900 dark:text-white">
+												{formatDuration(recordingDuration)}
+											</span>
 										</div>
 									</div>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Notes header with mobile toggle */}
-						<div className="mb-1 flex items-center justify-between">
-							<div className="text-lg">Notes</div>
-							<Button variant="ghost" size="sm" onClick={() => setNotesExpanded((v) => !v)} className="md:hidden">
-								{notesExpanded ? "Collapse" : "Expand"}
-							</Button>
+								</>
+							) : (
+								<>
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-500 shadow-lg shadow-slate-500/20">
+										<MicOff className="h-6 w-6 text-white" />
+									</div>
+									<div>
+										<p className="font-medium text-slate-900 dark:text-white">Ready to record</p>
+										<p className="text-muted-foreground text-sm">Click start when ready</p>
+									</div>
+								</>
+							)}
 						</div>
-
-						<Card className={`min-h-0 ${notesExpanded ? "block h-64" : "hidden"} md:block md:h-auto md:flex-1`}>
-							<CardContent className="h-full p-0">
-								<Textarea
-									placeholder="Jot down key insights..."
-									value={interviewNotes}
-									onChange={(e) => setInterviewNotes(e.target.value)}
-									className="h-full resize-none border-0 text-sm"
-									rows={6}
-								/>
-							</CardContent>
-						</Card>
-					</div>
-				</div>
-			</div>
-
-			{/* Fixed Bottom Recording Controls */
-			/* Ensure always visible regardless of inner scroll */}
-			<div className="flex-shrink-0 border-t bg-background/95 p-3 backdrop-blur-sm">
-				<div className="mx-auto flex max-w-sm items-center gap-2">
-					{/* Recording Status Indicator */}
-					<div className="flex items-center gap-1">
-						{isRecording || streamStatus === "paused" ? (
-							<Mic className="h-3 w-3 text-red-600" />
-						) : (
-							<MicOff className="h-3 w-3 text-muted-foreground" />
-						)}
-						{isRecording && streamStatus === "streaming" && (
-							<Badge variant="destructive" className="animate-pulse px-1 py-0 text-xs">
-								LIVE
-							</Badge>
-						)}
 					</div>
 
-					{/* Main Controls */}
-					<div className="flex flex-1 items-center gap-2">
+					{/* Audio Source Selector */}
+					<div className="mb-6">
+						<label className="mb-2 block font-medium text-slate-900 text-sm dark:text-white">Audio Source</label>
+						<Select
+							value={audioSource === "system" ? "system" : `mic:${micDeviceId}`}
+							onValueChange={(val) => {
+								if (val === "system") {
+									setAudioSource("system")
+								} else if (val.startsWith("mic:")) {
+									const id = val.slice(4) || "default"
+									setAudioSource("microphone")
+									setMicDeviceId((id as any) || "default")
+								}
+							}}
+							disabled={isRecording || streamStatus === "paused" || streamStatus === "streaming"}
+						>
+							<SelectTrigger className="h-11">
+								<SelectValue placeholder="Select audio source" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="mic:default">Microphone (default)</SelectItem>
+								{audioDevices.map((d, idx) => (
+									<SelectItem key={d.deviceId || idx} value={`mic:${d.deviceId}`}>
+										{d.label || `Microphone ${idx + 1}`}
+									</SelectItem>
+								))}
+								<SelectItem value="system">Share tab/system audio…</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					{/* Recording Controls */}
+					<div className="flex gap-3">
 						<Button
 							onClick={toggleRecording}
-							size="sm"
-							className="h-8 flex-1 bg-red-600 text-white text-xs hover:bg-red-700"
+							size="lg"
+							className={cn(
+								"flex-1 h-14 font-semibold text-base",
+								streamStatus === "streaming" && isRecording
+									? "bg-amber-500 hover:bg-amber-600"
+									: "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+							)}
 							disabled={streamStatus === "connecting" || isFinishing}
 						>
 							{streamStatus === "streaming" && isRecording ? (
 								<>
-									<Pause className="mr-1 h-3 w-3" /> Pause
+									<Pause className="mr-2 h-5 w-5" /> Pause
 								</>
 							) : (
 								<>
-									<Play className="mr-1 h-3 w-3" />
-									{streamStatus === "connecting" ? "Connecting…" : streamStatus === "paused" ? "Resume" : "Record"}
+									{streamStatus === "connecting" ? (
+										<>
+											<Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connecting…
+										</>
+									) : (
+										<>
+											<Play className="mr-2 h-5 w-5" />
+											{streamStatus === "paused" ? "Resume" : "Start Recording"}
+										</>
+									)}
 								</>
 							)}
 						</Button>
 
-						<Button onClick={replayLast30s} variant="outline" size="sm" className="h-8 px-2">
-							<RotateCcw className="h-3 w-3" />
-						</Button>
+						{(isRecording || streamStatus === "paused") && (
+							<Button onClick={replayLast30s} variant="outline" size="lg" className="h-14 px-6">
+								<RotateCcw className="h-5 w-5" />
+							</Button>
+						)}
+					</div>
+
+					{/* Replay Text */}
+					{replayText && (
+						<div className="mt-4 rounded-xl border bg-muted/50 p-3 text-sm">{replayText}</div>
+					)}
+				</div>
+
+				{/* Content Area - Questions or Notes */}
+				<div className="grid gap-6 lg:grid-cols-2">
+					{/* Questions - Only show in interview mode */}
+					{mode === "interview" && (
+						<div className="rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80">
+							<h2 className="mb-4 font-semibold text-slate-900 text-xl dark:text-white">Interview Guide</h2>
+							<div className="max-h-96 overflow-y-auto">
+								<MinimalQuestionView projectId={projectId} interviewId={interviewId} />
+							</div>
+						</div>
+					)}
+
+					{/* Notes */}
+					<div
+						className={cn(
+							"rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80",
+							mode === "notes" && "lg:col-span-2"
+						)}
+					>
+						<h2 className="mb-4 font-semibold text-slate-900 text-xl dark:text-white">Notes</h2>
+						<Textarea
+							placeholder="Jot down key insights, observations, or follow-up items..."
+							value={interviewNotes}
+							onChange={(e) => setInterviewNotes(e.target.value)}
+							className="min-h-[300px] resize-none border-slate-200 text-base dark:border-slate-700"
+						/>
 					</div>
 				</div>
 
-				{/* Replay Text */}
-				{replayText && (
-					<div className="mx-auto mt-2 max-w-sm rounded-md border bg-muted/50 p-2 text-xs">{replayText}</div>
-				)}
-			</div>
+				{/* Action Buttons */}
+				<div className="mt-8 flex justify-center gap-4">
+					<Button variant="outline" size="lg" onClick={handleCancel} className="px-8">
+						Cancel
+					</Button>
+					<Button
+						size="lg"
+						onClick={handleFinish}
+						disabled={isFinishing || (!isRecording && streamStatus !== "paused")}
+						className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 hover:from-blue-600 hover:to-blue-700"
+					>
+						{isFinishing ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing...
+							</>
+						) : (
+							"Finish & Save"
+						)}
+					</Button>
+				</div>
+			</PageContainer>
 
 			<AlertDialog
 				open={showCancelDialog}

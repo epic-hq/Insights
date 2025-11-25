@@ -84,7 +84,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 					{/* Header - Interview Label */}
 					<div className="mb-3 flex items-center justify-between">
 						<div className="flex items-center gap-2">
-							<MediaTypeIcon mediaType={interview.media_type} showLabel={true} />
+							<MediaTypeIcon mediaType={interview.media_type} sourceType={interview.source_type} showLabel={true} />
 							{/* <span className="text-foreground/40 text-sm font-medium">Interview</span> */}
 						</div>
 						<Badge className={cn("font-medium text-xs", getStatusColor(interview.status))}>

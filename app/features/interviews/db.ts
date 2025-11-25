@@ -28,6 +28,8 @@ export const getInterviews = async ({
 			status,
 			media_url,
 			media_type,
+			source_type,
+			file_extension,
 			created_at,
 			updated_at,
 			interview_people (
@@ -111,6 +113,8 @@ export const getInterviewById = async ({
 			status,
 			media_url,
 			media_type,
+			source_type,
+			file_extension,
 			created_at,
 			created_by,
 			updated_at
@@ -253,6 +257,8 @@ const _getRelatedInterviews = async ({
 			status,
 			media_url,
 			media_type,
+			source_type,
+			file_extension,
 			created_at,
 			updated_at,
 			interview_people (
