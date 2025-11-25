@@ -296,6 +296,31 @@ export type Database = {
       [_ in never]: never
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -1912,6 +1937,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           duration_sec: number | null
+          file_extension: string | null
           high_impact_themes: string[] | null
           id: string
           interview_date: string | null
@@ -1921,9 +1947,11 @@ export type Database = {
           observations_and_notes: string | null
           open_questions_and_next_steps: string | null
           participant_pseudonym: string | null
+          person_id: string | null
           project_id: string
           relevant_answers: string[] | null
           segment: string | null
+          source_type: string | null
           status: Database["public"]["Enums"]["interview_status"]
           title: string | null
           transcript: string | null
@@ -1937,6 +1965,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration_sec?: number | null
+          file_extension?: string | null
           high_impact_themes?: string[] | null
           id?: string
           interview_date?: string | null
@@ -1946,9 +1975,11 @@ export type Database = {
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
+          person_id?: string | null
           project_id: string
           relevant_answers?: string[] | null
           segment?: string | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"]
           title?: string | null
           transcript?: string | null
@@ -1962,6 +1993,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration_sec?: number | null
+          file_extension?: string | null
           high_impact_themes?: string[] | null
           id?: string
           interview_date?: string | null
@@ -1971,9 +2003,11 @@ export type Database = {
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
+          person_id?: string | null
           project_id?: string
           relevant_answers?: string[] | null
           segment?: string | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"]
           title?: string | null
           transcript?: string | null
@@ -1982,6 +2016,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "interviews_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interviews_project_id_fkey"
             columns: ["project_id"]
@@ -4784,6 +4825,7 @@ export type Database = {
           assemblyai_id: string | null
           attempts: number | null
           created_at: string | null
+          created_by: string | null
           custom_instructions: string | null
           external_url: string | null
           file_name: string | null
@@ -4799,6 +4841,7 @@ export type Database = {
           assemblyai_id?: string | null
           attempts?: number | null
           created_at?: string | null
+          created_by?: string | null
           custom_instructions?: string | null
           external_url?: string | null
           file_name?: string | null
@@ -4814,6 +4857,7 @@ export type Database = {
           assemblyai_id?: string | null
           attempts?: number | null
           created_at?: string | null
+          created_by?: string | null
           custom_instructions?: string | null
           external_url?: string | null
           file_name?: string | null
@@ -5275,6 +5319,10 @@ export type Database = {
         Returns: Json
       }
       delete_invitation: { Args: { invitation_id: string }; Returns: undefined }
+      delete_themes_for_interview: {
+        Args: { p_interview_id: string }
+        Returns: undefined
+      }
       find_duplicate_themes: {
         Args: { project_id_param: string; similarity_threshold?: number }
         Returns: {
@@ -5397,6 +5445,19 @@ export type Database = {
           total_votes: number
           upvotes: number
         }[]
+      }
+      insert_theme: {
+        Args: {
+          p_account_id: string
+          p_created_by?: string
+          p_inclusion_criteria?: string
+          p_interview_id: string
+          p_name: string
+          p_project_id: string
+          p_statement?: string
+          p_updated_by?: string
+        }
+        Returns: string
       }
       invoke_edge_function: {
         Args: { func_name: string; payload: Json }
@@ -5639,6 +5700,9 @@ export const Constants = {
         "unpaid",
       ],
     },
+  },
+  graphql_public: {
+    Enums: {},
   },
   public: {
     Enums: {

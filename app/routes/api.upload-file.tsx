@@ -84,6 +84,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		} else {
 			// Handle audio/video files - store file and transcribe
 
+			// Detect file type for source_type field
+			const fileExtension = file.name.split(".").pop()?.toLowerCase() || ""
+			let sourceType = "audio_upload"
+			if (file.type.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(fileExtension)) {
+				sourceType = "video_upload"
+			}
+
 			// First create interview record to get ID for storage
 			const { data: interview, error: insertError } = await supabase
 				.from("interviews")
@@ -93,6 +100,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					title: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
 					status: "uploading",
 					original_filename: file.name,
+					source_type: sourceType,
+					file_extension: fileExtension,
 				})
 				.select()
 				.single()

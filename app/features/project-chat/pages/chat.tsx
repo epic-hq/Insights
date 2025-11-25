@@ -12,63 +12,82 @@ import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/component
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Button } from "~/components/ui/button"
 import { TextShimmer } from "~/components/ui/text-shimmer"
-import { cn } from "~/lib/utils"
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { memory } from "~/mastra/memory"
+import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
+
+const PROJECT_SETUP_KEYS = [
+	"research_goal",
+	"decision_questions",
+	"assumptions",
+	"unknowns",
+	"target_orgs",
+	"target_roles",
+] as const
+
+type ProjectSetupKind = (typeof PROJECT_SETUP_KEYS)[number]
+
+type ProjectSectionRow = {
+	kind: string
+	meta: Record<string, unknown> | null
+	content_md: string | null
+}
+
+type ProjectSetupProgress = {
+	completedCount: number
+	totalCount: number
+}
 
 export const handle = { hideProjectStatusAgent: true } as const
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
+	const { memory } = await import("~/mastra/memory")
 
-	const projectId = params.projectId as string
-	const accountId = params.accountId as string
+	const projectId = params.projectId as string | undefined
+	const accountId = params.accountId as string | undefined
 	if (!projectId || !accountId) {
 		throw new Response("Missing accountId or projectId", { status: 400 })
 	}
+	if (!supabase) {
+		throw new Response("Supabase client unavailable", { status: 500 })
+	}
 
-	// Progress: fetch current project_sections
 	const { data: sections } = await supabase
 		.from("project_sections")
 		.select("kind, meta, content_md")
 		.eq("project_id", projectId)
 
-	const keys = [
-		"research_goal",
-		"decision_questions",
-		"assumptions",
-		"unknowns",
-		"target_orgs",
-		"target_roles",
-	] as const
-
-	const byKind = new Map<string, any>((sections || []).map((s: any) => [s.kind, s]))
-	const isFilled = (kind: string) => {
-		const s = byKind.get(kind)
-		if (!s) return false
-		const m = (s.meta || {}) as Record<string, any>
+	const rows: ProjectSectionRow[] = sections ?? []
+	const byKind = new Map<string, ProjectSectionRow>(rows.map((section) => [section.kind, section]))
+	const isFilled = (kind: ProjectSetupKind) => {
+		const section = byKind.get(kind)
+		if (!section) return false
+		const meta = (section.meta || {}) as Record<string, unknown>
 		switch (kind) {
 			case "research_goal":
-				return Boolean(m.research_goal || s.content_md?.trim())
+				return Boolean((meta.research_goal as string | undefined) || section.content_md?.trim())
 			case "decision_questions":
 			case "assumptions":
 			case "unknowns":
 			case "target_orgs":
 			case "target_roles":
-				return Array.isArray(m[kind]) ? m[kind].length > 0 : false
+				return Array.isArray(meta[kind]) ? meta[kind].length > 0 : false
 			default:
 				return false
 		}
 	}
-	const completedCount = keys.reduce((acc, k) => acc + (isFilled(k) ? 1 : 0), 0)
-	const totalCount = keys.length
+	const completedCount = PROJECT_SETUP_KEYS.reduce((acc, key) => acc + (isFilled(key) ? 1 : 0), 0)
+	const totalCount = PROJECT_SETUP_KEYS.length
 
-	const userId = ctx.claims.sub
+	const userId = ctx.claims?.sub
+	if (!userId) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
 	const resourceId = `projectSetupAgent-${userId}-${projectId}`
-	const result = await memory.getThreadsByResourceIdPaginated({
+	const threads = await memory.getThreadsByResourceIdPaginated({
 		resourceId,
 		orderBy: "createdAt",
 		sortDirection: "DESC",
@@ -77,16 +96,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	})
 
 	let threadId = ""
-	if (!(result?.total > 0)) {
+	if (!(threads?.total > 0)) {
 		const newThread = await memory.createThread({
 			resourceId,
 			title: `Project Setup ${projectId}`,
 			metadata: { user_id: userId, project_id: projectId, account_id: accountId },
 		})
-		consola.log("New project-setup thread created: ", newThread)
+		consola.log("New project-setup thread created", newThread)
 		threadId = newThread.id
 	} else {
-		threadId = result.threads[0].id
+		threadId = threads.threads[0].id
 	}
 
 	const { messagesV2 } = await memory.query({
@@ -95,7 +114,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	})
 	const aiv5Messages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
 
-	return data({ messages: aiv5Messages, progress: { completedCount, totalCount }, threadId })
+	const progress: ProjectSetupProgress = { completedCount, totalCount }
+
+	return data({
+		messages: aiv5Messages,
+		progress,
+		threadId,
+	})
 }
 
 export default function ProjectChatPage() {
@@ -103,8 +128,11 @@ export default function ProjectChatPage() {
 	const { accountId, projectId } = useParams()
 	const [input, setInput] = useState("")
 
-	// AI SDK chat with modern pattern
-	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+	const {
+		messages: chatMessages,
+		sendMessage,
+		status,
+	} = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: `/a/${accountId}/${projectId}/api/chat/project-setup`,
 		}),
@@ -178,7 +206,7 @@ export default function ProjectChatPage() {
 			<div className="mx-auto flex h-full w-full flex-col md:max-w-[var(--thread-max-width,44rem)]">
 				<Conversation>
 					<ConversationContent>
-						{messages?.map((message) => (
+						{chatMessages?.map((message) => (
 							<Message from={message.role} key={message.id}>
 								<MessageContent>
 									{message?.parts?.map((part, i) => {
@@ -247,10 +275,7 @@ export default function ProjectChatPage() {
 							>
 								{isVoiceRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
 								{isVoiceRecording && (
-									<span
-										className="ml-2 h-2 w-8 overflow-hidden rounded-full bg-red-100"
-										aria-hidden
-									>
+									<span className="ml-2 h-2 w-8 overflow-hidden rounded-full bg-red-100" aria-hidden>
 										<span
 											className="block h-full bg-red-500 transition-[width]"
 											style={{ width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%` }}
@@ -271,14 +296,14 @@ export default function ProjectChatPage() {
 	)
 }
 
-function MiniDotsProgress({ completed, total }: { completed: number; total: number }) {
-	const dots = Array.from({ length: total })
+function MiniDotsProgress({ completed, total }: ProjectSetupProgress) {
+	const dots = Array.from({ length: total }, (_, index) => `progress-dot-${total}-${index}`)
 	return (
 		<div className="flex items-center gap-1.5" aria-label={`Progress ${completed} of ${total}`}>
-			{dots.map((_, i) => (
+			{dots.map((dotKey, idx) => (
 				<span
-					key={i}
-					className={`h-2 w-2 rounded-full ${i < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"}`}
+					key={dotKey}
+					className={`h-2 w-2 rounded-full ${idx < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"}`}
 				/>
 			))}
 		</div>

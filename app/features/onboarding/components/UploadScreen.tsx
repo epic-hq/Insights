@@ -15,7 +15,17 @@ import { cn } from "~/lib/utils"
 import type { Person, Organization } from "~/types"
 
 interface UploadScreenProps {
-	onNext: (file: File, mediaType: string, projectId?: string) => void
+	onNext: (
+		file: File,
+		mediaType: string,
+		projectId?: string,
+		attachmentData?: {
+			attachType: "todo" | "existing" | "new" | "general" | "skip"
+			entityId?: string
+			fileExtension?: string
+			sourceType?: string
+		}
+	) => void
 	onBack: () => void
 	projectId?: string
 	error?: string
@@ -75,6 +85,35 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 
 	const { recordNow, isRecording } = useRecordNow()
 
+	// Detect file type for setting source_type
+	const getFileType = useCallback((file: File): string => {
+		const extension = file.name.split(".").pop()?.toLowerCase()
+		const mimeType = file.type.toLowerCase()
+
+		// Text/document files
+		if (mimeType.startsWith("text/") || ["txt", "md", "markdown"].includes(extension || "")) {
+			return "transcript"
+		}
+		if (
+			mimeType.includes("pdf") ||
+			mimeType.includes("document") ||
+			mimeType.includes("spreadsheet") ||
+			["pdf", "doc", "docx", "csv", "xlsx"].includes(extension || "")
+		) {
+			return "document"
+		}
+		// Video files
+		if (mimeType.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(extension || "")) {
+			return "video_upload"
+		}
+		// Audio files
+		if (mimeType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(extension || "")) {
+			return "audio_upload"
+		}
+		// Default
+		return "document"
+	}, [])
+
 	const handleRecordNow = useCallback(() => {
 		// If voice memo mode, show attachment dialog first
 		if (recordMode === "voice_memo") {
@@ -119,7 +158,23 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 			setNewPersonLastName("")
 			setNewPersonCompany("")
 
-			// Start recording with attachment info via URL params
+			// If we have a selected file, proceed with file upload
+			if (selectedFile) {
+				// Prepare attachment info for the upload API
+				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || ""
+				const sourceType = getFileType(selectedFile)
+
+				// Call onNext with the file and attachment data
+				onNext(selectedFile, "interview", projectId, {
+					attachType: attachmentType,
+					entityId: finalEntityId,
+					fileExtension,
+					sourceType,
+				})
+				return
+			}
+
+			// Otherwise, start voice recording with attachment info via URL params
 			const params = new URLSearchParams()
 			params.set("attachType", attachmentType)
 			if (finalEntityId) params.set("entityId", finalEntityId)
@@ -133,6 +188,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 			newPersonFirstName,
 			newPersonLastName,
 			newPersonCompany,
+			selectedFile,
+			getFileType,
+			onNext,
 		]
 	)
 
@@ -190,9 +248,12 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 
 	const handleNext = useCallback(() => {
 		if (selectedFile) {
-			onNext(selectedFile, "interview", projectId)
+			// Show attachment dialog for file uploads
+			setShowAttachmentDialog(true)
+			setAttachmentStep("select")
+			setSearchQuery("")
 		}
-	}, [selectedFile, projectId, onNext])
+	}, [selectedFile])
 
 	const recordModeOptions: { value: "voice_memo" | "conversation"; label: string; helper: string }[] = [
 		{ value: "voice_memo", label: "Voice Memo", helper: "Updates, Notes, Todos, etc." },
@@ -268,13 +329,12 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 				{/* Main Options */}
 				<div className="w-full space-y-4">
 					{/* Record Card */}
-					<button
+					<div
 						onClick={handleRecordNow}
-						disabled={isRecording}
 						className={cn(
 							"group w-full rounded-3xl border border-slate-200/60 bg-white/80 p-10 shadow-slate-900/5 shadow-xl backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-slate-900/10 dark:border-slate-800/60 dark:bg-slate-900/80",
-							"hover:scale-[1.01]",
-							"disabled:cursor-not-allowed disabled:opacity-50"
+							"hover:scale-[1.01] cursor-pointer",
+							isRecording && "cursor-not-allowed opacity-50"
 						)}
 					>
 						<div className="flex items-center gap-6">
@@ -295,7 +355,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 										<button
 											key={option.value}
 											type="button"
-											onClick={() => setRecordMode(option.value)}
+											onClick={(e) => {
+												e.stopPropagation()
+												setRecordMode(option.value)
+											}}
 											className={cn(
 												"relative rounded-full px-4 py-1.5 font-medium transition",
 												recordMode === option.value
@@ -312,7 +375,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								</div>
 							</div>
 						</div>
-					</button>
+					</div>
 
 					{/* Divider */}
 					<div className="relative flex items-center py-2">

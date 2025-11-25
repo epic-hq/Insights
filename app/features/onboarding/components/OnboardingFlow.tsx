@@ -112,7 +112,17 @@ export default function OnboardingFlow({
 	}, [])
 
 	const handleUploadNext = useCallback(
-		async (file: File, mediaType: string, uploadProjectId?: string) => {
+		async (
+			file: File,
+			mediaType: string,
+			uploadProjectId?: string,
+			attachmentData?: {
+				attachType: "todo" | "existing" | "new" | "general" | "skip"
+				entityId?: string
+				fileExtension?: string
+				sourceType?: string
+			}
+		) => {
 			const updatedData = { ...data, file, mediaType, triggerRunId: undefined, triggerAccessToken: null }
 			setData(updatedData)
 			setCurrentStep("processing")
@@ -142,6 +152,20 @@ export default function OnboardingFlow({
 				}
 				if (data.personId) {
 					formData.append("personId", data.personId)
+				}
+
+				// Add attachment data to form
+				if (attachmentData) {
+					formData.append("attachType", attachmentData.attachType)
+					if (attachmentData.entityId) {
+						formData.append("entityId", attachmentData.entityId)
+					}
+					if (attachmentData.fileExtension) {
+						formData.append("fileExtension", attachmentData.fileExtension)
+					}
+					if (attachmentData.sourceType) {
+						formData.append("sourceType", attachmentData.sourceType)
+					}
 				}
 
 				// Call the new onboarding-start API

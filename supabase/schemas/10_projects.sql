@@ -174,7 +174,10 @@ for each row execute function public.set_updated_at();
 
 -- Auto-register new document kinds for tracking (optional)
 CREATE OR REPLACE FUNCTION public.register_project_section_kind()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   -- Automatically add new kinds to the reference table for tracking
   INSERT INTO public.project_section_kinds (id)

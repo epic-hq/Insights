@@ -31,6 +31,9 @@ create table if not exists interviews (
 	relevant_answers text[],
 	open_questions_and_next_steps text,
 	observations_and_notes text,
+	source_type text, -- source of the content: realtime_recording, audio_upload, video_upload, document, transcript
+	file_extension text, -- file extension (mp3, mp4, pdf, csv, md, etc.)
+	person_id uuid references people (id) on delete set null, -- link to person if attached
   duration_sec int,
   status interview_status not null default 'draft',
   created_at timestamptz not null default now(),

@@ -50,6 +50,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			status: "transcribed",
 			updated_at: new Date().toISOString(),
 			source_type: "realtime_recording",
+			file_extension: "webm", // Realtime recordings are typically WebM format from browser
 		}
 		if (typeof transcript === "string") update.transcript = transcript
 		if (incomingSanitized) {

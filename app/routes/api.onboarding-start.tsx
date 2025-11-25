@@ -92,6 +92,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		const onboardingDataStr = formData.get("onboardingData") as string
 		const projectId = formData.get("projectId") as UUID
 		const personId = formData.get("personId") as string | null
+		const attachType = formData.get("attachType") as string | null
+		const entityId = formData.get("entityId") as string | null
+		const fileExtension = formData.get("fileExtension") as string | null
+		const sourceType = formData.get("sourceType") as string | null
 
 		consola.info("✅ [ONBOARDING] Form data parsed", {
 			hasFile: !!file,
@@ -327,6 +331,9 @@ Please extract insights that specifically address these research questions and h
 			transcript_formatted: null,
 			duration_sec: null,
 			status: "uploaded", // Starting status for pipeline
+			source_type: sourceType || undefined, // Store source type (audio_upload, video_upload, document, transcript)
+			file_extension: fileExtension || undefined, // Store file extension
+			person_id: entityId || linkedPerson?.id || undefined, // Link to person if provided
 		} as InterviewInsert
 
 		const interviewSpan = trace?.span?.({
