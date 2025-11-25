@@ -11,6 +11,9 @@ import { z } from "zod"
 import { supabaseAdmin } from "../../app/lib/supabase/client.server"
 import { getPeople } from "../../app/features/people/db"
 
+const PEOPLE_CACHE_TTL_MS = 30_000
+const peopleDatasetCache = new Map<string, { fetchedAt: number; people: any[] }>()
+
 /**
  * Fuzzy search scoring for people
  * Matches against name, title, company, role, and segment
@@ -91,19 +94,37 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 			}),
 			execute: async ({ query }: { query?: string }) => {
 				try {
-					consola.info("getPeople: fetching from database", { projectId, accountId, query })
+					const normalizedQuery = query?.trim() ?? ""
+					const cacheKey = `${accountId}:${projectId}`
+					const now = Date.now()
 
-					// Use existing getPeople function for proper joins and relations
-					const { data: people, error } = await getPeople({
-						supabase: supabaseAdmin as any,
-						accountId,
-						projectId,
-						scope: "project",
-					})
+					let cachedEntry = peopleDatasetCache.get(cacheKey)
+					let people = cachedEntry && now - cachedEntry.fetchedAt < PEOPLE_CACHE_TTL_MS ? cachedEntry.people : null
 
-					if (error) {
-						consola.error("Database error fetching people", error)
-						return "Sorry, I had trouble fetching the people list."
+					if (people) {
+						consola.info("getPeople: using cached dataset", {
+							projectId,
+							accountId,
+							query: normalizedQuery || undefined,
+							count: people.length,
+							cacheAgeMs: now - (cachedEntry?.fetchedAt ?? now),
+						})
+					} else {
+						consola.info("getPeople: fetching from database", { projectId, accountId, query: normalizedQuery || undefined })
+						const { data, error } = await getPeople({
+							supabase: supabaseAdmin as any,
+							accountId,
+							projectId,
+							scope: "project",
+						})
+
+						if (error) {
+							consola.error("Database error fetching people", error)
+							return "Sorry, I had trouble fetching the people list."
+						}
+
+						people = data || []
+						peopleDatasetCache.set(cacheKey, { people, fetchedAt: now })
 					}
 
 					if (!people || people.length === 0) {
@@ -112,8 +133,8 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 
 					// Apply fuzzy search if query provided
 					let filteredPeople = people
-					if (query && query.trim()) {
-						const searchLower = query.toLowerCase().trim()
+					if (normalizedQuery) {
+						const searchLower = normalizedQuery.toLowerCase()
 						const tokens = searchLower.split(/\s+/).filter(Boolean)
 
 						// Score and filter people
@@ -132,7 +153,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 						filteredPeople = scoredPeople.map(({ person }) => person)
 
 						consola.info("getPeople: search results", {
-							query,
+							query: normalizedQuery || undefined,
 							totalPeople: people.length,
 							matchedPeople: filteredPeople.length,
 							topMatch: filteredPeople[0]?.name,
@@ -140,7 +161,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 					}
 
 					if (filteredPeople.length === 0) {
-						return `No people found matching "${query}". Try a different search or ask for all people in the project.`
+						return `No people found matching "${normalizedQuery}". Try a different search or ask for all people in the project.`
 					}
 
 					// Limit to top 10 results for voice response
@@ -154,8 +175,8 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 						return parts.join(", ")
 					})
 
-					const response = query
-						? `Found ${filteredPeople.length} people matching "${query}": ${peopleDetails.slice(0, 5).join("; ")}${filteredPeople.length > 5 ? `, and ${filteredPeople.length - 5} others` : ""}.`
+					const response = normalizedQuery
+						? `Found ${filteredPeople.length} people matching "${normalizedQuery}": ${peopleDetails.slice(0, 5).join("; ")}${filteredPeople.length > 5 ? `, and ${filteredPeople.length - 5} others` : ""}.`
 						: `There are ${topPeople.length} people in the project: ${peopleDetails.slice(0, 5).join("; ")}${people.length > 5 ? `, and ${people.length - 5} others` : ""}.`
 
 					return response

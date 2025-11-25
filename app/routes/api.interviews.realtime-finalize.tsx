@@ -22,7 +22,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			})
 		}
 
-		const { interviewId, transcript, transcriptFormatted, mediaUrl, audioDuration, attachType, entityId } =
+		const { interviewId, transcript, transcriptFormatted, mediaUrl, audioDuration, mode, attachType, entityId } =
 			await request.json()
 		if (!interviewId || typeof interviewId !== "string") {
 			return new Response(JSON.stringify({ error: "interviewId is required" }), {
@@ -46,11 +46,15 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				topic_detection: {},
 			})
 
+		// Determine media_type based on mode: "notes" -> "voice_memo", "interview" -> "interview"
+		const mediaType = mode === "notes" ? "voice_memo" : "interview"
+
 		const update: Record<string, unknown> = {
 			status: "transcribed",
 			updated_at: new Date().toISOString(),
 			source_type: "realtime_recording",
 			file_extension: "webm", // Realtime recordings are typically WebM format from browser
+			media_type: mediaType,
 		}
 		if (typeof transcript === "string") update.transcript = transcript
 		if (incomingSanitized) {

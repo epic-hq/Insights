@@ -46,8 +46,7 @@ import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
-
-export const handle = { hideProjectStatusAgent: true } as const
+import { DocumentViewer } from "../components/DocumentViewer"
 
 // Helper to parse full name into first and last
 function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
@@ -598,8 +597,26 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		let freshMediaUrl = interviewData.media_url
 		if (interviewData.media_url) {
 			try {
-				// Extract the R2 key from the stored URL
-				const r2Key = getR2KeyFromPublicUrl(interviewData.media_url)
+				let r2Key = getR2KeyFromPublicUrl(interviewData.media_url)
+
+				// If getR2KeyFromPublicUrl failed, try to extract key from malformed paths
+				// Pattern: /a/{accountId}/{projectId}/interviews/interviews/{projectId}/{filename}
+				// or interviews/{projectId}/{filename}
+				if (!r2Key && !interviewData.media_url.startsWith("http")) {
+					const pathParts = interviewData.media_url.split("/").filter(Boolean)
+					// Look for "interviews" in the path and extract everything after it
+					const interviewsIndex = pathParts.findIndex((part) => part === "interviews")
+					if (interviewsIndex >= 0 && interviewsIndex < pathParts.length - 1) {
+						// Check if next part is also "interviews" (doubled path bug)
+						const startIndex = pathParts[interviewsIndex + 1] === "interviews" ? interviewsIndex + 2 : interviewsIndex + 1
+						r2Key = pathParts.slice(startIndex).join("/")
+						// Add interviews prefix if not already there
+						if (!r2Key.startsWith("interviews/")) {
+							r2Key = "interviews/" + r2Key
+						}
+					}
+				}
+
 				if (r2Key) {
 					// Generate a fresh presigned URL (valid for 1 hour)
 					const presignedResult = createR2PresignedUrl({
@@ -871,6 +888,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	// Early validation - must happen before any hooks
 	if (!interview || !accountId || !projectId) {
 		return <div>Error: Missing interview data</div>
+	}
+
+	// Check if this is a document/voice memo type (non-full interview)
+	// Use simplified DocumentViewer for these types
+	const isDocumentType =
+		interview.media_type === "voice_memo" ||
+		interview.source_type === "document" ||
+		(interview.source_type === "transcript" && interview.media_type !== "interview")
+
+	if (isDocumentType) {
+		return <DocumentViewer interview={interview} />
 	}
 
 	const fetcher = useFetcher()
@@ -1356,7 +1384,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			: null
 
 	return (
-		<div className="relative mx-auto mt-6 max-w-6xl">
+		<div className="relative mx-auto mt-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 			{/* <InterviewCopilotDrawer
 				open={isChatOpen}
 				onOpenChange={setIsChatOpen}
@@ -1377,8 +1405,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</div>
 			)}
 
-			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
-				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
+			<div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
+				<div className="w-full min-w-0 space-y-6 lg:flex-1">
 					{showProcessingBanner && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

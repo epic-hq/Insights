@@ -783,6 +783,7 @@ export function InterviewCopilot({
 									},
 									mediaUrl,
 									audioDuration,
+									mode, // Pass mode to determine if voice_memo or interview
 									attachType,
 									entityId,
 								}),

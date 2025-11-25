@@ -1,18 +1,24 @@
-import { ArrowLeft, CheckCircle, File, ListTodo, Mic, Search, Sparkles, Upload, UserPlus, Users, Video } from "lucide-react"
+import {
+	ArrowLeft,
+	CheckCircle,
+	File,
+	ListTodo,
+	Mic,
+	Search,
+	Sparkles,
+	Upload,
+	UserPlus,
+	Users,
+	Video,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { useRecordNow } from "~/hooks/useRecordNow"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
-import type { Person, Organization } from "~/types"
+import type { Organization, Person } from "~/types"
 
 interface UploadScreenProps {
 	onNext: (
@@ -164,8 +170,13 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || ""
 				const sourceType = getFileType(selectedFile)
 
+				// Use recordMode to determine processing type:
+				// - "voice_memo" → transcribe only, no analysis
+				// - "conversation" → full interview analysis
+				const mediaType = recordMode === "voice_memo" ? "voice_memo" : "interview"
+
 				// Call onNext with the file and attachment data
-				onNext(selectedFile, "interview", projectId, {
+				onNext(selectedFile, mediaType, projectId, {
 					attachType: attachmentType,
 					entityId: finalEntityId,
 					fileExtension,
@@ -295,11 +306,11 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 			{/* Main Content */}
 			<div className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
 				{/* Header */}
-				<div className="mb-12 text-center">
+				{/* <div className="mb-12 text-center">
 					<h1 className="mb-3 font-bold text-4xl text-slate-900 tracking-tight dark:text-white">
 						Add Conversations and Notes
 					</h1>
-				</div>
+				</div> */}
 
 				{/* Error Alert */}
 				{error && (
@@ -333,7 +344,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 						onClick={handleRecordNow}
 						className={cn(
 							"group w-full rounded-3xl border border-slate-200/60 bg-white/80 p-10 shadow-slate-900/5 shadow-xl backdrop-blur-sm transition-all duration-300 hover:shadow-2xl hover:shadow-slate-900/10 dark:border-slate-800/60 dark:bg-slate-900/80",
-							"hover:scale-[1.01] cursor-pointer",
+							"cursor-pointer hover:scale-[1.01]",
 							isRecording && "cursor-not-allowed opacity-50"
 						)}
 					>
@@ -341,12 +352,18 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 							<div
 								className={cn(
 									"flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300",
-									"bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30",
-									"group-hover:scale-105 group-hover:shadow-red-500/40 group-hover:shadow-xl",
+									recordMode === "conversation"
+										? "bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/40"
+										: "bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 group-hover:shadow-red-500/40",
+									"group-hover:scale-105 group-hover:shadow-xl",
 									isRecording && "animate-pulse"
 								)}
 							>
-								<Mic className="h-9 w-9 text-white" />
+								{recordMode === "conversation" ? (
+									<Users className="h-9 w-9 text-white" />
+								) : (
+									<Mic className="h-9 w-9 text-white" />
+								)}
 							</div>
 							<div className="flex-1 text-left">
 								<h3 className="mb-2 font-semibold text-slate-900 text-xl dark:text-white">Record Now</h3>
@@ -421,7 +438,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								</div>
 								<div className="flex-1 text-left">
 									<h3 className="mb-1 font-semibold text-slate-900 text-xl dark:text-white">Upload File</h3>
-									<p className="text-slate-600 dark:text-slate-400">Audio, video, or transcript, document, URL or virtually any background material. Drag n drop.</p>
+									<p className="text-slate-600 dark:text-slate-400">
+										Audio, video, or transcript, document, URL or virtually any background material. Drag n drop.
+									</p>
 								</div>
 							</div>
 						)}
@@ -452,72 +471,78 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 							</DialogHeader>
 
 							<div className="grid gap-3 py-4">
-						{/* Todo Option */}
-						<button
-							onClick={() => handleAttachmentSelect("todo")}
-							className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500 dark:hover:bg-blue-950"
-						>
-							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-								<ListTodo className="h-6 w-6" />
-							</div>
-							<div className="flex-1">
-								<h3 className="font-semibold text-slate-900 dark:text-white">Todo</h3>
-								<p className="text-slate-600 text-sm dark:text-slate-400">Create a new task or reminder</p>
-							</div>
-						</button>
+								{/* Todo Option */}
+								<button
+									onClick={() => handleAttachmentSelect("todo")}
+									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500 dark:hover:bg-blue-950"
+								>
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+										<ListTodo className="h-6 w-6" />
+									</div>
+									<div className="flex-1">
+										<h3 className="font-semibold text-slate-900 dark:text-white">Todo</h3>
+										<p className="text-slate-600 text-sm dark:text-slate-400">Create a new task or reminder</p>
+									</div>
+								</button>
 
-						{/* Existing Contact/Org Option */}
-						<button
-							onClick={handleShowSearch}
-							className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-green-500 hover:bg-green-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-green-500 dark:hover:bg-green-950"
-						>
-							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
-								<Users className="h-6 w-6" />
-							</div>
-							<div className="flex-1">
-								<h3 className="font-semibold text-slate-900 dark:text-white">Existing Contact/Org</h3>
-								<p className="text-slate-600 text-sm dark:text-slate-400">Search and attach to someone in your project</p>
-							</div>
-						</button>
+								{/* Existing Contact/Org Option */}
+								<button
+									onClick={handleShowSearch}
+									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-green-500 hover:bg-green-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-green-500 dark:hover:bg-green-950"
+								>
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
+										<Users className="h-6 w-6" />
+									</div>
+									<div className="flex-1">
+										<h3 className="font-semibold text-slate-900 dark:text-white">Existing Contact/Org</h3>
+										<p className="text-slate-600 text-sm dark:text-slate-400">
+											Search and attach to someone in your project
+										</p>
+									</div>
+								</button>
 
-						{/* New Contact/Org Option */}
-						<button
-							onClick={handleShowCreateForm}
-							className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-purple-500 hover:bg-purple-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-purple-500 dark:hover:bg-purple-950"
-						>
-							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-								<UserPlus className="h-6 w-6" />
-							</div>
-							<div className="flex-1">
-								<h3 className="font-semibold text-slate-900 dark:text-white">New Contact/Org</h3>
-								<p className="text-slate-600 text-sm dark:text-slate-400">Create and attach to new person or company</p>
-							</div>
-						</button>
+								{/* New Contact/Org Option */}
+								<button
+									onClick={handleShowCreateForm}
+									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-purple-500 hover:bg-purple-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-purple-500 dark:hover:bg-purple-950"
+								>
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+										<UserPlus className="h-6 w-6" />
+									</div>
+									<div className="flex-1">
+										<h3 className="font-semibold text-slate-900 dark:text-white">New Contact/Org</h3>
+										<p className="text-slate-600 text-sm dark:text-slate-400">
+											Create and attach to new person or company
+										</p>
+									</div>
+								</button>
 
-						{/* General Note Option */}
-						<button
-							onClick={() => handleAttachmentSelect("general")}
-							className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500 dark:hover:bg-slate-800"
-						>
-							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-500 to-slate-600 text-white">
-								<File className="h-6 w-6" />
+								{/* General Note Option */}
+								<button
+									onClick={() => handleAttachmentSelect("general")}
+									className="group flex items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-4 text-left transition-all hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+								>
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-500 to-slate-600 text-white">
+										<File className="h-6 w-6" />
+									</div>
+									<div className="flex-1">
+										<h3 className="font-semibold text-slate-900 dark:text-white">General Note</h3>
+										<p className="text-slate-600 text-sm dark:text-slate-400">
+											Not attached to anyone or anything specific
+										</p>
+									</div>
+								</button>
 							</div>
-							<div className="flex-1">
-								<h3 className="font-semibold text-slate-900 dark:text-white">General Note</h3>
-								<p className="text-slate-600 text-sm dark:text-slate-400">Not attached to anyone or anything specific</p>
-							</div>
-						</button>
-					</div>
 
-					{/* Skip for now button */}
-					<div className="border-slate-300 border-t pt-3 dark:border-slate-700">
-						<Button
-							variant="ghost"
-							className="w-full text-muted-foreground"
-							onClick={() => handleAttachmentSelect("skip")}
-						>
-							Skip for now - I'll link it later
-						</Button>
+							{/* Skip for now button */}
+							<div className="border-slate-300 border-t pt-3 dark:border-slate-700">
+								<Button
+									variant="ghost"
+									className="w-full text-muted-foreground"
+									onClick={() => handleAttachmentSelect("skip")}
+								>
+									Skip for now - I'll link it later
+								</Button>
 							</div>
 						</>
 					) : attachmentStep === "search-existing" ? (
@@ -565,13 +590,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 													className="flex w-full items-center gap-3 rounded-lg border border-transparent p-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:hover:border-slate-600 dark:hover:bg-slate-800"
 												>
 													<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
-														{isPerson ? (
-															<Users className="h-5 w-5" />
-														) : (
-															<Users className="h-5 w-5" />
-														)}
+														{isPerson ? <Users className="h-5 w-5" /> : <Users className="h-5 w-5" />}
 													</div>
-													<div className="flex-1 min-w-0">
+													<div className="min-w-0 flex-1">
 														<h4 className="truncate font-semibold text-sm">{item.name}</h4>
 														{isPerson && (item as Person).title && (
 															<p className="truncate text-muted-foreground text-xs">
@@ -587,11 +608,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								</div>
 
 								{/* Create New Button */}
-								<Button
-									variant="outline"
-									className="w-full"
-									onClick={handleShowCreateForm}
-								>
+								<Button variant="outline" className="w-full" onClick={handleShowCreateForm}>
 									<UserPlus className="mr-2 h-4 w-4" />
 									Can't find them? Create new contact/org
 								</Button>

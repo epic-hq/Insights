@@ -40,6 +40,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		const url = new URL(request.url)
 		const mediaId = url.searchParams.get("media_id")
+		const voiceMemoOnly = url.searchParams.get("voiceMemoOnly") === "true"
 		const payload: AssemblyAIWebhookPayload = await request.json()
 		consola.log("Received AssemblyAI webhook:", {
 			transcript_id: payload.transcript_id,
@@ -211,6 +212,39 @@ export async function action({ request }: ActionFunctionArgs) {
 					status_detail: "Transcription completed",
 				})
 				.eq("id", uploadJob.id)
+
+			// If this is a voice memo only (no analysis), mark as ready and return
+			if (voiceMemoOnly) {
+				consola.info("Voice memo transcription complete - skipping analysis", {
+					interviewId,
+					transcriptId: payload.transcript_id,
+				})
+
+				await supabase.from("interviews").update({ status: "ready" }).eq("id", interviewId)
+
+				trace?.event?.({
+					name: "voice-memo.completed",
+					metadata: {
+						interviewId,
+						transcriptId: payload.transcript_id,
+					},
+				})
+
+				traceEndPayload = {
+					output: {
+						interviewId,
+						status: "ready",
+						message: "Voice memo transcribed successfully",
+					},
+				}
+
+				return Response.json({
+					success: true,
+					interviewId,
+					status: "ready",
+					message: "Voice memo transcribed successfully",
+				})
+			}
 
 			const customInstructions = uploadJob.custom_instructions || ""
 

@@ -88,8 +88,39 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("all")
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const fetcher = useFetcher()
+
+	// Filter interviews by source type category
+	const filteredInterviews = interviews.filter((interview) => {
+		if (sourceFilter === "all") return true
+
+		// Conversations: all interviews (including generic interview type) but exclude voice memos and documents
+		if (sourceFilter === "conversations") {
+			return (
+				interview.media_type === "interview" &&
+				interview.source_type !== "document" &&
+				interview.media_type !== "document"
+			)
+		}
+
+		// Notes: voice memos and text transcripts
+		if (sourceFilter === "notes") {
+			return (
+				interview.media_type === "voice_memo" ||
+				interview.source_type === "transcript" ||
+				(interview.source_type === "transcript" && interview.media_type !== "interview")
+			)
+		}
+
+		// Files: documents (PDFs, spreadsheets, etc.)
+		if (sourceFilter === "files") {
+			return interview.source_type === "document" || interview.media_type === "document"
+		}
+
+		return true
+	})
 
 	const handleSaveNote = async (note: {
 		title: string
@@ -135,7 +166,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							</h1>
 							<p className="text-muted-foreground">
 								Conversations, recordings, and documents
-								<span className="ml-2 text-sm">({interviews.length})</span>
+								<span className="ml-2 text-sm">({filteredInterviews.length})</span>
 							</p>
 						</div>
 
@@ -174,6 +205,32 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				</PageContainer>
 			</div>
 
+			{/* Filter Bar */}
+			<div className="border-border border-b bg-muted/30 px-6 py-4">
+				<PageContainer size="lg" padded={false} className="max-w-6xl">
+					<div className="flex items-center gap-3">
+						<span className="text-muted-foreground text-sm font-medium">Filter:</span>
+						<ToggleGroup type="single" value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v as any)} size="sm">
+							<ToggleGroupItem value="all" className="text-xs">
+								All
+							</ToggleGroupItem>
+							<ToggleGroupItem value="conversations" className="text-xs">
+								<MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+								Conversations
+							</ToggleGroupItem>
+							<ToggleGroupItem value="notes" className="text-xs">
+								<FileText className="mr-1.5 h-3.5 w-3.5" />
+								Notes
+							</ToggleGroupItem>
+							<ToggleGroupItem value="files" className="text-xs">
+								<Upload className="mr-1.5 h-3.5 w-3.5" />
+								Files
+							</ToggleGroupItem>
+						</ToggleGroup>
+					</div>
+				</PageContainer>
+			</div>
+
 			{/* Segment Chart Section - Fixed */}
 			{showPie && segmentData.length > 0 && (
 				<div className="border-gray-200 border-b bg-white px-6 py-6 dark:border-gray-800 dark:bg-gray-950">
@@ -187,7 +244,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 			{/* Main Content */}
 			<PageContainer size="lg" padded={false} className="max-w-6xl px-6 py-12">
-				{interviews.length === 0 ? (
+				{filteredInterviews.length === 0 ? (
 					<div className="py-16 text-center">
 						<div className="mx-auto max-w-md">
 							<div className="mb-6 flex justify-center">
@@ -209,7 +266,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					</div>
 				) : viewMode === "cards" ? (
 					<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-						{interviews.map((interview) => (
+						{filteredInterviews.map((interview) => (
 							<InterviewCard key={interview.id} interview={interview} />
 						))}
 					</div>
@@ -243,7 +300,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-									{interviews.map((interview) => (
+									{filteredInterviews.map((interview) => (
 										<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
 											<td className="px-4 py-3">
 												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
@@ -262,6 +319,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												>
 													<MediaTypeIcon
 														mediaType={interview.media_type}
+														sourceType={interview.source_type}
 														iconClassName="h-4 w-4"
 														labelClassName="text-xs font-medium"
 													/>

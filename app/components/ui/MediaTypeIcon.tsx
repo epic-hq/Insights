@@ -1,4 +1,4 @@
-import { FileAudio, FileText, FileVideo, Mic, Phone, TestTube, Upload, Users } from "lucide-react"
+import { File, FileAudio, FileText, FileVideo, Mic, Phone, TestTube, Users } from "lucide-react"
 import { cn } from "~/lib/utils"
 
 interface MediaTypeIconProps {
@@ -12,6 +12,9 @@ interface MediaTypeIconProps {
 
 const sourceTypeConfig = {
 	realtime_recording: {
+		// This is overridden by logic that checks media_type
+		// voice_memo → Mic "Voice Memo" (red)
+		// interview → Users "Live Conversation" (blue)
 		icon: Mic,
 		label: "Voice Memo",
 		color: "text-red-600",
@@ -27,7 +30,7 @@ const sourceTypeConfig = {
 		color: "text-purple-600",
 	},
 	document: {
-		icon: Upload,
+		icon: File,
 		label: "Document",
 		color: "text-green-600",
 	},
@@ -69,12 +72,31 @@ export function MediaTypeIcon({
 	iconClassName = "h-4 w-4",
 	labelClassName = "text-sm font-medium",
 }: MediaTypeIconProps) {
-	// Prioritize source type over media type for more specific information
-	const sourceConfig = sourceType ? sourceTypeConfig[sourceType as keyof typeof sourceTypeConfig] : null
-	const mediaConfig = mediaType ? mediaTypeConfig[mediaType as keyof typeof mediaTypeConfig] : null
+	// Handle special case: voice_memo with realtime recording (solo) vs interview with realtime recording (conversation)
+	let config: { icon: any; label: string; color: string } | null = null
 
-	// Use source type if available, otherwise fall back to media type, then default
-	const { icon: Icon, label, color } = sourceConfig || mediaConfig || mediaTypeConfig.interview
+	if (mediaType === "voice_memo" && sourceType === "realtime_recording") {
+		// Solo voice memo
+		config = {
+			icon: Mic,
+			label: "Voice Memo",
+			color: "text-red-600",
+		}
+	} else if (mediaType === "interview" && sourceType === "realtime_recording") {
+		// Live conversation recording
+		config = {
+			icon: Users,
+			label: "Live Conversation",
+			color: "text-blue-600",
+		}
+	} else {
+		// Prioritize source type over media type for other cases
+		const sourceConfig = sourceType ? sourceTypeConfig[sourceType as keyof typeof sourceTypeConfig] : null
+		const mediaConfig = mediaType ? mediaTypeConfig[mediaType as keyof typeof mediaTypeConfig] : null
+		config = sourceConfig || mediaConfig || mediaTypeConfig.interview
+	}
+
+	const { icon: Icon, label, color } = config
 
 	if (!showLabel) {
 		return <Icon className={cn(color, iconClassName)} />

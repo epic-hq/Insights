@@ -318,6 +318,16 @@ Please extract insights that specifically address these research questions and h
 		const dateLabel = format(interviewDate, "MMM d, yyyy")
 		const titleFromPerson = linkedPerson?.name ? `${linkedPerson.name} • ${dateLabel}` : undefined
 
+		// Determine appropriate media_type based on source_type and context
+		// Documents, transcripts should not be "interview" or "voice_memo" by default
+		let finalMediaType = mediaTypeInput
+		if (sourceType === "document") {
+			finalMediaType = "document"
+		} else if (sourceType === "transcript" && mediaTypeInput === "interview") {
+			// Text files uploaded as interviews keep "interview", but standalone text notes should be "voice_memo"
+			finalMediaType = mediaTypeInput === "voice_memo" ? "voice_memo" : "interview"
+		}
+
 		const interviewData: InterviewInsert = {
 			account_id: teamAccountId,
 			project_id: finalProjectId,
@@ -326,7 +336,7 @@ Please extract insights that specifically address these research questions and h
 			participant_pseudonym: linkedPerson?.name ?? "Participant 1",
 			segment: null,
 			media_url: null, // Will be set by upload worker
-			media_type: mediaTypeInput, // Store the selected media type
+			media_type: finalMediaType, // Determined based on source type and context
 			transcript: null, // Will be set by transcription
 			transcript_formatted: null,
 			duration_sec: null,
@@ -390,13 +400,89 @@ Please extract insights that specifically address these research questions and h
 
 		consola.log("Created interview:", interview.id)
 
-		// 3. Check if file is text or needs AssemblyAI processing
+		// 3. Determine processing path based on sourceType and mediaType
 		const isTextFile =
 			file.type.startsWith("text/") ||
 			file.name.endsWith(".txt") ||
 			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown")
 
+		const isAudioVideo =
+			file.type.startsWith("audio/") ||
+			file.type.startsWith("video/") ||
+			sourceType === "audio_upload" ||
+			sourceType === "video_upload"
+
+		// Path 1: Documents (PDFs, spreadsheets, etc.) - just save, no processing
+		if (sourceType === "document" && !isTextFile) {
+			consola.info("📄 [ONBOARDING] Document file detected - saving without processing", {
+				fileName: file.name,
+				sourceType,
+			})
+
+			// Store the file in R2 for future access
+			const fileBuffer = await file.arrayBuffer()
+			const fileBlob = new Blob([fileBuffer], { type: file.type })
+
+			const storageResult = await storeAudioFile({
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				source: fileBlob,
+				originalFilename: file.name,
+				contentType: file.type,
+				langfuseParent: trace,
+			})
+
+			if (!storageResult.error && storageResult.mediaUrl) {
+				await supabase
+					.from("interviews")
+					.update({
+						media_url: storageResult.mediaUrl,
+						status: "uploaded",
+					})
+					.eq("id", interview.id)
+			}
+
+			traceEndPayload = { level: "DEFAULT", statusMessage: "Document uploaded successfully" }
+			return Response.json({
+				success: true,
+				interviewId: interview.id,
+				projectId: finalProjectId,
+				status: "uploaded",
+				message: "Document saved for future processing",
+			})
+		}
+
+		// Path 2: Text files for voice memos - save to transcript only, no analysis
+		if (isTextFile && mediaTypeInput === "voice_memo") {
+			consola.info("📝 [ONBOARDING] Voice memo text file - saving to transcript without analysis", {
+				fileName: file.name,
+			})
+
+			const textContent = await file.text()
+			if (!textContent || textContent.trim().length === 0) {
+				traceEndPayload = { level: "ERROR", statusMessage: "Text file is empty" }
+				return Response.json({ error: "Text file is empty" }, { status: 400 })
+			}
+
+			await supabase
+				.from("interviews")
+				.update({
+					transcript: textContent.trim(),
+					status: "ready",
+				})
+				.eq("id", interview.id)
+
+			traceEndPayload = { level: "DEFAULT", statusMessage: "Voice memo saved successfully" }
+			return Response.json({
+				success: true,
+				interviewId: interview.id,
+				projectId: finalProjectId,
+				status: "ready",
+			})
+		}
+
+		// Path 3: Text files for interviews - save and run full analysis
 		if (isTextFile) {
 			// Handle text files immediately - no upload needed
 			const textContent = await file.text()
@@ -459,7 +545,122 @@ Please extract insights that specifically address these research questions and h
 				traceEndPayload = { level: "ERROR", statusMessage: message }
 				return Response.json({ error: "Failed to queue analysis" }, { status: 500 })
 			}
-		} else {
+		}
+
+		// Path 4: Audio/video files for voice memos - transcribe only, no analysis
+		if (isAudioVideo && mediaTypeInput === "voice_memo") {
+			consola.info("🎤 [ONBOARDING] Voice memo audio/video - transcribe only without analysis", {
+				fileName: file.name,
+				sourceType,
+			})
+
+			const audioSpan = trace?.span?.({
+				name: "ingest.voice-memo",
+				metadata: {
+					interviewId: interview.id,
+					projectId: finalProjectId,
+				},
+				input: {
+					fileName: file.name,
+					size: file.size,
+					type: file.type,
+				},
+			})
+
+			// Store audio file in R2
+			const fileBuffer = await file.arrayBuffer()
+			const fileBlob = new Blob([fileBuffer], { type: file.type })
+
+			const storageResult = await storeAudioFile({
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				source: fileBlob,
+				originalFilename: file.name,
+				contentType: file.type,
+				langfuseParent: audioSpan ?? trace,
+			})
+
+			if (storageResult.error || !storageResult.mediaUrl || !storageResult.presignedUrl) {
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: storageResult.error ?? "Failed to store audio file",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: `Failed to store audio file: ${storageResult.error}` }
+				return Response.json({ error: `Failed to store audio file: ${storageResult.error}` }, { status: 500 })
+			}
+
+			// Update interview with R2 key
+			await supabase
+				.from("interviews")
+				.update({
+					media_url: storageResult.mediaUrl,
+					status: "uploaded",
+				})
+				.eq("id", interview.id)
+
+			// Submit to AssemblyAI for transcription (no analysis after)
+			const apiKey = process.env.ASSEMBLYAI_API_KEY
+			if (!apiKey) {
+				audioSpan?.end?.({ level: "ERROR", statusMessage: "ASSEMBLYAI_API_KEY not configured" })
+				traceEndPayload = { level: "ERROR", statusMessage: "Transcription service not configured" }
+				return Response.json({ error: "Transcription service not configured" }, { status: 500 })
+			}
+
+			const baseUrl = process.env.PUBLIC_TUNNEL_URL ? `https://${process.env.PUBLIC_TUNNEL_URL}` : new URL(request.url).origin
+			const webhookUrl = `${baseUrl}/api/assemblyai-webhook?voiceMemoOnly=true`
+
+			const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+				method: "POST",
+				headers: {
+					authorization: apiKey,
+					"content-type": "application/json",
+				},
+				body: JSON.stringify({
+					audio_url: storageResult.presignedUrl,
+					webhook_url: webhookUrl,
+					speech_model: "slam-1",
+					speaker_labels: true,
+					format_text: true,
+					punctuate: true,
+					sentiment_analysis: false,
+				}),
+			})
+
+			if (!transcriptResponse.ok) {
+				const errorText = await transcriptResponse.text()
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: `AssemblyAI failed: ${transcriptResponse.status}`,
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: "Transcription failed" }
+				return Response.json({ error: "Transcription failed" }, { status: 500 })
+			}
+
+			const transcriptData = await transcriptResponse.json()
+			consola.info("✅ [ONBOARDING] Voice memo transcription queued", {
+				transcriptId: transcriptData.id,
+				interviewId: interview.id,
+			})
+
+			audioSpan?.end?.({
+				output: {
+					transcriptId: transcriptData.id,
+					mediaUrl: storageResult.mediaUrl,
+				},
+			})
+
+			traceEndPayload = { level: "DEFAULT", statusMessage: "Voice memo transcription queued" }
+			return Response.json({
+				success: true,
+				interviewId: interview.id,
+				projectId: finalProjectId,
+				status: "transcribing",
+				message: "Voice memo is being transcribed",
+			})
+		}
+
+		// Path 5: Audio/video files for interviews - full processing with transcription and analysis
+		if (isAudioVideo) {
 			// Handle audio/video files - store file first, then trigger Trigger.dev task for transcription
 			const audioSpan = trace?.span?.({
 				name: "ingest.audio",
