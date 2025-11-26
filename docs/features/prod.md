@@ -146,7 +146,7 @@ Top-level nav aligned to the mental model (but in “normal product words”):
 
 | Step        | Nav        | Primary owner(s)               | Key artifacts                               |
 |------------|------------|---------------------------------|---------------------------------------------|
-| Prepare    | Projects   | Founder, PM, RevOps, CS lead   | Projects, decision questions, goals, guides |
+| Plan			 | Projects   | Founder, PM, RevOps, CS lead   | Projects, decision questions, goals, guides |
 | Connect    | People     | Sales, CS, PM, founder         | People, orgs, invites, recruiting templates |
 | Collect    | Evidence   | Anyone talking to customers    | Recordings, transcripts, notes, tickets, docs |
 | Synthesize | Insights   | Product, RevOps, leadership    | Themes, insights, digests                   |
@@ -244,7 +244,9 @@ Explain “3 ways to share feedback” pattern and respect for customer time.
 
 ## 8. Design Principles
 
+- **Fast, personalized ROI** - Choose your own path, soft onboarding based on user choices/input, suggestions
 - **Human-first, AI-assisted** – AI proposes; humans decide.
+- **Easy to understand, sophisticated, nuanced inishgts** - Must be noticably better than GPT, but not overwhelming
 - **Evidence-backed** – every insight can show its receipts.
 - **Right time, right depth** – TL;DR first, detail on demand.
 - **Shared source, personal lens** – one truth, tailored views.

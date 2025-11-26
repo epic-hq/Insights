@@ -1,11 +1,12 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import { ChevronRight, Mic, MicOff } from "lucide-react"
+import { ChevronRight, Mic } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
+import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button"
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
@@ -258,12 +259,21 @@ export function ProjectStatusAgentChat({
 		isTranscribing,
 		error: voiceError,
 		isSupported: isVoiceSupported,
-		intensity: voiceIntensity,
 	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
 
 	const isBusy = status === "streaming" || status === "submitted"
 	const isError = status === "error"
 	const awaitingAssistant = isBusy
+
+	// Map voice states to VoiceButton states
+	const voiceButtonState: VoiceButtonState = voiceError
+		? "error"
+		: isTranscribing
+			? "processing"
+			: isVoiceRecording
+				? "recording"
+				: "idle"
+
 	const statusMessage =
 		voiceError ||
 		(isError
@@ -491,35 +501,21 @@ export function ProjectStatusAgentChat({
 												Microphone not available in this browser
 											</div>
 										) : (
-											<button
-												type="button"
-												onClick={() => {
+											<VoiceButton
+												state={voiceButtonState}
+												onPress={() => {
 													if (isVoiceRecording) {
 														stopVoiceRecording()
 													} else {
 														startVoiceRecording()
 													}
 												}}
+												icon={<Mic className="h-4 w-4" />}
+												size="icon"
+												variant="outline"
 												disabled={isTranscribing}
-												className={cn(
-													"flex h-8 w-10 items-center justify-center rounded border transition-colors",
-													isVoiceRecording
-														? "border-red-500 bg-red-50 text-red-600 hover:bg-red-100"
-														: "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-												)}
-												aria-label={isVoiceRecording ? "Stop voice input" : "Start voice input"}
-												title={isVoiceRecording ? "Stop voice input" : "Start voice input"}
-											>
-												{isVoiceRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-												{isVoiceRecording && (
-													<span className="ml-1 h-2 w-6 overflow-hidden rounded-full bg-red-100" aria-hidden>
-														<span
-															className="block h-full bg-red-500 transition-[width]"
-															style={{ width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%` }}
-														/>
-													</span>
-												)}
-											</button>
+												className="h-8 w-8"
+											/>
 										)}
 										<button
 											type="submit"

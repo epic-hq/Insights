@@ -124,7 +124,7 @@ export const getInterviewById = async ({
 		.single()
 
 	if (error) {
-		consola.error("getInterviewInsights: failed to load themes", { interviewId, error })
+		consola.error("getInterviewById: failed to load interview", { id, error })
 		return { data: null, error }
 	}
 

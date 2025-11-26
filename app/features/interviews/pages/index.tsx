@@ -13,6 +13,7 @@ import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
+import NoteCard from "~/features/interviews/components/NoteCard"
 import { getInterviews } from "~/features/interviews/db"
 import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -63,7 +64,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		color: "#d1d5db", // TODO: map personas to colors when available
 	}))
 
-	// Transform interviews for UI
+	// Transform interviews for UI (includes notes now)
 	const interviews = (rows || []).map((interview) => {
 		// Get primary participant from interview_people junction
 		const primaryParticipant = interview.interview_people?.[0]
@@ -92,31 +93,37 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const fetcher = useFetcher()
 
-	// Filter interviews by source type category
-	const filteredInterviews = interviews.filter((interview) => {
+	// Sort interviews chronologically (includes notes now)
+	const allItems = [...interviews].sort((a, b) => {
+		// Sort by created_at descending (most recent first)
+		const dateA = new Date(a.created_at).getTime()
+		const dateB = new Date(b.created_at).getTime()
+		return dateB - dateA
+	})
+
+	// Filter items by source type category
+	const filteredInterviews = allItems.filter((item) => {
 		if (sourceFilter === "all") return true
 
-		// Conversations: all interviews (including generic interview type) but exclude voice memos and documents
-		if (sourceFilter === "conversations") {
-			return (
-				interview.media_type === "interview" &&
-				interview.source_type !== "document" &&
-				interview.media_type !== "document"
-			)
+		// Notes filter - includes both quick notes and voice memos
+		if (sourceFilter === "notes") {
+			return item.source_type === "note" || item.media_type === "voice_memo"
 		}
 
-		// Notes: voice memos and text transcripts
-		if (sourceFilter === "notes") {
+		// Conversations: all interviews (including generic interview type) but exclude voice memos, notes, and documents
+		if (sourceFilter === "conversations") {
 			return (
-				interview.media_type === "voice_memo" ||
-				interview.source_type === "transcript" ||
-				(interview.source_type === "transcript" && interview.media_type !== "interview")
+				item.source_type !== "note" &&
+				item.media_type === "interview" &&
+				item.source_type !== "document" &&
+				item.media_type !== "document" &&
+				item.media_type !== "voice_memo"
 			)
 		}
 
 		// Files: documents (PDFs, spreadsheets, etc.)
 		if (sourceFilter === "files") {
-			return interview.source_type === "document" || interview.media_type === "document"
+			return item.source_type !== "note" && item.media_type !== "voice_memo" && (item.source_type === "document" || item.media_type === "document")
 		}
 
 		return true
@@ -129,7 +136,14 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		associations: Record<string, unknown>
 		tags: string[]
 	}) => {
-		const projectId = projectPath?.split("/")[2] // Extract project ID from path
+		// Extract project ID from path - format is /a/{accountId}/{projectId}
+		const pathParts = projectPath?.split("/").filter(Boolean) || []
+		const extractedProjectId = pathParts[2] // Index 2 is projectId (0: 'a', 1: accountId, 2: projectId)
+
+		if (!extractedProjectId) {
+			console.error("No project ID found in path:", projectPath)
+			throw new Error("Project ID is required")
+		}
 
 		// Submit as JSON
 		const response = await fetch("/api/notes/create", {
@@ -138,7 +152,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				"Content-Type": "application/json",
 			},
 			body: JSON.stringify({
-				projectId,
+				projectId: extractedProjectId,
 				title: note.title,
 				content: note.content,
 				noteType: note.noteType,
@@ -148,8 +162,9 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		})
 
 		if (!response.ok) {
-			console.error("Failed to save note")
-			throw new Error("Failed to save note")
+			const errorData = await response.json().catch(() => ({}))
+			console.error("Failed to save note:", errorData)
+			throw new Error(errorData.details || errorData.error || "Failed to save note")
 		}
 	}
 
@@ -158,75 +173,78 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 			{/* Clean Header - Metro Style */}
 			<div className="border-border border-b bg-card px-6 py-8">
 				<PageContainer size="lg" padded={false} className="max-w-6xl">
-					<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-						<div className="space-y-3">
-							<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
-								<MessagesSquare />
-								Recordings
-							</h1>
-							<p className="text-muted-foreground">
-								Conversations, recordings, and documents
-								<span className="ml-2 text-sm">({filteredInterviews.length})</span>
-							</p>
+					<div className="flex flex-col gap-6">
+						<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+							<div className="space-y-3">
+								<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
+									<MessagesSquare />
+									Recordings
+								</h1>
+								<p className="text-muted-foreground">
+									Conversations, recordings, and documents
+									<span className="ml-2 text-sm">({filteredInterviews.length})</span>
+								</p>
+							</div>
+
+							{/* Actions */}
+							<div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+								<ToggleGroup
+									type="single"
+									value={viewMode}
+									onValueChange={(v) => v && setViewMode(v)}
+									size="sm"
+									className="justify-end sm:w-auto"
+								>
+									<ToggleGroupItem value="cards" aria-label="Cards" className="sm:px-3">
+										<Grid className="h-4 w-4" />
+									</ToggleGroupItem>
+									<ToggleGroupItem value="table" aria-label="Table" className="sm:px-3">
+										<List className="h-4 w-4" />
+									</ToggleGroupItem>
+								</ToggleGroup>
+								<Button variant="outline" onClick={() => setNoteDialogOpen(true)} className="w-full text-sm sm:w-auto">
+									<FileText className="h-4 w-4" />
+									Quick Note
+								</Button>
+								<Button
+									asChild
+									variant="default"
+									className="w-full whitespace-normal break-words text-sm sm:w-auto sm:whitespace-nowrap"
+								>
+									<Link to={routes.interviews.upload()}>
+										<Upload className="h-4 w-4" />
+										Upload / Record Media
+									</Link>
+								</Button>
+							</div>
 						</div>
 
-						{/* Actions */}
-						<div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+						{/* Source Filter - Integrated in Header */}
+						<div className="flex items-center justify-start">
 							<ToggleGroup
 								type="single"
-								value={viewMode}
-								onValueChange={(v) => v && setViewMode(v)}
+								value={sourceFilter}
+								onValueChange={(v) => v && setSourceFilter(v as any)}
 								size="sm"
-								className="justify-end sm:w-auto"
+								className="w-full sm:w-auto"
 							>
-								<ToggleGroupItem value="cards" aria-label="Cards" className="sm:px-3">
-									<Grid className="h-4 w-4" />
+								<ToggleGroupItem value="all" className="flex-1 sm:flex-initial">
+									All
 								</ToggleGroupItem>
-								<ToggleGroupItem value="table" aria-label="Table" className="sm:px-3">
-									<List className="h-4 w-4" />
+								<ToggleGroupItem value="conversations" className="flex-1 sm:flex-initial">
+									<MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+									Conversations
+								</ToggleGroupItem>
+								<ToggleGroupItem value="notes" className="flex-1 sm:flex-initial">
+									<FileText className="mr-1.5 h-3.5 w-3.5" />
+									Notes
+								</ToggleGroupItem>
+								<ToggleGroupItem value="files" className="flex-1 sm:flex-initial">
+									<Upload className="mr-1.5 h-3.5 w-3.5" />
+									Files
 								</ToggleGroupItem>
 							</ToggleGroup>
-							<Button variant="outline" onClick={() => setNoteDialogOpen(true)} className="w-full text-sm sm:w-auto">
-								<FileText className="h-4 w-4" />
-								Quick Note
-							</Button>
-							<Button
-								asChild
-								variant="default"
-								className="w-full whitespace-normal break-words text-sm sm:w-auto sm:whitespace-nowrap"
-							>
-								<Link to={routes.interviews.upload()}>
-									<Upload className="h-4 w-4" />
-									Upload / Record Media
-								</Link>
-							</Button>
 						</div>
-					</div>
-				</PageContainer>
-			</div>
-
-			{/* Filter Bar */}
-			<div className="border-border border-b bg-muted/30 px-6 py-4">
-				<PageContainer size="lg" padded={false} className="max-w-6xl">
-					<div className="flex items-center gap-3">
-						<span className="text-muted-foreground text-sm font-medium">Filter:</span>
-						<ToggleGroup type="single" value={sourceFilter} onValueChange={(v) => v && setSourceFilter(v as any)} size="sm">
-							<ToggleGroupItem value="all" className="text-xs">
-								All
-							</ToggleGroupItem>
-							<ToggleGroupItem value="conversations" className="text-xs">
-								<MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-								Conversations
-							</ToggleGroupItem>
-							<ToggleGroupItem value="notes" className="text-xs">
-								<FileText className="mr-1.5 h-3.5 w-3.5" />
-								Notes
-							</ToggleGroupItem>
-							<ToggleGroupItem value="files" className="text-xs">
-								<Upload className="mr-1.5 h-3.5 w-3.5" />
-								Files
-							</ToggleGroupItem>
-						</ToggleGroup>
 					</div>
 				</PageContainer>
 			</div>
@@ -266,8 +284,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					</div>
 				) : viewMode === "cards" ? (
 					<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-						{filteredInterviews.map((interview) => (
-							<InterviewCard key={interview.id} interview={interview} />
+						{filteredInterviews.map((item) => (
+							item.source_type === "note" ? (
+								<NoteCard key={item.id} note={item as any} />
+							) : (
+								<InterviewCard key={item.id} interview={item} />
+							)
 						))}
 					</div>
 				) : (

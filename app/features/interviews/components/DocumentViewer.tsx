@@ -53,7 +53,7 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 		return status.charAt(0).toUpperCase() + status.slice(1)
 	}
 
-	const isTextContent = interview.source_type === "transcript" || (interview.transcript && !interview.media_url)
+	const isTextContent = interview.source_type === "transcript" || interview.source_type === "note" || (interview.transcript && !interview.media_url) || interview.observations_and_notes
 	const isImage =
 		interview.file_extension &&
 		["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(interview.file_extension.toLowerCase())
@@ -115,14 +115,16 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 				{/* Content Area */}
 				<div className="rounded-3xl border border-slate-200/60 bg-white/80 p-8 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80">
 					{/* Text Content */}
-					{isTextContent && interview.transcript && (
+					{isTextContent && (interview.transcript || interview.observations_and_notes) && (
 						<div className="prose prose-slate max-w-none dark:prose-invert">
 							<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
 								<FileText className="h-5 w-5" />
-								<h2 className="m-0 font-semibold text-slate-900 text-xl dark:text-white">Transcript</h2>
+								<h2 className="m-0 font-semibold text-slate-900 text-xl dark:text-white">
+									{interview.source_type === "note" ? "Note" : "Transcript"}
+								</h2>
 							</div>
 							<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 font-mono text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
-								{interview.transcript}
+								{interview.observations_and_notes || interview.transcript}
 							</div>
 						</div>
 					)}
@@ -268,7 +270,7 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 						)}
 
 					{/* Empty state */}
-					{!interview.transcript && !interview.media_url && (
+					{!interview.transcript && !interview.observations_and_notes && !interview.media_url && (
 						<div className="py-12 text-center text-slate-500">
 							<FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
 							<p>No content available</p>

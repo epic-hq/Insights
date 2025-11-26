@@ -5,11 +5,11 @@
  * The agent has access to all project data via context passed in room name.
  */
 
-import { llm } from "@livekit/agents"
+import * as openai from "@livekit/agents-plugin-openai"
 import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "../../app/lib/supabase/client.server"
-import { getPeople } from "../../app/features/people/db"
+import { getPeople, createPerson } from "../../app/features/people/db"
 import { getProjectById } from "../../app/features/projects/db"
 import { getThemes } from "../../app/features/themes/db"
 import { getInsights } from "../../app/features/insights/db"
@@ -89,11 +89,11 @@ function computePeopleSearchScore({
  * Creates LiveKit tools using existing database functions
  */
 export function createMastraTools(context: { projectId: string; accountId: string; userId: string }) {
-	const { projectId, accountId } = context
+	const { projectId, accountId, userId } = context
 
 	return {
 		// Get people/contacts in the project
-		getPeople: llm.tool({
+		getPeople: openai.llm.tool({
 			description: 'Get list of people, contacts, and customers in the project. Use this when the user asks about who is in the project, customer information, or specific people.',
 			parameters: z.object({
 				query: z.string().optional().describe('Optional search query to filter people by name, title, company, or role. Supports fuzzy matching.'),
@@ -193,8 +193,74 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 			},
 		}),
 
+		// Create a new person/contact
+		createPerson: openai.llm.tool({
+			description: 'Create a new person, contact, or customer in the project. Use this when the user asks to add, create, or save a new person, contact, lead, or customer.',
+			parameters: z.object({
+				name: z.string().describe('Full name of the person'),
+				email: z.string().email().optional().describe('Email address'),
+				company: z.string().optional().describe('Company or organization name'),
+				title: z.string().optional().describe('Job title or role'),
+				phone: z.string().optional().describe('Phone number'),
+				segment: z.string().optional().describe('Customer segment or category'),
+				notes: z.string().optional().describe('Additional notes or context about the person'),
+			}),
+			execute: async ({ name, email, company, title, phone, segment, notes }: {
+				name: string;
+				email?: string;
+				company?: string;
+				title?: string;
+				phone?: string;
+				segment?: string;
+				notes?: string;
+			}) => {
+				try {
+					consola.info("createPerson: creating person", { projectId, accountId, name, email, company })
+
+					const contactInfo: any = {}
+					if (email) contactInfo.email = email
+					if (phone) contactInfo.phone = phone
+
+					const { data: newPerson, error } = await createPerson({
+						supabase: supabaseAdmin as any,
+						data: {
+							account_id: accountId,
+							project_id: projectId,
+							name,
+							company: company || null,
+							title: title || null,
+							segment: segment || null,
+							contact_info: Object.keys(contactInfo).length > 0 ? contactInfo : null,
+							notes: notes || null,
+						},
+					})
+
+					if (error) {
+						consola.error("Error creating person", error)
+						return `Sorry, I couldn't create that person: ${error.message}`
+					}
+
+					// Clear people cache for this project
+					const cacheKey = `${accountId}:${projectId}`
+					peopleDatasetCache.delete(cacheKey)
+
+					const details = [
+						name,
+						title ? `Title: ${title}` : null,
+						company ? `Company: ${company}` : null,
+						email ? `Email: ${email}` : null,
+					].filter(Boolean).join(", ")
+
+					return `Created contact: ${details}`
+				} catch (error) {
+					consola.error("Error creating person", error)
+					return `Sorry, I couldn't create that person: ${error instanceof Error ? error.message : "Unknown error"}`
+				}
+			},
+		}),
+
 		// Get project status including themes, insights, and project details
-		getProjectStatus: llm.tool({
+		getProjectStatus: openai.llm.tool({
 			description: 'Get comprehensive project information including themes, insights, research goals, and project setup. Use this when the user asks about the project, research themes, insights, or project status.',
 			parameters: z.object({
 				includeThemes: z.boolean().optional().describe('Include research themes in the response. Default true.'),
@@ -261,7 +327,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Get tasks in the project
-		getTasks: llm.tool({
+		getTasks: openai.llm.tool({
 			description: 'Get tasks and todos in the project. Use this when the user asks about tasks, todos, action items, or what needs to be done.',
 			parameters: z.object({
 				status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked', 'archived']).optional().describe('Filter by task status. If not specified, returns all active tasks (todo and in_progress).'),
@@ -315,18 +381,18 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Update a task (change status, priority, assignment, etc.)
-		updateTask: llm.tool({
-			description: 'Update a task - change status (backlog, todo, in_progress, done, blocked, archived), priority, title, description, or assignment. Use this when the user asks to change, update, or modify a task.',
+		updateTask: openai.llm.tool({
+			description: 'Update a task - change status (backlog, todo, in_progress, done, blocked, review, archived), priority, title, description, or assignment. Use this when the user asks to change, update, or modify a task.',
 			parameters: z.object({
 				taskId: z.string().describe('The ID of the task to update'),
 				updates: z.object({
-					status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked', 'archived']).optional().describe('New task status'),
-					priority: z.number().min(1).max(5).optional().describe('New priority (1=highest, 5=lowest)'),
+					status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked', 'review', 'archived']).optional().describe('New task status'),
+					priority: z.number().min(1).max(3).optional().describe('New priority (1=highest, 3=lowest)'),
 					title: z.string().optional().describe('New title'),
 					description: z.string().optional().describe('New description'),
 				}).describe('Fields to update'),
 			}),
-			execute: async ({ taskId, updates }: { taskId: string; updates: any }) => {
+			execute: async ({ taskId, updates }: { taskId: string; updates: { status?: 'backlog' | 'todo' | 'in_progress' | 'done' | 'blocked' | 'review' | 'archived'; priority?: number; title?: string; description?: string } }) => {
 				try {
 					consola.info("updateTask: updating task", { projectId, accountId, taskId, updates })
 
@@ -351,15 +417,15 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Create a new task
-		createTask: llm.tool({
+		createTask: openai.llm.tool({
 			description: 'Create a new task. Use this when the user asks to create, add, or make a new task or todo item.',
 			parameters: z.object({
 				title: z.string().describe('Task title'),
 				description: z.string().optional().describe('Task description'),
-				status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked']).optional().describe('Initial status (default: backlog)'),
-				priority: z.number().min(1).max(5).optional().describe('Priority 1-5 (1=highest, 5=lowest, default: 3)'),
+				status: z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked', 'review', 'archived']).optional().describe('Initial status (default: backlog)'),
+				priority: z.number().min(1).max(3).optional().describe('Priority 1-3 (1=highest, 3=lowest, default: 3)'),
 			}),
-			execute: async ({ title, description, status, priority }: { title: string; description?: string; status?: string; priority?: number }) => {
+			execute: async ({ title, description, status, priority }: { title: string; description?: string; status?: 'backlog' | 'todo' | 'in_progress' | 'done' | 'blocked' | 'review' | 'archived'; priority?: number }) => {
 				try {
 					consola.info("createTask: creating task", { projectId, accountId, title, status, priority })
 
@@ -371,8 +437,8 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 						data: {
 							title,
 							description: description || null,
-							status: status || 'backlog',
-							priority: priority || 3,
+							status: (status || 'backlog') as 'backlog' | 'todo' | 'in_progress' | 'done' | 'blocked' | 'review' | 'archived',
+							priority: (priority || 3) as 1 | 2 | 3,
 						},
 					})
 
@@ -385,7 +451,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Get sales opportunities in the project
-		getOpportunities: llm.tool({
+		getOpportunities: openai.llm.tool({
 			description: 'Get sales opportunities, deals, and pipeline information. Use this when the user asks about opportunities, deals, sales pipeline, or potential customers.',
 			parameters: z.object({
 				stage: z.enum(['discovery', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']).optional().describe('Filter by opportunity stage.'),
@@ -435,7 +501,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Get research themes in the project
-		getThemes: llm.tool({
+		getThemes: openai.llm.tool({
 			description: 'Get research themes and topics identified in the project. Themes are patterns, topics, or insights discovered across interviews and evidence.',
 			parameters: z.object({
 				limit: z.number().optional().describe('Maximum number of themes to return. Default 10.'),
@@ -477,7 +543,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Get evidence and insights from interviews
-		getEvidence: llm.tool({
+		getEvidence: openai.llm.tool({
 			description: 'Get evidence, insights, and findings from research interviews. Use this to find specific quotes, observations, or data points collected during research.',
 			parameters: z.object({
 				limit: z.number().optional().describe('Maximum number of evidence items to return. Default 10.'),
@@ -521,7 +587,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 		}),
 
 		// Get interviews and research recordings
-		getInterviews: llm.tool({
+		getInterviews: openai.llm.tool({
 			description: 'Get list of interviews, recordings, and research sessions. Use this to see who has been interviewed, when interviews took place, and interview status.',
 			parameters: z.object({
 				limit: z.number().optional().describe('Maximum number of interviews to return. Default 10.'),

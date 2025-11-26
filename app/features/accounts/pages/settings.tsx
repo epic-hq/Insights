@@ -71,7 +71,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 	try {
 		parsed = JSON.parse(payload)
 	} catch {
-		return { error: "Invalid payload" }
+		return Response.json({ error: "Invalid payload" }, { status: 400 })
 	}
 
 	const normalizeList = (items: OpportunityStageConfig[] | undefined, fallback: OpportunityStageConfig[]) => {

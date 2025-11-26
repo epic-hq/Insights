@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ConnectionState } from "livekit-client"
 import { ControlBar, LiveKitRoom, RoomAudioRenderer, useLocalParticipant, useRemoteParticipants } from "@livekit/components-react"
 import "@livekit/components-styles"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
-import { Orb, type AgentState } from "~/components/ui/orb"
+import { LiveWaveform } from "~/components/ui/live-waveform"
 import { Mic, MicOff, Phone } from "lucide-react"
 
 interface ProjectStatusVoiceChatProps {
@@ -26,7 +26,6 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 	const [connectionState, setConnectionState] = useState<ConnectionState | null>(null)
 	const [session, setSession] = useState<LiveKitSession | null>(null)
 	const [error, setError] = useState<string | null>(null)
-	const [agentState, setAgentState] = useState<AgentState>(null)
 
 	useEffect(() => {
 		setIsClient(true)
@@ -72,7 +71,6 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 		setIsOpen(false)
 		setSession(null)
 		setConnectionState(null)
-		setAgentState(null)
 	}
 
 	const connectionMessage = useMemo(() => {
@@ -83,6 +81,17 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 		}
 		return `${connectionState}`
 	}, [connectionState, session])
+
+	useEffect(() => {
+		if (session) {
+			console.log("[VoiceChat] Connecting to LiveKit", {
+				serverUrl: session.url,
+				roomName: session.roomName,
+				identity: session.identity,
+				tokenPrefix: session.token ? `${session.token.slice(0, 12)}...` : "missing",
+			})
+		}
+	}, [session])
 
 	return (
 		<div className="mb-3 space-y-3">
@@ -101,49 +110,45 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 			{error ? <p className="text-xs text-destructive">{error}</p> : null}
 
 			{isClient && isOpen && session ? (
-				<Card className="border border-border bg-card">
-					<CardContent className="space-y-3 p-4">
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<div className={`h-2 w-2 rounded-full ${connectionState === "connected" ? "bg-green-500" : "bg-yellow-500"} animate-pulse`} />
-								<span className="text-xs font-medium text-foreground">{connectionMessage}</span>
+				<LiveKitRoom
+					connect
+					audio
+					video={false}
+					token={session.token}
+					serverUrl={session.url}
+					data-lk-theme="default"
+					onConnected={() => setConnectionState("connected")}
+					onDisconnected={() => {
+						setConnectionState("disconnected")
+					}}
+					onError={(roomError: Error) => {
+						const message = roomError.message || "LiveKit connection error"
+						setError(message)
+					}}
+				>
+					<Card className="border border-border bg-card">
+						<CardContent className="space-y-3 p-4">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<div className={`h-2 w-2 rounded-full ${connectionState === "connected" ? "bg-green-500" : "bg-yellow-500"} animate-pulse`} />
+									<span className="text-xs font-medium text-foreground">{connectionMessage}</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<MuteButton />
+									<Button onClick={stopVoiceChat} variant="ghost" size="sm">
+										End Call
+									</Button>
+								</div>
 							</div>
-							<div className="flex items-center gap-2">
-								<MuteButton />
-								<Button onClick={stopVoiceChat} variant="ghost" size="sm">
-									End Call
-								</Button>
+
+							<div className="relative mx-auto h-32">
+								<LiveWaveform
+									active={connectionState === "connected"}
+									className="h-full w-full"
+									barColor="hsl(var(--primary))"
+								/>
 							</div>
-						</div>
 
-						<div className="relative mx-auto h-32 w-32">
-							<Orb
-								agentState={agentState}
-								colors={["#3B82F6", "#60A5FA"]}
-								className="h-full w-full"
-							/>
-						</div>
-
-						<LiveKitRoom
-							connect
-							audio
-							video={false}
-							token={session.token}
-							serverUrl={session.url}
-							data-lk-theme="default"
-							onConnected={() => setConnectionState("connected")}
-							onDisconnected={() => {
-								setConnectionState("disconnected")
-								setAgentState(null)
-							}}
-							onError={(roomError) => {
-								const message =
-									roomError instanceof Error
-										? roomError.message
-										: "LiveKit connection error"
-								setError(message)
-							}}
-						>
 							<RoomAudioRenderer />
 							<div className="hidden">
 								<ControlBar
@@ -157,10 +162,9 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 									}}
 								/>
 							</div>
-							<VoiceStateUpdater onStateChange={setAgentState} />
-						</LiveKitRoom>
-					</CardContent>
-				</Card>
+						</CardContent>
+					</Card>
+				</LiveKitRoom>
 			) : null}
 		</div>
 	)
@@ -168,51 +172,35 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 
 // Component for mute/unmute button
 function MuteButton() {
-	const { isMicrophoneEnabled, microphoneTrack } = useLocalParticipant()
+	const { isMicrophoneEnabled, localParticipant } = useLocalParticipant()
+	const [isMuted, setIsMuted] = useState(false)
 
-	const toggleMute = () => {
-		if (microphoneTrack) {
-			microphoneTrack.setEnabled(!isMicrophoneEnabled)
+	// Sync with LiveKit state
+	useEffect(() => {
+		setIsMuted(!isMicrophoneEnabled)
+	}, [isMicrophoneEnabled])
+
+	const toggleMute = async () => {
+		if (localParticipant) {
+			const newState = !isMicrophoneEnabled
+			try {
+				await localParticipant.setMicrophoneEnabled(newState)
+				setIsMuted(!newState)
+			} catch (error) {
+				console.error("Failed to toggle microphone:", error)
+			}
 		}
 	}
 
 	return (
 		<Button
 			onClick={toggleMute}
-			variant={isMicrophoneEnabled ? "ghost" : "destructive"}
+			variant={isMuted ? "destructive" : "ghost"}
 			size="sm"
 			className="h-9 w-9 p-0"
-			title={isMicrophoneEnabled ? "Mute microphone" : "Unmute microphone"}
+			title={isMuted ? "Unmute microphone" : "Mute microphone"}
 		>
-			{isMicrophoneEnabled ? (
-				<Mic className="h-4 w-4" />
-			) : (
-				<MicOff className="h-4 w-4" />
-			)}
+			{isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
 		</Button>
 	)
-}
-
-// Component to update agent state based on LiveKit room activity
-function VoiceStateUpdater({ onStateChange }: { onStateChange: (state: AgentState) => void }) {
-	const remoteParticipants = useRemoteParticipants()
-
-	useEffect(() => {
-		// Start with listening state when connected
-		onStateChange("listening")
-
-		// Track if any remote participant (agent) is publishing audio
-		const hasActiveAudio = remoteParticipants.some(
-			participant => participant.audioTrackPublications.size > 0 &&
-			Array.from(participant.audioTrackPublications.values()).some(pub => pub.isSubscribed)
-		)
-
-		if (hasActiveAudio) {
-			onStateChange("talking")
-		} else {
-			onStateChange("listening")
-		}
-	}, [remoteParticipants, onStateChange])
-
-	return null
 }

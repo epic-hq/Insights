@@ -335,7 +335,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	try {
 		consola.info("📊 Fetching interview data...")
-		// Fetch interview data from database (simple query first to avoid junction table issues)
+		// Fetch interview data from database (includes notes now)
 		const { data: interviewData, error: interviewError } = await getInterviewById({
 			supabase,
 			accountId,
@@ -349,13 +349,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		if (!interviewData) {
-			consola.error("❌ Interview not found (RLS filtered):", { interviewId, projectId, accountId })
-			throw new Response("Interview not found", { status: 404 })
+			consola.error("❌ Interview/note not found:", { interviewId, projectId, accountId })
+			throw new Response("Interview or note not found", { status: 404 })
 		}
 
 		consola.info("✅ Interview data fetched successfully:", {
 			interviewId: interviewData.id,
 			title: interviewData.title,
+			hasObservations: !!interviewData.observations_and_notes,
+			observationsLength: interviewData.observations_and_notes?.length || 0,
+			sourceType: interviewData.source_type,
 		})
 
 		const conversationAnalysis = (() => {
@@ -856,6 +859,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		return loaderResult
 	} catch (error) {
+		// Re-throw Response errors directly without wrapping
+		if (error instanceof Response) {
+			throw error
+		}
+
 		const msg = error instanceof Error ? error.message : String(error)
 		consola.error("❌ Loader caught error:", error)
 		consola.error("Error details:", {
@@ -890,10 +898,12 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return <div>Error: Missing interview data</div>
 	}
 
-	// Check if this is a document/voice memo type (non-full interview)
+	// Check if this is a document/voice memo/note type (non-full interview)
 	// Use simplified DocumentViewer for these types
 	const isDocumentType =
 		interview.media_type === "voice_memo" ||
+		interview.media_type === "note" ||
+		interview.source_type === "note" ||
 		interview.source_type === "document" ||
 		(interview.source_type === "transcript" && interview.media_type !== "interview")
 

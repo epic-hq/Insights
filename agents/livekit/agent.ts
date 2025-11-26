@@ -13,9 +13,9 @@ import * as livekit from "@livekit/agents-plugin-livekit"
 import * as deepgram from "@livekit/agents-plugin-deepgram"
 import * as openai from "@livekit/agents-plugin-openai"
 import * as silero from "@livekit/agents-plugin-silero"
-import { createMastraTools } from './mastra-integration'
+import { createMastraTools } from "./mastra-integration"
 
-const resolvedLivekitUrl = process.env.LIVEKIT_URL || process.env.LIVEKIT_SFU_URL
+const resolvedLivekitUrl = process.env.LIVEKIT_SFU_URL
 
 class Assistant extends voice.Agent {
 	public projectId: string | null = null
@@ -41,6 +41,7 @@ class Assistant extends voice.Agent {
 				You have access to these tools to help answer questions about the project:
 				- getProjectStatus: Get comprehensive project information including themes, insights, research goals, and project setup
 				- getPeople: Get list of people, contacts, and customers in the project. Supports fuzzy search by name, title, company, or role
+				- createPerson: Create a new person, contact, or customer. Use this when user asks to add, create, or save a new contact, person, lead, or customer
 				- getTasks: Get tasks and todos in the project. Can filter by status (todo, in_progress, done, blocked)
 				- updateTask: Update a task - change status, priority, title, or description. Use this when user asks to change, update, or mark a task
 				- createTask: Create a new task. Use this when user asks to add or create a task or todo
@@ -50,6 +51,7 @@ class Assistant extends voice.Agent {
 				- getInterviews: Get list of interviews and research recordings. Shows who was interviewed, when, and interview status
 
 				When the user asks about the project, people, opportunities, tasks, themes, evidence, or interviews, USE THESE TOOLS to get accurate information.
+				When the user asks to add, create, or save a new contact or person, USE the createPerson tool.
 				When the user asks to update, change, complete, or modify a task, USE the updateTask tool.
 				When the user asks to create or add a task, USE the createTask tool.
 				Don't say you don't know - use the tools to find the answer.`
@@ -155,12 +157,16 @@ export default defineAgent({
 			}
 
 			consola.info("Creating agent session...")
+
+			// Use server-side turn detection instead of VAD to prevent interruptions
 			const session = new voice.AgentSession({
-				stt: new deepgram.STT({ model: "nova-2-general", language: "en" }),
+				stt: new deepgram.STT({ model: "nova-2-general", language: "en", endpointing: 500 }),
 				llm: new openai.LLM({ model: "gpt-4o-mini" }),
 				tts: new deepgram.TTS({ model: "aura-2-delia-en" }),
-				turnDetection: new livekit.turnDetector.MultilingualModel(),
-				vad: ctx.proc.userData.vad as typeof silero.VAD,
+				// Use server-side turn detection with longer silence threshold
+				turnDetection: new livekit.turnDetector.Server({
+					minEndpointingDelay: 1000, // Wait 1 second of silence before considering turn complete
+				}),
 			})
 			consola.success("Agent session created with Deepgram STT/TTS, OpenAI LLM, and Silero VAD")
 
