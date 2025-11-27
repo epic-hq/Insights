@@ -1,6 +1,8 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { updateOpportunity } from "~/features/opportunities/db"
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
+import { ensureStageValue } from "~/features/opportunities/stage-config"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -31,10 +33,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ ok: false, error: "Failed to fetch opportunity" }, { status: 500 })
 	}
 
-	const currentMetadata = (currentOpp.metadata as Record<string, any>) || {}
+	const currentMetadata = (currentOpp.metadata as Record<string, unknown>) || {}
 
 	// Store notes and product_description in metadata; description is a direct field
-	const updateData: Record<string, any> = {}
+	const updateData: Record<string, unknown> = {}
 	if (field === "notes" || field === "product_description") {
 		updateData.metadata = {
 			...currentMetadata,
@@ -42,6 +44,18 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 	} else if (field === "description") {
 		updateData.description = value
+	} else if (field === "amount") {
+		updateData.amount = value ? Number(value) : null
+	} else if (field === "close_date") {
+		updateData.close_date = value || null
+	} else if (field === "title") {
+		updateData.title = value
+	} else if (field === "stage" || field === "kanban_status") {
+		// For stage updates, we need to update both stage and kanban_status
+		const { stages } = await loadOpportunityStages({ supabase, accountId })
+		const normalizedStage = ensureStageValue(value, stages)
+		updateData.stage = normalizedStage
+		updateData.kanban_status = normalizedStage
 	} else {
 		return Response.json({ ok: false, error: "Unsupported field" }, { status: 400 })
 	}

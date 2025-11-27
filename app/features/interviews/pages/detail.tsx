@@ -47,6 +47,7 @@ import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 import { DocumentViewer } from "../components/DocumentViewer"
+import { NoteViewer } from "../components/NoteViewer"
 
 // Helper to parse full name into first and last
 function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
@@ -898,12 +899,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return <div>Error: Missing interview data</div>
 	}
 
-	// Check if this is a document/voice memo/note type (non-full interview)
+	// Check if this is a note - use NoteViewer for editing
+	if (interview.source_type === "note" || interview.media_type === "note" || interview.media_type === "meeting_notes" || interview.media_type === "voice_memo") {
+		return <NoteViewer interview={interview} projectId={projectId} />
+	}
+
+	// Check if this is a document type (non-full interview)
 	// Use simplified DocumentViewer for these types
 	const isDocumentType =
-		interview.media_type === "voice_memo" ||
-		interview.media_type === "note" ||
-		interview.source_type === "note" ||
 		interview.source_type === "document" ||
 		(interview.source_type === "transcript" && interview.media_type !== "interview")
 

@@ -4,19 +4,13 @@ import { useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOpportunities } from "~/features/opportunities/db"
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
-import {
-	ensureStageValue,
-	normalizeStageId,
-	stageLabelForValue,
-	type OpportunityStageConfig,
-} from "~/features/opportunities/stage-config"
+import { ensureStageValue, normalizeStageId, type OpportunityStageConfig } from "~/features/opportunities/stage-config"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
@@ -60,10 +54,10 @@ export default function OpportunitiesIndexPage() {
 	const [viewMode, setViewMode] = useState<"stage" | "month">("stage")
 
 	const totalAmount = useMemo(() => sumAmounts(opportunities), [opportunities])
-	const averageDeal = useMemo(
-		() => (opportunities.length ? currencyFormatter.format(totalAmount / opportunities.length) : "—"),
-		[opportunities.length, totalAmount]
-	)
+	const averageDeal = useMemo(() => {
+		const dealsWithAmount = opportunities.filter(o => o.amount && Number(o.amount) > 0)
+		return dealsWithAmount.length ? currencyFormatter.format(totalAmount / dealsWithAmount.length) : "—"
+	}, [opportunities, totalAmount])
 
 	const stageColumns = useMemo(() => {
 		const defaultStageId = ensureStageValue(null, stages)
@@ -197,9 +191,9 @@ export default function OpportunitiesIndexPage() {
 					</CardContent>
 				</Card>
 			) : viewMode === "stage" ? (
-				<KanbanGrid columns={stageColumns} routes={routes} stages={stages} />
+				<KanbanGrid columns={stageColumns} routes={routes} />
 			) : (
-				<KanbanGrid columns={monthColumns} routes={routes} stages={stages} emptyLabel="No deals scheduled" />
+				<KanbanGrid columns={monthColumns} routes={routes} emptyLabel="No deals scheduled" />
 			)}
 		</div>
 	)
@@ -217,12 +211,10 @@ type KanbanColumn = {
 function KanbanGrid({
 	columns,
 	routes,
-	stages,
 	emptyLabel = "No opportunities",
 }: {
 	columns: KanbanColumn[]
 	routes: ReturnType<typeof useProjectRoutes>
-	stages: OpportunityStageConfig[]
 	emptyLabel?: string
 }) {
 	return (
@@ -250,9 +242,7 @@ function KanbanGrid({
 								{emptyLabel}
 							</p>
 						) : (
-							column.deals.map((deal) => (
-								<OpportunityCard key={deal.id} deal={deal} routes={routes} stages={stages} />
-							))
+							column.deals.map((deal) => <OpportunityCard key={deal.id} deal={deal} routes={routes} />)
 						)}
 					</CardContent>
 				</Card>
@@ -264,50 +254,42 @@ function KanbanGrid({
 function OpportunityCard({
 	deal,
 	routes,
-	stages,
 }: {
 	deal: OpportunityRecord
 	routes: ReturnType<typeof useProjectRoutes>
-	stages: OpportunityStageConfig[]
 }) {
-	const amountDisplay = deal.amount ? currencyFormatter.format(Number(deal.amount)) : "—"
-	const closeDisplay = deal.close_date ? format(new Date(deal.close_date), "MMM d") : "No date"
-	const stageLabel = stageLabelForValue(deal.stage || deal.kanban_status, stages)
 	return (
-		<div>
-			{stageLabel && (
-				<div className="mb-1 px-1">
-					<Badge variant="outline" className="bg-muted/50 text-[10px] uppercase tracking-wide">
-						{stageLabel}
-					</Badge>
+		<Link
+			to={routes.opportunities.detail(deal.id)}
+			className="group block rounded-lg border-2 border-border bg-card p-3 shadow-sm transition hover:border-primary/50 hover:shadow-md"
+		>
+			<div className="mb-1">
+				<h3 className="font-semibold text-sm leading-snug text-foreground">
+					{deal.title || "Untitled Opportunity"}
+				</h3>
+			</div>
+			{deal.description && <p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{deal.description}</p>}
+			<div className="flex items-center justify-between text-xs">
+				<div>
+					<p className="text-muted-foreground">Value</p>
+					<p className="font-semibold text-foreground">
+						{deal.amount ? currencyFormatter.format(Number(deal.amount)) : "—"}
+					</p>
 				</div>
-			)}
-			<Link
-				to={routes.opportunities.detail(deal.id)}
-				className="group block rounded-lg border border-border/60 bg-card p-3 shadow-sm transition hover:border-primary/50 hover:shadow-md"
-			>
-				<div className="mb-1">
-					<p className="font-semibold text-sm leading-snug">{deal.title}</p>
+				<div className="text-right">
+					<p className="text-muted-foreground">Close</p>
+					<p className="font-semibold text-foreground">
+						{deal.close_date ? format(new Date(deal.close_date), "MMM d, yyyy") : "—"}
+					</p>
 				</div>
-				{deal.description && <p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{deal.description}</p>}
-				<div className="flex items-center justify-between text-xs">
-					<div>
-						<p className="text-muted-foreground">Value</p>
-						<p className="font-semibold">{amountDisplay}</p>
-					</div>
-					<div className="text-right">
-						<p className="text-muted-foreground">Close</p>
-						<p className="font-semibold">{closeDisplay}</p>
-					</div>
-				</div>
-			</Link>
-		</div>
+			</div>
+		</Link>
 	)
 }
 
 function sumAmounts(items: OpportunityRecord[]) {
 	return items.reduce((sum, item) => {
 		const value = typeof item.amount === "number" ? item.amount : item.amount ? Number(item.amount) : 0
-		return sum + (isNaN(value) ? 0 : value)
+		return sum + (Number.isNaN(value) ? 0 : value)
 	}, 0)
 }

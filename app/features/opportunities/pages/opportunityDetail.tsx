@@ -1,3 +1,4 @@
+import { format } from "date-fns"
 import {
 	AlertTriangle,
 	Briefcase,
@@ -9,13 +10,17 @@ import {
 	TrendingUp,
 	Users,
 } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
+import { toast } from "sonner"
+import { z } from "zod"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
@@ -26,12 +31,54 @@ import type { OpportunitySalesLensData } from "~/features/opportunities/lib/load
 import { loadOpportunitySalesLens } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
 import {
+	ensureStageValue,
 	normalizeStageId,
 	type OpportunityStageConfig,
 	stageLabelForValue,
 } from "~/features/opportunities/stage-config"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
+
+// Validation schemas
+const amountSchema = z.string().refine(
+	(val) => {
+		if (!val || val.trim() === "") return true // Allow empty
+		const num = Number(val.replace(/,/g, ""))
+		return !Number.isNaN(num) && num >= 0
+	},
+	{ message: "Please enter a valid positive number" }
+)
+
+const dateSchema = z.string().refine(
+	(val) => {
+		if (!val || val.trim() === "") return true // Allow empty
+		const date = new Date(val)
+		return !Number.isNaN(date.getTime())
+	},
+	{ message: "Please enter a valid date" }
+)
+
+// Format number with commas
+function formatCurrency(value: number | string | null): string {
+	if (!value) return ""
+	const num = typeof value === "string" ? Number(value) : value
+	if (Number.isNaN(num)) return ""
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: "USD",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 0,
+	}).format(num)
+}
+
+function formatDateDisplay(dateString: string | null): string {
+	if (!dateString) return ""
+	try {
+		return format(new Date(dateString), "MMM d, yyyy")
+	} catch {
+		return ""
+	}
+}
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -147,6 +194,26 @@ export default function OpportunityDetail() {
 	const handleOpportunityUpdate = (field: string, value: string) => {
 		if (!currentProjectContext?.accountId || !currentProjectContext?.projectId) return
 
+		// Validate amount field
+		if (field === "amount") {
+			const result = amountSchema.safeParse(value)
+			if (!result.success) {
+				toast.error(result.error.errors[0].message)
+				return
+			}
+			// Strip commas before sending to server
+			value = value.replace(/,/g, "")
+		}
+
+		// Validate close_date field
+		if (field === "close_date") {
+			const result = dateSchema.safeParse(value)
+			if (!result.success) {
+				toast.error(result.error.errors[0].message)
+				return
+			}
+		}
+
 		opportunityFetcher.submit(
 			{
 				opportunityId: opportunity.id,
@@ -178,7 +245,16 @@ export default function OpportunityDetail() {
 				<div className="flex-1">
 					<div className="mb-3 flex items-center gap-3">
 						<Briefcase className="h-8 w-8 text-primary" />
-						<h1 className="text-balance font-bold text-4xl tracking-tight">{opportunity.title}</h1>
+						<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+							<InlineEdit
+								value={opportunity.title}
+								placeholder="Enter opportunity title..."
+								onSubmit={(value) => handleOpportunityUpdate("title", value)}
+								submitOnBlur
+								textClassName="text-foreground font-bold text-4xl tracking-tight"
+								inputClassName="text-4xl font-bold tracking-tight"
+							/>
+						</div>
 					</div>
 					<div className="mt-3 flex items-center gap-2">
 						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status, stages)}>
@@ -195,42 +271,70 @@ export default function OpportunityDetail() {
 
 			{/* Key Metrics */}
 			<div className="mb-8 grid gap-4 md:grid-cols-3">
-				{opportunity.amount && (
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">Deal Value</CardTitle>
-							<DollarSign className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="font-bold text-2xl">${Number(opportunity.amount).toLocaleString()}</div>
-						</CardContent>
-					</Card>
-				)}
-				{opportunity.close_date && (
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">Expected Close</CardTitle>
-							<Calendar className="h-4 w-4 text-muted-foreground" />
-						</CardHeader>
-						<CardContent>
-							<div className="font-bold text-2xl">
-								{new Date(opportunity.close_date).toLocaleDateString("en-US", {
-									month: "short",
-									day: "numeric",
-									year: "numeric",
-								})}
-							</div>
-						</CardContent>
-					</Card>
-				)}
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="font-medium text-muted-foreground text-sm">Deal Value</CardTitle>
+						<DollarSign className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+							<InlineEdit
+							value={opportunity.amount ? formatCurrency(opportunity.amount) : ""}
+							placeholder="$0"
+							onSubmit={(value) => handleOpportunityUpdate("amount", value.replace(/[$,]/g, ""))}
+								submitOnBlur
+								textClassName="font-bold text-foreground text-2xl"
+								inputClassName="text-2xl font-bold"
+							/>
+						</div>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="font-medium text-muted-foreground text-sm">Expected Close</CardTitle>
+						<Calendar className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+							<InlineEdit
+								value={opportunity.close_date ? new Date(opportunity.close_date).toISOString().split("T")[0] : ""}
+								displayValue={formatDateDisplay(opportunity.close_date)}
+								placeholder="Select date..."
+								onSubmit={(value) => handleOpportunityUpdate("close_date", value)}
+								submitOnBlur
+								type="date"
+								textClassName="font-bold text-foreground text-2xl"
+								inputClassName="text-2xl font-bold"
+							/>
+						</div>
+					</CardContent>
+				</Card>
 				{stageLabel && (
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="font-medium text-sm">Sales Stage</CardTitle>
+							<CardTitle className="font-medium text-muted-foreground text-sm">Sales Stage</CardTitle>
 							<TrendingUp className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
-							<div className="font-bold text-2xl">{stageLabel}</div>
+							<Select
+								value={
+									stages.length > 0
+										? ensureStageValue(opportunity.stage || opportunity.kanban_status, stages)
+										: opportunity.stage || opportunity.kanban_status || ""
+								}
+								onValueChange={(value) => handleOpportunityUpdate("stage", value)}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{stages.map((stage) => (
+										<SelectItem key={stage.id} value={stage.id}>
+											{stage.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</CardContent>
 					</Card>
 				)}
@@ -274,7 +378,7 @@ export default function OpportunityDetail() {
 					<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
 						<InlineEdit
 							value={productDescription}
-							placeholder="Describe what the customer is purchasing in plain English..."
+							placeholder="product/service description..."
 							onSubmit={(value) => handleOpportunityUpdate("product_description", value)}
 							submitOnBlur
 							multiline
@@ -282,9 +386,6 @@ export default function OpportunityDetail() {
 							inputClassName="text-sm min-h-[80px]"
 						/>
 					</div>
-					<p className="mt-3 text-muted-foreground text-xs italic">
-						Future: Auto-generate detailed spec from API/catalog according to template
-					</p>
 				</CardContent>
 			</Card>
 
@@ -297,7 +398,7 @@ export default function OpportunityDetail() {
 					<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
 						<InlineEdit
 							value={notes}
-							placeholder="Add notes about this opportunity..."
+							placeholder="Opportunity notes..."
 							onSubmit={(value) => handleOpportunityUpdate("notes", value)}
 							submitOnBlur
 							multiline
@@ -309,36 +410,39 @@ export default function OpportunityDetail() {
 			</Card>
 
 			{/* Stakeholder Matrix */}
-			{salesLensData && salesLensData.stakeholders.length > 0 && (
-				<Card className="mt-8">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Users className="h-5 w-5" />
-							Stakeholder Matrix
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<StakeholderMatrix salesLensData={salesLensData} />
-					</CardContent>
-				</Card>
-			)}
+			<Card className="mt-8">
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<Users className="h-5 w-5" />
+						Stakeholder Matrix
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<StakeholderMatrix
+						salesLensData={salesLensData || { stakeholders: [], nextSteps: [] }}
+						opportunityId={opportunity.id}
+						accountId={currentProjectContext?.accountId || ""}
+						projectId={currentProjectContext?.projectId || ""}
+					/>
+				</CardContent>
+			</Card>
 
 			{/* Linked Interviews */}
-			{salesLensData?.linkedInterviews && salesLensData.linkedInterviews.length > 0 && (
-				<Card className="mt-8">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<MessageSquare className="h-5 w-5" />
-							Linked Interviews
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
+			<Card className="mt-8">
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<MessageSquare className="h-5 w-5" />
+						Linked Interviews
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{salesLensData?.linkedInterviews && salesLensData.linkedInterviews.length > 0 ? (
 						<div className="space-y-2">
 							{salesLensData.linkedInterviews.map((interview) => (
 								<Link
 									key={interview.id}
 									to={routes.interviews.detail(interview.id)}
-									className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted"
+									className="flex items-center justify-between rounded-lg border-2 border-border p-3 transition-colors hover:bg-muted"
 								>
 									<div className="flex items-center gap-3">
 										<MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -358,20 +462,43 @@ export default function OpportunityDetail() {
 								</Link>
 							))}
 						</div>
-					</CardContent>
-				</Card>
-			)}
+					) : (
+						<p className="text-muted-foreground text-sm">No linked interviews yet.</p>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	)
 }
 
-function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesLensData }) {
+function StakeholderMatrix({
+	salesLensData,
+	opportunityId,
+	accountId,
+	projectId,
+}: {
+	salesLensData: OpportunitySalesLensData
+	opportunityId: string
+	accountId: string
+	projectId: string
+}) {
 	const { stakeholders, nextSteps } = salesLensData
 	const stakeholderFetcher = useFetcher()
+	const addStakeholderFetcher = useFetcher()
+	const peopleFetcher = useFetcher()
 	const nextStepFetcher = useFetcher()
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+
+	const [showAddDialog, setShowAddDialog] = useState(false)
+
+	// Load people when dialog opens
+	useEffect(() => {
+		if (showAddDialog && !peopleFetcher.data) {
+			peopleFetcher.load(`/api/people/search?limit=50`)
+		}
+	}, [showAddDialog, peopleFetcher, accountId, projectId])
 
 	// Map next steps to stakeholders by owner name
 	const nextStepsByOwner = new Map<string, typeof nextSteps>()
@@ -393,6 +520,33 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [stakeholderFetcher.state, stakeholderFetcher.data])
+
+	// Revalidate after adding stakeholder
+	useEffect(() => {
+		if (addStakeholderFetcher.state === "idle" && addStakeholderFetcher.data) {
+			revalidator.revalidate()
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [addStakeholderFetcher.state, addStakeholderFetcher.data])
+
+	const handleAddStakeholder = () => {
+		setShowAddDialog(true)
+	}
+
+	const handleSelectPerson = (person: { id: string; display_name?: string; name?: string }) => {
+		addStakeholderFetcher.submit(
+			{
+				opportunityId,
+				accountId,
+				projectId,
+				field: "create",
+				value: person.display_name || person.name || "Unknown",
+				personId: person.id,
+			},
+			{ method: "post", action: "/api/update-stakeholder" }
+		)
+		setShowAddDialog(false)
+	}
 
 	const handleStakeholderUpdate = (stakeholderId: string, field: string, value: string) => {
 		stakeholderFetcher.submit(
@@ -446,217 +600,251 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 	}
 
 	return (
-		<div className="overflow-x-auto">
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Person</TableHead>
-						<TableHead>Role</TableHead>
-						<TableHead className="w-36 text-center">Type</TableHead>
-						<TableHead className="w-32 text-center">Influence</TableHead>
-						<TableHead>Next Steps</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{stakeholders.map((stakeholder) => {
-						const stakeholderSteps = nextStepsByOwner.get(stakeholder.displayName) || []
-						const currentType = getStakeholderType(stakeholder)
-						return (
-							<TableRow key={stakeholder.id}>
-								<TableCell className="font-medium">
-									<div className="flex flex-col gap-1">
-										{stakeholder.personId ? (
-											<Link
-												to={routes.people.detail(stakeholder.personId)}
-												className="font-medium text-sm hover:text-primary hover:underline"
-											>
-												{stakeholder.displayName}
-											</Link>
-										) : (
-											<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
-												<InlineEdit
-													value={stakeholder.displayName}
-													placeholder="Enter name..."
-													onSubmit={(value) => handleStakeholderUpdate(stakeholder.id, "display_name", value)}
-													submitOnBlur
-													textClassName="text-sm font-medium"
-													inputClassName="text-sm"
-												/>
-											</div>
-										)}
-										{stakeholder.email && <span className="text-muted-foreground text-xs">{stakeholder.email}</span>}
-									</div>
-								</TableCell>
-								<TableCell>
-									<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
-										<InlineEdit
-											value={stakeholder.role || ""}
-											placeholder="Add role..."
-											onSubmit={(value) => handleStakeholderUpdate(stakeholder.id, "role", value)}
-											submitOnBlur
-											textClassName="text-sm"
-											inputClassName="text-sm"
-										/>
-									</div>
-								</TableCell>
-								<TableCell className="text-center">
-									<Select
-										value={currentType === "—" ? "unknown" : currentType}
-										onValueChange={(value) => {
-											if (value === "unknown") {
-												handleStakeholderUpdate(stakeholder.id, "stakeholder_type", "")
-											} else {
-												handleStakeholderUpdate(stakeholder.id, "stakeholder_type", value)
-											}
-										}}
-									>
-										<SelectTrigger className="h-8 w-24 border-0 hover:bg-muted">
-											<SelectValue>
-												{currentType === "—" ? (
-													<Badge variant="outline" className="font-normal">
-														Unknown
-													</Badge>
-												) : currentType === "DM" ? (
-													<Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">DM</Badge>
-												) : currentType === "I" ? (
-													<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">I</Badge>
-												) : (
-													<Badge className="bg-red-100 text-red-700 hover:bg-red-100">B</Badge>
-												)}
-											</SelectValue>
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="DM">
-												<div className="flex items-center gap-2">
-													<Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">DM</Badge>
-													<span className="text-muted-foreground text-xs">Decision Maker</span>
+		<>
+			<div className="mb-4 flex justify-end">
+				<Button onClick={handleAddStakeholder} disabled={addStakeholderFetcher.state === "submitting"} size="sm">
+					{addStakeholderFetcher.state === "submitting" ? "Adding..." : "Add Stakeholder"}
+				</Button>
+			</div>
+			<div className="overflow-x-auto">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Person</TableHead>
+							<TableHead>Role</TableHead>
+							<TableHead className="w-36 text-center">Type</TableHead>
+							<TableHead className="w-32 text-center">Influence</TableHead>
+							<TableHead>Next Steps</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{stakeholders.map((stakeholder) => {
+							const stakeholderSteps = nextStepsByOwner.get(stakeholder.displayName) || []
+							const currentType = getStakeholderType(stakeholder)
+							return (
+								<TableRow key={stakeholder.id}>
+									<TableCell className="font-medium">
+										<div className="flex flex-col gap-1">
+											{stakeholder.personId ? (
+												<Link
+													to={routes.people.detail(stakeholder.personId)}
+													className="font-medium text-sm hover:text-primary hover:underline"
+												>
+													{stakeholder.displayName}
+												</Link>
+											) : (
+												<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+													<InlineEdit
+														value={stakeholder.displayName}
+														placeholder="Enter name..."
+														onSubmit={(value) => handleStakeholderUpdate(stakeholder.id, "display_name", value)}
+														submitOnBlur
+														textClassName="text-sm font-medium"
+														inputClassName="text-sm"
+													/>
 												</div>
-											</SelectItem>
-											<SelectItem value="I">
-												<div className="flex items-center gap-2">
-													<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">I</Badge>
-													<span className="text-muted-foreground text-xs">Influencer</span>
-												</div>
-											</SelectItem>
-											<SelectItem value="B">
-												<div className="flex items-center gap-2">
-													<Badge className="bg-red-100 text-red-700 hover:bg-red-100">B</Badge>
-													<span className="text-muted-foreground text-xs">Blocker</span>
-												</div>
-											</SelectItem>
-											<SelectItem value="unknown">
-												<div className="flex items-center gap-2">
-													<Badge variant="outline" className="font-normal">
-														Unknown
-													</Badge>
-													<span className="text-muted-foreground text-xs">Not yet determined</span>
-												</div>
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								</TableCell>
-								<TableCell className="text-center">
-									<Select
-										value={stakeholder.influence || ""}
-										onValueChange={(value) => handleStakeholderUpdate(stakeholder.id, "influence", value)}
-									>
-										<SelectTrigger
-											className={`h-7 w-24 text-xs ${stakeholder.influence === "high"
+											)}
+											{stakeholder.email && <span className="text-muted-foreground text-xs">{stakeholder.email}</span>}
+										</div>
+									</TableCell>
+									<TableCell>
+										<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+											<InlineEdit
+												value={stakeholder.role || ""}
+												placeholder="Add role..."
+												onSubmit={(value) => handleStakeholderUpdate(stakeholder.id, "role", value)}
+												submitOnBlur
+												textClassName="text-sm"
+												inputClassName="text-sm"
+											/>
+										</div>
+									</TableCell>
+									<TableCell className="text-center">
+										<Select
+											value={currentType === "—" ? "unknown" : currentType}
+											onValueChange={(value) => {
+												if (value === "unknown") {
+													handleStakeholderUpdate(stakeholder.id, "stakeholder_type", "")
+												} else {
+													handleStakeholderUpdate(stakeholder.id, "stakeholder_type", value)
+												}
+											}}
+										>
+											<SelectTrigger className="h-8 w-24 border-0 hover:bg-muted">
+												<SelectValue>
+													{currentType === "—" ? (
+														<Badge variant="outline" className="font-normal">
+															Unknown
+														</Badge>
+													) : currentType === "DM" ? (
+														<Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">DM</Badge>
+													) : currentType === "I" ? (
+														<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">I</Badge>
+													) : (
+														<Badge className="bg-red-100 text-red-700 hover:bg-red-100">B</Badge>
+													)}
+												</SelectValue>
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="DM">
+													<div className="flex items-center gap-2">
+														<Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">DM</Badge>
+														<span className="text-muted-foreground text-xs">Decision Maker</span>
+													</div>
+												</SelectItem>
+												<SelectItem value="I">
+													<div className="flex items-center gap-2">
+														<Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">I</Badge>
+														<span className="text-muted-foreground text-xs">Influencer</span>
+													</div>
+												</SelectItem>
+												<SelectItem value="B">
+													<div className="flex items-center gap-2">
+														<Badge className="bg-red-100 text-red-700 hover:bg-red-100">B</Badge>
+														<span className="text-muted-foreground text-xs">Blocker</span>
+													</div>
+												</SelectItem>
+												<SelectItem value="unknown">
+													<div className="flex items-center gap-2">
+														<Badge variant="outline" className="font-normal">
+															Unknown
+														</Badge>
+														<span className="text-muted-foreground text-xs">Not yet determined</span>
+													</div>
+												</SelectItem>
+											</SelectContent>
+										</Select>
+									</TableCell>
+									<TableCell className="text-center">
+										<Select
+											value={stakeholder.influence || ""}
+											onValueChange={(value) => handleStakeholderUpdate(stakeholder.id, "influence", value)}
+										>
+											<SelectTrigger
+												className={`h-7 w-24 text-xs ${stakeholder.influence === "high"
 													? "border-emerald-600 bg-emerald-50 text-emerald-700"
 													: stakeholder.influence === "medium"
 														? "border-amber-600 bg-amber-50 text-amber-700"
 														: stakeholder.influence === "low"
 															? "border-gray-400 bg-gray-50 text-gray-700"
 															: ""
-												}`}
-										>
-											<SelectValue placeholder="Select" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="high">High</SelectItem>
-											<SelectItem value="medium">Medium</SelectItem>
-											<SelectItem value="low">Low</SelectItem>
-										</SelectContent>
-									</Select>
-								</TableCell>
-								<TableCell>
-									{stakeholderSteps.length > 0 ? (
-										<div className="space-y-2">
-											{stakeholderSteps.map((step) => (
-												<div key={step.id} className="flex items-start gap-2">
-													<span className="text-muted-foreground">•</span>
-													<div className="flex-1 space-y-1">
-														<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
-															<InlineEdit
-																value={step.description}
-																placeholder="Add next step..."
-																onSubmit={(value) => handleNextStepUpdate(step.id, "description", value)}
-																submitOnBlur
-																textClassName="text-sm"
-																inputClassName="text-sm"
-															/>
+													}`}
+											>
+												<SelectValue placeholder="Select" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="high">High</SelectItem>
+												<SelectItem value="medium">Medium</SelectItem>
+												<SelectItem value="low">Low</SelectItem>
+											</SelectContent>
+										</Select>
+									</TableCell>
+									<TableCell>
+										{stakeholderSteps.length > 0 ? (
+											<div className="space-y-2">
+												{stakeholderSteps.map((step) => (
+													<div key={step.id} className="flex items-start gap-2">
+														<span className="text-muted-foreground">•</span>
+														<div className="flex-1 space-y-1">
+															<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+																<InlineEdit
+																	value={step.description}
+																	placeholder="Add next step..."
+																	onSubmit={(value) => handleNextStepUpdate(step.id, "description", value)}
+																	submitOnBlur
+																	textClassName="text-sm"
+																	inputClassName="text-sm"
+																/>
+															</div>
+															{step.dueDate && (
+																<span className="text-muted-foreground text-xs">
+																	Due:{" "}
+																	{new Date(step.dueDate).toLocaleDateString("en-US", {
+																		month: "short",
+																		day: "numeric",
+																	})}
+																</span>
+															)}
 														</div>
-														{step.dueDate && (
-															<span className="text-muted-foreground text-xs">
-																Due:{" "}
-																{new Date(step.dueDate).toLocaleDateString("en-US", {
-																	month: "short",
-																	day: "numeric",
-																})}
-															</span>
-														)}
 													</div>
+												))}
+											</div>
+										) : (
+											<span className="text-muted-foreground text-sm">—</span>
+										)}
+									</TableCell>
+								</TableRow>
+							)
+						})}
+						{unassignedSteps.length > 0 && (
+							<TableRow className="bg-muted/30">
+								<TableCell className="font-medium text-muted-foreground">Unassigned</TableCell>
+								<TableCell>—</TableCell>
+								<TableCell className="text-center">—</TableCell>
+								<TableCell className="text-center">—</TableCell>
+								<TableCell>
+									<div className="space-y-2">
+										{unassignedSteps.map((step) => (
+											<div key={step.id} className="flex items-start gap-2">
+												<span className="text-muted-foreground">•</span>
+												<div className="flex-1 space-y-1">
+													<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+														<InlineEdit
+															value={step.description}
+															placeholder="Add next step..."
+															onSubmit={(value) => handleNextStepUpdate(step.id, "description", value)}
+															submitOnBlur
+															textClassName="text-sm"
+															inputClassName="text-sm"
+														/>
+													</div>
+													{step.dueDate && (
+														<span className="text-muted-foreground text-xs">
+															Due:{" "}
+															{new Date(step.dueDate).toLocaleDateString("en-US", {
+																month: "short",
+																day: "numeric",
+															})}
+														</span>
+													)}
 												</div>
-											))}
-										</div>
-									) : (
-										<span className="text-muted-foreground text-sm">—</span>
-									)}
+											</div>
+										))}
+									</div>
 								</TableCell>
 							</TableRow>
-						)
-					})}
-					{unassignedSteps.length > 0 && (
-						<TableRow className="bg-muted/30">
-							<TableCell className="font-medium text-muted-foreground">Unassigned</TableCell>
-							<TableCell>—</TableCell>
-							<TableCell className="text-center">—</TableCell>
-							<TableCell className="text-center">—</TableCell>
-							<TableCell>
-								<div className="space-y-2">
-									{unassignedSteps.map((step) => (
-										<div key={step.id} className="flex items-start gap-2">
-											<span className="text-muted-foreground">•</span>
-											<div className="flex-1 space-y-1">
-												<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
-													<InlineEdit
-														value={step.description}
-														placeholder="Add next step..."
-														onSubmit={(value) => handleNextStepUpdate(step.id, "description", value)}
-														submitOnBlur
-														textClassName="text-sm"
-														inputClassName="text-sm"
-													/>
-												</div>
-												{step.dueDate && (
-													<span className="text-muted-foreground text-xs">
-														Due:{" "}
-														{new Date(step.dueDate).toLocaleDateString("en-US", {
-															month: "short",
-															day: "numeric",
-														})}
-													</span>
-												)}
-											</div>
-										</div>
-									))}
-								</div>
-							</TableCell>
-						</TableRow>
-					)}
-				</TableBody>
-			</Table>
-		</div>
+						)}
+					</TableBody>
+				</Table>
+			</div>
+
+			<Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Add Stakeholder</DialogTitle>
+						<DialogDescription>
+							Select a person from your CRM or company contacts to add as a stakeholder.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="max-h-60 space-y-2 overflow-y-auto">
+						{peopleFetcher.data?.people?.length > 0 ? (
+							peopleFetcher.data.people.map((person: { id: string; display_name?: string; name?: string }) => (
+								<Button
+									key={person.id}
+									variant="ghost"
+									className="w-full justify-start"
+									onClick={() => handleSelectPerson(person)}
+								>
+									{person.display_name || person.name || "Unknown"}
+								</Button>
+							))
+						) : (
+							<p className="text-muted-foreground text-sm">No people available.</p>
+						)}
+					</div>
+				</DialogContent>
+			</Dialog>
+		</>
 	)
 }
 
@@ -711,13 +899,13 @@ function AIAdvisorSection({
 	const hasError = advisorFetcher.data && !advisorFetcher.data.ok
 
 	return (
-		<Card className="mb-8 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-purple-50/30">
+		<Card className="mb-8 border-2 border-border bg-card">
 			<CardHeader className={latestRecommendation ? "" : "pb-4"}>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-indigo-600" />
 						<CardTitle>AI Deal Advisor</CardTitle>
-						<Badge variant="outline" className="bg-white text-indigo-600 text-xs">
+						<Badge variant="outline" className="bg-card text-indigo-600 text-xs">
 							AI
 						</Badge>
 					</div>
@@ -742,7 +930,7 @@ function AIAdvisorSection({
 				)}
 				{hasError && (
 					<p className="mt-2 text-red-600 text-sm">
-						Error: {(advisorFetcher.data as any)?.error || "Failed to generate recommendation"}
+						Error: {(advisorFetcher.data as { error?: string })?.error || "Failed to generate recommendation"}
 					</p>
 				)}
 			</CardHeader>
@@ -750,36 +938,25 @@ function AIAdvisorSection({
 				<CardContent>
 					<div className="space-y-6">
 						{/* Status Assessment */}
-						<div className="rounded-lg border border-indigo-100 bg-white p-4">
+						<div className="rounded-lg border-2 border-border bg-card p-4">
 							<div className="mb-2 flex items-center gap-2">
 								<TrendingUp className="h-4 w-4 text-indigo-600" />
 								<span className="font-semibold text-sm">Status Assessment</span>
-								<Badge
-									variant={
-										latestRecommendation.confidence === "high"
-											? "default"
-											: latestRecommendation.confidence === "medium"
-												? "outline"
-												: "secondary"
-									}
-									className="text-xs"
-								>
-									{latestRecommendation.confidence} confidence
-								</Badge>
+								<ConfidenceBarChart level={latestRecommendation.confidence} variant="bars" size="sm" />
 							</div>
 							<p className="text-foreground">{latestRecommendation.status_assessment}</p>
 						</div>
 
 						{/* Recommendations */}
 						{latestRecommendation.recommendations && latestRecommendation.recommendations.length > 0 && (
-							<div className="rounded-lg border border-emerald-100 bg-white p-4">
+							<div className="rounded-lg border-2 border-border bg-card p-4">
 								<div className="mb-3 flex items-center gap-2">
 									<Lightbulb className="h-4 w-4 text-emerald-600" />
 									<span className="font-semibold text-sm">Recommended Actions</span>
 								</div>
 								<ul className="space-y-2">
 									{latestRecommendation.recommendations.map((rec: string, idx: number) => (
-										<li key={idx} className="flex items-start gap-3">
+										<li key={`${rec}-${idx}`} className="flex items-start gap-3">
 											<span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
 												{idx + 1}
 											</span>
@@ -792,25 +969,25 @@ function AIAdvisorSection({
 
 						{/* Risks */}
 						{latestRecommendation.risks && latestRecommendation.risks.length > 0 && (
-							<div className="rounded-lg border border-amber-100 bg-white p-4">
+							<div className="rounded-lg border-2 border-border bg-card p-4">
 								<div className="mb-3 flex items-center gap-2">
 									<AlertTriangle className="h-4 w-4 text-amber-600" />
 									<span className="font-semibold text-sm">Key Risks</span>
 								</div>
-								<ul className="space-y-2">
+								<div className="space-y-2">
 									{latestRecommendation.risks.map((risk: string, idx: number) => (
-										<li key={idx} className="flex items-start gap-3">
+										<li key={`${risk}-${idx}`} className="flex items-start gap-3">
 											<span className="mt-0.5 text-amber-600">•</span>
 											<span className="flex-1 text-foreground text-sm">{risk}</span>
 										</li>
 									))}
-								</ul>
+								</div>
 							</div>
 						)}
 
 						{/* Timestamp */}
 						{latestRecommendation.created_at && (
-							<div className="border-indigo-100 border-t pt-3 text-muted-foreground text-xs">
+							<div className="border-border border-t pt-3 text-muted-foreground text-xs">
 								Generated{" "}
 								{new Date(latestRecommendation.created_at).toLocaleString("en-US", {
 									month: "short",

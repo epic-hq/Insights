@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useLocation } from "react-router"
+import { useLocation, useFetcher } from "react-router"
 import { GripVertical, Trash2 } from "lucide-react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { useActionData, useLoaderData } from "react-router"
@@ -259,6 +259,7 @@ export default function AccountSettingsPage() {
 	const { accountId, metadata } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const location = useLocation()
+	const fetcher = useFetcher()
 
 	const [opportunityStages, setOpportunityStages] = useState<OpportunityStageConfig[]>(
 		metadata.opportunity_stages && metadata.opportunity_stages.length > 0
@@ -311,38 +312,27 @@ export default function AccountSettingsPage() {
 		const payload = buildPayload(overrides)
 		const debounce = options?.debounce ?? true
 
-		const run = async () => {
+		const run = () => {
 			if (!mountedRef.current) return
 			setSavingSection(sectionKey)
-			try {
-				const formData = new FormData()
-				formData.append("payload", JSON.stringify(payload))
-				const res = await fetch(location.pathname, {
-					method: "POST",
-					body: formData,
-					headers: { Accept: "application/json" },
-				})
 
-				// Check if response is JSON before parsing
-				const contentType = res.headers.get("content-type")
-				if (!contentType || !contentType.includes("application/json")) {
-					throw new Error(`Server returned ${res.status} ${res.statusText}. Expected JSON but got ${contentType || "unknown content type"}`)
-				}
+			const formData = new FormData()
+			formData.append("payload", JSON.stringify(payload))
 
-				const result = await res.json()
-				if (!res.ok || result?.error) {
-					throw new Error(result?.error || "Failed to save")
-				}
-				if (options?.toastOnSuccess && mountedRef.current) toast.success("Saved")
-			} catch (error) {
-				const message = error instanceof Error ? error.message : "Failed to save"
-				console.error("Settings save error:", error)
-				if (mountedRef.current) toast.error(message)
-			} finally {
+			fetcher.submit(formData, {
+				method: "POST",
+			})
+
+			if (options?.toastOnSuccess) {
+				toast.success("Saving...")
+			}
+
+			// Reset saving state after a delay
+			setTimeout(() => {
 				if (mountedRef.current) {
 					setSavingSection((current) => (current === sectionKey ? null : current))
 				}
-			}
+			}, 1000)
 		}
 
 		if (debounce) {
@@ -351,9 +341,21 @@ export default function AccountSettingsPage() {
 			}
 			saveTimers.current[sectionKey] = setTimeout(run, 800)
 		} else {
-			await run()
+			run()
 		}
 	}
+
+	// Handle fetcher response
+	useEffect(() => {
+		if (fetcher.state === "idle" && fetcher.data) {
+			if ((fetcher.data as any)?.error) {
+				toast.error((fetcher.data as any).error)
+			} else if ((fetcher.data as any)?.success) {
+				// Success handled in scheduleSave
+			}
+			setSavingSection(null)
+		}
+	}, [fetcher.state, fetcher.data])
 
 	const handleOpportunityChange = (items: OpportunityStageConfig[]) => {
 		setOpportunityStages(items)

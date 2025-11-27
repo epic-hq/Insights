@@ -7,19 +7,47 @@ export async function action({ request }: ActionFunctionArgs) {
 	const stakeholderId = formData.get("stakeholderId")?.toString()
 	const field = formData.get("field")?.toString()
 	const value = formData.get("value")?.toString() ?? ""
+	const opportunityId = formData.get("opportunityId")?.toString()
+	const accountId = formData.get("accountId")?.toString()
+	const projectId = formData.get("projectId")?.toString()
+	const personId = formData.get("personId")?.toString()
 
-	if (!stakeholderId || !field) {
+	if (!field) {
 		return Response.json({ ok: false, error: "Missing required parameters" }, { status: 400 })
-	}
-
-	const allowedFields = ["display_name", "role", "influence", "email", "stakeholder_type"]
-	if (!allowedFields.includes(field)) {
-		return Response.json({ ok: false, error: "Unsupported field" }, { status: 400 })
 	}
 
 	const { client: supabase } = getServerClient(request)
 
-	const updateData: Record<string, any> = {}
+	if (field === "create") {
+		if (!opportunityId || !accountId || !projectId) {
+			return Response.json({ ok: false, error: "Missing required parameters for create" }, { status: 400 })
+		}
+
+		const { data: newStakeholder, error: insertError } = await supabase
+			.from("sales_lens_stakeholders")
+			.insert({
+				opportunity_id: opportunityId,
+				account_id: accountId,
+				project_id: projectId,
+				display_name: value,
+				person_id: personId || null,
+			})
+			.select()
+			.single()
+
+		if (insertError) {
+			consola.error("Failed to create stakeholder", insertError)
+			return Response.json({ ok: false, error: "Failed to create stakeholder" }, { status: 500 })
+		}
+
+		return Response.json({ ok: true, stakeholder: newStakeholder })
+	}
+
+	if (!stakeholderId) {
+		return Response.json({ ok: false, error: "Missing stakeholderId for update" }, { status: 400 })
+	}
+
+	const updateData: Record<string, unknown> = {}
 
 	// Handle influence field validation
 	if (field === "influence") {

@@ -39,6 +39,11 @@ const sourceTypeConfig = {
 		label: "Transcript",
 		color: "text-slate-600",
 	},
+	note: {
+		icon: FileText,
+		label: "Note",
+		color: "text-amber-600",
+	},
 }
 
 const mediaTypeConfig = {
@@ -61,6 +66,36 @@ const mediaTypeConfig = {
 		icon: TestTube,
 		label: "User Testing",
 		color: "text-orange-600",
+	},
+	note: {
+		icon: FileText,
+		label: "Note",
+		color: "text-amber-600",
+	},
+	meeting_notes: {
+		icon: Users,
+		label: "Meeting Notes",
+		color: "text-blue-600",
+	},
+	observation: {
+		icon: TestTube,
+		label: "Observation",
+		color: "text-purple-600",
+	},
+	insight: {
+		icon: FileText,
+		label: "Insight",
+		color: "text-green-600",
+	},
+	followup: {
+		icon: Phone,
+		label: "Follow-up",
+		color: "text-orange-600",
+	},
+	voice_memo: {
+		icon: Mic,
+		label: "Voice Memo",
+		color: "text-red-600",
 	},
 }
 

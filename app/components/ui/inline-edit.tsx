@@ -13,6 +13,7 @@ import { cn } from "~/lib/utils"
 
 interface InlineEditProps {
 	value: string
+	displayValue?: string
 	onChange?: (value: string) => void
 	onSubmit?: (value: string) => void
 	multiline?: boolean
@@ -28,10 +29,12 @@ interface InlineEditProps {
 	closeOnBlur?: boolean
 	showConfirmationButtons?: boolean
 	showEditButton?: boolean
+	type?: "text" | "number" | "date" | "email" | "url"
 }
 
 export default function InlineEdit({
 	value: initialValue,
+	displayValue,
 	onChange,
 	onSubmit,
 	textClassName,
@@ -47,6 +50,7 @@ export default function InlineEdit({
 	closeOnBlur = true,
 	showConfirmationButtons = false,
 	showEditButton = false,
+	type = "text",
 }: InlineEditProps) {
 	const [isEditing, setIsEditing] = useState(initialIsEditing)
 	const [value, setValue] = useState(initialValue)
@@ -148,6 +152,7 @@ export default function InlineEdit({
 			<>
 				<Input
 					ref={inputRef as React.RefObject<HTMLInputElement>}
+					type={type}
 					value={value}
 					onChange={handleChange}
 					onBlur={handleBlur}
@@ -169,25 +174,26 @@ export default function InlineEdit({
 	}
 
 	const TextComponent = textComponent
+	const textToShow = displayValue ?? value
 
 	return (
 		<div
 			ref={containerRef}
 			onClick={handleClick}
 			className={cn(
-				"group cursor-pointer rounded transition-colors hover:bg-white/80",
+				"group cursor-pointer rounded transition-colors hover:bg-muted/50",
 				showEditButton ? "flex justify-between" : "block"
 			)}
 		>
 			{markdown ? (
 				<Streamdown className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
-					{value || placeholder}
+					{textToShow || placeholder}
 				</Streamdown>
 			) : (
 				<TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{multiline ? (
-						value ? (
-							value.split("\n").map((line, i) => (
+						textToShow ? (
+							textToShow.split("\n").map((line, i) => (
 								<span key={`line-${i}-${line.slice(0, 10)}`}>
 									{line}
 									<br />
@@ -197,7 +203,7 @@ export default function InlineEdit({
 							<span className="text-gray-400 text-xs italic">{placeholder}</span>
 						)
 					) : (
-						value || <span className="text-gray-400 text-xs italic">{placeholder}</span>
+						textToShow || <span className="text-gray-400 text-xs italic">{placeholder}</span>
 					)}
 				</TextComponent>
 			)}

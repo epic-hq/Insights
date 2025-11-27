@@ -65,55 +65,54 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 	const mediaUrl = interview.media_url
 
 	return (
-		<div className={cn("min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950", className)}>
-			<div className="container mx-auto max-w-4xl px-4 py-8">
-				{/* Header */}
-				<div className="mb-8">
-					<div className="mb-4 flex items-start justify-between">
-						<div className="flex items-center gap-3">
-							<MediaTypeIcon
-								mediaType={interview.media_type}
-								sourceType={interview.source_type}
-								showLabel={true}
-								iconClassName="h-5 w-5"
-								labelClassName="text-base font-semibold"
-							/>
-						</div>
-						<Badge className={cn("text-xs font-medium", getStatusColor(interview.status))}>
-							{formatStatus(interview.status)}
-						</Badge>
+		<div className={cn("mx-auto max-w-4xl px-4 py-8", className)}>
+			{/* Header */}
+			<div className="mb-6">
+				<div className="mb-4 flex items-start justify-between">
+					<div className="flex items-center gap-3">
+						<MediaTypeIcon
+							mediaType={interview.media_type}
+							sourceType={interview.source_type}
+							showLabel={true}
+							iconClassName="h-5 w-5"
+							labelClassName="text-base font-semibold"
+						/>
 					</div>
-
-					<h1 className="mb-2 font-bold text-3xl text-slate-900 dark:text-white">{interview.title || "Untitled Document"}</h1>
-
-					{/* Participant info */}
-					{participantName && (
-						<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
-							<User className="h-4 w-4" />
-							<span>{participantName}</span>
-							{participantSegment && <span className="text-slate-400">• {participantSegment}</span>}
-						</div>
-					)}
-
-					{/* Metadata */}
-					<div className="flex flex-wrap items-center gap-4 text-slate-600 text-sm dark:text-slate-400">
-						{interview.created_at && (
-							<div className="flex items-center gap-1.5">
-								<Calendar className="h-4 w-4" />
-								<span>{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}</span>
-							</div>
-						)}
-						{interview.duration_sec && (
-							<div className="flex items-center gap-1.5">
-								<Clock className="h-4 w-4" />
-								<span>{Math.round(interview.duration_sec / 60)} min</span>
-							</div>
-						)}
-					</div>
+					<Badge className={cn("text-xs font-medium", getStatusColor(interview.status))}>
+						{formatStatus(interview.status)}
+					</Badge>
 				</div>
 
-				{/* Content Area */}
-				<div className="rounded-3xl border border-slate-200/60 bg-white/80 p-8 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80">
+				<h1 className="mb-2 font-bold text-3xl text-slate-900 dark:text-white">{interview.title || "Untitled Document"}</h1>
+
+				{/* Participant info */}
+				{participantName && (
+					<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
+						<User className="h-4 w-4" />
+						<span>{participantName}</span>
+						{participantSegment && <span className="text-slate-400">• {participantSegment}</span>}
+					</div>
+				)}
+
+				{/* Metadata */}
+				<div className="flex flex-wrap items-center gap-4 text-slate-600 text-sm dark:text-slate-400">
+					{interview.created_at && (
+						<div className="flex items-center gap-1.5">
+							<Calendar className="h-4 w-4" />
+							<span>{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}</span>
+						</div>
+					)}
+					{interview.duration_sec && (
+						<div className="flex items-center gap-1.5">
+							<Clock className="h-4 w-4" />
+							<span>{Math.round(interview.duration_sec / 60)} min</span>
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* Content Area - no extra card wrapper */}
+			<div>
 					{/* Text Content */}
 					{isTextContent && (interview.transcript || interview.observations_and_notes) && (
 						<div className="prose prose-slate max-w-none dark:prose-invert">
@@ -269,14 +268,13 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 							</div>
 						)}
 
-					{/* Empty state */}
-					{!interview.transcript && !interview.observations_and_notes && !interview.media_url && (
-						<div className="py-12 text-center text-slate-500">
-							<FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
-							<p>No content available</p>
-						</div>
-					)}
-				</div>
+				{/* Empty state */}
+				{!interview.transcript && !interview.observations_and_notes && !interview.media_url && (
+					<div className="py-12 text-center text-slate-500">
+						<FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
+						<p>No content available</p>
+					</div>
+				)}
 			</div>
 		</div>
 	)
