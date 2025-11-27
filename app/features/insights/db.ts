@@ -181,12 +181,9 @@ export const getInsightById = async ({
 
 	const insightData: InsightById = data
 
-	const [tagsResult, personasResult, interviewResult, priorityResult] = await Promise.all([
+	const [tagsResult, personasResult, priorityResult] = await Promise.all([
 		supabase.from("insight_tags").select("insight_id, tags (tag, term, definition)").eq("insight_id", id),
 		supabase.from("persona_insights").select("insight_id, personas (id, name)").eq("insight_id", id),
-		insightData.interview_id
-			? supabase.from("interviews").select("id, title").eq("id", insightData.interview_id).single()
-			: Promise.resolve({ data: null, error: null }),
 		supabase.from("insights_with_priority").select("id, priority").eq("id", id).single(),
 	])
 
@@ -194,7 +191,6 @@ export const getInsightById = async ({
 		...insightData,
 		priority: priorityResult?.data?.priority ?? 0,
 		persona_insights: personasResult?.data?.map((row) => ({ personas: row.personas })) ?? [],
-		interviews: interviewResult?.data ? [interviewResult.data] : [],
 		insight_tags:
 			tagsResult?.data?.map((row) => ({
 				tag: row.tags?.tag,

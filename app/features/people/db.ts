@@ -98,7 +98,6 @@ export const getPersonById = async ({
 	projectId: string
 	id: string
 }) => {
-	consola.info("getPersonById start", { accountId, projectId, id })
 	const personByIdQuery = supabase
 		.from("people")
 		.select(`
@@ -202,7 +201,7 @@ export const getPersonById = async ({
 	}
 
 	const personData: PersonById = data
-	consola.info("getPersonById success", { id: personData.id, project_id: projectId })
+	// consola.info("getPersonById success", { id: personData.id, project_id: projectId })
 	return personData
 }
 

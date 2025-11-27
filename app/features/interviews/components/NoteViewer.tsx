@@ -12,8 +12,10 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "~/components/ui/alert-dialog"
+import { BackButton } from "~/components/ui/back-button"
 import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
@@ -62,9 +64,11 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 	}
 
 	return (
-		<div className={cn("mx-auto max-w-4xl px-4 py-8", className)}>
+		<PageContainer size="md" className={className}>
+			<BackButton />
+
 			{/* Header */}
-			<div className="mb-6">
+			<div className="mb-6 mt-6">
 				<div className="mb-4 flex items-start justify-between">
 					<div className="flex items-center gap-3">
 						<MediaTypeIcon
@@ -141,6 +145,6 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</PageContainer>
 	)
 }

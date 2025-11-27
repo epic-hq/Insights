@@ -25,65 +25,58 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 			<CardContent>
 				<div className="space-y-3 pb-4">
 					<div className="space-y-2">
-						<div className="font-light text-muted-foreground text-xs">{insight.category}</div>
-						<div className="border-b pb-3 font-semibold text-lg">{insight.pain}</div>
+						<div className="font-light text-muted-foreground text-xs">Theme</div>
+						<div className="border-b pb-3 font-semibold text-lg">{insight.name}</div>
 					</div>
 				</div>
 
 				<div className="max-h-[60vh] space-y-6 overflow-y-auto pr-2">
-					{insight.journey_stage && (
-						<Badge variant="outline" className="text-xs">
-							{insight.journey_stage}
-						</Badge>
-					)}
-
-					{(insight.details || insight.evidence) && (
-						<div className="grid grid-cols-1 gap-6">
-							{insight.details && (
-								<div className="space-y-2">
-									<h4 className="font-medium text-foreground text-sm">Details</h4>
-									<p className="text-muted-foreground text-sm leading-relaxed">{insight.details}</p>
-								</div>
-							)}
-							{insight.evidence && (
-								<div className="space-y-2">
-									<h4 className="font-medium text-foreground text-sm">Evidence</h4>
-									<div className="flex items-center gap-2 rounded-lg bg-blue-400/20 p-3">
-										<Quote className="h-4 w-4" />
-										<p className="text-muted-foreground text-sm leading-relaxed">{insight.evidence}</p>
-									</div>
-								</div>
-							)}
-						</div>
-					)}
-
-					{insight.desired_outcome && (
+					{insight.statement && (
 						<div className="space-y-2">
-							<h4 className="font-medium text-foreground text-sm">Desired Outcome</h4>
-							<p className="text-muted-foreground text-sm leading-relaxed">{insight.desired_outcome}</p>
+							<h4 className="font-medium text-foreground text-sm">Statement</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.statement}</p>
 						</div>
 					)}
 
-					{insight.linked_themes && insight.linked_themes.length > 0 && (
-						<div className="space-y-3">
-							<h4 className="font-medium text-gray-700 text-sm">Linked Themes</h4>
+					{insight.inclusion_criteria && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Inclusion Criteria</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.inclusion_criteria}</p>
+						</div>
+					)}
+
+					{insight.exclusion_criteria && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Exclusion Criteria</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.exclusion_criteria}</p>
+						</div>
+					)}
+
+					{insight.synonyms && insight.synonyms.length > 0 && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Synonyms</h4>
 							<div className="flex flex-wrap gap-2">
-								{insight.linked_themes.map((theme: any) => (
-									<Link key={theme.id} to={routes.themes.detail(theme.id)}>
-										<Badge variant="secondary" className="text-xs">
-											{theme.name}
-										</Badge>
-									</Link>
+								{insight.synonyms.map((synonym: string, idx: number) => (
+									<Badge key={idx} variant="secondary" className="text-xs">
+										{synonym}
+									</Badge>
 								))}
 							</div>
 						</div>
 					)}
-					{/* {selected.jtbd && (
-									<div className="space-y-2">
-										<h4 className="font-medium text-foreground text-sm">Job to be Done</h4>
-										<p className="text-muted-foreground text-sm leading-relaxed">{selected.jtbd}</p>
-									</div>
-								)} */}
+
+					{insight.anti_examples && insight.anti_examples.length > 0 && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Anti-Examples</h4>
+							<div className="flex flex-wrap gap-2">
+								{insight.anti_examples.map((example: string, idx: number) => (
+									<Badge key={idx} variant="outline" className="text-xs">
+										{example}
+									</Badge>
+								))}
+							</div>
+						</div>
+					)}
 
 					{insight.insight_tags && insight.insight_tags.length > 0 && (
 						<div className="space-y-3">
@@ -98,9 +91,20 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 						</div>
 					)}
 
-					{insight.emotional_response && (
-						<div className="flex items-center justify-end pt-2">
-							<EmotionBadge emotion_string={insight.emotional_response} muted />
+					{insight.persona_insights && insight.persona_insights.length > 0 && (
+						<div className="space-y-3">
+							<h4 className="font-medium text-foreground text-sm">Personas</h4>
+							<div className="flex flex-wrap gap-2">
+								{insight.persona_insights.map((pi: any, idx: number) => {
+									const personaName = pi?.personas?.name
+									if (!personaName) return null
+									return (
+										<Badge key={idx} variant="default" className="text-xs">
+											{personaName}
+										</Badge>
+									)
+								})}
+							</div>
 						</div>
 					)}
 				</div>

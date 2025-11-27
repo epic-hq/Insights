@@ -1,7 +1,5 @@
 import consola from "consola"
 import type { ActionFunction, LoaderFunction } from "react-router"
-import { currentProjectContext } from "~/server/current-project-context"
-import { userContext } from "~/server/user-context"
 import {
 	type AnnotationType,
 	createAnnotation,
@@ -9,15 +7,17 @@ import {
 	type EntityType,
 	getAnnotationsForEntity,
 	updateAnnotation,
-} from "../db"
+} from "~/features/annotations/db"
+import { currentProjectContext } from "~/server/current-project-context"
+import { userContext } from "~/server/user-context"
 
 // GET /api/annotations - Fetch annotations for an entity
 export const loader: LoaderFunction = async ({ context, request }) => {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
+	const accountId = ctx.account_id
 
 	const ctx_project = context.get(currentProjectContext)
-	const accountId = ctx_project.accountId
 	const projectId = ctx_project.projectId
 
 	if (!accountId || !projectId) {
@@ -61,10 +61,10 @@ export const loader: LoaderFunction = async ({ context, request }) => {
 export const action: ActionFunction = async ({ context, request }) => {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
+	const accountId = ctx.account_id
 	const userId = ctx.claims?.sub
 
 	const ctx_project = context.get(currentProjectContext)
-	const accountId = ctx_project.accountId
 	const projectId = ctx_project.projectId
 
 	if (!accountId || !projectId || !userId) {

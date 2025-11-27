@@ -11,13 +11,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const accountId = String(params.accountId || "")
 	const userId = ctx?.claims?.sub || ""
 
-	consola.info("project-status history: params received", {
-		projectId,
-		accountId,
-		userId,
-		paramsKeys: Object.keys(params || {}),
-		allParams: params,
-	})
+	// consola.info("project-status history: params received", {
+	// 	projectId,
+	// 	accountId,
+	// 	userId,
+	// 	paramsKeys: Object.keys(params || {}),
+	// 	allParams: params,
+	// })
 
 	if (!projectId) {
 		consola.warn("project-status history: Missing projectId")
@@ -32,9 +32,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	try {
 		const resourceId = `projectStatusAgent-${userId}-${projectId}`
 
-		consola.info("project-status history: searching for threads", {
-			resourceId,
-		})
+		// consola.info("project-status history: searching for threads", {
+		// 	resourceId,
+		// })
 
 		// Get the most recent thread for this project
 		const threads = await memory.getThreadsByResourceIdPaginated({
@@ -45,10 +45,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			perPage: 1,
 		})
 
-		consola.info("project-status history: threads found", {
-			total: threads?.total || 0,
-			threadsCount: threads?.threads?.length || 0,
-		})
+		// consola.info("project-status history: threads found", {
+		// 	total: threads?.total || 0,
+		// 	threadsCount: threads?.threads?.length || 0,
+		// })
 
 		if (!threads?.total || threads.total === 0) {
 			consola.info("project-status history: no threads found for resourceId", { resourceId })
@@ -61,7 +61,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Query messages using Memory API
 		const { messagesV2 } = await memory.query({
 			threadId,
-			selectBy: { last: 50 },
+			selectBy: { last: 10 },
 		})
 
 		consola.info("project-status history loaded", {
@@ -75,9 +75,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			uiMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
 		}
 
-		consola.info("project-status history: converted to UI format", {
-			uiMessageCount: uiMessages.length,
-		})
+		// consola.info("project-status history: converted to UI format", { uiMessageCount: uiMessages.length, })
 
 		// Return messages in the format expected by the UI
 		return Response.json({

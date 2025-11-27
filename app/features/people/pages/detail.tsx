@@ -50,7 +50,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 	const personId = params.personId
 
-	consola.info("PersonDetail loader start", { accountId, projectId, personId, params })
+	// consola.info("PersonDetail loader start", { accountId, projectId, personId, params })
 
 	if (!accountId || !projectId || !personId) {
 		consola.error("PersonDetail loader missing params", { accountId, projectId, personId })

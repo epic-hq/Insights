@@ -27,7 +27,6 @@ export const getProjects = async ({
 	supabase: SupabaseClient<Database>
 	accountId: string
 }) => {
-	consola.log("getProjects accountId: ", accountId)
 	return await supabase
 		.from("projects")
 		.select("*")

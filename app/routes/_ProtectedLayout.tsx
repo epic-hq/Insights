@@ -17,7 +17,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
-			consola.log("middleware user", user?.aud, ": ", user?.sub, ": ", user?.email)
+			// consola.log("middleware user", user?.aud, ": ", user?.sub, ": ", user?.email)
 			if (!user) {
 				// Preserve the original URL for deep linking after login
 				const url = new URL(request.url)
@@ -115,7 +115,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 				}
 			}
 
-			consola.log("User authenticated and has projects.")
+			// consola.log("User authenticated and has projects.")
 			// Continue without redirect for normal flow
 		} catch (error) {
 			// Preserve intended redirects thrown above (e.g., to /signup-chat)
