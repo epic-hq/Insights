@@ -12,13 +12,13 @@ import {
 } from "../db"
 
 // GET /api/annotations - Fetch annotations for an entity
-export const loader: LoaderFunction = async ({ context, request }) => {
+export const loader: LoaderFunction = async ({ context, request, params }) => {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 
 	const ctx_project = context.get(currentProjectContext)
-	const accountId = ctx_project.accountId
-	const projectId = ctx_project.projectId
+	const accountId = ctx_project.accountId ?? params?.accountId ?? ctx.account_id
+	const projectId = ctx_project.projectId ?? params?.projectId ?? null
 
 	if (!accountId || !projectId) {
 		return Response.json({ error: { message: "Missing account or project context" } }, { status: 400 })
@@ -58,14 +58,14 @@ export const loader: LoaderFunction = async ({ context, request }) => {
 }
 
 // POST /api/annotations - Handle annotation actions
-export const action: ActionFunction = async ({ context, request }) => {
+export const action: ActionFunction = async ({ context, request, params }) => {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 	const userId = ctx.claims?.sub
 
 	const ctx_project = context.get(currentProjectContext)
-	const accountId = ctx_project.accountId
-	const projectId = ctx_project.projectId
+	const accountId = ctx_project.accountId ?? params?.accountId ?? ctx.account_id
+	const projectId = ctx_project.projectId ?? params?.projectId ?? null
 
 	if (!accountId || !projectId || !userId) {
 		return Response.json({ error: { message: "Missing authentication context" } }, { status: 401 })

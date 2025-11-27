@@ -197,6 +197,108 @@ begin
 end;
 $$ language plpgsql;
 
+-- Helper function to find themes relevant to a person facet (semantic user segmentation)
+create or replace function public.find_themes_by_person_facet(
+  facet_label_query text,
+  project_id_param uuid,
+  match_threshold float default 0.6,
+  match_count int default 20
+)
+returns table (
+  theme_id uuid,
+  theme_name text,
+  theme_pain text,
+  similarity float,
+  person_count bigint
+) as $$
+declare
+  query_embedding vector(1536);
+begin
+  -- Get embedding for the facet label query
+  select embedding into query_embedding
+  from person_facet pf
+  join facet_account fa on fa.id = pf.facet_account_id
+  where fa.label ilike facet_label_query
+  and pf.project_id = project_id_param
+  and pf.embedding is not null
+  limit 1;
+
+  -- If no exact match, use semantic search on all person facets
+  if query_embedding is null then
+    -- TODO: Create embedding from query text via OpenAI
+    -- For now, return empty result
+    return;
+  end if;
+
+  -- Find themes linked to evidence from people with similar facets
+  return query
+    with similar_people as (
+      select distinct pf.person_id,
+             1 - (pf.embedding <=> query_embedding) as facet_similarity
+      from person_facet pf
+      where pf.project_id = project_id_param
+        and pf.embedding is not null
+        and 1 - (pf.embedding <=> query_embedding) > match_threshold
+    )
+    select
+      t.id as theme_id,
+      t.name as theme_name,
+      t.pain as theme_pain,
+      avg(1 - (t.embedding <=> query_embedding)) as similarity,
+      count(distinct ep.person_id) as person_count
+    from themes t
+    join theme_evidence te on te.theme_id = t.id
+    join evidence e on e.id = te.evidence_id
+    join evidence_people ep on ep.evidence_id = e.id
+    join similar_people sp on sp.person_id = ep.person_id
+    where t.project_id = project_id_param
+      and t.embedding is not null
+    group by t.id, t.name, t.pain
+    having avg(1 - (t.embedding <=> query_embedding)) > match_threshold
+    order by similarity desc, person_count desc
+    limit match_count;
+end;
+$$ language plpgsql;
+
+-- Helper function to find themes by text query (combines theme + person facet semantic search)
+create or replace function public.search_themes_semantic(
+  query_text text,
+  project_id_param uuid,
+  match_threshold float default 0.7,
+  match_count int default 10
+)
+returns table (
+  id uuid,
+  name text,
+  pain text,
+  statement text,
+  category text,
+  journey_stage text,
+  similarity float
+) as $$
+begin
+  -- TODO: Get embedding for query_text from OpenAI
+  -- For now, use ILIKE as fallback until we implement text-to-embedding API
+  return query
+    select
+      themes.id,
+      themes.name,
+      themes.pain,
+      themes.statement,
+      themes.category,
+      themes.journey_stage,
+      0.9::float as similarity -- Placeholder
+    from public.themes
+    where themes.project_id = project_id_param
+      and (
+        themes.name ilike '%' || query_text || '%'
+        or themes.pain ilike '%' || query_text || '%'
+        or themes.statement ilike '%' || query_text || '%'
+      )
+    limit match_count;
+end;
+$$ language plpgsql;
+
 -- Comments
 comment on column public.evidence.embedding is 'OpenAI text-embedding-3-small (1536 dims) for semantic search and clustering';
 comment on column public.themes.embedding is 'OpenAI text-embedding-3-small (1536 dims) for theme consolidation and similarity';
@@ -206,3 +308,5 @@ comment on function public.find_similar_evidence is 'Find evidence similar to a 
 comment on function public.find_similar_themes is 'Find themes similar to a query embedding using cosine similarity';
 comment on function public.find_duplicate_themes is 'Find duplicate/similar themes within a project for consolidation';
 comment on function public.find_person_facet_clusters is 'Find clusters of similar person facets for semantic segment grouping (e.g., "Product Manager" + "PM" + "Product Lead")';
+comment on function public.find_themes_by_person_facet is 'Find themes relevant to people with a specific facet using semantic matching on person_facet embeddings';
+comment on function public.search_themes_semantic is 'Search themes by text query using semantic similarity (placeholder until text-to-embedding API is implemented)';

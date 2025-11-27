@@ -54,10 +54,14 @@ Deno.serve(async (req) => {
 
 	try {
 		console.log("[embed] request meta", JSON.stringify(logMeta(req)))
-		const { id, name, pain } = await req.json()
-		if (!id || !name || !pain) {
-			return new Response("Missing `id`, `name` or `pain`", { status: 400 })
+		const { id, name, pain, table } = await req.json()
+		if (!id || !name) {
+			return new Response("Missing `id` or `name`", { status: 400 })
 		}
+
+		// Support both insights (legacy) and themes (canonical)
+		const targetTable = table || "themes"
+		const textToEmbed = pain ? `${name}: ${pain}` : name
 
 		// 1) Fetch embedding from OpenAI
 		const openaiRes = await fetch("https://api.openai.com/v1/embeddings", {
@@ -67,8 +71,8 @@ Deno.serve(async (req) => {
 				Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
 			},
 			body: JSON.stringify({
-				model: "text-embedding-ada-002",
-				input: `${name}: ${pain}`,
+				model: "text-embedding-3-small", // Updated to newer model (1536 dims)
+				input: textToEmbed,
 			}),
 		})
 
@@ -83,11 +87,20 @@ Deno.serve(async (req) => {
 		// 2) Write back to Supabase
 		const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
 
-		const { error } = await supabase.from("themes").update({ embedding: embedding }).eq("id", id)
+		const { error } = await supabase
+			.from(targetTable)
+			.update({
+				embedding: embedding,
+				embedding_model: "text-embedding-3-small",
+				embedding_generated_at: new Date().toISOString(),
+			})
+			.eq("id", id)
 
 		if (error) throw error
 
-		return new Response(JSON.stringify({ success: true }), {
+		console.log(`[embed] Successfully embedded ${targetTable} ${id}`)
+
+		return new Response(JSON.stringify({ success: true, table: targetTable, id }), {
 			headers: { "Content-Type": "application/json" },
 		})
 	} catch (err) {

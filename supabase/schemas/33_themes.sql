@@ -6,12 +6,37 @@ create table if not exists themes (
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   project_id uuid references projects (id) on delete cascade,
 
+  -- Core theme definition
   name text not null,
   statement text,
+
+  -- AI-assisted clustering fields
   inclusion_criteria text,
   exclusion_criteria text,
   synonyms text[] default '{}',
   anti_examples text[] default '{}',
+
+  -- User-friendly fields (backward compatible with old insights)
+  category text,
+  jtbd text, -- Jobs To Be Done
+  pain text,
+  desired_outcome text,
+  journey_stage text,
+  emotional_response text,
+  motivation text,
+
+  -- Additional context fields
+  details text,
+  evidence text,
+  impact text,
+  contradictions text,
+  novelty text,
+  opportunity_ideas text[] default '{}',
+  related_tags text[] default '{}',
+  confidence smallint,
+
+  -- Legacy compatibility (for migration from insights)
+  interview_id uuid references interviews(id) on delete set null,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

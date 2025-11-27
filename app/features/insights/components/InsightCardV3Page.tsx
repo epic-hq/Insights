@@ -28,27 +28,56 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 						<div className="font-light text-muted-foreground text-xs">Theme</div>
 						<div className="border-b pb-3 font-semibold text-lg">{insight.name}</div>
 					</div>
+					{insight.category && (
+						<div className="flex items-center gap-2">
+							<Badge variant="secondary">{insight.category}</Badge>
+							{insight.journey_stage && <Badge variant="outline">{insight.journey_stage}</Badge>}
+						</div>
+					)}
 				</div>
 
 				<div className="max-h-[60vh] space-y-6 overflow-y-auto pr-2">
+					{insight.pain && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Pain Point</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.pain}</p>
+						</div>
+					)}
+
+					{insight.jtbd && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Job To Be Done</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.jtbd}</p>
+						</div>
+					)}
+
+					{insight.desired_outcome && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Desired Outcome</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.desired_outcome}</p>
+						</div>
+					)}
+
+					{insight.motivation && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Motivation</h4>
+							<p className="text-muted-foreground text-sm leading-relaxed">{insight.motivation}</p>
+						</div>
+					)}
+
+					{insight.emotional_response && (
+						<div className="space-y-2">
+							<h4 className="font-medium text-foreground text-sm">Emotional Response</h4>
+							<div className="flex items-center gap-2">
+								<EmotionBadge emotion={insight.emotional_response} />
+							</div>
+						</div>
+					)}
+
 					{insight.statement && (
 						<div className="space-y-2">
-							<h4 className="font-medium text-foreground text-sm">Statement</h4>
+							<h4 className="font-medium text-foreground text-sm">Summary</h4>
 							<p className="text-muted-foreground text-sm leading-relaxed">{insight.statement}</p>
-						</div>
-					)}
-
-					{insight.inclusion_criteria && (
-						<div className="space-y-2">
-							<h4 className="font-medium text-foreground text-sm">Inclusion Criteria</h4>
-							<p className="text-muted-foreground text-sm leading-relaxed">{insight.inclusion_criteria}</p>
-						</div>
-					)}
-
-					{insight.exclusion_criteria && (
-						<div className="space-y-2">
-							<h4 className="font-medium text-foreground text-sm">Exclusion Criteria</h4>
-							<p className="text-muted-foreground text-sm leading-relaxed">{insight.exclusion_criteria}</p>
 						</div>
 					)}
 

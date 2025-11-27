@@ -113,6 +113,14 @@ create or replace trigger trg_enqueue_insight
   after insert or update on public.insights
   for each row execute function public.enqueue_insight_embedding();
 
+-- Add trigger for themes table (canonical source for new themes/insights)
+-- This ensures themes get embeddings generated automatically via the embedding queue
+create or replace trigger trg_enqueue_theme
+  after insert or update on public.themes
+  for each row execute function public.enqueue_insight_embedding();
+
+comment on trigger trg_enqueue_theme on public.themes is 'Enqueue theme for embedding generation when created or pain field updated';
+
 -- Evidence facet enqueue function
 create or replace function public.enqueue_facet_embedding()
 returns trigger language plpgsql as $$
@@ -143,7 +151,9 @@ declare
   facet_label text;
   kind_slug text;
 begin
-  if (TG_OP = 'INSERT' or TG_OP = 'UPDATE') then
+  -- Only enqueue if embedding is NULL (prevents infinite loop)
+  if (TG_OP = 'INSERT' and new.embedding is null) or
+     (TG_OP = 'UPDATE' and new.embedding is null and old.embedding is null) then
     -- Fetch label and kind_slug from facet_account via join
     select fa.label, fkg.slug
     into facet_label, kind_slug
