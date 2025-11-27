@@ -21,7 +21,7 @@ export default defineConfig({
 	},
 	dirs: ["./src/trigger"],
 	build: {
-		external: ["@boundaryml/baml", "@boundaryml/baml-*"],
+		external: ["@boundaryml/baml", "@boundaryml/baml-*", "@aws-sdk/client-s3", "execa", "ffmpeg-static"],
 		extensions: [
 			syncEnvVars(async (ctx) => {
 				// Sync all required environment variables from process.env

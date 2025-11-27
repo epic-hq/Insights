@@ -299,6 +299,110 @@ begin
 end;
 $$ language plpgsql;
 
+-- Helper function to find evidence facet clusters (semantic evidence grouping across all kinds)
+-- This enables clustering similar evidence across different kinds (pain + gain + goal + behavior, etc.)
+-- for theme generation and duplicate detection
+create or replace function public.find_evidence_facet_clusters(
+  project_id_param uuid,
+  kind_slug_filter text default null, -- Optional: filter by specific kind(s), null = all kinds
+  similarity_threshold float default 0.75,
+  limit_results int default 100
+)
+returns table (
+  evidence_facet_id_1 uuid,
+  evidence_facet_id_2 uuid,
+  label_1 text,
+  label_2 text,
+  kind_slug_1 text,
+  kind_slug_2 text,
+  similarity float,
+  combined_evidence_count bigint
+) as $$
+begin
+  return query
+    select
+      ef1.id as evidence_facet_id_1,
+      ef2.id as evidence_facet_id_2,
+      ef1.label as label_1,
+      ef2.label as label_2,
+      ef1.kind_slug as kind_slug_1,
+      ef2.kind_slug as kind_slug_2,
+      1 - (ef1.embedding <=> ef2.embedding) as similarity,
+      (
+        -- Count distinct evidence linked to either facet
+        select count(distinct evidence_id)
+        from public.evidence_facets
+        where facet_id in (ef1.id, ef2.id)
+          and project_id = project_id_param
+      ) as combined_evidence_count
+    from public.evidence_facet ef1
+    cross join public.evidence_facet ef2
+    where ef1.project_id = project_id_param
+      and ef2.project_id = project_id_param
+      and ef1.id < ef2.id  -- Avoid duplicates and self-matches
+      and ef1.embedding is not null
+      and ef2.embedding is not null
+      and 1 - (ef1.embedding <=> ef2.embedding) > similarity_threshold
+      -- Optional kind filter
+      and (kind_slug_filter is null
+           or ef1.kind_slug = kind_slug_filter
+           or ef2.kind_slug = kind_slug_filter)
+    order by similarity desc
+    limit limit_results;
+end;
+$$ language plpgsql;
+
+-- Helper function to get representative evidence facets for a cluster (seed-based clustering)
+-- Given a seed facet, find all similar facets across all kinds to form a thematic cluster
+create or replace function public.get_evidence_cluster(
+  seed_facet_id uuid,
+  project_id_param uuid,
+  similarity_threshold float default 0.7,
+  limit_results int default 50
+)
+returns table (
+  facet_id uuid,
+  label text,
+  kind_slug text,
+  similarity float,
+  evidence_count bigint
+) as $$
+declare
+  seed_embedding vector(1536);
+begin
+  -- Get seed embedding
+  select embedding into seed_embedding
+  from evidence_facet
+  where id = seed_facet_id
+    and project_id = project_id_param
+    and embedding is not null;
+
+  if seed_embedding is null then
+    return;
+  end if;
+
+  return query
+    select
+      ef.id as facet_id,
+      ef.label,
+      ef.kind_slug,
+      1 - (ef.embedding <=> seed_embedding) as similarity,
+      (
+        select count(*)
+        from public.evidence_facets evf
+        where evf.facet_id = ef.id
+          and evf.project_id = project_id_param
+      ) as evidence_count
+    from public.evidence_facet ef
+    where ef.project_id = project_id_param
+      and ef.id != seed_facet_id
+      and ef.embedding is not null
+      and 1 - (ef.embedding <=> seed_embedding) > similarity_threshold
+    order by similarity desc
+    limit limit_results;
+end;
+$$ language plpgsql;
+
 -- Comments
 comment on column public.evidence.embedding is 'OpenAI text-embedding-3-small (1536 dims) for semantic search and clustering';
 comment on column public.themes.embedding is 'OpenAI text-embedding-3-small (1536 dims) for theme consolidation and similarity';
@@ -310,3 +414,5 @@ comment on function public.find_duplicate_themes is 'Find duplicate/similar them
 comment on function public.find_person_facet_clusters is 'Find clusters of similar person facets for semantic segment grouping (e.g., "Product Manager" + "PM" + "Product Lead")';
 comment on function public.find_themes_by_person_facet is 'Find themes relevant to people with a specific facet using semantic matching on person_facet embeddings';
 comment on function public.search_themes_semantic is 'Search themes by text query using semantic similarity (placeholder until text-to-embedding API is implemented)';
+comment on function public.find_evidence_facet_clusters is 'Find clusters of similar evidence facets across all kinds for theme generation and duplicate detection';
+comment on function public.get_evidence_cluster is 'Get all evidence facets similar to a seed facet, forming a thematic cluster across different evidence kinds';

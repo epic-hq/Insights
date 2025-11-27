@@ -32,7 +32,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	const [sorting, setSorting] = useState<SortingState>([{ id: "vote_count", desc: true }])
+	const [sorting, setSorting] = useState<SortingState>([{ id: "evidence_count", desc: true }])
 	const [columnFilters, setColumnFilters] = useState<any[]>([])
 
 	const columns = useMemo<ColumnDef<Insight>[]>(
@@ -59,6 +59,47 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				},
 			},
 			{
+				id: "category",
+				accessorFn: (row) => (row as any).category || "—",
+				header: () => "Category",
+				cell: (cell: CellContext<Insight, unknown>) => {
+					const value = cell.getValue() as string
+					return value && value !== "—" ? (
+						<Badge variant="secondary" className="text-xs">{value}</Badge>
+					) : (
+						<span className="text-muted-foreground/60">—</span>
+					)
+				},
+			},
+			{
+				id: "pain",
+				accessorFn: (row) => (row as any).pain || "—",
+				header: () => "Pain",
+				filterFn: "includesString",
+				cell: (cell: CellContext<Insight, unknown>) => {
+					const value = cell.getValue() as string
+					return value && value !== "—" ? (
+						<div className="max-w-xs truncate text-muted-foreground text-sm">{value}</div>
+					) : (
+						<span className="text-muted-foreground/60">—</span>
+					)
+				},
+			},
+			{
+				id: "jtbd",
+				accessorFn: (row) => (row as any).jtbd || "—",
+				header: () => "JTBD",
+				filterFn: "includesString",
+				cell: (cell: CellContext<Insight, unknown>) => {
+					const value = cell.getValue() as string
+					return value && value !== "—" ? (
+						<div className="max-w-xs truncate text-muted-foreground text-sm">{value}</div>
+					) : (
+						<span className="text-muted-foreground/60">—</span>
+					)
+				},
+			},
+			{
 				id: "personas",
 				header: () => "Personas",
 				accessorFn: (row: any) =>
@@ -78,6 +119,22 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 							))}
 						</div>
 					) : null
+				},
+			},
+			{
+				accessorFn: (row: any) => row.evidence_count ?? 0,
+				id: "evidence_count",
+				header: () => "Evidence",
+				cell: (cell: CellContext<Insight, unknown>) => {
+					const count = cell.getValue() as number
+					const insightId = cell.row.original.id
+					return count > 0 ? (
+						<Link to={routes.evidence.index() + `?theme_id=${insightId}`} className="hover:underline">
+							<span className="font-semibold text-sm">{count}</span>
+						</Link>
+					) : (
+						<span className="text-muted-foreground text-sm">0</span>
+					)
 				},
 			},
 			{

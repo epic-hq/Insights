@@ -1,7 +1,7 @@
-import { Columns3, Grid3X3, List, Search } from "lucide-react"
+import { Columns3, Grid3X3, List, Search, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
-import { Link, useLoaderData, useParams } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -217,11 +217,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 	}
 
-	return { themes: enriched, matrixData, insights }
+	// Count themes missing metadata
+	const themesNeedingEnrichment = enriched.filter(
+		(t: any) => !t.pain || !t.jtbd || !t.category
+	).length
+
+	return { themes: enriched, matrixData, insights, themesNeedingEnrichment }
 }
 
 export default function ThemesIndex() {
-	const { themes, matrixData, insights } = useLoaderData<typeof loader>()
+	const { themes, matrixData, insights, themesNeedingEnrichment } = useLoaderData<typeof loader>()
 	const params = useParams()
 	const [viewMode, setViewMode] = useState<"table" | "cards">("table")
 	const [searchQuery, setSearchQuery] = useState("")
@@ -285,14 +290,17 @@ export default function ThemesIndex() {
 				<div>
 					<h1 className="font-semibold text-3xl text-foreground">Insight Themes</h1>
 				</div>
-				<div className="relative w-full max-w-md">
-					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
-					<Input
-						className="pl-9"
-						placeholder="Search themes by name, statement, personas…"
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-					/>
+				<div className="flex items-center gap-3">
+					{themesNeedingEnrichment > 0 && <EnrichThemesButton count={themesNeedingEnrichment} projectId={params.projectId!} accountId={params.accountId!} />}
+					<div className="relative w-full max-w-md">
+						<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+						<Input
+							className="pl-9"
+							placeholder="Search themes by name, statement, personas…"
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+						/>
+					</div>
 				</div>
 			</div>
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -344,5 +352,22 @@ export default function ThemesIndex() {
 				</div>
 			)}
 		</PageContainer>
+	)
+}
+
+function EnrichThemesButton({ count, projectId, accountId }: { count: number; projectId: string; accountId: string }) {
+	const fetcher = useFetcher()
+	const isEnriching = fetcher.state !== "idle"
+
+	return (
+		<fetcher.Form method="post" action="/api/enrich-themes">
+			<input type="hidden" name="project_id" value={projectId} />
+			<input type="hidden" name="account_id" value={accountId} />
+			<input type="hidden" name="max_themes" value="50" />
+			<Button type="submit" variant="outline" size="sm" className="gap-2" disabled={isEnriching}>
+				<Sparkles className="h-4 w-4" />
+				{isEnriching ? "Enriching..." : `Enrich ${count} themes`}
+			</Button>
+		</fetcher.Form>
 	)
 }

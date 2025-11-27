@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
   accounts: {
     Tables: {
       account_user: {
@@ -440,6 +435,20 @@ export type Database = {
             foreignKeyName: "actions_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
             referencedRelation: "themes"
             referencedColumns: ["id"]
           },
@@ -448,6 +457,20 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
             referencedColumns: ["id"]
           },
           {
@@ -724,7 +747,21 @@ export type Database = {
             foreignKeyName: "comments_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
-            referencedRelation: "insights"
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
         ]
@@ -1469,6 +1506,20 @@ export type Database = {
             foreignKeyName: "insight_tags_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insight_tags_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insight_tags_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
             referencedRelation: "themes"
             referencedColumns: ["id"]
           },
@@ -1577,20 +1628,6 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "insights_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "insights_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "interviews"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "insights_project_id_fkey"
             columns: ["project_id"]
@@ -2032,414 +2069,6 @@ export type Database = {
           },
         ]
       }
-      mastra_ai_spans: {
-        Row: {
-          attributes: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          endedAt: string | null
-          endedAtZ: string | null
-          error: Json | null
-          input: Json | null
-          isEvent: boolean
-          links: Json | null
-          metadata: Json | null
-          name: string
-          output: Json | null
-          parentSpanId: string | null
-          scope: Json | null
-          spanId: string
-          spanType: string
-          startedAt: string
-          startedAtZ: string | null
-          traceId: string
-          updatedAt: string | null
-          updatedAtZ: string | null
-        }
-        Insert: {
-          attributes?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          endedAt?: string | null
-          endedAtZ?: string | null
-          error?: Json | null
-          input?: Json | null
-          isEvent: boolean
-          links?: Json | null
-          metadata?: Json | null
-          name: string
-          output?: Json | null
-          parentSpanId?: string | null
-          scope?: Json | null
-          spanId: string
-          spanType: string
-          startedAt: string
-          startedAtZ?: string | null
-          traceId: string
-          updatedAt?: string | null
-          updatedAtZ?: string | null
-        }
-        Update: {
-          attributes?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          endedAt?: string | null
-          endedAtZ?: string | null
-          error?: Json | null
-          input?: Json | null
-          isEvent?: boolean
-          links?: Json | null
-          metadata?: Json | null
-          name?: string
-          output?: Json | null
-          parentSpanId?: string | null
-          scope?: Json | null
-          spanId?: string
-          spanType?: string
-          startedAt?: string
-          startedAtZ?: string | null
-          traceId?: string
-          updatedAt?: string | null
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_evals: {
-        Row: {
-          agent_name: string
-          created_at: string
-          created_atZ: string | null
-          createdAt: string | null
-          createdAtZ: string | null
-          global_run_id: string
-          input: string
-          instructions: string
-          metric_name: string
-          output: string
-          result: Json
-          run_id: string
-          test_info: Json | null
-        }
-        Insert: {
-          agent_name: string
-          created_at: string
-          created_atZ?: string | null
-          createdAt?: string | null
-          createdAtZ?: string | null
-          global_run_id: string
-          input: string
-          instructions: string
-          metric_name: string
-          output: string
-          result: Json
-          run_id: string
-          test_info?: Json | null
-        }
-        Update: {
-          agent_name?: string
-          created_at?: string
-          created_atZ?: string | null
-          createdAt?: string | null
-          createdAtZ?: string | null
-          global_run_id?: string
-          input?: string
-          instructions?: string
-          metric_name?: string
-          output?: string
-          result?: Json
-          run_id?: string
-          test_info?: Json | null
-        }
-        Relationships: []
-      }
-      mastra_messages: {
-        Row: {
-          content: string
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          resourceId: string | null
-          role: string
-          thread_id: string
-          type: string
-        }
-        Insert: {
-          content: string
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          resourceId?: string | null
-          role: string
-          thread_id: string
-          type: string
-        }
-        Update: {
-          content?: string
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          resourceId?: string | null
-          role?: string
-          thread_id?: string
-          type?: string
-        }
-        Relationships: []
-      }
-      mastra_resources: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          metadata: Json | null
-          updatedAt: string
-          updatedAtZ: string | null
-          workingMemory: string | null
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          metadata?: Json | null
-          updatedAt: string
-          updatedAtZ?: string | null
-          workingMemory?: string | null
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          metadata?: Json | null
-          updatedAt?: string
-          updatedAtZ?: string | null
-          workingMemory?: string | null
-        }
-        Relationships: []
-      }
-      mastra_scorers: {
-        Row: {
-          additionalContext: Json | null
-          analyzePrompt: string | null
-          analyzeStepResult: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          entity: Json | null
-          entityId: string | null
-          entityType: string | null
-          extractPrompt: string | null
-          extractStepResult: Json | null
-          generateReasonPrompt: string | null
-          generateScorePrompt: string | null
-          id: string
-          input: Json
-          metadata: Json | null
-          output: Json
-          preprocessPrompt: string | null
-          preprocessStepResult: Json | null
-          reason: string | null
-          reasonPrompt: string | null
-          resourceId: string | null
-          runId: string
-          runtimeContext: Json | null
-          score: number
-          scorer: Json
-          scorerId: string
-          source: string
-          spanId: string | null
-          threadId: string | null
-          traceId: string | null
-          updatedAt: string
-          updatedAtZ: string | null
-        }
-        Insert: {
-          additionalContext?: Json | null
-          analyzePrompt?: string | null
-          analyzeStepResult?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          entity?: Json | null
-          entityId?: string | null
-          entityType?: string | null
-          extractPrompt?: string | null
-          extractStepResult?: Json | null
-          generateReasonPrompt?: string | null
-          generateScorePrompt?: string | null
-          id: string
-          input: Json
-          metadata?: Json | null
-          output: Json
-          preprocessPrompt?: string | null
-          preprocessStepResult?: Json | null
-          reason?: string | null
-          reasonPrompt?: string | null
-          resourceId?: string | null
-          runId: string
-          runtimeContext?: Json | null
-          score: number
-          scorer: Json
-          scorerId: string
-          source: string
-          spanId?: string | null
-          threadId?: string | null
-          traceId?: string | null
-          updatedAt: string
-          updatedAtZ?: string | null
-        }
-        Update: {
-          additionalContext?: Json | null
-          analyzePrompt?: string | null
-          analyzeStepResult?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          entity?: Json | null
-          entityId?: string | null
-          entityType?: string | null
-          extractPrompt?: string | null
-          extractStepResult?: Json | null
-          generateReasonPrompt?: string | null
-          generateScorePrompt?: string | null
-          id?: string
-          input?: Json
-          metadata?: Json | null
-          output?: Json
-          preprocessPrompt?: string | null
-          preprocessStepResult?: Json | null
-          reason?: string | null
-          reasonPrompt?: string | null
-          resourceId?: string | null
-          runId?: string
-          runtimeContext?: Json | null
-          score?: number
-          scorer?: Json
-          scorerId?: string
-          source?: string
-          spanId?: string | null
-          threadId?: string | null
-          traceId?: string | null
-          updatedAt?: string
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_threads: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          metadata: string | null
-          resourceId: string
-          title: string
-          updatedAt: string
-          updatedAtZ: string | null
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          metadata?: string | null
-          resourceId: string
-          title: string
-          updatedAt: string
-          updatedAtZ?: string | null
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          metadata?: string | null
-          resourceId?: string
-          title?: string
-          updatedAt?: string
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_traces: {
-        Row: {
-          attributes: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          endTime: number
-          events: Json | null
-          id: string
-          kind: number
-          links: Json | null
-          name: string
-          other: string | null
-          parentSpanId: string | null
-          scope: string
-          startTime: number
-          status: Json | null
-          traceId: string
-        }
-        Insert: {
-          attributes?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          endTime: number
-          events?: Json | null
-          id: string
-          kind: number
-          links?: Json | null
-          name: string
-          other?: string | null
-          parentSpanId?: string | null
-          scope: string
-          startTime: number
-          status?: Json | null
-          traceId: string
-        }
-        Update: {
-          attributes?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          endTime?: number
-          events?: Json | null
-          id?: string
-          kind?: number
-          links?: Json | null
-          name?: string
-          other?: string | null
-          parentSpanId?: string | null
-          scope?: string
-          startTime?: number
-          status?: Json | null
-          traceId?: string
-        }
-        Relationships: []
-      }
-      mastra_workflow_snapshot: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          resourceId: string | null
-          run_id: string
-          snapshot: string
-          updatedAt: string
-          updatedAtZ: string | null
-          workflow_name: string
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          resourceId?: string | null
-          run_id: string
-          snapshot: string
-          updatedAt: string
-          updatedAtZ?: string | null
-          workflow_name: string
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          resourceId?: string | null
-          run_id?: string
-          snapshot?: string
-          updatedAt?: string
-          updatedAtZ?: string | null
-          workflow_name?: string
-        }
-        Relationships: []
-      }
       opportunities: {
         Row: {
           account_id: string
@@ -2569,6 +2198,20 @@ export type Database = {
           weight?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "opportunity_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "opportunity_insights_insight_id_fkey"
             columns: ["insight_id"]
@@ -3260,6 +2903,20 @@ export type Database = {
           relevance_score?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "persona_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "persona_insights_insight_id_fkey"
             columns: ["insight_id"]
@@ -3972,6 +3629,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          project_settings: Json
           slug: string | null
           status: string | null
           target_segments: Json | null
@@ -3984,6 +3642,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          project_settings?: Json
           slug?: string | null
           status?: string | null
           target_segments?: Json | null
@@ -3996,6 +3655,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          project_settings?: Json
           slug?: string | null
           status?: string | null
           target_segments?: Json | null
@@ -4750,6 +4410,20 @@ export type Database = {
             foreignKeyName: "theme_evidence_theme_id_fkey"
             columns: ["theme_id"]
             isOneToOne: false
+            referencedRelation: "insights_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_evidence_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_evidence_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
             referencedRelation: "themes"
             referencedColumns: ["id"]
           },
@@ -4759,16 +4433,32 @@ export type Database = {
         Row: {
           account_id: string
           anti_examples: string[] | null
+          category: string | null
+          confidence: string | null
+          contradictions: string | null
           created_at: string
           created_by: string | null
+          desired_outcome: string | null
+          details: string | null
           embedding: string | null
           embedding_generated_at: string | null
           embedding_model: string | null
+          emotional_response: string | null
+          evidence: string | null
           exclusion_criteria: string | null
           id: string
+          impact: number | null
           inclusion_criteria: string | null
+          interview_id: string | null
+          journey_stage: string | null
+          jtbd: string | null
+          motivation: string | null
           name: string
+          novelty: number | null
+          opportunity_ideas: string[] | null
+          pain: string | null
           project_id: string | null
+          related_tags: string[] | null
           statement: string | null
           synonyms: string[] | null
           updated_at: string
@@ -4777,16 +4467,32 @@ export type Database = {
         Insert: {
           account_id: string
           anti_examples?: string[] | null
+          category?: string | null
+          confidence?: string | null
+          contradictions?: string | null
           created_at?: string
           created_by?: string | null
+          desired_outcome?: string | null
+          details?: string | null
           embedding?: string | null
           embedding_generated_at?: string | null
           embedding_model?: string | null
+          emotional_response?: string | null
+          evidence?: string | null
           exclusion_criteria?: string | null
           id?: string
+          impact?: number | null
           inclusion_criteria?: string | null
+          interview_id?: string | null
+          journey_stage?: string | null
+          jtbd?: string | null
+          motivation?: string | null
           name: string
+          novelty?: number | null
+          opportunity_ideas?: string[] | null
+          pain?: string | null
           project_id?: string | null
+          related_tags?: string[] | null
           statement?: string | null
           synonyms?: string[] | null
           updated_at?: string
@@ -4795,16 +4501,32 @@ export type Database = {
         Update: {
           account_id?: string
           anti_examples?: string[] | null
+          category?: string | null
+          confidence?: string | null
+          contradictions?: string | null
           created_at?: string
           created_by?: string | null
+          desired_outcome?: string | null
+          details?: string | null
           embedding?: string | null
           embedding_generated_at?: string | null
           embedding_model?: string | null
+          emotional_response?: string | null
+          evidence?: string | null
           exclusion_criteria?: string | null
           id?: string
+          impact?: number | null
           inclusion_criteria?: string | null
+          interview_id?: string | null
+          journey_stage?: string | null
+          jtbd?: string | null
+          motivation?: string | null
           name?: string
+          novelty?: number | null
+          opportunity_ideas?: string[] | null
+          pain?: string | null
           project_id?: string | null
+          related_tags?: string[] | null
           statement?: string | null
           synonyms?: string[] | null
           updated_at?: string
@@ -5029,6 +4751,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           duration_sec: number | null
+          file_extension: string | null
           high_impact_themes: string[] | null
           id: string | null
           interview_date: string | null
@@ -5038,9 +4761,11 @@ export type Database = {
           observations_and_notes: string | null
           open_questions_and_next_steps: string | null
           participant_pseudonym: string | null
+          person_id: string | null
           project_id: string | null
           relevant_answers: string[] | null
           segment: string | null
+          source_type: string | null
           status: Database["public"]["Enums"]["interview_status"] | null
           title: string | null
           transcript: string | null
@@ -5054,6 +4779,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           duration_sec?: number | null
+          file_extension?: string | null
           high_impact_themes?: string[] | null
           id?: string | null
           interview_date?: string | null
@@ -5063,9 +4789,11 @@ export type Database = {
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
+          person_id?: string | null
           project_id?: string | null
           relevant_answers?: string[] | null
           segment?: string | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"] | null
           title?: string | null
           transcript?: string | null
@@ -5079,6 +4807,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           duration_sec?: number | null
+          file_extension?: string | null
           high_impact_themes?: string[] | null
           id?: string | null
           interview_date?: string | null
@@ -5088,9 +4817,11 @@ export type Database = {
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
+          person_id?: string | null
           project_id?: string | null
           relevant_answers?: string[] | null
           segment?: string | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"] | null
           title?: string | null
           transcript?: string | null
@@ -5099,6 +4830,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "interviews_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interviews_project_id_fkey"
             columns: ["project_id"]
@@ -5123,6 +4861,165 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "decision_questions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insights_current: {
+        Row: {
+          account_id: string | null
+          anti_examples: string[] | null
+          category: string | null
+          confidence: string | null
+          contradictions: string | null
+          created_at: string | null
+          created_by: string | null
+          desired_outcome: string | null
+          details: string | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
+          emotional_response: string | null
+          evidence: string | null
+          exclusion_criteria: string | null
+          id: string | null
+          impact: number | null
+          inclusion_criteria: string | null
+          interview_id: string | null
+          journey_stage: string | null
+          jtbd: string | null
+          motivation: string | null
+          name: string | null
+          novelty: number | null
+          opportunity_ideas: string[] | null
+          pain: string | null
+          project_id: string | null
+          related_tags: string[] | null
+          statement: string | null
+          synonyms: string[] | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          anti_examples?: string[] | null
+          category?: string | null
+          confidence?: string | null
+          contradictions?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          desired_outcome?: string | null
+          details?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
+          emotional_response?: string | null
+          evidence?: string | null
+          exclusion_criteria?: string | null
+          id?: string | null
+          impact?: number | null
+          inclusion_criteria?: string | null
+          interview_id?: string | null
+          journey_stage?: string | null
+          jtbd?: string | null
+          motivation?: string | null
+          name?: string | null
+          novelty?: number | null
+          opportunity_ideas?: string[] | null
+          pain?: string | null
+          project_id?: string | null
+          related_tags?: string[] | null
+          statement?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          anti_examples?: string[] | null
+          category?: string | null
+          confidence?: string | null
+          contradictions?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          desired_outcome?: string | null
+          details?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
+          emotional_response?: string | null
+          evidence?: string | null
+          exclusion_criteria?: string | null
+          id?: string | null
+          impact?: number | null
+          inclusion_criteria?: string | null
+          interview_id?: string | null
+          journey_stage?: string | null
+          jtbd?: string | null
+          motivation?: string | null
+          name?: string | null
+          novelty?: number | null
+          opportunity_ideas?: string[] | null
+          pain?: string | null
+          project_id?: string | null
+          related_tags?: string[] | null
+          statement?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "themes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insights_with_priority: {
+        Row: {
+          account_id: string | null
+          anti_examples: string[] | null
+          category: string | null
+          confidence: string | null
+          contradictions: string | null
+          created_at: string | null
+          created_by: string | null
+          desired_outcome: string | null
+          details: string | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
+          emotional_response: string | null
+          evidence: string | null
+          exclusion_criteria: string | null
+          id: string | null
+          impact: number | null
+          inclusion_criteria: string | null
+          interview_id: string | null
+          journey_stage: string | null
+          jtbd: string | null
+          motivation: string | null
+          name: string | null
+          novelty: number | null
+          opportunity_ideas: string[] | null
+          pain: string | null
+          priority: number | null
+          project_id: string | null
+          related_tags: string[] | null
+          statement: string | null
+          synonyms: string[] | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "themes_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -5319,10 +5216,6 @@ export type Database = {
         Returns: Json
       }
       delete_invitation: { Args: { invitation_id: string }; Returns: undefined }
-      delete_themes_for_interview: {
-        Args: { p_interview_id: string }
-        Returns: undefined
-      }
       find_duplicate_themes: {
         Args: { project_id_param: string; similarity_threshold?: number }
         Returns: {
@@ -5445,19 +5338,6 @@ export type Database = {
           total_votes: number
           upvotes: number
         }[]
-      }
-      insert_theme: {
-        Args: {
-          p_account_id: string
-          p_created_by?: string
-          p_inclusion_criteria?: string
-          p_interview_id: string
-          p_name: string
-          p_project_id: string
-          p_statement?: string
-          p_updated_by?: string
-        }
-        Returns: string
       }
       invoke_edge_function: {
         Args: { func_name: string; payload: Json }
@@ -5726,3 +5606,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -196,7 +196,7 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 					{comments.length > 0 ? (
 						<div className="max-h-64 space-y-2 overflow-y-auto pr-1">
 							{comments.map((comment) => (
-								<div key={comment.id} className="rounded-md bg-gray-50 p-3">
+								<div key={comment.id} className="rounded-md bg-background p-3">
 									<div className="mb-1 flex items-start justify-between">
 										<span className="flex items-center gap-2 font-medium text-foreground/60 text-xs">
 											{comment.created_by_ai ? (

@@ -31,7 +31,8 @@ export const getInsights = async ({
 			motivation,
 			updated_at,
 			project_id,
-			created_at
+			created_at,
+			theme_evidence(count)
 		`)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
@@ -119,10 +120,11 @@ export const getInsights = async ({
 		})
 	}
 
-	const transformedData = data?.map((insight) => ({
+	const transformedData = data?.map((insight: any) => ({
 		...insight,
 		priority: priorityMap.get(insight.id) ?? 0,
 		vote_count: voteCountMap.get(insight.id) ?? 0,
+		evidence_count: Array.isArray(insight.theme_evidence) ? insight.theme_evidence[0]?.count ?? 0 : 0,
 		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
 		interviews: (themeInterviewsMap.get(insight.id) || [])
 			.map((id) => interviewsMap.get(id))
@@ -179,7 +181,8 @@ export const getInsightById = async ({
 			confidence,
 			updated_at,
 			project_id,
-			created_at
+			created_at,
+			theme_evidence(count)
 		`)
 		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
@@ -209,9 +212,68 @@ export const getInsightById = async ({
 		supabase.from("insights_with_priority").select("id, priority").eq("id", id).single(),
 	])
 
+	// Fetch people and orgs linked to this theme via evidence
+	// 1. Get evidence IDs for this theme
+	const { data: themeEvidence } = await supabase
+		.from("theme_evidence")
+		.select("evidence_id")
+		.eq("theme_id", id)
+		.eq("project_id", projectId)
+
+	const evidenceIds = themeEvidence?.map((te) => te.evidence_id).filter(Boolean) ?? []
+
+	let peopleData: Array<{ id: string; name: string | null; role: string | null; organization?: { id: string; name: string | null } | null }> = []
+	let orgCounts: Map<string, { id: string; name: string; count: number }> = new Map()
+
+	if (evidenceIds.length > 0) {
+		// 2. Get people linked to this evidence
+		const { data: evidencePeople } = await supabase
+			.from("evidence_people")
+			.select("person_id, role, people:person_id!inner(id, name, organization_id, organizations:organization_id(id, name))")
+			.eq("project_id", projectId)
+			.in("evidence_id", evidenceIds)
+
+		if (evidencePeople) {
+			// Deduplicate people (same person may appear in multiple evidence)
+			const uniquePeople = new Map<string, any>()
+			for (const ep of evidencePeople as any[]) {
+				if (ep.people && !uniquePeople.has(ep.people.id)) {
+					uniquePeople.set(ep.people.id, {
+						id: ep.people.id,
+						name: ep.people.name,
+						role: ep.role,
+						organization: ep.people.organizations ? {
+							id: ep.people.organizations.id,
+							name: ep.people.organizations.name
+						} : null
+					})
+
+					// Count orgs
+					if (ep.people.organizations) {
+						const orgId = ep.people.organizations.id
+						const existing = orgCounts.get(orgId)
+						if (existing) {
+							existing.count++
+						} else {
+							orgCounts.set(orgId, {
+								id: orgId,
+								name: ep.people.organizations.name,
+								count: 1
+							})
+						}
+					}
+				}
+			}
+			peopleData = Array.from(uniquePeople.values())
+		}
+	}
+
 	return {
 		...insightData,
 		priority: priorityResult?.data?.priority ?? 0,
+		evidence_count: Array.isArray((insightData as any).theme_evidence)
+			? (insightData as any).theme_evidence[0]?.count ?? 0
+			: 0,
 		persona_insights: personasResult?.data?.map((row) => ({ personas: row.personas })) ?? [],
 		insight_tags:
 			tagsResult?.data?.map((row) => ({
@@ -219,6 +281,8 @@ export const getInsightById = async ({
 				term: row.tags?.term,
 				definition: row.tags?.definition,
 			})) ?? [],
+		people: peopleData,
+		organizations: Array.from(orgCounts.values()).sort((a, b) => b.count - a.count),
 	}
 }
 

@@ -25,11 +25,32 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 		<>
 			<Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setSelected(insight)}>
 				<CardContent className="p-4">
-					<h3 className="mb-2 font-semibold text-foreground">{insight.name || "Untitled Theme"}</h3>
+					<div className="mb-2 flex items-start justify-between gap-2">
+						<h3 className="font-semibold text-foreground">{insight.name || "Untitled Theme"}</h3>
+						{(insight as any).evidence_count > 0 && (
+							<Badge variant="outline" className="gap-1 text-xs">
+								<Quote className="h-3 w-3" />
+								{(insight as any).evidence_count}
+							</Badge>
+						)}
+					</div>
+
+					<div className="mb-3 flex flex-wrap gap-1.5">
+						{(insight as any).category && <Badge variant="secondary" className="text-xs">{(insight as any).category}</Badge>}
+						{(insight as any).emotional_response && <EmotionBadge emotion={(insight as any).emotional_response} size="sm" />}
+					</div>
+
 					{(insight as any).statement && (
-						<p className="mb-4 line-clamp-4 text-muted-foreground text-sm">{(insight as any).statement}</p>
+						<p className="mb-3 line-clamp-3 text-muted-foreground text-sm">{(insight as any).statement}</p>
 					)}
-					<div className="flex flex-wrap items-center justify-between">
+
+					{(insight as any).pain && (
+						<p className="mb-3 line-clamp-2 text-muted-foreground text-xs italic">
+							Pain: {(insight as any).pain}
+						</p>
+					)}
+
+					<div className="flex flex-wrap items-center justify-between gap-2">
 						<div className="flex items-center space-x-2">
 							{insight.persona_insights && insight.persona_insights.length > 0 && (
 								<div className="flex flex-wrap gap-1">
@@ -38,6 +59,11 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 											{pi.personas?.name}
 										</Badge>
 									))}
+									{insight.persona_insights.length > 2 && (
+										<Badge variant="outline" className="text-xs">
+											+{insight.persona_insights.length - 2}
+										</Badge>
+									)}
 								</div>
 							)}
 						</div>
@@ -51,14 +77,52 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 						<DialogHeader className="space-y-3 pb-4">
 							<DialogTitle className="space-y-2">
 								<div className="border-b pb-3 font-semibold text-lg">{selected.name || "Untitled Theme"}</div>
+								<div className="flex flex-wrap gap-2">
+									{(selected as any).category && <Badge variant="secondary">{(selected as any).category}</Badge>}
+									{(selected as any).emotional_response && <EmotionBadge emotion={(selected as any).emotional_response} />}
+									{(selected as any).evidence_count > 0 && (
+										<Badge variant="outline" className="gap-1.5">
+											<Quote className="h-3.5 w-3.5" />
+											{(selected as any).evidence_count} evidence
+										</Badge>
+									)}
+								</div>
 							</DialogTitle>
 						</DialogHeader>
 
 						<div className="max-h-[60vh] space-y-6 overflow-y-auto pr-2">
+							{(selected as any).pain && (
+								<div className="space-y-2">
+									<h4 className="font-medium text-muted-foreground text-sm">Pain Point</h4>
+									<p className="text-foreground text-sm leading-relaxed">{(selected as any).pain}</p>
+								</div>
+							)}
+
+							{(selected as any).jtbd && (
+								<div className="space-y-2">
+									<h4 className="font-medium text-muted-foreground text-sm">Job To Be Done</h4>
+									<p className="text-foreground text-sm leading-relaxed">{(selected as any).jtbd}</p>
+								</div>
+							)}
+
+							{(selected as any).desired_outcome && (
+								<div className="space-y-2">
+									<h4 className="font-medium text-muted-foreground text-sm">Desired Outcome</h4>
+									<p className="text-foreground text-sm leading-relaxed">{(selected as any).desired_outcome}</p>
+								</div>
+							)}
+
+							{(selected as any).motivation && (
+								<div className="space-y-2">
+									<h4 className="font-medium text-muted-foreground text-sm">Motivation</h4>
+									<p className="text-foreground text-sm leading-relaxed">{(selected as any).motivation}</p>
+								</div>
+							)}
+
 							{(selected as any).statement && (
 								<div className="space-y-2">
-									<h4 className="font-medium text-foreground text-sm">Statement</h4>
-									<p className="text-muted-foreground text-sm leading-relaxed">{(selected as any).statement}</p>
+									<h4 className="font-medium text-muted-foreground text-sm">Summary</h4>
+									<p className="text-foreground text-sm leading-relaxed">{(selected as any).statement}</p>
 								</div>
 							)}
 

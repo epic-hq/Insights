@@ -178,6 +178,7 @@ const routes = [
 	route("api.reanalyze-themes", "./routes/api.reanalyze-themes.tsx"),
 	route("api/cancel-analysis", "./routes/api.cancel-analysis.tsx"),
 	route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
+	route("api/enrich-themes", "./routes/api.enrich-themes.tsx"),
 
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),

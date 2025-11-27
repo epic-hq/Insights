@@ -94,6 +94,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// Check for research question filter
 	const url = new URL(request.url)
 	const rqId = url.searchParams.get("rq_id")
+	const themeId = url.searchParams.get("theme_id")
 
 	// Sort and filter params
 	const sortBy = url.searchParams.get("sort_by") || "created_at"
@@ -166,6 +167,30 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		if (evidenceIdFilter.length === 0) {
 			return { evidence: [], filteredByRQ: rqId, filteredByPerson: filterPersonId }
+		}
+	}
+
+	// If filtering by theme, get evidence IDs from theme_evidence
+	if (themeId) {
+		const { data: themeEvidence, error: themeErr } = await supabase
+			.from("theme_evidence")
+			.select("evidence_id")
+			.eq("project_id", projectId)
+			.eq("theme_id", themeId)
+
+		if (themeErr) throw new Error(`Failed to load evidence for theme: ${themeErr.message}`)
+
+		const themeEvidenceIds = themeEvidence?.map((te) => te.evidence_id).filter((id): id is string => Boolean(id)) || []
+
+		// Intersect with existing filters if present
+		if (evidenceIdFilter) {
+			evidenceIdFilter = evidenceIdFilter.filter((id) => themeEvidenceIds.includes(id))
+		} else {
+			evidenceIdFilter = themeEvidenceIds
+		}
+
+		if (evidenceIdFilter.length === 0) {
+			return { evidence: [], filteredByTheme: themeId, filteredByRQ: rqId, filteredByPerson: filterPersonId }
 		}
 	}
 
