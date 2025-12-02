@@ -177,9 +177,12 @@ export async function buildInitialSalesLensExtraction(
 	}
 
 	const evidencePointers = (evidenceRecords ?? []).map((record) => {
-		const anchors = (record.anchors as Record<string, unknown>) || {}
-		const start = typeof anchors.start_ms === "number" ? anchors.start_ms : null
-		const end = typeof anchors.end_ms === "number" ? anchors.end_ms : null
+		// anchors is an array of anchor objects, not a single object
+		const anchorsArray = Array.isArray(record.anchors) ? record.anchors : []
+		// Get the first media anchor with timing data
+		const firstAnchor = anchorsArray[0] as { start_ms?: number; end_ms?: number } | undefined
+		const start = typeof firstAnchor?.start_ms === "number" ? firstAnchor.start_ms : null
+		const end = typeof firstAnchor?.end_ms === "number" ? firstAnchor.end_ms : null
 		return {
 			evidenceId: record.id,
 			startMs: start,

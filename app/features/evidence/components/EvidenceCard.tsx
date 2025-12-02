@@ -1,9 +1,10 @@
 import { motion } from "framer-motion"
-import { Clock, Play } from "lucide-react"
+import { Clock, Minus, Play, Plus } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
+import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
 import { generateMediaUrl, getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client"
@@ -142,7 +143,15 @@ function EvidenceCard({
 		return isMediaType || hasTime || hasUrl
 	})
 
-	const hasMediaReplay = mediaAnchors.length > 0
+	// If no media anchors but interview has media, create a fallback anchor
+	const effectiveMediaAnchors =
+		mediaAnchors.length > 0
+			? mediaAnchors
+			: fallbackMediaUrl
+				? [{ type: "media", start_ms: 0, start_seconds: 0 } as MediaAnchor]
+				: []
+
+	const hasMediaReplay = effectiveMediaAnchors.length > 0
 
 	return (
 		<motion.div
@@ -160,17 +169,35 @@ function EvidenceCard({
 
 			{/* Header */}
 			<div className="flex items-start justify-between px-4 pt-3">
+				<span className="text-muted-foreground italic">Gist</span>
 				<h3 className="font-semibold text-base text-foreground leading-5">{gist}</h3>
-				<Badge variant="outline" className="text-xs capitalize">
-					{supportLabel}
-				</Badge>
+				<div className="flex items-center gap-1">
+					{evidence.support?.toLowerCase() === "supports" && <Plus className="h-4 w-4 text-emerald-600" />}
+					{evidence.support?.toLowerCase() === "opposes" && <Minus className="h-4 w-4 text-destructive" />}
+				</div>
 			</div>
 
-			{/* Subheader */}
-			<div className="mt-1 px-4 text-muted-foreground text-xs">
-				{evidence.topic && <span>{evidence.topic}</span>}
-				{speakerLabel && evidence.topic && <span className="mx-1">•</span>}
-				{speakerLabel && <span>{speakerLabel}</span>}
+			{/* Subheader - People first, then topic */}
+			<div className="mt-1 px-4 text-foreground text-sm">
+				{primarySpeaker && (
+					<MiniPersonCard
+						person={{
+							id: primarySpeaker.id,
+							name: primarySpeaker.name,
+							image_url: null,
+							people_personas: primarySpeaker.personas?.map((p) => ({
+								persona_id: p.id,
+								personas: {
+									id: p.id,
+									name: p.name,
+									color_hex: "#6366f1",
+								},
+							})),
+						}}
+					/>
+				)}
+				{/* {speakerLabel && evidence.topic} */}
+				{/* {evidence.topic && <span>{evidence.topic}</span>} */}
 			</div>
 
 			{/* Quote */}
@@ -184,9 +211,9 @@ function EvidenceCard({
 			)}
 
 			{/* Media anchor - only show the first valid one */}
-			{hasMediaReplay && mediaAnchors.length > 0 && (
+			{hasMediaReplay && effectiveMediaAnchors.length > 0 && (
 				<MediaAnchorPlayer
-					anchor={mediaAnchors[0] as MediaAnchor}
+					anchor={effectiveMediaAnchors[0] as MediaAnchor}
 					fallbackMediaUrl={fallbackMediaUrl}
 					variant={variant}
 				/>
@@ -194,27 +221,35 @@ function EvidenceCard({
 
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
+				<span>Facets:</span>
 				{(evidence.facets ?? []).map((facet, i) => (
 					<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
 						{facet.label}
 					</Badge>
 				))}
-				{evidence.method && (
-					<Badge variant="outline" className="text-xs">
-						{evidence.method}
-					</Badge>
-				)}
+				{evidence.journey_stage && <span>Journey Stage:</span>}
 				{evidence.journey_stage && (
 					<Badge variant="outline" className="text-xs">
 						{evidence.journey_stage}
 					</Badge>
 				)}
-				{personaBadges.map((p) => (
+
+				{personaBadges?.length ? <span>Personas:</span> : null}
+				{personaBadges?.map((p) => (
 					<Badge key={p.id} variant="outline" className="text-xs">
 						{p.name}
 					</Badge>
 				))}
-				{createdLabel && <span className="ml-auto">{createdLabel}</span>}
+				<div className="ml-auto flex items-center gap-1">
+					{evidence.method && (
+						<span>Method:
+							<Badge variant="outline" className="text-xs">
+								{evidence.method}
+							</Badge>
+						</span>
+					)}
+					{createdLabel && <span>{createdLabel}</span>}
+				</div>
 			</div>
 
 			{/* Footer link */}
@@ -298,7 +333,7 @@ function MediaAnchorPlayer({
 	}, [anchor, fallbackMediaUrl])
 
 	const seconds = getAnchorStartSeconds(anchor)
-	const displayTitle = (anchor as any).title ?? "Replay segment"
+	const displayTitle = anchor?.chapter_title
 	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
 
 	return (

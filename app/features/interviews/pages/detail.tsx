@@ -1094,7 +1094,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const personLenses = useMemo(() => {
 		return uniqueSpeakers.map((speaker) => {
 			const filterByPerson = (items: typeof empathyMap.says) => {
-				return items.filter((item) => item.personId === speaker.id).map((item) => item.text)
+				return items.filter((item) => item.personId === speaker.id).map((item) => ({
+					text: item.text,
+					evidenceId: item.evidenceId,
+					anchors: item.anchors,
+				}))
 			}
 
 			return {
@@ -1739,6 +1743,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							onUpdateSlot={handleSlotUpdate}
 							updatingLensId={activeLensUpdateId}
 							personLenses={personLenses}
+							projectPath={projectPath}
 						/>
 					) : null}
 

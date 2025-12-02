@@ -13,27 +13,60 @@ import {
 	XCircle,
 } from "lucide-react"
 import { type ReactNode, useMemo } from "react"
+import { Link } from "react-router"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import type { InterviewLensFramework, InterviewLensView, LensSlotValue } from "~/features/lenses/types"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import { LensSlotTable } from "./CompanyTable"
 
 type CustomLensDefaults = Record<string, { summary?: string; notes?: string; highlights?: string[] }>
 
+type PersonLensItem = {
+	text: string
+	evidenceId?: string
+	anchors?: unknown
+}
+
+// Helper to extract timestamp in seconds from anchors array
+function getTimestampFromAnchors(anchors: unknown): number | null {
+	if (!Array.isArray(anchors) || anchors.length === 0) return null
+	const firstAnchor = anchors[0] as any
+	if (!firstAnchor) return null
+
+	// Try start_ms first (milliseconds)
+	if (typeof firstAnchor.start_ms === "number") {
+		return Math.floor(firstAnchor.start_ms / 1000)
+	}
+
+	// Try start_seconds
+	if (typeof firstAnchor.start_seconds === "number") {
+		return firstAnchor.start_seconds
+	}
+
+	// Try legacy start field
+	if (typeof firstAnchor.start === "number") {
+		// If > 500, assume milliseconds, otherwise seconds
+		return firstAnchor.start > 500 ? Math.floor(firstAnchor.start / 1000) : firstAnchor.start
+	}
+
+	return null
+}
+
 type PersonLens = {
 	id: string
 	name: string
 	painsAndGoals?: {
-		pains: string[]
-		gains: string[]
+		pains: PersonLensItem[]
+		gains: PersonLensItem[]
 	}
 	empathyMap?: {
-		says: string[]
-		does: string[]
-		thinks: string[]
-		feels: string[]
+		says: PersonLensItem[]
+		does: PersonLensItem[]
+		thinks: PersonLensItem[]
+		feels: PersonLensItem[]
 	}
 }
 
@@ -45,6 +78,7 @@ type SalesLensesSectionProps = {
 	onUpdateSlot?: (slotId: string, field: "summary" | "textValue", value: string) => void
 	updatingLensId?: string | null
 	personLenses?: PersonLens[]
+	projectPath: string
 }
 
 type LensHeaderConfig = {
@@ -332,7 +366,10 @@ export function SalesLensesSection({
 	onUpdateSlot,
 	updatingLensId,
 	personLenses = [],
+	projectPath,
 }: SalesLensesSectionProps) {
+	const routes = useProjectRoutes(projectPath)
+
 	const sortedFrameworks = useMemo(() => {
 		if (!lens) return []
 		return [...lens.frameworks].sort((a, b) => friendlyFrameworkOrder(a.name) - friendlyFrameworkOrder(b.name))
@@ -454,7 +491,7 @@ export function SalesLensesSection({
 				icon: painsGoalsStyle.icon,
 				colorClass: painsGoalsStyle.color,
 				backgroundClass: painsGoalsStyle.background,
-				summary: person.painsAndGoals.pains[0] || person.painsAndGoals.gains[0] || "",
+				summary: person.painsAndGoals.pains[0]?.text || person.painsAndGoals.gains[0]?.text || "",
 				notes: "",
 				highlights: [],
 				badge: null,
@@ -464,12 +501,24 @@ export function SalesLensesSection({
 							<div className="rounded-lg border border-border/50 bg-background p-3">
 								<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Pains</p>
 								<ul className="space-y-2 text-foreground text-sm">
-									{person.painsAndGoals.pains.map((pain, index) => (
-										<li key={`pain-${index}`} className="flex gap-2">
-											<span className="mt-[3px] text-destructive">•</span>
-											<span>{pain}</span>
-										</li>
-									))}
+									{person.painsAndGoals.pains.map((pain, index) => {
+										const timestamp = getTimestampFromAnchors(pain.anchors)
+										const url = pain.evidenceId
+											? `${routes.evidence.detail(pain.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+											: null
+										return (
+											<li key={`pain-${index}`} className="flex gap-2">
+												<span className="mt-[3px] text-destructive">•</span>
+												{url ? (
+													<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+														{pain.text}
+													</Link>
+												) : (
+													<span>{pain.text}</span>
+												)}
+											</li>
+										)
+									})}
 								</ul>
 							</div>
 						)}
@@ -477,12 +526,24 @@ export function SalesLensesSection({
 							<div className="rounded-lg border border-border/50 bg-background p-3">
 								<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Goals & Gains</p>
 								<ul className="space-y-2 text-foreground text-sm">
-									{person.painsAndGoals.gains.map((gain, index) => (
-										<li key={`gain-${index}`} className="flex gap-2">
-											<span className="mt-[3px] text-emerald-600">•</span>
-											<span>{gain}</span>
-										</li>
-									))}
+									{person.painsAndGoals.gains.map((gain, index) => {
+										const timestamp = getTimestampFromAnchors(gain.anchors)
+										const url = gain.evidenceId
+											? `${routes.evidence.detail(gain.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+											: null
+										return (
+											<li key={`gain-${index}`} className="flex gap-2">
+												<span className="mt-[3px] text-emerald-600">•</span>
+												{url ? (
+													<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+														{gain.text}
+													</Link>
+												) : (
+													<span>{gain.text}</span>
+												)}
+											</li>
+										)
+									})}
 								</ul>
 							</div>
 						)}
@@ -507,7 +568,7 @@ export function SalesLensesSection({
 					icon: empathyStyle.icon,
 					colorClass: empathyStyle.color,
 					backgroundClass: empathyStyle.background,
-					summary: person.empathyMap.says[0] || person.empathyMap.thinks[0] || "",
+					summary: person.empathyMap.says[0]?.text || person.empathyMap.thinks[0]?.text || "",
 					notes: "",
 					highlights: [],
 					badge: null,
@@ -517,12 +578,24 @@ export function SalesLensesSection({
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Says</p>
 									<ul className="space-y-1.5 text-foreground text-sm">
-										{person.empathyMap.says.slice(0, 4).map((item, index) => (
-											<li key={`says-${index}`} className="flex gap-2">
-												<span className="mt-[3px] text-muted-foreground">•</span>
-												<span>{item}</span>
-											</li>
-										))}
+										{person.empathyMap.says.slice(0, 4).map((item, index) => {
+											const timestamp = getTimestampFromAnchors(item.anchors)
+											const url = item.evidenceId
+												? `${routes.evidence.detail(item.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+												: null
+											return (
+												<li key={`says-${index}`} className="flex gap-2">
+													<span className="mt-[3px] text-muted-foreground">•</span>
+													{url ? (
+														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+															{item.text}
+														</Link>
+													) : (
+														<span>{item.text}</span>
+													)}
+												</li>
+											)
+										})}
 									</ul>
 								</div>
 							)}
@@ -530,12 +603,24 @@ export function SalesLensesSection({
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Does</p>
 									<ul className="space-y-1.5 text-foreground text-sm">
-										{person.empathyMap.does.slice(0, 4).map((item, index) => (
-											<li key={`does-${index}`} className="flex gap-2">
-												<span className="mt-[3px] text-muted-foreground">•</span>
-												<span>{item}</span>
-											</li>
-										))}
+										{person.empathyMap.does.slice(0, 4).map((item, index) => {
+											const timestamp = getTimestampFromAnchors(item.anchors)
+											const url = item.evidenceId
+												? `${routes.evidence.detail(item.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+												: null
+											return (
+												<li key={`does-${index}`} className="flex gap-2">
+													<span className="mt-[3px] text-muted-foreground">•</span>
+													{url ? (
+														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+															{item.text}
+														</Link>
+													) : (
+														<span>{item.text}</span>
+													)}
+												</li>
+											)
+										})}
 									</ul>
 								</div>
 							)}
@@ -543,12 +628,24 @@ export function SalesLensesSection({
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Thinks</p>
 									<ul className="space-y-1.5 text-foreground text-sm">
-										{person.empathyMap.thinks.slice(0, 4).map((item, index) => (
-											<li key={`thinks-${index}`} className="flex gap-2">
-												<span className="mt-[3px] text-muted-foreground">•</span>
-												<span>{item}</span>
-											</li>
-										))}
+										{person.empathyMap.thinks.slice(0, 4).map((item, index) => {
+											const timestamp = getTimestampFromAnchors(item.anchors)
+											const url = item.evidenceId
+												? `${routes.evidence.detail(item.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+												: null
+											return (
+												<li key={`thinks-${index}`} className="flex gap-2">
+													<span className="mt-[3px] text-muted-foreground">•</span>
+													{url ? (
+														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+															{item.text}
+														</Link>
+													) : (
+														<span>{item.text}</span>
+													)}
+												</li>
+											)
+										})}
 									</ul>
 								</div>
 							)}
@@ -556,12 +653,24 @@ export function SalesLensesSection({
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Feels</p>
 									<ul className="space-y-1.5 text-foreground text-sm">
-										{person.empathyMap.feels.slice(0, 4).map((item, index) => (
-											<li key={`feels-${index}`} className="flex gap-2">
-												<span className="mt-[3px] text-muted-foreground">•</span>
-												<span>{item}</span>
-											</li>
-										))}
+										{person.empathyMap.feels.slice(0, 4).map((item, index) => {
+											const timestamp = getTimestampFromAnchors(item.anchors)
+											const url = item.evidenceId
+												? `${routes.evidence.detail(item.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+												: null
+											return (
+												<li key={`feels-${index}`} className="flex gap-2">
+													<span className="mt-[3px] text-muted-foreground">•</span>
+													{url ? (
+														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+															{item.text}
+														</Link>
+													) : (
+														<span>{item.text}</span>
+													)}
+												</li>
+											)
+										})}
 									</ul>
 								</div>
 							)}

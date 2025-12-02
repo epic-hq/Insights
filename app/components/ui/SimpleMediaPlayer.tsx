@@ -252,10 +252,10 @@ export function SimpleMediaPlayer({
 					</div>
 					{isVideo && (
 						<div className="absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-white text-xs">
-							Click to load video
+							Load video
 						</div>
 					)}
-					{isAudio && <div className="absolute left-4 text-muted-foreground text-sm">Click to load audio</div>}
+					{isAudio && <div className="absolute left-4 text-muted-foreground text-sm">Load audio</div>}
 				</button>
 			</div>
 		)
