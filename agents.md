@@ -15,6 +15,7 @@ HTML/CSS we use tailwindcss, shadcnui and themes.
 - any database changes -- in supabase we use declarative schemas in supabase/schemas, and implement here first, then generate migrations. See `docs/supabase-howto.md` for the process, and be sure to generate types after changing db.
 - React-router does not export JSON. and we don't need to wrap it in a response. we can just return the data and it will be serialized automatically.
 - do not use console.log, use consola.log instead and `import consola from "consola"`
+- **Null vs Undefined**: Supabase returns `null` for nullable database columns. Utility functions that process database data should accept `string | null` rather than forcing `?? undefined` conversions at call sites. Use `if (!value)` to handle both null and undefined. Example: `function getColor(stage?: string | null)` not `function getColor(stage?: string)`.
 when making database changes, use the supabase declarative schema approach, and edit supabase/schemas/ file instead of creating a migration directly. Follow the process [here](`docs/@supabase/howto/declarative-schemas.md`)
 
 When designing or architecting a new feature, or fixing a bug, consult relevant documents in `docs/` for additional context and best practices relevant to this repo.

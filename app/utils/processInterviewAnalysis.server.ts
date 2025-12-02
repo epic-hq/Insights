@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { auth, tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
-import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe"
 import type { Database } from "~/../supabase/types"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 
@@ -179,36 +178,19 @@ export async function createAndProcessAnalysisJob({
 		const triggerEnv = process.env.TRIGGER_SECRET_KEY?.startsWith("tr_dev_") ? "dev" : "prod"
 		consola.info(`Triggering interview pipeline in ${triggerEnv} environment`, { runId: analysisJob.id })
 
-		// Check if we should use the v2 modular workflow
-		const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
+		// Always use v2 modular workflow (v1 monolithic workflow is deprecated)
+		consola.log("Triggering v2 orchestrator...")
 
-		consola.log(
-			`About to trigger ${useV2Workflow ? "v2 orchestrator" : "v1 uploadMediaAndTranscribeTask"}...`
-		)
+		const handle = await tasks.trigger("interview.v2.orchestrator", {
+			analysisJobId: analysisJob.id,
+			metadata,
+			transcriptData,
+			mediaUrl: mediaUrl || interview.media_url || "",
+			existingInterviewId: interviewId,
+			userCustomInstructions: customInstructions,
+		})
 
-		const handle = useV2Workflow
-			? await tasks.trigger("interview.v2.orchestrator", {
-					analysisJobId: analysisJob.id,
-					metadata,
-					transcriptData,
-					mediaUrl: mediaUrl || interview.media_url || "",
-					existingInterviewId: interviewId,
-					userCustomInstructions: customInstructions,
-			  })
-			: await tasks.trigger<typeof uploadMediaAndTranscribeTask>(
-					"interview.upload-media-and-transcribe",
-					{
-						analysisJobId: analysisJob.id,
-						metadata,
-						transcriptData,
-						mediaUrl: mediaUrl || interview.media_url || "",
-						existingInterviewId: interviewId,
-						userCustomInstructions: customInstructions,
-					}
-			  )
-
-		consola.log(
-			`Trigger.dev task triggered successfully with handle: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`
+		consola.log(`Trigger.dev v2 orchestrator triggered successfully with handle: ${handle.id}`
 		)
 
 		await adminClient.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)

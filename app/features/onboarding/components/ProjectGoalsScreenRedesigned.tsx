@@ -431,9 +431,14 @@ export default function ProjectGoalsScreen({
 		}
 	}, [currentProjectId, loadProjectData])
 
+	// Track if we've already applied prefill to prevent infinite loops
+	const prefillAppliedRef = useRef(false)
+
 	useEffect(() => {
 		if (!prefill) return
 		if (!contextLoaded) return
+		if (prefillAppliedRef.current) return // Only apply prefill once
+
 		const noData =
 			target_orgs.length === 0 &&
 			target_roles.length === 0 &&
@@ -474,22 +479,11 @@ export default function ProjectGoalsScreen({
 				if ((prefill.unknowns || []).length > 0) saveSection("unknowns", prefill.unknowns)
 				if (prefill.custom_instructions) saveSection("custom_instructions", prefill.custom_instructions)
 			}
+
+			prefillAppliedRef.current = true
 		}
-	}, [
-		prefill,
-		contextLoaded,
-		customer_problem,
-		target_orgs.length,
-		target_roles.length,
-		offerings,
-		competitors.length,
-		research_goal,
-		assumptions.length,
-		unknowns.length,
-		custom_instructions,
-		currentProjectId,
-		saveSection,
-	])
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [prefill, contextLoaded, currentProjectId])
 
 	const addOrg = async () => {
 		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
@@ -758,16 +752,14 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-											}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-											}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
 										>
 											{step.title}
 										</span>

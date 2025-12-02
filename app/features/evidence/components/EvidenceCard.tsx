@@ -80,7 +80,7 @@ function EvidenceCard({
 	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as EvidenceAnchor[]) : []
 	const fallbackMediaUrl = interview?.media_url ?? null
 
-	const getStageColor = (stage?: string) => {
+	const getStageColor = (stage?: string | null) => {
 		if (!stage) return "#3b82f6"
 		switch (stage.toLowerCase()) {
 			case "awareness":

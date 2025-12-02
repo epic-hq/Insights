@@ -13,7 +13,9 @@
 import { task } from "@trigger.dev/sdk"
 import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { uploadMediaAndTranscribeCore, workflowRetryConfig } from "~/utils/processInterview.server"
+import { createR2PresignedUrl } from "~/utils/r2.server"
 import {
 	errorMessage,
 	initializeWorkflowState,
@@ -38,10 +40,49 @@ export const uploadAndTranscribeTaskV2 = task({
 				statusDetail: "Processing media and transcript",
 			})
 
+			// Check if we need to transcribe
+			let processedTranscriptData = transcriptData
+
+			if ((transcriptData as any).needs_transcription && mediaUrl) {
+				consola.info("[uploadAndTranscribe] Transcription needed, generating signed URL for media")
+
+				// Generate presigned URL from R2 key (mediaUrl is just the key)
+				const presigned = createR2PresignedUrl({
+					key: mediaUrl,
+					expiresInSeconds: 3600, // 1 hour should be enough for AssemblyAI to download
+				})
+
+				if (!presigned) {
+					throw new Error("Failed to create presigned URL for media file")
+				}
+
+				consola.info("[uploadAndTranscribe] Presigned URL created, calling AssemblyAI", {
+					key: mediaUrl,
+					expiresAt: presigned.expiresAt,
+				})
+
+				// Update progress
+				await updateAnalysisJobProgress(client, analysisJobId, {
+					currentStep: "transcribing",
+					progress: 15,
+					statusDetail: "Transcribing audio/video via AssemblyAI",
+				})
+
+				// Transcribe via AssemblyAI
+				const assemblyResult = await transcribeAudioFromUrl(presigned.url)
+
+				consola.info("[uploadAndTranscribe] Transcription complete", {
+					audioDuration: assemblyResult.audio_duration,
+					transcriptLength: (assemblyResult.full_transcript as string)?.length || 0,
+				})
+
+				processedTranscriptData = assemblyResult
+			}
+
 			// Call core function to handle upload and transcription
 			const result = await uploadMediaAndTranscribeCore({
 				metadata,
-				transcriptData,
+				transcriptData: processedTranscriptData,
 				mediaUrl,
 				existingInterviewId,
 				client,

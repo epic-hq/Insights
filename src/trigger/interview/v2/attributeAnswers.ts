@@ -25,7 +25,7 @@ import type { AttributeAnswersPayload, AttributeAnswersResult } from "./types"
 export const attributeAnswersTaskV2 = task({
 	id: "interview.v2.attribute-answers",
 	retry: workflowRetryConfig,
-	run: async (payload: AttributeAnswersPayload): Promise<AttributeAnswersResult> => {
+	run: async (payload: AttributeAnswersPayload, { ctx }): Promise<AttributeAnswersResult> => {
 		const { interviewId, projectId, evidenceIds, analysisJobId } = payload
 		const client = createSupabaseAdminClient()
 
@@ -35,6 +35,18 @@ export const attributeAnswersTaskV2 = task({
 				progress: 85,
 				statusDetail: "Attributing answers to questions",
 			})
+
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "answers",
+						progress: 85,
+						status_detail: "Attributing answers to questions",
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
 
 			// Run evidence analysis to attribute evidence to project questions
 			let attributedCount = 0
@@ -80,6 +92,20 @@ export const attributeAnswersTaskV2 = task({
 				attributedCount,
 			}
 		} catch (error) {
+			// Update processing_metadata on error
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "answers",
+						progress: 85,
+						failed_at: new Date().toISOString(),
+						error: errorMessage(error),
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
+
 			await updateAnalysisJobError(client, analysisJobId, {
 				currentStep: "answers",
 				error: errorMessage(error),

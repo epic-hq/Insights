@@ -20,7 +20,7 @@ import type { ExtractEvidencePayload, ExtractEvidenceResult } from "./types"
 export const extractEvidenceTaskV2 = task({
 	id: "interview.v2.extract-evidence",
 	retry: workflowRetryConfig,
-	run: async (payload: ExtractEvidencePayload): Promise<ExtractEvidenceResult> => {
+	run: async (payload: ExtractEvidencePayload, { ctx }): Promise<ExtractEvidenceResult> => {
 		const { interviewId, fullTranscript, language, analysisJobId } = payload
 		const client = createSupabaseAdminClient()
 
@@ -41,12 +41,24 @@ export const extractEvidenceTaskV2 = task({
 		}
 
 		try {
-			// Update progress
+			// Update progress and processing_metadata
 			await updateAnalysisJobProgress(client, analysisJobId, {
 				currentStep: "evidence",
 				progress: 40,
 				statusDetail: "Extracting evidence from transcript",
 			})
+
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "evidence",
+						progress: 40,
+						status_detail: "Extracting evidence from transcript",
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
 
 			// Load interview data
 			consola.info(`[extractEvidence] Loading interview: ${interviewId}`)
@@ -111,6 +123,20 @@ export const extractEvidenceTaskV2 = task({
 				personId: evidenceResult.personData?.id || null,
 			}
 		} catch (error) {
+			// Update processing_metadata on error
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "evidence",
+						progress: 40,
+						failed_at: new Date().toISOString(),
+						error: errorMessage(error),
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
+
 			await updateAnalysisJobError(client, analysisJobId, {
 				currentStep: "evidence",
 				error: errorMessage(error),

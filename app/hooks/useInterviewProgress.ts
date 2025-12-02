@@ -264,35 +264,68 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 		})
 	}, [run, cleanupTimers, realtimeError])
 
-	// Update progress from analysis_jobs (v2 workflow) - highest priority
+	// Update progress from processing_metadata (v2 workflow) - highest priority
 	useEffect(() => {
-		if (!analysisJob) {
-			console.log("[useInterviewProgress] No analysis job found")
+		if (!interview) {
+			console.log("[useInterviewProgress] No interview found")
 			return
 		}
 
-		console.log("[useInterviewProgress] Analysis job:", {
-			id: analysisJob.id,
-			status: analysisJob.status,
-			trigger_run_id: analysisJob.trigger_run_id,
-			current_step: analysisJob.current_step,
-			progress: analysisJob.progress,
+		// Use processing_metadata as primary source of truth
+		const metadata = interview.processing_metadata as any
+
+		console.log("[useInterviewProgress] Processing metadata:", {
+			interviewId: interview.id,
+			status: interview.status,
+			metadata,
 		})
 
-		// Check if this job is actively running
-		const isActiveJob = analysisJob.status === "in_progress" || analysisJob.status === "queued"
-		if (!isActiveJob && interview?.status === "ready") return // Skip if interview is already done
+		// If interview is ready, show completion
+		if (interview.status === "ready") {
+			setProgressInfo({
+				status: "ready",
+				progress: 100,
+				label: "Initial analysis complete!",
+				isComplete: true,
+				hasError: false,
+			})
+			cleanupTimers()
+			return
+		}
 
-		const jobProgress = analysisJob.progress ?? 0
-		const currentStep = analysisJob.current_step
-		const completedSteps = analysisJob.completed_steps ?? []
-		const statusDetail = analysisJob.status_detail ?? "Processing..."
+		// If interview is in error state
+		if (interview.status === "error") {
+			const errorMsg = metadata?.error || "Processing failed"
+			setProgressInfo({
+				status: "error",
+				progress: 0,
+				label: errorMsg,
+				isComplete: false,
+				hasError: true,
+			})
+			cleanupTimers()
+			return
+		}
 
-		const isComplete = analysisJob.status === "done" || interview?.status === "ready"
-		const hasError = analysisJob.status === "error"
-		const canCancel = isActiveJob && Boolean(analysisJob.trigger_run_id)
+		// If no processing_metadata yet, skip (will use fallback logic)
+		if (!metadata || !metadata.current_step) {
+			console.log("[useInterviewProgress] No processing_metadata yet, using fallback")
+			return
+		}
 
-		console.log("[useInterviewProgress] canCancel:", canCancel, "isActiveJob:", isActiveJob, "has trigger_run_id:", Boolean(analysisJob.trigger_run_id))
+		// Read from processing_metadata
+		const currentStep = metadata.current_step
+		const jobProgress = metadata.progress ?? 0
+		const statusDetail = metadata.status_detail ?? "Processing..."
+		const triggerRunId = metadata.trigger_run_id
+
+		// Check if actively processing
+		const isActiveJob = interview.status === "processing"
+		const isComplete = currentStep === "complete" || interview.status === "ready"
+		const hasError = interview.status === "error" || Boolean(metadata.failed_at)
+		const canCancel = isActiveJob && Boolean(triggerRunId)
+
+		console.log("[useInterviewProgress] canCancel:", canCancel, "isActiveJob:", isActiveJob, "has trigger_run_id:", Boolean(triggerRunId))
 
 		// Map workflow steps to user-friendly labels
 		const stepLabels: Record<string, string> = {
@@ -301,32 +334,36 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			insights: "Generating insights...",
 			personas: "Assigning personas...",
 			answers: "Attributing to questions...",
-			finalize: "Finalizing analysis..."
+			finalize: "Finalizing analysis...",
+			complete: "Analysis complete!",
 		}
 
 		const label = statusDetail || (currentStep ? stepLabels[currentStep] : "Processing...")
 
 		setProgressInfo({
-			status: analysisJob.status,
+			status: interview.status,
 			progress: Math.round(jobProgress),
 			label,
 			isComplete,
 			hasError,
 			currentStep: currentStep ?? undefined,
-			completedSteps,
+			completedSteps: metadata.completed_steps,
 			canCancel,
-			analysisJobId: analysisJob.id,
-			triggerRunId: analysisJob.trigger_run_id ?? undefined,
+			analysisJobId: analysisJob?.id,
+			triggerRunId: triggerRunId ?? undefined,
 		})
 
 		cleanupTimers() // Stop synthetic progress when using real data
-	}, [analysisJob, interview?.status, cleanupTimers])
+	}, [interview, analysisJob?.id, cleanupTimers])
 
 	// Update progress info when interview status changes (fallback when run metadata unavailable)
 	useEffect(() => {
 		if (run && !realtimeError) return
 		if (!interview) return
-		if (analysisJob) return // Defer to analysis job data
+
+		// Defer to processing_metadata if available
+		const metadata = interview.processing_metadata as any
+		if (metadata && metadata.current_step) return
 
 		const status = interview.status
 		let baseProgress = 0

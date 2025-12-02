@@ -30,7 +30,7 @@ import type { GenerateInsightsPayload, GenerateInsightsResult } from "./types"
 export const generateInsightsTaskV2 = task({
 	id: "interview.v2.generate-insights",
 	retry: workflowRetryConfig,
-	run: async (payload: GenerateInsightsPayload): Promise<GenerateInsightsResult> => {
+	run: async (payload: GenerateInsightsPayload, { ctx }): Promise<GenerateInsightsResult> => {
 		const { interviewId, evidenceUnits, userCustomInstructions, analysisJobId, metadata } = payload
 		const client = createSupabaseAdminClient()
 
@@ -40,6 +40,18 @@ export const generateInsightsTaskV2 = task({
 				progress: 65,
 				statusDetail: "Generating insights from evidence",
 			})
+
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "insights",
+						progress: 65,
+						status_detail: "Generating insights from evidence",
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
 
 			// Validate evidenceUnits
 			if (!evidenceUnits || !Array.isArray(evidenceUnits)) {
@@ -117,6 +129,20 @@ export const generateInsightsTaskV2 = task({
 				insightIds: createdThemes.map((t) => t.id),
 			}
 		} catch (error) {
+			// Update processing_metadata on error
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "insights",
+						progress: 65,
+						failed_at: new Date().toISOString(),
+						error: errorMessage(error),
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
+
 			await updateAnalysisJobError(client, analysisJobId, {
 				currentStep: "insights",
 				error: errorMessage(error),

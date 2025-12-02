@@ -45,14 +45,25 @@ export const finalizeInterviewTaskV2 = task({
 				statusDetail: "Finalizing interview",
 			})
 
-			// Update interview status to "ready"
+			// Update interview status to "ready" and set processing_metadata
 			const { error: updateError } = await client
 				.from("interviews")
-				.update({ status: "ready", updated_at: new Date().toISOString() })
+				.update({
+					status: "ready",
+					updated_at: new Date().toISOString(),
+					processing_metadata: {
+						current_step: "complete",
+						progress: 100,
+						completed_at: new Date().toISOString(),
+						evidence_count: evidenceIds?.length || 0,
+					},
+				})
 				.eq("id", interviewId)
 
 			if (updateError) {
 				consola.warn(`Failed to update interview status for ${interviewId}:`, updateError)
+			} else {
+				consola.info(`Interview ${interviewId} marked as ready with processing_metadata`)
 			}
 
 			// Trigger side effects (e.g., sales lens generation)

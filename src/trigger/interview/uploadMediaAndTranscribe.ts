@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use v2 modular workflow instead (src/trigger/interview/v2/orchestrator.ts)
+ * This v1 monolithic task is kept for backward compatibility only and is no longer triggered by new code.
+ */
+
 import { metadata, task } from "@trigger.dev/sdk"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import {

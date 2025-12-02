@@ -24,7 +24,7 @@ import type { AssignPersonasPayload, AssignPersonasResult } from "./types"
 export const assignPersonasTaskV2 = task({
 	id: "interview.v2.assign-personas",
 	retry: workflowRetryConfig,
-	run: async (payload: AssignPersonasPayload): Promise<AssignPersonasResult> => {
+	run: async (payload: AssignPersonasPayload, { ctx }): Promise<AssignPersonasResult> => {
 		const { interviewId, projectId, personId, analysisJobId } = payload
 		const client = createSupabaseAdminClient()
 
@@ -34,6 +34,18 @@ export const assignPersonasTaskV2 = task({
 				progress: 80,
 				statusDetail: "Assigning personas",
 			})
+
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "personas",
+						progress: 80,
+						status_detail: "Assigning personas",
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
 
 			// Auto-group themes and apply persona assignments
 			// This function handles persona assignment via facet analysis
@@ -89,6 +101,20 @@ export const assignPersonasTaskV2 = task({
 				personaIds,
 			}
 		} catch (error) {
+			// Update processing_metadata on error
+			await client
+				.from("interviews")
+				.update({
+					processing_metadata: {
+						current_step: "personas",
+						progress: 80,
+						failed_at: new Date().toISOString(),
+						error: errorMessage(error),
+						trigger_run_id: ctx.run.id,
+					},
+				})
+				.eq("id", interviewId)
+
 			await updateAnalysisJobError(client, analysisJobId, {
 				currentStep: "personas",
 				error: errorMessage(error),

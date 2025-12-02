@@ -45,7 +45,8 @@ export const processInterviewOrchestratorV2 = task({
 	id: "interview.v2.orchestrator",
 	retry: workflowRetryConfig,
 	run: async (
-		payload: ProcessInterviewOrchestratorPayload
+		payload: ProcessInterviewOrchestratorPayload,
+		{ ctx }
 	): Promise<ProcessInterviewOrchestratorResult> => {
 		const {
 			metadata,
@@ -119,6 +120,22 @@ export const processInterviewOrchestratorV2 = task({
 		}
 
 		try {
+			// Initialize processing_metadata at workflow start
+			if (state.interviewId) {
+				await client
+					.from("interviews")
+					.update({
+						status: "processing",
+						processing_metadata: {
+							current_step: startFrom || "upload",
+							progress: 0,
+							started_at: new Date().toISOString(),
+							trigger_run_id: ctx.run.id,
+						},
+					})
+					.eq("id", state.interviewId)
+			}
+
 			// Step 1: Upload & Transcribe
 			if (
 				shouldExecuteStep("upload", startFrom, state) &&
@@ -348,6 +365,23 @@ export const processInterviewOrchestratorV2 = task({
 				`[Orchestrator] Workflow failed at step ${state.currentStep}`,
 				errorMessage(error)
 			)
+
+			// Update processing_metadata on error
+			if (state.interviewId) {
+				await client
+					.from("interviews")
+					.update({
+						status: "error",
+						processing_metadata: {
+							current_step: state.currentStep,
+							progress: 0,
+							failed_at: new Date().toISOString(),
+							error: errorMessage(error),
+							trigger_run_id: ctx.run.id,
+						},
+					})
+					.eq("id", state.interviewId)
+			}
 
 			await updateAnalysisJobError(client, analysisJobId, {
 				currentStep: state.currentStep,

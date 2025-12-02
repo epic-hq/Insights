@@ -173,10 +173,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || ""
 				const sourceType = getFileType(selectedFile)
 
-				// Use recordMode to determine processing type:
-				// - "voice_memo" → transcribe only, no analysis
-				// - "conversation" → full interview analysis
-				const mediaType = recordMode === "voice_memo" ? "voice_memo" : "interview"
+				// For file uploads (not voice recording), default to full interview analysis
+				// Users explicitly choose voice memo mode by clicking the "Voice Memo" button and recording
+				// File uploads are assumed to be interviews/conversations that need full analysis
+				const mediaType = "interview"
 
 				// Call onNext with the file and attachment data
 				onNext(selectedFile, mediaType, projectId, {

@@ -39,8 +39,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			// Use "media" type so EvidenceCard recognizes it as a playable timestamp
 			anchorOverride = {
 				type: "media",
-				start: `${seconds * 1000}ms`, // Convert back to ms format for consistency
-				end: null,
+				start_ms: seconds * 1000, // Store as milliseconds (standard format)
+				start_seconds: seconds, // Also provide seconds for compatibility
 			}
 		}
 	}
