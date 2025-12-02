@@ -546,7 +546,7 @@ function AutoGroupThemes(
 ) -> AutoGroupThemesResponse {
   client "CustomGPT4oMini"
   prompt #"
-    You are clustering normalized evidence into coherent, decision-useful themes.
+    You are clustering normalized evidence into high-level, STRATEGIC themes that drive business decisions.
 
     Evidence JSON (array of objects) — each has at least:
     - id (uuid)
@@ -563,13 +563,74 @@ function AutoGroupThemes(
     Guidance (account/project context, naming conventions, priorities):
     {{ guidance }}
 
-    Rules:
-    - Prefer a small number of high-signal themes over many weak ones (3-8 typical).
-    - Themes must be mutually comprehensible and non-overlapping where possible.
-    - Each theme should have crisp inclusion/exclusion criteria to avoid drift.
-    - Link only evidence that clearly fits; provide a brief rationale and a confidence 0.0-1.0.
-    - Use concise names; avoid UI-feature names; prefer conceptual labels.
-    - If evidence contradicts, you may still link it and note rationale; low confidence allowed.
+    ## CRITICAL: Theme Consolidation Rules
+
+    **Goal: Create 3-7 MAJOR themes maximum. No micro-themes.**
+
+    ### What Makes a Real Theme (vs. Noise):
+    1. **Structural Problem, Not Symptom**: Group all symptoms of the same root cause together
+       - ❌ BAD: "Navigation Issues", "Broken Links", "Error Messages" (these are symptoms)
+       - ✅ GOOD: "User Experience & Reliability Problems" (the structural issue)
+
+    2. **Strategic Need, Not Feature Request**: Focus on jobs-to-be-done, not implementations
+       - ❌ BAD: "Dashboard Features", "Export Functionality", "Data Visualization"
+       - ✅ GOOD: "Need for Synthesized Cross-Interview Insights" (the underlying job)
+
+    3. **Actionable Pattern, Not Context**: Themes should drive decisions, not describe the world
+       - ❌ BAD: "Industry Trends", "Market Dynamics", "Seasonal Patterns" (background context)
+       - ✅ GOOD: "Customer/Market Strategy Pressure" (context that informs product decisions)
+
+    4. **Customer Problem, Not Internal Label**: Avoid generic, meaningless themes
+       - ❌ BAD: "Continuous Improvement", "Strategic Sales Professional", "Best Practices"
+       - ✅ GOOD: Concrete problems customers face that we can solve
+
+    ### Aggressive Consolidation Tactics:
+    - **Merge Duplicates**: If 3+ evidence items say the same thing differently, that's ONE theme
+    - **Roll Up Sub-Themes**: Combine related pain points into parent categories
+      - Example: "Data scattered", "Manual entry", "Incomplete views" → "CRM & Operational Workflow Friction"
+    - **Combine Workflow Steps**: Don't create separate themes for each step in a process
+    - **Group Industry Variations**: Different industries experiencing the same core problem = one theme
+    - **Abstract Specifics**: "Beverage distributor challenges" + "Food supplier issues" → "Market Turbulence Pressures"
+
+    ### Theme Quality Checklist (must pass ALL):
+    1. ✅ Would an executive want a report on this? (If no → merge into larger theme)
+    2. ✅ Does this drive a product/strategy decision? (If no → eliminate or merge)
+    3. ✅ Can I explain this to a stakeholder in one sentence? (If no → too granular)
+    4. ✅ Would solving this create measurable business value? (If no → context, not theme)
+    5. ✅ Is this distinct from the other themes? (If no → merge)
+
+    ### Examples of Good vs. Bad Themes:
+
+    **❌ TOO GRANULAR** (30+ themes):
+    - "Missing onboarding flows"
+    - "Confusing navigation"
+    - "Error messages unclear"
+    - "Workflow interruptions"
+    - "Manual workarounds"
+    - "Dashboard missing"
+    - "Export not working"
+    - "Cross-interview summaries needed"
+    - "CRM lacks analysis"
+    - ... (25 more micro-themes)
+
+    **✅ PROPERLY CONSOLIDATED** (3-7 themes):
+    1. **User Experience & Reliability Problems** (encompasses all UX/functional blockers)
+    2. **Need for Synthesized Cross-Interview Insights** (core value proposition gap)
+    3. **Customer/Market Strategy Pressure** (external context driving needs)
+    4. **CRM & Operational Workflow Friction** (adjacent pain we can alleviate)
+    5. **Desire for Clearer Personas & Segmentation** (strategic clarity need)
+
+    ## Final Instructions:
+    - **Maximum 7 themes** - if you have more, you're being too granular
+    - Each theme should capture 5-20+ pieces of evidence (not 1-3)
+    - Use broad, strategic names that encompass multiple related pains
+    - In `statement`, explain what connects all the evidence in this bucket
+    - In `inclusion_criteria`, be specific about what TYPES of problems fit here
+    - In `exclusion_criteria`, clarify what should go in other themes instead
+    - Link all relevant evidence even if phrased differently (same root problem = same theme)
+
+    Think: "What are the 3-7 major categories of problems/needs that executives need to know about?"
+    Not: "Let me create a theme for each unique quote or facet."
 
     Output strictly in {{ ctx.output_format }} as AutoGroupThemesResponse.
   "#

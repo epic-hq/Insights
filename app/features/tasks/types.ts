@@ -76,29 +76,11 @@ export interface Task {
 	completed_at: string | null // ISO timestamp
 }
 
-export type TaskInsert = Omit<
-	Task,
-	"id" | "created_at" | "updated_at" | "completed_at" | "account_id" | "project_id" | "created_by"
-> &
+export type TaskInsert = Pick<Task, "title" | "cluster"> &
 	Partial<
-		Pick<
+		Omit<
 			Task,
-			| "status"
-			| "priority"
-			| "assigned_to"
-			| "tags"
-			| "depends_on_task_ids"
-			| "blocks_task_ids"
-			| "parent_task_id"
-			| "description"
-			| "benefit"
-			| "segments"
-			| "impact"
-			| "stage"
-			| "reason"
-			| "due_date"
-			| "estimated_effort"
-			| "actual_hours"
+			"id" | "created_at" | "updated_at" | "completed_at" | "account_id" | "project_id" | "created_by" | "title" | "cluster"
 		>
 	>
 

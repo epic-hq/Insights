@@ -6,6 +6,7 @@ import {
 	WorkerOptions,
 	cli,
 	defineAgent,
+	llm,
 	metrics,
 	voice,
 } from "@livekit/agents"
@@ -36,9 +37,11 @@ class Assistant extends voice.Agent {
 			instructions: hasTools
 				? `You are a knowledgeable researcher for Upsight.
 				Keep replies short, casual, and actionable. Do not overexplain. Talk to me like a friend using 10th grade english.
+
 				use an island intonation.
 
 				You have access to these tools to help answer questions about the project:
+				- getCurrentDate: Get today's current date and time. Use this at the start of conversations to know what day it is
 				- getProjectStatus: Get comprehensive project information including themes, insights, research goals, and project setup
 				- getPeople: Get list of people, contacts, and customers in the project. Supports fuzzy search by name, title, company, or role
 				- createPerson: Create a new person, contact, or customer. Use this when user asks to add, create, or save a new contact, person, lead, or customer
@@ -80,6 +83,7 @@ export default defineAgent({
 		}
 	},
 	entry: async (ctx: JobContext) => {
+		consola.info("=== ENTRY FUNCTION STARTED ===")
 		try {
 			// Get room name from job context (available immediately, before connecting)
 			const roomName = (ctx as any).job?.room?.name || ctx.room.name
@@ -110,6 +114,7 @@ export default defineAgent({
 			try {
 				// Parse format: p_{projectId}_a_{accountId}_u_{userId}_{uuid}
 				const match = roomName?.match(/^p_([^_]+)_a_([^_]+)_u_([^_]+)_/)
+				let mastraTools
 				if (match) {
 					const projectId = match[1]
 					const accountId = match[2]
@@ -122,12 +127,9 @@ export default defineAgent({
 						userId,
 					})
 
-					// Create Mastra tools with project context
-					const mastraTools = createMastraTools({
-						projectId,
-						accountId,
-						userId,
-					})
+					consola.info("=== CREATING MASTRA TOOLS ===", { projectId, accountId, userId })
+					mastraTools = createMastraTools({ projectId, accountId, userId })
+					consola.info("=== TOOLS CREATED SUCCESSFULLY ===")
 
 					consola.info("Created Mastra tools", {
 						toolCount: Object.keys(mastraTools).length,
@@ -158,15 +160,12 @@ export default defineAgent({
 
 			consola.info("Creating agent session...")
 
-			// Use server-side turn detection instead of VAD to prevent interruptions
+			// Use prewarmed Silero VAD for turn detection
 			const session = new voice.AgentSession({
 				stt: new deepgram.STT({ model: "nova-2-general", language: "en", endpointing: 500 }),
 				llm: new openai.LLM({ model: "gpt-4o-mini" }),
 				tts: new deepgram.TTS({ model: "aura-2-delia-en" }),
-				// Use server-side turn detection with longer silence threshold
-				turnDetection: new livekit.turnDetector.Server({
-					minEndpointingDelay: 1000, // Wait 1 second of silence before considering turn complete
-				}),
+				vad: ctx.proc.userData.vad, // Use prewarmed Silero VAD
 			})
 			consola.success("Agent session created with Deepgram STT/TTS, OpenAI LLM, and Silero VAD")
 

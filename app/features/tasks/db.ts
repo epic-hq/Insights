@@ -33,16 +33,19 @@ export async function createTask({
 }): Promise<Task> {
 	const task = {
 		...data,
-		account_id: accountId,
-		project_id: projectId,
-		created_by: userId,
 		status: data.status || "backlog",
 		priority: data.priority || 3,
 		assigned_to: data.assigned_to || [],
 		tags: data.tags || [],
 		depends_on_task_ids: data.depends_on_task_ids || [],
 		blocks_task_ids: data.blocks_task_ids || [],
+		// These must come last to ensure they're not overwritten by spread
+		account_id: accountId,
+		project_id: projectId,
+		created_by: userId,
 	}
+
+	consola.info("Task object before insert:", { task, userId, accountId, projectId })
 
 	const { data: created, error } = await supabase.from("tasks").insert(task).select().single()
 

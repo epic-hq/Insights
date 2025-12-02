@@ -1,13 +1,13 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import { ChevronRight, Mic } from "lucide-react"
+import { ChevronRight, Mic, Send } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
+import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button"
-import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { cn } from "~/lib/utils"
@@ -475,14 +475,13 @@ export function ProjectStatusAgentChat({
 									<div ref={messagesEndRef} />
 								</div>
 							)}
-                                                </div>
+						</div>
 
-                                                <div className="mt-3 flex-shrink-0">
-                                                        <ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
+						<div className="mt-3 flex-shrink-0">
 
-                                                        <form onSubmit={handleSubmit} className="space-y-2">
-                                                                <Textarea
-                                                                        ref={textareaRef}
+							<form onSubmit={handleSubmit} className="space-y-2">
+								<Textarea
+									ref={textareaRef}
 									value={input}
 									onChange={(event) => setInput(event.currentTarget.value)}
 									onKeyDown={handleKeyDown}
@@ -501,27 +500,32 @@ export function ProjectStatusAgentChat({
 												Microphone not available in this browser
 											</div>
 										) : (
-											<VoiceButton
-												state={voiceButtonState}
-												onPress={() => {
-													if (isVoiceRecording) {
-														stopVoiceRecording()
-													} else {
-														startVoiceRecording()
-													}
-												}}
-												icon={<Mic className="h-4 w-4" />}
-												size="icon"
-												variant="outline"
-												disabled={isTranscribing}
-												className="h-8 w-8"
-											/>
+											<div className="flex flex-row gap-2">
+												<VoiceButton
+													state={voiceButtonState}
+													onPress={() => {
+														if (isVoiceRecording) {
+															stopVoiceRecording()
+														} else {
+															startVoiceRecording()
+														}
+													}}
+													icon={<Mic className="h-4 w-4" />}
+													size="icon"
+													variant="outline"
+													disabled={isTranscribing}
+													className="h-8 w-8"
+												/>
+												<ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
+
+											</div>
 										)}
 										<button
 											type="submit"
 											disabled={!input.trim() || isBusy}
-											className="rounded bg-blue-600 px-3 py-1 font-medium text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+											className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 font-medium text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 										>
+											<Send className="h-3.5 w-3.5" />
 											Send
 										</button>
 									</div>

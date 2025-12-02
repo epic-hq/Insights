@@ -184,25 +184,52 @@ export default function GettingStarted() {
 						<CardTitle>Next Steps</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						<p className="text-muted-foreground">Once you've uploaded a few interviews, you can:</p>
+						<p className="text-muted-foreground">Once you've uploaded 5-10 interviews, you can:</p>
 						<ul className="space-y-2 text-muted-foreground text-sm">
 							<li className="flex items-start gap-2">
 								<span className="text-primary">→</span>
-								<span>Explore themes and patterns in the Analyze section</span>
+								<span>
+									<strong>Review auto-generated themes:</strong> Navigate to Themes page to see 3-7 strategic patterns
+									automatically discovered from your evidence
+								</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<span className="text-primary">→</span>
-								<span>View insights grouped by persona</span>
+								<span>
+									<strong>Enrich themes:</strong> Click "Enrich Themes" to add pain points, jobs-to-be-done, and desired
+									outcomes to each theme
+								</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<span className="text-primary">→</span>
-								<span>Check validation status to see how your research is progressing</span>
+								<span>
+									<strong>Analyze segmentation:</strong> View which organizations and people mentioned each theme to identify
+									persona-specific patterns
+								</span>
+							</li>
+							<li className="flex items-start gap-2">
+								<span className="text-primary">→</span>
+								<span>
+									<strong>Validate with evidence:</strong> Drill into verbatim quotes to validate insights and gather
+									customer voice for presentations
+								</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<span className="text-primary">→</span>
 								<span>Create opportunities based on discovered insights</span>
 							</li>
 						</ul>
+
+						<div className="mt-4 rounded-lg border-blue-500 border-l-4 bg-blue-50 p-3 dark:bg-blue-950/20">
+							<p className="font-medium text-sm">📚 Learn More</p>
+							<p className="mt-1 text-muted-foreground text-sm">
+								Read the{" "}
+								<Link to="/docs/analyzing-insights" className="text-primary underline">
+									Analyzing Insights & Themes
+								</Link>{" "}
+								guide to understand how evidence extraction, theme generation, and enrichment work.
+							</p>
+						</div>
 					</CardContent>
 				</Card>
 			</div>

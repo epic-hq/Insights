@@ -1,5 +1,3 @@
-create extension if not exists "pg_net" with schema "extensions";
-
 drop policy if exists "insights_read_only" on "public"."insights";
 
 alter table "public"."actions" drop constraint if exists "actions_insight_id_fkey";
@@ -8,11 +6,15 @@ alter table "public"."comments" drop constraint if exists "comments_insight_id_f
 
 alter table "public"."insight_tags" drop constraint if exists "insight_tags_insight_id_fkey";
 
-alter table "public"."opportunity_insights" drop constraint "opportunity_insights_insight_id_fkey";
+alter table "public"."opportunity_insights" drop constraint if exists "opportunity_insights_insight_id_fkey";
 
-alter table "public"."persona_insights" drop constraint "persona_insights_insight_id_fkey";
+alter table "public"."persona_insights" drop constraint if exists "persona_insights_insight_id_fkey";
 
 drop view if exists "public"."insights_with_priority";
+
+drop function if exists "public"."invoke_edge_function_async"(func_name text, payload jsonb);
+
+drop function if exists "public"."invoke_edge_function_with_retry"(func_name text, payload jsonb);
 
 drop view if exists "public"."conversations";
 
@@ -26,47 +28,9 @@ drop view if exists "public"."insights_current";
 
 drop view if exists "public"."project_answer_metrics";
 
-drop index if exists "public"."idx_analysis_jobs_current_step";
+-- alter table "public"."insights" add constraint "insights_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES public.interviews(id) not valid;
 
-drop index if exists "public"."idx_analysis_jobs_workflow_state";
-
-drop index if exists "public"."idx_upload_jobs_created_by";
-
-alter table "public"."themes" drop column "category";
-
-alter table "public"."themes" drop column "confidence";
-
-alter table "public"."themes" drop column "contradictions";
-
-alter table "public"."themes" drop column "desired_outcome";
-
-alter table "public"."themes" drop column "details";
-
-alter table "public"."themes" drop column "emotional_response";
-
-alter table "public"."themes" drop column "evidence";
-
-alter table "public"."themes" drop column "impact";
-
-alter table "public"."themes" drop column "interview_id";
-
-alter table "public"."themes" drop column "journey_stage";
-
-alter table "public"."themes" drop column "jtbd";
-
-alter table "public"."themes" drop column "motivation";
-
-alter table "public"."themes" drop column "novelty";
-
-alter table "public"."themes" drop column "opportunity_ideas";
-
-alter table "public"."themes" drop column "pain";
-
-alter table "public"."themes" drop column "related_tags";
-
-alter table "public"."insights" add constraint "insights_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES public.interviews(id) not valid;
-
-alter table "public"."insights" validate constraint "insights_interview_id_fkey";
+-- alter table "public"."insights" validate constraint "insights_interview_id_fkey";
 
 alter table "public"."actions" add constraint "actions_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE SET NULL not valid;
 
@@ -89,6 +53,63 @@ alter table "public"."persona_insights" add constraint "persona_insights_insight
 alter table "public"."persona_insights" validate constraint "persona_insights_insight_id_fkey";
 
 set check_function_bodies = off;
+
+CREATE OR REPLACE FUNCTION accounts.trigger_set_user_tracking()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    has_created_by boolean;
+    has_updated_by boolean;
+BEGIN
+    -- Skip auth.users table entirely
+    IF TG_TABLE_SCHEMA = 'auth' AND TG_TABLE_NAME = 'users' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Check if the table has the required columns
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = TG_TABLE_SCHEMA
+        AND table_name = TG_TABLE_NAME
+        AND column_name = 'created_by'
+    ) INTO has_created_by;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = TG_TABLE_SCHEMA
+        AND table_name = TG_TABLE_NAME
+        AND column_name = 'updated_by'
+    ) INTO has_updated_by;
+
+    -- Only set the fields if they exist
+    IF TG_OP = 'INSERT' THEN
+        IF has_created_by THEN
+            -- Only set created_by if not already set (allows service role to set it explicitly)
+            IF NEW.created_by IS NULL THEN
+                NEW.created_by = auth.uid();
+            END IF;
+        END IF;
+        IF has_updated_by THEN
+            -- Only set updated_by if not already set
+            IF NEW.updated_by IS NULL THEN
+                NEW.updated_by = auth.uid();
+            END IF;
+        END IF;
+    ELSE
+        IF has_updated_by THEN
+            NEW.updated_by = auth.uid();
+        END IF;
+        IF has_created_by THEN
+            NEW.created_by = OLD.created_by;
+        END IF;
+    END IF;
+    RETURN NEW;
+END
+$function$
+;
 
 CREATE OR REPLACE FUNCTION public.auto_link_persona_insights(p_insight_id uuid)
  RETURNS void
@@ -144,6 +165,9 @@ create or replace view "public"."conversations" as  SELECT id,
     relevant_answers,
     open_questions_and_next_steps,
     observations_and_notes,
+    source_type,
+    file_extension,
+    person_id,
     duration_sec,
     status,
     created_at,
@@ -152,6 +176,95 @@ create or replace view "public"."conversations" as  SELECT id,
     updated_by
    FROM public.interviews;
 
+
+CREATE OR REPLACE FUNCTION public.enqueue_person_facet_embedding()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+declare
+  facet_label text;
+  kind_slug text;
+begin
+  -- Only enqueue if embedding is NULL (prevents infinite loop)
+  if (TG_OP = 'INSERT' and new.embedding is null) or
+     (TG_OP = 'UPDATE' and new.embedding is null and old.embedding is null) then
+    -- Fetch label and kind_slug from facet_account via join
+    select fa.label, fkg.slug
+    into facet_label, kind_slug
+    from facet_account fa
+    join facet_kind_global fkg on fkg.id = fa.kind_id
+    where fa.id = new.facet_account_id;
+
+    if facet_label is not null then
+      perform pgmq.send(
+        'person_facet_embedding_queue',
+        json_build_object(
+          'person_id', new.person_id::text,
+          'facet_account_id', new.facet_account_id,
+          'label', facet_label,
+          'kind_slug', kind_slug
+        )::jsonb
+      );
+    end if;
+  end if;
+  return new;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.find_themes_by_person_facet(facet_label_query text, project_id_param uuid, match_threshold double precision DEFAULT 0.6, match_count integer DEFAULT 20)
+ RETURNS TABLE(theme_id uuid, theme_name text, theme_pain text, similarity double precision, person_count bigint)
+ LANGUAGE plpgsql
+AS $function$
+declare
+  query_embedding vector(1536);
+begin
+  -- Get embedding for the facet label query
+  select embedding into query_embedding
+  from person_facet pf
+  join facet_account fa on fa.id = pf.facet_account_id
+  where fa.label ilike facet_label_query
+  and pf.project_id = project_id_param
+  and pf.embedding is not null
+  limit 1;
+
+  -- If no exact match, use semantic search on all person facets
+  if query_embedding is null then
+    -- TODO: Create embedding from query text via OpenAI
+    -- For now, return empty result
+    return;
+  end if;
+
+  -- Find themes linked to evidence from people with similar facets
+  return query
+    with similar_people as (
+      select distinct pf.person_id,
+             1 - (pf.embedding <=> query_embedding) as facet_similarity
+      from person_facet pf
+      where pf.project_id = project_id_param
+        and pf.embedding is not null
+        and 1 - (pf.embedding <=> query_embedding) > match_threshold
+    )
+    select
+      t.id as theme_id,
+      t.name as theme_name,
+      t.pain as theme_pain,
+      avg(1 - (t.embedding <=> query_embedding)) as similarity,
+      count(distinct ep.person_id) as person_count
+    from themes t
+    join theme_evidence te on te.theme_id = t.id
+    join evidence e on e.id = te.evidence_id
+    join evidence_people ep on ep.evidence_id = e.id
+    join similar_people sp on sp.person_id = ep.person_id
+    where t.project_id = project_id_param
+      and t.embedding is not null
+    group by t.id, t.name, t.pain
+    having avg(1 - (t.embedding <=> query_embedding)) > match_threshold
+    order by similarity desc, person_count desc
+    limit match_count;
+end;
+$function$
+;
 
 create or replace view "public"."persona_distribution" as  WITH persona_interview_counts AS (
          SELECT p.id AS persona_id,
@@ -215,6 +328,90 @@ create or replace view "public"."persona_distribution" as  WITH persona_intervie
   ORDER BY pic.account_id, (pic.interview_count + lfc.legacy_interview_count) DESC;
 
 
+CREATE OR REPLACE FUNCTION public.process_embedding_queue()
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
+declare
+  job record;
+  count int := 0;
+begin
+  for job in
+    select * from pgmq.read(
+      'insights_embedding_queue',
+      5,
+      30
+    )
+  loop
+    perform public.invoke_edge_function('embed', job.message::jsonb);
+    perform pgmq.delete(
+      'insights_embedding_queue',
+      job.msg_id
+    );
+    count := count + 1;
+  end loop;
+
+  return format('Processed %s message(s) from embedding queue.', count);
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.process_facet_embedding_queue()
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
+declare
+  job record;
+  count int := 0;
+begin
+  for job in
+    select * from pgmq.read(
+      'facet_embedding_queue',
+      5,
+      30
+    )
+  loop
+    perform public.invoke_edge_function('embed-facet', job.message::jsonb);
+    perform pgmq.delete(
+      'facet_embedding_queue',
+      job.msg_id
+    );
+    count := count + 1;
+  end loop;
+
+  return format('Processed %s facet message(s) from embedding queue.', count);
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.process_person_facet_embedding_queue()
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
+declare
+  job record;
+  count int := 0;
+begin
+  for job in
+    select * from pgmq.read(
+      'person_facet_embedding_queue',
+      5,
+      30
+    )
+  loop
+    perform public.invoke_edge_function('embed-person-facet', job.message::jsonb);
+    perform pgmq.delete(
+      'person_facet_embedding_queue',
+      job.msg_id
+    );
+    count := count + 1;
+  end loop;
+
+  return format('Processed %s person facet message(s) from embedding queue.', count);
+end;
+$function$
+;
+
 create or replace view "public"."project_answer_metrics" as  SELECT pa.project_id,
     pa.id AS project_answer_id,
     pa.prompt_id,
@@ -248,6 +445,34 @@ create or replace view "public"."research_question_summary" as  SELECT rq.projec
      LEFT JOIN public.people_personas pp ON (((pp.person_id = pa.respondent_person_id) AND (pp.project_id = rq.project_id))))
   GROUP BY rq.project_id, rq.id, rq.decision_question_id, rq.text;
 
+
+CREATE OR REPLACE FUNCTION public.search_themes_semantic(query_text text, project_id_param uuid, match_threshold double precision DEFAULT 0.7, match_count integer DEFAULT 10)
+ RETURNS TABLE(id uuid, name text, pain text, statement text, category text, journey_stage text, similarity double precision)
+ LANGUAGE plpgsql
+AS $function$
+begin
+  -- TODO: Get embedding for query_text from OpenAI
+  -- For now, use ILIKE as fallback until we implement text-to-embedding API
+  return query
+    select
+      themes.id,
+      themes.name,
+      themes.pain,
+      themes.statement,
+      themes.category,
+      themes.journey_stage,
+      0.9::float as similarity -- Placeholder
+    from public.themes
+    where themes.project_id = project_id_param
+      and (
+        themes.name ilike '%' || query_text || '%'
+        or themes.pain ilike '%' || query_text || '%'
+        or themes.statement ilike '%' || query_text || '%'
+      )
+    limit match_count;
+end;
+$function$
+;
 
 create or replace view "public"."decision_question_summary" as  SELECT dq.project_id,
     dq.id AS decision_question_id,

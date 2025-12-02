@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import {
+	ControlBar,
+	LiveKitRoom,
+	RoomAudioRenderer,
+	useLocalParticipant,
+	useRemoteParticipants,
+} from "@livekit/components-react"
 import type { ConnectionState } from "livekit-client"
-import { ControlBar, LiveKitRoom, RoomAudioRenderer, useLocalParticipant, useRemoteParticipants } from "@livekit/components-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import "@livekit/components-styles"
+import { Mic, MicOff, Phone } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { LiveWaveform } from "~/components/ui/live-waveform"
-import { Mic, MicOff, Phone } from "lucide-react"
 
 interface ProjectStatusVoiceChatProps {
 	accountId: string
@@ -32,7 +38,12 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 	}, [])
 
 	const startVoiceChat = async () => {
-		console.log("[VoiceChat] Starting voice chat", { projectId, accountId, hasProjectId: !!projectId, hasAccountId: !!accountId })
+		console.log("[VoiceChat] Starting voice chat", {
+			projectId,
+			accountId,
+			hasProjectId: !!projectId,
+			hasAccountId: !!accountId,
+		})
 		if (!projectId || !accountId) {
 			console.warn("[VoiceChat] Missing required context", { projectId, accountId })
 			return
@@ -41,7 +52,7 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 		setError(null)
 		try {
 			console.log("[VoiceChat] Requesting LiveKit token", { projectId, accountId })
-			const response = await fetch(`/api.livekit-token`, {
+			const response = await fetch("/api.livekit-token", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ projectId, accountId }),
@@ -55,7 +66,11 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 			}
 
 			const payload = (await response.json()) as LiveKitSession
-			console.log("[VoiceChat] Received session", { roomName: payload.roomName, url: payload.url, identity: payload.identity })
+			console.log("[VoiceChat] Received session", {
+				roomName: payload.roomName,
+				url: payload.url,
+				identity: payload.identity,
+			})
 			setSession(payload)
 			setIsOpen(true)
 		} catch (tokenError) {
@@ -100,14 +115,14 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 					type="button"
 					onClick={startVoiceChat}
 					disabled={isLoading}
-					className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+					className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 font-medium text-foreground text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					<Phone className="h-4 w-4" />
+					<Phone className="h-3.5 w-3.5" />
 					{isLoading ? "Starting..." : "Voice Chat"}
 				</button>
 			) : null}
 
-			{error ? <p className="text-xs text-destructive">{error}</p> : null}
+			{error ? <p className="text-destructive text-xs">{error}</p> : null}
 
 			{isClient && isOpen && session ? (
 				<LiveKitRoom
@@ -127,11 +142,13 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 					}}
 				>
 					<Card className="border border-border bg-card">
-						<CardContent className="space-y-3 p-4">
+						<CardContent className="space-y-2 p-3">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
-									<div className={`h-2 w-2 rounded-full ${connectionState === "connected" ? "bg-green-500" : "bg-yellow-500"} animate-pulse`} />
-									<span className="text-xs font-medium text-foreground">{connectionMessage}</span>
+									<div
+										className={`h-2 w-2 rounded-full ${connectionState === "connected" ? "bg-green-500" : "bg-yellow-500"} animate-pulse`}
+									/>
+									<span className="font-medium text-foreground text-xs">{connectionMessage}</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<MuteButton />
@@ -141,7 +158,7 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 								</div>
 							</div>
 
-							<div className="relative mx-auto h-32">
+							<div className="relative mx-auto h-24">
 								<LiveWaveform
 									active={connectionState === "connected"}
 									className="h-full w-full"

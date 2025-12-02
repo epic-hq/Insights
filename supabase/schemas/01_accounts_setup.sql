@@ -206,10 +206,16 @@ BEGIN
     -- Only set the fields if they exist
     IF TG_OP = 'INSERT' THEN
         IF has_created_by THEN
-            NEW.created_by = auth.uid();
+            -- Only set created_by if not already set (allows service role to set it explicitly)
+            IF NEW.created_by IS NULL THEN
+                NEW.created_by = auth.uid();
+            END IF;
         END IF;
         IF has_updated_by THEN
-            NEW.updated_by = auth.uid();
+            -- Only set updated_by if not already set
+            IF NEW.updated_by IS NULL THEN
+                NEW.updated_by = auth.uid();
+            END IF;
         END IF;
     ELSE
         IF has_updated_by THEN
