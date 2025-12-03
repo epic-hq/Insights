@@ -9,6 +9,7 @@ import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
 import { fetchPersonasTool } from "../tools/fetch-personas"
+import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
 import { fetchSegmentsTool } from "../tools/fetch-segments"
@@ -103,6 +104,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchPeopleDetails: fetchPeopleDetailsTool,
 		fetchPersonas: fetchPersonasTool,
 		fetchEvidence: fetchEvidenceTool,
+		semanticSearchEvidence: semanticSearchEvidenceTool,
 		fetchProjectGoals: fetchProjectGoalsTool,
 		fetchThemes: fetchThemesTool,
 		fetchPainMatrixCache: fetchPainMatrixCacheTool,

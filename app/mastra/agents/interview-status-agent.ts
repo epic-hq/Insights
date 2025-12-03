@@ -4,6 +4,7 @@ import { Memory } from "@mastra/memory"
 import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
+import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 
 const InterviewMemoryState = z.object({
 	lastInterviewId: z.string().optional(),
@@ -24,10 +25,11 @@ Goals:
 
 Workflow:
 1. Always call the "fetchInterviewContext" tool before answering. Use interview_id=${interviewId || "<unknown>"} and project_id=${projectId || "<unknown>"} from the runtime context. Include evidence unless the user clearly requests high-level insights only.
-2. If the interview cannot be found or data is missing, explain what is unavailable and suggest how to capture it (e.g., upload transcripts, link participants).
-3. When sharing takeaways, mention supporting evidence and personal facets when they strengthen the insight.
+2. For specific topic searches (e.g., "What did they say about pricing?", "Did they mention any concerns about security?"), use the "semanticSearchEvidence" tool with the interview_id to find relevant evidence using natural language search.
+3. If the interview cannot be found or data is missing, explain what is unavailable and suggest how to capture it (e.g., upload transcripts, link participants).
+4. When sharing takeaways, mention supporting evidence and personal facets when they strengthen the insight.
 Cite specifics, and give statistics when possible; e.g. The most frequently cited pain point was "difficulty with onboarding" (30% of comments).
-4. Ask clarifying questions when the user's request is ambiguous or requires additional detail.
+5. Ask clarifying questions when the user's request is ambiguous or requires additional detail.
 
 Tone:
 - Direct, empathetic, and focused on research momentum and prioritize goals and decisions.
@@ -38,6 +40,7 @@ Tone:
 	model: openai("gpt-4o-mini"),
 	tools: {
 		fetchInterviewContext: fetchInterviewContextTool,
+		semanticSearchEvidence: semanticSearchEvidenceTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
