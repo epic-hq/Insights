@@ -37,9 +37,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Check if we have transcript OR media to work with
 		if (!interview.transcript && !interview.media_url) {
-			return Response.json({
-				error: "Interview has neither transcript nor media to process"
-			}, { status: 400 })
+			return Response.json(
+				{
+					error: "Interview has neither transcript nor media to process",
+				},
+				{ status: 400 }
+			)
 		}
 
 		consola.info("Reprocessing interview:", {
@@ -94,7 +97,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		consola.success("Interview reprocessing started:", {
 			interviewId: interview.id,
-			analysisJobId: result.analysisJobId,
 			runId: result.runId,
 			needsTranscription,
 		})
@@ -102,7 +104,6 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({
 			success: true,
 			interviewId: interview.id,
-			analysisJobId: result.analysisJobId,
 			runId: result.runId,
 			needsTranscription,
 			message: needsTranscription

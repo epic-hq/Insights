@@ -55,6 +55,7 @@ type ObservationEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
 interface TriggerRunInfo {
 	runId: string
 	publicToken: string | null
+	analysisJobId: string // Now the interview ID
 }
 
 export async function createAndProcessAnalysisJob({
@@ -83,42 +84,52 @@ export async function createAndProcessAnalysisJob({
 			},
 		})
 	let observationEndPayload: ObservationEndPayload | undefined
-	let analysisJobRecord: { id: string } | null = null
 	let runInfo: TriggerRunInfo | null = null
 
-	// Create analysis job
+	// Update conversation_analysis metadata (analysis_jobs table was consolidated)
 	try {
-		const createJobSpan = observation?.span?.({
-			name: "supabase.analysis-job.create",
+		const updateMetadataSpan = observation?.span?.({
+			name: "supabase.interview.update-conversation-analysis",
 			metadata: { interviewId },
 		})
-		const { data: analysisJob, error: analysisJobError } = await adminClient
-			.from("analysis_jobs")
-			.insert({
-				interview_id: interviewId,
-				transcript_data: transcriptData,
-				custom_instructions: customInstructions,
-				status: "in_progress",
-				status_detail: "Processing with AI",
-			})
-			.select()
+
+		// Get current conversation_analysis to preserve existing data
+		const { data: currentInterview } = await adminClient
+			.from("interviews")
+			.select("conversation_analysis")
+			.eq("id", interviewId)
 			.single()
 
-		if (analysisJobError || !analysisJob) {
-			createJobSpan?.end?.({
-				level: "ERROR",
-				statusMessage: analysisJobError?.message ?? "Failed to create analysis job",
+		const existingAnalysis = (currentInterview?.conversation_analysis as any) || {}
+
+		const { error: updateError } = await adminClient
+			.from("interviews")
+			.update({
+				conversation_analysis: {
+					...existingAnalysis,
+					transcript_data: transcriptData,
+					custom_instructions: customInstructions,
+					status_detail: "Processing with AI",
+					current_step: "analysis",
+					completed_steps: [...(existingAnalysis.completed_steps || [])],
+				},
 			})
-			throw new Error(`Failed to create analysis job: ${analysisJobError?.message}`)
+			.eq("id", interviewId)
+
+		if (updateError) {
+			updateMetadataSpan?.end?.({
+				level: "ERROR",
+				statusMessage: updateError?.message ?? "Failed to update conversation_analysis",
+			})
+			throw new Error(`Failed to update conversation_analysis: ${updateError?.message}`)
 		}
 
-		createJobSpan?.end?.({
+		updateMetadataSpan?.end?.({
 			output: {
-				analysisJobId: analysisJob.id,
+				interviewId,
 			},
 		})
-		analysisJobRecord = { id: analysisJob.id }
-		consola.log("Analysis job created:", analysisJob.id)
+		consola.log("Interview conversation_analysis updated:", interviewId)
 
 		const interviewStatusSpan = observation?.span?.({
 			name: "supabase.interview.mark-processing",
@@ -162,27 +173,34 @@ export async function createAndProcessAnalysisJob({
 
 		consola.log("Queued interview processing via Trigger.dev for interview:", interviewId)
 
+		// Update conversation_analysis with queued status
 		await adminClient
-			.from("analysis_jobs")
+			.from("interviews")
 			.update({
-				status_detail: "Queued for Trigger.dev pipeline",
-				progress: 15,
+				conversation_analysis: {
+					...existingAnalysis,
+					transcript_data: transcriptData,
+					custom_instructions: customInstructions,
+					status_detail: "Queued for Trigger.dev pipeline",
+					current_step: "analysis",
+					progress: 15,
+				},
 			})
-			.eq("id", analysisJob.id)
+			.eq("id", interviewId)
 
 		const triggerSpan = observation?.span?.({
 			name: "trigger.upload-media-and-transcribe",
-			metadata: { interviewId, analysisJobId: analysisJob.id },
+			metadata: { interviewId },
 		})
 
 		const triggerEnv = process.env.TRIGGER_SECRET_KEY?.startsWith("tr_dev_") ? "dev" : "prod"
-		consola.info(`Triggering interview pipeline in ${triggerEnv} environment`, { runId: analysisJob.id })
+		consola.info(`Triggering interview pipeline in ${triggerEnv} environment`, { interviewId })
 
 		// Always use v2 modular workflow (v1 monolithic workflow is deprecated)
 		consola.log("Triggering v2 orchestrator...")
 
 		const handle = await tasks.trigger("interview.v2.orchestrator", {
-			analysisJobId: analysisJob.id,
+			analysisJobId: interviewId, // Use interview ID as job identifier
 			metadata,
 			transcriptData,
 			mediaUrl: mediaUrl || interview.media_url || "",
@@ -190,16 +208,29 @@ export async function createAndProcessAnalysisJob({
 			userCustomInstructions: customInstructions,
 		})
 
-		consola.log(`Trigger.dev v2 orchestrator triggered successfully with handle: ${handle.id}`
-		)
+		consola.log(`Trigger.dev v2 orchestrator triggered successfully with handle: ${handle.id}`)
 
-		await adminClient.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
+		// Store trigger_run_id in conversation_analysis
+		await adminClient
+			.from("interviews")
+			.update({
+				conversation_analysis: {
+					...existingAnalysis,
+					transcript_data: transcriptData,
+					custom_instructions: customInstructions,
+					trigger_run_id: handle.id,
+					status_detail: "Processing with Trigger.dev",
+					current_step: "analysis",
+				},
+			})
+			.eq("id", interviewId)
 
 		const publicToken = await createRunAccessToken(handle.id)
 
 		runInfo = {
 			runId: handle.id,
 			publicToken,
+			analysisJobId: interviewId, // Return interview ID as job ID
 		}
 
 		triggerSpan?.end?.({
@@ -208,29 +239,35 @@ export async function createAndProcessAnalysisJob({
 
 		observationEndPayload = {
 			output: {
-				analysisJobId: analysisJob.id,
+				analysisJobId: interviewId,
 				interviewId,
 				runId: handle.id,
 			},
 		}
-		return runInfo ?? { runId: handle.id, publicToken: null }
+		return runInfo ?? { runId: handle.id, publicToken: null, analysisJobId: interviewId }
 	} catch (analysisError) {
 		consola.error("Analysis processing failed:", analysisError)
 
-		// Mark analysis job as error
-		if (analysisJobRecord) {
-			await adminClient
-				.from("analysis_jobs")
-				.update({
-					status: "error",
+		// Update conversation_analysis with error
+		const { data: errorInterview } = await adminClient
+			.from("interviews")
+			.select("conversation_analysis")
+			.eq("id", interviewId)
+			.single()
+
+		const errorAnalysis = (errorInterview?.conversation_analysis as any) || {}
+
+		await adminClient
+			.from("interviews")
+			.update({
+				status: "error",
+				conversation_analysis: {
+					...errorAnalysis,
 					status_detail: "Analysis failed",
 					last_error: analysisError instanceof Error ? analysisError.message : "Unknown error",
-				})
-				.eq("id", analysisJobRecord.id)
-		}
-
-		// Update interview status to error
-		await adminClient.from("interviews").update({ status: "error" }).eq("id", interviewId)
+				},
+			})
+			.eq("id", interviewId)
 
 		// Re-throw to let caller handle
 		const message = analysisError instanceof Error ? analysisError.message : "Unknown error"
