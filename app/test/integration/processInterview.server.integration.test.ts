@@ -4,7 +4,7 @@ import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/u
 // Mock BAML client before importing processInterview
 vi.mock("~/../baml_client", () => ({
 	b: {
-		ExtractEvidenceFromTranscript: vi.fn(),
+		ExtractEvidenceFromTranscriptV2: vi.fn(),
 		ExtractInsights: vi.fn(),
 		AssignPersonaToInterview: vi.fn(),
 	},
@@ -14,7 +14,7 @@ import { b } from "~/../baml_client"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
 
 // Get mocked functions after import
-const mockExtractEvidence = b.ExtractEvidenceFromTranscript as ReturnType<typeof vi.fn>
+const mockExtractEvidence = b.ExtractEvidenceFromTranscriptV2 as ReturnType<typeof vi.fn>
 const mockExtractInsights = b.ExtractInsights as ReturnType<typeof vi.fn>
 const mockAssignPersona = b.AssignPersonaToInterview as ReturnType<typeof vi.fn>
 

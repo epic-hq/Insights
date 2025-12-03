@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, ClientRegistry, Image, Audio, Pdf, Vi
 import { toBamlError, HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, ConversationAnalysis, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, DealAdvisorRecommendation, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, KindTags, LensEvidenceHighlight, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacetObservation, PersonLensMetadata, PersonProfileInput, PersonScaleInput, PersonScaleObservation, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchInsightInput, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SuggestedQuestion, ThemeCandidate, TopPainCell, TurnAnchors} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, ConversationAnalysis, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, DealAdvisorRecommendation, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, LensEvidenceHighlight, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonLensMetadata, PersonProfileInput, PersonScaleInput, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchInsightInput, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SuggestedQuestion, TopPainCell, TurnAnchors} from "./types"
 import type TypeBuilder from "./type_builder"
 
 type TickReason = "Unknown";
@@ -126,31 +126,6 @@ export class AsyncHttpRequest {
         "AssignPersonaToInterview",
         {
           "interview_transcript": interview_transcript,"participant_info": participant_info,"existing_personas": existing_personas
-        },
-        this.ctxManager.cloneContext(),
-        __baml_options__?.tb?.__tb(),
-        __baml_options__?.clientRegistry,
-        false,
-        env
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async AutoGroupThemes(
-      evidence_json: string,guidance: string,
-      __baml_options__?: BamlCallOptions
-  ): Promise<HTTPRequest> {
-    try {
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      return await this.runtime.buildRequest(
-        "AutoGroupThemes",
-        {
-          "evidence_json": evidence_json,"guidance": guidance
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -326,31 +301,6 @@ export class AsyncHttpRequest {
         "ExtractEvidence",
         {
           "doc": doc
-        },
-        this.ctxManager.cloneContext(),
-        __baml_options__?.tb?.__tb(),
-        __baml_options__?.clientRegistry,
-        false,
-        env
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async ExtractEvidenceFromTranscript(
-      transcript: string,chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
-      __baml_options__?: BamlCallOptions
-  ): Promise<HTTPRequest> {
-    try {
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      return await this.runtime.buildRequest(
-        "ExtractEvidenceFromTranscript",
-        {
-          "transcript": transcript,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -1019,31 +969,6 @@ export class AsyncHttpStreamRequest {
     }
   }
   
-  async AutoGroupThemes(
-      evidence_json: string,guidance: string,
-      __baml_options__?: BamlCallOptions
-  ): Promise<HTTPRequest> {
-    try {
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      return await this.runtime.buildRequest(
-        "AutoGroupThemes",
-        {
-          "evidence_json": evidence_json,"guidance": guidance
-        },
-        this.ctxManager.cloneContext(),
-        __baml_options__?.tb?.__tb(),
-        __baml_options__?.clientRegistry,
-        true,
-        env
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
   async CreateSet(
       instructions: string,
       __baml_options__?: BamlCallOptions
@@ -1207,31 +1132,6 @@ export class AsyncHttpStreamRequest {
         "ExtractEvidence",
         {
           "doc": doc
-        },
-        this.ctxManager.cloneContext(),
-        __baml_options__?.tb?.__tb(),
-        __baml_options__?.clientRegistry,
-        true,
-        env
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async ExtractEvidenceFromTranscript(
-      transcript: string,chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
-      __baml_options__?: BamlCallOptions
-  ): Promise<HTTPRequest> {
-    try {
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      return await this.runtime.buildRequest(
-        "ExtractEvidenceFromTranscript",
-        {
-          "transcript": transcript,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

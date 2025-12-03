@@ -86,11 +86,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			expect(updateError).toBeNull()
 
 			// Verify data was stored correctly
-			const { data: updated } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interview.id)
-				.single()
+			const { data: updated } = await testDb.from("interviews").select("*").eq("id", interview.id).single()
 
 			expect(updated?.status).toBe("processing")
 			const analysis = updated?.conversation_analysis as any
@@ -311,11 +307,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 			expect(cancelError).toBeNull()
 
 			// Verify cancellation was recorded
-			const { data: canceled } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interview.id)
-				.single()
+			const { data: canceled } = await testDb.from("interviews").select("*").eq("id", interview.id).single()
 
 			expect(canceled?.status).toBe("error")
 			const analysis = canceled?.conversation_analysis as any
@@ -428,11 +420,7 @@ describe("Conversation Analysis Consolidation - Critical Path", () => {
 
 			expect(reprocessError).toBeNull()
 
-			const { data: reprocessing } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interview.id)
-				.single()
+			const { data: reprocessing } = await testDb.from("interviews").select("*").eq("id", interview.id).single()
 
 			expect(reprocessing?.status).toBe("processing")
 			const analysis = reprocessing?.conversation_analysis as any

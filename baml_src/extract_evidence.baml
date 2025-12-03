@@ -1,25 +1,91 @@
-// Extract Evidence BAML Schema and Function
-// Produces normalized evidence units from transcripts + chapters
+// ============================================================================
+// Extract Evidence - Primary BAML Schema and Function
+// ============================================================================
+// Produces normalized evidence units from transcripts with timestamp anchors
+// for precise media playback and auditability.
+//
+// Previous version (extract_evidence.baml with string-based Anchor class) has
+// been deprecated in favor of this integer-based millisecond approach.
+// ============================================================================
 
-// NOTES from Jett
-// I think there may be too many things going on in this? Is there a way to simplify the facet data the AI has to generate?
-
-class Anchor {
-  type string? @description("av | doc | web | message | log")
-  target string? @description("media_id | doc_id | URL | stream id")
-  start string? @description("av: ms (number-as-string OK); doc: p14#para3; web: selector; log: ISO time")
-  end string? @description("optional end position")
-  speaker string? @description("Optional: speaker label or name if available")
-  chapter_title string? @description("Optional: chapter/section title for quick context")
+// === TurnAnchors: Standardized anchor format for transcript evidence ===
+// Uses integer milliseconds for direct video/audio seeking
+class TurnAnchors {
+  start_ms int? @description("CRITICAL: Start time in milliseconds. Extract from transcript timestamps or chapter data. This is REQUIRED for video playback.")
+  end_ms int? @description("End time in milliseconds when available")
+  chapter_title string? @description("Optional chapter/section title")
+  char_span int[]? @description("Optional [start,end] character offsets in transcript")
 }
 
-class KindTags {
-  problem string[]? @description(#" Pain points, frustrations, blockers, etc. "#)
-  goal string[]? @description(#" Goals, success criteria, desired outcomes, etc. "#)
-  behavior string[]? @description(#" Behaviors, actions, habits, etc. "#)
-  emotion Emotions? @description("Optional emotion if obvious from context")
-  context string[]? @description(#" Context, background, environment, etc. "#)
-  artifact string[]? @description(#" items, data, places, things, documents, etc."#)
+class EvidenceTurn {
+  person_key string @description("REQUIRED: Exact match to Person.person_key (e.g., 'participant-1', 'interviewer-1'). Must reference a person defined in the people array.")
+  speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
+  gist string @description("≤12-word essence of the turn; slide-like headline")
+  chunk string @description("2–5 sentences capturing the person's full thought")
+  verbatim string @description("≤15-word exact quote/snippet from the chunk")
+  anchors TurnAnchors @description("Anchors to source for auditability")
+  // confidence string @description("low | medium | high")
+  why_it_matters string? @description("≤10 words on consequence/importance (e.g., trigger/impact; note if generalizable)")
+	facet_mentions FacetMention[] @description("Facet mentions that appear in this turn")
+  isQuestion bool? @description("TRUE if this turn contains a question (any speaker). Useful for filtering question-response patterns.")
+
+  // Empathy map (high-signal only; leave empty if none)
+  says string[]? @description("High-signal quotes only; 0–2 (≤120 chars). Use when wording carries unique meaning beyond verbatim.")
+  does string[]? @description("High-signal behaviors; 0–2. Imperative phrasing (present-habitual). Include frequency/recency if available.")
+  thinks string[]? @description("High-signal inferred beliefs; 0–2. Only when justified by evidence.")
+  feels string[]? @description("High-signal emotions; 0–2, with brief context and trigger if present.")
+  pains string[]? @description("High-signal obstacles; 0–2. Prefer job-story: When [situation], blocked by [obstacle].")
+  gains string[]? @description("High-signal outcomes; 0–2. Prefer job-story: so I can [outcome].")
+}
+
+class FacetMention {
+  // index int @description("0-based index within the stream for ordering")
+  // parent_index int @description("Index of the EvidenceTurn this mention derives from")
+  person_key string @description("REQUIRED: Exact match to Person.person_key. Must match the person_key of the parent EvidenceTurn.")
+  kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion")
+  value string @description("CRITICAL: Human-readable descriptive text (≤12 words), NOT an ID or reference number. Examples: 'Healthcare Professional', 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'. NEVER use formats like 'ID:123' or numeric references. Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful.")
+  quote string? @description("Optional ≤15-word supporting quote from the parent turn")
+  // confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
+}
+
+class Scene {
+  scene_id string @description("Stable id for the scene/segment")
+  start_index int @description("First EvidenceTurn index in the scene")
+  end_index int @description("Last EvidenceTurn index in the scene")
+  topic string @description("Short topic label for the scene")
+  summary string? @description("1–2 sentence summary of what the scene covers")
+}
+
+class Person {
+  person_key string @description("REQUIRED: Deterministic slug like 'participant-1', 'participant-2', 'interviewer-1'. Number based on first appearance order. This MUST be used consistently in all EvidenceTurn and FacetMention references.")
+  speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
+	person_name string? @description("The person's common name, like John Smith, Sally A., etc.")
+	inferred_name string? @description("Preferred name if confidently inferred from context")
+	role string? @description("their role in the coversation (participant | interviewer | observer | moderator | customer | Sales Rep")
+}
+
+class Extraction {
+	//  people EvidenceParticipant[]
+	 people Person[]
+	 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
+	 facet_mentions FacetMention[] @description("Flattened array of all facet mentions for easier phase-2 processing")
+	 scenes Scene[]
+}
+
+class SpeakerUtterance {
+  speaker string @description("Speaker label like 'SPEAKER A', 'SPEAKER B'")
+  text string @description("The utterance text")
+  start int? @description("Start time in milliseconds")
+  end int? @description("End time in milliseconds")
+}
+
+// === Shared Support Classes ===
+
+class Chapter {
+  start_ms int @description("Chapter start time in milliseconds")
+  end_ms int? @description("Chapter end time in milliseconds (optional)")
+  summary string? @description("Brief summary of this chapter/section")
+  title string? @description("Chapter or section title")
 }
 
 class FacetCatalogKind {
@@ -41,213 +107,107 @@ class FacetCatalog {
   version string @description("Opaque version string for caching and diffing")
 }
 
-class FacetCandidatePayload {
-  kind_slug string @description("Kind slug such as goal | pain | task | tool | differentiator")
-  label string @description("Human-readable label to review (≤5 words, Title Case)")
-  synonyms string[]? @description("Optional synonyms observed in transcript")
-  notes string[]? @description("Short bullets justifying why this term matters")
-}
-
-class PersonFacetObservation {
-  facet_account_id int? @description("Existing facet ID when confidently matched")
-  candidate FacetCandidatePayload? @description("Populate when no facet_account_id confidently matches")
-  kind_slug string @description("Kind slug describing the dimension (goal, pain, etc.)")
-  value string @description("Short phrase capturing the participant's wording")
-  source string @description("interview | survey | telemetry | inferred | manual") // ! Is this necessary?
-  evidence_unit_index int? @description("Index of the evidence unit supporting this observation")
-  confidence float? @description("0.0-1.0 confidence that this facet applies")
-  notes string[]? @description("Optional bullets with rationale or clarifications")
-}
-
-class PersonScaleObservation {
-  kind_slug string @description("Scale identifier, e.g., price_sensitivity")
-  score float @description("0.0-1.0 normalized score along the spectrum")
-  band string? @description("low | medium | high banding for UI")
-  source string @description("interview | survey | telemetry | inferred | manual")
-  evidence_unit_index int? @description("Index of the evidence unit used for this assessment")
-  confidence float? @description("0.0-1.0 confidence in the score")
-  rationale string? @description("Short justification for the assigned score")
-}
-
-class EvidenceParticipant {
-  person_key string @description("Stable identifier referenced by evidence units")
-  display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2'")
-  inferred_name string? @description("Preferred name if confidently inferred from context")
-  role string? @description("participant | interviewer | observer | moderator")
-  personas string[]? @description("Persona labels that apply to this human")
-  segments string[]? @description("Segment labels that apply to this human")
-  organization string? @description("Employer, school, or affiliation if mentioned")
-  summary string? @description("Short descriptor of this participant's identity in the session")
-  notes string? @description("Free-form clarifying notes for analysts")
-  facets PersonFacetObservation[]? @description("Facet observations derived from catalog matching")
-  scales PersonScaleObservation[]? @description("Scale observations with normalized scores")
-}
-
-class EvidenceUnit {
-  person_key string? @description("Reference to EvidenceParticipant.person_key for the primary speaker")
-  person_role string? @description("Legacy helper; prefer participant.role")
-  topic string? @description("Optional short label for the thematic focus of this chunk")
-  gist string? @description("≤12-word essence of the chunk; write like a slide headline")
-  chunk string? @description("Multi-sentence excerpt capturing the participant's full thought")
-  verbatim string? @description("Exact quote or concise snippet. Keep short and citable.")
-  support string? @description("supports | refutes | neutral")
-  kind_tags KindTags? @description("Canonical tag buckets for clustering")
-  personas string[]? @description("Optional persona labels if obvious from context")
-  segments string[]? @description("Optional segment labels if obvious from context")
-  journey_stage string? @description("Optional journey stage if clear")
-  anchors Anchor[]? @description("At least one deep-link anchor to source")
-  confidence string? @description("low | medium | high")
-  context_summary string? @description("1–2 sentences: who/where/what; why it matters")
-  independence_key string? @description("Stable signature for dedupe (e.g., normalized gist + main tag)")
-
-  // Empathy map facets: short, succinct phrases categorized for UX synthesis
-  says string[]? @description("Short quotes the user says out loud; keep each entry under ~120 characters.")
-  does string[]? @description("Observable actions/behaviors; short imperative phrases, under ~120 characters.")
-  thinks string[]? @description("Internal thoughts/beliefs; concise first-person statements, under ~120 characters.")
-  feels string[]? @description("Emotions with context; e.g., 'Frustrated with long load times'.")
-  pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases in specific context.")
-  gains string[]? @description("Goals, desires, positive outcomes/benefits/success factors; short phrases in specific context.")
-
-  // Product lens signals for prioritization
-  willingness_to_pay string? @description("high | medium | low | none - Signal of willingness to pay to solve this pain/gain this outcome. Extract from explicit mentions like '$X/month', 'would pay', 'not worth it', 'must-have', 'critical'.")
-  priority string? @description("critical | high | medium | low - Urgency/importance signal. Extract from language like 'biggest pain', 'blocker', 'nice to have', 'dealbreaker', 'must solve'.")
-}
-
-class EvidenceExtraction {
-  people EvidenceParticipant[] @description("Unique participants detected in the transcript")
-  evidence EvidenceUnit[] @description("Chronological evidence units for downstream storage")
-  facet_catalog_version string? @description("Echo the catalog version to ensure downstream joins match") // ! Is this necessary?
-}
-
-class Chapter {
-  start_ms int
-  end_ms int?
-  summary string?
-  title string?
-}
-
-function ExtractEvidenceFromTranscript(
-  transcript: string,
+function ExtractEvidenceFromTranscriptV2(
+  speaker_transcripts: SpeakerUtterance[],
   chapters: Chapter[],
   language: string,
   facet_catalog: FacetCatalog
-) -> EvidenceExtraction {
-  client "CustomGPT4o"
+) -> Extraction {
+  client "CustomGPT5"
   prompt #"
-   You are an expert UX researcher.
-Your task is to extract sequential evidence from an interview transcript so the reader can easily follow what happened, moment by moment.
-
-IMPORTANT: Produce only valid JSON that matches the EvidenceExtraction schema. Do not include markdown fences, comments, natural language explanations, or leading/trailing text. When data is unavailable, use empty arrays or nulls instead of inventing values.
+You are an expert UX researcher.
+Your task is to produce an exhaustive, chronological Event Stream from an interview transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
 
 ## Steps
-1. Identify every human speaker. Populate the `people` array once with the transcript label, inferred name (if safe), role (participant vs interviewer), personas/segments, organization, and a short descriptor that captures their responsibilities.
-2. Slice the transcript into coherent, chronological chunks that express a single point of view (usually 2–5 sentences from one speaker).
-3. For each chunk, produce an `EvidenceUnit` anchored to the correct `person_key`, with chunk, gist, verbatim quote, tags, anchors, and empathy facets.
-4. Only create a unit when it adds analytical value (pain, goal, motivation, workaround, evaluation criteria, decision factor, emotion, etc.).
-5. For each participant, synthesize high-signal facet + scale observations using the provided `facet_catalog`; link each observation back to the supporting evidence.
-
-## Evidence Slicing Heuristics
-- Break multi-topic passages into separate evidence units so each unit expresses one clear insight or sentiment.
-- Keep `chunk` spans tight (≈80–180 words) and produce multiple units when a speaker shifts from a pain to a workaround or to a desired outcome.
-- Preserve chronology—do not merge non-consecutive statements even if they cover the same theme.
-- When interviewer prompts uncover an explicit metric, success criterion, or blocker, capture it in its own unit.
-- If a speaker layers multiple signals (pain + workaround + goal), split into sequential units so each signal is easy to tag and link to facets.
-
-## Participant Profiles & Demographics
-- Capture explicit demographic attributes for each participant: job title, role, seniority, team/discipline, tenure, geography, and organization.
-- Populate `people[].summary` with a 1–2 sentence snapshot describing who they are, the work they do, and the context of their responsibilities.
-- Use `people[].personas` and `people[].segments` to reflect any persona or segment labels mentioned or implied by the transcript.
-- When the transcript reveals responsibilities or repeated activities, add `task` facets capturing those workflows.
-- Prefer matching existing catalog entries for demographic/task facets (`kind_slug` such as `demographic`, `task`, `workflow`, `preference`, `value`). Emit new `candidate` entries only when no confident match exists.
+1. Identify every human speaker. Populate the `people` array once with:
+   - `person_key`: deterministic slug per human such as `participant-1`, `participant-2`, `interviewer-1`. Derive the number from first appearance order. Reuse the EXACT same `person_key` string for all references to that person. Never reuse a slug for different humans.
+   - `display_name`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
+   - `inferred_name` and `role` when confident (role ∈ participant | interviewer | moderator | observer | customer | sales_rep).
+   - Include any known segments/personas/organization in the optional fields when the transcript states them.
+2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, tags, anchors, confidence, and empathy map fields.
+3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
+4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
 
 ## Selection Priorities
-High-severity pains, frequent behaviors, explicit goals, success criteria.
+High-severity pains, frequent/recency-marked behaviors, explicit goals, success criteria.
 Workarounds, hacks, switching triggers, evaluation criteria, blockers, willingness-to-pay signals.
 Moments that reveal motivations, anxieties, decision criteria, or definitions of success.
-Skip generic opinions or filler unless tied to a concrete outcome.
 
-## Product Lens Signals (CRITICAL for prioritization)
-- **Willingness to Pay:** Extract signals from phrases like "I'd pay $X", "worth it", "not worth the cost", "must-have", "dealbreaker", "can't justify the price". Map to: high (explicit price mention >$20 or "must-have"), medium (positive intent, no price), low (hesitant), none (not mentioned or negative).
-- **Priority:** Extract urgency from language like "biggest pain", "blocker", "can't work without", "critical", "urgent", "nice to have", "eventually", "low priority". Map to: critical (blocks work), high (major pain), medium (important but not blocking), low (minor inconvenience).
+## SKIP Non-Evidence (Do NOT Extract)
+- Weather talk, bathroom breaks, technical difficulties
+- Social pleasantries ("nice to meet you", "how are you", "have a great day")
+- Procedural questions ("can we continue?", "is this recording?", "can you hear me?")
+- Off-topic chitchat unrelated to product, workflow, or user psychology
+- Interviewer instructions or transitions unless they reveal user confusion/friction
 
-## Evidence Unit Schema
-- person_key: matches one participant from `people` (exact string match required).
-- gist: punchy ≤12-word headline (no leading labels like "Quote:").
-- chunk: 2–5 sentences capturing the participant’s full thought in their own words.
-- verbatim: crisp ≤15-word quote pulled from the chunk.
-- anchors: start_time (ms for av), speaker label, chapter_title when provided.
-- kind_tags: problem | goal | behavior | emotion | context | artifact (multiple allowed).
-- support: supports | refutes | neutral relative to the belief or hypothesis.
-- confidence: low | medium | high (be honest—only use high when unequivocal).
-- context_summary: 1–2 sentences summarising who said it, where in the journey, why it matters.
-- independence_key: Stable signature (recommend normalized gist + main tag).
+Examples to SKIP:
+❌ "It's really hot today" - weather
+❌ "Can I grab some water real quick?" - procedural
+❌ "That's fine, go ahead" - generic acknowledgment
+❌ "So, let's talk about..." - interviewer transition (no signal)
 
-## EMPATHY MAP FACETS (always fill, ≤12 words each)
+Examples to EXTRACT:
+✅ "I wish the tool would..." - pain/goal
+✅ "I usually work around that by..." - workaround/behavior
+✅ "It's frustrating when..." - pain with emotional signal
+✅ "I use Notion because..." - tool + rationale
 
-says: Direct short quotes (e.g., “wants better leads quicker”).
-does: Observable actions (imperative phrasing, e.g., “manually scrapes LinkedIn lists daily”).
-thinks: Internal beliefs or self-talk (e.g., “I spend hours chasing low-quality prospects”).
-feels: Emotions with context (e.g., “frustrated wasting evenings on prospecting”).
-pains: Biggest frustrations/obstacles (e.g., “tools deliver unqualified contacts”).
-gains: Desired positive outcomes (e.g., “save time with pre-qualified leads”).
+ONLY extract turns with business or psychographic relevance.
 
-## Facet & Scale Mapping
-- The `facet_catalog` already merges project ▶ account ▶ global terms. Respect aliases when generating analyst-facing text, but match by label or synonyms case-insensitively.
-- Populate `people[].facets` with distinct, high-signal observations. Capture demographic descriptors (role, title, team, tenure, location, pronouns) under the `demographic` kind. Capture responsibilities, repeated jobs, and tools under `task`, `workflow`, or `tool` kinds as appropriate.
-- Always set `source` to "interview" and point `evidence_unit_index` to the supporting evidence (0-based).
-- When you find a confident match, set `facet_ref` (e.g., `g:12` or `a:45`) and reuse the catalog’s `kind_slug`. When unsure, keep `facet_ref` empty and supply a `candidate` with Title Case `label`, ≤5 words, plus any synonyms.
-- Use `value` to capture the participant’s own wording (≤12 words). Avoid duplicating the same facet multiple times for similar statements.
-- Emit `people[].scales` only when the transcript clearly indicates direction or intensity. Map scores on 0.0–1.0, add a `band` (low <0.34, medium 0.34–0.66, high >0.66), and include a tight `rationale`.
-- Set `facets[].confidence` / `scales[].confidence` to a float between 0.0 and 1.0 (e.g., 0.9 for explicit signals, 0.6 when inferred but plausible).
-- Echo the provided `facet_catalog.version` into `facet_catalog_version` for downstream caching.
-- Favor breadth: aim for at least three high-signal facets per participant when the transcript supports it (mix demographics, tasks, pains, goals, workflows, or preferences).
-- When the catalog lacks a confident match but the signal is strong, add a `candidate` facet instead of discarding it—briefly justify why it matters.
-- Prefer emitting a scale when the speaker states a degree of satisfaction, frequency, or urgency (e.g., “daily”, “huge blocker”, “ready to switch”) and anchor it to the clearest evidence unit.
+## EvidenceTurn
+- index: 0-based chronological index (strictly ascending) and equals its position in the stream.
+- **person_key**: REQUIRED. Exact match (character-for-character) to the `person_key` defined for that person in `people`. Never invent a new slug at the turn level. CRITICAL: Distinguish between interviewer and participant - if someone is asking questions, they're likely the interviewer; if answering, they're the participant.
+- gist: ≤12 words; no labels like "Quote:".
+- chunk: 2–5 sentences of the participant’s words.
+- verbatim: ≤15-word quote from the chunk.
+- **anchors.start_ms**: CRITICAL - ALWAYS use the `start` field from the corresponding SpeakerUtterance. This timing is already in milliseconds and is REQUIRED for video playback functionality.
+- anchors: include start_ms (REQUIRED), end_ms when available, speaker label, optional chapter_title.
+- confidence: low | medium | high. Map evidence strength: direct quote ≥ concrete behavior ≥ inferred belief.
+- **isQuestion**: Set to TRUE if this turn contains any question (explicit questions, requests for clarification, probes, etc.) regardless of speaker. FALSE or omit if no questions. Useful for filtering question-response patterns and conversation analysis.
+- empathy map: only when high-signal; 0–2 items per field; do not repeat gist/verbatim/facet values; leave empty if not useful.
+ - why_it_matters: ≤10 words; express the consequence or importance (e.g., "blocks timely status updates").
 
-## Facet Generation Tactics
-- For every participant, scan the entire transcript end-to-end to ensure demographics, recurring workflows, frustrations, motivations, and decision criteria are all captured as facets.
-- When matching to the catalog, consider partial or synonym matches—if confidence ≥80%, link via `facet_ref`; otherwise emit a `candidate` with concise analyst notes.
-- Add at least one `task` or `workflow` facet when the participant describes routine responsibilities or tools.
-- Capture emotional states as `value` or `preference` facets when they describe what they care about or how they judge success.
-- Create `scales` whenever intensity, frequency, satisfaction, or urgency is explicitly stated; normalize to 0.0–1.0 and explain the rationale in plain language.
+## FacetMention (extraction-only, no linking)
+- parent_index: points to the `EvidenceTurn.index` where the signal appeared.
+- **person_key**: REQUIRED. Must match the exact slug from `people` AND match the person_key of the parent EvidenceTurn. CRITICAL: Assign facets to the person who EXPRESSED the trait/behavior, not the person being discussed. If the interviewer asks "What tools do you use?", the participant's answer creates facets for the PARTICIPANT, not the interviewer.
+- kind_slug: one of goal | pain | behavior | tool | value | workflow | preference | demographic | context | artifact | emotion.
+- value: concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include frequency/recency when stated (e.g., "daily", "last week"). Include trigger/condition and objective when helpful. For preference/value, compress subject + rationale into one field when possible: e.g., "values integrated planning + calendar (tracks progress)", "prefers explicit topic mapping for workflow", "requires calendar integration to schedule study".
+- quote: include when it strengthens auditability; ≤15 words.
+- confidence: one of 1, 0.75, 0.5, 0.25, 0.
+- Output one FacetMention per distinct signal in a turn; do not merge similar mentions across turns.
 
-## Output Quality Checklist
-- Every `EvidenceUnit` has empathy facets filled; keep each entry specific and ≤12 words.
-- `verbatim` quotes are succinct and differ from `gist` headlines.
-- `anchors` include the speaking label and chapter title when available.
-- `person_key` values always match an entry in `people` and remain stable across units.
-- Participants include demographic summaries and any explicit personas/segments from the transcript.
-- If an array would be empty, ensure it is emitted as `[]` (never omit required fields).
-- Always set `facet_catalog_version` to the input `facet_catalog.version`.
-
-## Facet Catalog (read-only context)
-- Available kinds with labels:
-  {{ facet_catalog.kinds }}
-- Enabled facets (already scoped to this project):
-  {{ facet_catalog.facets }}
-- Treat the catalog as authoritative: do not invent new kinds; prefer existing terms whenever confident.
+## Scenes
+- Create a new scene when the topic/goal shifts meaningfully.
+- Each scene has `start_index`, `end_index`, and a short `topic` label.
 
 ## Guardrails
-Only infer persona/segment/journey_stage when obvious. If unsure, omit.
-Keep `chunk` faithful to the participant’s voice (light edits for clarity are OK, no inventions).
-Prefer fewer, higher-quality units over many weak ones.
+- Emit all items in ascending `index` / `parent_index` order.
+- Do not fall back to a generic person — if a turn's `person_key` cannot be matched to `people`, revisit your mapping rather than defaulting to the primary participant.
+- Do not output any catalog ids or proposals; linking occurs in a separate step.
+- Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
+- When choosing empathy vs mention: prefer FacetMention as the authoritative signal; only add empathy items if they add non-duplicative skim value.
+- Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
+- Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
 
-    Transcript (language={{ language }})
-    {{ transcript }}
+Speaker Transcripts (language={{ language }})
+Each utterance includes speaker label, text, and timing in milliseconds:
+{{ speaker_transcripts }}
 
-    Chapters (optional; may help anchoring)
-    {{ chapters }}
+Chapters (optional; may help anchoring)
+{{ chapters }}
 
-    Facet catalog (merged project ▶ account ▶ global view)
-    {{ facet_catalog }}
+{% if facet_catalog and (facet_catalog.kinds|length > 0 or facet_catalog.facets|length > 0) %}
+Facet catalog (read-only; do not link in this pass)
+{{ facet_catalog }}
+{% endif %}
 
-    Output strictly as EvidenceExtraction respecting {{ ctx.output_format }} and set `facet_catalog_version` = `facet_catalog.version`
-  "#
+Output ONLY JSON conforming to {{ ctx.output_format }} (no prose/markdown). Ensure indices are contiguous from 0 and strictly ascending; each FacetMention.parent_index references an existing EvidenceTurn.index; omit empty/null fields.
+"#
 }
 
 // Simple empathy test
-test ExtractEvidenceFromTranscript_EmpathyTest {
-  functions [ExtractEvidenceFromTranscript]
+test ExtractEvidenceFromTranscriptV2_EmpathyTest {
+  functions [ExtractEvidenceFromTranscriptV2]
   args {
     transcript #"
 INTERVIEWER: How do you feel about your current project management tool?
@@ -273,8 +233,8 @@ PARTICIPANT: I want to feel confident that I can find anything I need within sec
 }
 
 // Full dev test
-test ExtractEvidenceFromTranscript_Sample {
-  functions [ExtractEvidenceFromTranscript]
+test ExtractEvidenceFromTranscriptV2_Sample {
+  functions [ExtractEvidenceFromTranscriptV2]
   args {
     transcript #"
 Kai K, College Freshman
@@ -514,124 +474,4 @@ I do not. No, I don't pay for any of them. I just mainly utilize the free ones.
       version "test"
     }
   }
-}
-
-// -----------------------------------------------------------------------------
-// Theme auto-grouping: propose themes and evidence links
-// -----------------------------------------------------------------------------
-
-class EvidenceLinkProposal {
-  evidence_id string @description("UUID of existing evidence to link")
-  rationale string @description("Why this evidence belongs in the theme")
-  confidence float @description("0.0 - 1.0 confidence in the link")
-}
-
-class ThemeCandidate {
-  name string @description("Concise theme name, 2-5 words")
-  statement string? @description("1-2 sentence theme statement capturing the common thread")
-  inclusion_criteria string? @description("What counts as part of this theme")
-  exclusion_criteria string? @description("What should not be included")
-  synonyms string[]? @description("Alternative labels or related terms")
-  anti_examples string[]? @description("Edge cases that should be excluded")
-  links EvidenceLinkProposal[] @description("Which evidence to attach and why")
-}
-
-class AutoGroupThemesResponse {
-  themes ThemeCandidate[] @description("Proposed themes with evidence linking directives")
-}
-
-function AutoGroupThemes(
-  evidence_json: string,
-  guidance: string
-) -> AutoGroupThemesResponse {
-  client "CustomGPT4oMini"
-  prompt #"
-    You are clustering normalized evidence into high-level, STRATEGIC themes that drive business decisions.
-
-    Evidence JSON (array of objects) — each has at least:
-    - id (uuid)
-    - verbatim (string)
-    - kind_tags (array of strings)
-    - personas (array of strings)
-    - segments (array of strings)
-    - journey_stage (string | null)
-    - support (supports | refutes | neutral)
-
-    Evidence:
-    {{ evidence_json }}
-
-    Guidance (account/project context, naming conventions, priorities):
-    {{ guidance }}
-
-    ## CRITICAL: Theme Consolidation Rules
-
-    **Goal: Create 3-7 MAJOR themes maximum. No micro-themes.**
-
-    ### What Makes a Real Theme (vs. Noise):
-    1. **Structural Problem, Not Symptom**: Group all symptoms of the same root cause together
-       - ❌ BAD: "Navigation Issues", "Broken Links", "Error Messages" (these are symptoms)
-       - ✅ GOOD: "User Experience & Reliability Problems" (the structural issue)
-
-    2. **Strategic Need, Not Feature Request**: Focus on jobs-to-be-done, not implementations
-       - ❌ BAD: "Dashboard Features", "Export Functionality", "Data Visualization"
-       - ✅ GOOD: "Need for Synthesized Cross-Interview Insights" (the underlying job)
-
-    3. **Actionable Pattern, Not Context**: Themes should drive decisions, not describe the world
-       - ❌ BAD: "Industry Trends", "Market Dynamics", "Seasonal Patterns" (background context)
-       - ✅ GOOD: "Customer/Market Strategy Pressure" (context that informs product decisions)
-
-    4. **Customer Problem, Not Internal Label**: Avoid generic, meaningless themes
-       - ❌ BAD: "Continuous Improvement", "Strategic Sales Professional", "Best Practices"
-       - ✅ GOOD: Concrete problems customers face that we can solve
-
-    ### Aggressive Consolidation Tactics:
-    - **Merge Duplicates**: If 3+ evidence items say the same thing differently, that's ONE theme
-    - **Roll Up Sub-Themes**: Combine related pain points into parent categories
-      - Example: "Data scattered", "Manual entry", "Incomplete views" → "CRM & Operational Workflow Friction"
-    - **Combine Workflow Steps**: Don't create separate themes for each step in a process
-    - **Group Industry Variations**: Different industries experiencing the same core problem = one theme
-    - **Abstract Specifics**: "Beverage distributor challenges" + "Food supplier issues" → "Market Turbulence Pressures"
-
-    ### Theme Quality Checklist (must pass ALL):
-    1. ✅ Would an executive want a report on this? (If no → merge into larger theme)
-    2. ✅ Does this drive a product/strategy decision? (If no → eliminate or merge)
-    3. ✅ Can I explain this to a stakeholder in one sentence? (If no → too granular)
-    4. ✅ Would solving this create measurable business value? (If no → context, not theme)
-    5. ✅ Is this distinct from the other themes? (If no → merge)
-
-    ### Examples of Good vs. Bad Themes:
-
-    **❌ TOO GRANULAR** (30+ themes):
-    - "Missing onboarding flows"
-    - "Confusing navigation"
-    - "Error messages unclear"
-    - "Workflow interruptions"
-    - "Manual workarounds"
-    - "Dashboard missing"
-    - "Export not working"
-    - "Cross-interview summaries needed"
-    - "CRM lacks analysis"
-    - ... (25 more micro-themes)
-
-    **✅ PROPERLY CONSOLIDATED** (3-7 themes):
-    1. **User Experience & Reliability Problems** (encompasses all UX/functional blockers)
-    2. **Need for Synthesized Cross-Interview Insights** (core value proposition gap)
-    3. **Customer/Market Strategy Pressure** (external context driving needs)
-    4. **CRM & Operational Workflow Friction** (adjacent pain we can alleviate)
-    5. **Desire for Clearer Personas & Segmentation** (strategic clarity need)
-
-    ## Final Instructions:
-    - **Maximum 7 themes** - if you have more, you're being too granular
-    - Each theme should capture 5-20+ pieces of evidence (not 1-3)
-    - Use broad, strategic names that encompass multiple related pains
-    - In `statement`, explain what connects all the evidence in this bucket
-    - In `inclusion_criteria`, be specific about what TYPES of problems fit here
-    - In `exclusion_criteria`, clarify what should go in other themes instead
-    - Link all relevant evidence even if phrased differently (same root problem = same theme)
-
-    Think: "What are the 3-7 major categories of problems/needs that executives need to know about?"
-    Not: "Let me create a theme for each unique quote or facet."
-
-    Output strictly in {{ ctx.output_format }} as AutoGroupThemesResponse.
-  "#
 }

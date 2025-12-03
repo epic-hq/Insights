@@ -111,7 +111,9 @@ type AnalysisJobSummary = {
 const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["pending", "in_progress", "retry"])
 const TERMINAL_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["done", "error"])
 
-function extractAnalysisFromInterview(interview: Database["public"]["Tables"]["interviews"]["Row"]): AnalysisJobSummary | null {
+function extractAnalysisFromInterview(
+	interview: Database["public"]["Tables"]["interviews"]["Row"]
+): AnalysisJobSummary | null {
 	const conversationAnalysis = interview.conversation_analysis as any
 	if (!conversationAnalysis) return null
 

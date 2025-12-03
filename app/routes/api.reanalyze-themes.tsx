@@ -3,8 +3,9 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { z } from "zod"
 import type { analyzeThemesAndPersonaTask } from "~/../../src/trigger/interview/analyzeThemesAndPersona"
+import type { TurnAnchors } from "~/../baml_client/types"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
-import { evidenceUnitsSchema, type turnAnchorsSchema } from "~/lib/validation/baml-validation"
+import { evidenceUnitsSchema } from "~/lib/validation/baml-validation"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 const requestSchema = z.object({
@@ -184,7 +185,14 @@ export async function action({ request }: ActionFunctionArgs) {
 				return Response.json({ error: "Failed to ensure participant record" }, { status: 500 })
 			}
 			primaryPersonId = ensuredPerson.id
-			primaryPerson = ensuredPerson
+			primaryPerson = ensuredPerson as {
+				id: string
+				name: string | null
+				description: string | null
+				role: string | null
+				company: string | null
+				segment: string | null
+			}
 
 			const { error: linkErr } = await admin.from("interview_people").upsert(
 				{
@@ -216,7 +224,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			const firstAnchor = anchorsRaw[0] as Record<string, unknown> | undefined
 
 			// Create anchor object that matches BAML TurnAnchors format
-			const anchors: z.infer<typeof turnAnchorsSchema> = {
+			const anchors: TurnAnchors = {
 				start_ms:
 					typeof firstAnchor?.start_ms === "number"
 						? firstAnchor.start_ms
@@ -239,11 +247,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			const facet_mentions =
 				facetSlugs.length > 0
 					? facetSlugs.map((slug) => ({
-							person_key: personId ?? primaryPersonId,
-							kind_slug: slug,
-							value: "extracted from evidence", // This is a fallback since we don't have the original value
-							quote: null,
-						}))
+						person_key: personId ?? primaryPersonId,
+						kind_slug: slug,
+						value: "extracted from evidence", // This is a fallback since we don't have the original value
+						quote: null,
+					}))
 					: undefined
 
 			return {
@@ -398,11 +406,9 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.error("Re-analyze themes API error:", error)
 		const message = error instanceof Error ? error.message : "Internal error"
 		if (analysisJobId) {
-			const errorAnalysis = (await admin
-				.from("interviews")
-				.select("conversation_analysis")
-				.eq("id", interviewId)
-				.single()).data?.conversation_analysis as any
+			const errorAnalysis = (
+				await admin.from("interviews").select("conversation_analysis").eq("id", interviewId).single()
+			).data?.conversation_analysis as any
 
 			await admin
 				.from("interviews")

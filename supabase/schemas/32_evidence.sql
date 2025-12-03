@@ -61,7 +61,7 @@ comment on column evidence.topic        is 'Optional thematic label for the evid
 comment on column evidence.verbatim     is 'Quoted text or descriptive evidence.';
 comment on column evidence.chunk        is 'Multi-sentence excerpt capturing the participants full thought.';
 comment on column evidence.gist         is 'Pithy headline conveying the most important takeaway at a glance.';
-comment on column evidence.anchors      is 'JSONB array of deep-link anchors. Each: {type, target, start?, end?}.';
+comment on column evidence.anchors      is 'JSONB array of TurnAnchors for media playback. Format: [{start_ms: int, end_ms?: int, chapter_title?: string, char_span?: [int,int]}]. Integer milliseconds enable direct video/audio seeking. Previous string-based Anchor format deprecated as of Dec 2024.';
 comment on column evidence.context_summary is '1–2 sentences to situate the quote and explain why it matters.';
 comment on column evidence.citation is 'Source citation or reference information.';
 comment on column evidence.is_question is 'TRUE if this evidence contains a question from any speaker. Useful for filtering question-response patterns.';

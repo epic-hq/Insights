@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, BamlAbortError, Collector } from "@boundaryml/
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, ConversationAnalysis, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, DealAdvisorRecommendation, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, KindTags, LensEvidenceHighlight, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonFacetObservation, PersonLensMetadata, PersonProfileInput, PersonScaleInput, PersonScaleObservation, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchInsightInput, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SuggestedQuestion, ThemeCandidate, TopPainCell, TurnAnchors} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, ConversationAnalysis, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, DealAdvisorRecommendation, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, LensEvidenceHighlight, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonLensMetadata, PersonProfileInput, PersonScaleInput, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchInsightInput, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SuggestedQuestion, TopPainCell, TurnAnchors} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -266,51 +266,6 @@ export class BamlAsyncClient {
         signal,
       )
       return raw.parsed(false) as types.PersonaAssignmentDecision
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async AutoGroupThemes(
-      evidence_json: string,guidance: string,
-      __baml_options__?: BamlCallOptions
-  ): Promise<types.AutoGroupThemesResponse> {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const signal = options.signal;
-      
-      if (signal?.aborted) {
-        throw new BamlAbortError('Operation was aborted', signal.reason);
-      }
-      
-      // Check if onTick is provided - route through streaming if so
-      if (options.onTick) {
-        const stream = this.stream.AutoGroupThemes(
-          evidence_json,guidance,
-          __baml_options__
-        );
-        
-        return await stream.getFinalResponse();
-      }
-      
-      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = await this.runtime.callFunction(
-        "AutoGroupThemes",
-        {
-          "evidence_json": evidence_json,"guidance": guidance
-        },
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-        signal,
-      )
-      return raw.parsed(false) as types.AutoGroupThemesResponse
     } catch (error) {
       throw toBamlError(error);
     }
@@ -626,51 +581,6 @@ export class BamlAsyncClient {
         signal,
       )
       return raw.parsed(false) as types.EvidenceSet
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async ExtractEvidenceFromTranscript(
-      transcript: string,chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
-      __baml_options__?: BamlCallOptions
-  ): Promise<types.EvidenceExtraction> {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const signal = options.signal;
-      
-      if (signal?.aborted) {
-        throw new BamlAbortError('Operation was aborted', signal.reason);
-      }
-      
-      // Check if onTick is provided - route through streaming if so
-      if (options.onTick) {
-        const stream = this.stream.ExtractEvidenceFromTranscript(
-          transcript,chapters,language,facet_catalog,
-          __baml_options__
-        );
-        
-        return await stream.getFinalResponse();
-      }
-      
-      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = await this.runtime.callFunction(
-        "ExtractEvidenceFromTranscript",
-        {
-          "transcript": transcript,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
-        },
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-        signal,
-      )
-      return raw.parsed(false) as types.EvidenceExtraction
     } catch (error) {
       throw toBamlError(error);
     }
@@ -1932,69 +1842,6 @@ class BamlStreamClient {
     }
   }
   
-  AutoGroupThemes(
-      evidence_json: string,guidance: string,
-      __baml_options__?: BamlCallOptions
-  ): BamlStream<partial_types.AutoGroupThemesResponse, types.AutoGroupThemesResponse> {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const signal = options.signal;
-      
-      if (signal?.aborted) {
-        throw new BamlAbortError('Operation was aborted', signal.reason);
-      }
-      
-      let collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      
-      let onTickWrapper: (() => void) | undefined;
-      
-      // Create collector and wrap onTick if provided
-      if (options.onTick) {
-        const tickCollector = new Collector("on-tick-collector");
-        collector = [...collector, tickCollector];
-        
-        onTickWrapper = () => {
-          const log = tickCollector.last;
-          if (log) {
-            try {
-              options.onTick!("Unknown", log);
-            } catch (error) {
-              console.error("Error in onTick callback for AutoGroupThemes", error);
-            }
-          }
-        };
-      }
-
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = this.runtime.streamFunction(
-        "AutoGroupThemes",
-        {
-          "evidence_json": evidence_json,"guidance": guidance
-        },
-        undefined,
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-        signal,
-        onTickWrapper,
-      )
-      return new BamlStream<partial_types.AutoGroupThemesResponse, types.AutoGroupThemesResponse>(
-        raw,
-        (a): partial_types.AutoGroupThemesResponse => a,
-        (a): types.AutoGroupThemesResponse => a,
-        this.ctxManager.cloneContext(),
-        options.signal,
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
   CreateSet(
       instructions: string,
       __baml_options__?: BamlCallOptions
@@ -2428,69 +2275,6 @@ class BamlStreamClient {
         raw,
         (a): partial_types.EvidenceSet => a,
         (a): types.EvidenceSet => a,
-        this.ctxManager.cloneContext(),
-        options.signal,
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  ExtractEvidenceFromTranscript(
-      transcript: string,chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
-      __baml_options__?: BamlCallOptions
-  ): BamlStream<partial_types.EvidenceExtraction, types.EvidenceExtraction> {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const signal = options.signal;
-      
-      if (signal?.aborted) {
-        throw new BamlAbortError('Operation was aborted', signal.reason);
-      }
-      
-      let collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      
-      let onTickWrapper: (() => void) | undefined;
-      
-      // Create collector and wrap onTick if provided
-      if (options.onTick) {
-        const tickCollector = new Collector("on-tick-collector");
-        collector = [...collector, tickCollector];
-        
-        onTickWrapper = () => {
-          const log = tickCollector.last;
-          if (log) {
-            try {
-              options.onTick!("Unknown", log);
-            } catch (error) {
-              console.error("Error in onTick callback for ExtractEvidenceFromTranscript", error);
-            }
-          }
-        };
-      }
-
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = this.runtime.streamFunction(
-        "ExtractEvidenceFromTranscript",
-        {
-          "transcript": transcript,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
-        },
-        undefined,
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-        signal,
-        onTickWrapper,
-      )
-      return new BamlStream<partial_types.EvidenceExtraction, types.EvidenceExtraction>(
-        raw,
-        (a): partial_types.EvidenceExtraction => a,
-        (a): types.EvidenceExtraction => a,
         this.ctxManager.cloneContext(),
         options.signal,
       )

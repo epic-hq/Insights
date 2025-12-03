@@ -304,21 +304,6 @@ export interface ActionButton {
   
 }
 
-export interface Anchor {
-  type?: string | null
-  target?: string | null
-  start?: string | null
-  end?: string | null
-  speaker?: string | null
-  chapter_title?: string | null
-  
-}
-
-export interface AutoGroupThemesResponse {
-  themes: ThemeCandidate[]
-  
-}
-
 export interface AutoInsightsResponse {
   executive_summary: string
   top_opportunities: OpportunityRecommendation[]
@@ -440,13 +425,6 @@ export interface EvidenceAnalysisResponse {
   
 }
 
-export interface EvidenceExtraction {
-  people: EvidenceParticipant[]
-  evidence: EvidenceUnit[]
-  facet_catalog_version?: string | null
-  
-}
-
 export interface EvidenceItem {
   id: string
   verbatim: string
@@ -456,31 +434,9 @@ export interface EvidenceItem {
   
 }
 
-export interface EvidenceLinkProposal {
-  evidence_id: string
-  rationale: string
-  confidence: number
-  
-}
-
 export interface EvidenceLinkResult {
   evidence_id: string
   links: EvidenceQuestionLink[]
-  
-}
-
-export interface EvidenceParticipant {
-  person_key: string
-  display_name?: string | null
-  inferred_name?: string | null
-  role?: string | null
-  personas?: string[] | null
-  segments?: string[] | null
-  organization?: string | null
-  summary?: string | null
-  notes?: string | null
-  facets?: PersonFacetObservation[] | null
-  scales?: PersonScaleObservation[] | null
   
 }
 
@@ -523,33 +479,6 @@ export interface EvidenceTurn {
   feels?: string[] | null
   pains?: string[] | null
   gains?: string[] | null
-  
-}
-
-export interface EvidenceUnit {
-  person_key?: string | null
-  person_role?: string | null
-  topic?: string | null
-  gist?: string | null
-  chunk?: string | null
-  verbatim?: string | null
-  support?: string | null
-  kind_tags?: KindTags | null
-  personas?: string[] | null
-  segments?: string[] | null
-  journey_stage?: string | null
-  anchors?: Anchor[] | null
-  confidence?: string | null
-  context_summary?: string | null
-  independence_key?: string | null
-  says?: string[] | null
-  does?: string[] | null
-  thinks?: string[] | null
-  feels?: string[] | null
-  pains?: string[] | null
-  gains?: string[] | null
-  willingness_to_pay?: string | null
-  priority?: string | null
   
 }
 
@@ -603,14 +532,6 @@ export interface Extraction {
   evidence: EvidenceTurn[]
   facet_mentions: FacetMention[]
   scenes: Scene[]
-  
-}
-
-export interface FacetCandidatePayload {
-  kind_slug: string
-  label: string
-  synonyms?: string[] | null
-  notes?: string[] | null
   
 }
 
@@ -774,16 +695,6 @@ export interface InterviewPromptOut {
   
 }
 
-export interface KindTags {
-  problem?: string[] | null
-  goal?: string[] | null
-  behavior?: string[] | null
-  emotion?: Emotions | null
-  context?: string[] | null
-  artifact?: string[] | null
-  
-}
-
 export interface LensEvidenceHighlight {
   gist: string
   interview_title?: string | null
@@ -891,18 +802,6 @@ export interface PersonFacetLensResponse {
   
 }
 
-export interface PersonFacetObservation {
-  facet_account_id?: number | null
-  candidate?: FacetCandidatePayload | null
-  kind_slug: string
-  value: string
-  source: string
-  evidence_unit_index?: number | null
-  confidence?: number | null
-  notes?: string[] | null
-  
-}
-
 export interface PersonLensMetadata {
   person_id: string
   name?: string | null
@@ -935,17 +834,6 @@ export interface PersonScaleInput {
   band?: string | null
   source?: string | null
   confidence?: number | null
-  
-}
-
-export interface PersonScaleObservation {
-  kind_slug: string
-  score: number
-  band?: string | null
-  source: string
-  evidence_unit_index?: number | null
-  confidence?: number | null
-  rationale?: string | null
   
 }
 
@@ -1379,17 +1267,6 @@ export interface SuggestedQuestion {
   rationale: string
   interview_type: "user_interview" | "stakeholder_interview" | "expert_interview"
   priority: number
-  
-}
-
-export interface ThemeCandidate {
-  name: string
-  statement?: string | null
-  inclusion_criteria?: string | null
-  exclusion_criteria?: string | null
-  synonyms?: string[] | null
-  anti_examples?: string[] | null
-  links: EvidenceLinkProposal[]
   
 }
 

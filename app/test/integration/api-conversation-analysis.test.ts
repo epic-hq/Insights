@@ -9,9 +9,9 @@
 
 import { tasks } from "@trigger.dev/sdk"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { action as reprocessEvidenceAction } from "~/routes/api.reprocess-evidence"
-import { action as reanalyzeThemesAction } from "~/routes/api.reanalyze-themes"
 import { action as cancelAnalysisAction } from "~/routes/api.cancel-analysis-run"
+import { action as reanalyzeThemesAction } from "~/routes/api.reanalyze-themes"
+import { action as reprocessEvidenceAction } from "~/routes/api.reprocess-evidence"
 import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Mock Supabase server client
@@ -67,9 +67,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 					media_url: "test-key",
 					transcript_formatted: {
 						full_transcript: "test transcript content",
-						speaker_transcripts: [
-							{ speaker: "A", text: "Hello", start: 0, end: 1 },
-						],
+						speaker_transcripts: [{ speaker: "A", text: "Hello", start: 0, end: 1 }],
 					},
 					conversation_analysis: {
 						custom_instructions: "Test instructions",
