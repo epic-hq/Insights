@@ -58,15 +58,15 @@ function ExtractConversationTakeaways(
     {% endif %}
 
     ## Your Task
-    Provide a concise executive summary in exactly 3 sentences:
+    Analyze this conversation and provide a structured assessment with these exact fields:
 
-    1. **Value Synopsis** (1-2 sentences): How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy? Reference specific evidence by mentioning what was discussed.
+    **value_synopsis**: (1-2 sentences) How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy? Reference specific evidence by mentioning what was discussed.
 
-    2. **Critical Next Step** (1 sentence): What is the single most important next step or caution based on the evidence and framework analyses? Be specific about commitments or needs identified.
+    **critical_next_step**: (1 sentence) What is the single most important next step or caution based on the evidence and framework analyses? Be specific about commitments or needs identified.
 
-    3. **Future Improvement** (1 sentence): What could be improved on future calls to extract more value or address gaps?
+    **future_improvement**: (1 sentence) What could be improved on future calls to extract more value or address gaps?
 
-    Additionally, identify the 3-5 most important evidence items (by ID prefix shown above) that best support your takeaways. These should be the "smoking gun" moments that justify your analysis.
+    **supporting_evidence_ids**: Array of 3-5 evidence IDs (8-character prefixes shown above) that best support these takeaways. These should be the "smoking gun" moments that justify your analysis.
 
     Be direct, actionable, and grounded in the actual evidence provided.
   "#
