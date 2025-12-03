@@ -235,17 +235,17 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 		})
 	}, [run, cleanupTimers, realtimeError])
 
-	// Update progress from processing_metadata (v2 workflow) - highest priority
+	// Update progress from conversation_analysis (v2 workflow) - highest priority
 	useEffect(() => {
 		if (!interview) {
 			console.log("[useInterviewProgress] No interview found")
 			return
 		}
 
-		// Use processing_metadata as primary source of truth
-		const metadata = interview.processing_metadata as any
+		// Use conversation_analysis as primary source of truth
+		const metadata = interview.conversation_analysis as any
 
-		console.log("[useInterviewProgress] Processing metadata:", {
+		console.log("[useInterviewProgress] Conversation analysis:", {
 			interviewId: interview.id,
 			status: interview.status,
 			metadata,
@@ -278,9 +278,28 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			return
 		}
 
-		// If no processing_metadata yet, skip (will use fallback logic)
-		if (!metadata || !metadata.current_step) {
-			console.log("[useInterviewProgress] No processing_metadata yet, using fallback")
+		// If no conversation_analysis yet or no valid progress, skip (will use fallback logic)
+		if (!metadata) {
+			console.log("[useInterviewProgress] No conversation_analysis yet, using fallback")
+			return
+		}
+
+		// If no progress info but interview is completed, show 100%
+		if (!metadata.current_step && interview.status === "completed") {
+			setProgressInfo({
+				status: "completed",
+				progress: 100,
+				label: "Analysis complete!",
+				isComplete: true,
+				hasError: false,
+			})
+			cleanupTimers()
+			return
+		}
+
+		// If no current_step, use fallback
+		if (!metadata.current_step) {
+			console.log("[useInterviewProgress] No current_step in conversation_analysis, using fallback")
 			return
 		}
 
@@ -339,8 +358,8 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 		if (run && !realtimeError) return
 		if (!interview) return
 
-		// Defer to processing_metadata if available
-		const metadata = interview.processing_metadata as any
+		// Defer to conversation_analysis if available
+		const metadata = interview.conversation_analysis as any
 		if (metadata && metadata.current_step) return
 
 		const status = interview.status

@@ -11,11 +11,11 @@ import { getLoadContext } from "./load-context"
 export default await createHonoServer({
 	useWebSocket: true,
 	configure(server, { upgradeWebSocket }) {
-		// Increase body size limit for file uploads (500MB)
+		// Increase body size limit for file uploads (2GB for large video files)
 		server.use(
 			"*",
 			bodyLimit({
-				maxSize: 500 * 1024 * 1024, // 500MB in bytes
+				maxSize: 2 * 1024 * 1024 * 1024, // 2GB in bytes
 			})
 		)
 		// Add CORS headers for all requests including __manifest

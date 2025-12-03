@@ -139,34 +139,17 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 						</div>
 					)}
 
-					{/* Synonyms & Anti-Examples */}
-					{(insight.synonyms?.length > 0 || insight.anti_examples?.length > 0) && (
-						<div className="grid gap-6 md:grid-cols-2">
-							{insight.synonyms && insight.synonyms.length > 0 && (
-								<div className="space-y-3">
-									<h4 className="font-semibold text-foreground text-sm">Synonyms</h4>
-									<div className="flex flex-wrap gap-2">
-										{insight.synonyms.map((synonym: string, idx: number) => (
-											<Badge key={idx} variant="secondary" className="text-xs">
-												{synonym}
-											</Badge>
-										))}
-									</div>
-								</div>
-							)}
-
-							{insight.anti_examples && insight.anti_examples.length > 0 && (
-								<div className="space-y-3">
-									<h4 className="font-semibold text-foreground text-sm">Anti-Examples</h4>
-									<div className="flex flex-wrap gap-2">
-										{insight.anti_examples.map((example: string, idx: number) => (
-											<Badge key={idx} variant="outline" className="text-xs">
-												{example}
-											</Badge>
-										))}
-									</div>
-								</div>
-							)}
+					{/* Synonyms */}
+					{insight.synonyms && insight.synonyms.length > 0 && (
+						<div className="space-y-3">
+							<h4 className="font-semibold text-foreground text-sm">Synonyms</h4>
+							<div className="flex flex-wrap gap-2">
+								{insight.synonyms.map((synonym: string, idx: number) => (
+									<Badge key={idx} variant="secondary" className="text-xs">
+										{synonym}
+									</Badge>
+								))}
+							</div>
 						</div>
 					)}
 
@@ -186,13 +169,31 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 						</div>
 					)}
 
-					{/* Coverage Section - Organizations & People */}
-					{((insight as any).people?.length > 0 || (insight as any).organizations?.length > 0) && (
+					{/* Signals and Evidence Section */}
+					{((insight as any).people?.length > 0 || (insight as any).organizations?.length > 0 || (insight as any).evidence_count > 0) && (
 						<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
 							<div className="flex items-center gap-2">
-								<Users className="h-5 w-5 text-muted-foreground" />
-								<h4 className="font-semibold text-base text-foreground">Coverage</h4>
+								<Quote className="h-5 w-5 text-muted-foreground" />
+								<h4 className="font-semibold text-base text-foreground">Signals and Evidence</h4>
 							</div>
+
+							{/* Evidence Link - Prominent placement */}
+							{(insight as any).evidence_count > 0 && (
+								<Link
+									to={routes.evidence.index() + `?theme_id=${insight.id}`}
+									className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
+								>
+									<div className="rounded-full bg-primary/10 p-2">
+										<Quote className="h-5 w-5 text-primary" />
+									</div>
+									<div className="flex-1">
+										<div className="font-medium text-foreground text-sm">View Evidence</div>
+										<div className="text-muted-foreground text-xs">
+											{(insight as any).evidence_count} piece{(insight as any).evidence_count !== 1 ? 's' : ''} of supporting evidence
+										</div>
+									</div>
+								</Link>
+							)}
 
 							<div className="space-y-6">
 								{(insight as any).organizations?.length > 0 && (
@@ -242,17 +243,6 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 									</div>
 								)}
 							</div>
-
-							{/* Link to Evidence */}
-							{(insight as any).evidence_count > 0 && (
-								<Link
-									to={routes.evidence.index() + `?theme_id=${insight.id}`}
-									className="mt-4 inline-flex items-center gap-2 text-primary text-sm hover:underline"
-								>
-									<Quote className="h-4 w-4" />
-									View all {(insight as any).evidence_count} pieces of evidence
-								</Link>
-							)}
 						</div>
 					)}
 				</div>

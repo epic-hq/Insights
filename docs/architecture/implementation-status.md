@@ -28,12 +28,17 @@
 - ✅ `errorMessage()` - Format error messages
 
 ### 4. Database Schema
-- ✅ Extended `analysis_jobs` table with:
-  - `workflow_state` (jsonb) - Full workflow state
-  - `completed_steps` (text[]) - Array of completed steps
-  - `current_step` (text) - Current workflow step
-  - `evidence_count` (int) - Number of evidence units
-- ✅ Migration created: `20251122053315_add_workflow_state_to_analysis_jobs.sql`
+- ✅ **CONSOLIDATED**: `analysis_jobs` table merged into `interviews.conversation_analysis` (Dec 2024)
+  - `conversation_analysis` (jsonb) contains:
+    - `workflow_state` - Full workflow state
+    - `completed_steps` - Array of completed steps
+    - `current_step` - Current workflow step
+    - `progress` - Progress percentage
+    - `status_detail` - Human-readable status
+    - `transcript_data` - Transcript metadata
+    - `trigger_run_id` - Trigger.dev run ID
+- ✅ All v2 tasks updated to use `interviews` table
+- ✅ Migration: `20251202150000_consolidate_analysis_jobs.sql`
 
 ### 5. Atomic Tasks Implemented
 
@@ -47,8 +52,8 @@
 **Key features:**
 - Reuses `extractEvidenceAndPeopleCore()`
 - Fully idempotent
-- Updates progress in analysis_jobs
-- Stores evidence count
+- Updates progress in `interviews.conversation_analysis`
+- Uses MediaAnchor schema with `start_ms`/`end_ms` for timestamps
 
 #### ✅ `generateInsightsTaskV2` (`v2/generateInsights.ts`)
 **What it does:**
