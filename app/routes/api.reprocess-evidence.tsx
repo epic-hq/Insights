@@ -50,24 +50,24 @@ export async function action({ request }: ActionFunctionArgs) {
 		const admin = createSupabaseAdminClient()
 
 		try {
-			const { data: analysisJob, error: analysisJobError } = await admin
-				.from("analysis_jobs")
-				.insert({
-					interview_id: interviewId,
-					transcript_data: formattedTranscriptData as any,
-					status: "in_progress",
-					status_detail: "Re-extracting evidence from transcript",
+			// Get current conversation_analysis
+			const conversationAnalysis = (interview.conversation_analysis as any) || {}
+
+			// Update conversation_analysis for reprocessing
+			await admin
+				.from("interviews")
+				.update({
+					status: "processing",
+					conversation_analysis: {
+						...conversationAnalysis,
+						transcript_data: formattedTranscriptData as any,
+						status_detail: "Re-extracting evidence from transcript",
+						current_step: "evidence",
+					},
 				})
-				.select()
-				.single()
+				.eq("id", interviewId)
 
-			if (analysisJobError || !analysisJob) {
-				throw new Error(`Failed to create analysis job: ${analysisJobError?.message}`)
-			}
-
-			consola.log("Analysis job created:", analysisJob.id)
-
-			await admin.from("interviews").update({ status: "processing" }).eq("id", interviewId)
+			consola.log("Interview updated for evidence reprocessing:", interviewId)
 
 			const metadata = {
 				accountId: interview.account_id,
@@ -105,7 +105,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				}
 
 				handle = await tasks.trigger("interview.v2.orchestrator", {
-					analysisJobId: analysisJob.id,
+					analysisJobId: interviewId, // Use interview ID
 					metadata,
 					transcriptData: formattedTranscriptData as any,
 					mediaUrl: mediaUrlForTask,
@@ -139,12 +139,22 @@ export async function action({ request }: ActionFunctionArgs) {
 					fullTranscript: "", // Legacy field, not used in AI extraction
 					language,
 					metadata,
-					analysisJobId: analysisJob.id,
+					analysisJobId: interviewId, // Use interview ID
 					userCustomInstructions: null,
 				})
 			}
 
-			await admin.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
+			// Store trigger_run_id in conversation_analysis
+			await admin
+				.from("interviews")
+				.update({
+					conversation_analysis: {
+						...conversationAnalysis,
+						trigger_run_id: handle.id,
+						status_detail: "Extracting evidence from transcript",
+					},
+				})
+				.eq("id", interviewId)
 
 			consola.info(`Evidence reprocessing triggered: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`)
 

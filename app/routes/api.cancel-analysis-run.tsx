@@ -15,38 +15,40 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	const formData = await request.formData()
 	const runId = formData.get("runId") as string
-	const analysisJobId = formData.get("analysisJobId") as string
+	const interviewId = formData.get("analysisJobId") as string // analysisJobId is now interviewId
 
-	if (!runId || !analysisJobId) {
-		return Response.json({ error: "Missing runId or analysisJobId" }, { status: 400 })
+	if (!runId || !interviewId) {
+		return Response.json({ error: "Missing runId or interviewId" }, { status: 400 })
 	}
 
 	try {
 		const adminClient = createSupabaseAdminClient()
 
-		// Verify the analysis job belongs to the user and get interview info
-		const { data: analysisJob, error: jobError } = await adminClient
-			.from("analysis_jobs" as any)
-			.select("id, interview_id, status, trigger_run_id")
-			.eq("id", analysisJobId)
+		// Get interview and verify conversation_analysis contains the run
+		const { data: interview, error: interviewError } = await adminClient
+			.from("interviews")
+			.select("id, status, conversation_analysis")
+			.eq("id", interviewId)
 			.single()
 
-		if (jobError || !analysisJob) {
-			return Response.json({ error: "Analysis job not found" }, { status: 404 })
+		if (interviewError || !interview) {
+			return Response.json({ error: "Interview not found" }, { status: 404 })
 		}
 
+		const conversationAnalysis = (interview.conversation_analysis as any) || {}
+
 		// Verify the run ID matches
-		if (analysisJob.trigger_run_id !== runId) {
+		if (conversationAnalysis.trigger_run_id !== runId) {
 			return Response.json({ error: "Run ID mismatch" }, { status: 400 })
 		}
 
-		// Check if the analysis job is in a cancellable state
-		const cancellableStatuses = ["pending", "in_progress", "queued"]
-		if (!cancellableStatuses.includes(analysisJob.status)) {
-			return Response.json({ error: "Analysis job is not in a cancellable state" }, { status: 400 })
+		// Check if the interview is in a cancellable state
+		const cancellableStatuses = ["processing", "transcribed"]
+		if (!cancellableStatuses.includes(interview.status)) {
+			return Response.json({ error: "Interview is not in a cancellable state" }, { status: 400 })
 		}
 
-		consola.info(`Cancelling analysis run ${runId} for job ${analysisJobId}`)
+		consola.info(`Cancelling analysis run ${runId} for interview ${interviewId}`)
 
 		// Cancel the Trigger.dev run
 		try {
@@ -54,37 +56,27 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.info(`Successfully canceled Trigger.dev run ${runId}`)
 		} catch (cancelError) {
 			consola.warn("Failed to cancel Trigger.dev run:", cancelError)
-			// Continue anyway to mark job as canceled in our database
+			// Continue anyway to mark as canceled in our database
 		}
 
-		// Update analysis job status to canceled
+		// Update conversation_analysis and interview status
 		const { error: updateError } = await adminClient
-			.from("analysis_jobs" as any)
-			.update({
-				status: "canceled",
-				status_detail: "Canceled by user",
-				last_error: "Analysis canceled by user",
-				updated_at: new Date().toISOString(),
-			})
-			.eq("id", analysisJobId)
-
-		if (updateError) {
-			consola.error("Failed to update analysis job status", updateError)
-			return Response.json({ error: "Failed to update analysis job" }, { status: 500 })
-		}
-
-		// Update interview status to error
-		const { error: interviewUpdateError } = await adminClient
-			.from("interviews" as any)
+			.from("interviews")
 			.update({
 				status: "error",
+				conversation_analysis: {
+					...conversationAnalysis,
+					status_detail: "Canceled by user",
+					last_error: "Analysis canceled by user",
+					canceled_at: new Date().toISOString(),
+				},
 				updated_at: new Date().toISOString(),
 			})
-			.eq("id", analysisJob.interview_id)
+			.eq("id", interviewId)
 
-		if (interviewUpdateError) {
-			consola.warn("Failed to update interview status after cancellation", interviewUpdateError)
-			// Don't fail the request for this
+		if (updateError) {
+			consola.error("Failed to update interview", updateError)
+			return Response.json({ error: "Failed to update interview" }, { status: 500 })
 		}
 
 		consola.info(`Successfully cancelled analysis run ${runId}`)

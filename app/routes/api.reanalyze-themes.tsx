@@ -85,13 +85,9 @@ export async function action({ request }: ActionFunctionArgs) {
 					? interview.transcript
 					: ""
 
-		const { data: latestJob } = await userDb
-			.from("analysis_jobs")
-			.select("custom_instructions")
-			.eq("interview_id", interviewId)
-			.order("created_at", { ascending: false })
-			.limit(1)
-		const customInstructions = latestJob?.[0]?.custom_instructions ?? undefined
+		// Get custom_instructions from conversation_analysis
+		const conversationAnalysis = (interview.conversation_analysis as any) || {}
+		const customInstructions = conversationAnalysis.custom_instructions ?? undefined
 
 		const { data: evidenceRows, error: evidenceErr } = await userDb
 			.from("evidence")
@@ -284,25 +280,23 @@ export async function action({ request }: ActionFunctionArgs) {
 			fileName: (sanitizedTranscript?.original_filename as string | undefined) ?? undefined,
 		}
 
-		await admin.from("interviews").update({ status: "processing" }).eq("id", interviewId)
-
-		const { data: analysisJob, error: jobError } = await admin
-			.from("analysis_jobs")
-			.insert({
-				interview_id: interviewId,
-				transcript_data: sanitizedTranscript,
-				custom_instructions: customInstructions ?? null,
-				status: "in_progress",
-				status_detail: "Re-analyzing themes and personas",
-				progress: 70,
+		// Update conversation_analysis for reprocessing
+		await admin
+			.from("interviews")
+			.update({
+				status: "processing",
+				conversation_analysis: {
+					...conversationAnalysis,
+					transcript_data: sanitizedTranscript,
+					custom_instructions: customInstructions ?? null,
+					status_detail: "Re-analyzing themes and personas",
+					current_step: "insights",
+					progress: 70,
+				},
 			})
-			.select("id")
-			.single()
+			.eq("id", interviewId)
 
-		if (jobError || !analysisJob) {
-			return Response.json({ error: jobError?.message ?? "Failed to create analysis job" }, { status: 500 })
-		}
-		analysisJobId = analysisJob.id
+		analysisJobId = interviewId // Use interview ID as job ID
 
 		const evidenceResult = {
 			personData: { id: primaryPersonId },
@@ -341,22 +335,25 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			// Store evidence units in workflow state so v2 orchestrator can use them
 			await admin
-				.from("analysis_jobs")
+				.from("interviews")
 				.update({
-					workflow_state: {
-						interviewId,
-						evidenceIds,
-						evidenceUnits: validatedEvidenceUnits,
-						personId: primaryPersonId,
-						completedSteps: ["upload", "evidence"],
-						currentStep: "insights",
-						lastUpdated: new Date().toISOString(),
-					} as any,
+					conversation_analysis: {
+						...conversationAnalysis,
+						workflow_state: {
+							interviewId,
+							evidenceIds,
+							evidenceUnits: validatedEvidenceUnits,
+							personId: primaryPersonId,
+							completedSteps: ["upload", "evidence"],
+							currentStep: "insights",
+							lastUpdated: new Date().toISOString(),
+						},
+					},
 				})
-				.eq("id", analysisJob.id)
+				.eq("id", interviewId)
 
 			handle = await tasks.trigger("interview.v2.orchestrator", {
-				analysisJobId: analysisJob.id,
+				analysisJobId: interviewId, // Use interview ID
 				metadata: analysisMetadata,
 				transcriptData: sanitizedTranscript,
 				mediaUrl: mediaUrlForTask,
@@ -374,20 +371,24 @@ export async function action({ request }: ActionFunctionArgs) {
 				fullTranscript,
 				userCustomInstructions: customInstructions ?? undefined,
 				evidenceResult,
-				analysisJobId: analysisJob.id,
+				analysisJobId: interviewId, // Use interview ID
 			}
 
 			handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>("interview.analyze-themes-and-persona", payload)
 		}
 
+		// Store trigger_run_id in conversation_analysis
 		await admin
-			.from("analysis_jobs")
+			.from("interviews")
 			.update({
-				trigger_run_id: handle.id,
-				status_detail: "Analyzing themes and personas",
-				progress: 75,
+				conversation_analysis: {
+					...conversationAnalysis,
+					trigger_run_id: handle.id,
+					status_detail: "Analyzing themes and personas",
+					progress: 75,
+				},
 			})
-			.eq("id", analysisJob.id)
+			.eq("id", interviewId)
 
 		consola.info(
 			`Re-analyze themes triggered for interview ${interviewId}: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`
@@ -397,16 +398,26 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.error("Re-analyze themes API error:", error)
 		const message = error instanceof Error ? error.message : "Internal error"
 		if (analysisJobId) {
+			const errorAnalysis = (await admin
+				.from("interviews")
+				.select("conversation_analysis")
+				.eq("id", interviewId)
+				.single()).data?.conversation_analysis as any
+
 			await admin
-				.from("analysis_jobs")
+				.from("interviews")
 				.update({
 					status: "error",
-					status_detail: "Re-analyze themes failed",
-					last_error: message,
+					conversation_analysis: {
+						...(errorAnalysis || {}),
+						status_detail: "Re-analyze themes failed",
+						last_error: message,
+					},
 				})
-				.eq("id", analysisJobId)
+				.eq("id", interviewId)
+		} else {
+			await admin.from("interviews").update({ status: "error" }).eq("id", interviewId)
 		}
-		await admin.from("interviews").update({ status: "error" }).eq("id", interviewId)
 		return Response.json({ error: error instanceof Error ? error.message : "Internal error" }, { status: 500 })
 	}
 }
