@@ -77,7 +77,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			console.log("Re-transcribing audio file from media_url...")
 			await createAndProcessAnalysisJob({
 				interviewId,
-				transcriptData: {}, // Empty - will be populated during transcription
+				transcriptData: {
+					needs_transcription: true, // Flag to trigger AssemblyAI transcription
+					media_url: mediaUrlForTask,
+					file_type: "media",
+				},
 				customInstructions,
 				adminClient: admin,
 				mediaUrl: mediaUrlForTask,
