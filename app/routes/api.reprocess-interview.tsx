@@ -63,8 +63,15 @@ export async function action({ request }: ActionFunctionArgs) {
 			// Have transcript - use it directly
 			const formatted = interview.transcript_formatted as Record<string, unknown> | null
 
+			// Check if formatted data is usable (has speaker_transcripts with data)
+			const hasUsableFormatted =
+				formatted &&
+				Array.isArray(formatted.speaker_transcripts) &&
+				formatted.speaker_transcripts.length > 0
+
 			consola.info("Reprocess: Checking formatted transcript", {
 				hasFormatted: !!formatted,
+				hasUsableFormatted,
 				formattedKeys: formatted ? Object.keys(formatted) : [],
 				hasSpeakerTranscripts: formatted ? 'speaker_transcripts' in formatted : false,
 				speakerTranscriptsLength: formatted && Array.isArray(formatted.speaker_transcripts)
@@ -74,7 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				transcriptLength: interview.transcript?.length ?? 0,
 			})
 
-			transcriptData = formatted
+			transcriptData = hasUsableFormatted
 				? {
 						...formatted,
 						// Ensure full_transcript is populated for backwards compatibility
