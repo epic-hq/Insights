@@ -33,7 +33,7 @@ function ExtractConversationTakeaways(
     ## Key Evidence from Conversation
     {% for item in evidence %}
     ---
-    Evidence #{{ loop.index }} (ID: {{ item.id | truncate(8) }})
+    Evidence #{{ loop.index }} (ID: {{ item.id[:8] }})
     {% if item.speaker %}Speaker: {{ item.speaker }}{% endif %}
     {% if item.timestamp_start %}Time: {{ item.timestamp_start | round }}s{% endif %}
     {% if item.evidence_type %}Type: {{ item.evidence_type }}{% endif %}
