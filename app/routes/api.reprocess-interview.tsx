@@ -56,69 +56,42 @@ export async function action({ request }: ActionFunctionArgs) {
 		// 2. Update interview status to processing
 		await supabase.from("interviews").update({ status: "processing" }).eq("id", interviewId)
 
-		// 3. Create transcript data object (or trigger transcription if needed)
+		// 3. ALWAYS re-transcribe from media if available, otherwise use transcript
 		let transcriptData: Record<string, unknown>
 
-		if (interview.transcript) {
-			// Have transcript - use it directly
-			const formatted = interview.transcript_formatted as Record<string, unknown> | null
-
-			// Check if formatted data is usable (has speaker_transcripts with data)
-			const hasUsableFormatted =
-				formatted &&
-				Array.isArray(formatted.speaker_transcripts) &&
-				formatted.speaker_transcripts.length > 0
-
-			consola.info("Reprocess: Checking formatted transcript", {
-				hasFormatted: !!formatted,
-				hasUsableFormatted,
-				formattedKeys: formatted ? Object.keys(formatted) : [],
-				hasSpeakerTranscripts: formatted ? 'speaker_transcripts' in formatted : false,
-				speakerTranscriptsLength: formatted && Array.isArray(formatted.speaker_transcripts)
-					? formatted.speaker_transcripts.length
-					: 0,
-				hasFullTranscript: formatted ? 'full_transcript' in formatted : false,
-				transcriptLength: interview.transcript?.length ?? 0,
+		if (interview.media_url) {
+			// ALWAYS re-transcribe from media when reprocessing
+			// This ensures fresh, accurate transcripts with proper speaker diarization
+			consola.info("Reprocess: Re-transcribing from media_url", {
+				hasTranscript: !!interview.transcript,
+				mediaUrl: interview.media_url.substring(0, 50) + "...",
 			})
 
-			transcriptData = hasUsableFormatted
-				? {
-						...formatted,
-						// Ensure full_transcript is populated for backwards compatibility
-						full_transcript: formatted.full_transcript || interview.transcript,
-					}
-				: {
-						full_transcript: interview.transcript,
-						speaker_transcripts: [
-							{
-								speaker: "Speaker",
-								text: interview.transcript,
-								start: 0,
-								end: null,
-							},
-						],
-						confidence: 0.9,
-						audio_duration: 0,
-						processing_duration: 0,
-						file_type: "text",
-					}
-
-			consola.info("Reprocess: Prepared transcriptData", {
-				hasFormattedTranscript: !!formatted,
-				fullTranscriptLength: (transcriptData.full_transcript as string)?.length ?? 0,
-				hasSpeakerTranscripts: 'speaker_transcripts' in transcriptData,
-				speakerTranscriptsCount: Array.isArray(transcriptData.speaker_transcripts)
-					? transcriptData.speaker_transcripts.length
-					: 0,
-				keys: Object.keys(transcriptData),
-			})
-		} else if (interview.media_url) {
-			// No transcript but have media - need to transcribe first via Trigger.dev
-			consola.info("No transcript found - triggering Trigger.dev pipeline with media URL")
 			transcriptData = {
 				needs_transcription: true,
 				media_url: interview.media_url,
 				file_type: "media",
+			}
+		} else if (interview.transcript) {
+			// No media available - use existing transcript as fallback
+			consola.info("Reprocess: No media available, using existing transcript", {
+				transcriptLength: interview.transcript.length,
+			})
+
+			transcriptData = {
+				full_transcript: interview.transcript,
+				speaker_transcripts: [
+					{
+						speaker: "Speaker",
+						text: interview.transcript,
+						start: 0,
+						end: null,
+					},
+				],
+				confidence: 0.9,
+				audio_duration: 0,
+				processing_duration: 0,
+				file_type: "text",
 			}
 		} else {
 			// This shouldn't happen due to earlier check, but for type safety
