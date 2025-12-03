@@ -41,6 +41,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ ok: false, error: "Interview not found" }, { status: 404 })
 		}
 
+		// Set interview status to "processing" to show progress indicator
+		await userDb.from("interviews").update({ status: "processing" }).eq("id", interview.id)
+
 		// Trigger the sales lens generation task
 		const handle = await tasks.trigger<typeof generateSalesLensTask>("sales.generate-sales-lens", {
 			interviewId: interview.id,

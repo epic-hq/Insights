@@ -36,10 +36,20 @@ async function generateConversationTakeaways(
                         return
                 }
 
-                // Fetch evidence items for this interview
+                // Fetch evidence items for this interview with linked person data
                 const { data: evidenceItems, error: evidenceError } = await client
                         .from("evidence")
-                        .select("id, verbatim, gist, evidence_type, timestamp_start")
+                        .select(`
+                                id,
+                                verbatim,
+                                gist,
+                                evidence_type,
+                                timestamp_start,
+                                evidence_people!inner(
+                                        person_id,
+                                        people!inner(display_name)
+                                )
+                        `)
                         .eq("interview_id", interviewId)
                         .order("timestamp_start", { ascending: true, nullsFirst: false })
 
@@ -80,14 +90,19 @@ async function generateConversationTakeaways(
                         .join(", ") || null
 
                 // Transform evidence to BAML format
-                const evidenceForBaml = evidenceItems.map((e) => ({
-                        id: e.id,
-                        verbatim: e.verbatim || "",
-                        gist: e.gist || null,
-                        speaker: null, // Speaker data not available in evidence table
-                        evidence_type: e.evidence_type || null,
-                        timestamp_start: e.timestamp_start || null,
-                }))
+                const evidenceForBaml = evidenceItems.map((e: any) => {
+                        // Extract speaker name from evidence_people join
+                        const speakerName = e.evidence_people?.[0]?.people?.display_name || null
+
+                        return {
+                                id: e.id,
+                                verbatim: e.verbatim || "",
+                                gist: e.gist || null,
+                                speaker: speakerName,
+                                evidence_type: e.evidence_type || null,
+                                timestamp_start: e.timestamp_start || null,
+                        }
+                })
 
                 // Log input summary for debugging
                 consola.info(`[generateConversationTakeaways] Input summary:`, {
@@ -227,6 +242,10 @@ export const generateSalesLensTask = task({
                 // This runs last so it can summarize everything, and failures here won't affect lens data
                 consola.info(`[generateSalesLensTask] Generating conversation takeaways for ${payload.interviewId}`)
                 await generateConversationTakeaways(client, payload.interviewId, extraction)
+
+                // Set interview status back to "ready" to hide progress indicator
+                await client.from("interviews").update({ status: "ready" }).eq("id", payload.interviewId)
+                consola.info(`[generateSalesLensTask] Set interview status to ready`)
 
                 // Build comprehensive result summary
                 const result = {
