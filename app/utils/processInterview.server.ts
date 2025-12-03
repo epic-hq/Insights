@@ -2122,7 +2122,18 @@ export async function uploadMediaAndTranscribeCore({
 	client,
 }: UploadMediaAndTranscribePayload & { client: SupabaseClient<Database> }): Promise<UploadMediaAndTranscribeResult> {
 	const normalizedMetadata: InterviewMetadata = { ...metadata }
-	const sanitizedTranscriptData = safeSanitizeTranscriptPayload(transcriptData)
+
+	// Check if data is already sanitized (has speaker_transcripts array)
+	// If so, don't re-sanitize as it will strip all the fields
+	const isAlreadySanitized =
+		transcriptData &&
+		typeof transcriptData === 'object' &&
+		'speaker_transcripts' in transcriptData &&
+		Array.isArray((transcriptData as any).speaker_transcripts)
+
+	const sanitizedTranscriptData = isAlreadySanitized
+		? (transcriptData as any)
+		: safeSanitizeTranscriptPayload(transcriptData)
 	const normalizedTranscriptData = sanitizedTranscriptData as unknown as Record<string, unknown>
 
 	if (normalizedMetadata.projectId) {
