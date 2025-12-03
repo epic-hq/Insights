@@ -9,7 +9,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { b } from "../../../baml_client"
 import type { Database } from "../../../supabase/types"
-import { searchBANTEvidence } from "../evidence/semantic-search.server"
 import type { SalesConversationExtraction } from "./schema"
 
 type DbClient = SupabaseClient<Database>
@@ -34,38 +33,24 @@ export async function buildSalesLensFromEvidence(
 		throw new Error(`Failed to load interview ${interviewId}: ${interviewError?.message}`)
 	}
 
-	// 2. Semantically search for BANT-relevant evidence
-	consola.info("[buildSalesLensFromEvidence] Searching for BANT-relevant evidence")
-	const bantEvidence = await searchBANTEvidence(db, interviewId)
+	// 2. Get ALL evidence from the interview (let BAML figure out what's relevant)
+	consola.info("[buildSalesLensFromEvidence] Loading all evidence from interview")
+	const { data: evidenceRows, error: evidenceError } = await db
+		.from("evidence")
+		.select("id, verbatim, chunk, gist, anchors, pains, gains, thinks, feels")
+		.eq("interview_id", interviewId)
+		.order("created_at", { ascending: true })
 
-	// Log how much evidence we found for each category
-	const evidenceCounts = {
-		budget: bantEvidence.budget.length,
-		authority: bantEvidence.authority.length,
-		need: bantEvidence.need.length,
-		timeline: bantEvidence.timeline.length,
-		nextSteps: bantEvidence.nextSteps.length,
-	}
-	consola.info("[buildSalesLensFromEvidence] Found evidence:", evidenceCounts)
-
-	// Check if we have ANY evidence at all
-	const totalEvidence = Object.values(evidenceCounts).reduce((sum, count) => sum + count, 0)
-	if (totalEvidence === 0) {
-		throw new Error(
-			`No BANT-relevant evidence found for interview ${interviewId}. Evidence may not have embeddings generated yet.`
-		)
+	if (evidenceError) {
+		throw new Error(`Failed to load evidence for interview ${interviewId}: ${evidenceError.message}`)
 	}
 
-	// 3. Combine all relevant evidence (dedupe by ID)
-	const allEvidenceMap = new Map()
-	for (const category of Object.values(bantEvidence)) {
-		for (const evidence of category) {
-			allEvidenceMap.set(evidence.id, evidence)
-		}
+	if (!evidenceRows || evidenceRows.length === 0) {
+		throw new Error(`No evidence found for interview ${interviewId}. Extract evidence first.`)
 	}
-	const allEvidence = Array.from(allEvidenceMap.values())
 
-	consola.info(`[buildSalesLensFromEvidence] Total unique evidence pieces: ${allEvidence.length}`)
+	const allEvidence = evidenceRows
+	consola.info(`[buildSalesLensFromEvidence] Loaded ${allEvidence.length} evidence pieces`)
 
 	// 4. Prepare evidence for BAML (as JSON string)
 	const evidenceForBAML = allEvidence.map((e) => ({
