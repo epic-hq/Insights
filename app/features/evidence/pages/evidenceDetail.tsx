@@ -21,11 +21,17 @@ function isValidUuid(value: string): boolean {
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
-	const { evidenceId } = params
+	const { evidenceId, accountId, projectId } = params
+
+	console.log("Evidence loader params:", { evidenceId, accountId, projectId })
+
 	if (!evidenceId) throw new Response("Missing evidenceId", { status: 400 })
 	if (!isValidUuid(evidenceId)) {
 		throw new Response("Invalid evidence identifier", { status: 400 })
 	}
+
+	// Build projectPath for nested routes
+	const projectPath = accountId && projectId ? `/a/${accountId}/${projectId}` : null
 
 	// Parse simple ?t=seconds parameter (like YouTube)
 	const url = new URL(request.url)
@@ -46,9 +52,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	}
 
 	// Fetch evidence with interview data (excluding evidence_tag to avoid multiple rows issue)
-	const { data: evidenceData, error: evidenceError } = await supabase
+	// Note: RLS policies handle access control, so we only filter by ID
+	const query = supabase
 		.from("evidence")
-		.select(`
+		.select(
+			`
 			*,
 			interview:interview_id(
 				id,
@@ -58,12 +66,43 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				transcript_formatted,
 				duration_sec
 			)
-		`)
+		`,
+			{ count: "exact" }
+		)
 		.eq("id", evidenceId)
-		.single()
 
-	if (evidenceError) throw new Error(`Failed to load evidence: ${evidenceError.message}`)
-	if (!evidenceData) throw new Error("Evidence not found")
+	const { data: evidenceData, error: evidenceError, count } = await query
+
+	console.log("Evidence query result:", {
+		evidenceId,
+		accountId,
+		projectId,
+		count,
+		isArray: Array.isArray(evidenceData),
+		length: Array.isArray(evidenceData) ? evidenceData.length : "not array",
+		hasData: !!evidenceData,
+		dataType: typeof evidenceData,
+		error: evidenceError,
+	})
+
+	if (evidenceError) {
+		console.error("Evidence query error:", evidenceError)
+		throw new Error(`Failed to load evidence: ${evidenceError.message}`)
+	}
+
+	// Supabase .select() without .single() returns an array
+	if (!evidenceData || !Array.isArray(evidenceData) || evidenceData.length === 0) {
+		console.error("Evidence not found - filters may be too restrictive", {
+			evidenceId,
+			accountId,
+			projectId,
+			count,
+		})
+		throw new Error(`Evidence not found (ID: ${evidenceId})`)
+	}
+
+	// Get first row
+	const evidence = evidenceData[0]
 
 	// Fetch people separately to avoid duplicate rows
 	const { data: peopleData } = await supabase
@@ -91,7 +130,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	}))
 
 	const data = {
-		...evidenceData,
+		...evidence,
 		people: peopleData || [],
 	}
 
@@ -132,6 +171,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (Array.isArray(relatedEvidence) && relatedEvidence.length > 0) {
 			const relatedIds = relatedEvidence.map((ev: any) => ev.id).filter(Boolean)
 			if (relatedIds.length > 0) {
+				// Load facets for related evidence
 				const { data: relatedFacets, error: relatedFacetError } = await supabase
 					.from("evidence_facet")
 					.select("evidence_id, kind_slug, label, facet_account_id")
@@ -151,9 +191,39 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 					facetMap.set(evidence_id, list)
 				}
 
+				// Load people for related evidence
+				const { data: relatedPeople, error: relatedPeopleError } = await supabase
+					.from("evidence_people")
+					.select(`
+						evidence_id,
+						role,
+						people:person_id!inner(
+							id,
+							name
+						)
+					`)
+					.in("evidence_id", relatedIds)
+				if (relatedPeopleError) throw new Error(`Failed to load related evidence people: ${relatedPeopleError.message}`)
+
+				const peopleMap = new Map<
+					string,
+					Array<{ id: string; name: string | null; role: string | null; personas: any[] }>
+				>()
+				for (const row of relatedPeople ?? []) {
+					if (!row || typeof row !== "object") continue
+					const evidence_id = (row as any).evidence_id as string | undefined
+					const role = (row as any).role as string | null
+					const people = (row as any).people as { id: string; name: string | null } | undefined
+					if (!evidence_id || !people) continue
+					const list = peopleMap.get(evidence_id) ?? []
+					list.push({ id: people.id, name: people.name, role, personas: [] })
+					peopleMap.set(evidence_id, list)
+				}
+
 				relatedEvidence = relatedEvidence.map((ev: any) => ({
 					...ev,
 					facets: facetMap.get(ev.id) ?? [],
+					people: peopleMap.get(ev.id) ?? [],
 				}))
 			}
 		}
@@ -163,11 +233,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		evidence: transformedEvidence,
 		relatedEvidence,
 		anchorFromUrl: anchorOverride,
+		projectPath,
 	}
 }
 
 export default function EvidenceDetail() {
-	const { evidence, relatedEvidence } = useLoaderData<typeof loader>()
+	const { evidence, relatedEvidence, projectPath } = useLoaderData<typeof loader>()
 	const interview = evidence.interview
 
 	return (
@@ -189,6 +260,7 @@ export default function EvidenceDetail() {
 					interview={interview}
 					variant="expanded"
 					showInterviewLink={true}
+					projectPath={projectPath || undefined}
 				/>
 			</PageContainer>
 
@@ -199,7 +271,14 @@ export default function EvidenceDetail() {
 						<p className="text-foreground text-lg">Related</p>
 						<div className="space-y-2">
 							{relatedEvidence.map((ev: any) => (
-								<EvidenceCard key={ev.id} evidence={ev} variant="mini" />
+								<EvidenceCard
+									key={ev.id}
+									evidence={ev}
+									people={ev.people || []}
+									interview={interview}
+									variant="mini"
+									projectPath={projectPath || undefined}
+								/>
 							))}
 						</div>
 					</div>

@@ -1,17 +1,12 @@
-import {
-	ControlBar,
-	LiveKitRoom,
-	RoomAudioRenderer,
-	useLocalParticipant,
-	useRemoteParticipants,
-} from "@livekit/components-react"
+import { ControlBar, LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react"
 import type { ConnectionState } from "livekit-client"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import "@livekit/components-styles"
 import { Mic, MicOff, Phone } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { LiveWaveform } from "~/components/ui/live-waveform"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 
 interface ProjectStatusVoiceChatProps {
 	accountId: string
@@ -111,15 +106,24 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 	return (
 		<div className="mb-3 space-y-3">
 			{!isOpen ? (
-				<button
-					type="button"
-					onClick={startVoiceChat}
-					disabled={isLoading}
-					className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 font-medium text-foreground text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<Phone className="h-3.5 w-3.5" />
-					{isLoading ? "Starting..." : "Voice Chat"}
-				</button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								onClick={startVoiceChat}
+								disabled={isLoading}
+								className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 font-medium text-foreground text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								<Phone className="h-3.5 w-3.5" />
+								{isLoading ? "Starting..." : "Voice"}
+							</button>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>Interactive realtime voice chat with AI agent</p>
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
 			) : null}
 
 			{error ? <p className="text-destructive text-xs">{error}</p> : null}

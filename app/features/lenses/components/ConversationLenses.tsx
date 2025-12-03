@@ -151,11 +151,13 @@ function CompactFrameworkField({
 	slot,
 	frameworkId,
 	onUpdateField,
+	routes,
 }: {
 	label: string
 	slot?: LensSlotValue
 	frameworkId: string
 	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
+	routes: ReturnType<typeof useProjectRoutes>
 }) {
 	const hasValue = slot && (slot.textValue || slot.summary || slot.numericValue || slot.dateValue)
 	const Icon = hasValue ? CheckCircle2 : XCircle
@@ -198,6 +200,31 @@ function CompactFrameworkField({
 						inputClassName="text-sm"
 					/>
 				</div>
+				{slot?.evidence && slot.evidence.length > 0 ? (
+					<div className="mt-2 flex flex-wrap gap-1">
+						{slot.evidence.map((ref) => {
+							const timestamp = ref.startMs !== null ? Math.floor(ref.startMs / 1000) : null
+							const url = `${routes.evidence.detail(ref.evidenceId)}${timestamp ? `?t=${timestamp}` : ""}`
+							return (
+								<Link
+									key={ref.evidenceId}
+									to={url}
+									className="rounded border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent/50"
+									title={ref.transcriptSnippet || "View evidence"}
+									onClick={(e) => e.stopPropagation()}
+								>
+									{ref.startMs !== null ? (
+										<span>
+											{Math.floor(ref.startMs / 1000 / 60)}:{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+										</span>
+									) : (
+										<span>Evidence</span>
+									)}
+								</Link>
+							)
+						})}
+					</div>
+				) : null}
 			</div>
 		</div>
 	)
@@ -206,7 +233,8 @@ function CompactFrameworkField({
 // Render compact BANT view
 function renderBantCompactView(
 	framework: InterviewLensFramework,
-	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
+	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void,
+	routes: ReturnType<typeof useProjectRoutes>
 ): ReactNode {
 	const budget = framework.slots.find((s) => s.fieldKey === "budget" || s.fieldKey.toLowerCase().includes("budget"))
 	const authority = framework.slots.find(
@@ -219,19 +247,33 @@ function renderBantCompactView(
 
 	return (
 		<div className="grid gap-3 sm:grid-cols-2">
-			<CompactFrameworkField label="Budget" slot={budget} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField
+				label="Budget"
+				slot={budget}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+				routes={routes}
+			/>
 			<CompactFrameworkField
 				label="Authority"
 				slot={authority}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
-			<CompactFrameworkField label="Need" slot={need} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField
+				label="Need"
+				slot={need}
+				frameworkId={framework.name}
+				onUpdateField={onUpdateField}
+				routes={routes}
+			/>
 			<CompactFrameworkField
 				label="Timeline"
 				slot={timeline}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
 		</div>
 	)
@@ -240,7 +282,8 @@ function renderBantCompactView(
 // Render compact MEDDIC view
 function renderMeddicCompactView(
 	framework: InterviewLensFramework,
-	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
+	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void,
+	routes: ReturnType<typeof useProjectRoutes>
 ): ReactNode {
 	const metrics = framework.slots.find((s) => s.fieldKey === "metrics" || s.fieldKey.toLowerCase().includes("metric"))
 	const economicBuyer = framework.slots.find(
@@ -264,37 +307,97 @@ function renderMeddicCompactView(
 				slot={metrics}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
 			<CompactFrameworkField
 				label="Economic Buyer"
 				slot={economicBuyer}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
 			<CompactFrameworkField
 				label="Decision Criteria"
 				slot={decisionCriteria}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
 			<CompactFrameworkField
 				label="Decision Process"
 				slot={decisionProcess}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
 			<CompactFrameworkField
 				label="Identify Pain"
 				slot={pain}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
 			<CompactFrameworkField
 				label="Champion"
 				slot={champion}
 				frameworkId={framework.name}
 				onUpdateField={onUpdateField}
+				routes={routes}
 			/>
+		</div>
+	)
+}
+
+// Render Stakeholders view
+function renderStakeholdersView(
+	stakeholders?: Array<{
+		id: string
+		displayName: string
+		role: string | null
+		influence: "low" | "medium" | "high" | null
+		labels: string[]
+	}>
+): ReactNode {
+	if (!stakeholders || stakeholders.length === 0) {
+		return (
+			<div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+				<p className="text-muted-foreground text-sm">No stakeholders identified from this interview.</p>
+			</div>
+		)
+	}
+
+	const getInfluenceBadgeVariant = (influence: string | null) => {
+		if (influence === "high") return "default"
+		if (influence === "medium") return "secondary"
+		return "outline"
+	}
+
+	return (
+		<div className="grid gap-3 sm:grid-cols-2">
+			{stakeholders.map((stakeholder) => (
+				<div key={stakeholder.id} className="rounded-lg border border-border/50 bg-background p-3">
+					<div className="flex items-start justify-between gap-2">
+						<div className="flex-1">
+							<p className="font-medium text-foreground text-sm">{stakeholder.displayName}</p>
+							{stakeholder.role && <p className="mt-1 text-muted-foreground text-xs">{stakeholder.role}</p>}
+						</div>
+						{stakeholder.influence && (
+							<Badge variant={getInfluenceBadgeVariant(stakeholder.influence)} className="text-[0.65rem] uppercase">
+								{stakeholder.influence}
+							</Badge>
+						)}
+					</div>
+					{stakeholder.labels && stakeholder.labels.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-1">
+							{stakeholder.labels.map((label, idx) => (
+								<Badge key={idx} variant="outline" className="text-[0.6rem]">
+									{label}
+								</Badge>
+							))}
+						</div>
+					)}
+				</div>
+			))}
 		</div>
 	)
 }
@@ -400,9 +503,9 @@ export function SalesLensesSection({
 		}
 
 		if (framework.name === "BANT_GPCT") {
-			content = renderBantCompactView(framework, handleUpdateField)
+			content = renderBantCompactView(framework, handleUpdateField, routes)
 		} else if (framework.name === "MEDDIC") {
-			content = renderMeddicCompactView(framework, handleUpdateField)
+			content = renderMeddicCompactView(framework, handleUpdateField, routes)
 		} else if (framework.name === "MAP") {
 			content = renderNextStepsView(lens?.entities.nextSteps, lens?.entities.mapMilestones)
 		} else {
@@ -707,8 +810,30 @@ export function SalesLensesSection({
 		return items
 	})
 
-	// Order: frameworks first, then person lenses, then custom lenses (Product last)
-	const combinedItems = [...frameworkItems, ...personLensItems, ...customLensItems]
+	// Create stakeholders lens item if we have stakeholders
+	const stakeholdersItem: LensHeaderConfig[] =
+		lens?.entities.stakeholders && lens.entities.stakeholders.length > 0
+			? [
+					{
+						id: "stakeholders",
+						title: "Stakeholders",
+						icon: Users,
+						colorClass: "text-indigo-600",
+						backgroundClass: "bg-indigo-50",
+						summary:
+							lens.entities.stakeholders.length === 1
+								? `1 stakeholder identified`
+								: `${lens.entities.stakeholders.length} stakeholders identified`,
+						notes: "",
+						highlights: [],
+						badge: null,
+						content: renderStakeholdersView(lens.entities.stakeholders),
+					},
+				]
+			: []
+
+	// Order: frameworks first, stakeholders, then person lenses, then custom lenses (Product last)
+	const combinedItems = [...frameworkItems, ...stakeholdersItem, ...personLensItems, ...customLensItems]
 	const defaultAccordionValue = combinedItems[0]?.id
 
 	if (combinedItems.length === 0) {

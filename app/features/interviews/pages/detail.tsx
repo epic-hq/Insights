@@ -9,8 +9,9 @@ import {
 	Loader2,
 	MessageCircleQuestionIcon,
 	MoreVertical,
-	SparkleIcon,
+	Sparkles,
 	Trash2,
+	User,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
@@ -602,8 +603,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Debug transcript availability
 		consola.info("Transcript availability check:", {
 			interviewId,
-			hasTranscript: transcriptMeta?.transcript,
-			hasFormattedTranscript: transcriptMeta?.transcript_formatted,
+			hasTranscript: Boolean(transcriptMeta?.transcript),
+			hasFormattedTranscript: Boolean(transcriptMeta?.transcript_formatted),
 			transcriptLength: transcriptMeta?.transcript?.length || 0,
 			transcriptFormattedType: typeof transcriptMeta?.transcript_formatted,
 		})
@@ -975,11 +976,33 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			? formatReadable(conversationAnalysis.updatedAt)
 			: null
 
-	// Derived state for processing status
-	const isProcessing = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
-	const hasActiveRun = Boolean(activeRunId)
-	const isProgressActive = !progressInfo.isComplete && !progressInfo.hasError
-	const showProcessingBanner = isProcessing || (isProgressActive && (hasActiveRun || interview.status !== "ready"))
+	// Simplified status-based processing indicator
+	const isProcessing =
+		interview.status === "uploading" ||
+		interview.status === "uploaded" ||
+		interview.status === "transcribing" ||
+		interview.status === "processing"
+	const hasError = interview.status === "error"
+
+	// Get human-readable status label
+	const getStatusLabel = (status: string): string => {
+		switch (status) {
+			case "uploading":
+				return "Uploading file..."
+			case "uploaded":
+				return "Upload complete, preparing for transcription"
+			case "transcribing":
+				return "Transcribing audio"
+			case "processing":
+				return "Analyzing transcript and generating insights"
+			case "ready":
+				return "Analysis complete"
+			case "error":
+				return "Processing failed"
+			default:
+				return status
+		}
+	}
 
 	// Move all useMemo and useEffect hooks to the top
 	const keyTakeawaysDraft = useMemo(
@@ -1411,7 +1434,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			: null
 
 	return (
-		<div className="relative mx-auto mt-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+		<div className="relative mx-auto mt-6 w-full max-w-5xl px-4 sm:px-6 lg:px-8">
 			{/* <InterviewCopilotDrawer
 				open={isChatOpen}
 				onOpenChange={setIsChatOpen}
@@ -1432,811 +1455,408 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</div>
 			)}
 
-			<div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
-				<div className="w-full min-w-0 space-y-6 lg:flex-1">
-					{showProcessingBanner && (
-						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
-							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<div className="flex-1">
-									<p className="font-semibold text-primary text-xs uppercase tracking-wide">Analysis in progress</p>
-									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
-									{progressInfo.currentStep &&
-										progressInfo.completedSteps &&
-										progressInfo.completedSteps.length > 0 && (
-											<p className="mt-1 text-muted-foreground text-xs">
-												Completed: {progressInfo.completedSteps.join(" → ")}
-											</p>
-										)}
-								</div>
-								<div className="flex flex-col items-end gap-2">
-									<div className="flex items-center gap-3">
-										<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
-											<div
-												className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
-												style={{ width: `${progressPercent}%` }}
-											/>
-										</div>
-										<span className="font-medium text-primary text-sm">{progressPercent}%</span>
-									</div>
-									<div className="flex items-center gap-2">
-										{/* Cancel button - show if we have trigger run ID OR if interview is processing */}
-										{(progressInfo.canCancel && progressInfo.triggerRunId && progressInfo.analysisJobId) ||
-										(isProcessing && (progressInfo.analysisJobId || interview.id)) ? (
-											<button
-												type="button"
-												onClick={() => {
-													if (confirm("Are you sure you want to cancel this analysis? This action cannot be undone.")) {
-														try {
-															fetcher.submit(
-																{
-																	runId: progressInfo.triggerRunId || "",
-																	analysisJobId: progressInfo.analysisJobId || "",
-																	interview_id: interview.id,
-																},
-																{ method: "post", action: "/api/cancel-analysis" }
-															)
-														} catch (e) {
-															consola.error("Cancel analysis submit failed", e)
-														}
-													}
-												}}
-												disabled={fetcher.state !== "idle"}
-												className="inline-flex items-center gap-2 rounded-md border border-red-500/20 bg-red-50 px-3 py-1.5 font-medium text-red-700 text-xs transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-											>
-												{fetcher.state !== "idle" ? "Canceling..." : "Cancel Analysis"}
-											</button>
-										) : null}
-										{analysisState?.trigger_run_id && (
-											<button
-												type="button"
-												onClick={() => {
-													if (analysisState.trigger_run_id) {
-														window.open(
-															`https://cloud.trigger.dev/orgs/${process.env.TRIGGER_ORG_ID}/projects/${process.env.TRIGGER_PROJECT_ID}/runs/${analysisState.trigger_run_id}`,
-															"_blank"
-														)
-													}
-												}}
-												className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-xs transition-colors hover:bg-muted"
-											>
-												View in Trigger.dev →
-											</button>
-										)}
-									</div>
-								</div>
-							</div>
-							{isRealtime ? (
-								<p className="mt-2 text-muted-foreground text-xs">&nbsp;</p>
-							) : tokenErrorRunId === activeRunId ? (
-								<p className="mt-2 text-muted-foreground text-xs">
-									Live updates temporarily unavailable; showing interview status.
-								</p>
-							) : analysisState?.trigger_run_id ? (
-								<p className="mt-2 text-muted-foreground text-xs">
-									Real-time updates unavailable; monitoring via database polling.
-								</p>
-							) : null}
-						</div>
-					)}
-
-					{hasAnalysisError && (
-						<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 shadow-sm">
-							<p className="font-semibold text-destructive text-xs uppercase tracking-wide">Analysis failed</p>
-							<p className="mt-1 text-destructive text-sm">
-								{analysisState?.status_detail ||
-									"The most recent analysis run reported an error. Try again once the issue is resolved."}
-							</p>
-						</div>
-					)}
-
-					{/* Streamlined Header */}
-					<div className="mb-6 space-y-4">
-						<BackButton />
-						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-							<div className="flex-1">
-								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">{interviewTitle}</div>
-								<div className="flex flex-wrap items-center gap-3">
-									{/* Show participant from junction table if available, fallback to legacy field */}
-									{primaryParticipant?.name ? (
-										<MiniPersonCard
-											person={{
-												id: primaryParticipant.id || "",
-												name: primaryParticipant.name,
-												image_url: null,
-												people_personas: [],
-											}}
-										/>
-									) : (
-										interview.participant_pseudonym && (
-											<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
-												{interview.participant_pseudonym}
-											</span>
-										)
-									)}
-									<span className="text-muted-foreground text-sm">{formatReadable(interview.created_at)}</span>
-								</div>
-							</div>
-							<div className="flex items-center gap-2">
-								{enableRecording && (
-									<Link
-										to={routes.interviews.realtime(interview.id)}
-										className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
-										title="Start realtime transcription and copilot"
-									>
-										Record Now
-									</Link>
-								)}
-								{(interview.hasTranscript ||
-									interview.hasFormattedTranscript ||
-									interview.status === "error" ||
-									interview.status === "transcribing" ||
-									interview.status === "processing" ||
-									interview.status === "uploaded") && (
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<button
-												disabled={fetcher.state !== "idle" || isProcessing}
-												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-												title="Reprocess options"
-											>
-												<MoreVertical className="h-4 w-4" />
-												{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Reprocess"}
-											</button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											{(interview.status === "transcribing" ||
-												interview.status === "processing" ||
-												interview.status === "uploaded") && (
-												<DropdownMenuItem
-													onClick={async () => {
-														try {
-															const response = await fetch("/api/fix-stuck-interview", {
-																method: "POST",
-																headers: { "Content-Type": "application/json" },
-																body: JSON.stringify({ interviewId: interview.id }),
-															})
-															const result = await response.json()
-															if (result.success) {
-																consola.success("Interview status fixed")
-																revalidator.revalidate()
-															} else {
-																consola.error("Failed to fix interview:", result.error)
-															}
-														} catch (e) {
-															consola.error("Fix stuck interview failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-													className="text-orange-600 focus:text-orange-600"
-												>
-													🔧 Fix Stuck Interview Status
-												</DropdownMenuItem>
-											)}
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.analysis-retry" }
-														)
-													} catch (e) {
-														consola.error("Retry analysis submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Transcription
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reprocess-evidence" }
-														)
-													} catch (e) {
-														consola.error("Reprocess evidence submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Evidence Collection
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reanalyze-themes" }
-														)
-													} catch (e) {
-														consola.error("Re-analyze themes submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Re-analyze Themes
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.generate-sales-lens" }
-														)
-													} catch (e) {
-														consola.error("Generate sales lens submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-												className="text-blue-600 focus:text-blue-600"
-											>
-												🔍 Apply Lenses
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								)}
-								{linkedOpportunity ? (
-									<Link
-										to={routes.opportunities.detail(linkedOpportunity.id)}
-										className="inline-flex items-center gap-2 rounded-md border border-emerald-600 bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 text-sm shadow-sm hover:bg-emerald-100"
-										title="View linked opportunity"
-									>
-										<Briefcase className="h-4 w-4" />
-										Opportunity: {linkedOpportunity.title}
-									</Link>
-								) : (
-									<Link
-										to={routes.opportunities.new()}
-										state={{ interviewId: interview.id, interviewTitle: interview.title }}
-										className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-50 px-3 py-2 font-semibold text-blue-700 text-sm shadow-sm hover:bg-blue-100"
-										title="Create opportunity from this interview"
-									>
-										<Briefcase className="h-4 w-4" />
-										Create Opportunity
-									</Link>
-								)}
-								<Link
-									to={routes.interviews.edit(interview.id)}
-									className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"
-								>
-									Edit
-								</Link>
-							</div>
-						</div>
-					</div>
-
-					{/* Key Takeaways Section */}
-					<div className="space-y-4">
-						<div>
-							<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
-							{aiKeyTakeaways.length > 0 && (
-								<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
-									<div className="flex items-center justify-between gap-4">
-										<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
-										{conversationUpdatedLabel && (
-											<span className="text-muted-foreground text-xs">Updated {conversationUpdatedLabel}</span>
-										)}
-									</div>
-									<ul className="space-y-3">
-										{aiKeyTakeaways.map((takeaway, index) => {
-											const badgeStyles = badgeStylesForPriority(takeaway.priority)
-											return (
-												<li key={`${takeaway.summary}-${index}`} className="flex gap-3">
-													<Badge variant={badgeStyles.variant} color={badgeStyles.color} className="mt-0.5 uppercase">
-														{takeaway.priority}
-													</Badge>
-													<div className="space-y-1">
-														<p className="font-medium text-foreground leading-snug">{takeaway.summary}</p>
-														{takeaway.evidenceSnippets.length > 0 && (
-															<p className="text-muted-foreground text-sm">
-																&ldquo;{takeaway.evidenceSnippets[0]}&rdquo;
-															</p>
-														)}
-													</div>
-												</li>
-											)
-										})}
-									</ul>
+			<div className="w-full space-y-6">
+				{/* Streamlined Header */}
+				<div className="mb-6 space-y-3">
+					<BackButton />
+					<div className="flex items-start justify-between gap-4">
+						<h1 className="font-semibold text-2xl">{interviewTitle}</h1>
+						<div className="flex items-center gap-2">
+							{/* Status indicator - compact, right side */}
+							{isProcessing && (
+								<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
+									<Loader2 className="h-3 w-3 animate-spin text-primary" />
+									<p className="text-primary text-xs">{getStatusLabel(interview.status)}</p>
 								</div>
 							)}
-							<InlineEdit
-								textClassName="text-foreground"
-								value={normalizeMultilineText(interview.high_impact_themes)}
-								multiline
-								markdown
-								// placeholder="What are the most important insights from this interview?"
-								onSubmit={(value) => {
-									try {
-										fetcher.submit(
-											{
-												entity: "interview",
-												entityId: interview.id,
-												accountId,
-												projectId,
-												fieldName: "high_impact_themes",
-												fieldValue: value,
-											},
-											{ method: "post", action: "/api/update-field" }
-										)
-									} catch (error) {
-										consola.error("❌ Failed to update high_impact_themes:", error)
-									}
-								}}
-							/>
-						</div>
-
-						<div>
-							<label className="mb-2 block font-semibold text-foreground text-lg">Notes</label>
-							<InlineEdit
-								textClassName="text-foreground"
-								value={normalizeMultilineText(interview.observations_and_notes)}
-								multiline
-								markdown
-								// placeholder="Your observations and analysis notes"
-								onSubmit={(value) => {
-									try {
-										fetcher.submit(
-											{
-												entity: "interview",
-												entityId: interview.id,
-												accountId,
-												projectId,
-												fieldName: "observations_and_notes",
-												fieldValue: value,
-											},
-											{ method: "post", action: "/api/update-field" }
-										)
-									} catch (error) {
-										consola.error("❌ Failed to update observations_and_notes:", error)
-									}
-								}}
-							/>
+							{hasError && (
+								<div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1.5">
+									<XCircle className="h-3 w-3 text-destructive" />
+									<p className="text-destructive text-xs">Failed</p>
+								</div>
+							)}
+							{/* Actions Dropdown */}
+							{(interview.hasTranscript ||
+								interview.hasFormattedTranscript ||
+								interview.status === "error" ||
+								interview.status === "transcribing" ||
+								interview.status === "processing" ||
+								interview.status === "uploaded") && (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											disabled={fetcher.state !== "idle" || isProcessing}
+											className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+											title="Actions"
+										>
+											<MoreVertical className="h-4 w-4" />
+											Actions
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										{(interview.status === "transcribing" ||
+											interview.status === "processing" ||
+											interview.status === "uploaded") && (
+											<DropdownMenuItem
+												onClick={async () => {
+													try {
+														const response = await fetch("/api/fix-stuck-interview", {
+															method: "POST",
+															headers: { "Content-Type": "application/json" },
+															body: JSON.stringify({ interviewId: interview.id }),
+														})
+														const result = await response.json()
+														if (result.success) {
+															consola.success("Interview status fixed")
+															revalidator.revalidate()
+														} else {
+															consola.error("Failed to fix interview:", result.error)
+														}
+													} catch (e) {
+														consola.error("Fix stuck interview failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="text-orange-600 focus:text-orange-600"
+											>
+												🔧 Fix Stuck Interview Status
+											</DropdownMenuItem>
+										)}
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.analysis-retry" }
+													)
+												} catch (e) {
+													consola.error("Retry analysis submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+										>
+											Rerun Transcription
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.reprocess-evidence" }
+													)
+												} catch (e) {
+													consola.error("Reprocess evidence submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+										>
+											Rerun Evidence Collection
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.reanalyze-themes" }
+													)
+												} catch (e) {
+													consola.error("Re-analyze themes submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+										>
+											Re-analyze Themes
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.generate-sales-lens" }
+													)
+												} catch (e) {
+													consola.error("Generate sales lens submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+											className="text-blue-600 focus:text-blue-600"
+										>
+											🔍 Apply Lenses
+										</DropdownMenuItem>
+										{linkedOpportunity ? (
+											<DropdownMenuItem asChild>
+												<Link
+													to={routes.opportunities.detail(linkedOpportunity.id)}
+													className="flex items-center gap-2 text-emerald-700"
+												>
+													<Briefcase className="h-4 w-4" />
+													View Opportunity: {linkedOpportunity.title}
+												</Link>
+											</DropdownMenuItem>
+										) : (
+											<DropdownMenuItem asChild>
+												<Link
+													to={routes.opportunities.new()}
+													state={{ interviewId: interview.id, interviewTitle: interview.title }}
+													className="flex items-center gap-2 text-blue-700"
+												>
+													<Briefcase className="h-4 w-4" />
+													Create Opportunity
+												</Link>
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							)}
+							{/* Edit Button */}
+							<Link
+								to={routes.interviews.edit(interview.id)}
+								className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"
+							>
+								<Edit2 className="h-4 w-4" />
+								Edit
+							</Link>
 						</div>
 					</div>
 
-					{/* Conversation Lenses Section */}
-					<div className="mb-8">
-						<h3 className="mb-4 font-semibold text-foreground text-lg">Analysis Perspectives</h3>
-						<Tabs defaultValue="evidence" className="w-full">
-							<TabsList className="grid w-full grid-cols-4">
-								<TabsTrigger value="evidence">Evidence</TabsTrigger>
-								<TabsTrigger value="sales" disabled={!salesCrmEnabled}>
-									Sales Lens
-								</TabsTrigger>
-								<TabsTrigger value="product" disabled>
-									Product Lens
-								</TabsTrigger>
-								<TabsTrigger value="research" disabled>
-									Research Lens
-								</TabsTrigger>
-							</TabsList>
+					{/* Participant info - shows all participants */}
+					<div className="flex flex-wrap items-center gap-3 text-sm">
+						{participants.length > 0 ? (
+							<>
+								<span className="text-muted-foreground">
+									{participants.length === 1 ? "Participant:" : "Participants:"}
+								</span>
+								{participants.map((participant, idx) => {
+									const person = participant.people as {
+										id?: string
+										name?: string | null
+										segment?: string | null
+									} | null
 
-							<TabsContent value="evidence" className="mt-6">
-								{/* Evidence Timeline Section */}
-								{isProcessing && evidence.length === 0 ? (
-									<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-										<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
-										<p className="mt-1 text-muted-foreground text-xs">
-											Evidence timeline will appear once extraction is complete
-										</p>
-									</div>
-								) : evidence.length > 0 ? (
-									<PlayByPlayTimeline evidence={evidence} className="mb-6" />
-								) : (
-									<p className="text-muted-foreground">No evidence found</p>
-								)}
-							</TabsContent>
+									const displayName =
+										person?.name ||
+										participant.display_name ||
+										(participant.transcript_key ? `Speaker ${participant.transcript_key}` : `Participant ${idx + 1}`)
 
-							<TabsContent value="sales" className="mt-6">
-								{salesCrmEnabled && salesLens ? (
-									<SalesLensesSection
-										lens={salesLens}
-										customLenses={customLensOverrides}
-										customLensDefaults={customLensDefaults}
-										onUpdateLens={handleCustomLensUpdate}
-										onUpdateSlot={handleSlotUpdate}
-										updatingLensId={activeLensUpdateId}
-										personLenses={personLenses}
-										projectPath={projectPath}
-									/>
-								) : (
-									<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-										<p className="text-muted-foreground text-sm">Sales Lens not available</p>
-										<p className="mt-1 text-muted-foreground text-xs">Enable the Sales CRM feature to use this lens</p>
-									</div>
-								)}
-							</TabsContent>
-
-							<TabsContent value="product" className="mt-6">
-								<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-									<p className="text-muted-foreground text-sm">Product Lens coming soon</p>
-									<p className="mt-1 text-muted-foreground text-xs">
-										Pain × User Type matrix for feature prioritization
-									</p>
-								</div>
-							</TabsContent>
-
-							<TabsContent value="research" className="mt-6">
-								<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-									<p className="text-muted-foreground text-sm">Research Lens coming soon</p>
-									<p className="mt-1 text-muted-foreground text-xs">
-										Goal → Decision Questions → Research Questions hierarchy
-									</p>
-								</div>
-							</TabsContent>
-						</Tabs>
+									return (
+										<div key={participant.id} className="flex items-center gap-2">
+											{person?.id ? (
+												<Link
+													to={routes.people.detail(person.id)}
+													className="font-medium text-foreground hover:underline"
+												>
+													{displayName}
+												</Link>
+											) : (
+												<span className="font-medium text-foreground">{displayName}</span>
+											)}
+											{participant.role && (
+												<Badge variant="outline" className="text-xs">
+													{participant.role}
+												</Badge>
+											)}
+											{person?.segment && (
+												<Badge variant="outline" className="text-xs">
+													{person.segment}
+												</Badge>
+											)}
+											{participant.transcript_key && (
+												<Badge variant="secondary" className="text-xs">
+													Speaker {participant.transcript_key}
+												</Badge>
+											)}
+										</div>
+									)
+								})}
+							</>
+						) : interview.participant_pseudonym ? (
+							<>
+								<span className="text-muted-foreground">Participant:</span>
+								<span className="font-medium text-foreground">{interview.participant_pseudonym}</span>
+							</>
+						) : null}
 					</div>
 
-					{/* Transcript Section - Collapsed by default */}
-					<h3 className="font-semibold text-foreground text-lg">Recording</h3>
+					{/* Metadata - single line */}
+					<div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
+						<span>{formatReadable(interview.created_at)}</span>
+						<span>•</span>
+						<span>By {creatorName}</span>
+						{interview.duration_sec && (
+							<>
+								<span>•</span>
+								<span>
+									{Math.floor(interview.duration_sec / 60)}m {interview.duration_sec % 60}s
+								</span>
+							</>
+						)}
+						{evidence.length > 0 && (
+							<>
+								<span>•</span>
+								<span>{evidence.length} evidence points</span>
+							</>
+						)}
+					</div>
+				</div>
 
-					{interview.media_url && (
-						<div className="mb-4">
-							<MediaPlayer
-								mediaUrl={interview.media_url}
-								title="Play Recording"
-								size="sm"
-								className="max-w-xs"
-								duration_sec={interview.duration_sec || undefined}
-							/>
-						</div>
-					)}
-
-					<div className="mt-4">
-						<LazyTranscriptResults
-							interviewId={interview.id}
-							hasTranscript={interview.hasTranscript}
-							hasFormattedTranscript={interview.hasFormattedTranscript}
+				{/* Key Takeaways Section */}
+				<div className="space-y-4">
+					<div>
+						<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
+						{aiKeyTakeaways.length > 0 && (
+							<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
+								<div className="flex items-center justify-between gap-4">
+									<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
+									{conversationUpdatedLabel && (
+										<span className="text-muted-foreground text-xs">Updated {conversationUpdatedLabel}</span>
+									)}
+								</div>
+								<ul className="space-y-3">
+									{aiKeyTakeaways.map((takeaway, index) => {
+										const badgeStyles = badgeStylesForPriority(takeaway.priority)
+										return (
+											<li key={`${takeaway.summary}-${index}`} className="flex gap-3">
+												<Badge variant={badgeStyles.variant} color={badgeStyles.color} className="mt-0.5 uppercase">
+													{takeaway.priority}
+												</Badge>
+												<div className="space-y-1">
+													<p className="font-medium text-foreground leading-snug">{takeaway.summary}</p>
+													{takeaway.evidenceSnippets.length > 0 && (
+														<p className="text-muted-foreground text-sm">
+															&ldquo;{takeaway.evidenceSnippets[0]}&rdquo;
+														</p>
+													)}
+												</div>
+											</li>
+										)
+									})}
+								</ul>
+							</div>
+						)}
+						<InlineEdit
+							textClassName="text-foreground"
+							value={normalizeMultilineText(interview.high_impact_themes)}
+							multiline
+							markdown
+							// placeholder="What are the most important insights from this interview?"
+							onSubmit={(value) => {
+								try {
+									fetcher.submit(
+										{
+											entity: "interview",
+											entityId: interview.id,
+											accountId,
+											projectId,
+											fieldName: "high_impact_themes",
+											fieldValue: value,
+										},
+										{ method: "post", action: "/api/update-field" }
+									)
+								} catch (error) {
+									consola.error("❌ Failed to update high_impact_themes:", error)
+								}
+							}}
 						/>
 					</div>
 
-					{/* Questions Asked Section */}
-					<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
-				</div>
-				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:w-80 lg:flex-shrink-0">
-					<div className="space-y-4">
-						{/* Evidence Summary */}
-						{/* {evidence.length > 0 && (
-							<div className="rounded-lg border bg-background p-4">
-								<div className="mb-3 flex items-center justify-between">
-									<h3 className="font-semibold text-foreground">Evidence</h3>
-									<Badge variant="secondary" className="text-xs">
-										{evidence.length}
-									</Badge>
-								</div>
-								<div className="space-y-2">
-									{evidence.slice(0, 4).map((evidenceItem) => (
-										<Link
-											key={evidenceItem.id}
-											to={createEvidenceLink({ evidenceId: evidenceItem.id, anchors: evidenceItem.anchors })}
-											className="block rounded-md border bg-muted/30 p-3 text-sm hover:bg-muted/50"
-										>
-											<div className="line-clamp-2 font-medium text-foreground">
-												{evidenceItem.verbatim || evidenceItem.summary || "Evidence item"}
-											</div>
-											<div className="mt-1 flex items-center gap-2">
-												{evidenceItem.support && (
-													<Badge
-														variant={evidenceItem.support === 'supports' ? 'default' : evidenceItem.support === 'refutes' ? 'destructive' : 'secondary'}
-														className="text-xs"
-													>
-														{evidenceItem.support}
-													</Badge>
-												)}
-												{evidenceItem.modality && (
-													<Badge variant="outline" className="text-xs">
-														{evidenceItem.modality}
-													</Badge>
-												)}
-											</div>
-										</Link>
-									))}
-									{evidence.length > 4 && (
-										<Link
-											to={routes.evidence.index()}
-											className="block text-center text-muted-foreground text-xs hover:text-foreground"
-										>
-											+{evidence.length - 4} more evidence items
-										</Link>
-									)}
-								</div>
-							</div>
-						)} */}
-
-						{/* Simplified Insights Summary */}
-						{isProcessing && insights.length === 0 ? (
-							<div className="rounded-lg border border-dashed bg-muted/30 p-4">
-								<h3 className="mb-2 font-semibold text-foreground">Insights</h3>
-								<p className="text-center text-muted-foreground text-xs">{progressInfo.label}</p>
-							</div>
-						) : insights.length > 0 ? (
-							<div className="rounded-lg border bg-background p-4">
-								<div className="mb-3 flex items-center justify-between">
-									<h3 className="font-semibold text-foreground">Insights</h3>
-									<Badge variant="secondary" className="text-xs">
-										{insights.length}
-									</Badge>
-								</div>
-								<div className="space-y-2">
-									{insights.slice(0, 3).map((insight) => (
-										<Link
-											key={insight.id}
-											to={routes.insights.detail(insight.id)}
-											className="block rounded-md border bg-muted/30 p-3 text-sm hover:bg-muted/50"
-										>
-											<div className="font-medium text-foreground">{insight.name}</div>
-											{insight.category && (
-												<Badge variant="outline" className="mt-1 text-xs">
-													{insight.category}
-												</Badge>
-											)}
-										</Link>
-									))}
-									{insights.length > 3 && (
-										<div className="text-center text-muted-foreground text-xs">
-											+{insights.length - 3} more insights
-										</div>
-									)}
-								</div>
-							</div>
-						) : null}
-
-						{/* Participants Summary - Clean Display */}
-						<div className="rounded-lg border bg-background p-4">
-							<div className="mb-3 flex items-center justify-between">
-								<h3 className="font-semibold text-foreground">Participants</h3>
-								<Popover>
-									<PopoverTrigger asChild>
-										<button className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs hover:bg-accent">
-											<Edit2 className="h-3 w-3" />
-											Edit
-										</button>
-									</PopoverTrigger>
-									<PopoverContent className="max-h-[600px] w-[500px] overflow-y-auto" align="end">
-										<div className="space-y-4">
-											<h4 className="font-semibold text-sm">Manage Participants</h4>
-
-											{participants.length === 0 && (
-												<p className="text-muted-foreground text-sm">No participants linked yet.</p>
-											)}
-
-											{participants.map((participant) => (
-												<participantFetcher.Form
-													key={participant.id}
-													method="post"
-													className="space-y-3 rounded border p-3"
-												>
-													<input type="hidden" name="interviewPersonId" value={participant.id} />
-													<input type="hidden" name="transcriptKey" value={participant.transcript_key ?? ""} />
-
-													<div className="space-y-2">
-														<label className="text-muted-foreground text-xs uppercase tracking-wide">Person</label>
-														<select
-															name="personId"
-															defaultValue={participant.people?.id ?? ""}
-															className="w-full rounded-md border border-input bg-background p-2 text-sm"
-														>
-															<option value="">Unassigned</option>
-															{peopleOptions.map((personOption) => (
-																<option key={personOption.id} value={personOption.id}>
-																	{personOption.name || "Unnamed"}
-																</option>
-															))}
-														</select>
-													</div>
-
-													<div className="grid grid-cols-2 gap-2">
-														<div className="space-y-1">
-															<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
-															<input
-																name="role"
-																type="text"
-																defaultValue={participant.role ?? ""}
-																placeholder="participant"
-																className="w-full rounded-md border border-input bg-background p-2 text-sm"
-															/>
-														</div>
-														<div className="space-y-1">
-															<label className="text-muted-foreground text-xs uppercase tracking-wide">Speaker</label>
-															<select
-																name="transcriptKey"
-																defaultValue={participant.transcript_key ?? ""}
-																className="w-full rounded-md border border-input bg-background p-2 text-sm"
-															>
-																<option value="">None</option>
-																<option value="A">A</option>
-																<option value="B">B</option>
-																<option value="C">C</option>
-																<option value="D">D</option>
-															</select>
-														</div>
-													</div>
-
-													<div className="space-y-1">
-														<label className="text-muted-foreground text-xs uppercase tracking-wide">
-															Display Name (Optional)
-														</label>
-														<input
-															name="displayName"
-															type="text"
-															defaultValue={participant.display_name ?? ""}
-															placeholder="Override transcript label"
-															className="w-full rounded-md border border-input bg-background p-2 text-sm"
-														/>
-													</div>
-
-													<div className="flex items-center gap-2">
-														<button
-															type="submit"
-															name="intent"
-															value="assign-participant"
-															className="flex-1 rounded-md border border-input px-3 py-1.5 font-medium text-sm hover:bg-accent"
-														>
-															Save
-														</button>
-														<button
-															type="submit"
-															name="intent"
-															value="remove-participant"
-															className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-destructive"
-															title="Remove participant"
-														>
-															<Trash2 className="h-4 w-4" />
-														</button>
-													</div>
-												</participantFetcher.Form>
-											))}
-
-											<div className="border-t pt-4">
-												<div className="space-y-3">
-													<h4 className="font-semibold text-sm">Add Participant</h4>
-													<LinkPersonDialog
-														entityId={interview.id}
-														entityType="interview"
-														availablePeople={peopleOptions.filter(
-															(p) => !participants.some((participant) => participant.people?.id === p.id)
-														)}
-														triggerButton={
-															<button className="w-full rounded-md border border-input px-3 py-2 font-medium text-sm hover:bg-accent">
-																Link Person
-															</button>
-														}
-													/>
-													<p className="text-muted-foreground text-xs">
-														After linking, use the edit form above to set role, speaker, and display name.
-													</p>
-												</div>
-											</div>
-										</div>
-									</PopoverContent>
-								</Popover>
-							</div>
-
-							{/* Clean participant list display */}
-							<div className="space-y-2">
-								{participants.length === 0 ? (
-									<p className="text-muted-foreground text-sm">No participants linked yet.</p>
-								) : (
-									participants.map((participant) => {
-										const personId = participant.people?.id
-										const personName = participant.people?.name || participant.display_name || "Unassigned"
-										const primaryPersona = participant.people?.people_personas?.[0]?.personas
-										const isCrossProject = participant.cross_project === true
-
-										if (personId && !isCrossProject) {
-											const evidenceQuery = new URLSearchParams({ person_id: personId })
-											if (personName) evidenceQuery.set("person_name", personName)
-
-											return (
-												<div
-													key={participant.id}
-													className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 transition-colors hover:bg-muted/40"
-												>
-													<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-														<div>
-															<Link
-																to={routes.people.detail(personId)}
-																className="font-medium text-foreground text-sm hover:underline"
-															>
-																{personName}
-															</Link>
-															{primaryPersona && (
-																<div className="text-muted-foreground text-xs">{primaryPersona.name}</div>
-															)}
-														</div>
-														<div className="flex items-center gap-2">
-															<Link
-																to={`${routes.evidence.index()}?${evidenceQuery.toString()}`}
-																className="font-medium text-blue-600 text-xs hover:text-blue-800"
-															>
-																View evidence
-															</Link>
-															{participant.transcript_key && (
-																<Badge variant="secondary" className="text-foreground/60 text-xs">
-																	{participant.transcript_key}
-																</Badge>
-															)}
-														</div>
-													</div>
-												</div>
-											)
-										}
-
-										if (personId && isCrossProject) {
-											return (
-												<div
-													key={participant.id}
-													className="flex items-center justify-between rounded-md border border-dashed bg-amber-50 p-3"
-												>
-													<div className="flex items-center gap-3">
-														<div>
-															<div className="font-medium text-foreground text-sm">{personName}</div>
-															<div className="text-muted-foreground text-xs">
-																Linked to another project — use Edit to relink
-															</div>
-														</div>
-													</div>
-													<Badge variant="outline" className="text-xs">
-														Different project
-													</Badge>
-												</div>
-											)
-										}
-
-										return (
-											<div
-												key={participant.id}
-												className="flex items-center justify-between rounded-md border border-dashed bg-muted/20 p-3"
-											>
-												<div className="flex items-center gap-3">
-													<div>
-														<div className="font-medium text-muted-foreground text-sm">{personName}</div>
-														<div className="text-muted-foreground text-xs">Not linked</div>
-													</div>
-												</div>
-												{participant.transcript_key && (
-													<Badge variant="outline" className="text-xs uppercase">
-														Speaker {participant.transcript_key}
-													</Badge>
-												)}
-											</div>
-										)
-									})
-								)}
+					{/* AI Takeaways */}
+					{interview.key_takeaways && (
+						<div className="mb-6">
+							<label className="mb-2 flex items-center gap-2 font-semibold text-foreground text-lg">
+								<Sparkles className="h-5 w-5 text-amber-500" />
+								AI Takeaways
+							</label>
+							<div className="rounded-lg border bg-muted/30 p-4 text-foreground text-sm leading-relaxed">
+								{interview.key_takeaways}
 							</div>
 						</div>
+					)}
 
-						{/* Essential Metadata */}
-						<div className="rounded-lg border bg-background p-4">
-							<h3 className="mb-3 font-semibold text-foreground">Details</h3>
-							<div className="space-y-2 text-sm">
-								<div className="flex justify-between">
-									<span className="text-muted-foreground">Created</span>
-									<span className="text-foreground">{formatReadable(interview.created_at)}</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-muted-foreground">Created By</span>
-									<span className="text-foreground">{creatorName}</span>
-								</div>
-								{interview.duration_sec && (
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Duration</span>
-										<span className="text-foreground">
-											{Math.floor(interview.duration_sec / 60)}m {interview.duration_sec % 60}s
-										</span>
-									</div>
-								)}
-								{evidence.length > 0 && (
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Evidence</span>
-										<span className="text-foreground">{evidence.length} points</span>
-									</div>
-								)}
-							</div>
-						</div>
+					{/* Human Notes */}
+					<div>
+						<label className="mb-2 flex items-center gap-2 font-semibold text-foreground text-lg">
+							<User className="h-5 w-5" />
+							Human Notes
+						</label>
+						<InlineEdit
+							textClassName="text-foreground"
+							value={normalizeMultilineText(interview.observations_and_notes)}
+							multiline
+							markdown
+							// placeholder="Your observations and analysis notes"
+							onSubmit={(value) => {
+								try {
+									fetcher.submit(
+										{
+											entity: "interview",
+											entityId: interview.id,
+											accountId,
+											projectId,
+											fieldName: "observations_and_notes",
+											fieldValue: value,
+										},
+										{ method: "post", action: "/api/update-field" }
+									)
+								} catch (error) {
+									consola.error("❌ Failed to update observations_and_notes:", error)
+								}
+							}}
+						/>
 					</div>
-				</aside>
+				</div>
+
+				{/* Conversation Lenses Section */}
+				<div className="mb-8">
+					{salesCrmEnabled && salesLens ? (
+						<SalesLensesSection
+							lens={salesLens}
+							customLenses={customLensOverrides}
+							customLensDefaults={customLensDefaults}
+							onUpdateLens={handleCustomLensUpdate}
+							onUpdateSlot={handleSlotUpdate}
+							updatingLensId={activeLensUpdateId}
+							personLenses={personLenses}
+							projectPath={projectPath}
+						/>
+					) : (
+						<div>
+							<h3 className="mb-4 font-semibold text-foreground text-lg">Conversation Lenses</h3>
+							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+								<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
+								<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
+							</div>
+						</div>
+					)}
+				</div>
+
+				{/* Conversation Timeline */}
+				{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-8" />}
+
+				{/* Transcript Section - Collapsed by default */}
+				<h3 className="font-semibold text-foreground text-lg">Recording</h3>
+
+				{interview.media_url && (
+					<div className="mb-4">
+						<MediaPlayer
+							mediaUrl={interview.media_url}
+							title="Play Recording"
+							size="sm"
+							className="max-w-xs"
+							duration_sec={interview.duration_sec || undefined}
+						/>
+					</div>
+				)}
+
+				<div className="mt-4">
+					<LazyTranscriptResults
+						interviewId={interview.id}
+						hasTranscript={interview.hasTranscript}
+						hasFormattedTranscript={interview.hasFormattedTranscript}
+					/>
+				</div>
+
+				{/* Questions Asked Section */}
+				<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
 			</div>
 		</div>
 	)

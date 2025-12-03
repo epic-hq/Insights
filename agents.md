@@ -12,6 +12,40 @@ We leverage remix conventions like loaders and actions for apis, and store code 
 
 HTML/CSS we use tailwindcss, shadcnui and themes.
 
+### Routing Best Practices
+
+**CRITICAL**: Always use `useProjectRoutes` hook for constructing links to project assets (interviews, insights, evidence, themes, people, etc.).
+
+**Why**: Project routes include account slug and project slug in the path structure: `/a/:accountSlug/:projectSlug/...`. Manually constructing paths will result in broken links missing required path segments.
+
+**Correct Pattern**:
+```tsx
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+
+function MyComponent({ projectPath }: { projectPath: string }) {
+  const routes = useProjectRoutes(projectPath)
+
+  // ✅ CORRECT: Use routes helper
+  return <Link to={routes.evidence.detail(evidenceId)}>View Evidence</Link>
+}
+```
+
+**Incorrect Pattern**:
+```tsx
+// ❌ WRONG: Manual path construction
+return <Link to={`/projects/${projectPath}/insights/${evidenceId}`}>View Evidence</Link>
+// Result: /projects//a/account-slug/project-slug/insights/123 (broken!)
+```
+
+**Available Route Helpers**:
+- `routes.evidence.detail(evidenceId)` - Link to evidence detail page
+- `routes.insights.detail(insightId)` - Link to insight page
+- `routes.interviews.detail(interviewId)` - Link to interview page
+- `routes.themes.detail(themeId)` - Link to theme page
+- `routes.people.detail(personId)` - Link to person page
+
+**Rule**: If you're linking to ANY project-scoped resource, use `useProjectRoutes`. Never manually construct paths.
+
 - any database changes -- in supabase we use declarative schemas in supabase/schemas, and implement here first, then generate migrations. See `docs/supabase-howto.md` for the process, and be sure to generate types after changing db.
 - React-router does not export JSON. and we don't need to wrap it in a response. we can just return the data and it will be serialized automatically.
 - do not use console.log, use consola.log instead and `import consola from "consola"`

@@ -186,24 +186,27 @@ function EvidenceCard({
 					“{chunk}”
 				</blockquote>
 			)}
-
+			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
+				<span>Key aspects:</span>
+				{(evidence.facets ?? []).map((facet, i) => (
+					<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
+						{facet.label}
+					</Badge>
+				))}
+			</div>
 			{/* Media anchor - only show the first valid one */}
 			{hasMediaReplay && effectiveMediaAnchors.length > 0 && (
 				<MediaAnchorPlayer
 					anchor={effectiveMediaAnchors[0] as MediaAnchor}
 					fallbackMediaUrl={fallbackMediaUrl}
 					variant={variant}
+					evidenceId={evidence.id}
+					projectPath={projectPath}
 				/>
 			)}
 
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
-				<span>Facets:</span>
-				{(evidence.facets ?? []).map((facet, i) => (
-					<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
-						{facet.label}
-					</Badge>
-				))}
 				{evidence.journey_stage && <span>Journey Stage:</span>}
 				{evidence.journey_stage && (
 					<Badge variant="outline" className="text-xs">
@@ -283,10 +286,14 @@ function MediaAnchorPlayer({
 	anchor,
 	fallbackMediaUrl,
 	variant,
+	evidenceId,
+	projectPath,
 }: {
 	anchor: MediaAnchor
 	fallbackMediaUrl?: string | null
 	variant?: "mini" | "expanded"
+	evidenceId?: string
+	projectPath?: string
 }) {
 	const [mediaUrl, setMediaUrl] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -329,10 +336,24 @@ function MediaAnchorPlayer({
 					) : (
 						<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
 					)
+				) : isLoading ? (
+					<div className="mt-2 text-muted-foreground text-xs">Loading...</div>
+				) : isValidUrl ? (
+					// Media available - play inline instead of navigating
+					<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
+				) : evidenceId && projectPath ? (
+					// Fallback: link to detail page if media not available
+					<Link
+						to={`${projectPath}/evidence/${evidenceId}?t=${seconds}`}
+						className="flex items-center gap-2 text-primary text-xs hover:underline"
+					>
+						<Play className="h-3 w-3" />
+						<span>View clip</span>
+					</Link>
 				) : (
 					<div className="flex items-center gap-2 text-muted-foreground text-xs">
 						<Play className="h-3 w-3" />
-						<span>{isLoading ? "Loading..." : isValidUrl ? "Play clip" : "Unavailable"}</span>
+						<span>Unavailable</span>
 					</div>
 				)}
 			</div>

@@ -1,10 +1,11 @@
 import { formatDistanceToNow } from "date-fns"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { redirect, useFetcher, useLoaderData } from "react-router"
+import { redirect, useFetcher, useLoaderData, useParams } from "react-router"
 import { z } from "zod"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Tables } from "~/types"
 
@@ -415,6 +416,9 @@ type LensCardProps = {
 }
 
 function LensCard({ framework }: LensCardProps) {
+	const params = useParams()
+	const { accountId, projectId } = params
+	const routes = useProjectRoutesFromIds(accountId!, projectId!)
 	const commitFetcher = useFetcher<{ success: boolean; intent: string; message?: string }>()
 	const refreshFetcher = useFetcher<{ success: boolean; intent: string }>()
 	const isCommitting = commitFetcher.state !== "idle"
@@ -457,71 +461,67 @@ function LensCard({ framework }: LensCardProps) {
 
 				{/* BANT/Framework Slots */}
 				<div className="flex flex-col gap-3">
-					{framework.slots.filter((slot) => !slot.slot.startsWith("next_step")).map((slot) => (
-						<div key={slot.id} className="rounded-lg border bg-muted/30 p-4">
-							<div className="flex flex-col gap-2">
-								<div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-									<div className="space-y-1 flex-1">
-										<p className="font-medium text-muted-foreground text-xs uppercase">{slot.label || slot.slot}</p>
-										{slot.summary ? (
-											<p className="font-semibold text-base text-foreground">
-												{slot.summary}
-											</p>
-										) : (
-											<p className="font-semibold text-base text-foreground">No value captured</p>
-										)}
-										{slot.summary && slot.summary !== slot.summary ? (
-											<p className="text-muted-foreground text-sm">
-												{slot.summary}
-											</p>
-										) : null}
-										{slot.textValue && slot.textValue !== slot.summary ? (
-											<p className="text-muted-foreground text-sm italic">
-												"{slot.textValue}"
-											</p>
-										) : null}
-										{slot.relatedNames.length > 0 ? (
-											<p className="text-muted-foreground text-xs">Related: {slot.relatedNames.join(", ")}</p>
-										) : null}
+					{framework.slots
+						.filter((slot) => !slot.slot.startsWith("next_step"))
+						.map((slot) => (
+							<div key={slot.id} className="rounded-lg border bg-muted/30 p-4">
+								<div className="flex flex-col gap-2">
+									<div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+										<div className="flex-1 space-y-1">
+											<p className="font-medium text-muted-foreground text-xs uppercase">{slot.label || slot.slot}</p>
+											{slot.summary ? (
+												<p className="font-semibold text-base text-foreground">{slot.summary}</p>
+											) : (
+												<p className="font-semibold text-base text-foreground">No value captured</p>
+											)}
+											{slot.summary && slot.summary !== slot.summary ? (
+												<p className="text-muted-foreground text-sm">{slot.summary}</p>
+											) : null}
+											{slot.textValue && slot.textValue !== slot.summary ? (
+												<p className="text-muted-foreground text-sm italic">"{slot.textValue}"</p>
+											) : null}
+											{slot.relatedNames.length > 0 ? (
+												<p className="text-muted-foreground text-xs">Related: {slot.relatedNames.join(", ")}</p>
+											) : null}
+										</div>
+										<div className="flex flex-col items-start gap-1 text-right md:items-end">
+											{slot.ownerName ? <p className="text-muted-foreground text-xs">Owner: {slot.ownerName}</p> : null}
+											{slot.dateValue ? <p className="text-muted-foreground text-xs">Due: {slot.dateValue}</p> : null}
+											{typeof slot.confidence === "number" ? (
+												<Badge variant="outline" color="green">
+													{Math.round(slot.confidence * 100)}% confidence
+												</Badge>
+											) : null}
+											{slot.evidenceCount > 0 ? (
+												<Badge variant="outline" color="indigo">
+													{slot.evidenceCount} evidence
+												</Badge>
+											) : null}
+										</div>
 									</div>
-									<div className="flex flex-col items-start gap-1 text-right md:items-end">
-										{slot.ownerName ? <p className="text-muted-foreground text-xs">Owner: {slot.ownerName}</p> : null}
-										{slot.dateValue ? <p className="text-muted-foreground text-xs">Due: {slot.dateValue}</p> : null}
-										{typeof slot.confidence === "number" ? (
-											<Badge variant="outline" color="green">
-												{Math.round(slot.confidence * 100)}% confidence
-											</Badge>
-										) : null}
-										{slot.evidenceCount > 0 ? (
-											<Badge variant="outline" color="indigo">
-												{slot.evidenceCount} evidence
-											</Badge>
-										) : null}
-									</div>
+									{slot.evidenceRefs.length > 0 ? (
+										<div className="mt-2 flex flex-col gap-2 border-t pt-2">
+											<p className="font-medium text-muted-foreground text-xs">Supporting Evidence:</p>
+											{slot.evidenceRefs.map((ref) => (
+												<a
+													key={ref.evidenceId}
+													href={routes.evidence.detail(ref.evidenceId)}
+													className="rounded-md border border-dashed bg-background/50 p-2 text-sm transition-colors hover:bg-accent/50"
+												>
+													<p className="line-clamp-2 text-foreground">{ref.transcriptSnippet || "View evidence"}</p>
+													{ref.startMs !== null ? (
+														<p className="mt-1 text-muted-foreground text-xs">
+															{Math.floor(ref.startMs / 1000 / 60)}:
+															{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+														</p>
+													) : null}
+												</a>
+											))}
+										</div>
+									) : null}
 								</div>
-								{slot.evidenceRefs.length > 0 ? (
-									<div className="mt-2 flex flex-col gap-2 border-t pt-2">
-										<p className="font-medium text-muted-foreground text-xs">Supporting Evidence:</p>
-										{slot.evidenceRefs.map((ref) => (
-											<a
-												key={ref.evidenceId}
-												href={`/projects/${data.projectId}/insights/${ref.evidenceId}`}
-												className="rounded-md border border-dashed bg-background/50 p-2 text-sm transition-colors hover:bg-accent/50"
-											>
-												<p className="line-clamp-2 text-foreground">{ref.transcriptSnippet || "View evidence"}</p>
-												{ref.startMs !== null ? (
-													<p className="mt-1 text-muted-foreground text-xs">
-														{Math.floor(ref.startMs / 1000 / 60)}:
-														{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
-													</p>
-												) : null}
-											</a>
-										))}
-									</div>
-								) : null}
 							</div>
-						</div>
-					))}
+						))}
 				</div>
 
 				{/* Next Steps Section */}
@@ -529,43 +529,44 @@ function LensCard({ framework }: LensCardProps) {
 					<div className="flex flex-col gap-2">
 						<p className="font-semibold text-foreground text-sm">Next Steps</p>
 						<div className="flex flex-col gap-2">
-							{framework.slots.filter((slot) => slot.slot.startsWith("next_step")).map((step) => (
-								<div key={step.id} className="flex items-start gap-3 rounded-md border border-dashed bg-background/50 p-3">
-									<div className="flex-1">
-										<p className="font-medium text-foreground text-sm">{step.summary}</p>
-										{step.textValue && step.textValue !== step.summary ? (
-											<p className="mt-1 text-muted-foreground text-xs">{step.textValue}</p>
-										) : null}
-										{step.evidenceRefs.length > 0 ? (
-											<div className="mt-2 flex flex-wrap gap-1">
-												{step.evidenceRefs.map((ref) => (
-													<a
-														key={ref.evidenceId}
-														href={`/projects/${data.projectId}/insights/${ref.evidenceId}`}
-														className="rounded border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent/50"
-														title={ref.transcriptSnippet || "View evidence"}
-													>
-														Evidence
-													</a>
-												))}
-											</div>
-										) : null}
+							{framework.slots
+								.filter((slot) => slot.slot.startsWith("next_step"))
+								.map((step) => (
+									<div
+										key={step.id}
+										className="flex items-start gap-3 rounded-md border border-dashed bg-background/50 p-3"
+									>
+										<div className="flex-1">
+											<p className="font-medium text-foreground text-sm">{step.summary}</p>
+											{step.textValue && step.textValue !== step.summary ? (
+												<p className="mt-1 text-muted-foreground text-xs">{step.textValue}</p>
+											) : null}
+											{step.evidenceRefs.length > 0 ? (
+												<div className="mt-2 flex flex-wrap gap-1">
+													{step.evidenceRefs.map((ref) => (
+														<a
+															key={ref.evidenceId}
+															href={routes.evidence.detail(ref.evidenceId)}
+															className="rounded border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent/50"
+															title={ref.transcriptSnippet || "View evidence"}
+														>
+															Evidence
+														</a>
+													))}
+												</div>
+											) : null}
+										</div>
+										<div className="flex flex-col items-end gap-1">
+											{step.ownerName ? <p className="text-muted-foreground text-xs">Owner: {step.ownerName}</p> : null}
+											{step.dateValue ? <p className="text-muted-foreground text-xs">Due: {step.dateValue}</p> : null}
+											{typeof step.confidence === "number" ? (
+												<Badge variant="outline" color="green" className="text-xs">
+													{Math.round(step.confidence * 100)}%
+												</Badge>
+											) : null}
+										</div>
 									</div>
-									<div className="flex flex-col items-end gap-1">
-										{step.ownerName ? (
-											<p className="text-muted-foreground text-xs">Owner: {step.ownerName}</p>
-										) : null}
-										{step.dateValue ? (
-											<p className="text-muted-foreground text-xs">Due: {step.dateValue}</p>
-										) : null}
-										{typeof step.confidence === "number" ? (
-											<Badge variant="outline" color="green" className="text-xs">
-												{Math.round(step.confidence * 100)}%
-											</Badge>
-										) : null}
-									</div>
-								</div>
-							))}
+								))}
 						</div>
 					</div>
 				) : null}
@@ -648,7 +649,7 @@ function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 									{stakeholder.evidenceRefs.map((ref) => (
 										<a
 											key={ref.evidenceId}
-											href={`/insights/${ref.evidenceId}`}
+											href={routes.evidence.detail(ref.evidenceId)}
 											className="rounded border bg-background/50 px-2 py-1 text-xs transition-colors hover:bg-accent/50"
 											title={ref.transcriptSnippet || "View evidence"}
 										>

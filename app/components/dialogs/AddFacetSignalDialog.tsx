@@ -1,4 +1,4 @@
-import { Plus, Search, X } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { useState } from "react"
 import { useFetcher } from "react-router-dom"
 import { Button } from "~/components/ui/button"
@@ -164,7 +164,7 @@ export function AddFacetSignalDialog({
 								id="new-facet-label"
 								value={newFacetLabel}
 								onChange={(e) => setNewFacetLabel(e.target.value)}
-								placeholder={`e.g., ${kindLabel === "Pain" ? "Data integration challenges" : kindLabel === "Goal" ? "Reduce manual work" : "New " + kindLabel.toLowerCase()}`}
+								placeholder={`e.g., ${kindLabel === "Pain" ? "Data integration challenges" : kindLabel === "Goal" ? "Reduce manual work" : `New ${kindLabel.toLowerCase()}`}`}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && newFacetLabel.trim()) {
 										e.preventDefault()
