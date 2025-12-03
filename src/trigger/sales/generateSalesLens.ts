@@ -22,6 +22,8 @@ async function generateConversationTakeaways(
         extraction: any
 ) {
         try {
+                consola.info(`[generateConversationTakeaways] Starting for interview ${interviewId}`)
+
                 // Fetch interview data
                 const { data: interview, error: interviewError } = await client
                         .from("interviews")
@@ -29,7 +31,12 @@ async function generateConversationTakeaways(
                         .eq("id", interviewId)
                         .single()
 
-                if (interviewError || !interview) {
+                if (interviewError) {
+                        consola.error(`[generateConversationTakeaways] Error fetching interview ${interviewId}:`, interviewError)
+                        return
+                }
+
+                if (!interview) {
                         consola.warn(`[generateConversationTakeaways] Interview not found: ${interviewId}`)
                         return
                 }
@@ -37,6 +44,11 @@ async function generateConversationTakeaways(
                 const transcript = interview.transcript_formatted || interview.transcript || ""
                 const evidenceCount = (interview.evidence as any)?.[0]?.count || 0
                 const durationMinutes = interview.duration_sec ? Math.round(interview.duration_sec / 60) : null
+
+                if (!transcript || transcript.length === 0) {
+                        consola.warn(`[generateConversationTakeaways] No transcript available for ${interviewId}`)
+                        return
+                }
 
                 // Build summaries from extraction
                 const bantFramework = extraction.frameworks?.find((f: any) => f.name === "BANT_GPCT")
@@ -66,6 +78,7 @@ async function generateConversationTakeaways(
                 })
 
                 // Call BAML function
+                consola.info(`[generateConversationTakeaways] Calling BAML ExtractConversationTakeaways...`)
                 const takeaways = await b.ExtractConversationTakeaways(
                         transcript,
                         bantSummary,
@@ -76,6 +89,8 @@ async function generateConversationTakeaways(
                         durationMinutes
                 )
 
+                consola.info(`[generateConversationTakeaways] BAML extraction completed`)
+
                 // Combine into a single string
                 const keyTakeaways = [
                         takeaways.value_synopsis,
@@ -84,9 +99,9 @@ async function generateConversationTakeaways(
                 ].join(" ")
 
                 consola.info(`[generateConversationTakeaways] Generated takeaways (${keyTakeaways.length} chars):`, {
-                        value_synopsis: takeaways.value_synopsis?.substring(0, 100) + "...",
-                        critical_next_step: takeaways.critical_next_step?.substring(0, 100) + "...",
-                        future_improvement: takeaways.future_improvement?.substring(0, 100) + "...",
+                        value_synopsis: takeaways.value_synopsis?.substring(0, 100),
+                        critical_next_step: takeaways.critical_next_step?.substring(0, 100),
+                        future_improvement: takeaways.future_improvement?.substring(0, 100),
                 })
 
                 // Store in interviews table
@@ -101,7 +116,12 @@ async function generateConversationTakeaways(
                         consola.info(`[generateConversationTakeaways] Successfully stored takeaways for ${interviewId}`)
                 }
         } catch (error) {
-                consola.error(`[generateConversationTakeaways] Error generating takeaways for ${interviewId}:`, error)
+                consola.error(`[generateConversationTakeaways] Error generating takeaways for ${interviewId}:`)
+                consola.error(`[generateConversationTakeaways] Error details:`, {
+                        message: error instanceof Error ? error.message : String(error),
+                        stack: error instanceof Error ? error.stack : undefined,
+                        error,
+                })
                 // Don't throw - let the main task succeed even if takeaways fail
         }
 }
