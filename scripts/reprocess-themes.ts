@@ -51,7 +51,7 @@ async function reprocessThemes(options: ScriptOptions = {}) {
 	// Parse command line args
 	const args = process.argv.slice(2)
 	const projectId = options.projectId || args.find((a) => !a.startsWith("--"))
-	const limit = options.limit || Number.parseInt(args.find((a) => a.startsWith("--limit"))?.split("=")[1] || "10")
+	const limit = options.limit || Number.parseInt(args.find((a) => a.startsWith("--limit"))?.split("=")[1] || "10", 10)
 	const dryRun = options.dryRun || args.includes("--dry-run")
 	const onlyMissing = options.onlyMissingThemes || args.includes("--only-missing")
 

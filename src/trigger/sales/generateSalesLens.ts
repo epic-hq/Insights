@@ -41,9 +41,31 @@ async function generateConversationTakeaways(
                         return
                 }
 
-                const transcript = interview.transcript_formatted || interview.transcript || ""
+                // Extract string transcript from JSONB object or use plain text version
+                let transcript: string = ""
+                if (interview.transcript_formatted) {
+                        // transcript_formatted is a JSONB object with structure: { full_transcript: string, ... }
+                        if (typeof interview.transcript_formatted === "string") {
+                                transcript = interview.transcript_formatted
+                        } else if (typeof interview.transcript_formatted === "object" && interview.transcript_formatted !== null) {
+                                transcript = (interview.transcript_formatted as any).full_transcript || ""
+                        }
+                }
+                // Fall back to plain transcript if formatted version didn't work
+                if (!transcript) {
+                        transcript = interview.transcript || ""
+                }
+
                 const evidenceCount = (interview.evidence as any)?.[0]?.count || 0
                 const durationMinutes = interview.duration_sec ? Math.round(interview.duration_sec / 60) : null
+
+                consola.info(`[generateConversationTakeaways] Transcript extraction:`, {
+                        interviewId,
+                        hasTranscriptFormatted: !!interview.transcript_formatted,
+                        transcriptFormattedType: typeof interview.transcript_formatted,
+                        hasPlainTranscript: !!interview.transcript,
+                        extractedTranscriptLength: transcript.length,
+                })
 
                 if (!transcript || transcript.length === 0) {
                         consola.warn(`[generateConversationTakeaways] No transcript available for ${interviewId}`)
