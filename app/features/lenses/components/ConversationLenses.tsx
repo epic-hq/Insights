@@ -359,7 +359,8 @@ function renderStakeholdersView(
 		labels: string[]
 		personId: string | null
 		personName: string | null
-	}>
+	}>,
+	routes?: ReturnType<typeof useProjectRoutes>
 ): ReactNode {
 	if (!stakeholders || stakeholders.length === 0) {
 		return (
@@ -381,7 +382,7 @@ function renderStakeholdersView(
 				<div key={stakeholder.id} className="rounded-lg border border-border/50 bg-background p-3">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex-1">
-							{stakeholder.personId ? (
+							{stakeholder.personId && routes ? (
 								<Link
 									to={routes.people.detail(stakeholder.personId)}
 									className="font-medium text-foreground text-sm hover:text-primary hover:underline"
@@ -839,7 +840,7 @@ export function SalesLensesSection({
 						notes: "",
 						highlights: [],
 						badge: null,
-						content: renderStakeholdersView(lens.entities.stakeholders),
+						content: renderStakeholdersView(lens.entities.stakeholders, routes),
 					},
 				]
 			: []
