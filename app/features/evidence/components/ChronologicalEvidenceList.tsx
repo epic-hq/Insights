@@ -28,13 +28,14 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 		const anchor = anchors.find((value) => value && typeof value === "object")
 		if (!anchor) return null
 
+		// Prioritize start_ms (standard format from BAML TurnAnchors)
 		const rawStart =
+			anchor.start_ms ??
+			anchor.startMs ??
 			anchor.start_seconds ??
 			anchor.startSeconds ??
 			anchor.start_sec ??
 			anchor.start ??
-			anchor.start_ms ??
-			anchor.startMs ??
 			anchor.start_time
 
 		if (typeof rawStart === "number" && Number.isFinite(rawStart)) {
