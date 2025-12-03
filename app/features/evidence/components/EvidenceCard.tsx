@@ -55,14 +55,7 @@ type EvidenceInterview = {
 	duration_sec?: number | null
 }
 
-type EvidenceAnchor = {
-	type?: string
-	start?: string | number | null
-	end?: string | number | null
-	title?: string | null
-	speaker?: string | null
-	target?: string | { url?: string | null } | null
-}
+// Removed - use MediaAnchor from media-url.client instead
 
 function EvidenceCard({
 	evidence,
@@ -78,7 +71,7 @@ function EvidenceCard({
 	const interviewId = evidence.interview_id ?? interview?.id ?? null
 	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null
 
-	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as EvidenceAnchor[]) : []
+	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as MediaAnchor[]) : []
 	const fallbackMediaUrl = interview?.media_url ?? null
 
 	const getStageColor = (stage?: string | null) => {
@@ -117,30 +110,14 @@ function EvidenceCard({
 	const supportLabel = formatSupportLabel(evidence.support)
 	const createdLabel = evidence.created_at ? new Date(evidence.created_at).toLocaleDateString() : null
 
-	const getAnchorSeconds = (anchor?: EvidenceAnchor | null): number | null => {
-		if (!anchor) return null
-		const start = anchor.start
-		if (typeof start === "number") return start > 500 ? start / 1000 : start
-		if (typeof start === "string") {
-			if (start.endsWith("ms")) return Number.parseFloat(start) / 1000
-			if (start.includes(":")) {
-				const [m, s] = start.split(":").map(Number)
-				return m * 60 + s
-			}
-			const n = Number.parseFloat(start)
-			return n > 500 ? n / 1000 : n
-		}
-		return null
-	}
-
+	// Filter for media anchors - any anchor with timing or media_key
 	const mediaAnchors = anchors.filter((a) => {
 		if (!a || typeof a !== "object") return false
-		const type = (a.type ?? "").toLowerCase()
-		const isMediaType = ["audio", "video", "av", "media", "clip"].includes(type)
-		const hasTime = getAnchorSeconds(a) !== null
-		const hasUrl =
-			typeof a.target === "string" ? a.target.startsWith("http") : typeof a.target === "object" && a.target?.url
-		return isMediaType || hasTime || hasUrl
+		// Has timing data (start_ms or start_seconds)
+		const hasTiming = a.start_ms !== undefined || a.start_seconds !== undefined
+		// Has media reference
+		const hasMedia = a.media_key !== undefined || (typeof a.target === "string" && a.target.startsWith("http"))
+		return hasTiming || hasMedia
 	})
 
 	// If no media anchors but interview has media, create a fallback anchor
