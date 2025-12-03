@@ -53,38 +53,21 @@ export async function action({ request }: ActionFunctionArgs) {
 			)
 		}
 
-		// Generate fresh presigned URL from R2 key if needed
-		let mediaUrlForTask = interview.media_url
-		if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
-			// It's an R2 key, generate presigned URL
-			const { createR2PresignedUrl } = await import("~/utils/r2.server")
-			const presigned = createR2PresignedUrl({
-				key: mediaUrlForTask,
-				expiresInSeconds: 24 * 60 * 60, // 24 hours
-			})
-			if (presigned) {
-				mediaUrlForTask = presigned.url
-				consola.log(`Generated presigned URL for retry of interview ${interviewId}`)
-			} else {
-				consola.error(`Failed to generate presigned URL for R2 key: ${mediaUrlForTask}`)
-			}
-		}
-
 		const admin = createSupabaseAdminClient()
 
 		try {
 			// ALWAYS re-transcribe from media - ignore any existing transcript data
+			// Pass the RAW R2 key - the upload task will generate presigned URL
 			console.log("Re-transcribing audio file from media_url...")
 			await createAndProcessAnalysisJob({
 				interviewId,
 				transcriptData: {
 					needs_transcription: true, // Flag to trigger AssemblyAI transcription
-					media_url: mediaUrlForTask,
 					file_type: "media",
 				},
 				customInstructions,
 				adminClient: admin,
-				mediaUrl: mediaUrlForTask,
+				mediaUrl: interview.media_url, // Raw R2 key - upload task will presign
 				initiatingUserId: userId,
 			})
 			console.log("Re-transcription triggered successfully")
