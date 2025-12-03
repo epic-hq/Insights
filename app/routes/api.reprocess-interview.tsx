@@ -62,6 +62,18 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (interview.transcript) {
 			// Have transcript - use it directly
 			const formatted = interview.transcript_formatted as Record<string, unknown> | null
+
+			consola.info("Reprocess: Checking formatted transcript", {
+				hasFormatted: !!formatted,
+				formattedKeys: formatted ? Object.keys(formatted) : [],
+				hasSpeakerTranscripts: formatted ? 'speaker_transcripts' in formatted : false,
+				speakerTranscriptsLength: formatted && Array.isArray(formatted.speaker_transcripts)
+					? formatted.speaker_transcripts.length
+					: 0,
+				hasFullTranscript: formatted ? 'full_transcript' in formatted : false,
+				transcriptLength: interview.transcript?.length ?? 0,
+			})
+
 			transcriptData = formatted
 				? {
 						...formatted,
@@ -75,9 +87,15 @@ export async function action({ request }: ActionFunctionArgs) {
 						processing_duration: 0,
 						file_type: "text",
 					}
-			consola.info("Using existing transcript for reprocessing", {
+
+			consola.info("Reprocess: Prepared transcriptData", {
 				hasFormattedTranscript: !!formatted,
 				fullTranscriptLength: (transcriptData.full_transcript as string)?.length ?? 0,
+				hasSpeakerTranscripts: 'speaker_transcripts' in transcriptData,
+				speakerTranscriptsCount: Array.isArray(transcriptData.speaker_transcripts)
+					? transcriptData.speaker_transcripts.length
+					: 0,
+				keys: Object.keys(transcriptData),
 			})
 		} else if (interview.media_url) {
 			// No transcript but have media - need to transcribe first via Trigger.dev

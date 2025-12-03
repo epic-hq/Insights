@@ -2131,10 +2131,30 @@ export async function uploadMediaAndTranscribeCore({
 		'speaker_transcripts' in transcriptData &&
 		Array.isArray((transcriptData as any).speaker_transcripts)
 
+	consola.info("[uploadMediaAndTranscribeCore] Sanitization check", {
+		isAlreadySanitized,
+		hasTranscriptData: !!transcriptData,
+		transcriptDataKeys: transcriptData && typeof transcriptData === 'object' ? Object.keys(transcriptData) : [],
+		hasSpeakerTranscripts: transcriptData && typeof transcriptData === 'object' && 'speaker_transcripts' in transcriptData,
+		speakerTranscriptsCount:
+			transcriptData &&
+			typeof transcriptData === 'object' &&
+			'speaker_transcripts' in transcriptData &&
+			Array.isArray((transcriptData as any).speaker_transcripts)
+				? (transcriptData as any).speaker_transcripts.length
+				: 0,
+	})
+
 	const sanitizedTranscriptData = isAlreadySanitized
 		? (transcriptData as any)
 		: safeSanitizeTranscriptPayload(transcriptData)
 	const normalizedTranscriptData = sanitizedTranscriptData as unknown as Record<string, unknown>
+
+	consola.info("[uploadMediaAndTranscribeCore] After sanitization", {
+		fullTranscriptLength: sanitizedTranscriptData.full_transcript?.length ?? 0,
+		speakerTranscriptsCount: sanitizedTranscriptData.speaker_transcripts?.length ?? 0,
+		sanitizedKeys: Object.keys(sanitizedTranscriptData),
+	})
 
 	if (normalizedMetadata.projectId) {
 		const { data: projectRow } = await client

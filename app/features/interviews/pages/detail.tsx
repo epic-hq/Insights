@@ -1565,7 +1565,12 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										Record Now
 									</Link>
 								)}
-								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
+								{(interview.hasTranscript ||
+									interview.hasFormattedTranscript ||
+									interview.status === "error" ||
+									interview.status === "transcribing" ||
+									interview.status === "processing" ||
+									interview.status === "uploaded") && (
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
 											<button
@@ -1578,6 +1583,34 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											</button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="end">
+											{(interview.status === "transcribing" ||
+												interview.status === "processing" ||
+												interview.status === "uploaded") && (
+												<DropdownMenuItem
+													onClick={async () => {
+														try {
+															const response = await fetch("/api/fix-stuck-interview", {
+																method: "POST",
+																headers: { "Content-Type": "application/json" },
+																body: JSON.stringify({ interviewId: interview.id }),
+															})
+															const result = await response.json()
+															if (result.success) {
+																consola.success("Interview status fixed")
+																revalidator.revalidate()
+															} else {
+																consola.error("Failed to fix interview:", result.error)
+															}
+														} catch (e) {
+															consola.error("Fix stuck interview failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+													className="text-orange-600 focus:text-orange-600"
+												>
+													🔧 Fix Stuck Interview Status
+												</DropdownMenuItem>
+											)}
 											<DropdownMenuItem
 												onClick={() => {
 													try {
