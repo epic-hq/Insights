@@ -224,6 +224,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					// Next steps slots
 					...extraction.next_steps.map((step, idx) => ({
 						slot: `next_step_${idx + 1}`,
+						label: `Next Step ${idx + 1}`,
+						description: step.action_item,
 						summary: step.action_item,
 						textValue: step.owner || null,
 						numericValue: null,
