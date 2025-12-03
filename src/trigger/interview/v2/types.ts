@@ -55,7 +55,7 @@ export interface UploadAndTranscribeResult {
 
 export interface ExtractEvidencePayload {
 	interviewId: string
-	fullTranscript: string
+	fullTranscript?: string // Optional - extracted from transcript_formatted
 	language: string
 	analysisJobId?: string
 }

@@ -202,11 +202,7 @@ export const processInterviewOrchestratorV2 = task({
 					throw new Error(errorMsg)
 				}
 
-				if (!state.fullTranscript) {
-					const errorMsg = `Cannot execute evidence extraction: fullTranscript is missing from workflow state`
-					consola.error(`[Orchestrator] ${errorMsg}`)
-					throw new Error(errorMsg)
-				}
+				// fullTranscript is now optional - will be extracted from transcript_formatted if not provided
 
 				consola.info(`[Orchestrator] State validation passed: interviewId=${state.interviewId}`)
 

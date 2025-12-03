@@ -455,7 +455,7 @@ interface ExtractEvidenceOptions {
 	interviewRecord: Interview
 	transcriptData: Record<string, unknown>
 	language: string
-	fullTranscript: string
+	fullTranscript?: string // Optional - only used for logging
 }
 
 interface ExtractEvidenceResult {
@@ -591,20 +591,21 @@ export async function extractEvidenceAndPeopleCore({
 		},
 	})
 	const transcriptPreviewLength = 1200
-	const transcriptPreview =
-		fullTranscript.length > transcriptPreviewLength
+	const transcriptPreview = fullTranscript
+		? fullTranscript.length > transcriptPreviewLength
 			? `${fullTranscript.slice(0, transcriptPreviewLength)}...`
 			: fullTranscript
+		: "(no fullTranscript provided)"
 	consola.info(`📊 Extracting evidence with ${chapters.length} chapters`, {
 		chapterSample: chapters.slice(0, 3),
-		transcriptLength: fullTranscript.length,
+		transcriptLength: fullTranscript?.length ?? 0,
 	})
 
 	const lfGeneration = lfTrace?.generation?.({
 		name: "baml.ExtractEvidenceFromTranscriptV2",
 		input: {
 			language,
-			transcriptLength: fullTranscript.length,
+			transcriptLength: fullTranscript?.length ?? 0,
 			transcriptPreview,
 			chapterCount: chapters.length,
 			facetCatalogVersion: facetCatalog.version,
