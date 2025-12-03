@@ -304,6 +304,19 @@ export interface ActionButton {
   
 }
 
+export interface AuthorityInfo {
+  decision_maker_identified: boolean
+  decision_maker_name?: string | null
+  decision_maker_role?: string | null
+  approval_process?: string | null
+  stakeholders_involved: string[]
+  blockers: string[]
+  political_dynamics?: string | null
+  confidence: number
+  evidence_ids: string[]
+  
+}
+
 export interface AutoInsightsResponse {
   executive_summary: string
   top_opportunities: OpportunityRecommendation[]
@@ -319,6 +332,18 @@ export interface BatchEvaluationResult {
   evaluations: QuestionEvaluation[]
   overall_summary: string
   top_priorities: string[]
+  
+}
+
+export interface BudgetInfo {
+  has_budget_discussion: boolean
+  amount_mentioned?: string | null
+  budget_status?: string | null
+  pricing_sensitivity: string
+  payment_terms?: string | null
+  confidence: number
+  supporting_quote?: string | null
+  evidence_ids: string[]
   
 }
 
@@ -386,6 +411,14 @@ export interface DealAdvisorRecommendation {
   recommendations: string[]
   risks: string[]
   confidence: string
+  
+}
+
+export interface DealQualificationSignals {
+  positive_signals: string[]
+  warning_flags: string[]
+  overall_qualification: string
+  recommended_actions: string[]
   
 }
 
@@ -702,6 +735,28 @@ export interface LensEvidenceHighlight {
   journey_stage?: string | null
   topic?: string | null
   support?: string | null
+  
+}
+
+export interface NeedInfo {
+  primary_pain_points: string[]
+  pain_severity: string
+  impact_on_business?: string | null
+  current_workarounds: string[]
+  must_have_features: string[]
+  nice_to_have_features: string[]
+  competing_priorities: string[]
+  confidence: number
+  evidence_ids: string[]
+  
+}
+
+export interface NextStepInfo {
+  action_item: string
+  owner?: string | null
+  due_date?: string | null
+  commitment_level: string
+  evidence_ids: string[]
   
 }
 
@@ -1212,6 +1267,19 @@ export interface ResearchStructure {
   
 }
 
+export interface SalesLensExtraction {
+  budget: BudgetInfo
+  authority: AuthorityInfo
+  need: NeedInfo
+  timeline: TimelineInfo
+  next_steps: NextStepInfo[]
+  stakeholders: StakeholderRole[]
+  deal_qualification: DealQualificationSignals
+  key_insights: string[]
+  risks_and_concerns: string[]
+  
+}
+
 export interface Scene {
   scene_id: string
   start_index: number
@@ -1262,11 +1330,34 @@ export interface Spectrum {
   
 }
 
+export interface StakeholderRole {
+  person_name: string
+  person_role?: string | null
+  role_type: string
+  influence_level: string
+  sentiment: string
+  key_concerns: string[]
+  key_motivations: string[]
+  evidence_ids: string[]
+  
+}
+
 export interface SuggestedQuestion {
   question: string
   rationale: string
   interview_type: "user_interview" | "stakeholder_interview" | "expert_interview"
   priority: number
+  
+}
+
+export interface TimelineInfo {
+  urgency_level: string
+  target_date?: string | null
+  deadline_type?: string | null
+  implementation_timeline?: string | null
+  external_drivers: string[]
+  confidence: number
+  evidence_ids: string[]
   
 }
 

@@ -2,7 +2,7 @@
  * V2 Finalize Interview Task
  *
  * Atomic task that:
- * 1. Updates interview status to "ready"
+ * 1. Updates interview status to "completed"
  * 2. Sends analytics events (PostHog)
  * 3. Triggers side effects (e.g., generateSalesLensTask)
  * 4. Marks workflow as complete
@@ -40,22 +40,32 @@ export const finalizeInterviewTaskV2 = task({
 
 		try {
 			await updateAnalysisJobProgress(client, analysisJobId, {
-				currentStep: "finalize",
-				progress: 95,
-				statusDetail: "Finalizing interview",
+				currentStep: "complete",
+				progress: 100,
+				statusDetail: "Analysis complete",
 			})
 
-			// Update interview status to "ready" and set processing_metadata
+			// Update interview status to "completed" and set conversation_analysis
+			const { data: currentInterview } = await client
+				.from("interviews")
+				.select("conversation_analysis")
+				.eq("id", interviewId)
+				.single()
+
+			const existingAnalysis = (currentInterview?.conversation_analysis as any) || {}
+
 			const { error: updateError } = await client
 				.from("interviews")
 				.update({
-					status: "ready",
+					status: "completed",
 					updated_at: new Date().toISOString(),
-					processing_metadata: {
+					conversation_analysis: {
+						...existingAnalysis,
 						current_step: "complete",
 						progress: 100,
 						completed_at: new Date().toISOString(),
 						evidence_count: evidenceIds?.length || 0,
+						status_detail: "Analysis complete",
 					},
 				})
 				.eq("id", interviewId)
@@ -63,7 +73,7 @@ export const finalizeInterviewTaskV2 = task({
 			if (updateError) {
 				consola.warn(`Failed to update interview status for ${interviewId}:`, updateError)
 			} else {
-				consola.info(`Interview ${interviewId} marked as ready with processing_metadata`)
+				consola.info(`Interview ${interviewId} marked as completed with conversation_analysis`)
 			}
 
 			// Trigger side effects (e.g., sales lens generation)
@@ -150,24 +160,15 @@ export const finalizeInterviewTaskV2 = task({
 			if (analysisJobId) {
 				await saveWorkflowState(client, analysisJobId, {
 					completedSteps: ["upload", "evidence", "insights", "personas", "answers", "finalize"],
-					currentStep: "finalize",
+					currentStep: "complete",
 					interviewId,
 				})
-
-				// Update interview status to completed
-				await client
-					.from("interviews")
-					.update({
-						status: "completed",
-						updated_at: new Date().toISOString(),
-					})
-					.eq("id", analysisJobId)
 			}
 
 			return { success: true }
 		} catch (error) {
 			await updateAnalysisJobError(client, analysisJobId, {
-				currentStep: "finalize",
+				currentStep: "complete",
 				error: errorMessage(error),
 			})
 

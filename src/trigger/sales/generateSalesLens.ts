@@ -1,7 +1,9 @@
 import { task } from "@trigger.dev/sdk"
+import consola from "consola"
 
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { upsertSalesLensFromExtraction } from "~/lib/sales-lens/storage.server"
+import { buildSalesLensFromEvidence } from "~/lib/sales-lens/baml-extraction.server"
 import { buildInitialSalesLensExtraction } from "~/utils/salesLens.server"
 import { workflowRetryConfig } from "~/utils/processInterview.server"
 
@@ -20,17 +22,41 @@ export const generateSalesLensTask = task({
         run: async (payload: Payload) => {
                 const client = createSupabaseAdminClient()
 
-                const extraction = await buildInitialSalesLensExtraction(client, payload.interviewId)
-                await upsertSalesLensFromExtraction({
-                        db: client,
-                        payload: extraction,
-                        sourceKind: "interview",
-                        computedBy: payload.computedBy ?? null,
-                })
+                try {
+                        // Try new BAML-based extraction first
+                        consola.info(`[generateSalesLensTask] Using BAML-based extraction for ${payload.interviewId}`)
+                        const extraction = await buildSalesLensFromEvidence(client, payload.interviewId)
 
-                return {
-                        interviewId: payload.interviewId,
-                        frameworks: extraction.frameworks.length,
+                        await upsertSalesLensFromExtraction({
+                                db: client,
+                                payload: extraction,
+                                sourceKind: "interview",
+                                computedBy: payload.computedBy ?? null,
+                        })
+
+                        return {
+                                interviewId: payload.interviewId,
+                                frameworks: extraction.frameworks.length,
+                                method: "baml",
+                        }
+                } catch (error) {
+                        // Fallback to heuristic extraction if BAML fails
+                        consola.warn(`[generateSalesLensTask] BAML extraction failed, falling back to heuristics`, error)
+
+                        const extraction = await buildInitialSalesLensExtraction(client, payload.interviewId)
+                        await upsertSalesLensFromExtraction({
+                                db: client,
+                                payload: extraction,
+                                sourceKind: "interview",
+                                computedBy: payload.computedBy ?? null,
+                        })
+
+                        return {
+                                interviewId: payload.interviewId,
+                                frameworks: extraction.frameworks.length,
+                                method: "heuristic",
+                                fallback: true,
+                        }
                 }
         },
 })

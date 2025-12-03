@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DealAdvisorRecommendation,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  LensEvidenceHighlight,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  TopPainCell,  TurnAnchors } from "./types"
+import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BudgetInfo,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  LensEvidenceHighlight,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TimelineInfo,  TopPainCell,  TurnAnchors } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -42,6 +42,17 @@ export namespace partial_types {
       parameters?: string | null
       priority?: string | null
     }
+    export interface AuthorityInfo {
+      decision_maker_identified?: boolean | null
+      decision_maker_name?: string | null
+      decision_maker_role?: string | null
+      approval_process?: string | null
+      stakeholders_involved: string[]
+      blockers: string[]
+      political_dynamics?: string | null
+      confidence?: number | null
+      evidence_ids: string[]
+    }
     export interface AutoInsightsResponse {
       executive_summary?: string | null
       top_opportunities: OpportunityRecommendation[]
@@ -55,6 +66,16 @@ export namespace partial_types {
       evaluations: QuestionEvaluation[]
       overall_summary?: string | null
       top_priorities: string[]
+    }
+    export interface BudgetInfo {
+      has_budget_discussion?: boolean | null
+      amount_mentioned?: string | null
+      budget_status?: string | null
+      pricing_sensitivity?: string | null
+      payment_terms?: string | null
+      confidence?: number | null
+      supporting_quote?: string | null
+      evidence_ids: string[]
     }
     export interface Category {
       id?: string | null
@@ -106,6 +127,12 @@ export namespace partial_types {
       recommendations: string[]
       risks: string[]
       confidence?: string | null
+    }
+    export interface DealQualificationSignals {
+      positive_signals: string[]
+      warning_flags: string[]
+      overall_qualification?: string | null
+      recommended_actions: string[]
     }
     export interface DecisionQuestionAnswer {
       decision_question_id?: string | null
@@ -356,6 +383,24 @@ export namespace partial_types {
       journey_stage?: string | null
       topic?: string | null
       support?: string | null
+    }
+    export interface NeedInfo {
+      primary_pain_points: string[]
+      pain_severity?: string | null
+      impact_on_business?: string | null
+      current_workarounds: string[]
+      must_have_features: string[]
+      nice_to_have_features: string[]
+      competing_priorities: string[]
+      confidence?: number | null
+      evidence_ids: string[]
+    }
+    export interface NextStepInfo {
+      action_item?: string | null
+      owner?: string | null
+      due_date?: string | null
+      commitment_level?: string | null
+      evidence_ids: string[]
     }
     export interface NoteSnippet {
       tag?: string | null
@@ -768,6 +813,17 @@ export namespace partial_types {
       research_questions: ResearchQuestionItem[]
       interview_prompts: InterviewPromptItem[]
     }
+    export interface SalesLensExtraction {
+      budget?: BudgetInfo | null
+      authority?: AuthorityInfo | null
+      need?: NeedInfo | null
+      timeline?: TimelineInfo | null
+      next_steps: NextStepInfo[]
+      stakeholders: StakeholderRole[]
+      deal_qualification?: DealQualificationSignals | null
+      key_insights: string[]
+      risks_and_concerns: string[]
+    }
     export interface Scene {
       scene_id?: string | null
       start_index?: number | null
@@ -804,11 +860,30 @@ export namespace partial_types {
       supporting_evidence: string[]
       alternatives: string[]
     }
+    export interface StakeholderRole {
+      person_name?: string | null
+      person_role?: string | null
+      role_type?: string | null
+      influence_level?: string | null
+      sentiment?: string | null
+      key_concerns: string[]
+      key_motivations: string[]
+      evidence_ids: string[]
+    }
     export interface SuggestedQuestion {
       question?: string | null
       rationale?: string | null
       interview_type?: "user_interview" | "stakeholder_interview" | "expert_interview" | null
       priority?: number | null
+    }
+    export interface TimelineInfo {
+      urgency_level?: string | null
+      target_date?: string | null
+      deadline_type?: string | null
+      implementation_timeline?: string | null
+      external_drivers: string[]
+      confidence?: number | null
+      evidence_ids: string[]
     }
     export interface TopPainCell {
       pain_name?: string | null

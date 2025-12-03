@@ -29,7 +29,7 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 					<div className="space-y-3">
 						<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Insight Theme</div>
 						<h1 className="font-bold text-3xl tracking-tight">{insight.name}</h1>
-						{insight.statement && <p className="text-lg text-muted-foreground leading-relaxed">{insight.statement}</p>}
+						{insight.statement && <p className="text-foreground text-lg leading-relaxed">{insight.statement}</p>}
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
@@ -43,14 +43,14 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 								{insight.journey_stage}
 							</Badge>
 						)}
-						{(insight as any).evidence_count > 0 && (
+						{/* {(insight as any).evidence_count > 0 && (
 							<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
 								<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
 									<Quote className="h-3.5 w-3.5" />
 									{(insight as any).evidence_count} evidence
 								</Badge>
 							</Link>
-						)}
+						)} */}
 					</div>
 				</div>
 
@@ -142,7 +142,7 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 					{/* Synonyms */}
 					{insight.synonyms && insight.synonyms.length > 0 && (
 						<div className="space-y-3">
-							<h4 className="font-semibold text-foreground text-sm">Synonyms</h4>
+							<h4 className="font-semibold text-muted-foreground text-sm">Synonyms</h4>
 							<div className="flex flex-wrap gap-2">
 								{insight.synonyms.map((synonym: string, idx: number) => (
 									<Badge key={idx} variant="secondary" className="text-xs">
@@ -170,81 +170,84 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 					)}
 
 					{/* Signals and Evidence Section */}
-					{((insight as any).people?.length > 0 || (insight as any).organizations?.length > 0 || (insight as any).evidence_count > 0) && (
-						<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
-							<div className="flex items-center gap-2">
-								<Quote className="h-5 w-5 text-muted-foreground" />
-								<h4 className="font-semibold text-base text-foreground">Signals and Evidence</h4>
-							</div>
+					{((insight as any).people?.length > 0 ||
+						(insight as any).organizations?.length > 0 ||
+						(insight as any).evidence_count > 0) && (
+							<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
+								<div className="flex items-center gap-2">
+									<Quote className="h-5 w-5 text-muted-foreground" />
+									<h4 className="font-semibold text-base text-foreground">Signals and Evidence</h4>
+								</div>
 
-							{/* Evidence Link - Prominent placement */}
-							{(insight as any).evidence_count > 0 && (
-								<Link
-									to={routes.evidence.index() + `?theme_id=${insight.id}`}
-									className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
-								>
-									<div className="rounded-full bg-primary/10 p-2">
-										<Quote className="h-5 w-5 text-primary" />
-									</div>
-									<div className="flex-1">
-										<div className="font-medium text-foreground text-sm">View Evidence</div>
-										<div className="text-muted-foreground text-xs">
-											{(insight as any).evidence_count} piece{(insight as any).evidence_count !== 1 ? 's' : ''} of supporting evidence
+								{/* Evidence Link - Prominent placement */}
+								{(insight as any).evidence_count > 0 && (
+									<Link
+										to={routes.evidence.index() + `?theme_id=${insight.id}`}
+										className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
+									>
+										<div className="rounded-full bg-primary/10 p-2">
+											<Quote className="h-5 w-5 text-primary" />
 										</div>
-									</div>
-								</Link>
-							)}
-
-							<div className="space-y-6">
-								{(insight as any).organizations?.length > 0 && (
-									<div className="space-y-3">
-										<div className="flex items-center gap-2">
-											<Building2 className="h-4 w-4 text-muted-foreground" />
-											<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-												Organizations
+										<div className="flex-1">
+											<div className="font-medium text-foreground text-sm">View Evidence</div>
+											<div className="text-muted-foreground text-xs">
+												{(insight as any).evidence_count} piece{(insight as any).evidence_count !== 1 ? "s" : ""} of
+												supporting evidence
 											</div>
 										</div>
-										<div className="flex flex-wrap gap-2">
-											{(insight as any).organizations.map((org: any, idx: number) => (
-												<Link key={idx} to={routes.evidence.index() + `?theme_id=${insight.id}`}>
-													<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
-														{org.name}
-														<span className="text-[10px] opacity-70">({org.count})</span>
-													</Badge>
-												</Link>
-											))}
-										</div>
-									</div>
+									</Link>
 								)}
 
-								{(insight as any).people?.length > 0 && (
-									<div className="space-y-3">
-										<div className="flex items-center gap-2">
-											<Users className="h-4 w-4 text-muted-foreground" />
-											<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">People</div>
+								<div className="space-y-6">
+									{(insight as any).organizations?.length > 0 && (
+										<div className="space-y-3">
+											<div className="flex items-center gap-2">
+												<Building2 className="h-4 w-4 text-muted-foreground" />
+												<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+													Organizations
+												</div>
+											</div>
+											<div className="flex flex-wrap gap-2">
+												{(insight as any).organizations.map((org: any, idx: number) => (
+													<Link key={idx} to={routes.evidence.index() + `?theme_id=${insight.id}`}>
+														<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
+															{org.name}
+															<span className="text-[10px] opacity-70">({org.count})</span>
+														</Badge>
+													</Link>
+												))}
+											</div>
 										</div>
-										<div className="flex flex-wrap gap-2">
-											{(insight as any).people.slice(0, 10).map((person: any, idx: number) => (
-												<Link key={idx} to={routes.people.detail(person.id)}>
-													<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
-														{person.name}
-														{person.role && <span className="text-[10px] opacity-70">({person.role})</span>}
-													</Badge>
-												</Link>
-											))}
-											{(insight as any).people.length > 10 && (
-												<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
-													<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
-														+{(insight as any).people.length - 10} more
-													</Badge>
-												</Link>
-											)}
+									)}
+
+									{(insight as any).people?.length > 0 && (
+										<div className="space-y-3">
+											<div className="flex items-center gap-2">
+												<Users className="h-4 w-4 text-muted-foreground" />
+												<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">People</div>
+											</div>
+											<div className="flex flex-wrap gap-2">
+												{(insight as any).people.slice(0, 10).map((person: any, idx: number) => (
+													<Link key={idx} to={routes.people.detail(person.id)}>
+														<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
+															{person.name}
+															{person.role && <span className="text-[10px] opacity-70">({person.role})</span>}
+														</Badge>
+													</Link>
+												))}
+												{(insight as any).people.length > 10 && (
+													<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
+														<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
+															+{(insight as any).people.length - 10} more
+														</Badge>
+													</Link>
+												)}
+											</div>
 										</div>
-									</div>
-								)}
+									)}
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 				</div>
 
 				<div className="mt-6">

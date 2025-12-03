@@ -29,9 +29,13 @@ export default class TypeBuilder {
     
     ActionButton: ClassViewer<'ActionButton', "label" | "action_type" | "parameters" | "priority">;
     
+    AuthorityInfo: ClassViewer<'AuthorityInfo', "decision_maker_identified" | "decision_maker_name" | "decision_maker_role" | "approval_process" | "stakeholders_involved" | "blockers" | "political_dynamics" | "confidence" | "evidence_ids">;
+    
     AutoInsightsResponse: ClassViewer<'AutoInsightsResponse', "executive_summary" | "top_opportunities" | "critical_insights" | "persona_analysis" | "competitive_considerations" | "immediate_actions" | "strategic_recommendations">;
     
     BatchEvaluationResult: ClassViewer<'BatchEvaluationResult', "evaluations" | "overall_summary" | "top_priorities">;
+    
+    BudgetInfo: ClassViewer<'BudgetInfo', "has_budget_discussion" | "amount_mentioned" | "budget_status" | "pricing_sensitivity" | "payment_terms" | "confidence" | "supporting_quote" | "evidence_ids">;
     
     Category: ClassViewer<'Category', "id" | "label" | "weight">;
     
@@ -48,6 +52,8 @@ export default class TypeBuilder {
     ConversationTakeaway: ClassViewer<'ConversationTakeaway', "priority" | "summary" | "evidence_snippets">;
     
     DealAdvisorRecommendation: ClassViewer<'DealAdvisorRecommendation', "status_assessment" | "recommendations" | "risks" | "confidence">;
+    
+    DealQualificationSignals: ClassViewer<'DealQualificationSignals', "positive_signals" | "warning_flags" | "overall_qualification" | "recommended_actions">;
     
     DecisionQuestionAnswer: ClassViewer<'DecisionQuestionAnswer', "decision_question_id" | "strategic_insight" | "supporting_findings" | "research_question_ids" | "confidence" | "reasoning" | "recommended_actions">;
     
@@ -114,6 +120,10 @@ export default class TypeBuilder {
     InterviewPromptOut: ClassViewer<'InterviewPromptOut', "id" | "rq_ids" | "text" | "followups" | "bias_checks">;
     
     LensEvidenceHighlight: ClassViewer<'LensEvidenceHighlight', "gist" | "interview_title" | "interview_date" | "journey_stage" | "topic" | "support">;
+    
+    NeedInfo: ClassViewer<'NeedInfo', "primary_pain_points" | "pain_severity" | "impact_on_business" | "current_workarounds" | "must_have_features" | "nice_to_have_features" | "competing_priorities" | "confidence" | "evidence_ids">;
+    
+    NextStepInfo: ClassViewer<'NextStepInfo', "action_item" | "owner" | "due_date" | "commitment_level" | "evidence_ids">;
     
     NoteSnippet: ClassViewer<'NoteSnippet', "tag" | "text" | "speaker" | "timestamp">;
     
@@ -211,6 +221,8 @@ export default class TypeBuilder {
     
     ResearchStructure: ClassViewer<'ResearchStructure', "decision_questions" | "research_questions" | "interview_prompts">;
     
+    SalesLensExtraction: ClassViewer<'SalesLensExtraction', "budget" | "authority" | "need" | "timeline" | "next_steps" | "stakeholders" | "deal_qualification" | "key_insights" | "risks_and_concerns">;
+    
     Scene: ClassViewer<'Scene', "scene_id" | "start_index" | "end_index" | "topic" | "summary">;
     
     Scores: ClassViewer<'Scores', "goalMatch" | "novelty" | "importance" | "uncertainty">;
@@ -225,7 +237,11 @@ export default class TypeBuilder {
     
     Spectrum: ClassViewer<'Spectrum', "axis" | "rationale" | "supporting_evidence" | "alternatives">;
     
+    StakeholderRole: ClassViewer<'StakeholderRole', "person_name" | "person_role" | "role_type" | "influence_level" | "sentiment" | "key_concerns" | "key_motivations" | "evidence_ids">;
+    
     SuggestedQuestion: ClassViewer<'SuggestedQuestion', "question" | "rationale" | "interview_type" | "priority">;
+    
+    TimelineInfo: ClassViewer<'TimelineInfo', "urgency_level" | "target_date" | "deadline_type" | "implementation_timeline" | "external_drivers" | "confidence" | "evidence_ids">;
     
     TopPainCell: ClassViewer<'TopPainCell', "pain_name" | "user_group" | "impact_score" | "frequency" | "intensity" | "willingness_to_pay" | "person_count" | "evidence_count" | "sample_quote">;
     
@@ -240,7 +256,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DealAdvisorRecommendation","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","LensEvidenceHighlight","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","TopPainCell","TurnAnchors",
+            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BudgetInfo","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DealAdvisorRecommendation","DealQualificationSignals","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","LensEvidenceHighlight","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TimelineInfo","TopPainCell","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -252,12 +268,20 @@ export default class TypeBuilder {
           "label","action_type","parameters","priority",
         ]);
         
+        this.AuthorityInfo = this.tb.classViewer("AuthorityInfo", [
+          "decision_maker_identified","decision_maker_name","decision_maker_role","approval_process","stakeholders_involved","blockers","political_dynamics","confidence","evidence_ids",
+        ]);
+        
         this.AutoInsightsResponse = this.tb.classViewer("AutoInsightsResponse", [
           "executive_summary","top_opportunities","critical_insights","persona_analysis","competitive_considerations","immediate_actions","strategic_recommendations",
         ]);
         
         this.BatchEvaluationResult = this.tb.classViewer("BatchEvaluationResult", [
           "evaluations","overall_summary","top_priorities",
+        ]);
+        
+        this.BudgetInfo = this.tb.classViewer("BudgetInfo", [
+          "has_budget_discussion","amount_mentioned","budget_status","pricing_sensitivity","payment_terms","confidence","supporting_quote","evidence_ids",
         ]);
         
         this.Category = this.tb.classViewer("Category", [
@@ -290,6 +314,10 @@ export default class TypeBuilder {
         
         this.DealAdvisorRecommendation = this.tb.classViewer("DealAdvisorRecommendation", [
           "status_assessment","recommendations","risks","confidence",
+        ]);
+        
+        this.DealQualificationSignals = this.tb.classViewer("DealQualificationSignals", [
+          "positive_signals","warning_flags","overall_qualification","recommended_actions",
         ]);
         
         this.DecisionQuestionAnswer = this.tb.classViewer("DecisionQuestionAnswer", [
@@ -422,6 +450,14 @@ export default class TypeBuilder {
         
         this.LensEvidenceHighlight = this.tb.classViewer("LensEvidenceHighlight", [
           "gist","interview_title","interview_date","journey_stage","topic","support",
+        ]);
+        
+        this.NeedInfo = this.tb.classViewer("NeedInfo", [
+          "primary_pain_points","pain_severity","impact_on_business","current_workarounds","must_have_features","nice_to_have_features","competing_priorities","confidence","evidence_ids",
+        ]);
+        
+        this.NextStepInfo = this.tb.classViewer("NextStepInfo", [
+          "action_item","owner","due_date","commitment_level","evidence_ids",
         ]);
         
         this.NoteSnippet = this.tb.classViewer("NoteSnippet", [
@@ -616,6 +652,10 @@ export default class TypeBuilder {
           "decision_questions","research_questions","interview_prompts",
         ]);
         
+        this.SalesLensExtraction = this.tb.classViewer("SalesLensExtraction", [
+          "budget","authority","need","timeline","next_steps","stakeholders","deal_qualification","key_insights","risks_and_concerns",
+        ]);
+        
         this.Scene = this.tb.classViewer("Scene", [
           "scene_id","start_index","end_index","topic","summary",
         ]);
@@ -644,8 +684,16 @@ export default class TypeBuilder {
           "axis","rationale","supporting_evidence","alternatives",
         ]);
         
+        this.StakeholderRole = this.tb.classViewer("StakeholderRole", [
+          "person_name","person_role","role_type","influence_level","sentiment","key_concerns","key_motivations","evidence_ids",
+        ]);
+        
         this.SuggestedQuestion = this.tb.classViewer("SuggestedQuestion", [
           "question","rationale","interview_type","priority",
+        ]);
+        
+        this.TimelineInfo = this.tb.classViewer("TimelineInfo", [
+          "urgency_level","target_date","deadline_type","implementation_timeline","external_drivers","confidence","evidence_ids",
         ]);
         
         this.TopPainCell = this.tb.classViewer("TopPainCell", [

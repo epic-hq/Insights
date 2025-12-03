@@ -146,8 +146,8 @@ function EvidenceCard({
 
 			{/* Header */}
 			<div className="flex items-start justify-between px-4 pt-3">
-				<span className="text-muted-foreground italic">Gist</span>
-				<h3 className="font-semibold text-base text-foreground leading-5">{gist}</h3>
+				{/* <Badge variant="outline" className="text-muted-foreground">Gist</Badge> */}
+				<h3 className="font-semibold text-base text-foreground text-lg leading-5">{gist}</h3>
 				<div className="flex items-center gap-1">
 					{evidence.support?.toLowerCase() === "supports" && <Plus className="h-4 w-4 text-emerald-600" />}
 					{evidence.support?.toLowerCase() === "opposes" && <Minus className="h-4 w-4 text-destructive" />}
@@ -180,7 +180,7 @@ function EvidenceCard({
 			{/* Quote */}
 			{chunk && (
 				<blockquote
-					className="mt-3 border-muted border-l-4 pl-4 text-foreground/80 text-sm italic"
+					className="mt-3 border-muted border-l-4 p-4 text-foreground/80 text-md italic"
 					style={{ borderLeftColor: themeColor }}
 				>
 					“{chunk}”

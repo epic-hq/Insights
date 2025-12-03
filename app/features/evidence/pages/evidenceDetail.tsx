@@ -196,7 +196,7 @@ export default function EvidenceDetail() {
 			{Array.isArray(relatedEvidence) && relatedEvidence.length > 0 && (
 				<PageContainer size="sm" padded={false} className="max-w-2xl">
 					<div className="mt-2 space-y-3">
-						<p className="text-muted-foreground text-sm">Related in this topic</p>
+						<p className="text-foreground text-lg">Related</p>
 						<div className="space-y-2">
 							{relatedEvidence.map((ev: any) => (
 								<EvidenceCard key={ev.id} evidence={ev} variant="mini" />
