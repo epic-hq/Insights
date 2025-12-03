@@ -98,23 +98,31 @@ function normalizeMultilineText(value: unknown): string {
 	}
 }
 
-type AnalysisJobSummary = Pick<
-	Database["public"]["Tables"]["analysis_jobs"]["Row"],
-	"id" | "status" | "status_detail" | "progress" | "trigger_run_id" | "created_at" | "updated_at"
->
+type AnalysisJobSummary = {
+	id: string // interviewId
+	status: Database["public"]["Enums"]["job_status"] | null
+	status_detail: string | null
+	progress: number | null
+	trigger_run_id: string | null
+	created_at: string | null
+	updated_at: string | null
+}
 
 const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["pending", "in_progress", "retry"])
 const TERMINAL_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["done", "error"])
 
-function toAnalysisJobSummary(row: Database["public"]["Tables"]["analysis_jobs"]["Row"]): AnalysisJobSummary {
+function extractAnalysisFromInterview(interview: Database["public"]["Tables"]["interviews"]["Row"]): AnalysisJobSummary | null {
+	const conversationAnalysis = interview.conversation_analysis as any
+	if (!conversationAnalysis) return null
+
 	return {
-		id: row.id,
-		status: row.status,
-		status_detail: row.status_detail,
-		progress: row.progress,
-		trigger_run_id: row.trigger_run_id,
-		created_at: row.created_at,
-		updated_at: row.updated_at,
+		id: interview.id,
+		status: conversationAnalysis.status || null,
+		status_detail: conversationAnalysis.status_detail || null,
+		progress: conversationAnalysis.progress || null,
+		trigger_run_id: conversationAnalysis.trigger_run_id || null,
+		created_at: interview.created_at,
+		updated_at: interview.updated_at,
 	}
 }
 
@@ -648,18 +656,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			hasFormattedTranscript: !!transcriptMeta?.transcript_formatted,
 		}
 
-		const { data: analysisJobRows, error: analysisJobError } = await supabase
-			.from("analysis_jobs")
-			.select("id, status, status_detail, progress, trigger_run_id, created_at, updated_at")
-			.eq("interview_id", interviewId)
-			.order("created_at", { ascending: false })
-			.limit(1)
-
-		if (analysisJobError) {
-			consola.warn("Could not load latest analysis job:", analysisJobError.message)
-		}
-
-		const analysisJob = (analysisJobRows?.[0] ?? null) as AnalysisJobSummary | null
+		// Extract analysis job information from interview.conversation_analysis
+		const analysisJob = extractAnalysisFromInterview(interview)
 
 		const { data: insightsData, error } = await getInterviewInsights({
 			supabase,
@@ -1228,13 +1226,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			.channel(`analysis-${interview.id}`)
 			.on(
 				"postgres_changes",
-				{ event: "*", schema: "public", table: "analysis_jobs", filter: `interview_id=eq.${interview.id}` },
+				{ event: "UPDATE", schema: "public", table: "interviews", filter: `id=eq.${interview.id}` },
 				(payload) => {
-					const raw = (payload as { new?: Database["public"]["Tables"]["analysis_jobs"]["Row"] }).new
+					const raw = (payload as { new?: Database["public"]["Tables"]["interviews"]["Row"] }).new
 					if (!raw) return
 
 					setAnalysisState((prev) => {
-						const nextSummary = toAnalysisJobSummary(raw)
+						const nextSummary = extractAnalysisFromInterview(raw)
+						if (!nextSummary) return prev
 						if (!prev) {
 							return nextSummary
 						}
@@ -1242,7 +1241,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						const prevCreated = prev.created_at ? new Date(prev.created_at).getTime() : 0
 						const nextCreated = nextSummary.created_at ? new Date(nextSummary.created_at).getTime() : 0
 
-						if (raw.id === prev.id || nextCreated >= prevCreated) {
+						if (nextSummary.id === prev.id || nextCreated >= prevCreated) {
 							return nextSummary
 						}
 
