@@ -1736,7 +1736,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									})}
 								</ul>
 							</div>
-						) : "Pending... Apply Lenses to generate key takeaways."}
+						) : (
+							"Pending... Apply Lenses to generate key takeaways."
+						)}
 						{/* <InlineEdit
 							textClassName="text-foreground"
 							value={normalizeMultilineText(interview.high_impact_themes)}

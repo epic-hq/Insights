@@ -39,7 +39,7 @@ async function generateConversationTakeaways(
                 // Fetch evidence items for this interview
                 const { data: evidenceItems, error: evidenceError } = await client
                         .from("evidence")
-                        .select("id, verbatim, gist, speaker_name, evidence_type, timestamp_start")
+                        .select("id, verbatim, gist, evidence_type, timestamp_start")
                         .eq("interview_id", interviewId)
                         .order("timestamp_start", { ascending: true, nullsFirst: false })
 
@@ -84,7 +84,7 @@ async function generateConversationTakeaways(
                         id: e.id,
                         verbatim: e.verbatim || "",
                         gist: e.gist || null,
-                        speaker: e.speaker_name || null,
+                        speaker: null, // Speaker data not available in evidence table
                         evidence_type: e.evidence_type || null,
                         timestamp_start: e.timestamp_start || null,
                 }))
