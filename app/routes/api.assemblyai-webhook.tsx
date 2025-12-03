@@ -20,7 +20,12 @@ interface AssemblyAIWebhookPayload {
 	}
 }
 
-type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
+// Type for trace.end() payload - using any to handle optional method
+type TraceEndPayload = {
+	output?: Record<string, unknown>
+	level?: "DEBUG" | "DEFAULT" | "WARNING" | "ERROR"
+	statusMessage?: string
+}
 
 // Assembly AI validates webhook endpoints with GET requests
 export async function loader() {
@@ -62,73 +67,86 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Use admin client for webhook operations (no user context)
 		const supabase = createSupabaseAdminClient()
 
-		// Find the upload job by AssemblyAI transcript ID
-		const fetchUploadJobSpan = trace?.span?.({
-			name: "supabase.upload-job.fetch",
+		// Find the interview by AssemblyAI transcript ID in conversation_analysis JSONB
+		// (upload_jobs and analysis_jobs tables were consolidated into interviews.conversation_analysis)
+		const fetchInterviewSpan = trace?.span?.({
+			name: "supabase.interview.fetch",
 			metadata: {
 				transcriptId: payload.transcript_id,
 			},
 		})
-		const { data: uploadJob, error: uploadJobError } = await supabase
-			.from("upload_jobs")
+
+		// Query interviews where conversation_analysis->transcript_data JSONB contains assemblyai_id
+		const { data: interview, error: interviewError } = await supabase
+			.from("interviews")
 			.select("*")
-			.eq("assemblyai_id", payload.transcript_id)
+			.contains("conversation_analysis->transcript_data", { assemblyai_id: payload.transcript_id })
 			.single()
 
-		if (uploadJobError || !uploadJob) {
+		if (interviewError || !interview) {
 			if (mediaId) {
-				consola.warn("Media pipeline webhook received without upload job", {
+				consola.warn("Media pipeline webhook received without interview", {
 					transcript_id: payload.transcript_id,
 					media_id: mediaId,
 				})
 				return Response.json({ success: true, media_id: mediaId, status: payload.status }, { status: 202 })
 			}
 
-			consola.error("Upload job query failed for transcript:", payload.transcript_id)
+			consola.error("Interview query failed for transcript:", payload.transcript_id)
 			consola.error("Error details:", {
-				error: uploadJobError,
+				error: interviewError,
 				hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
 				supabaseUrl: process.env.SUPABASE_URL,
 			})
-			fetchUploadJobSpan?.end?.({
+			fetchInterviewSpan?.end?.({
 				level: "ERROR",
-				statusMessage: uploadJobError?.message ?? "Upload job not found",
+				statusMessage: interviewError?.message ?? "Interview not found",
 			})
-			traceEndPayload = { level: "ERROR", statusMessage: "Upload job not found" }
-			return Response.json({ error: "Upload job not found" }, { status: 404 })
+			traceEndPayload = { level: "ERROR", statusMessage: "Interview not found" }
+			return Response.json({ error: "Interview not found" }, { status: 404 })
 		}
-		fetchUploadJobSpan?.end?.({
+
+		// Extract upload metadata and other data from conversation_analysis JSONB
+		const conversationAnalysis = (interview.conversation_analysis as any) || {}
+		const transcriptData = conversationAnalysis.transcript_data || {}
+		const uploadMetadata = {
+			file_name: transcriptData.file_name,
+			file_type: transcriptData.file_type,
+			external_url: transcriptData.external_url,
+		}
+
+		fetchInterviewSpan?.end?.({
 			output: {
-				uploadJobId: uploadJob.id,
-				interviewId: uploadJob.interview_id,
-				status: uploadJob.status,
+				interviewId: interview.id,
+				status: interview.status,
 			},
 		})
 		trace?.update?.({
 			metadata: {
-				interviewId: uploadJob.interview_id,
+				interviewId: interview.id,
 			},
 		})
 
 		// Idempotency check - prevent duplicate processing
-		if (uploadJob.status === "done") {
-			consola.log("Upload job already processed, skipping:", payload.transcript_id)
+		// Interview is already transcribed means we've already processed this webhook
+		if (interview.status === "ready" || (interview.status === "transcribed" && interview.transcript)) {
+			consola.log("Interview already processed, skipping:", payload.transcript_id)
 			trace?.event?.({
-				name: "upload-job.already-processed",
+				name: "interview.already-processed",
 				metadata: {
-					uploadJobId: uploadJob.id,
+					interviewId: interview.id,
 				},
 			})
 			traceEndPayload = {
 				output: {
-					uploadJobId: uploadJob.id,
+					interviewId: interview.id,
 					status: "already_processed",
 				},
 			}
 			return Response.json({ success: true, message: "Already processed" })
 		}
 
-		const interviewId = uploadJob.interview_id
+		const interviewId = interview.id
 
 		if (payload.status === "completed") {
 			// Fetch full transcript data from AssemblyAI
@@ -182,7 +200,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				processing_duration: 0,
 				file_type: "audio",
 				assembly_id: payload.transcript_id,
-				original_filename: uploadJob.file_name,
+				original_filename: uploadMetadata.file_name,
 				speaker_transcripts: transcriptData.utterances || [],
 				topic_detection: transcriptData.iab_categories_result || {},
 				sentiment_analysis_results: transcriptData.sentiment_analysis_results || [],
@@ -204,14 +222,18 @@ export async function action({ request }: ActionFunctionArgs) {
 				throw new Error(`Failed to update interview: ${interviewUpdateError.message}`)
 			}
 
-			// Mark upload job as complete
+			// Update conversation_analysis metadata to track workflow state
+			const updatedConversationAnalysis = {
+				...conversationAnalysis,
+				current_step: "analysis",
+				status_detail: "Transcription completed, ready for analysis",
+				completed_steps: [...(conversationAnalysis.completed_steps || []), "transcription"],
+			}
+
 			await supabase
-				.from("upload_jobs")
-				.update({
-					status: "done" as const,
-					status_detail: "Transcription completed",
-				})
-				.eq("id", uploadJob.id)
+				.from("interviews")
+				.update({ conversation_analysis: updatedConversationAnalysis as Json })
+				.eq("id", interviewId)
 
 			// If this is a voice memo only (no analysis), mark as ready and return
 			if (voiceMemoOnly) {
@@ -246,105 +268,80 @@ export async function action({ request }: ActionFunctionArgs) {
 				})
 			}
 
-			const customInstructions = uploadJob.custom_instructions || ""
+			const customInstructions = conversationAnalysis.custom_instructions || ""
 
-			// Check if analysis_job already exists (from onboarding flow)
-			const { data: existingAnalysisJob } = await supabase
-				.from("analysis_jobs")
-				.select("id, status, current_step")
-				.eq("interview_id", interviewId)
-				.eq("status", "pending")
-				.eq("current_step", "transcription")
-				.maybeSingle()
-
+			// Trigger the analysis orchestrator workflow
 			try {
-				if (existingAnalysisJob) {
-					// Update existing job and trigger orchestrator
-					consola.info("Found existing analysis_job, updating:", existingAnalysisJob.id)
+				consola.info("Triggering analysis orchestrator for interview:", interviewId)
 
-					await supabase
-						.from("analysis_jobs")
-						.update({
-							transcript_data: formattedTranscriptData,
-							status: "in_progress" as const,
-							status_detail: "Transcription complete, starting analysis",
+				// Update conversation_analysis to mark workflow as in progress
+				await supabase
+					.from("interviews")
+					.update({
+						status: "processing" as const,
+						conversation_analysis: {
+							...updatedConversationAnalysis,
 							current_step: "upload",
-						})
-						.eq("id", existingAnalysisJob.id)
-
-					// Trigger orchestrator
-					const { tasks } = await import("@trigger.dev/sdk")
-					const { data: interview } = await supabase
-						.from("interviews")
-						.select("account_id, project_id, title")
-						.eq("id", interviewId)
-						.single()
-
-					const metadata = {
-						accountId: interview?.account_id,
-						userId: uploadJob.created_by ?? undefined,
-						projectId: interview?.project_id ?? undefined,
-						interviewTitle: interview?.title ?? undefined,
-						fileName: uploadJob.file_name ?? undefined,
-					}
-
-					const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
-
-					const handle = useV2Workflow
-						? await tasks.trigger("interview.v2.orchestrator", {
-								analysisJobId: existingAnalysisJob.id,
-								metadata,
-								transcriptData: formattedTranscriptData,
-								mediaUrl: uploadJob.external_url || "",
-								existingInterviewId: interviewId,
-								userCustomInstructions: customInstructions,
-						  })
-						: await tasks.trigger("interview.upload-media-and-transcribe", {
-								analysisJobId: existingAnalysisJob.id,
-								metadata,
-								transcriptData: formattedTranscriptData,
-								mediaUrl: uploadJob.external_url || "",
-								existingInterviewId: interviewId,
-								userCustomInstructions: customInstructions,
-						  })
-
-					await supabase
-						.from("analysis_jobs")
-						.update({ trigger_run_id: handle.id })
-						.eq("id", existingAnalysisJob.id)
-
-					consola.success("Triggered orchestrator:", handle.id)
-					trace?.event?.({
-						name: "analysis.orchestrator-triggered",
-						metadata: {
-							interviewId,
-							analysisJobId: existingAnalysisJob.id,
-							runId: handle.id,
-						},
+							status_detail: "Transcription complete, starting analysis",
+						} as Json,
 					})
-				} else {
-					// No existing job - create new one (backwards compatibility)
-					consola.info("No existing analysis_job, creating new one")
+					.eq("id", interviewId)
 
-					const { createAndProcessAnalysisJob } = await import("~/utils/processInterviewAnalysis.server")
+				// Trigger orchestrator
+				const { tasks } = await import("@trigger.dev/sdk")
+				const fetchedInterview = await supabase
+					.from("interviews")
+					.select("account_id, project_id, title")
+					.eq("id", interviewId)
+					.single()
 
-					await createAndProcessAnalysisJob({
-						interviewId,
-						transcriptData: formattedTranscriptData,
-						customInstructions,
-						adminClient: supabase,
-						initiatingUserId: uploadJob?.created_by ?? null,
-						langfuseParent: trace,
-					})
-
-					consola.log("createAndProcessAnalysisJob for interview:", interviewId)
-					trace?.event?.({
-						name: "analysis.processed",
-						metadata: {
-							interviewId,
-						},
-					})
+				const metadata = {
+					accountId: fetchedInterview.data?.account_id,
+					userId: undefined, // No created_by tracking in conversation_analysis
+					projectId: fetchedInterview.data?.project_id ?? undefined,
+					interviewTitle: fetchedInterview.data?.title ?? undefined,
+					fileName: uploadMetadata.file_name ?? undefined,
 				}
+
+				const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
+
+				const handle = useV2Workflow
+					? await tasks.trigger("interview.v2.orchestrator", {
+							analysisJobId: interviewId, // Use interview ID as the job identifier
+							metadata,
+							transcriptData: formattedTranscriptData,
+							mediaUrl: uploadMetadata.external_url || "",
+							existingInterviewId: interviewId,
+							userCustomInstructions: customInstructions,
+						})
+					: await tasks.trigger("interview.upload-media-and-transcribe", {
+							analysisJobId: interviewId, // Use interview ID as the job identifier
+							metadata,
+							transcriptData: formattedTranscriptData,
+							mediaUrl: uploadMetadata.external_url || "",
+							existingInterviewId: interviewId,
+							userCustomInstructions: customInstructions,
+						})
+
+				// Store trigger_run_id in conversation_analysis
+				await supabase
+					.from("interviews")
+					.update({
+						conversation_analysis: {
+							...updatedConversationAnalysis,
+							trigger_run_id: handle.id,
+						} as Json,
+					})
+					.eq("id", interviewId)
+
+				consola.success("Triggered orchestrator:", handle.id)
+				trace?.event?.({
+					name: "analysis.orchestrator-triggered",
+					metadata: {
+						interviewId,
+						runId: handle.id,
+					},
+				})
 			} catch (analysisError) {
 				consola.error("Analysis job processing failed:", analysisError)
 				// Continue webhook processing - don't fail the webhook for analysis errors
@@ -361,23 +358,18 @@ export async function action({ request }: ActionFunctionArgs) {
 			// Handle transcription failure
 			consola.error("AssemblyAI transcription failed:", payload.transcript_id)
 
-			// Update interview status
+			// Update interview status and conversation_analysis with error
 			await supabase
 				.from("interviews")
 				.update({
 					status: "error" as const,
+					conversation_analysis: {
+						...conversationAnalysis,
+						status_detail: "Transcription failed",
+						last_error: `AssemblyAI transcription failed with status: ${payload.status}`,
+					} as Json,
 				})
 				.eq("id", interviewId)
-
-			// Mark upload job as failed
-			await supabase
-				.from("upload_jobs")
-				.update({
-					status: "error" as const,
-					status_detail: "Transcription failed",
-					last_error: `AssemblyAI transcription failed with status: ${payload.status}`,
-				})
-				.eq("id", uploadJob.id)
 		}
 
 		traceEndPayload = {

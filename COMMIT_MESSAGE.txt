@@ -1,0 +1,80 @@
+feat: conversation lenses architecture + fix upload_jobs consolidation
+
+## Part 1: Conversation Lenses Migration ✅
+
+Created generic template-based lens system for analyzing interviews through multiple frameworks.
+
+### Database Changes
+- Added `conversation_lens_templates` table - stores reusable lens definitions
+- Added `conversation_lens_analyses` table - stores analysis results
+- Seeded 4 initial templates:
+  * Customer Discovery - problem/solution validation
+  * User Testing - usability evaluation
+  * Sales BANT - opportunity qualification
+  * Empathy Map / JTBD - user motivations
+
+### Benefits
+- Support multiple analysis frameworks per interview
+- Template library approach (easily extensible)
+- Evidence-based analysis (faster, cheaper than raw transcript)
+- Flexible JSONB structure for any lens type
+- Preserves existing sales_lens_* tables (no data loss)
+
+Migration: supabase/migrations/20251202140000_conversation_lenses.sql
+
+## Part 2: Fixed Upload Jobs Consolidation 🔧
+
+Fixed blocking upload error after upload_jobs table was dropped.
+
+### Problem
+- Migration 20251202133000 dropped upload_jobs table
+- Code still tried to insert/query from it
+- Result: "Failed to create upload job: undefined"
+
+### Solution
+Consolidated upload tracking into existing `analysis_jobs` table.
+
+### Changes
+1. **app/routes/api.onboarding-start.tsx**
+   - Removed upload_jobs insert
+   - Store upload metadata in analysis_jobs.transcript_data JSONB:
+     ```json
+     {
+       "assemblyai_id": "...",
+       "file_name": "...",
+       "file_type": "...",
+       "external_url": "..."
+     }
+     ```
+
+2. **app/routes/api.assemblyai-webhook.tsx**
+   - Query analysis_jobs by assemblyai_id in JSONB
+   - Extract upload metadata from transcript_data
+   - Update analysis_jobs status (not upload_jobs)
+   - Fixed idempotency checks
+
+3. **app/routes/api.fix-stuck-interview.tsx**
+   - Removed upload_jobs fix logic (table doesn't exist)
+
+### Benefits
+- Single source of truth (analysis_jobs)
+- JSONB flexibility for any metadata
+- No new tables/columns needed
+- Uploads working again ✅
+
+## Documentation
+- CONVERSATION_LENSES.md - Full architecture guide
+- LENSES_MIGRATION_SUMMARY.md - Implementation phases
+- UPLOAD_JOBS_CONSOLIDATION_FIX.md - Detailed fix documentation
+
+## Testing
+- ✅ Local migration applied successfully
+- ✅ Remote migration pushed
+- ✅ Upload flow fixed (no longer references dropped table)
+- ⚠️ Integration tests need updating (follow-up task)
+
+## Next Steps
+1. Implement BAML functions for lens analysis
+2. Build UI components (LensView, LensSelector)
+3. Update integration tests to use analysis_jobs
+4. Wire lens analysis into interview pipeline

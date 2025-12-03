@@ -606,7 +606,9 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "Transcription service not configured" }, { status: 500 })
 			}
 
-			const baseUrl = process.env.PUBLIC_TUNNEL_URL ? `https://${process.env.PUBLIC_TUNNEL_URL}` : new URL(request.url).origin
+			const baseUrl = process.env.PUBLIC_TUNNEL_URL
+				? `https://${process.env.PUBLIC_TUNNEL_URL}`
+				: new URL(request.url).origin
 			const webhookUrl = `${baseUrl}/api/assemblyai-webhook?voiceMemoOnly=true`
 
 			const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
@@ -802,56 +804,41 @@ Please extract insights that specifically address these research questions and h
 					elapsedMs: Date.now() - startTime,
 				})
 
-				// Create upload_job to track transcription
-				const { data: uploadJob, error: uploadJobError } = await supabaseAdmin
-					.from("upload_jobs")
-					.insert({
-						interview_id: interview.id,
-						file_name: file.name,
-						file_type: file.type,
-						external_url: presignedUrl,
-						assemblyai_id: transcriptData.id,
-						custom_instructions: customInstructions,
-						status: "in_progress" as const,
-						status_detail: "Transcribing with Assembly AI",
-						created_by: user.sub,
+				// Update interview with conversation_analysis metadata
+				// (upload_jobs and analysis_jobs tables consolidated into interviews.conversation_analysis)
+				const { error: updateError } = await supabaseAdmin
+					.from("interviews")
+					.update({
+						status: "processing" as const,
+						conversation_analysis: {
+							current_step: "transcription",
+							transcript_data: {
+								status: "pending_transcription",
+								assemblyai_id: transcriptData.id,
+								file_name: file.name,
+								file_type: file.type,
+								external_url: presignedUrl,
+							},
+							custom_instructions: customInstructions,
+							status_detail: "Transcribing with Assembly AI",
+						},
 					})
-					.select()
-					.single()
+					.eq("id", interview.id)
 
-				if (uploadJobError || !uploadJob) {
-					throw new Error(`Failed to create upload job: ${uploadJobError?.message}`)
+				if (updateError) {
+					throw new Error(`Failed to update interview: ${updateError.message}`)
 				}
 
 				assemblySpan?.end?.({
 					output: {
 						assemblyaiId: transcriptData.id,
-						uploadJobId: uploadJob.id,
+						interviewId: interview.id,
 					},
 				})
 
-				// Create pending analysis_job so frontend has a runId to track
-				// Webhook will trigger the orchestrator when transcription completes
-				const { data: analysisJob, error: analysisJobError } = await supabaseAdmin
-					.from("analysis_jobs")
-					.insert({
-						interview_id: interview.id,
-						transcript_data: { status: "pending_transcription" },
-						custom_instructions: customInstructions,
-						status: "pending" as const,
-						status_detail: "Waiting for transcription to complete",
-						current_step: "transcription",
-					})
-					.select()
-					.single()
-
-				if (analysisJobError || !analysisJob) {
-					throw new Error(`Failed to create analysis job: ${analysisJobError?.message}`)
-				}
-
-				// Return job info for frontend tracking
+				// Return interview info for frontend tracking
 				triggerRunInfo = {
-					runId: analysisJob.id,
+					runId: interview.id, // Use interview ID for tracking
 					publicToken: null, // Will be set when orchestrator starts
 				}
 

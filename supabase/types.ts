@@ -532,78 +532,6 @@ export type Database = {
           },
         ]
       }
-      analysis_jobs: {
-        Row: {
-          attempts: number | null
-          completed_steps: string[] | null
-          created_at: string | null
-          current_step: string | null
-          custom_instructions: string | null
-          evidence_count: number | null
-          id: string
-          interview_id: string
-          last_error: string | null
-          progress: number | null
-          status: Database["public"]["Enums"]["job_status"]
-          status_detail: string | null
-          transcript_data: Json
-          trigger_run_id: string | null
-          updated_at: string | null
-          workflow_state: Json | null
-        }
-        Insert: {
-          attempts?: number | null
-          completed_steps?: string[] | null
-          created_at?: string | null
-          current_step?: string | null
-          custom_instructions?: string | null
-          evidence_count?: number | null
-          id?: string
-          interview_id: string
-          last_error?: string | null
-          progress?: number | null
-          status?: Database["public"]["Enums"]["job_status"]
-          status_detail?: string | null
-          transcript_data: Json
-          trigger_run_id?: string | null
-          updated_at?: string | null
-          workflow_state?: Json | null
-        }
-        Update: {
-          attempts?: number | null
-          completed_steps?: string[] | null
-          created_at?: string | null
-          current_step?: string | null
-          custom_instructions?: string | null
-          evidence_count?: number | null
-          id?: string
-          interview_id?: string
-          last_error?: string | null
-          progress?: number | null
-          status?: Database["public"]["Enums"]["job_status"]
-          status_detail?: string | null
-          transcript_data?: Json
-          trigger_run_id?: string | null
-          updated_at?: string | null
-          workflow_state?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analysis_jobs_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "analysis_jobs_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "interviews"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       annotations: {
         Row: {
           account_id: string
@@ -765,6 +693,134 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      conversation_lens_analyses: {
+        Row: {
+          account_id: string
+          analysis_data: Json
+          auto_detected: boolean | null
+          confidence_score: number | null
+          created_at: string
+          custom_instructions: string | null
+          error_message: string | null
+          icp_context: Json | null
+          id: string
+          interview_id: string
+          processed_at: string | null
+          processed_by: string | null
+          project_id: string | null
+          status: string | null
+          template_key: string
+          updated_at: string
+          user_goals: string[] | null
+        }
+        Insert: {
+          account_id: string
+          analysis_data?: Json
+          auto_detected?: boolean | null
+          confidence_score?: number | null
+          created_at?: string
+          custom_instructions?: string | null
+          error_message?: string | null
+          icp_context?: Json | null
+          id?: string
+          interview_id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          project_id?: string | null
+          status?: string | null
+          template_key: string
+          updated_at?: string
+          user_goals?: string[] | null
+        }
+        Update: {
+          account_id?: string
+          analysis_data?: Json
+          auto_detected?: boolean | null
+          confidence_score?: number | null
+          created_at?: string
+          custom_instructions?: string | null
+          error_message?: string | null
+          icp_context?: Json | null
+          id?: string
+          interview_id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          project_id?: string | null
+          status?: string | null
+          template_key?: string
+          updated_at?: string
+          user_goals?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_lens_analyses_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_analyses_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_analyses_template_key_fkey"
+            columns: ["template_key"]
+            isOneToOne: false
+            referencedRelation: "conversation_lens_templates"
+            referencedColumns: ["template_key"]
+          },
+        ]
+      }
+      conversation_lens_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          display_order: number | null
+          is_active: boolean | null
+          primary_objective: string | null
+          summary: string | null
+          template_definition: Json
+          template_key: string
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          is_active?: boolean | null
+          primary_objective?: string | null
+          summary?: string | null
+          template_definition: Json
+          template_key: string
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          is_active?: boolean | null
+          primary_objective?: string | null
+          summary?: string | null
+          template_definition?: Json
+          template_key?: string
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       decision_question_metrics: {
         Row: {
@@ -4434,7 +4490,7 @@ export type Database = {
           account_id: string
           anti_examples: string[] | null
           category: string | null
-          confidence: string | null
+          confidence: number | null
           contradictions: string | null
           created_at: string
           created_by: string | null
@@ -4447,14 +4503,14 @@ export type Database = {
           evidence: string | null
           exclusion_criteria: string | null
           id: string
-          impact: number | null
+          impact: string | null
           inclusion_criteria: string | null
           interview_id: string | null
           journey_stage: string | null
           jtbd: string | null
           motivation: string | null
           name: string
-          novelty: number | null
+          novelty: string | null
           opportunity_ideas: string[] | null
           pain: string | null
           project_id: string | null
@@ -4468,7 +4524,7 @@ export type Database = {
           account_id: string
           anti_examples?: string[] | null
           category?: string | null
-          confidence?: string | null
+          confidence?: number | null
           contradictions?: string | null
           created_at?: string
           created_by?: string | null
@@ -4481,14 +4537,14 @@ export type Database = {
           evidence?: string | null
           exclusion_criteria?: string | null
           id?: string
-          impact?: number | null
+          impact?: string | null
           inclusion_criteria?: string | null
           interview_id?: string | null
           journey_stage?: string | null
           jtbd?: string | null
           motivation?: string | null
           name: string
-          novelty?: number | null
+          novelty?: string | null
           opportunity_ideas?: string[] | null
           pain?: string | null
           project_id?: string | null
@@ -4502,7 +4558,7 @@ export type Database = {
           account_id?: string
           anti_examples?: string[] | null
           category?: string | null
-          confidence?: string | null
+          confidence?: number | null
           contradictions?: string | null
           created_at?: string
           created_by?: string | null
@@ -4515,14 +4571,14 @@ export type Database = {
           evidence?: string | null
           exclusion_criteria?: string | null
           id?: string
-          impact?: number | null
+          impact?: string | null
           inclusion_criteria?: string | null
           interview_id?: string | null
           journey_stage?: string | null
           jtbd?: string | null
           motivation?: string | null
           name?: string
-          novelty?: number | null
+          novelty?: string | null
           opportunity_ideas?: string[] | null
           pain?: string | null
           project_id?: string | null
@@ -4534,76 +4590,24 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "themes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      upload_jobs: {
-        Row: {
-          assemblyai_id: string | null
-          attempts: number | null
-          created_at: string | null
-          created_by: string | null
-          custom_instructions: string | null
-          external_url: string | null
-          file_name: string | null
-          file_type: string | null
-          id: string
-          interview_id: string
-          last_error: string | null
-          status: Database["public"]["Enums"]["job_status"]
-          status_detail: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          assemblyai_id?: string | null
-          attempts?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          custom_instructions?: string | null
-          external_url?: string | null
-          file_name?: string | null
-          file_type?: string | null
-          id?: string
-          interview_id: string
-          last_error?: string | null
-          status?: Database["public"]["Enums"]["job_status"]
-          status_detail?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          assemblyai_id?: string | null
-          attempts?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          custom_instructions?: string | null
-          external_url?: string | null
-          file_name?: string | null
-          file_type?: string | null
-          id?: string
-          interview_id?: string
-          last_error?: string | null
-          status?: Database["public"]["Enums"]["job_status"]
-          status_detail?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "upload_jobs_interview_id_fkey"
+            foreignKeyName: "themes_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "upload_jobs_interview_id_fkey"
+            foreignKeyName: "themes_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
             referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "themes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -4873,7 +4877,7 @@ export type Database = {
           account_id: string | null
           anti_examples: string[] | null
           category: string | null
-          confidence: string | null
+          confidence: number | null
           contradictions: string | null
           created_at: string | null
           created_by: string | null
@@ -4886,14 +4890,14 @@ export type Database = {
           evidence: string | null
           exclusion_criteria: string | null
           id: string | null
-          impact: number | null
+          impact: string | null
           inclusion_criteria: string | null
           interview_id: string | null
           journey_stage: string | null
           jtbd: string | null
           motivation: string | null
           name: string | null
-          novelty: number | null
+          novelty: string | null
           opportunity_ideas: string[] | null
           pain: string | null
           project_id: string | null
@@ -4907,7 +4911,7 @@ export type Database = {
           account_id?: string | null
           anti_examples?: string[] | null
           category?: string | null
-          confidence?: string | null
+          confidence?: number | null
           contradictions?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4920,14 +4924,14 @@ export type Database = {
           evidence?: string | null
           exclusion_criteria?: string | null
           id?: string | null
-          impact?: number | null
+          impact?: string | null
           inclusion_criteria?: string | null
           interview_id?: string | null
           journey_stage?: string | null
           jtbd?: string | null
           motivation?: string | null
           name?: string | null
-          novelty?: number | null
+          novelty?: string | null
           opportunity_ideas?: string[] | null
           pain?: string | null
           project_id?: string | null
@@ -4941,7 +4945,7 @@ export type Database = {
           account_id?: string | null
           anti_examples?: string[] | null
           category?: string | null
-          confidence?: string | null
+          confidence?: number | null
           contradictions?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4954,14 +4958,14 @@ export type Database = {
           evidence?: string | null
           exclusion_criteria?: string | null
           id?: string | null
-          impact?: number | null
+          impact?: string | null
           inclusion_criteria?: string | null
           interview_id?: string | null
           journey_stage?: string | null
           jtbd?: string | null
           motivation?: string | null
           name?: string | null
-          novelty?: number | null
+          novelty?: string | null
           opportunity_ideas?: string[] | null
           pain?: string | null
           project_id?: string | null
@@ -4972,6 +4976,20 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "themes_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "themes_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "themes_project_id_fkey"
             columns: ["project_id"]
@@ -4986,7 +5004,7 @@ export type Database = {
           account_id: string | null
           anti_examples: string[] | null
           category: string | null
-          confidence: string | null
+          confidence: number | null
           contradictions: string | null
           created_at: string | null
           created_by: string | null
@@ -4999,14 +5017,14 @@ export type Database = {
           evidence: string | null
           exclusion_criteria: string | null
           id: string | null
-          impact: number | null
+          impact: string | null
           inclusion_criteria: string | null
           interview_id: string | null
           journey_stage: string | null
           jtbd: string | null
           motivation: string | null
           name: string | null
-          novelty: number | null
+          novelty: string | null
           opportunity_ideas: string[] | null
           pain: string | null
           priority: number | null
@@ -5018,6 +5036,20 @@ export type Database = {
           updated_by: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "themes_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "themes_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "themes_project_id_fkey"
             columns: ["project_id"]
@@ -5193,6 +5225,23 @@ export type Database = {
         Args: { lookup_invitation_token: string }
         Returns: Json
       }
+      auto_generate_themes_from_clusters: {
+        Args: {
+          account_id_param: string
+          max_clusters?: number
+          merge_threshold?: number
+          project_id_param: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          action: string
+          cluster_rank: number
+          facet_count: number
+          message: string
+          theme_id: string
+          theme_name: string
+        }[]
+      }
       auto_link_persona_insights: {
         Args: { p_insight_id: string }
         Returns: undefined
@@ -5224,6 +5273,24 @@ export type Database = {
           theme_id_2: string
           theme_name_1: string
           theme_name_2: string
+        }[]
+      }
+      find_evidence_facet_clusters: {
+        Args: {
+          kind_slug_filter?: string
+          limit_results?: number
+          project_id_param: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          combined_evidence_count: number
+          evidence_facet_id_1: string
+          evidence_facet_id_2: string
+          kind_slug_1: string
+          kind_slug_2: string
+          label_1: string
+          label_2: string
+          similarity: number
         }[]
       }
       find_person_facet_clusters: {
@@ -5270,6 +5337,39 @@ export type Database = {
           statement: string
         }[]
       }
+      find_themes_by_person_facet: {
+        Args: {
+          facet_label_query: string
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+        }
+        Returns: {
+          person_count: number
+          similarity: number
+          theme_id: string
+          theme_name: string
+          theme_pain: string
+        }[]
+      }
+      generate_theme_from_cluster: {
+        Args: {
+          account_id_param: string
+          cluster_facet_ids: string[]
+          project_id_param: string
+          similarity_threshold?: number
+          theme_category_param?: string
+          theme_jtbd_param?: string
+          theme_name_param: string
+          theme_pain_param?: string
+          theme_statement_param?: string
+        }
+        Returns: {
+          action: string
+          message: string
+          theme_id: string
+        }[]
+      }
       get_account: { Args: { account_id: string }; Returns: Json }
       get_account_billing_status: {
         Args: { account_id: string }
@@ -5303,6 +5403,29 @@ export type Database = {
         Returns: {
           annotation_type: string
           count: number
+        }[]
+      }
+      get_cluster_strength: {
+        Args: { cluster_facet_ids: string[]; project_id_param: string }
+        Returns: {
+          total_evidence_count: number
+          total_org_count: number
+          total_people_count: number
+        }[]
+      }
+      get_evidence_cluster: {
+        Args: {
+          limit_results?: number
+          project_id_param: string
+          seed_facet_id: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          evidence_count: number
+          facet_id: string
+          kind_slug: string
+          label: string
+          similarity: number
         }[]
       }
       get_personal_account: { Args: never; Returns: Json }
@@ -5355,6 +5478,23 @@ export type Database = {
       remove_account_member: {
         Args: { account_id: string; user_id: string }
         Returns: undefined
+      }
+      search_themes_semantic: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+          query_text: string
+        }
+        Returns: {
+          category: string
+          id: string
+          journey_stage: string
+          name: string
+          pain: string
+          similarity: number
+          statement: string
+        }[]
       }
       service_role_upsert_customer_subscription: {
         Args: { account_id: string; customer?: Json; subscription?: Json }

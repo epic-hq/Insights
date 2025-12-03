@@ -44,63 +44,32 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (interview.transcript && interview.status !== "ready") {
 			consola.info("Fixing interview status to 'ready'")
 
+			// Get current conversation_analysis metadata
+			const { data: currentInterview } = await supabase
+				.from("interviews")
+				.select("conversation_analysis")
+				.eq("id", interviewId)
+				.single()
+
+			const conversationAnalysis = (currentInterview?.conversation_analysis as any) || {}
+
+			// Update status and mark workflow as complete in conversation_analysis
 			const { error: updateError } = await supabase
 				.from("interviews")
-				.update({ status: "ready" })
+				.update({
+					status: "ready",
+					conversation_analysis: {
+						...conversationAnalysis,
+						status_detail: "Manually marked as complete",
+						current_step: "complete",
+						completed_steps: [...(conversationAnalysis.completed_steps || []), "transcription", "analysis"],
+					},
+				})
 				.eq("id", interviewId)
 
 			if (updateError) {
 				consola.error("Failed to update interview:", updateError)
 				return Response.json({ error: "Failed to update interview" }, { status: 500 })
-			}
-		}
-
-		// 3. Fix stuck upload_jobs
-		const { data: uploadJobs } = await supabase
-			.from("upload_jobs")
-			.select("id, status")
-			.eq("interview_id", interviewId)
-			.in("status", ["pending", "in_progress"])
-
-		if (uploadJobs && uploadJobs.length > 0) {
-			consola.info(`Fixing ${uploadJobs.length} stuck upload jobs`)
-
-			const { error: uploadError } = await supabase
-				.from("upload_jobs")
-				.update({
-					status: "done" as const,
-					status_detail: "Manually marked as complete",
-				})
-				.eq("interview_id", interviewId)
-				.in("status", ["pending", "in_progress"])
-
-			if (uploadError) {
-				consola.error("Failed to update upload jobs:", uploadError)
-			}
-		}
-
-		// 4. Fix stuck analysis_jobs
-		const { data: analysisJobs } = await supabase
-			.from("analysis_jobs")
-			.select("id, status, current_step")
-			.eq("interview_id", interviewId)
-			.eq("status", "pending")
-
-		if (analysisJobs && analysisJobs.length > 0) {
-			consola.info(`Fixing ${analysisJobs.length} stuck analysis jobs`)
-
-			const { error: analysisError } = await supabase
-				.from("analysis_jobs")
-				.update({
-					status: "done" as const,
-					status_detail: "Manually marked as complete",
-					current_step: "complete",
-				})
-				.eq("interview_id", interviewId)
-				.eq("status", "pending")
-
-			if (analysisError) {
-				consola.error("Failed to update analysis jobs:", analysisError)
 			}
 		}
 
