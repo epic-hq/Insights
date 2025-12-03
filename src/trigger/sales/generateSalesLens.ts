@@ -254,6 +254,13 @@ export const generateSalesLensTask = task({
                 await client.from("interviews").update({ status: "ready" }).eq("id", payload.interviewId)
                 consola.info(`[generateSalesLensTask] Set interview status to ready`)
 
+                // Fetch the generated takeaways from the database
+                const { data: interviewData } = await client
+                        .from("interviews")
+                        .select("key_takeaways")
+                        .eq("id", payload.interviewId)
+                        .single()
+
                 // Build comprehensive result summary
                 const result = {
                         interviewId: payload.interviewId,
@@ -265,9 +272,13 @@ export const generateSalesLensTask = task({
                                 name: s.displayName,
                                 role: s.role,
                                 personId: s.personId,
+                                influence: s.influence,
+                                labels: s.labels,
                         })) || [],
                         nextSteps: extraction.entities?.nextSteps?.length || 0,
-                        ...(fallback ? { fallback: true } : {}),
+                        keyTakeaways: interviewData?.key_takeaways || null,
+                        hasKeyTakeaways: !!interviewData?.key_takeaways,
+                        ...(fallback ? { fallback: true, warning: "BAML extraction failed, used heuristic fallback" } : {}),
                 }
 
                 consola.info(`[generateSalesLensTask] ✓ Task completed successfully:`, result)
