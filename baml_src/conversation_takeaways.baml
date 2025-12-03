@@ -58,15 +58,16 @@ function ExtractConversationTakeaways(
     {% endif %}
 
     ## Your Task
-    Analyze this conversation and provide a structured assessment with these exact fields:
+    Analyze this conversation and provide a structured assessment. Return a JSON object with these exact fields:
 
-    **value_synopsis**: (1-2 sentences) How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy? Reference specific evidence by mentioning what was discussed.
+    {
+      "value_synopsis": "1-2 sentences: How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy? Reference specific evidence by mentioning what was discussed.",
+      "critical_next_step": "1 sentence: What is the single most important next step or caution based on the evidence and framework analyses? Be specific about commitments or needs identified.",
+      "future_improvement": "1 sentence: What could be improved on future calls to extract more value or address gaps?",
+      "supporting_evidence_ids": ["id1", "id2", "id3"]
+    }
 
-    **critical_next_step**: (1 sentence) What is the single most important next step or caution based on the evidence and framework analyses? Be specific about commitments or needs identified.
-
-    **future_improvement**: (1 sentence) What could be improved on future calls to extract more value or address gaps?
-
-    **supporting_evidence_ids**: Array of 3-5 evidence IDs (8-character prefixes shown above) that best support these takeaways. These should be the "smoking gun" moments that justify your analysis.
+    For supporting_evidence_ids, include 3-5 of the 8-character evidence ID prefixes shown above (e.g., ["156715a5", "220e82c7"]). These should be the "smoking gun" moments that justify your analysis.
 
     Be direct, actionable, and grounded in the actual evidence provided.
   "#

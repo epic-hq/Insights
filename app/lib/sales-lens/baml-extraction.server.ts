@@ -263,13 +263,20 @@ Notes: ${interview.observations_and_notes || "None"}
 				const validRoles = ["economic_buyer", "influencer", "champion", "blocker", "decision_maker"]
 				const roleType = validRoles.includes(stakeholder.role_type) ? stakeholder.role_type : "influencer"
 
+				// Normalize influence_level to lowercase and validate against enum
+				const normalizedInfluence = stakeholder.influence_level.toLowerCase().trim()
+				const validInfluence = ["low", "medium", "high"]
+				const influence = validInfluence.includes(normalizedInfluence)
+					? (normalizedInfluence as "low" | "medium" | "high")
+					: "low"
+
 				return {
 					personId: participant?.person_id || null,
 					personKey: `stakeholder-${idx}`,
 					candidatePersonKey: participant?.person_id ? null : stakeholder.person_name,
 					displayName: stakeholder.person_name,
 					role: stakeholder.person_role || null,
-					influence: stakeholder.influence_level as "low" | "medium" | "high",
+					influence,
 					labels: [roleType as "economic_buyer" | "influencer" | "champion" | "blocker" | "decision_maker"],
 					organizationId: null,
 					email: null,
