@@ -105,16 +105,11 @@ export const extractEvidenceTaskV2 = task({
 					interviewId,
 				})
 
-				// Update evidence count
+				// Update evidence extraction progress
 				await updateAnalysisJobProgress(client, analysisJobId, {
 					progress: 55,
 					statusDetail: `Extracted ${evidenceResult.insertedEvidenceIds.length} evidence units`,
 				})
-
-				await client
-					.from("analysis_jobs")
-					.update({ evidence_count: evidenceResult.insertedEvidenceIds.length })
-					.eq("id", analysisJobId)
 			}
 
 			return {

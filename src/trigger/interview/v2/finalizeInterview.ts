@@ -154,14 +154,11 @@ export const finalizeInterviewTaskV2 = task({
 					interviewId,
 				})
 
-				// Update analysis job status
+				// Update interview status to completed
 				await client
-					.from("analysis_jobs")
+					.from("interviews")
 					.update({
-						status: "done",
-						status_detail: "Analysis complete",
-						progress: 100,
-						last_error: null,
+						status: "completed",
 						updated_at: new Date().toISOString(),
 					})
 					.eq("id", analysisJobId)
