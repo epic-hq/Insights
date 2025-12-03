@@ -34,4 +34,8 @@
 -- ============================================================================
 
 -- Job status enum (kept for backwards compatibility with existing code)
-create type if not exists job_status as enum ('pending','in_progress','done','error','retry');
+DO $$ BEGIN
+  CREATE TYPE job_status AS ENUM ('pending','in_progress','done','error','retry');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
