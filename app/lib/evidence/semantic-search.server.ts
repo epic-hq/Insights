@@ -119,7 +119,7 @@ export async function searchEvidenceMultipleQueries(
 		if (result.status === "fulfilled") {
 			collected[result.value.label] = result.value.evidence
 		} else {
-			console.error(`[searchEvidenceMultipleQueries] Query failed:`, result.reason)
+			console.error("[searchEvidenceMultipleQueries] Query failed:", result.reason)
 		}
 	}
 
@@ -146,7 +146,8 @@ export async function searchBANTEvidence(
 		},
 		{
 			label: "authority",
-			query: "decision maker, approval process, stakeholders, sign-off required, who decides, budget authority, procurement",
+			query:
+				"decision maker, approval process, stakeholders, sign-off required, who decides, budget authority, procurement",
 		},
 		{
 			label: "need",

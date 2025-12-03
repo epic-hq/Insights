@@ -7,10 +7,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import { b } from "~/lib/baml/client"
-import type { Database } from "supabase/types"
-import { searchBANTEvidence } from "~/lib/evidence/semantic-search.server"
-import type { SalesConversationExtraction } from "~/lib/sales-lens/schema"
+import { b } from "../../../baml_client"
+import type { Database } from "../../../supabase/types"
+import { searchBANTEvidence } from "../evidence/semantic-search.server"
+import type { SalesConversationExtraction } from "./schema"
 
 type DbClient = SupabaseClient<Database>
 
@@ -35,17 +35,26 @@ export async function buildSalesLensFromEvidence(
 	}
 
 	// 2. Semantically search for BANT-relevant evidence
-	consola.info(`[buildSalesLensFromEvidence] Searching for BANT-relevant evidence`)
+	consola.info("[buildSalesLensFromEvidence] Searching for BANT-relevant evidence")
 	const bantEvidence = await searchBANTEvidence(db, interviewId)
 
 	// Log how much evidence we found for each category
-	consola.info(`[buildSalesLensFromEvidence] Found evidence:`, {
+	const evidenceCounts = {
 		budget: bantEvidence.budget.length,
 		authority: bantEvidence.authority.length,
 		need: bantEvidence.need.length,
 		timeline: bantEvidence.timeline.length,
 		nextSteps: bantEvidence.nextSteps.length,
-	})
+	}
+	consola.info("[buildSalesLensFromEvidence] Found evidence:", evidenceCounts)
+
+	// Check if we have ANY evidence at all
+	const totalEvidence = Object.values(evidenceCounts).reduce((sum, count) => sum + count, 0)
+	if (totalEvidence === 0) {
+		throw new Error(
+			`No BANT-relevant evidence found for interview ${interviewId}. Evidence may not have embeddings generated yet.`
+		)
+	}
 
 	// 3. Combine all relevant evidence (dedupe by ID)
 	const allEvidenceMap = new Map()
@@ -79,10 +88,10 @@ Notes: ${interview.observations_and_notes || "None"}
 `.trim()
 
 	// 6. Call BAML to extract BANT information
-	consola.info(`[buildSalesLensFromEvidence] Calling BAML extraction`)
+	consola.info("[buildSalesLensFromEvidence] Calling BAML extraction")
 	const extraction = await b.ExtractSalesLensBant(evidenceJson, interviewContext)
 
-	consola.info(`[buildSalesLensFromEvidence] BAML extraction complete`, {
+	consola.info("[buildSalesLensFromEvidence] BAML extraction complete", {
 		stakeholders: extraction.stakeholders.length,
 		next_steps: extraction.next_steps.length,
 		budget_discussed: extraction.budget.has_budget_discussion,

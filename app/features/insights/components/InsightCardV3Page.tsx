@@ -173,81 +173,81 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 					{((insight as any).people?.length > 0 ||
 						(insight as any).organizations?.length > 0 ||
 						(insight as any).evidence_count > 0) && (
-							<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
-								<div className="flex items-center gap-2">
-									<Quote className="h-5 w-5 text-muted-foreground" />
-									<h4 className="font-semibold text-base text-foreground">Signals and Evidence</h4>
-								</div>
+						<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
+							<div className="flex items-center gap-2">
+								<Quote className="h-5 w-5 text-muted-foreground" />
+								<h4 className="font-semibold text-base text-foreground">Signals and Evidence</h4>
+							</div>
 
-								{/* Evidence Link - Prominent placement */}
-								{(insight as any).evidence_count > 0 && (
-									<Link
-										to={routes.evidence.index() + `?theme_id=${insight.id}`}
-										className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
-									>
-										<div className="rounded-full bg-primary/10 p-2">
-											<Quote className="h-5 w-5 text-primary" />
+							{/* Evidence Link - Prominent placement */}
+							{(insight as any).evidence_count > 0 && (
+								<Link
+									to={routes.evidence.index() + `?theme_id=${insight.id}`}
+									className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
+								>
+									<div className="rounded-full bg-primary/10 p-2">
+										<Quote className="h-5 w-5 text-primary" />
+									</div>
+									<div className="flex-1">
+										<div className="font-medium text-foreground text-sm">View Evidence</div>
+										<div className="text-muted-foreground text-xs">
+											{(insight as any).evidence_count} piece{(insight as any).evidence_count !== 1 ? "s" : ""} of
+											supporting evidence
 										</div>
-										<div className="flex-1">
-											<div className="font-medium text-foreground text-sm">View Evidence</div>
-											<div className="text-muted-foreground text-xs">
-												{(insight as any).evidence_count} piece{(insight as any).evidence_count !== 1 ? "s" : ""} of
-												supporting evidence
+									</div>
+								</Link>
+							)}
+
+							<div className="space-y-6">
+								{(insight as any).organizations?.length > 0 && (
+									<div className="space-y-3">
+										<div className="flex items-center gap-2">
+											<Building2 className="h-4 w-4 text-muted-foreground" />
+											<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+												Organizations
 											</div>
 										</div>
-									</Link>
+										<div className="flex flex-wrap gap-2">
+											{(insight as any).organizations.map((org: any, idx: number) => (
+												<Link key={idx} to={routes.evidence.index() + `?theme_id=${insight.id}`}>
+													<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
+														{org.name}
+														<span className="text-[10px] opacity-70">({org.count})</span>
+													</Badge>
+												</Link>
+											))}
+										</div>
+									</div>
 								)}
 
-								<div className="space-y-6">
-									{(insight as any).organizations?.length > 0 && (
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<Building2 className="h-4 w-4 text-muted-foreground" />
-												<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-													Organizations
-												</div>
-											</div>
-											<div className="flex flex-wrap gap-2">
-												{(insight as any).organizations.map((org: any, idx: number) => (
-													<Link key={idx} to={routes.evidence.index() + `?theme_id=${insight.id}`}>
-														<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
-															{org.name}
-															<span className="text-[10px] opacity-70">({org.count})</span>
-														</Badge>
-													</Link>
-												))}
-											</div>
+								{(insight as any).people?.length > 0 && (
+									<div className="space-y-3">
+										<div className="flex items-center gap-2">
+											<Users className="h-4 w-4 text-muted-foreground" />
+											<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">People</div>
 										</div>
-									)}
-
-									{(insight as any).people?.length > 0 && (
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<Users className="h-4 w-4 text-muted-foreground" />
-												<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">People</div>
-											</div>
-											<div className="flex flex-wrap gap-2">
-												{(insight as any).people.slice(0, 10).map((person: any, idx: number) => (
-													<Link key={idx} to={routes.people.detail(person.id)}>
-														<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
-															{person.name}
-															{person.role && <span className="text-[10px] opacity-70">({person.role})</span>}
-														</Badge>
-													</Link>
-												))}
-												{(insight as any).people.length > 10 && (
-													<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
-														<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
-															+{(insight as any).people.length - 10} more
-														</Badge>
-													</Link>
-												)}
-											</div>
+										<div className="flex flex-wrap gap-2">
+											{(insight as any).people.slice(0, 10).map((person: any, idx: number) => (
+												<Link key={idx} to={routes.people.detail(person.id)}>
+													<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
+														{person.name}
+														{person.role && <span className="text-[10px] opacity-70">({person.role})</span>}
+													</Badge>
+												</Link>
+											))}
+											{(insight as any).people.length > 10 && (
+												<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
+													<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
+														+{(insight as any).people.length - 10} more
+													</Badge>
+												</Link>
+											)}
 										</div>
-									)}
-								</div>
+									</div>
+								)}
 							</div>
-						)}
+						</div>
+					)}
 				</div>
 
 				<div className="mt-6">

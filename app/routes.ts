@@ -181,6 +181,7 @@ const routes = [
 	route("api/enrich-themes", "./routes/api.enrich-themes.tsx"),
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
+	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),
 
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),

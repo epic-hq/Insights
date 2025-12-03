@@ -284,8 +284,8 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			return
 		}
 
-		// If no progress info but interview is completed, show 100%
-		if (!metadata.current_step && interview.status === "completed") {
+		// If interview is completed, always show 100% regardless of current_step
+		if (interview.status === "completed") {
 			setProgressInfo({
 				status: "completed",
 				progress: 100,

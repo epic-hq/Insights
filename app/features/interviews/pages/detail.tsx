@@ -26,12 +26,12 @@ import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
@@ -1657,6 +1657,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											>
 												Re-analyze Themes
 											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.generate-sales-lens" }
+														)
+													} catch (e) {
+														consola.error("Generate sales lens submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="text-blue-600 focus:text-blue-600"
+											>
+												🔍 Apply Lenses
+											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
 								)}
@@ -1798,18 +1814,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 							<TabsContent value="evidence" className="mt-6">
 								{/* Evidence Timeline Section */}
-					{isProcessing && evidence.length === 0 ? (
-						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-							<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
-							<p className="mt-1 text-muted-foreground text-xs">
-								Evidence timeline will appear once extraction is complete
-							</p>
-						</div>
-					) : evidence.length > 0 ? (
-						<PlayByPlayTimeline evidence={evidence} className="mb-6" />
-					) : (
-						<p className="text-muted-foreground">No evidence found</p>
-					)}
+								{isProcessing && evidence.length === 0 ? (
+									<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+										<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
+										<p className="mt-1 text-muted-foreground text-xs">
+											Evidence timeline will appear once extraction is complete
+										</p>
+									</div>
+								) : evidence.length > 0 ? (
+									<PlayByPlayTimeline evidence={evidence} className="mb-6" />
+								) : (
+									<p className="text-muted-foreground">No evidence found</p>
+								)}
 							</TabsContent>
 
 							<TabsContent value="sales" className="mt-6">
@@ -1827,9 +1843,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								) : (
 									<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
 										<p className="text-muted-foreground text-sm">Sales Lens not available</p>
-										<p className="mt-1 text-muted-foreground text-xs">
-											Enable the Sales CRM feature to use this lens
-										</p>
+										<p className="mt-1 text-muted-foreground text-xs">Enable the Sales CRM feature to use this lens</p>
 									</div>
 								)}
 							</TabsContent>
