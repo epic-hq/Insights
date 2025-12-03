@@ -100,18 +100,20 @@ create policy "Account owners can delete interviews" on public.interviews
 CREATE INDEX IF NOT EXISTS idx_interviews_status_processing ON public.interviews(status) WHERE status = 'processing';
 
 -- Auto-cleanup triggers for stuck jobs
+-- Note: analysis_jobs table was consolidated into interviews.conversation_analysis
 CREATE OR REPLACE FUNCTION auto_cleanup_jobs_on_ready()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'ready' AND (OLD.status IS NULL OR OLD.status != 'ready') THEN
-    -- Cleanup analysis_jobs (workflow state storage)
-    UPDATE analysis_jobs SET status = 'done', status_detail = 'Auto-completed: interview is ready', current_step = 'complete', updated_at = NOW()
-    WHERE interview_id = NEW.id AND status IN ('pending', 'in_progress');
-
     -- Ensure processing_metadata is set correctly
     NEW.processing_metadata = jsonb_set(COALESCE(NEW.processing_metadata, '{}'::jsonb), '{completed_at}', to_jsonb(NOW()::text));
     NEW.processing_metadata = jsonb_set(NEW.processing_metadata, '{current_step}', '"complete"');
     NEW.processing_metadata = jsonb_set(NEW.processing_metadata, '{progress}', '100');
+
+    -- Ensure conversation_analysis is updated
+    NEW.conversation_analysis = jsonb_set(COALESCE(NEW.conversation_analysis, '{}'::jsonb), '{current_step}', '"complete"');
+    NEW.conversation_analysis = jsonb_set(NEW.conversation_analysis, '{progress}', '100');
+    NEW.conversation_analysis = jsonb_set(NEW.conversation_analysis, '{status_detail}', '"Analysis complete"');
   END IF;
   RETURN NEW;
 END;
@@ -124,9 +126,9 @@ CREATE OR REPLACE FUNCTION auto_mark_jobs_error()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'error' AND (OLD.status IS NULL OR OLD.status != 'error') THEN
-    -- Mark analysis_jobs (workflow state storage) as error
-    UPDATE analysis_jobs SET status = 'error', status_detail = 'Interview processing failed', updated_at = NOW()
-    WHERE interview_id = NEW.id AND status IN ('pending', 'in_progress');
+    -- Ensure conversation_analysis reflects error state
+    NEW.conversation_analysis = jsonb_set(COALESCE(NEW.conversation_analysis, '{}'::jsonb), '{status_detail}', '"Interview processing failed"');
+    NEW.conversation_analysis = jsonb_set(NEW.conversation_analysis, '{failed_at}', to_jsonb(NOW()::text));
   END IF;
   RETURN NEW;
 END;
