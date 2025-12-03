@@ -7,6 +7,7 @@ import {
 	Link,
 	redirect,
 	useActionData,
+	useFetcher,
 	useLoaderData,
 	useNavigate,
 	useNavigation,
@@ -141,7 +142,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				id: personId,
 				data: { description: summary },
 			})
-			return redirect(routes.people.detail(personId))
+			// Return success data instead of redirect to allow fetcher to handle revalidation
+			return { refresh: { success: true, description: summary } }
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to refresh description."
 			return { refresh: { error: message } }
@@ -376,6 +378,7 @@ export default function PersonDetail() {
 	const { accountId, projectId } = useParams()
 	const navigate = useNavigate()
 	const navigation = useNavigation()
+	const refreshFetcher = useFetcher<typeof action>()
 	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
 	const routesByPath = useProjectRoutes(projectPath || "")
 	const routes = accountId && projectId ? routesByIds : routesByPath
@@ -563,8 +566,8 @@ export default function PersonDetail() {
 		peoplePersonas.length ? { label: "Persona Links", value: String(peoplePersonas.length) } : null,
 		{ label: "Interviews", value: String(interviewLinks.length) },
 	].filter((fact): fact is { label: string; value: string } => Boolean(fact?.value))
-	const isRefreshingDescription =
-		navigation.state === "submitting" && navigation.formData?.get("_action") === "refresh-description"
+	const isRefreshingDescription = refreshFetcher.state === "submitting" || refreshFetcher.state === "loading"
+	const fetcherRefreshError = refreshFetcher.data?.refresh?.error
 	const isFacetSummaryPending = facetLensGroups.some((group) => !group.summary)
 
 	return (
@@ -583,18 +586,18 @@ export default function PersonDetail() {
 						<Button asChild variant="outline" size="sm">
 							<Link to={routes.people.edit(person.id)}>Edit Person</Link>
 						</Button>
-						<Form method="post" className="contents">
+						<refreshFetcher.Form method="post" className="contents">
 							<input type="hidden" name="_action" value="refresh-description" />
 							<Button type="submit" variant="outline" size="sm" disabled={isRefreshingDescription}>
 								{isRefreshingDescription ? "Refreshing..." : "Refresh Description"}
 							</Button>
-						</Form>
+						</refreshFetcher.Form>
 					</div>
 				</div>
 
-				{refreshError && (
+				{(refreshError || fetcherRefreshError) && (
 					<div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
-						{refreshError}
+						{refreshError || fetcherRefreshError}
 					</div>
 				)}
 

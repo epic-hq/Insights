@@ -109,7 +109,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					{
 						slot: "budget",
 						label: "Budget",
-						description: `${extraction.budget.amount_mentioned || "Not discussed"}. ${extraction.budget.pricing_sensitivity ? `Sensitivity: ${extraction.budget.pricing_sensitivity}` : ""}`.trim(),
+						description:
+							`${extraction.budget.amount_mentioned || "Not discussed"}. ${extraction.budget.pricing_sensitivity ? `Sensitivity: ${extraction.budget.pricing_sensitivity}` : ""}`.trim(),
 						summary: extraction.budget.amount_mentioned || "Not discussed",
 						textValue: extraction.budget.supporting_quote || null,
 						numericValue: null,
@@ -168,7 +169,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					{
 						slot: "need",
 						label: "Need",
-						description: `Pain severity: ${extraction.need.pain_severity}. ${extraction.need.impact_on_business || ""}`.trim(),
+						description:
+							`Pain severity: ${extraction.need.pain_severity}. ${extraction.need.impact_on_business || ""}`.trim(),
 						summary: extraction.need.primary_pain_points.join(", ") || "No clear need identified",
 						textValue: extraction.need.impact_on_business || null,
 						numericValue: null,
@@ -194,7 +196,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					{
 						slot: "timeline",
 						label: "Timeline",
-						description: `Urgency: ${extraction.timeline.urgency_level}. ${extraction.timeline.target_date ? `Target: ${extraction.timeline.target_date}` : ""}. ${extraction.timeline.external_drivers.length > 0 ? `Drivers: ${extraction.timeline.external_drivers.join(", ")}` : ""}`.trim(),
+						description:
+							`Urgency: ${extraction.timeline.urgency_level}. ${extraction.timeline.target_date ? `Target: ${extraction.timeline.target_date}` : ""}. ${extraction.timeline.external_drivers.length > 0 ? `Drivers: ${extraction.timeline.external_drivers.join(", ")}` : ""}`.trim(),
 						summary: extraction.timeline.target_date || `Urgency: ${extraction.timeline.urgency_level}`,
 						textValue: extraction.timeline.implementation_timeline || null,
 						numericValue: null,

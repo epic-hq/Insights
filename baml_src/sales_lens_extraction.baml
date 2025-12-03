@@ -61,9 +61,9 @@ class NextStepInfo {
 }
 
 class StakeholderRole {
-  person_name string @description("Name of the stakeholder")
-  person_role string? @description("Their job title or role")
-  role_type string @description("Buying role: MUST be one of: 'economic_buyer', 'decision_maker', 'influencer', 'champion', or 'blocker'")
+  person_name string @description("Name of the CUSTOMER stakeholder (NOT internal team members like sales reps)")
+  person_role string? @description("Their job title or role at the CUSTOMER organization")
+  role_type string @description("Buying role: MUST be one of: 'economic_buyer', 'decision_maker', 'influencer', 'champion', or 'blocker'. Only for customer-side people.")
   influence_level string @description("Influence level: 'high', 'medium', or 'low'")
   sentiment string @description("Their sentiment toward the solution: 'positive', 'neutral', 'negative', or 'skeptical'")
   key_concerns string[] @description("Their main concerns or objections")
@@ -146,7 +146,11 @@ function ExtractSalesLensBant(
     - Determine if deadlines are hard requirements or soft targets
 
     ### Stakeholders
-    - Map each stakeholder to a buying role (economic buyer, influencer, champion, blocker, etc.)
+    - IMPORTANT: Only identify CUSTOMER-SIDE stakeholders (prospects, clients, decision makers from the customer organization)
+    - EXCLUDE internal team members (sales reps, account executives, customer success, support staff, etc.) - they are NOT stakeholders
+    - Example: If "DJ" is conducting the interview or representing your company, DO NOT include them as economic_buyer or decision_maker
+    - Example: If "Stephen" is the prospect being interviewed, include them with appropriate customer-side role (e.g., decision_maker, influencer)
+    - Map each CUSTOMER stakeholder to a buying role (economic_buyer, decision_maker, influencer, champion, blocker)
     - Assess their influence level and sentiment
     - Identify their specific concerns and motivations
     - This is CRITICAL for navigating complex B2B sales

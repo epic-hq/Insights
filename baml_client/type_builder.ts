@@ -51,6 +51,8 @@ export default class TypeBuilder {
     
     ConversationTakeaway: ClassViewer<'ConversationTakeaway', "priority" | "summary" | "evidence_snippets">;
     
+    ConversationTakeaways: ClassViewer<'ConversationTakeaways', "value_synopsis" | "critical_next_step" | "future_improvement">;
+    
     DealAdvisorRecommendation: ClassViewer<'DealAdvisorRecommendation', "status_assessment" | "recommendations" | "risks" | "confidence">;
     
     DealQualificationSignals: ClassViewer<'DealQualificationSignals', "positive_signals" | "warning_flags" | "overall_qualification" | "recommended_actions">;
@@ -256,7 +258,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BudgetInfo","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DealAdvisorRecommendation","DealQualificationSignals","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","LensEvidenceHighlight","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TimelineInfo","TopPainCell","TurnAnchors",
+            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BudgetInfo","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","LensEvidenceHighlight","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TimelineInfo","TopPainCell","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -310,6 +312,10 @@ export default class TypeBuilder {
         
         this.ConversationTakeaway = this.tb.classViewer("ConversationTakeaway", [
           "priority","summary","evidence_snippets",
+        ]);
+        
+        this.ConversationTakeaways = this.tb.classViewer("ConversationTakeaways", [
+          "value_synopsis","critical_next_step","future_improvement",
         ]);
         
         this.DealAdvisorRecommendation = this.tb.classViewer("DealAdvisorRecommendation", [

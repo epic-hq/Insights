@@ -215,7 +215,8 @@ function CompactFrameworkField({
 								>
 									{ref.startMs !== null ? (
 										<span>
-											{Math.floor(ref.startMs / 1000 / 60)}:{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+											{Math.floor(ref.startMs / 1000 / 60)}:
+											{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
 										</span>
 									) : (
 										<span>Evidence</span>
@@ -822,7 +823,7 @@ export function SalesLensesSection({
 						backgroundClass: "bg-indigo-50",
 						summary:
 							lens.entities.stakeholders.length === 1
-								? `1 stakeholder identified`
+								? "1 stakeholder identified"
 								: `${lens.entities.stakeholders.length} stakeholders identified`,
 						notes: "",
 						highlights: [],

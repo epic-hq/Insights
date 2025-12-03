@@ -406,6 +406,13 @@ export interface ConversationTakeaway {
   
 }
 
+export interface ConversationTakeaways {
+  value_synopsis: string
+  critical_next_step: string
+  future_improvement: string
+  
+}
+
 export interface DealAdvisorRecommendation {
   status_assessment: string
   recommendations: string[]

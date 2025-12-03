@@ -7,6 +7,7 @@ import { Response as AiResponse } from "~/components/ai-elements/response"
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
@@ -500,21 +501,30 @@ export function ProjectStatusAgentChat({
 											</div>
 										) : (
 											<div className="flex flex-row gap-2">
-												<VoiceButton
-													state={voiceButtonState}
-													onPress={() => {
-														if (isVoiceRecording) {
-															stopVoiceRecording()
-														} else {
-															startVoiceRecording()
-														}
-													}}
-													icon={<Mic className="h-4 w-4" />}
-													size="icon"
-													variant="outline"
-													disabled={isTranscribing}
-													className="h-8 w-8"
-												/>
+												<TooltipProvider>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<VoiceButton
+																state={voiceButtonState}
+																onPress={() => {
+																	if (isVoiceRecording) {
+																		stopVoiceRecording()
+																	} else {
+																		startVoiceRecording()
+																	}
+																}}
+																icon={<Mic className="h-4 w-4" />}
+																size="icon"
+																variant="outline"
+																disabled={isTranscribing}
+																className="h-8 w-8"
+															/>
+														</TooltipTrigger>
+														<TooltipContent>
+															<p>Transcribe your voice into commands for AI</p>
+														</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
 												<ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
 											</div>
 										)}

@@ -20,6 +20,7 @@ create table if not exists interviews (
   title text,
   interview_date date,
   interviewer_id uuid references auth.users (id),
+	key_takeaways text,
   participant_pseudonym text,
   segment text,
 	media_url text, -- url to the media file
@@ -43,6 +44,8 @@ create table if not exists interviews (
 	created_by uuid references auth.users (id),
 	updated_by uuid references auth.users (id)
 );
+
+COMMENT ON COLUMN public.interviews.key_takeaways IS 'AI-generated synopsis of conversation value, critical next steps, and future improvements (3-4 sentences)';
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_interviews_account_id ON public.interviews(account_id);

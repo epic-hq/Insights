@@ -38,6 +38,7 @@ export type LensStakeholder = {
 	influence: "low" | "medium" | "high" | null
 	labels: string[]
 	confidence: number | null
+	personId: string | null
 	personName: string | null
 	personKey: string | null
 	email: string | null

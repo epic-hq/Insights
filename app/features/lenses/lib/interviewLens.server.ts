@@ -270,6 +270,7 @@ export async function loadInterviewSalesLens({
 				: null,
 		labels: Array.isArray(stakeholder.labels) ? stakeholder.labels : [],
 		confidence: toNullableNumber(stakeholder.confidence),
+		personId: stakeholder.person_id ?? null,
 		personName: stakeholder.person_id ? (baseLookup.get(stakeholder.person_id)?.name ?? null) : null,
 		personKey: stakeholder.person_key ?? stakeholder.candidate_person_key ?? null,
 		email: stakeholder.email ?? null,
