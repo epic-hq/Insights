@@ -63,7 +63,7 @@ class NextStepInfo {
 class StakeholderRole {
   person_name string @description("Name of the stakeholder")
   person_role string? @description("Their job title or role")
-  role_type string @description("Buying role: 'economic_buyer', 'decision_maker', 'influencer', 'champion', 'blocker', 'user', or 'coach'")
+  role_type string @description("Buying role: MUST be one of: 'economic_buyer', 'decision_maker', 'influencer', 'champion', or 'blocker'")
   influence_level string @description("Influence level: 'high', 'medium', or 'low'")
   sentiment string @description("Their sentiment toward the solution: 'positive', 'neutral', 'negative', or 'skeptical'")
   key_concerns string[] @description("Their main concerns or objections")

@@ -44,6 +44,12 @@ type LoaderFramework = {
 		ownerName: string | null
 		relatedNames: string[]
 		evidenceCount: number
+		evidenceRefs: Array<{
+			evidenceId: string
+			startMs: number | null
+			endMs: number | null
+			transcriptSnippet: string | null
+		}>
 	}>
 	stakeholders: Array<{
 		id: string
@@ -56,6 +62,12 @@ type LoaderFramework = {
 		personKey: string | null
 		email: string | null
 		organizationName: string | null
+		evidenceRefs: Array<{
+			evidenceId: string
+			startMs: number | null
+			endMs: number | null
+			transcriptSnippet: string | null
+		}>
 	}>
 }
 
@@ -122,7 +134,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.select<SalesLensSummaryRow>(
 			`id, framework, computed_at, attendee_person_ids, attendee_person_keys, attendee_unlinked, hygiene_summary, metadata,
                         sales_lens_slots (id, slot, label, description, text_value, numeric_value, date_value, status, confidence, owner_person_id, owner_person_key, related_person_ids, evidence_refs, hygiene, position),
-                        sales_lens_stakeholders (id, display_name, role, influence, labels, confidence, person_id, person_key, candidate_person_key, email)`
+                        sales_lens_stakeholders (id, display_name, role, influence, labels, confidence, person_id, person_key, candidate_person_key, email, evidence_refs)`
 		)
 		.eq("project_id", projectId)
 		.order("computed_at", { ascending: false })
@@ -244,6 +256,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				ownerName,
 				relatedNames,
 				evidenceCount: evidenceRefs.length,
+				evidenceRefs: evidenceRefs.map((ref) => ({
+					evidenceId: ref.evidence_id,
+					startMs: ref.start_ms ?? null,
+					endMs: ref.end_ms ?? null,
+					transcriptSnippet: ref.transcript_snippet ?? null,
+				})),
 			}
 		})
 
@@ -251,6 +269,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const stakeholderViews = stakeholderRows.map((stakeholder) => {
 			const linkedPerson = stakeholder.person_id ? peopleById.get(stakeholder.person_id) : undefined
 			const organization = stakeholder.organization_id ? organizationsById.get(stakeholder.organization_id) : undefined
+			const stakeholderEvidenceRefs = Array.isArray(stakeholder.evidence_refs) ? stakeholder.evidence_refs : []
 			return {
 				id: stakeholder.id,
 				displayName: stakeholder.display_name,
@@ -262,6 +281,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				personKey: stakeholder.person_key ?? stakeholder.candidate_person_key ?? null,
 				email: stakeholder.email ?? null,
 				organizationName: organization?.name ?? null,
+				evidenceRefs: stakeholderEvidenceRefs.map((ref) => ({
+					evidenceId: ref.evidence_id,
+					startMs: ref.start_ms ?? null,
+					endMs: ref.end_ms ?? null,
+					transcriptSnippet: ref.transcript_snippet ?? null,
+				})),
 			}
 		})
 
@@ -432,33 +457,56 @@ function LensCard({ framework }: LensCardProps) {
 				<div className="flex flex-col gap-3">
 					{framework.slots.map((slot) => (
 						<div key={slot.id} className="rounded-lg border bg-muted/30 p-4">
-							<div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-								<div className="space-y-1">
-									<p className="font-medium text-muted-foreground text-xs uppercase">{slot.slot}</p>
-									<p className="font-semibold text-base text-foreground">
-										{slot.textValue ?? slot.summary ?? "No value captured"}
-									</p>
-									{slot.summary && slot.textValue && slot.textValue !== slot.summary ? (
-										<p className="text-muted-foreground text-sm">{slot.summary}</p>
-									) : null}
-									{slot.relatedNames.length > 0 ? (
-										<p className="text-muted-foreground text-xs">Related: {slot.relatedNames.join(", ")}</p>
-									) : null}
+							<div className="flex flex-col gap-2">
+								<div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+									<div className="space-y-1">
+										<p className="font-medium text-muted-foreground text-xs uppercase">{slot.slot}</p>
+										<p className="font-semibold text-base text-foreground">
+											{slot.textValue ?? slot.summary ?? "No value captured"}
+										</p>
+										{slot.summary && slot.textValue && slot.textValue !== slot.summary ? (
+											<p className="text-muted-foreground text-sm">{slot.summary}</p>
+										) : null}
+										{slot.relatedNames.length > 0 ? (
+											<p className="text-muted-foreground text-xs">Related: {slot.relatedNames.join(", ")}</p>
+										) : null}
+									</div>
+									<div className="flex flex-col items-start gap-1 text-right md:items-end">
+										{slot.ownerName ? <p className="text-muted-foreground text-xs">Owner: {slot.ownerName}</p> : null}
+										{slot.dateValue ? <p className="text-muted-foreground text-xs">Due: {slot.dateValue}</p> : null}
+										{typeof slot.confidence === "number" ? (
+											<Badge variant="outline" color="green">
+												{Math.round(slot.confidence * 100)}% confidence
+											</Badge>
+										) : null}
+										{slot.evidenceCount > 0 ? (
+											<Badge variant="outline" color="indigo">
+												{slot.evidenceCount} evidence
+											</Badge>
+										) : null}
+									</div>
 								</div>
-								<div className="flex flex-col items-start gap-1 text-right md:items-end">
-									{slot.ownerName ? <p className="text-muted-foreground text-xs">Owner: {slot.ownerName}</p> : null}
-									{slot.dateValue ? <p className="text-muted-foreground text-xs">Due: {slot.dateValue}</p> : null}
-									{typeof slot.confidence === "number" ? (
-										<Badge variant="outline" color="green">
-											{Math.round(slot.confidence * 100)}% confidence
-										</Badge>
-									) : null}
-									{slot.evidenceCount > 0 ? (
-										<Badge variant="outline" color="indigo">
-											{slot.evidenceCount} evidence
-										</Badge>
-									) : null}
-								</div>
+								{slot.evidenceRefs.length > 0 ? (
+									<div className="mt-2 flex flex-col gap-2 border-t pt-2">
+										<p className="font-medium text-muted-foreground text-xs">Supporting Evidence:</p>
+										{slot.evidenceRefs.map((ref) => (
+											<a
+												key={ref.evidenceId}
+												href={`/projects/${data.projectId}/insights/${ref.evidenceId}`}
+												className="rounded-md border border-dashed bg-background/50 p-2 text-sm transition-colors hover:bg-accent/50"
+											>
+												<p className="line-clamp-2 text-foreground">
+													{ref.transcriptSnippet || "View evidence"}
+												</p>
+												{ref.startMs !== null ? (
+													<p className="mt-1 text-muted-foreground text-xs">
+														{Math.floor(ref.startMs / 1000 / 60)}:{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+													</p>
+												) : null}
+											</a>
+										))}
+									</div>
+								) : null}
 							</div>
 						</div>
 					))}
@@ -509,30 +557,55 @@ function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 			<p className="font-semibold text-foreground text-sm">Stakeholders</p>
 			<div className="flex flex-col gap-2">
 				{stakeholders.map((stakeholder) => (
-					<div key={stakeholder.id} className="flex flex-col gap-1 rounded-md border border-dashed p-3">
-						<div className="flex flex-wrap items-center gap-2">
-							<span className="font-medium text-foreground text-sm">{stakeholder.displayName}</span>
-							{stakeholder.personName ? (
-								<Badge variant="outline" color="green">
-									Linked to {stakeholder.personName}
-								</Badge>
-							) : null}
-							{stakeholder.labels.map((label) => (
-								<Badge key={label} variant="outline">
-									{label.replace(/_/g, " ")}
-								</Badge>
-							))}
+					<div key={stakeholder.id} className="flex flex-col gap-2 rounded-md border border-dashed p-3">
+						<div>
+							<div className="flex flex-wrap items-center gap-2">
+								<span className="font-medium text-foreground text-sm">{stakeholder.displayName}</span>
+								{stakeholder.personName ? (
+									<Badge variant="outline" color="green">
+										Linked to {stakeholder.personName}
+									</Badge>
+								) : null}
+								{stakeholder.labels.map((label) => (
+									<Badge key={label} variant="outline">
+										{label.replace(/_/g, " ")}
+									</Badge>
+								))}
+							</div>
+							<div className="mt-1 flex flex-wrap gap-3 text-muted-foreground text-xs">
+								{stakeholder.role ? <span>Role: {stakeholder.role}</span> : null}
+								{stakeholder.influence ? <span>Influence: {stakeholder.influence}</span> : null}
+								{typeof stakeholder.confidence === "number" ? (
+									<span>Confidence: {Math.round(stakeholder.confidence * 100)}%</span>
+								) : null}
+								{stakeholder.personKey ? <span>Person key: {stakeholder.personKey}</span> : null}
+								{stakeholder.email ? <span>{stakeholder.email}</span> : null}
+								{stakeholder.organizationName ? <span>Org: {stakeholder.organizationName}</span> : null}
+							</div>
 						</div>
-						<div className="flex flex-wrap gap-3 text-muted-foreground text-xs">
-							{stakeholder.role ? <span>Role: {stakeholder.role}</span> : null}
-							{stakeholder.influence ? <span>Influence: {stakeholder.influence}</span> : null}
-							{typeof stakeholder.confidence === "number" ? (
-								<span>Confidence: {Math.round(stakeholder.confidence * 100)}%</span>
-							) : null}
-							{stakeholder.personKey ? <span>Person key: {stakeholder.personKey}</span> : null}
-							{stakeholder.email ? <span>{stakeholder.email}</span> : null}
-							{stakeholder.organizationName ? <span>Org: {stakeholder.organizationName}</span> : null}
-						</div>
+						{stakeholder.evidenceRefs.length > 0 ? (
+							<div className="flex flex-col gap-1 border-t pt-2">
+								<p className="font-medium text-muted-foreground text-xs">Evidence:</p>
+								<div className="flex flex-wrap gap-1">
+									{stakeholder.evidenceRefs.map((ref) => (
+										<a
+											key={ref.evidenceId}
+											href={`/insights/${ref.evidenceId}`}
+											className="rounded border bg-background/50 px-2 py-1 text-xs transition-colors hover:bg-accent/50"
+											title={ref.transcriptSnippet || "View evidence"}
+										>
+											{ref.startMs !== null ? (
+												<span>
+													{Math.floor(ref.startMs / 1000 / 60)}:{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+												</span>
+											) : (
+												<span>View</span>
+											)}
+										</a>
+									))}
+								</div>
+							</div>
+						) : null}
 					</div>
 				))}
 				{unlinked.length > 0 ? (

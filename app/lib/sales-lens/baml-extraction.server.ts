@@ -92,16 +92,17 @@ Notes: ${interview.observations_and_notes || "None"}
 
 	// 8. Convert BAML extraction to SalesConversationExtraction format
 	const salesExtraction: SalesConversationExtraction = {
-		interviewId: interview.id,
+		meetingId: interview.id,
 		accountId: interview.account_id,
 		projectId: interview.project_id,
 		frameworks: [
 			{
 				name: "BANT_GPCT",
 				hygiene: extraction.deal_qualification.warning_flags.map((flag) => ({
-					issue: flag,
-					severity: "medium",
-					recommendations: extraction.deal_qualification.recommended_actions,
+					code: "warning_flag",
+					severity: "warning" as const,
+					message: flag,
+					slot: null,
 				})),
 				slots: [
 					// Budget slot
@@ -151,9 +152,10 @@ Notes: ${interview.observations_and_notes || "None"}
 							}
 						}),
 						hygiene: extraction.authority.blockers.map((blocker) => ({
-							issue: blocker,
-							severity: "high",
-							recommendations: [],
+							code: "blocker",
+							severity: "critical" as const,
+							message: blocker,
+							slot: "authority",
 						})),
 					},
 					// Need slot
@@ -186,7 +188,9 @@ Notes: ${interview.observations_and_notes || "None"}
 						summary: extraction.timeline.target_date || `Urgency: ${extraction.timeline.urgency_level}`,
 						textValue: extraction.timeline.implementation_timeline || null,
 						numericValue: null,
-						dateValue: extraction.timeline.target_date || null,
+						dateValue: extraction.timeline.target_date?.match(/^\d{4}-\d{2}-\d{2}$/)
+							? extraction.timeline.target_date
+							: null,
 						status: extraction.timeline.deadline_type || null,
 						confidence: extraction.timeline.confidence,
 						ownerPersonId: null,
@@ -240,14 +244,18 @@ Notes: ${interview.observations_and_notes || "None"}
 						stakeholder.person_name.toLowerCase().includes(p.display_name?.toLowerCase() || "")
 				)
 
+				// Validate role_type matches enum: "economic_buyer" | "influencer" | "champion" | "blocker" | "decision_maker"
+				const validRoles = ["economic_buyer", "influencer", "champion", "blocker", "decision_maker"]
+				const roleType = validRoles.includes(stakeholder.role_type) ? stakeholder.role_type : "influencer"
+
 				return {
 					personId: participant?.person_id || null,
 					personKey: `stakeholder-${idx}`,
-					candidatePersonKey: null,
+					candidatePersonKey: participant?.person_id ? null : stakeholder.person_name,
 					displayName: stakeholder.person_name,
 					role: stakeholder.person_role || null,
 					influence: stakeholder.influence_level as "low" | "medium" | "high",
-					labels: [stakeholder.role_type],
+					labels: [roleType as "economic_buyer" | "influencer" | "champion" | "blocker" | "decision_maker"],
 					organizationId: null,
 					email: null,
 					confidence: 0.7,
@@ -263,6 +271,34 @@ Notes: ${interview.observations_and_notes || "None"}
 				}
 			}),
 		},
+		nextStep:
+			extraction.next_steps.length > 0
+				? {
+						description: extraction.next_steps[0].action_item,
+						ownerPersonId: null,
+						ownerPersonKey: extraction.next_steps[0].owner || null,
+						dueDate: extraction.next_steps[0].due_date?.match(/^\d{4}-\d{2}-\d{2}$/)
+							? extraction.next_steps[0].due_date
+							: null,
+						confidence: 0.8,
+						evidence: extraction.next_steps[0].evidence_ids.map((id) => {
+							const ev = allEvidence.find((e) => e.id === id)
+							return {
+								evidenceId: id,
+								startMs: ev?.anchors[0]?.start_ms || null,
+								endMs: ev?.anchors[0]?.end_ms || null,
+								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
+							}
+						}),
+					}
+				: {
+						description: "No clear next steps identified",
+						ownerPersonId: null,
+						ownerPersonKey: null,
+						dueDate: null,
+						confidence: 0.3,
+						evidence: [],
+					},
 		insights: extraction.key_insights.map((insight) => ({
 			text: insight,
 			category: "strategic",
