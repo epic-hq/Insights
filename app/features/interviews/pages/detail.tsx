@@ -1703,8 +1703,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				{/* Key Takeaways Section */}
 				<div className="space-y-4">
 					<div>
-						<label className="mb-2 block font-semibold text-foreground text-lg"><Sparkle />Key Takeaways</label>
-						{aiKeyTakeaways.length > 0 && (
+						<label className="mb-2 block flex flex-row gap-2 font-semibold text-foreground text-lg">
+							Key Takeaways
+							<Sparkle />
+						</label>
+						{aiKeyTakeaways.length > 0 ? (
 							<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
 								<div className="flex items-center justify-between gap-4">
 									<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
@@ -1733,8 +1736,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									})}
 								</ul>
 							</div>
-						)}
-						<InlineEdit
+						) : "Pending... Apply Lenses to generate key takeaways."}
+						{/* <InlineEdit
 							textClassName="text-foreground"
 							value={normalizeMultilineText(interview.high_impact_themes)}
 							multiline
@@ -1757,7 +1760,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									consola.error("❌ Failed to update high_impact_themes:", error)
 								}
 							}}
-						/>
+						/> */}
 					</div>
 
 					{/* AI Takeaways */}

@@ -208,7 +208,7 @@ function derivePrimaryValue(slot: LensSlotValue) {
 function friendlyFrameworkName(name: InterviewLensFramework["name"]) {
 	switch (name) {
 		case "BANT_GPCT":
-			return "BANT / GPCT"
+			return "Sales (BANT)"
 		case "SPICED":
 			return "SPICED"
 		case "MEDDIC":

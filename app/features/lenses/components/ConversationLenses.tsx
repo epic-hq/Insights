@@ -357,6 +357,8 @@ function renderStakeholdersView(
 		role: string | null
 		influence: "low" | "medium" | "high" | null
 		labels: string[]
+		personId: string | null
+		personName: string | null
 	}>
 ): ReactNode {
 	if (!stakeholders || stakeholders.length === 0) {
@@ -379,7 +381,16 @@ function renderStakeholdersView(
 				<div key={stakeholder.id} className="rounded-lg border border-border/50 bg-background p-3">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex-1">
-							<p className="font-medium text-foreground text-sm">{stakeholder.displayName}</p>
+							{stakeholder.personId ? (
+								<Link
+									to={routes.people.detail(stakeholder.personId)}
+									className="font-medium text-foreground text-sm hover:text-primary hover:underline"
+								>
+									{stakeholder.displayName}
+								</Link>
+							) : (
+								<p className="font-medium text-foreground text-sm">{stakeholder.displayName}</p>
+							)}
 							{stakeholder.role && <p className="mt-1 text-muted-foreground text-xs">{stakeholder.role}</p>}
 						</div>
 						{stakeholder.influence && (
@@ -934,7 +945,7 @@ function friendlyFrameworkOrder(name: string) {
 function friendlyFrameworkName(name: string) {
 	switch (name) {
 		case "BANT_GPCT":
-			return "BANT / GPCT"
+			return "Sales (BANT)"
 		case "MEDDIC":
 			return "MEDDIC"
 		case "MAP":

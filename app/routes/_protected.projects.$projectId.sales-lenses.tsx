@@ -690,7 +690,7 @@ function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 function friendlyFrameworkName(name: string) {
 	switch (name) {
 		case "BANT_GPCT":
-			return "BANT / GPCT"
+			return "Sales (BANT)"
 		case "SPICED":
 			return "SPICED"
 		case "MEDDIC":

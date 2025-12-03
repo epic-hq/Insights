@@ -59,9 +59,17 @@ async function generateConversationTakeaways(
                 const bantFramework = extraction.frameworks?.find((f: any) => f.name === "BANT_GPCT")
                 const meddicFramework = extraction.frameworks?.find((f: any) => f.name === "MEDDIC")
 
+                // BANT has 4 key areas: Budget, Authority, Need, Timeline
+                const bantCoreSlots = ["budget", "authority", "need", "timeline"]
+                const bantCaptured = bantFramework?.slots?.filter((s: any) =>
+                        bantCoreSlots.includes(s.slot) && (s.textValue || s.summary)
+                ) || []
+
                 const bantSummary = bantFramework?.slots
-                        ?.map((s: any) => `${s.label}: ${s.textValue || s.summary || "Not captured"}`)
-                        .join("; ") || null
+                        ? `${bantCaptured.length}/4 areas identified: ${bantFramework.slots
+                                .map((s: any) => `${s.label}: ${s.textValue || s.summary || "Not captured"}`)
+                                .join("; ")}`
+                        : null
 
                 const meddicSummary = meddicFramework?.slots
                         ?.map((s: any) => `${s.label}: ${s.textValue || s.summary || "Not captured"}`)
