@@ -37,21 +37,23 @@ async function generateConversationTakeaways(
                 }
 
                 // Fetch evidence items for this interview with linked person data
+                // Use LEFT join so we get evidence even without linked people
                 const { data: evidenceItems, error: evidenceError } = await client
                         .from("evidence")
                         .select(`
                                 id,
                                 verbatim,
                                 gist,
-                                evidence_type,
-                                timestamp_start,
-                                evidence_people!inner(
+                                topic,
+                                method,
+                                anchors,
+                                evidence_people(
                                         person_id,
-                                        people!inner(display_name)
+                                        people(name)
                                 )
                         `)
                         .eq("interview_id", interviewId)
-                        .order("timestamp_start", { ascending: true, nullsFirst: false })
+                        .order("created_at", { ascending: true })
 
                 if (evidenceError) {
                         consola.error(`[generateConversationTakeaways] Error fetching evidence:`, evidenceError)
@@ -92,15 +94,19 @@ async function generateConversationTakeaways(
                 // Transform evidence to BAML format
                 const evidenceForBaml = evidenceItems.map((e: any) => {
                         // Extract speaker name from evidence_people join
-                        const speakerName = e.evidence_people?.[0]?.people?.display_name || null
+                        const speakerName = e.evidence_people?.[0]?.people?.name || null
+
+                        // Extract timestamp from anchors JSONB (first anchor's start_ms converted to seconds)
+                        const timestampMs = e.anchors?.[0]?.start_ms
+                        const timestampSec = timestampMs ? timestampMs / 1000 : null
 
                         return {
                                 id: e.id,
                                 verbatim: e.verbatim || "",
                                 gist: e.gist || null,
                                 speaker: speakerName,
-                                evidence_type: e.evidence_type || null,
-                                timestamp_start: e.timestamp_start || null,
+                                evidence_type: e.topic || e.method || null,
+                                timestamp_start: timestampSec,
                         }
                 })
 
@@ -112,7 +118,8 @@ async function generateConversationTakeaways(
                         hasBantSummary: !!bantSummary,
                         hasMeddicSummary: !!meddicSummary,
                         stakeholdersCount: extraction.entities?.stakeholders?.length || 0,
-                        evidenceTypes: [...new Set(evidenceItems.map((e) => e.evidence_type))],
+                        topics: [...new Set(evidenceItems.map((e) => e.topic).filter(Boolean))],
+                        methods: [...new Set(evidenceItems.map((e) => e.method).filter(Boolean))],
                 })
 
                 // Call BAML function with evidence array
