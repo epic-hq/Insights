@@ -215,7 +215,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const participantRole =
 			primaryPerson?.role ?? interviewPeopleRows?.find((row) => row.person_id === primaryPersonId)?.role ?? null
 
-		const evidenceUnits: EvidenceUnitInput[] = evidenceRows.map((row) => {
+		const evidenceUnits = evidenceRows.map((row) => {
 			const evidenceId = row.id
 			const personId = personIdByEvidence.get(evidenceId) ?? primaryPersonId
 			const gist = row.gist && row.gist.trim().length > 0 ? row.gist : row.verbatim

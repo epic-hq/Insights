@@ -10,13 +10,12 @@ import consola from "consola"
 import posthog from "posthog-js"
 import { b } from "~/../baml_client"
 import type {
-	EvidenceParticipant,
-	EvidenceUnit,
 	FacetCatalog,
 	FacetMention,
 	InterviewExtraction,
-	PersonFacetObservation,
-	PersonScaleObservation,
+	Person,
+	PersonFacetInput,
+	PersonScaleInput,
 } from "~/../baml_client/types"
 import type { Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
@@ -113,7 +112,7 @@ export interface InterviewMetadata {
 }
 
 export interface GenerateInterviewInsightsOptions {
-	evidenceUnits: EvidenceUnit[]
+	evidenceUnits: EvidenceTurn[]
 	userCustomInstructions?: string
 }
 
@@ -411,8 +410,8 @@ interface NormalizedParticipant {
 	summary: string | null
 	segments: string[]
 	personas: string[]
-	facets: PersonFacetObservation[]
-	scales: PersonScaleObservation[]
+	facets: PersonFacetInput[]
+	scales: PersonScaleInput[]
 }
 
 type NameResolutionSource = "display" | "inferred" | "metadata" | "person_key" | "fallback"
@@ -958,7 +957,7 @@ export async function extractEvidenceAndPeopleCore({
 		if (!verb) continue
 		const chunk = sanitizeVerbatim(ev?.chunk) ?? verb
 		const gist = sanitizeVerbatim(ev?.gist) ?? verb
-		const evidenceIndex = typeof ev?.index === "number" ? ev.index : idx
+		const evidenceIndex = idx
 		const sceneTopic = sceneTopicByIndex.get(evidenceIndex) ?? null
 		const facetMentions = Array.isArray((ev as { facet_mentions?: FacetMention[] }).facet_mentions)
 			? ((ev as { facet_mentions?: FacetMention[] }).facet_mentions as FacetMention[])

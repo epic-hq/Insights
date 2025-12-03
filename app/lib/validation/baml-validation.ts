@@ -1,5 +1,5 @@
 import { z } from "zod"
-import type { Anchor as BamlAnchor, EvidenceUnit as BamlEvidenceUnit, KindTags } from "~/../baml_client/types"
+import type { EvidenceTurn as BamlEvidenceTurn, TurnAnchors } from "~/../baml_client/types"
 
 const nullableString = z
 	.union([z.string(), z.number(), z.null()])
@@ -21,69 +21,46 @@ const primitiveStringArray = z
 		return cleaned.length ? cleaned : undefined
 	})
 
-const anchorSchema = z
+// TurnAnchors schema - single object with integer milliseconds
+export const turnAnchorsSchema = z
 	.object({
-		type: z.string().optional(),
-		target: z.string().nullable().optional(),
-		start: z.union([z.string(), z.number()]).nullable().optional(),
-		end: z.union([z.string(), z.number()]).nullable().optional(),
 		start_ms: z.number().nullable().optional(),
 		end_ms: z.number().nullable().optional(),
-		speaker: z.string().nullable().optional(),
 		chapter_title: z.string().nullable().optional(),
 		char_span: z.union([z.array(z.number()), z.tuple([z.number(), z.number()]), z.null()]).optional(),
-		media_key: z.string().nullable().optional(),
 	})
 	.passthrough()
 
+// For backwards compatibility, accept both single object and array
 const anchorsSchema = z.preprocess((value) => {
-	if (Array.isArray(value)) return value
-	if (value == null) return []
-	return [value]
-}, z.array(anchorSchema))
+	// If it's already a TurnAnchors object, use it
+	if (value && typeof value === 'object' && !Array.isArray(value)) return value
+	// If it's an array, take the first element
+	if (Array.isArray(value) && value.length > 0) return value[0]
+	// Otherwise return null
+	return null
+}, turnAnchorsSchema.nullable())
 
-const kindTagsSchema = z
+// FacetMention schema for evidence facet mentions
+const facetMentionSchema = z
 	.object({
-		problem: primitiveStringArray,
-		goal: primitiveStringArray,
-		behavior: primitiveStringArray,
-		emotion: z.string().nullable().optional(),
-		context: primitiveStringArray,
-		artifact: primitiveStringArray,
+		person_key: z.string(),
+		kind_slug: z.string(),
+		value: z.string(),
+		quote: nullableString,
 	})
 	.passthrough()
-	.default({})
 
-export const evidenceUnitSchema = z
+export const evidenceTurnSchema = z
 	.object({
-		person_key: z.string().min(1, "person_key is required").optional(),
-		person_role: nullableString,
-		topic: nullableString,
-		gist: nullableString,
-		chunk: nullableString,
-		verbatim: nullableString,
-		support: nullableString,
-		kind_tags: kindTagsSchema,
-		personas: primitiveStringArray,
-		segments: primitiveStringArray,
-		journey_stage: nullableString,
+		person_key: z.string().min(1, "person_key is required"),
+		speaker_label: nullableString,
+		gist: z.string().min(1, "gist is required"),
+		chunk: z.string().min(1, "chunk is required"),
+		verbatim: z.string().min(1, "verbatim is required"),
 		anchors: anchorsSchema,
-		confidence: nullableString,
-		context_summary: nullableString,
-		independence_key: nullableString,
 		why_it_matters: nullableString,
-		facet_mentions: z
-			.array(
-				z
-					.object({
-						person_key: z.string(),
-						kind_slug: z.string(),
-						value: z.string(),
-						quote: nullableString,
-					})
-					.passthrough()
-			)
-			.optional(),
+		facet_mentions: z.array(facetMentionSchema).default([]),
 		isQuestion: z.boolean().nullable().optional(),
 		says: primitiveStringArray,
 		does: primitiveStringArray,
@@ -94,21 +71,14 @@ export const evidenceUnitSchema = z
 	})
 	.passthrough()
 
-export const evidenceUnitsSchema = z.array(evidenceUnitSchema)
+export const evidenceTurnsSchema = z.array(evidenceTurnSchema)
 
-export type EvidenceUnitInput = z.infer<typeof evidenceUnitSchema>
-type AnchorInput = z.infer<typeof anchorSchema>
+export type EvidenceTurnInput = z.infer<typeof evidenceTurnSchema>
+type TurnAnchorsInput = z.infer<typeof turnAnchorsSchema>
 
 interface NormalizeEvidenceOptions {
-	defaultAnchorTarget?: string
-	defaultAnchorType?: string
-	defaultSupport?: string
-	defaultConfidence?: string
+	// Reserved for future use - currently unused but kept for API compatibility
 }
-
-const DEFAULT_ANCHOR_TYPE = "transcript"
-const DEFAULT_SUPPORT = "supports"
-const DEFAULT_CONFIDENCE = "medium"
 
 const trimOrUndefined = (value: unknown): string | undefined => {
 	if (typeof value === "string") {
@@ -143,138 +113,67 @@ const toSecondsString = (value: unknown): { secondsString?: string; milliseconds
 	return {}
 }
 
-type NormalizedAnchor = BamlAnchor & {
-	start_ms?: number | null
-	end_ms?: number | null
-	char_span?: number[] | null
-	media_key?: string | null
+// Normalized TurnAnchors with computed fields
+type NormalizedTurnAnchors = TurnAnchors & {
+	start_ms: number | null
+	end_ms: number | null
+	chapter_title: string | null
+	char_span: number[] | null
 }
 
-const normalizeAnchor = (anchor: AnchorInput, options: NormalizeEvidenceOptions): NormalizedAnchor => {
-	const defaultTarget = options.defaultAnchorTarget ?? ""
-	const defaultType = options.defaultAnchorType ?? DEFAULT_ANCHOR_TYPE
-
-	const startFromMs = toSecondsString(anchor.start_ms ?? undefined)
-	const startFromStart = toSecondsString(anchor.start ?? undefined)
-	const endFromMs = toSecondsString(anchor.end_ms ?? undefined)
-	const endFromEnd = toSecondsString(anchor.end ?? undefined)
-
-	const start = chooseString(
-		startFromStart.secondsString,
-		startFromMs.secondsString,
-		anchor.start ? String(anchor.start) : undefined,
-		"0"
-	)!
-
-	const end = chooseString(
-		endFromEnd.secondsString,
-		endFromMs.secondsString,
-		anchor.end ? String(anchor.end) : undefined
-	)
-
-	const normalized: NormalizedAnchor = {
-		type: trimOrUndefined(anchor.type) ?? defaultType,
-		target: (trimOrUndefined(anchor.target) ?? defaultTarget) || defaultType,
-		start,
-		end: end ?? null,
-		speaker: trimOrUndefined(anchor.speaker) ?? null,
-		chapter_title: trimOrUndefined(anchor.chapter_title) ?? null,
-		start_ms: startFromStart.milliseconds ?? startFromMs.milliseconds ?? null,
-		end_ms: endFromEnd.milliseconds ?? endFromMs.milliseconds ?? null,
-		char_span: Array.isArray(anchor.char_span) ? anchor.char_span : null,
-		media_key: trimOrUndefined(anchor.media_key) ?? null,
-	}
-
-	return normalized
-}
-
-const normalizeKindTags = (kindTags: KindTags | undefined): KindTags => {
-	if (!kindTags) return {}
-	const normalized: KindTags = {}
-	for (const [key, value] of Object.entries(kindTags)) {
-		if (Array.isArray(value)) {
-			const cleaned = value
-				.map((item) => (typeof item === "string" ? item.trim() : undefined))
-				.filter((item): item is string => Boolean(item))
-			if (cleaned.length) {
-				;(normalized as Record<string, unknown>)[key] = cleaned
-			}
-		} else if (typeof value === "string") {
-			const trimmed = value.trim()
-			if (trimmed.length) {
-				;(normalized as Record<string, unknown>)[key] = trimmed
-			}
-		} else if (value != null) {
-			;(normalized as Record<string, unknown>)[key] = value
+const normalizeTurnAnchors = (anchors: TurnAnchorsInput | null): NormalizedTurnAnchors => {
+	if (!anchors) {
+		return {
+			start_ms: null,
+			end_ms: null,
+			chapter_title: null,
+			char_span: null,
 		}
 	}
-	return normalized
+
+	return {
+		start_ms: typeof anchors.start_ms === "number" ? anchors.start_ms : null,
+		end_ms: typeof anchors.end_ms === "number" ? anchors.end_ms : null,
+		chapter_title: trimOrUndefined(anchors.chapter_title) ?? null,
+		char_span: Array.isArray(anchors.char_span) ? anchors.char_span : null,
+	}
 }
 
-const normalizeEvidenceUnit = (
-	unit: EvidenceUnitInput,
-	options: NormalizeEvidenceOptions
-): BamlEvidenceUnit & Record<string, unknown> => {
-	const support = chooseString(unit.support) ?? options.defaultSupport ?? DEFAULT_SUPPORT
-	const confidence = chooseString(unit.confidence) ?? options.defaultConfidence ?? DEFAULT_CONFIDENCE
+const normalizeEvidenceTurn = (
+	turn: EvidenceTurnInput,
+	_options: NormalizeEvidenceOptions = {}
+): BamlEvidenceTurn & Record<string, unknown> => {
+	// EvidenceTurn already has required gist, chunk, verbatim from schema
+	// No need for fallback logic like old EvidenceUnit
 
-	const gist = chooseString(unit.gist, unit.chunk, unit.verbatim) ?? ""
-	const chunk = chooseString(unit.chunk, unit.verbatim, gist) ?? gist
-	const verbatim = chooseString(unit.verbatim, unit.chunk, gist) ?? chunk
-
-	const anchorInputs = Array.isArray(unit.anchors) ? unit.anchors : []
-	const normalizedAnchors = anchorInputs.map((anchor) => normalizeAnchor(anchor, options))
-	if (!normalizedAnchors.length) {
-		normalizedAnchors.push(
-			normalizeAnchor(
-				{
-					type: options.defaultAnchorType ?? DEFAULT_ANCHOR_TYPE,
-					target: options.defaultAnchorTarget ?? "",
-					start: "0",
-				},
-				options
-			)
-		)
-	}
-
-	const normalized: BamlEvidenceUnit & Record<string, unknown> = {
-		person_key: unit.person_key ?? "unknown-person",
-		person_role: chooseString(unit.person_role) ?? null,
-		topic: chooseString(unit.topic) ?? null,
-		gist,
-		chunk,
-		verbatim,
-		support,
-		kind_tags: normalizeKindTags(unit.kind_tags as KindTags | undefined),
-		personas: unit.personas ?? null,
-		segments: unit.segments ?? null,
-		journey_stage: chooseString(unit.journey_stage) ?? null,
-		anchors: normalizedAnchors,
-		confidence,
-		context_summary: chooseString(unit.context_summary) ?? null,
-		independence_key: chooseString(unit.independence_key) ?? null,
-		says: unit.says ?? null,
-		does: unit.does ?? null,
-		thinks: unit.thinks ?? null,
-		feels: unit.feels ?? null,
-		pains: unit.pains ?? null,
-		gains: unit.gains ?? null,
-	}
-
-	if (unit.why_it_matters) {
-		normalized.why_it_matters = unit.why_it_matters
-	}
-	if (unit.facet_mentions) {
-		normalized.facet_mentions = unit.facet_mentions
-	}
-	if (typeof unit.isQuestion === "boolean") {
-		normalized.isQuestion = unit.isQuestion
+	const normalized: BamlEvidenceTurn & Record<string, unknown> = {
+		person_key: turn.person_key,
+		speaker_label: trimOrUndefined(turn.speaker_label) ?? null,
+		gist: turn.gist,
+		chunk: turn.chunk,
+		verbatim: turn.verbatim,
+		anchors: normalizeTurnAnchors(turn.anchors),
+		why_it_matters: trimOrUndefined(turn.why_it_matters) ?? null,
+		facet_mentions: turn.facet_mentions ?? [],
+		isQuestion: turn.isQuestion ?? null,
+		says: turn.says ?? null,
+		does: turn.does ?? null,
+		thinks: turn.thinks ?? null,
+		feels: turn.feels ?? null,
+		pains: turn.pains ?? null,
+		gains: turn.gains ?? null,
 	}
 
 	return normalized
 }
 
-export const normalizeEvidenceUnits = (units: unknown, options: NormalizeEvidenceOptions = {}) => {
-	const parsed = evidenceUnitsSchema.parse(Array.isArray(units) ? units : [])
-	return parsed.map((unit) => normalizeEvidenceUnit(unit, options))
+export const normalizeEvidenceTurns = (turns: unknown, options: NormalizeEvidenceOptions = {}) => {
+	const parsed = evidenceTurnsSchema.parse(Array.isArray(turns) ? turns : [])
+	return parsed.map((turn) => normalizeEvidenceTurn(turn, options))
 }
+
+// Legacy aliases for backwards compatibility
+export const normalizeEvidenceUnits = normalizeEvidenceTurns
+export const evidenceUnitsSchema = evidenceTurnsSchema
+export const evidenceUnitSchema = evidenceTurnSchema
+export type EvidenceUnitInput = EvidenceTurnInput

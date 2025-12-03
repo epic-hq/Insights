@@ -2,7 +2,7 @@
  * Shared types for v2 modular interview processing tasks
  */
 
-import type { EvidenceUnit, InterviewExtraction } from "~/../baml_client/types"
+import type { EvidenceTurn, InterviewExtraction } from "~/../baml_client/types"
 import type { Interview, InsightInsert } from "~/types"
 import type { InterviewMetadata } from "~/utils/processInterview.server"
 
@@ -18,7 +18,7 @@ export interface WorkflowState {
 
 	// Step outputs
 	evidenceIds?: string[]
-	evidenceUnits?: EvidenceUnit[]
+	evidenceUnits?: EvidenceTurn[]
 	personId?: string
 	insightIds?: string[] // IDs from themes table (exposed via insights view)
 	personaIds?: string[]
