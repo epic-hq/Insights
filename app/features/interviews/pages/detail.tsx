@@ -31,6 +31,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
@@ -1778,20 +1779,25 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-					{salesCrmEnabled ? (
-						<SalesLensesSection
-							lens={salesLens}
-							customLenses={customLensOverrides}
-							customLensDefaults={customLensDefaults}
-							onUpdateLens={handleCustomLensUpdate}
-							onUpdateSlot={handleSlotUpdate}
-							updatingLensId={activeLensUpdateId}
-							personLenses={personLenses}
-							projectPath={projectPath}
-						/>
-					) : null}
+					{/* Conversation Lenses Section */}
+					<div className="mb-8">
+						<h3 className="mb-4 font-semibold text-foreground text-lg">Analysis Perspectives</h3>
+						<Tabs defaultValue="evidence" className="w-full">
+							<TabsList className="grid w-full grid-cols-4">
+								<TabsTrigger value="evidence">Evidence</TabsTrigger>
+								<TabsTrigger value="sales" disabled={!salesCrmEnabled}>
+									Sales Lens
+								</TabsTrigger>
+								<TabsTrigger value="product" disabled>
+									Product Lens
+								</TabsTrigger>
+								<TabsTrigger value="research" disabled>
+									Research Lens
+								</TabsTrigger>
+							</TabsList>
 
-					{/* Evidence Timeline Section */}
+							<TabsContent value="evidence" className="mt-6">
+								{/* Evidence Timeline Section */}
 					{isProcessing && evidence.length === 0 ? (
 						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
 							<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
@@ -1804,6 +1810,49 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					) : (
 						<p className="text-muted-foreground">No evidence found</p>
 					)}
+							</TabsContent>
+
+							<TabsContent value="sales" className="mt-6">
+								{salesCrmEnabled && salesLens ? (
+									<SalesLensesSection
+										lens={salesLens}
+										customLenses={customLensOverrides}
+										customLensDefaults={customLensDefaults}
+										onUpdateLens={handleCustomLensUpdate}
+										onUpdateSlot={handleSlotUpdate}
+										updatingLensId={activeLensUpdateId}
+										personLenses={personLenses}
+										projectPath={projectPath}
+									/>
+								) : (
+									<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+										<p className="text-muted-foreground text-sm">Sales Lens not available</p>
+										<p className="mt-1 text-muted-foreground text-xs">
+											Enable the Sales CRM feature to use this lens
+										</p>
+									</div>
+								)}
+							</TabsContent>
+
+							<TabsContent value="product" className="mt-6">
+								<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+									<p className="text-muted-foreground text-sm">Product Lens coming soon</p>
+									<p className="mt-1 text-muted-foreground text-xs">
+										Pain × User Type matrix for feature prioritization
+									</p>
+								</div>
+							</TabsContent>
+
+							<TabsContent value="research" className="mt-6">
+								<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+									<p className="text-muted-foreground text-sm">Research Lens coming soon</p>
+									<p className="mt-1 text-muted-foreground text-xs">
+										Goal → Decision Questions → Research Questions hierarchy
+									</p>
+								</div>
+							</TabsContent>
+						</Tabs>
+					</div>
 
 					{/* Transcript Section - Collapsed by default */}
 					<h3 className="font-semibold text-foreground text-lg">Recording</h3>
