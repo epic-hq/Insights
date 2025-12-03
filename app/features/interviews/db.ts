@@ -110,6 +110,7 @@ export const getInterviewById = async ({
 			high_impact_themes,
 			observations_and_notes,
 			open_questions_and_next_steps,
+			key_takeaways,
 			status,
 			media_url,
 			media_type,
