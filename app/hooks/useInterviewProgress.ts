@@ -4,10 +4,7 @@ import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/up
 import { createClient } from "~/lib/supabase/client"
 import type { Interview } from "~/types"
 
-interface AnalysisJob {
-	id: string
-	interview_id: string
-	status: string
+interface ConversationAnalysis {
 	status_detail: string | null
 	progress: number | null
 	current_step: string | null
@@ -15,8 +12,8 @@ interface AnalysisJob {
 	workflow_state: any
 	trigger_run_id: string | null
 	last_error: string | null
-	created_at: string
-	updated_at: string
+	transcript_data?: any
+	custom_instructions?: string
 }
 
 interface ProgressInfo {
@@ -40,7 +37,7 @@ interface UseInterviewProgressOptions {
 
 export function useInterviewProgress({ interviewId, runId, accessToken }: UseInterviewProgressOptions) {
 	const [interview, setInterview] = useState<Interview | null>(null)
-	const [analysisJob, setAnalysisJob] = useState<AnalysisJob | null>(null)
+	const [conversationAnalysis, setConversationAnalysis] = useState<ConversationAnalysis | null>(null)
 	const [progressInfo, setProgressInfo] = useState<ProgressInfo>({
 		status: "uploading",
 		progress: 5, // Start with small progress to show activity
@@ -145,35 +142,19 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 			if (interviewData && !interviewError) {
 				setInterview(interviewData)
+				// Extract conversation_analysis from interview
+				const analysis = interviewData.conversation_analysis as ConversationAnalysis | null
+				if (analysis) {
+					setConversationAnalysis(analysis)
+				}
 			} else {
 				console.error("[useInterviewProgress] Failed to fetch interview:", interviewError)
-			}
-
-			// Fetch latest analysis job for this interview
-			const { data: jobData, error: jobError } = await supabase
-				.from("analysis_jobs")
-				.select("*")
-				.eq("interview_id", interviewId)
-				.order("created_at", { ascending: false })
-				.limit(1)
-				.maybeSingle()
-
-			console.log("[useInterviewProgress] Analysis job query result:", {
-				found: !!jobData,
-				error: jobError,
-				interviewId,
-			})
-
-			if (jobData && !jobError) {
-				setAnalysisJob(jobData as AnalysisJob)
-			} else if (jobError) {
-				console.error("[useInterviewProgress] Failed to fetch analysis job:", jobError)
 			}
 		}
 
 		fetchData()
 
-		// Set up realtime subscriptions for both interview and analysis_jobs
+		// Set up realtime subscription for interview updates (conversation_analysis is in interviews table)
 		const channel = supabase
 			.channel(`interview_progress_${interviewId}`)
 			.on(
@@ -187,20 +168,10 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 				(payload) => {
 					const newInterview = payload.new as Interview
 					setInterview(newInterview)
-				}
-			)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "analysis_jobs",
-					filter: `interview_id=eq.${interviewId}`,
-				},
-				(payload) => {
-					if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-						const newJob = payload.new as AnalysisJob
-						setAnalysisJob(newJob)
+					// Update conversation_analysis when interview updates
+					const analysis = newInterview.conversation_analysis as ConversationAnalysis | null
+					if (analysis) {
+						setConversationAnalysis(analysis)
 					}
 				}
 			)
@@ -356,12 +327,12 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			currentStep: currentStep ?? undefined,
 			completedSteps: metadata.completed_steps,
 			canCancel,
-			analysisJobId: analysisJob?.id,
+			analysisJobId: interviewId, // analysisJobId is now interviewId
 			triggerRunId: triggerRunId ?? undefined,
 		})
 
 		cleanupTimers() // Stop synthetic progress when using real data
-	}, [interview, analysisJob?.id, cleanupTimers])
+	}, [interview, interviewId, cleanupTimers])
 
 	// Update progress info when interview status changes (fallback when run metadata unavailable)
 	useEffect(() => {

@@ -8,20 +8,23 @@ import type { Database } from "~/types"
 import type { WorkflowState, WorkflowStep } from "./types"
 
 /**
- * Load workflow state from analysis_jobs table
+ * Load workflow state from interviews.conversation_analysis
+ * @param analysisJobId - Now the interview ID (analysis_jobs table was consolidated)
  */
 export async function loadWorkflowState(
 	db: SupabaseClient<Database>,
 	analysisJobId: string
 ): Promise<WorkflowState | null> {
+	const interviewId = analysisJobId // analysisJobId is now interview ID
+
 	const { data, error } = await db
-		.from("analysis_jobs")
-		.select("workflow_state, completed_steps, current_step")
-		.eq("id", analysisJobId)
+		.from("interviews")
+		.select("conversation_analysis")
+		.eq("id", interviewId)
 		.single()
 
 	if (error) {
-		consola.error(`Failed to load workflow state for job ${analysisJobId}:`, error)
+		consola.error(`Failed to load workflow state for interview ${interviewId}:`, error)
 		return null
 	}
 
@@ -29,23 +32,30 @@ export async function loadWorkflowState(
 		return null
 	}
 
-	// Parse workflow_state from JSONB
-	const state = data.workflow_state as WorkflowState | null
+	// Parse conversation_analysis JSONB
+	const conversationAnalysis = data.conversation_analysis as any
+	if (!conversationAnalysis) {
+		consola.warn(`Conversation analysis is null for interview ${interviewId}`)
+		return null
+	}
+
+	// Extract workflow_state from conversation_analysis
+	const state = conversationAnalysis.workflow_state as WorkflowState | null
 
 	if (!state) {
-		consola.warn(`Workflow state is null for job ${analysisJobId}, but row exists`)
+		consola.warn(`Workflow state is null for interview ${interviewId}, but conversation_analysis exists`)
 		return null
 	}
 
 	// Merge with top-level fields for backward compatibility
 	const mergedState = {
 		...state,
-		completedSteps: data.completed_steps || state.completedSteps || [],
-		currentStep: data.current_step || state.currentStep || "",
+		completedSteps: conversationAnalysis.completed_steps || state.completedSteps || [],
+		currentStep: conversationAnalysis.current_step || state.currentStep || "",
 	}
 
 	consola.info(
-		`[loadWorkflowState] Loaded state for job ${analysisJobId}:`,
+		`[loadWorkflowState] Loaded state for interview ${interviewId}:`,
 		`interviewId=${mergedState.interviewId}`,
 		`evidenceUnits=${mergedState.evidenceUnits?.length ?? 'undefined'}`,
 		`evidenceIds=${mergedState.evidenceIds?.length ?? 'undefined'}`,
@@ -56,16 +66,18 @@ export async function loadWorkflowState(
 }
 
 /**
- * Save workflow state to analysis_jobs table
+ * Save workflow state to interviews.conversation_analysis
+ * @param analysisJobId - Now the interview ID (analysis_jobs table was consolidated)
  */
 export async function saveWorkflowState(
 	db: SupabaseClient<Database>,
 	analysisJobId: string,
 	state: Partial<WorkflowState>
 ): Promise<void> {
+	const interviewId = analysisJobId // analysisJobId is now interview ID
 	const now = new Date().toISOString()
 
-	consola.info(`[saveWorkflowState] Saving state for job ${analysisJobId}`)
+	consola.info(`[saveWorkflowState] Saving state for interview ${interviewId}`)
 	consola.info(`[saveWorkflowState] Incoming state:`, {
 		interviewId: state.interviewId || "MISSING",
 		completedSteps: state.completedSteps,
@@ -74,7 +86,7 @@ export async function saveWorkflowState(
 	})
 
 	// Load existing state
-	const existing = await loadWorkflowState(db, analysisJobId)
+	const existing = await loadWorkflowState(db, interviewId)
 
 	consola.info(`[saveWorkflowState] Existing state:`, {
 		interviewId: existing?.interviewId || "MISSING",
@@ -108,22 +120,34 @@ export async function saveWorkflowState(
 		hasFullTranscript: !!merged.fullTranscript,
 	})
 
+	// Get current conversation_analysis to preserve other data
+	const { data: currentInterview } = await db
+		.from("interviews")
+		.select("conversation_analysis")
+		.eq("id", interviewId)
+		.single()
+
+	const existingAnalysis = (currentInterview?.conversation_analysis as any) || {}
+
 	const { error } = await db
-		.from("analysis_jobs")
+		.from("interviews")
 		.update({
-			workflow_state: merged as any,
-			completed_steps: merged.completedSteps,
-			current_step: merged.currentStep,
+			conversation_analysis: {
+				...existingAnalysis,
+				workflow_state: merged as any,
+				completed_steps: merged.completedSteps,
+				current_step: merged.currentStep,
+			},
 			updated_at: now,
 		})
-		.eq("id", analysisJobId)
+		.eq("id", interviewId)
 
 	if (error) {
-		consola.error(`Failed to save workflow state for job ${analysisJobId}:`, error)
+		consola.error(`Failed to save workflow state for interview ${interviewId}:`, error)
 		throw new Error(`Failed to save workflow state: ${error.message}`)
 	}
 
-	consola.success(`[saveWorkflowState] State saved successfully for job ${analysisJobId}`)
+	consola.success(`[saveWorkflowState] State saved successfully for interview ${interviewId}`)
 }
 
 /**
@@ -147,7 +171,8 @@ export async function initializeWorkflowState(
 }
 
 /**
- * Update analysis job progress
+ * Update interview conversation_analysis progress
+ * @param analysisJobId - Now the interview ID (analysis_jobs table was consolidated)
  */
 export async function updateAnalysisJobProgress(
 	db: SupabaseClient<Database>,
@@ -160,23 +185,38 @@ export async function updateAnalysisJobProgress(
 ): Promise<void> {
 	if (!analysisJobId) return
 
+	const interviewId = analysisJobId
+
+	// Get current conversation_analysis
+	const { data: interview } = await db
+		.from("interviews")
+		.select("conversation_analysis")
+		.eq("id", interviewId)
+		.single()
+
+	const existingAnalysis = (interview?.conversation_analysis as any) || {}
+
 	const { error } = await db
-		.from("analysis_jobs")
+		.from("interviews")
 		.update({
-			current_step: update.currentStep,
-			progress: update.progress,
-			status_detail: update.statusDetail,
+			conversation_analysis: {
+				...existingAnalysis,
+				current_step: update.currentStep,
+				progress: update.progress,
+				status_detail: update.statusDetail,
+			},
 			updated_at: new Date().toISOString(),
 		})
-		.eq("id", analysisJobId)
+		.eq("id", interviewId)
 
 	if (error) {
-		consola.warn(`Failed to update analysis job progress for ${analysisJobId}:`, error)
+		consola.warn(`Failed to update interview progress for ${interviewId}:`, error)
 	}
 }
 
 /**
- * Update analysis job error
+ * Update interview conversation_analysis with error
+ * @param analysisJobId - Now the interview ID (analysis_jobs table was consolidated)
  */
 export async function updateAnalysisJobError(
 	db: SupabaseClient<Database>,
@@ -188,18 +228,32 @@ export async function updateAnalysisJobError(
 ): Promise<void> {
 	if (!analysisJobId) return
 
+	const interviewId = analysisJobId
+
+	// Get current conversation_analysis
+	const { data: interview } = await db
+		.from("interviews")
+		.select("conversation_analysis")
+		.eq("id", interviewId)
+		.single()
+
+	const existingAnalysis = (interview?.conversation_analysis as any) || {}
+
 	const { error } = await db
-		.from("analysis_jobs")
+		.from("interviews")
 		.update({
 			status: "error",
-			current_step: update.currentStep,
-			last_error: update.error,
+			conversation_analysis: {
+				...existingAnalysis,
+				current_step: update.currentStep,
+				last_error: update.error,
+			},
 			updated_at: new Date().toISOString(),
 		})
-		.eq("id", analysisJobId)
+		.eq("id", interviewId)
 
 	if (error) {
-		consola.warn(`Failed to update analysis job error for ${analysisJobId}:`, error)
+		consola.warn(`Failed to update interview error for ${interviewId}:`, error)
 	}
 }
 
