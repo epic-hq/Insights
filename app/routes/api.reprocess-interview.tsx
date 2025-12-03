@@ -82,6 +82,14 @@ export async function action({ request }: ActionFunctionArgs) {
 					}
 				: {
 						full_transcript: interview.transcript,
+						speaker_transcripts: [
+							{
+								speaker: "Speaker",
+								text: interview.transcript,
+								start: 0,
+								end: null,
+							},
+						],
 						confidence: 0.9,
 						audio_duration: 0,
 						processing_duration: 0,
