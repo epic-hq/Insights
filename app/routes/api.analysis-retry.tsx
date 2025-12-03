@@ -42,12 +42,19 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// Check what type of retry we need
-		const hasTranscript = interview.transcript_formatted
+		// Validate that transcript_formatted has actual data, not just empty/corrupted structure
+		const formatted = interview.transcript_formatted as Record<string, unknown> | null
+		const hasUsableTranscript =
+			formatted &&
+			Array.isArray(formatted.speaker_transcripts) &&
+			formatted.speaker_transcripts.length > 0
 		const hasMedia = interview.media_url
 
-		console.log("Retry analysis - hasTranscript:", !!hasTranscript, "hasMedia:", !!hasMedia)
+		console.log("Retry analysis - hasUsableTranscript:", !!hasUsableTranscript, "hasMedia:", !!hasMedia)
 
-		const formattedTranscriptData = hasTranscript ? safeSanitizeTranscriptPayload(interview.transcript_formatted) : null
+		const formattedTranscriptData = hasUsableTranscript
+			? safeSanitizeTranscriptPayload(interview.transcript_formatted)
+			: null
 
 		// Generate fresh presigned URL from R2 key if needed
 		let mediaUrlForTask = interview.media_url || ""
@@ -69,8 +76,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		const admin = createSupabaseAdminClient()
 
 		try {
-			if (!hasTranscript && hasMedia) {
-				// No transcript but has media - need to re-transcribe
+			if (!hasUsableTranscript && hasMedia) {
+				// No usable transcript but has media - need to re-transcribe
 				console.log("Re-transcribing audio file...")
 				await createAndProcessAnalysisJob({
 					interviewId,
@@ -81,8 +88,8 @@ export async function action({ request }: ActionFunctionArgs) {
 					initiatingUserId: userId,
 				})
 				console.log("Re-transcription triggered successfully")
-			} else if (hasTranscript) {
-				// Has transcript - just re-analyze
+			} else if (hasUsableTranscript) {
+				// Has usable transcript - just re-analyze
 				console.log("Re-analyzing existing transcript...")
 				await createAndProcessAnalysisJob({
 					interviewId,
