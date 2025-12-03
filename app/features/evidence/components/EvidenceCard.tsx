@@ -242,7 +242,8 @@ function EvidenceCard({
 				))}
 				<div className="ml-auto flex items-center gap-1">
 					{evidence.method && (
-						<span>Method:
+						<span>
+							Method:
 							<Badge variant="outline" className="text-xs">
 								{evidence.method}
 							</Badge>

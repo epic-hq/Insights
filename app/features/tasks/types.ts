@@ -1,14 +1,7 @@
 // Task System Types
 // These types match the database schema defined in supabase/schemas/43_tasks.sql
 
-export type TaskStatus =
-	| "backlog"
-	| "todo"
-	| "in_progress"
-	| "blocked"
-	| "review"
-	| "done"
-	| "archived"
+export type TaskStatus = "backlog" | "todo" | "in_progress" | "blocked" | "review" | "done" | "archived"
 
 export type TaskPriority = 1 | 2 | 3 // 1 = Now, 2 = Next, 3 = Later
 
@@ -80,20 +73,22 @@ export type TaskInsert = Pick<Task, "title" | "cluster"> &
 	Partial<
 		Omit<
 			Task,
-			"id" | "created_at" | "updated_at" | "completed_at" | "account_id" | "project_id" | "created_by" | "title" | "cluster"
+			| "id"
+			| "created_at"
+			| "updated_at"
+			| "completed_at"
+			| "account_id"
+			| "project_id"
+			| "created_by"
+			| "title"
+			| "cluster"
 		>
 	>
 
 export type TaskUpdate = Partial<Omit<Task, "id" | "created_at" | "account_id" | "project_id" | "created_by">>
 
 // Task Activity Types
-export type TaskActivityType =
-	| "created"
-	| "status_change"
-	| "assignment"
-	| "comment"
-	| "field_update"
-	| "voice_update"
+export type TaskActivityType = "created" | "status_change" | "assignment" | "comment" | "field_update" | "voice_update"
 
 export type TaskActivitySource = "web" | "voice" | "assistant" | "api"
 

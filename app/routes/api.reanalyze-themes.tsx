@@ -377,10 +377,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				analysisJobId: analysisJob.id,
 			}
 
-			handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>(
-				"interview.analyze-themes-and-persona",
-				payload
-			)
+			handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>("interview.analyze-themes-and-persona", payload)
 		}
 
 		await admin
@@ -392,7 +389,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			})
 			.eq("id", analysisJob.id)
 
-		consola.info(`Re-analyze themes triggered for interview ${interviewId}: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`)
+		consola.info(
+			`Re-analyze themes triggered for interview ${interviewId}: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`
+		)
 		return Response.json({ success: true, runId: handle.id })
 	} catch (error) {
 		consola.error("Re-analyze themes API error:", error)

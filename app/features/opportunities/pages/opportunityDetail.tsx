@@ -279,9 +279,9 @@ export default function OpportunityDetail() {
 					<CardContent>
 						<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
 							<InlineEdit
-							value={opportunity.amount ? formatCurrency(opportunity.amount) : ""}
-							placeholder="$0"
-							onSubmit={(value) => handleOpportunityUpdate("amount", value.replace(/[$,]/g, ""))}
+								value={opportunity.amount ? formatCurrency(opportunity.amount) : ""}
+								placeholder="$0"
+								onSubmit={(value) => handleOpportunityUpdate("amount", value.replace(/[$,]/g, ""))}
 								submitOnBlur
 								textClassName="font-bold text-foreground text-2xl"
 								inputClassName="text-2xl font-bold"
@@ -496,7 +496,7 @@ function StakeholderMatrix({
 	// Load people when dialog opens
 	useEffect(() => {
 		if (showAddDialog && !peopleFetcher.data) {
-			peopleFetcher.load(`/api/people/search?limit=50`)
+			peopleFetcher.load("/api/people/search?limit=50")
 		}
 	}, [showAddDialog, peopleFetcher, accountId, projectId])
 
@@ -721,14 +721,15 @@ function StakeholderMatrix({
 											onValueChange={(value) => handleStakeholderUpdate(stakeholder.id, "influence", value)}
 										>
 											<SelectTrigger
-												className={`h-7 w-24 text-xs ${stakeholder.influence === "high"
-													? "border-emerald-600 bg-emerald-50 text-emerald-700"
-													: stakeholder.influence === "medium"
-														? "border-amber-600 bg-amber-50 text-amber-700"
-														: stakeholder.influence === "low"
-															? "border-gray-400 bg-gray-50 text-gray-700"
-															: ""
-													}`}
+												className={`h-7 w-24 text-xs ${
+													stakeholder.influence === "high"
+														? "border-emerald-600 bg-emerald-50 text-emerald-700"
+														: stakeholder.influence === "medium"
+															? "border-amber-600 bg-amber-50 text-amber-700"
+															: stakeholder.influence === "low"
+																? "border-gray-400 bg-gray-50 text-gray-700"
+																: ""
+												}`}
 											>
 												<SelectValue placeholder="Select" />
 											</SelectTrigger>

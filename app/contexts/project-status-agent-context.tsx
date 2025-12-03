@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode, useState } from "react"
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react"
 import { useLocation } from "react-router"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 

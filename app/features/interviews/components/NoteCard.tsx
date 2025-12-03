@@ -54,7 +54,9 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 	}
 
 	// Truncate content for preview
-	const contentPreview = note.content_md ? note.content_md.slice(0, 120) + (note.content_md.length > 120 ? "..." : "") : ""
+	const contentPreview = note.content_md
+		? note.content_md.slice(0, 120) + (note.content_md.length > 120 ? "..." : "")
+		: ""
 
 	return (
 		<Link to={routes.interviews.detail(note.id)}>
@@ -76,7 +78,7 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 					<div className="mb-3 flex items-center justify-between">
 						<div className="flex items-center gap-2">
 							<FileText className="h-4 w-4 text-amber-600" />
-							<span className="text-foreground/40 text-sm font-medium">Note</span>
+							<span className="font-medium text-foreground/40 text-sm">Note</span>
 						</div>
 						<Badge className={cn("font-medium text-xs", getNoteTypeColor(note.note_type))}>
 							{getNoteTypeLabel(note.note_type)}
@@ -85,17 +87,13 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 
 					{/* Note Title - Prominent */}
 					<div className="mb-4">
-						<h3 className="line-clamp-2 font-semibold text-foreground text-lg dark:text-foreground">
-							{note.title}
-						</h3>
+						<h3 className="line-clamp-2 font-semibold text-foreground text-lg dark:text-foreground">{note.title}</h3>
 					</div>
 
 					{/* Content Preview */}
 					{contentPreview && (
 						<div className="mb-4">
-							<p className="line-clamp-2 text-gray-600 text-sm dark:text-gray-400">
-								{contentPreview}
-							</p>
+							<p className="line-clamp-2 text-gray-600 text-sm dark:text-gray-400">{contentPreview}</p>
 						</div>
 					)}
 

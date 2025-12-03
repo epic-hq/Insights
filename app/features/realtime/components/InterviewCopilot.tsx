@@ -2,6 +2,7 @@ import consola from "consola"
 import { Loader2, Mic, MicOff, Pause, Play, RotateCcw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -25,7 +26,6 @@ import {
 } from "~/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
-import { PageContainer } from "~/components/layout/PageContainer"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { deleteInterview } from "~/features/interviews/db"
 import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
@@ -1069,7 +1069,9 @@ export function InterviewCopilot({
 						{mode === "notes" ? "Voice Memo" : "Live Interview"}
 					</h1>
 					<p className="text-muted-foreground text-sm">
-						{mode === "notes" ? "Capture your thoughts and insights" : "Record and transcribe your interview in real-time"}
+						{mode === "notes"
+							? "Capture your thoughts and insights"
+							: "Record and transcribe your interview in real-time"}
 					</p>
 				</div>
 
@@ -1102,7 +1104,10 @@ export function InterviewCopilot({
 										<Mic className="h-6 w-6 text-white" />
 									</div>
 									<div>
-										<Badge variant="destructive" className={cn("mb-1", streamStatus === "streaming" && "animate-pulse")}>
+										<Badge
+											variant="destructive"
+											className={cn("mb-1", streamStatus === "streaming" && "animate-pulse")}
+										>
 											{streamStatus === "streaming" ? "LIVE" : "PAUSED"}
 										</Badge>
 										<div className="flex items-center gap-2">
@@ -1164,7 +1169,7 @@ export function InterviewCopilot({
 							onClick={toggleRecording}
 							size="lg"
 							className={cn(
-								"flex-1 h-14 font-semibold text-base",
+								"h-14 flex-1 font-semibold text-base",
 								streamStatus === "streaming" && isRecording
 									? "bg-amber-500 hover:bg-amber-600"
 									: "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
@@ -1199,9 +1204,7 @@ export function InterviewCopilot({
 					</div>
 
 					{/* Replay Text */}
-					{replayText && (
-						<div className="mt-4 rounded-xl border bg-muted/50 p-3 text-sm">{replayText}</div>
-					)}
+					{replayText && <div className="mt-4 rounded-xl border bg-muted/50 p-3 text-sm">{replayText}</div>}
 				</div>
 
 				{/* Content Area - Questions or Notes */}

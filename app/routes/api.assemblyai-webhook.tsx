@@ -79,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Query interviews where conversation_analysis->transcript_data JSONB contains assemblyai_id
 		const { data: interview, error: interviewError } = await supabase
 			.from("interviews")
-			.select("*")
+			.select("id, status, transcript, conversation_analysis, account_id, project_id, title")
 			.contains("conversation_analysis->transcript_data", { assemblyai_id: payload.transcript_id })
 			.single()
 
@@ -307,21 +307,21 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				const handle = useV2Workflow
 					? await tasks.trigger("interview.v2.orchestrator", {
-							analysisJobId: interviewId, // Use interview ID as the job identifier
-							metadata,
-							transcriptData: formattedTranscriptData,
-							mediaUrl: uploadMetadata.external_url || "",
-							existingInterviewId: interviewId,
-							userCustomInstructions: customInstructions,
-						})
+						analysisJobId: interviewId, // Use interview ID as the job identifier
+						metadata,
+						transcriptData: formattedTranscriptData,
+						mediaUrl: uploadMetadata.external_url || "",
+						existingInterviewId: interviewId,
+						userCustomInstructions: customInstructions,
+					})
 					: await tasks.trigger("interview.upload-media-and-transcribe", {
-							analysisJobId: interviewId, // Use interview ID as the job identifier
-							metadata,
-							transcriptData: formattedTranscriptData,
-							mediaUrl: uploadMetadata.external_url || "",
-							existingInterviewId: interviewId,
-							userCustomInstructions: customInstructions,
-						})
+						analysisJobId: interviewId, // Use interview ID as the job identifier
+						metadata,
+						transcriptData: formattedTranscriptData,
+						mediaUrl: uploadMetadata.external_url || "",
+						existingInterviewId: interviewId,
+						userCustomInstructions: customInstructions,
+					})
 
 				// Store trigger_run_id in conversation_analysis
 				await supabase

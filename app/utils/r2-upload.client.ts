@@ -134,8 +134,7 @@ export async function uploadMultipartWithProgress({
 			const partBlob = file.slice(start, end)
 
 			const partUrl =
-				partUrls[partNumber] ??
-				(await handlers.getPartUrl?.({ uploadId, partNumber, partSize: partBlob.size }))
+				partUrls[partNumber] ?? (await handlers.getPartUrl?.({ uploadId, partNumber, partSize: partBlob.size }))
 
 			if (!partUrl) {
 				throw new Error(`Missing presigned URL for part ${partNumber}`)

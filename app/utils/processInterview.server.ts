@@ -631,11 +631,11 @@ export async function extractEvidenceAndPeopleCore({
 		const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>).speaker_transcripts
 		const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
 			? (speakerTranscriptsRaw as Array<Record<string, unknown>>).map((u) => ({
-				speaker: typeof u.speaker === "string" ? u.speaker : "",
-				text: typeof u.text === "string" ? u.text : "",
-				start: typeof u.start === "number" || typeof u.start === "string" ? u.start : null,
-				end: typeof u.end === "number" || typeof u.end === "string" ? u.end : null,
-			}))
+					speaker: typeof u.speaker === "string" ? u.speaker : "",
+					text: typeof u.text === "string" ? u.text : "",
+					start: typeof u.start === "number" || typeof u.start === "string" ? u.start : null,
+					end: typeof u.end === "number" || typeof u.end === "string" ? u.end : null,
+				}))
 			: []
 
 		consola.info(`📝 Passing ${speakerTranscripts.length} speaker utterances with timing to AI`)
@@ -683,7 +683,7 @@ export async function extractEvidenceAndPeopleCore({
 				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
 			})
 		}
-		; (lfTrace as any)?.end?.()
+		;(lfTrace as any)?.end?.()
 	}
 
 	if (!evidenceResponse) {
@@ -791,45 +791,45 @@ export async function extractEvidenceAndPeopleCore({
 		const summary = coerceString((raw as EvidenceParticipant).summary)
 		const segments = Array.isArray((raw as EvidenceParticipant).segments)
 			? ((raw as EvidenceParticipant).segments as unknown[])
-				.map((segment) => coerceString(segment))
-				.filter((segment): segment is string => Boolean(segment))
+					.map((segment) => coerceString(segment))
+					.filter((segment): segment is string => Boolean(segment))
 			: []
 		const personas = Array.isArray((raw as EvidenceParticipant).personas)
 			? ((raw as EvidenceParticipant).personas as unknown[])
-				.map((persona) => coerceString(persona))
-				.filter((persona): persona is string => Boolean(persona))
+					.map((persona) => coerceString(persona))
+					.filter((persona): persona is string => Boolean(persona))
 			: []
 		const facets = Array.isArray((raw as EvidenceParticipant).facets)
 			? ((raw as EvidenceParticipant).facets as unknown[])
-				.map((facet) => {
-					if (!facet || typeof facet !== "object") return null
-					const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
-					const value = coerceString((facet as PersonFacetObservation).value)
-					if (!kind_slug || !value) return null
-					return {
-						...facet,
-						kind_slug,
-						value,
-						source: (facet as PersonFacetObservation).source || "interview",
-					} as PersonFacetObservation
-				})
-				.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+					.map((facet) => {
+						if (!facet || typeof facet !== "object") return null
+						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+						const value = coerceString((facet as PersonFacetObservation).value)
+						if (!kind_slug || !value) return null
+						return {
+							...facet,
+							kind_slug,
+							value,
+							source: (facet as PersonFacetObservation).source || "interview",
+						} as PersonFacetObservation
+					})
+					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
 			: []
 		const scales = Array.isArray((raw as EvidenceParticipant).scales)
 			? ((raw as EvidenceParticipant).scales as unknown[])
-				.map((scale) => {
-					if (!scale || typeof scale !== "object") return null
-					const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
-					const score = (scale as PersonScaleObservation).score
-					if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
-					return {
-						...scale,
-						kind_slug,
-						score,
-						source: (scale as PersonScaleObservation).source || "interview",
-					} as PersonScaleObservation
-				})
-				.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+					.map((scale) => {
+						if (!scale || typeof scale !== "object") return null
+						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+						const score = (scale as PersonScaleObservation).score
+						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+						return {
+							...scale,
+							kind_slug,
+							score,
+							source: (scale as PersonScaleObservation).source || "interview",
+						} as PersonScaleObservation
+					})
+					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
 			: []
 
 		const normalized: NormalizedParticipant = {
@@ -1065,12 +1065,12 @@ export async function extractEvidenceAndPeopleCore({
 			const snippetForTiming = chunk || gist || verb
 			anchorSeconds = snippetForTiming?.length
 				? findStartSecondsForSnippet({
-					snippet: snippetForTiming,
-					wordTimeline,
-					segmentTimeline,
-					fullTranscript,
-					durationSeconds,
-				})
+						snippet: snippetForTiming,
+						wordTimeline,
+						segmentTimeline,
+						fullTranscript,
+						durationSeconds,
+					})
 				: null
 		}
 
@@ -1141,12 +1141,12 @@ export async function extractEvidenceAndPeopleCore({
 		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
 		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
 		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
-			; (row as Record<string, unknown>).says = _says
-			; (row as Record<string, unknown>).does = _does
-			; (row as Record<string, unknown>).thinks = _thinks
-			; (row as Record<string, unknown>).feels = _feels
-			; (row as Record<string, unknown>).pains = _pains
-			; (row as Record<string, unknown>).gains = _gains
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -1169,7 +1169,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
 		if (whyItMatters) {
-			; (row as Record<string, unknown>).context_summary = whyItMatters
+			;(row as Record<string, unknown>).context_summary = whyItMatters
 		}
 
 		// Skip raw mention processing - we'll use Phase 2 persona facets instead
@@ -2161,7 +2161,7 @@ export async function uploadMediaAndTranscribeCore({
 				error: fetchErr,
 				code: fetchErr.code,
 				details: fetchErr.details,
-				hint: fetchErr.hint
+				hint: fetchErr.hint,
 			})
 			throw new Error(`Error fetching existing interview ${existingInterviewId}: ${fetchErr.message}`)
 		}
@@ -2173,7 +2173,7 @@ export async function uploadMediaAndTranscribeCore({
 
 		consola.info("uploadMediaAndTranscribeCore: updating existing interview", {
 			existingInterviewId,
-			currentStatus: existing.status
+			currentStatus: existing.status,
 		})
 
 		const { data: updated, error: updateErr } = await client
@@ -2194,7 +2194,7 @@ export async function uploadMediaAndTranscribeCore({
 				error: updateErr,
 				code: updateErr.code,
 				details: updateErr.details,
-				hint: updateErr.hint
+				hint: updateErr.hint,
 			})
 			throw new Error(`Failed to update existing interview: ${updateErr.message}`)
 		}
@@ -2207,7 +2207,7 @@ export async function uploadMediaAndTranscribeCore({
 		interviewRecord = updated as unknown as Interview
 		consola.info("uploadMediaAndTranscribeCore: successfully updated existing interview", {
 			interviewId: interviewRecord.id,
-			status: interviewRecord.status
+			status: interviewRecord.status,
 		})
 	} else {
 		const interviewData: InterviewInsert = {
@@ -2403,8 +2403,8 @@ export async function processInterviewTranscriptWithClient({
 
 		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
 			? (analysisResult.interview.high_impact_themes ?? []).filter(
-				(value): value is string => typeof value === "string" && value.trim().length > 0
-			)
+					(value): value is string => typeof value === "string" && value.trim().length > 0
+				)
 			: []
 
 		let takeawayStrings = existingThemes

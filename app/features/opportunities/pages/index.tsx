@@ -55,7 +55,7 @@ export default function OpportunitiesIndexPage() {
 
 	const totalAmount = useMemo(() => sumAmounts(opportunities), [opportunities])
 	const averageDeal = useMemo(() => {
-		const dealsWithAmount = opportunities.filter(o => o.amount && Number(o.amount) > 0)
+		const dealsWithAmount = opportunities.filter((o) => o.amount && Number(o.amount) > 0)
 		return dealsWithAmount.length ? currencyFormatter.format(totalAmount / dealsWithAmount.length) : "—"
 	}, [opportunities, totalAmount])
 
@@ -251,22 +251,14 @@ function KanbanGrid({
 	)
 }
 
-function OpportunityCard({
-	deal,
-	routes,
-}: {
-	deal: OpportunityRecord
-	routes: ReturnType<typeof useProjectRoutes>
-}) {
+function OpportunityCard({ deal, routes }: { deal: OpportunityRecord; routes: ReturnType<typeof useProjectRoutes> }) {
 	return (
 		<Link
 			to={routes.opportunities.detail(deal.id)}
 			className="group block rounded-lg border-2 border-border bg-card p-3 shadow-sm transition hover:border-primary/50 hover:shadow-md"
 		>
 			<div className="mb-1">
-				<h3 className="font-semibold text-sm leading-snug text-foreground">
-					{deal.title || "Untitled Opportunity"}
-				</h3>
+				<h3 className="font-semibold text-foreground text-sm leading-snug">{deal.title || "Untitled Opportunity"}</h3>
 			</div>
 			{deal.description && <p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{deal.description}</p>}
 			<div className="flex items-center justify-between text-xs">

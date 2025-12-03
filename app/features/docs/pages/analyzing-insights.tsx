@@ -29,8 +29,8 @@ export default function AnalyzingInsights() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<p className="text-muted-foreground">
-							When you upload an interview (audio/video or transcript), our AI automatically processes it through multiple
-							stages to extract meaningful evidence:
+							When you upload an interview (audio/video or transcript), our AI automatically processes it through
+							multiple stages to extract meaningful evidence:
 						</p>
 
 						<div className="space-y-3">
@@ -54,8 +54,8 @@ export default function AnalyzingInsights() {
 								<div className="space-y-1">
 									<div className="font-medium">Evidence Extraction</div>
 									<p className="text-muted-foreground text-sm">
-										AI identifies <strong>verbatim quotes</strong> that contain valuable insights - customer pain points,
-										needs, motivations, outcomes, workflows, and contexts.
+										AI identifies <strong>verbatim quotes</strong> that contain valuable insights - customer pain
+										points, needs, motivations, outcomes, workflows, and contexts.
 									</p>
 								</div>
 							</div>
@@ -67,8 +67,8 @@ export default function AnalyzingInsights() {
 								<div className="space-y-1">
 									<div className="font-medium">Facet Detection</div>
 									<p className="text-muted-foreground text-sm">
-										Each piece of evidence is tagged with <strong>facets</strong> - structured attributes like pain points,
-										jobs-to-be-done, desired outcomes, emotions, motivations, contexts, and workflows.
+										Each piece of evidence is tagged with <strong>facets</strong> - structured attributes like pain
+										points, jobs-to-be-done, desired outcomes, emotions, motivations, contexts, and workflows.
 									</p>
 								</div>
 							</div>
@@ -80,8 +80,8 @@ export default function AnalyzingInsights() {
 								<div className="space-y-1">
 									<div className="font-medium">People & Organization Linking</div>
 									<p className="text-muted-foreground text-sm">
-										Evidence is automatically linked to the people and organizations mentioned, creating traceability from
-										raw quotes to specific customers.
+										Evidence is automatically linked to the people and organizations mentioned, creating traceability
+										from raw quotes to specific customers.
 									</p>
 								</div>
 							</div>
@@ -193,8 +193,8 @@ export default function AnalyzingInsights() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<p className="text-muted-foreground">
-							When themes are enriched, they gain structured metadata that helps you quickly understand and act on customer
-							insights:
+							When themes are enriched, they gain structured metadata that helps you quickly understand and act on
+							customer insights:
 						</p>
 
 						<div className="grid gap-4 md:grid-cols-2">
@@ -414,7 +414,8 @@ export default function AnalyzingInsights() {
 							<p className="font-medium text-sm">💡 Best Practice</p>
 							<p className="mt-1 text-muted-foreground text-sm">
 								Start with themes to identify high-level patterns and priorities. Then drill down into evidence when you
-								need to validate findings, gather quotes for presentations, or understand the nuances of a specific theme.
+								need to validate findings, gather quotes for presentations, or understand the nuances of a specific
+								theme.
 							</p>
 						</div>
 					</CardContent>

@@ -1,7 +1,7 @@
-import consola from "consola"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import consola from "consola"
 import type { AccountSettingsMetadata } from "~/features/opportunities/stage-config"
+import type { Database } from "~/types"
 
 type AccountSettingsRow = Database["public"]["Tables"]["account_settings"]["Row"]
 
@@ -12,7 +12,12 @@ export async function getOrCreateAccountSettings({
 	supabase: SupabaseClient<Database>
 	accountId: string
 }): Promise<AccountSettingsRow> {
-	const { data, error } = await supabase.from("account_settings").select("*").eq("account_id", accountId).limit(1).maybeSingle()
+	const { data, error } = await supabase
+		.from("account_settings")
+		.select("*")
+		.eq("account_id", accountId)
+		.limit(1)
+		.maybeSingle()
 
 	if (error) {
 		consola.warn("getOrCreateAccountSettings: select failed, attempting insert", { error: error.message, accountId })
@@ -69,4 +74,3 @@ export async function loadAccountMetadata({
 	const settings = await getOrCreateAccountSettings({ supabase, accountId })
 	return (settings.metadata as AccountSettingsMetadata) || ({} as AccountSettingsMetadata)
 }
-

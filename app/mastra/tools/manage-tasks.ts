@@ -188,11 +188,11 @@ function mapTask(task: Task, projectPath: string) {
 		priority: task.priority,
 		benefit: task.benefit ?? null,
 		segments: task.segments ?? null,
-	impact: task.impact ?? null,
-	stage: task.stage ?? null,
-	reason: task.reason ?? null,
-	assignedTo: task.assigned_to ?? [],
-	tags: task.tags ?? [],
+		impact: task.impact ?? null,
+		stage: task.stage ?? null,
+		reason: task.reason ?? null,
+		assignedTo: task.assigned_to ?? [],
+		tags: task.tags ?? [],
 		dueDate: task.due_date ?? null,
 		estimatedEffort: task.estimated_effort ?? null,
 		createdAt: task.created_at,
@@ -217,14 +217,14 @@ export const fetchTasksTool = createTool({
 			.optional()
 			.describe("Filter by task status (can specify multiple)"),
 		cluster: z.string().optional().describe("Filter by cluster/category"),
-	priority: z.number().int().min(1).max(3).optional().describe("Filter by priority (1=Now, 2=Next, 3=Later)"),
-	limit: z.number().int().min(1).max(100).optional().describe("Maximum number of tasks to return"),
-	taskIds: z.array(z.string()).optional().describe("Specific task IDs to retrieve"),
-	assigneeId: z.string().optional().describe("Filter by assignee user id"),
-	assigneeName: z.string().optional().describe("Filter by assignee name (partial, case-insensitive)"),
-	tags: z.array(z.string()).optional().describe("Filter by tags (matches any)"),
-	dueAfter: z.string().optional().describe("Filter tasks due after this ISO timestamp"),
-	dueBefore: z.string().optional().describe("Filter tasks due before this ISO timestamp"),
+		priority: z.number().int().min(1).max(3).optional().describe("Filter by priority (1=Now, 2=Next, 3=Later)"),
+		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of tasks to return"),
+		taskIds: z.array(z.string()).optional().describe("Specific task IDs to retrieve"),
+		assigneeId: z.string().optional().describe("Filter by assignee user id"),
+		assigneeName: z.string().optional().describe("Filter by assignee name (partial, case-insensitive)"),
+		tags: z.array(z.string()).optional().describe("Filter by tags (matches any)"),
+		dueAfter: z.string().optional().describe("Filter tasks due after this ISO timestamp"),
+		dueBefore: z.string().optional().describe("Filter tasks due before this ISO timestamp"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -299,7 +299,9 @@ export const fetchTasksTool = createTool({
 					warnings.push(`No teammate matched "${context.assigneeName}".`)
 				} else {
 					filteredTasks = filteredTasks.filter((t) =>
-						(t.assigned_to || []).some((assignee) => assignee.type === "human" && matchingIds.includes((assignee as any).user_id))
+						(t.assigned_to || []).some(
+							(assignee) => assignee.type === "human" && matchingIds.includes((assignee as any).user_id)
+						)
 					)
 				}
 			}

@@ -12,8 +12,8 @@
  */
 
 import consola from "consola"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 
 async function regenerateProjectThemes() {
 	const supabase = createSupabaseAdminClient()
@@ -81,10 +81,7 @@ async function regenerateProjectThemes() {
 
 	// Step 1: Delete all theme_evidence links for this project
 	consola.start("Deleting theme-evidence links...")
-	const { error: deleteLinkError } = await supabase
-		.from("theme_evidence")
-		.delete()
-		.eq("project_id", projectId)
+	const { error: deleteLinkError } = await supabase.from("theme_evidence").delete().eq("project_id", projectId)
 
 	if (deleteLinkError) {
 		consola.error("Failed to delete theme links:", deleteLinkError.message)
@@ -121,13 +118,13 @@ Each theme should represent a major category of customer needs/problems, not mic
 			`.trim(),
 		})
 
-		consola.success(`\n✅ Theme generation complete!`)
-		consola.info(`📊 Results:`)
+		consola.success("\n✅ Theme generation complete!")
+		consola.info("📊 Results:")
 		consola.info(`   • Created ${result.created_theme_ids.length} themes`)
 		consola.info(`   • Linked ${result.link_count} pieces of evidence`)
 
 		if (result.themes.length > 0) {
-			consola.info(`\n📝 Generated Themes:`)
+			consola.info("\n📝 Generated Themes:")
 			result.themes.forEach((theme, idx) => {
 				consola.info(`   ${idx + 1}. ${theme.name}`)
 				if (theme.statement) {

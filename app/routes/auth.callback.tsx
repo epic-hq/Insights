@@ -25,7 +25,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const incomingCookies = request.headers.get("Cookie")
 	consola.log("[AUTH CALLBACK] Incoming cookies:", incomingCookies ? "present" : "none")
 	if (incomingCookies) {
-		const cookieNames = incomingCookies.split(";").map(c => c.trim().split("=")[0])
+		const cookieNames = incomingCookies.split(";").map((c) => c.trim().split("=")[0])
 		consola.log("[AUTH CALLBACK] Cookie names:", cookieNames)
 	}
 	consola.log("[AUTH CALLBACK] =====================================")
@@ -74,7 +74,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const setCookieHeaders = headers.getSetCookie ? headers.getSetCookie() : []
 		consola.log("[AUTH CALLBACK] Setting", setCookieHeaders.length, "cookies in response")
 		if (setCookieHeaders.length > 0) {
-			const cookieNames = setCookieHeaders.map(h => {
+			const cookieNames = setCookieHeaders.map((h) => {
 				const match = h.match(/^([^=]+)=/)
 				return match ? match[1] : "unknown"
 			})

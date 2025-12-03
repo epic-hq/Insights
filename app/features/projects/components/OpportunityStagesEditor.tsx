@@ -120,7 +120,7 @@ export function OpportunityStagesEditor({ initialStages }: OpportunityStagesEdit
 										onClick={() => moveStage(index, 1)}
 										disabled={index === stages.length - 1}
 									>
-										<GripVertical className="h-4 w-4 -rotate-90" />
+										<GripVertical className="-rotate-90 h-4 w-4" />
 									</Button>
 									<Button
 										type="button"
@@ -137,7 +137,7 @@ export function OpportunityStagesEditor({ initialStages }: OpportunityStagesEdit
 
 							<div className="grid gap-3 md:grid-cols-2">
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-foreground">Label</label>
+									<label className="font-medium text-foreground text-sm">Label</label>
 									<Input
 										value={stage.label}
 										onChange={(e) => updateStage(index, { label: e.target.value })}
@@ -146,7 +146,7 @@ export function OpportunityStagesEditor({ initialStages }: OpportunityStagesEdit
 									/>
 								</div>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-foreground">Description</label>
+									<label className="font-medium text-foreground text-sm">Description</label>
 									<Textarea
 										value={stage.description || ""}
 										onChange={(e) => updateStage(index, { description: e.target.value })}

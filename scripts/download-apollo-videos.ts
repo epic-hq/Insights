@@ -144,7 +144,7 @@ async function main() {
 				})
 
 				// Trigger video playback
-				await page.click('video, [role="button"][aria-label*="play"]').catch(() => { })
+				await page.click('video, [role="button"][aria-label*="play"]').catch(() => {})
 				await page.waitForTimeout(2000)
 
 				if (videoRequests.length > 0) {

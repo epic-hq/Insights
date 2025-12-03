@@ -138,7 +138,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 export default function EditOpportunity() {
 	const { opportunity, stages } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const [selectedStage, setSelectedStage] = useState(() => ensureStageValue(opportunity.stage || opportunity.kanban_status, stages))
+	const [selectedStage, setSelectedStage] = useState(() =>
+		ensureStageValue(opportunity.stage || opportunity.kanban_status, stages)
+	)
 
 	return (
 		<div className="container mx-auto max-w-3xl px-4 py-8">
@@ -190,9 +192,7 @@ export default function EditOpportunity() {
 									<SelectItem key={stage.id} value={stage.id}>
 										<div className="flex flex-col items-start">
 											<span className="font-medium">{stage.label}</span>
-											{stage.description && (
-												<span className="text-muted-foreground text-xs">{stage.description}</span>
-											)}
+											{stage.description && <span className="text-muted-foreground text-xs">{stage.description}</span>}
 										</div>
 									</SelectItem>
 								))}

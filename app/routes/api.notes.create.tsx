@@ -19,11 +19,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// Get account_id from project
-		const { data: project } = await supabase
-			.from("projects")
-			.select("account_id")
-			.eq("id", projectId)
-			.single()
+		const { data: project } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
 
 		if (!project) {
 			return Response.json({ error: "Project not found" }, { status: 404 })

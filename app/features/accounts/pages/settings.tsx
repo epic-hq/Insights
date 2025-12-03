@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useLocation, useFetcher } from "react-router"
 import { GripVertical, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { useActionData, useLoaderData } from "react-router"
+import { useActionData, useFetcher, useLoaderData, useLocation } from "react-router"
 import { toast } from "sonner"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -11,9 +10,9 @@ import { Separator } from "~/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { loadAccountMetadata, updateAccountMetadata } from "~/features/accounts/server/account-settings.server"
 import {
+	type AccountSettingsMetadata,
 	DEFAULT_OPPORTUNITY_STAGES,
 	normalizeStageId,
-	type AccountSettingsMetadata,
 	type OpportunityStageConfig,
 } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
@@ -129,13 +128,14 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 	)
 
 	const updateItem = (index: number, label: string) => {
-		onChange(
-			computed.map((item, idx) => (idx === index ? { ...item, label, id: normalizeStageId(label) } : item))
-		)
+		onChange(computed.map((item, idx) => (idx === index ? { ...item, label, id: normalizeStageId(label) } : item)))
 	}
 
 	const addItem = () => {
-		onChange([...computed, { id: normalizeStageId(`item-${computed.length + 1}`), label: `Item ${computed.length + 1}` }])
+		onChange([
+			...computed,
+			{ id: normalizeStageId(`item-${computed.length + 1}`), label: `Item ${computed.length + 1}` },
+		])
 	}
 
 	const removeItem = (index: number) => {
@@ -184,7 +184,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 					</div>
 				) : (
 					<div className="rounded-md border border-border/60">
-						<div className="grid grid-cols-[40px_1fr_200px_80px] items-center bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+						<div className="grid grid-cols-[40px_1fr_200px_80px] items-center bg-muted/40 px-3 py-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
 							<span />
 							<span>Label</span>
 							<span className="text-right">Stored value</span>
@@ -193,7 +193,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 						{computed.map((item, idx) => (
 							<div
 								key={item.id || idx}
-								className="grid grid-cols-[40px_1fr_200px_80px] items-center border-t border-border/50 px-3 py-2 text-sm gap-2"
+								className="grid grid-cols-[40px_1fr_200px_80px] items-center gap-2 border-border/50 border-t px-3 py-2 text-sm"
 								draggable
 								onDragStart={() => setDragIndex(idx)}
 								onDragOver={(e) => e.preventDefault()}
@@ -238,7 +238,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 								</div>
 							</div>
 						))}
-						<div className="flex items-center justify-between border-t border-border/50 px-3 py-2">
+						<div className="flex items-center justify-between border-border/50 border-t px-3 py-2">
 							<Button variant="outline" size="sm" type="button" onClick={addItem}>
 								Add row
 							</Button>
@@ -380,14 +380,12 @@ export default function AccountSettingsPage() {
 			</div>
 
 			{actionData?.error && (
-				<div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+				<div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
 					{actionData.error}
 				</div>
 			)}
 			{actionData?.success && (
-				<div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
-					Saved
-				</div>
+				<div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary text-sm">Saved</div>
 			)}
 
 			<div className="space-y-6">
@@ -397,7 +395,9 @@ export default function AccountSettingsPage() {
 					items={opportunityStages}
 					defaultItems={DEFAULT_OPPORTUNITY_STAGES}
 					onChange={handleOpportunityChange}
-					onSave={(items) => scheduleSave("opportunity", { opportunityStages: items }, { debounce: false, toastOnSuccess: true })}
+					onSave={(items) =>
+						scheduleSave("opportunity", { opportunityStages: items }, { debounce: false, toastOnSuccess: true })
+					}
 				/>
 
 				<EditableList
@@ -406,7 +406,9 @@ export default function AccountSettingsPage() {
 					items={journeyStages}
 					defaultItems={DEFAULT_JOURNEY_STAGES}
 					onChange={handleJourneyChange}
-					onSave={(items) => scheduleSave("journey", { journeyStages: items }, { debounce: false, toastOnSuccess: true })}
+					onSave={(items) =>
+						scheduleSave("journey", { journeyStages: items }, { debounce: false, toastOnSuccess: true })
+					}
 				/>
 
 				<EditableList
@@ -415,7 +417,9 @@ export default function AccountSettingsPage() {
 					items={priorityClusters}
 					defaultItems={DEFAULT_PRIORITY_CLUSTERS}
 					onChange={handlePriorityChange}
-					onSave={(items) => scheduleSave("priority", { priorityClusters: items }, { debounce: false, toastOnSuccess: true })}
+					onSave={(items) =>
+						scheduleSave("priority", { priorityClusters: items }, { debounce: false, toastOnSuccess: true })
+					}
 				/>
 
 				<div className="flex items-center gap-3">

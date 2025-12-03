@@ -178,9 +178,7 @@ export default function NewOpportunity() {
 									<SelectItem key={stage.id} value={stage.id}>
 										<div className="flex flex-col items-start">
 											<span className="font-medium">{stage.label}</span>
-											{stage.description && (
-												<span className="text-muted-foreground text-xs">{stage.description}</span>
-											)}
+											{stage.description && <span className="text-muted-foreground text-xs">{stage.description}</span>}
 										</div>
 									</SelectItem>
 								))}

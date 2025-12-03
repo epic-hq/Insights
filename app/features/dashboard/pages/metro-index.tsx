@@ -402,21 +402,21 @@ export default function MetroIndex() {
 			<div className={`flex flex-1 flex-col transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
 				<div className="flex min-h-0 flex-1 justify-center overflow-auto">
 					<PageContainer>
-					{/* Project Status */}
-					<ProjectStatusScreen
-						projectName={project?.name || ""}
-						icp={project?.icp || ""}
-						projectId={projectId}
-						accountId={accountId}
-						statusData={projectStatusData}
-						personas={personas}
-						insights={insights}
-						initialChatMessages={assistantMessages}
-					/>
+						{/* Project Status */}
+						<ProjectStatusScreen
+							projectName={project?.name || ""}
+							icp={project?.icp || ""}
+							projectId={projectId}
+							accountId={accountId}
+							statusData={projectStatusData}
+							personas={personas}
+							insights={insights}
+							initialChatMessages={assistantMessages}
+						/>
 
-					{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}
+						{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}
 
-					<div className="p-3 pb-24">
+						<div className="p-3 pb-24">
 							{/* Expanded List */}
 							{showExpandedSection && expandedSection && !fullScreenContent && (
 								<div className="space-y-3">

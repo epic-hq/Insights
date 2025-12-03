@@ -22,7 +22,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const incomingCookies = request.headers.get("Cookie")
 	consola.log("[LOGIN_SUCCESS] Incoming cookies:", incomingCookies ? "present" : "MISSING")
 	if (incomingCookies) {
-		const cookieNames = incomingCookies.split(";").map(c => c.trim().split("=")[0])
+		const cookieNames = incomingCookies.split(";").map((c) => c.trim().split("=")[0])
 		consola.log("[LOGIN_SUCCESS] Cookie names:", cookieNames)
 	} else {
 		consola.error("[LOGIN_SUCCESS] ⚠️  NO COOKIES RECEIVED - This is the bug!")

@@ -2,6 +2,7 @@ import { formatDistance } from "date-fns"
 import { Calendar, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useFetcher, useNavigate } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,7 +16,6 @@ import {
 import { BackButton } from "~/components/ui/back-button"
 import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
-import { PageContainer } from "~/components/layout/PageContainer"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
@@ -68,7 +68,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 			<BackButton />
 
 			{/* Header */}
-			<div className="mb-6 mt-6">
+			<div className="mt-6 mb-6">
 				<div className="mb-4 flex items-start justify-between">
 					<div className="flex items-center gap-3">
 						<MediaTypeIcon

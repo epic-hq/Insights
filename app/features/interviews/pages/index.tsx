@@ -123,7 +123,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 		// Files: documents (PDFs, spreadsheets, etc.)
 		if (sourceFilter === "files") {
-			return item.source_type !== "note" && item.media_type !== "voice_memo" && (item.source_type === "document" || item.media_type === "document")
+			return (
+				item.source_type !== "note" &&
+				item.media_type !== "voice_memo" &&
+				(item.source_type === "document" || item.media_type === "document")
+			)
 		}
 
 		return true
@@ -284,13 +288,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					</div>
 				) : viewMode === "cards" ? (
 					<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-						{filteredInterviews.map((item) => (
+						{filteredInterviews.map((item) =>
 							item.source_type === "note" ? (
 								<NoteCard key={item.id} note={item as any} />
 							) : (
 								<InterviewCard key={item.id} interview={item} />
 							)
-						))}
+						)}
 					</div>
 				) : (
 					<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">

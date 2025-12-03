@@ -1,9 +1,9 @@
-import { Calendar, Clock, Download, FileText, Image as ImageIcon, File, User } from "lucide-react"
 import { formatDistance } from "date-fns"
+import { Calendar, Clock, Download, File, FileText, Image as ImageIcon, User } from "lucide-react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
 import MediaTypeIcon from "~/components/ui/MediaTypeIcon"
+import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
@@ -53,7 +53,11 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 		return status.charAt(0).toUpperCase() + status.slice(1)
 	}
 
-	const isTextContent = interview.source_type === "transcript" || interview.source_type === "note" || (interview.transcript && !interview.media_url) || interview.observations_and_notes
+	const isTextContent =
+		interview.source_type === "transcript" ||
+		interview.source_type === "note" ||
+		(interview.transcript && !interview.media_url) ||
+		interview.observations_and_notes
 	const isImage =
 		interview.file_extension &&
 		["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(interview.file_extension.toLowerCase())
@@ -78,12 +82,14 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 							labelClassName="text-base font-semibold"
 						/>
 					</div>
-					<Badge className={cn("text-xs font-medium", getStatusColor(interview.status))}>
+					<Badge className={cn("font-medium text-xs", getStatusColor(interview.status))}>
 						{formatStatus(interview.status)}
 					</Badge>
 				</div>
 
-				<h1 className="mb-2 font-bold text-3xl text-slate-900 dark:text-white">{interview.title || "Untitled Document"}</h1>
+				<h1 className="mb-2 font-bold text-3xl text-slate-900 dark:text-white">
+					{interview.title || "Untitled Document"}
+				</h1>
 
 				{/* Participant info */}
 				{participantName && (
@@ -113,28 +119,87 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 
 			{/* Content Area - no extra card wrapper */}
 			<div>
-					{/* Text Content */}
-					{isTextContent && (interview.transcript || interview.observations_and_notes) && (
-						<div className="prose prose-slate max-w-none dark:prose-invert">
-							<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
-								<FileText className="h-5 w-5" />
-								<h2 className="m-0 font-semibold text-slate-900 text-xl dark:text-white">
-									{interview.source_type === "note" ? "Note" : "Transcript"}
-								</h2>
-							</div>
-							<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 font-mono text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
-								{interview.observations_and_notes || interview.transcript}
-							</div>
+				{/* Text Content */}
+				{isTextContent && (interview.transcript || interview.observations_and_notes) && (
+					<div className="prose prose-slate dark:prose-invert max-w-none">
+						<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
+							<FileText className="h-5 w-5" />
+							<h2 className="m-0 font-semibold text-slate-900 text-xl dark:text-white">
+								{interview.source_type === "note" ? "Note" : "Transcript"}
+							</h2>
 						</div>
-					)}
+						<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 font-mono text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
+							{interview.observations_and_notes || interview.transcript}
+						</div>
+					</div>
+				)}
 
-					{/* Image Content */}
-					{isImage && interview.media_url && (
+				{/* Image Content */}
+				{isImage && interview.media_url && (
+					<div className="space-y-4">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+								<ImageIcon className="h-5 w-5" />
+								<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Image</h2>
+							</div>
+							<Button asChild size="sm" variant="outline">
+								<a href={interview.media_url} download target="_blank" rel="noopener noreferrer">
+									<Download className="mr-1.5 h-3.5 w-3.5" />
+									Download
+								</a>
+							</Button>
+						</div>
+						<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+							<img src={interview.media_url} alt={interview.title || "Document image"} className="w-full" />
+						</div>
+					</div>
+				)}
+
+				{/* PDF Documents */}
+				{interview.media_url && interview.file_extension?.toLowerCase() === "pdf" && (
+					<div className="space-y-4">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+								<File className="h-5 w-5" />
+								<h2 className="font-semibold text-slate-900 text-xl dark:text-white">PDF Document</h2>
+							</div>
+							<Button asChild size="sm" variant="outline">
+								<a href={interview.media_url} download target="_blank" rel="noopener noreferrer">
+									<Download className="mr-1.5 h-3.5 w-3.5" />
+									Download
+								</a>
+							</Button>
+						</div>
+						<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+							<iframe
+								src={`${interview.media_url}#view=FitH`}
+								className="h-[800px] w-full"
+								title={interview.title || "PDF Document"}
+							/>
+						</div>
+						{interview.transcript && (
+							<div className="mt-6 border-slate-200 border-t pt-6 dark:border-slate-700">
+								<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
+									<FileText className="h-5 w-5" />
+									<h3 className="font-semibold text-lg text-slate-900 dark:text-white">Notes</h3>
+								</div>
+								<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
+									{interview.transcript}
+								</div>
+							</div>
+						)}
+					</div>
+				)}
+
+				{/* Markdown Files */}
+				{interview.media_url &&
+					interview.file_extension &&
+					["md", "markdown"].includes(interview.file_extension.toLowerCase()) && (
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-									<ImageIcon className="h-5 w-5" />
-									<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Image</h2>
+									<FileText className="h-5 w-5" />
+									<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Markdown Document</h2>
 								</div>
 								<Button asChild size="sm" variant="outline">
 									<a href={interview.media_url} download target="_blank" rel="noopener noreferrer">
@@ -143,19 +208,37 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 									</a>
 								</Button>
 							</div>
-							<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-								<img src={interview.media_url} alt={interview.title || "Document image"} className="w-full" />
-							</div>
+							{interview.transcript ? (
+								<div className="prose prose-slate dark:prose-invert max-w-none">
+									<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
+										{interview.transcript}
+									</div>
+								</div>
+							) : (
+								<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+									<iframe
+										src={interview.media_url}
+										className="h-[600px] w-full"
+										title={interview.title || "Markdown Document"}
+									/>
+								</div>
+							)}
 						</div>
 					)}
 
-					{/* PDF Documents */}
-					{interview.media_url && interview.file_extension?.toLowerCase() === "pdf" && (
+				{/* Other Documents (Word, Excel, etc.) - Try iframe, fallback to download */}
+				{isDocument &&
+					interview.media_url &&
+					!isImage &&
+					interview.file_extension &&
+					!["pdf", "md", "markdown"].includes(interview.file_extension.toLowerCase()) && (
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
 									<File className="h-5 w-5" />
-									<h2 className="font-semibold text-slate-900 text-xl dark:text-white">PDF Document</h2>
+									<h2 className="font-semibold text-slate-900 text-xl dark:text-white">
+										{interview.file_extension.toUpperCase()} Document
+									</h2>
 								</div>
 								<Button asChild size="sm" variant="outline">
 									<a href={interview.media_url} download target="_blank" rel="noopener noreferrer">
@@ -164,18 +247,32 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 									</a>
 								</Button>
 							</div>
-							<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-								<iframe
-									src={`${interview.media_url}#view=FitH`}
-									className="h-[800px] w-full"
-									title={interview.title || "PDF Document"}
-								/>
-							</div>
+
+							{/* Try to display with Google Docs Viewer for Office files */}
+							{interview.file_extension &&
+							["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(interview.file_extension.toLowerCase()) ? (
+								<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+									<iframe
+										src={`https://docs.google.com/viewer?url=${encodeURIComponent(interview.media_url)}&embedded=true`}
+										className="h-[800px] w-full"
+										title={interview.title || "Document"}
+									/>
+								</div>
+							) : (
+								<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+									<iframe
+										src={interview.media_url}
+										className="h-[600px] w-full"
+										title={interview.title || "Document"}
+									/>
+								</div>
+							)}
+
 							{interview.transcript && (
 								<div className="mt-6 border-slate-200 border-t pt-6 dark:border-slate-700">
 									<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
 										<FileText className="h-5 w-5" />
-										<h3 className="font-semibold text-slate-900 text-lg dark:text-white">Notes</h3>
+										<h3 className="font-semibold text-lg text-slate-900 dark:text-white">Notes</h3>
 									</div>
 									<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
 										{interview.transcript}
@@ -184,89 +281,6 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 							)}
 						</div>
 					)}
-
-					{/* Markdown Files */}
-					{interview.media_url &&
-						interview.file_extension &&
-						["md", "markdown"].includes(interview.file_extension.toLowerCase()) && (
-							<div className="space-y-4">
-								<div className="flex items-center justify-between">
-									<div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-										<FileText className="h-5 w-5" />
-										<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Markdown Document</h2>
-									</div>
-									<Button asChild size="sm" variant="outline">
-										<a href={interview.media_url} download target="_blank" rel="noopener noreferrer">
-											<Download className="mr-1.5 h-3.5 w-3.5" />
-											Download
-										</a>
-									</Button>
-								</div>
-								{interview.transcript ? (
-									<div className="prose prose-slate max-w-none dark:prose-invert">
-										<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
-											{interview.transcript}
-										</div>
-									</div>
-								) : (
-									<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-										<iframe src={interview.media_url} className="h-[600px] w-full" title={interview.title || "Markdown Document"} />
-									</div>
-								)}
-							</div>
-						)}
-
-					{/* Other Documents (Word, Excel, etc.) - Try iframe, fallback to download */}
-					{isDocument &&
-						interview.media_url &&
-						!isImage &&
-						interview.file_extension &&
-						!["pdf", "md", "markdown"].includes(interview.file_extension.toLowerCase()) && (
-							<div className="space-y-4">
-								<div className="flex items-center justify-between">
-									<div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-										<File className="h-5 w-5" />
-										<h2 className="font-semibold text-slate-900 text-xl dark:text-white">
-											{interview.file_extension.toUpperCase()} Document
-										</h2>
-									</div>
-									<Button asChild size="sm" variant="outline">
-										<a href={interview.media_url} download target="_blank" rel="noopener noreferrer">
-											<Download className="mr-1.5 h-3.5 w-3.5" />
-											Download
-										</a>
-									</Button>
-								</div>
-
-								{/* Try to display with Google Docs Viewer for Office files */}
-								{interview.file_extension &&
-								["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(interview.file_extension.toLowerCase()) ? (
-									<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-										<iframe
-											src={`https://docs.google.com/viewer?url=${encodeURIComponent(interview.media_url)}&embedded=true`}
-											className="h-[800px] w-full"
-											title={interview.title || "Document"}
-										/>
-									</div>
-								) : (
-									<div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-										<iframe src={interview.media_url} className="h-[600px] w-full" title={interview.title || "Document"} />
-									</div>
-								)}
-
-								{interview.transcript && (
-									<div className="mt-6 border-slate-200 border-t pt-6 dark:border-slate-700">
-										<div className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-400">
-											<FileText className="h-5 w-5" />
-											<h3 className="font-semibold text-slate-900 text-lg dark:text-white">Notes</h3>
-										</div>
-										<div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-6 text-slate-800 text-sm dark:bg-slate-800/50 dark:text-slate-200">
-											{interview.transcript}
-										</div>
-									</div>
-								)}
-							</div>
-						)}
 
 				{/* Empty state */}
 				{!interview.transcript && !interview.observations_and_notes && !interview.media_url && (

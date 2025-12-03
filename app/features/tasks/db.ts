@@ -149,13 +149,7 @@ export async function getTasks({
 	return (data as Task[]) || []
 }
 
-export async function getTaskById({
-	supabase,
-	taskId,
-}: {
-	supabase: SupabaseClient
-	taskId: string
-}): Promise<Task> {
+export async function getTaskById({ supabase, taskId }: { supabase: SupabaseClient; taskId: string }): Promise<Task> {
 	const { data, error } = await supabase.from("tasks").select("*").eq("id", taskId).single()
 
 	if (error) {

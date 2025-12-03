@@ -48,10 +48,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				}
 			}
 
-			const { error } = await supabase
-				.from("stakeholders")
-				.update(updateData)
-				.eq("id", stakeholderId)
+			const { error } = await supabase.from("stakeholders").update(updateData).eq("id", stakeholderId)
 
 			if (error) {
 				console.error("Error updating stakeholder:", error)
@@ -68,9 +65,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					influence: "medium",
 				}
 
-				const { error } = await supabase
-					.from("stakeholders")
-					.insert(insertData)
+				const { error } = await supabase.from("stakeholders").insert(insertData)
 
 				if (error) {
 					console.error("Error creating stakeholder:", error)

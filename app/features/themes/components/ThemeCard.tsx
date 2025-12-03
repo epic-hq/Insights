@@ -11,10 +11,7 @@ import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import type { Evidence, Insight, Person, Theme } from "~/types"
 
-export type ThemeCardTheme = Pick<
-	Theme,
-	"id" | "name" | "statement" | "inclusion_criteria" | "exclusion_criteria"
-> & {
+export type ThemeCardTheme = Pick<Theme, "id" | "name" | "statement" | "inclusion_criteria" | "exclusion_criteria"> & {
 	evidence_count?: number
 	insights_count?: number
 }
@@ -229,17 +226,13 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 							<div className="space-y-3">
 								{theme.inclusion_criteria && (
 									<div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
-										<h4 className="mb-1 font-medium text-green-900 text-sm dark:text-green-100">
-											Inclusion Criteria
-										</h4>
+										<h4 className="mb-1 font-medium text-green-900 text-sm dark:text-green-100">Inclusion Criteria</h4>
 										<p className="text-green-700 text-sm dark:text-green-300">{theme.inclusion_criteria}</p>
 									</div>
 								)}
 								{theme.exclusion_criteria && (
 									<div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
-										<h4 className="mb-1 font-medium text-red-900 text-sm dark:text-red-100">
-											Exclusion Criteria
-										</h4>
+										<h4 className="mb-1 font-medium text-red-900 text-sm dark:text-red-100">Exclusion Criteria</h4>
 										<p className="text-red-700 text-sm dark:text-red-300">{theme.exclusion_criteria}</p>
 									</div>
 								)}

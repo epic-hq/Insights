@@ -510,7 +510,11 @@ export function SalesLensesSection({
 											<li key={`pain-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-destructive">•</span>
 												{url ? (
-													<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+													<Link
+														to={url}
+														className="hover:text-primary hover:underline"
+														onClick={(e) => e.stopPropagation()}
+													>
 														{pain.text}
 													</Link>
 												) : (
@@ -535,7 +539,11 @@ export function SalesLensesSection({
 											<li key={`gain-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-emerald-600">•</span>
 												{url ? (
-													<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+													<Link
+														to={url}
+														className="hover:text-primary hover:underline"
+														onClick={(e) => e.stopPropagation()}
+													>
 														{gain.text}
 													</Link>
 												) : (
@@ -587,7 +595,11 @@ export function SalesLensesSection({
 												<li key={`says-${index}`} className="flex gap-2">
 													<span className="mt-[3px] text-muted-foreground">•</span>
 													{url ? (
-														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+														<Link
+															to={url}
+															className="hover:text-primary hover:underline"
+															onClick={(e) => e.stopPropagation()}
+														>
 															{item.text}
 														</Link>
 													) : (
@@ -612,7 +624,11 @@ export function SalesLensesSection({
 												<li key={`does-${index}`} className="flex gap-2">
 													<span className="mt-[3px] text-muted-foreground">•</span>
 													{url ? (
-														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+														<Link
+															to={url}
+															className="hover:text-primary hover:underline"
+															onClick={(e) => e.stopPropagation()}
+														>
 															{item.text}
 														</Link>
 													) : (
@@ -637,7 +653,11 @@ export function SalesLensesSection({
 												<li key={`thinks-${index}`} className="flex gap-2">
 													<span className="mt-[3px] text-muted-foreground">•</span>
 													{url ? (
-														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+														<Link
+															to={url}
+															className="hover:text-primary hover:underline"
+															onClick={(e) => e.stopPropagation()}
+														>
 															{item.text}
 														</Link>
 													) : (
@@ -662,7 +682,11 @@ export function SalesLensesSection({
 												<li key={`feels-${index}`} className="flex gap-2">
 													<span className="mt-[3px] text-muted-foreground">•</span>
 													{url ? (
-														<Link to={url} className="hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+														<Link
+															to={url}
+															className="hover:text-primary hover:underline"
+															onClick={(e) => e.stopPropagation()}
+														>
 															{item.text}
 														</Link>
 													) : (

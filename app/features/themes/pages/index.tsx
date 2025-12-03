@@ -31,7 +31,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	console.log(`[ThemesIndex] Loaded ${themes?.length || 0} themes, error:`, tErr)
 	if (themes?.length > 0) {
-		console.log(`[ThemesIndex] Sample theme:`, themes[0])
+		console.log("[ThemesIndex] Sample theme:", themes[0])
 	}
 
 	if (tErr) throw new Error(`Failed to load themes: ${tErr.message}`)
@@ -51,7 +51,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	})
 	console.log(`[ThemesIndex] Loaded ${insights?.length || 0} insights from getInsights, error:`, iErr)
 	if (insights?.length > 0) {
-		console.log(`[ThemesIndex] Sample insight:`, insights[0])
+		console.log("[ThemesIndex] Sample insight:", insights[0])
 	}
 	if (iErr) throw new Error(`Failed to load insights: ${iErr.message}`)
 
@@ -218,9 +218,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	// Count themes missing metadata
-	const themesNeedingEnrichment = enriched.filter(
-		(t: any) => !t.pain || !t.jtbd || !t.category
-	).length
+	const themesNeedingEnrichment = enriched.filter((t: any) => !t.pain || !t.jtbd || !t.category).length
 
 	return { themes: enriched, matrixData, insights, themesNeedingEnrichment }
 }
@@ -233,12 +231,7 @@ export default function ThemesIndex() {
 
 	const visibleInsights = useMemo(() => {
 		const filtered = insights.filter((insight) => {
-			const textFields = [
-				insight.name,
-				insight.statement,
-				insight.inclusion_criteria,
-				insight.exclusion_criteria,
-			]
+			const textFields = [insight.name, insight.statement, insight.inclusion_criteria, insight.exclusion_criteria]
 				.map((value) => (typeof value === "string" ? value.trim() : ""))
 				.filter((value) => value.length > 0)
 
@@ -246,7 +239,7 @@ export default function ThemesIndex() {
 		})
 		console.log(`[ThemesIndex Client] Filtered ${insights.length} insights -> ${filtered.length} visible`)
 		if (filtered.length === 0 && insights.length > 0) {
-			console.log(`[ThemesIndex Client] Sample filtered insight:`, insights[0])
+			console.log("[ThemesIndex Client] Sample filtered insight:", insights[0])
 		}
 		return filtered
 	}, [insights])
@@ -291,7 +284,13 @@ export default function ThemesIndex() {
 					<h1 className="font-semibold text-3xl text-foreground">Insight Themes</h1>
 				</div>
 				<div className="flex items-center gap-3">
-					{themesNeedingEnrichment > 0 && <EnrichThemesButton count={themesNeedingEnrichment} projectId={params.projectId!} accountId={params.accountId!} />}
+					{themesNeedingEnrichment > 0 && (
+						<EnrichThemesButton
+							count={themesNeedingEnrichment}
+							projectId={params.projectId!}
+							accountId={params.accountId!}
+						/>
+					)}
 					<div className="relative w-full max-w-md">
 						<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 						<Input

@@ -48,13 +48,10 @@ export const getInsights = async ({
 				.in("theme_id", insightIds)
 		: { data: null }
 
-	const interviewIds = Array.from(
-		new Set(
-			(evidenceLinks as any)
-				?.map((link: any) => link.evidence?.interview_id)
-				.filter(Boolean) as string[]
-		)
-	) || []
+	const interviewIds =
+		Array.from(
+			new Set((evidenceLinks as any)?.map((link: any) => link.evidence?.interview_id).filter(Boolean) as string[])
+		) || []
 
 	const [tagsResult, personasResult, interviewsResult, priorityResult, votesResult] = insightIds.length
 		? await Promise.all([
@@ -106,7 +103,7 @@ export const getInsights = async ({
 	// Build interview map for each theme via evidence links
 	const themeInterviewsMap = new Map<string, string[]>()
 	if (evidenceLinks) {
-		(evidenceLinks as any).forEach((link: any) => {
+		;(evidenceLinks as any).forEach((link: any) => {
 			const themeId = link.theme_id
 			const interviewId = link.evidence?.interview_id
 			if (themeId && interviewId) {
@@ -124,11 +121,9 @@ export const getInsights = async ({
 		...insight,
 		priority: priorityMap.get(insight.id) ?? 0,
 		vote_count: voteCountMap.get(insight.id) ?? 0,
-		evidence_count: Array.isArray(insight.theme_evidence) ? insight.theme_evidence[0]?.count ?? 0 : 0,
+		evidence_count: Array.isArray(insight.theme_evidence) ? (insight.theme_evidence[0]?.count ?? 0) : 0,
 		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
-		interviews: (themeInterviewsMap.get(insight.id) || [])
-			.map((id) => interviewsMap.get(id))
-			.filter(Boolean),
+		interviews: (themeInterviewsMap.get(insight.id) || []).map((id) => interviewsMap.get(id)).filter(Boolean),
 		insight_tags:
 			tagsMap.get(insight.id)?.map((tag) => ({
 				tag: tag.tag,
@@ -222,14 +217,21 @@ export const getInsightById = async ({
 
 	const evidenceIds = themeEvidence?.map((te) => te.evidence_id).filter(Boolean) ?? []
 
-	let peopleData: Array<{ id: string; name: string | null; role: string | null; organization?: { id: string; name: string | null } | null }> = []
-	let orgCounts: Map<string, { id: string; name: string; count: number }> = new Map()
+	let peopleData: Array<{
+		id: string
+		name: string | null
+		role: string | null
+		organization?: { id: string; name: string | null } | null
+	}> = []
+	const orgCounts: Map<string, { id: string; name: string; count: number }> = new Map()
 
 	if (evidenceIds.length > 0) {
 		// 2. Get people linked to this evidence
 		const { data: evidencePeople } = await supabase
 			.from("evidence_people")
-			.select("person_id, role, people:person_id!inner(id, name, organization_id, organizations:organization_id(id, name))")
+			.select(
+				"person_id, role, people:person_id!inner(id, name, organization_id, organizations:organization_id(id, name))"
+			)
 			.eq("project_id", projectId)
 			.in("evidence_id", evidenceIds)
 
@@ -242,10 +244,12 @@ export const getInsightById = async ({
 						id: ep.people.id,
 						name: ep.people.name,
 						role: ep.role,
-						organization: ep.people.organizations ? {
-							id: ep.people.organizations.id,
-							name: ep.people.organizations.name
-						} : null
+						organization: ep.people.organizations
+							? {
+									id: ep.people.organizations.id,
+									name: ep.people.organizations.name,
+								}
+							: null,
 					})
 
 					// Count orgs
@@ -258,7 +262,7 @@ export const getInsightById = async ({
 							orgCounts.set(orgId, {
 								id: orgId,
 								name: ep.people.organizations.name,
-								count: 1
+								count: 1,
 							})
 						}
 					}
@@ -272,7 +276,7 @@ export const getInsightById = async ({
 		...insightData,
 		priority: priorityResult?.data?.priority ?? 0,
 		evidence_count: Array.isArray((insightData as any).theme_evidence)
-			? (insightData as any).theme_evidence[0]?.count ?? 0
+			? ((insightData as any).theme_evidence[0]?.count ?? 0)
 			: 0,
 		persona_insights: personasResult?.data?.map((row) => ({ personas: row.personas })) ?? [],
 		insight_tags:

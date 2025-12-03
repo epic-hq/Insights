@@ -478,7 +478,6 @@ export function ProjectStatusAgentChat({
 						</div>
 
 						<div className="mt-3 flex-shrink-0">
-
 							<form onSubmit={handleSubmit} className="space-y-2">
 								<Textarea
 									ref={textareaRef}
@@ -517,7 +516,6 @@ export function ProjectStatusAgentChat({
 													className="h-8 w-8"
 												/>
 												<ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
-
 											</div>
 										)}
 										<button

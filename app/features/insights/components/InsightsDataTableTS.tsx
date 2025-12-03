@@ -65,7 +65,9 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				cell: (cell: CellContext<Insight, unknown>) => {
 					const value = cell.getValue() as string
 					return value && value !== "—" ? (
-						<Badge variant="secondary" className="text-xs">{value}</Badge>
+						<Badge variant="secondary" className="text-xs">
+							{value}
+						</Badge>
 					) : (
 						<span className="text-muted-foreground/60">—</span>
 					)

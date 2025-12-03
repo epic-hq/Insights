@@ -44,9 +44,9 @@ import { memory } from "~/mastra/memory"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
+import { DocumentViewer } from "../components/DocumentViewer"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
-import { DocumentViewer } from "../components/DocumentViewer"
 import { NoteViewer } from "../components/NoteViewer"
 
 // Helper to parse full name into first and last
@@ -473,27 +473,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							project_id: string | null
+							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -612,7 +612,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					const interviewsIndex = pathParts.findIndex((part) => part === "interviews")
 					if (interviewsIndex >= 0 && interviewsIndex < pathParts.length - 1) {
 						// Check if next part is also "interviews" (doubled path bug)
-						const startIndex = pathParts[interviewsIndex + 1] === "interviews" ? interviewsIndex + 2 : interviewsIndex + 1
+						const startIndex =
+							pathParts[interviewsIndex + 1] === "interviews" ? interviewsIndex + 2 : interviewsIndex + 1
 						r2Key = pathParts.slice(startIndex).join("/")
 						// Add interviews prefix if not already there
 						if (!r2Key.startsWith("interviews/")) {
@@ -900,7 +901,12 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	}
 
 	// Check if this is a note - use NoteViewer for editing
-	if (interview.source_type === "note" || interview.media_type === "note" || interview.media_type === "meeting_notes" || interview.media_type === "voice_memo") {
+	if (
+		interview.source_type === "note" ||
+		interview.media_type === "note" ||
+		interview.media_type === "meeting_notes" ||
+		interview.media_type === "voice_memo"
+	) {
 		return <NoteViewer interview={interview} projectId={projectId} />
 	}
 
@@ -1094,11 +1100,13 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const personLenses = useMemo(() => {
 		return uniqueSpeakers.map((speaker) => {
 			const filterByPerson = (items: typeof empathyMap.says) => {
-				return items.filter((item) => item.personId === speaker.id).map((item) => ({
-					text: item.text,
-					evidenceId: item.evidenceId,
-					anchors: item.anchors,
-				}))
+				return items
+					.filter((item) => item.personId === speaker.id)
+					.map((item) => ({
+						text: item.text,
+						evidenceId: item.evidenceId,
+						anchors: item.anchors,
+					}))
 			}
 
 			return {
@@ -1430,11 +1438,13 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								<div className="flex-1">
 									<p className="font-semibold text-primary text-xs uppercase tracking-wide">Analysis in progress</p>
 									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
-									{progressInfo.currentStep && progressInfo.completedSteps && progressInfo.completedSteps.length > 0 && (
-										<p className="mt-1 text-muted-foreground text-xs">
-											Completed: {progressInfo.completedSteps.join(" → ")}
-										</p>
-									)}
+									{progressInfo.currentStep &&
+										progressInfo.completedSteps &&
+										progressInfo.completedSteps.length > 0 && (
+											<p className="mt-1 text-muted-foreground text-xs">
+												Completed: {progressInfo.completedSteps.join(" → ")}
+											</p>
+										)}
 								</div>
 								<div className="flex flex-col items-end gap-2">
 									<div className="flex items-center gap-3">
@@ -1449,7 +1459,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<div className="flex items-center gap-2">
 										{/* Cancel button - show if we have trigger run ID OR if interview is processing */}
 										{(progressInfo.canCancel && progressInfo.triggerRunId && progressInfo.analysisJobId) ||
-											(isProcessing && (progressInfo.analysisJobId || interview.id)) ? (
+										(isProcessing && (progressInfo.analysisJobId || interview.id)) ? (
 											<button
 												type="button"
 												onClick={() => {
@@ -1459,7 +1469,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 																{
 																	runId: progressInfo.triggerRunId || "",
 																	analysisJobId: progressInfo.analysisJobId || "",
-																	interview_id: interview.id
+																	interview_id: interview.id,
 																},
 																{ method: "post", action: "/api/cancel-analysis" }
 															)

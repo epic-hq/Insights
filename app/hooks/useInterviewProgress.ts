@@ -325,7 +325,14 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 		const hasError = interview.status === "error" || Boolean(metadata.failed_at)
 		const canCancel = isActiveJob && Boolean(triggerRunId)
 
-		console.log("[useInterviewProgress] canCancel:", canCancel, "isActiveJob:", isActiveJob, "has trigger_run_id:", Boolean(triggerRunId))
+		console.log(
+			"[useInterviewProgress] canCancel:",
+			canCancel,
+			"isActiveJob:",
+			isActiveJob,
+			"has trigger_run_id:",
+			Boolean(triggerRunId)
+		)
 
 		// Map workflow steps to user-friendly labels
 		const stepLabels: Record<string, string> = {

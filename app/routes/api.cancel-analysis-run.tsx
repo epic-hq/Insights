@@ -53,7 +53,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			await runs.cancel(runId)
 			consola.info(`Successfully canceled Trigger.dev run ${runId}`)
 		} catch (cancelError) {
-			consola.warn(`Failed to cancel Trigger.dev run:`, cancelError)
+			consola.warn("Failed to cancel Trigger.dev run:", cancelError)
 			// Continue anyway to mark job as canceled in our database
 		}
 

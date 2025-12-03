@@ -203,8 +203,8 @@ export default function GettingStarted() {
 							<li className="flex items-start gap-2">
 								<span className="text-primary">→</span>
 								<span>
-									<strong>Analyze segmentation:</strong> View which organizations and people mentioned each theme to identify
-									persona-specific patterns
+									<strong>Analyze segmentation:</strong> View which organizations and people mentioned each theme to
+									identify persona-specific patterns
 								</span>
 							</li>
 							<li className="flex items-start gap-2">

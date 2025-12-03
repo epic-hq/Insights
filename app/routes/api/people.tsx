@@ -29,21 +29,31 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 			.not("contact_name", "is", null)
 
 		// Deduplicate by contact_name
-		const peopleMap = new Map<string, { id: string; display_name?: string; email?: string; title?: string; company?: string }>()
-		interviews?.forEach((interview: { contact_name?: string; contact_email?: string; contact_title?: string; contact_company?: string }) => {
-			if (interview.contact_name) {
-				const key = `${interview.contact_name}-${interview.contact_email || ""}`
-				if (!peopleMap.has(key)) {
-					peopleMap.set(key, {
-						id: key,
-						display_name: interview.contact_name,
-						email: interview.contact_email,
-						title: interview.contact_title,
-						company: interview.contact_company,
-					})
+		const peopleMap = new Map<
+			string,
+			{ id: string; display_name?: string; email?: string; title?: string; company?: string }
+		>()
+		interviews?.forEach(
+			(interview: {
+				contact_name?: string
+				contact_email?: string
+				contact_title?: string
+				contact_company?: string
+			}) => {
+				if (interview.contact_name) {
+					const key = `${interview.contact_name}-${interview.contact_email || ""}`
+					if (!peopleMap.has(key)) {
+						peopleMap.set(key, {
+							id: key,
+							display_name: interview.contact_name,
+							email: interview.contact_email,
+							title: interview.contact_title,
+							company: interview.contact_company,
+						})
+					}
 				}
 			}
-		})
+		)
 
 		const people = Array.from(peopleMap.values())
 

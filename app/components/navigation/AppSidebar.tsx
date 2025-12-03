@@ -64,7 +64,7 @@ export function AppSidebar() {
 	const { project } = useCurrentProjectData()
 	const { showValidationView, setShowValidationView } = useValidationView()
 	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
- const { isEnabled: prioritiesEnabled } = usePostHogFeatureFlag("ffPriorities")
+	const { isEnabled: prioritiesEnabled } = usePostHogFeatureFlag("ffPriorities")
 
 	const accounts = useMemo(() => {
 		if (!protectedData?.accounts) return [] as AccountRecord[]

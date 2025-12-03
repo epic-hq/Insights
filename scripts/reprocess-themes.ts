@@ -24,9 +24,19 @@ type TranscriptFormattedPayload = {
 	transcript?: string | null
 }
 
-type InterviewRecord = Pick<Database["public"]["Tables"]["interviews"]["Row"],
-	"id" | "account_id" | "project_id" | "title" | "media_url" | "status" | "duration_sec" | "transcript_formatted" | "transcript" | "updated_at">
-	& { transcript_data?: Record<string, unknown> }
+type InterviewRecord = Pick<
+	Database["public"]["Tables"]["interviews"]["Row"],
+	| "id"
+	| "account_id"
+	| "project_id"
+	| "title"
+	| "media_url"
+	| "status"
+	| "duration_sec"
+	| "transcript_formatted"
+	| "transcript"
+	| "updated_at"
+> & { transcript_data?: Record<string, unknown> }
 
 interface ScriptOptions {
 	projectId?: string

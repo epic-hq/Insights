@@ -27,7 +27,12 @@ export function useRecordNow() {
 	const [isRecording, setIsRecording] = useState(false)
 
 	const recordNow = useCallback(
-		async ({ projectId, redirect = true, urlParams = "", mode = "notes" }: RecordNowOptions = {}): Promise<RecordNowResult | null> => {
+		async ({
+			projectId,
+			redirect = true,
+			urlParams = "",
+			mode = "notes",
+		}: RecordNowOptions = {}): Promise<RecordNowResult | null> => {
 			if (!accountId || !accountBase) {
 				consola.error("Record Now error: missing account context")
 				return null

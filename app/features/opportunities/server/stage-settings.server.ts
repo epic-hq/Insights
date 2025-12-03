@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { loadAccountMetadata } from "~/features/accounts/server/account-settings.server"
 import type { Database } from "~/types"
-import { resolveOpportunityStages, type AccountSettingsMetadata } from "../stage-config"
+import { type AccountSettingsMetadata, resolveOpportunityStages } from "../stage-config"
 
 export async function loadOpportunityStages({
 	supabase,

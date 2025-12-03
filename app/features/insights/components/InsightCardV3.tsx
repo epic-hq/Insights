@@ -36,8 +36,14 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 					</div>
 
 					<div className="mb-3 flex flex-wrap gap-1.5">
-						{(insight as any).category && <Badge variant="secondary" className="text-xs">{(insight as any).category}</Badge>}
-						{(insight as any).emotional_response && <EmotionBadge emotion={(insight as any).emotional_response} size="sm" />}
+						{(insight as any).category && (
+							<Badge variant="secondary" className="text-xs">
+								{(insight as any).category}
+							</Badge>
+						)}
+						{(insight as any).emotional_response && (
+							<EmotionBadge emotion={(insight as any).emotional_response} size="sm" />
+						)}
 					</div>
 
 					{(insight as any).statement && (
@@ -45,9 +51,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 					)}
 
 					{(insight as any).pain && (
-						<p className="mb-3 line-clamp-2 text-muted-foreground text-xs italic">
-							Pain: {(insight as any).pain}
-						</p>
+						<p className="mb-3 line-clamp-2 text-muted-foreground text-xs italic">Pain: {(insight as any).pain}</p>
 					)}
 
 					<div className="flex flex-wrap items-center justify-between gap-2">
@@ -79,7 +83,9 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 								<div className="border-b pb-3 font-semibold text-lg">{selected.name || "Untitled Theme"}</div>
 								<div className="flex flex-wrap gap-2">
 									{(selected as any).category && <Badge variant="secondary">{(selected as any).category}</Badge>}
-									{(selected as any).emotional_response && <EmotionBadge emotion={(selected as any).emotional_response} />}
+									{(selected as any).emotional_response && (
+										<EmotionBadge emotion={(selected as any).emotional_response} />
+									)}
 									{(selected as any).evidence_count > 0 && (
 										<Badge variant="outline" className="gap-1.5">
 											<Quote className="h-3.5 w-3.5" />
@@ -130,9 +136,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 								<div className="grid grid-cols-1 gap-4">
 									{(selected as any).inclusion_criteria && (
 										<div className="space-y-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
-											<h4 className="font-medium text-green-900 text-sm dark:text-green-100">
-												Inclusion Criteria
-											</h4>
+											<h4 className="font-medium text-green-900 text-sm dark:text-green-100">Inclusion Criteria</h4>
 											<p className="text-green-700 text-sm dark:text-green-300">
 												{(selected as any).inclusion_criteria}
 											</p>
@@ -141,9 +145,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 									{(selected as any).exclusion_criteria && (
 										<div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
 											<h4 className="font-medium text-red-900 text-sm dark:text-red-100">Exclusion Criteria</h4>
-											<p className="text-red-700 text-sm dark:text-red-300">
-												{(selected as any).exclusion_criteria}
-											</p>
+											<p className="text-red-700 text-sm dark:text-red-300">{(selected as any).exclusion_criteria}</p>
 										</div>
 									)}
 								</div>

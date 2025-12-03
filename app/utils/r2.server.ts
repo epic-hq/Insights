@@ -171,7 +171,9 @@ async function uploadToR2Single({
 		clearTimeout(timeoutId)
 
 		if (error instanceof Error && error.name === "AbortError") {
-			consola.error(`R2 upload timed out after ${SINGLE_UPLOAD_TIMEOUT}ms (${(body.length / 1024 / 1024).toFixed(2)}MB)`)
+			consola.error(
+				`R2 upload timed out after ${SINGLE_UPLOAD_TIMEOUT}ms (${(body.length / 1024 / 1024).toFixed(2)}MB)`
+			)
 			return { success: false, error: `Upload timed out after ${SINGLE_UPLOAD_TIMEOUT / 1000}s` }
 		}
 

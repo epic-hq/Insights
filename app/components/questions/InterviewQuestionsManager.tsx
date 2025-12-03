@@ -40,9 +40,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import { useOptionalProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions"
 import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
-import { useOptionalProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
@@ -326,7 +326,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		const prompt = [
 			"Review the current interview prompts and help curate them.",
 			"You can call fetchInterviewPrompts/createInterviewPrompt/updateInterviewPrompt/deleteInterviewPrompt to add, rewrite, reorder, or mark must-haves. Keep rationale, categories, and time estimates intact when useful.",
-			sample.length ? `Current prompts:\n${sample}` : "We do not have prompts yet—propose a concise, must-have set tailored to the project.",
+			sample.length
+				? `Current prompts:\n${sample}`
+				: "We do not have prompts yet—propose a concise, must-have set tailored to the project.",
 		]
 			.filter(Boolean)
 			.join("\n\n")

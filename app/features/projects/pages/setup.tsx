@@ -82,7 +82,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (extra && extra.trim().length > 0) {
 			signup.custom_instructions = String(extra)
 		}
-	} catch { }
+	} catch {}
 
 	let prefill: TemplatePrefill = fallbackPrefill(template_key, projectResult.data.name || "Project", signup)
 	try {

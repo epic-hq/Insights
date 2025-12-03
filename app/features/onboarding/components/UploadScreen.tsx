@@ -381,7 +381,9 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 				<div className="w-full space-y-4">
 					{/* Record Mode Selection - Mobile Friendly */}
 					<div className="space-y-3">
-						<h3 className="text-center font-semibold text-slate-900 text-xl sm:text-2xl dark:text-white">Quick Links</h3>
+						<h3 className="text-center font-semibold text-slate-900 text-xl sm:text-2xl dark:text-white">
+							Quick Links
+						</h3>
 
 						{/* Voice Memo Button */}
 						<button

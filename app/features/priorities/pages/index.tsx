@@ -238,13 +238,41 @@ function EditableStatusCell({ taskId, value }: { taskId: string; value: TaskStat
 	}
 
 	const statusConfig: Record<TaskStatus, { label: string; className: string; shortLabel: string }> = {
-		backlog: { label: "Backlog", shortLabel: "Backlog", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-		todo: { label: "To Do", shortLabel: "Todo", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-		in_progress: { label: "In Progress", shortLabel: "In Progress", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" },
-		blocked: { label: "Blocked", shortLabel: "Blocked", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
-		review: { label: "In Review", shortLabel: "Review", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
-		done: { label: "Done", shortLabel: "Done", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-		archived: { label: "Archived", shortLabel: "Archived", className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300" },
+		backlog: {
+			label: "Backlog",
+			shortLabel: "Backlog",
+			className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+		},
+		todo: {
+			label: "To Do",
+			shortLabel: "Todo",
+			className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+		},
+		in_progress: {
+			label: "In Progress",
+			shortLabel: "In Progress",
+			className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+		},
+		blocked: {
+			label: "Blocked",
+			shortLabel: "Blocked",
+			className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+		},
+		review: {
+			label: "In Review",
+			shortLabel: "Review",
+			className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+		},
+		done: {
+			label: "Done",
+			shortLabel: "Done",
+			className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+		},
+		archived: {
+			label: "Archived",
+			shortLabel: "Archived",
+			className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
+		},
 	}
 
 	const currentStatus = statusConfig[displayValue] || statusConfig.backlog
@@ -252,14 +280,18 @@ function EditableStatusCell({ taskId, value }: { taskId: string; value: TaskStat
 	return (
 		<Select value={displayValue} onValueChange={handleChange}>
 			<SelectTrigger className="h-7 w-28 border-0 bg-transparent p-0 text-xs hover:bg-muted">
-				<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentStatus.className}`}>
+				<span
+					className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentStatus.className}`}
+				>
 					{currentStatus.shortLabel}
 				</span>
 			</SelectTrigger>
 			<SelectContent>
 				{Object.entries(statusConfig).map(([val, config]) => (
 					<SelectItem key={val} value={val} className="text-xs">
-						<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}>
+						<span
+							className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}
+						>
 							{config.label}
 						</span>
 					</SelectItem>
@@ -539,7 +571,10 @@ function StatusBadge({ status }: { status: TaskStatus }) {
 	const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
 		backlog: { label: "Backlog", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
 		todo: { label: "To Do", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-		in_progress: { label: "In Progress", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" },
+		in_progress: {
+			label: "In Progress",
+			className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+		},
 		blocked: { label: "Blocked", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
 		review: { label: "In Review", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
 		done: { label: "Done", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
@@ -570,7 +605,7 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 			done: 0,
 			archived: 0,
 		}
-		tasks.forEach(task => {
+		tasks.forEach((task) => {
 			if (task.status && counts[task.status] !== undefined) {
 				counts[task.status]++
 			}
@@ -604,26 +639,26 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 					<TooltipContent className="max-w-xs">
 						<p className="text-xs">The current status of the task in the workflow</p>
 					</TooltipContent>
-			<PopoverContent className="w-48" align="start">
-				<div className="space-y-1">
-					<h4 className="mb-2 font-semibold text-xs text-muted-foreground">Show:</h4>
-					{filterOptions.map((option) => (
-						<Link
-							key={option.value}
-							to={`?status=${option.value}`}
-							preventScrollReset
-							onClick={() => setOpen(false)}
-							className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-								currentFilter === option.value ? "bg-muted font-medium" : ""
-							}`}
-						>
-							<span className={option.className}>{option.label}</span>
-							<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
-						</Link>
-					))}
-				</div>
-			</PopoverContent>
-		</Popover>
+					<PopoverContent className="w-48" align="start">
+						<div className="space-y-1">
+							<h4 className="mb-2 font-semibold text-muted-foreground text-xs">Show:</h4>
+							{filterOptions.map((option) => (
+								<Link
+									key={option.value}
+									to={`?status=${option.value}`}
+									preventScrollReset
+									onClick={() => setOpen(false)}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
+								>
+									<span className={option.className}>{option.label}</span>
+									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
+								</Link>
+							))}
+						</div>
+					</PopoverContent>
+				</Popover>
 			</Tooltip>
 		</TooltipProvider>
 	)
@@ -640,7 +675,7 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 			medium: 0,
 			low: 0,
 		}
-		tasks.forEach(task => {
+		tasks.forEach((task) => {
 			if (task.priority === 3) counts.high++
 			else if (task.priority === 2) counts.medium++
 			else if (task.priority === 1) counts.low++
@@ -670,31 +705,29 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 					<TooltipContent className="max-w-xs">
 						<p className="text-xs">The priority level of the task (High/Medium/Low)</p>
 					</TooltipContent>
-			<PopoverContent className="w-48" align="start">
-				<div className="space-y-1">
-					<h4 className="mb-2 font-semibold text-xs text-muted-foreground">Show:</h4>
-					{filterOptions.map((option) => (
-						<Link
-							key={option.value}
-							to={`?priority=${option.value}`}
-							preventScrollReset
-							onClick={() => setOpen(false)}
-							className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-								currentFilter === option.value ? "bg-muted font-medium" : ""
-							}`}
-						>
-							<div className="flex items-center">
-								{option.color && (
-									<span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />
-								)}
-								<span className={option.className}>{option.label}</span>
-							</div>
-							<span className="text-muted-foreground text-xs">({priorityCounts[option.value] || 0})</span>
-						</Link>
-					))}
-				</div>
-			</PopoverContent>
-		</Popover>
+					<PopoverContent className="w-48" align="start">
+						<div className="space-y-1">
+							<h4 className="mb-2 font-semibold text-muted-foreground text-xs">Show:</h4>
+							{filterOptions.map((option) => (
+								<Link
+									key={option.value}
+									to={`?priority=${option.value}`}
+									preventScrollReset
+									onClick={() => setOpen(false)}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
+								>
+									<div className="flex items-center">
+										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}
+										<span className={option.className}>{option.label}</span>
+									</div>
+									<span className="text-muted-foreground text-xs">({priorityCounts[option.value] || 0})</span>
+								</Link>
+							))}
+						</div>
+					</PopoverContent>
+				</Popover>
 			</Tooltip>
 		</TooltipProvider>
 	)
@@ -714,52 +747,52 @@ const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: stri
 	{
 		accessorKey: "feature",
 		header: ({ column }) => {
-			return <SortableColumnHeader
-				title="Tasks"
-				tooltip="The task, feature, or initiative to be implemented"
-				column={column}
-			/>
+			return (
+				<SortableColumnHeader
+					title="Tasks"
+					tooltip="The task, feature, or initiative to be implemented"
+					column={column}
+				/>
+			)
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="title" value={row.original.feature} />,
 	},
 	{
 		accessorKey: "benefit",
 		header: () => {
-			return <ColumnHeader
-				title="Benefits"
-				tooltip="Who benefits from this task and what value it provides to them"
-			/>
+			return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
 	},
 	{
 		accessorKey: "segments",
 		header: () => {
-			return <ColumnHeader
-				title="Segments"
-				tooltip="The customer or user segments this task targets"
-			/>
+			return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
 	},
 	{
 		accessorKey: "impact",
 		header: ({ column }) => {
-			return <SortableColumnHeader
-				title="Impact"
-				tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
-				column={column}
-			/>
+			return (
+				<SortableColumnHeader
+					title="Impact"
+					tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
+					column={column}
+				/>
+			)
 		},
 		cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
 	},
 	{
 		accessorKey: "stage",
 		header: () => {
-			return <ColumnHeader
-				title="Stage"
-				tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
-			/>
+			return (
+				<ColumnHeader
+					title="Stage"
+					tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
+				/>
+			)
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
 	},
@@ -777,7 +810,7 @@ const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: stri
 		},
 		cell: ({ row }) => {
 			// Get status from the original task data
-			const task = tasks.find(t => t.id === row.original.id)
+			const task = tasks.find((t) => t.id === row.original.id)
 			const status = task?.status || "backlog"
 			return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
 		},
@@ -785,20 +818,18 @@ const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: stri
 	{
 		accessorKey: "reason",
 		header: () => {
-			return <ColumnHeader
-				title="Reason"
-				tooltip="Why this task is important and the rationale behind its prioritization"
-			/>
+			return (
+				<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
+			)
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
 	},
 	{
 		id: "actions",
 		header: () => {
-			return <ColumnHeader
-				title="Action"
-				tooltip="Ask the AI assistant for insights and recommendations about this task"
-			/>
+			return (
+				<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
+			)
 		},
 		cell: ({ row }) => <AskUppyCell row={row.original} />,
 	},
@@ -866,19 +897,19 @@ export default function FeaturePrioritizationPage() {
 
 		// Apply status filter
 		if (statusFilter !== "all") {
-			filtered = filtered.filter(task => task.status === statusFilter)
+			filtered = filtered.filter((task) => task.status === statusFilter)
 		} else {
 			// Default: exclude archived tasks when showing "all"
-			filtered = filtered.filter(task => task.status !== "archived")
+			filtered = filtered.filter((task) => task.status !== "archived")
 		}
 
 		// Apply priority filter
 		if (priorityFilter === "high") {
-			filtered = filtered.filter(task => task.priority === 3)
+			filtered = filtered.filter((task) => task.priority === 3)
 		} else if (priorityFilter === "medium") {
-			filtered = filtered.filter(task => task.priority === 2)
+			filtered = filtered.filter((task) => task.priority === 2)
 		} else if (priorityFilter === "low") {
-			filtered = filtered.filter(task => task.priority === 1)
+			filtered = filtered.filter((task) => task.priority === 1)
 		}
 
 		return filtered
@@ -888,7 +919,10 @@ export default function FeaturePrioritizationPage() {
 	const data = React.useMemo(() => filteredTasks.map(taskToFeatureRow), [filteredTasks])
 
 	// Create columns with ALL tasks (for accurate counts) and filters
-	const columns = React.useMemo(() => createColumns(tasks, statusFilter, priorityFilter), [tasks, statusFilter, priorityFilter])
+	const columns = React.useMemo(
+		() => createColumns(tasks, statusFilter, priorityFilter),
+		[tasks, statusFilter, priorityFilter]
+	)
 
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "priority", desc: false },
@@ -954,7 +988,6 @@ export default function FeaturePrioritizationPage() {
 			</div>
 
 			<div className="space-y-3">
-
 				{/* Filters */}
 				<div className="flex flex-wrap items-center gap-3">
 					<input

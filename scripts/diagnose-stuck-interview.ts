@@ -148,18 +148,12 @@ Analysis:
 		// If there's a trigger_run_id, mention checking Trigger.dev
 		const withTriggerRun = stuckAnalysisJobs.filter((j) => j.trigger_run_id)
 		if (withTriggerRun.length > 0) {
-			recommendations.push(
-				`4. Check Trigger.dev dashboard for run: ${withTriggerRun[0].trigger_run_id}`
-			)
+			recommendations.push(`4. Check Trigger.dev dashboard for run: ${withTriggerRun[0].trigger_run_id}`)
 		}
 	}
 
 	// Check for evidence
-	const { data: evidence } = await supabase
-		.from("evidence")
-		.select("id")
-		.eq("interview_id", interviewId)
-		.limit(1)
+	const { data: evidence } = await supabase.from("evidence").select("id").eq("interview_id", interviewId).limit(1)
 
 	if (evidence && evidence.length > 0) {
 		issues.push("✅ Interview has evidence extracted")
@@ -181,7 +175,7 @@ Analysis:
 			message: recommendations.join("\n"),
 		})
 
-		consola.info(`\n📝 Example API calls:`)
+		consola.info("\n📝 Example API calls:")
 		consola.log(`
 # Fix stuck status and jobs:
 curl -X POST http://localhost:4280/api/fix-stuck-interview \\

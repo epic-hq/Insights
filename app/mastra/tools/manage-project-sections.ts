@@ -250,7 +250,7 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 				}
 			}
 
-			let meta = (existing.meta as Record<string, any>) || {}
+			const meta = (existing.meta as Record<string, any>) || {}
 
 			// Delete specific keys
 			if (context.keys && context.keys.length > 0) {
