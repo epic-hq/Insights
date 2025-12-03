@@ -335,6 +335,16 @@ export interface BatchEvaluationResult {
   
 }
 
+export interface BehaviorPattern {
+  pattern_description: string
+  frequency: string
+  user_segment?: string | null
+  triggers: string[]
+  implications: string
+  evidence_ids: string[]
+  
+}
+
 export interface BudgetInfo {
   has_budget_discussion: boolean
   amount_mentioned?: string | null
@@ -359,6 +369,16 @@ export interface Chapter {
   end_ms?: number | null
   summary?: string | null
   title?: string | null
+  
+}
+
+export interface CompetitiveInsight {
+  competitor_name: string
+  context: string
+  comparison_type: string
+  specific_features: string[]
+  switching_consideration: boolean
+  evidence_ids: string[]
   
 }
 
@@ -437,6 +457,16 @@ export interface DealQualificationSignals {
   warning_flags: string[]
   overall_qualification: string
   recommended_actions: string[]
+  
+}
+
+export interface DecisionInsight {
+  decision_question: string
+  recommendation: string
+  rationale: string
+  risks: string[]
+  confidence: string
+  evidence_ids: string[]
   
 }
 
@@ -636,6 +666,27 @@ export interface FacetSignalInput {
   
 }
 
+export interface FeaturePrioritization {
+  feature_theme: string
+  user_segments: string[]
+  evidence_count: number
+  urgency_score: number
+  recommended_action: string
+  
+}
+
+export interface FeatureRequest {
+  feature_name: string
+  description: string
+  use_case: string
+  priority: string
+  related_job_description?: string | null
+  competitive_alternative?: string | null
+  evidence_ids: string[]
+  confidence: number
+  
+}
+
 export interface FollowUpQuestion {
   id: string
   text: string
@@ -688,11 +739,42 @@ export interface GenerateInputs {
   
 }
 
+export interface GoalAnswer {
+  goal_statement: string
+  answer_summary: string
+  confidence: string
+  supporting_findings: string[]
+  counterpoints: string[]
+  evidence_ids: string[]
+  
+}
+
+export interface GoalLensExtraction {
+  goal_answers: GoalAnswer[]
+  decision_insights: DecisionInsight[]
+  unknown_resolutions: UnknownResolution[]
+  target_fit: TargetFitAssessment[]
+  research_learnings: ResearchLearning[]
+  goal_completion_score: number
+  recommended_follow_ups: string[]
+  
+}
+
 export interface HistoryItem {
   questionId: string
   action: "shown" | "rejected" | "asked" | "answered"
   ts: string
   interviewId?: string | null
+  
+}
+
+export interface HypothesisValidation {
+  hypothesis_statement: string
+  validation_result: string
+  supporting_evidence: string[]
+  confidence_level: string
+  implications: string
+  evidence_ids: string[]
   
 }
 
@@ -746,6 +828,20 @@ export interface InterviewPromptOut {
   
 }
 
+export interface JobToBeDone {
+  job_description: string
+  situation?: string | null
+  desired_outcome: string
+  current_solution?: string | null
+  frustrations: string[]
+  importance: string
+  satisfaction: string
+  frequency: string
+  evidence_ids: string[]
+  confidence: number
+  
+}
+
 export interface LensEvidenceHighlight {
   gist: string
   interview_title?: string | null
@@ -753,6 +849,15 @@ export interface LensEvidenceHighlight {
   journey_stage?: string | null
   topic?: string | null
   support?: string | null
+  
+}
+
+export interface MentalModel {
+  model_description: string
+  matches_product: boolean
+  gap_description?: string | null
+  design_recommendation?: string | null
+  evidence_ids: string[]
   
 }
 
@@ -1103,6 +1208,26 @@ export interface PersonaSet {
   
 }
 
+export interface ProductGap {
+  gap_description: string
+  impact: string
+  affected_workflow?: string | null
+  workaround?: string | null
+  competitive_advantage?: string | null
+  evidence_ids: string[]
+  
+}
+
+export interface ProductLensExtraction {
+  jobs: JobToBeDone[]
+  feature_requests: FeatureRequest[]
+  product_gaps: ProductGap[]
+  competitive_insights: CompetitiveInsight[]
+  feature_priorities: FeaturePrioritization[]
+  key_insights: string[]
+  
+}
+
 export interface ProjectAnalysis {
   research_goal: ResearchGoal
   question_answers: InsightMatch[]
@@ -1227,6 +1352,27 @@ export interface ResearchInsightInput {
   
 }
 
+export interface ResearchLearning {
+  learning_statement: string
+  relevance_to_goals: string
+  actionability: string
+  priority: string
+  evidence_ids: string[]
+  
+}
+
+export interface ResearchLensExtraction {
+  usability_findings: UsabilityFinding[]
+  hypothesis_validations: HypothesisValidation[]
+  journey_insights: UserJourneyInsight[]
+  behavior_patterns: BehaviorPattern[]
+  research_questions: ResearchQuestionInsight[]
+  mental_models: MentalModel[]
+  key_learnings: string[]
+  recommended_next_research: string[]
+  
+}
+
 export interface ResearchPlanOut {
   goal: string
   decision_questions: DecisionQuestionOut[]
@@ -1248,6 +1394,15 @@ export interface ResearchQuestionAnswer {
   evidence_ids: string[]
   confidence: number
   reasoning: string
+  
+}
+
+export interface ResearchQuestionInsight {
+  question: string
+  status: string
+  answer?: string | null
+  follow_up_needed?: string | null
+  evidence_ids: string[]
   
 }
 
@@ -1368,6 +1523,16 @@ export interface SuggestedQuestion {
   
 }
 
+export interface TargetFitAssessment {
+  criterion_type: string
+  criterion_value: string
+  fit_assessment: string
+  reasoning: string
+  signals: string[]
+  evidence_ids: string[]
+  
+}
+
 export interface TimelineInfo {
   urgency_level: string
   target_date?: string | null
@@ -1397,5 +1562,38 @@ export interface TurnAnchors {
   end_ms?: number | null
   chapter_title?: string | null
   char_span?: number[] | null
+  
+}
+
+export interface UnknownResolution {
+  unknown_statement: string
+  status: string
+  findings?: string | null
+  remaining_uncertainty?: string | null
+  suggested_follow_up?: string | null
+  evidence_ids: string[]
+  
+}
+
+export interface UsabilityFinding {
+  finding_description: string
+  severity: string
+  affected_feature?: string | null
+  user_behavior: string
+  user_expectation: string
+  actual_result: string
+  suggested_fix?: string | null
+  evidence_ids: string[]
+  confidence: number
+  
+}
+
+export interface UserJourneyInsight {
+  journey_stage: string
+  insight_description: string
+  pain_points: string[]
+  moments_of_delight: string[]
+  opportunity_area?: string | null
+  evidence_ids: string[]
   
 }

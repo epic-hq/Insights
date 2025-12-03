@@ -35,11 +35,15 @@ export default class TypeBuilder {
     
     BatchEvaluationResult: ClassViewer<'BatchEvaluationResult', "evaluations" | "overall_summary" | "top_priorities">;
     
+    BehaviorPattern: ClassViewer<'BehaviorPattern', "pattern_description" | "frequency" | "user_segment" | "triggers" | "implications" | "evidence_ids">;
+    
     BudgetInfo: ClassViewer<'BudgetInfo', "has_budget_discussion" | "amount_mentioned" | "budget_status" | "pricing_sensitivity" | "payment_terms" | "confidence" | "supporting_quote" | "evidence_ids">;
     
     Category: ClassViewer<'Category', "id" | "label" | "weight">;
     
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
+    
+    CompetitiveInsight: ClassViewer<'CompetitiveInsight', "competitor_name" | "context" | "comparison_type" | "specific_features" | "switching_consideration" | "evidence_ids">;
     
     ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles" | "interview_questions">;
     
@@ -58,6 +62,8 @@ export default class TypeBuilder {
     DealAdvisorRecommendation: ClassViewer<'DealAdvisorRecommendation', "status_assessment" | "recommendations" | "risks" | "confidence">;
     
     DealQualificationSignals: ClassViewer<'DealQualificationSignals', "positive_signals" | "warning_flags" | "overall_qualification" | "recommended_actions">;
+    
+    DecisionInsight: ClassViewer<'DecisionInsight', "decision_question" | "recommendation" | "rationale" | "risks" | "confidence" | "evidence_ids">;
     
     DecisionQuestionAnswer: ClassViewer<'DecisionQuestionAnswer', "decision_question_id" | "strategic_insight" | "supporting_findings" | "research_question_ids" | "confidence" | "reasoning" | "recommended_actions">;
     
@@ -99,6 +105,10 @@ export default class TypeBuilder {
     
     FacetSignalInput: ClassViewer<'FacetSignalInput', "label" | "source" | "confidence">;
     
+    FeaturePrioritization: ClassViewer<'FeaturePrioritization', "feature_theme" | "user_segments" | "evidence_count" | "urgency_score" | "recommended_action">;
+    
+    FeatureRequest: ClassViewer<'FeatureRequest', "feature_name" | "description" | "use_case" | "priority" | "related_job_description" | "competitive_alternative" | "evidence_ids" | "confidence">;
+    
     FollowUpQuestion: ClassViewer<'FollowUpQuestion', "id" | "text" | "rationale" | "estimatedMinutes" | "categoryId" | "scores">;
     
     FollowUpQuestionScores: ClassViewer<'FollowUpQuestionScores', "importance" | "goalMatch" | "novelty">;
@@ -109,7 +119,13 @@ export default class TypeBuilder {
     
     GenerateInputs: ClassViewer<'GenerateInputs', "customer_problem" | "target_org" | "target_roles" | "offerings" | "competitors" | "research_goal" | "research_goal_details" | "assumptions" | "unknowns" | "custom_instructions" | "research_mode" | "session_id" | "round" | "total_per_round" | "per_category_min" | "per_category_max" | "interview_time_limit">;
     
+    GoalAnswer: ClassViewer<'GoalAnswer', "goal_statement" | "answer_summary" | "confidence" | "supporting_findings" | "counterpoints" | "evidence_ids">;
+    
+    GoalLensExtraction: ClassViewer<'GoalLensExtraction', "goal_answers" | "decision_insights" | "unknown_resolutions" | "target_fit" | "research_learnings" | "goal_completion_score" | "recommended_follow_ups">;
+    
     HistoryItem: ClassViewer<'HistoryItem', "questionId" | "action" | "ts" | "interviewId">;
+    
+    HypothesisValidation: ClassViewer<'HypothesisValidation', "hypothesis_statement" | "validation_result" | "supporting_evidence" | "confidence_level" | "implications" | "evidence_ids">;
     
     InsightMatch: ClassViewer<'InsightMatch', "question" | "insights_found" | "confidence" | "answer_summary" | "evidence">;
     
@@ -123,7 +139,11 @@ export default class TypeBuilder {
     
     InterviewPromptOut: ClassViewer<'InterviewPromptOut', "id" | "rq_ids" | "text" | "followups" | "bias_checks">;
     
+    JobToBeDone: ClassViewer<'JobToBeDone', "job_description" | "situation" | "desired_outcome" | "current_solution" | "frustrations" | "importance" | "satisfaction" | "frequency" | "evidence_ids" | "confidence">;
+    
     LensEvidenceHighlight: ClassViewer<'LensEvidenceHighlight', "gist" | "interview_title" | "interview_date" | "journey_stage" | "topic" | "support">;
+    
+    MentalModel: ClassViewer<'MentalModel', "model_description" | "matches_product" | "gap_description" | "design_recommendation" | "evidence_ids">;
     
     NeedInfo: ClassViewer<'NeedInfo', "primary_pain_points" | "pain_severity" | "impact_on_business" | "current_workarounds" | "must_have_features" | "nice_to_have_features" | "competing_priorities" | "confidence" | "evidence_ids">;
     
@@ -185,6 +205,10 @@ export default class TypeBuilder {
     
     PersonaSet: ClassViewer<'PersonaSet', "personas" | "version" | "change_log" | "contrast_persona">;
     
+    ProductGap: ClassViewer<'ProductGap', "gap_description" | "impact" | "affected_workflow" | "workaround" | "competitive_advantage" | "evidence_ids">;
+    
+    ProductLensExtraction: ClassViewer<'ProductLensExtraction', "jobs" | "feature_requests" | "product_gaps" | "competitive_insights" | "feature_priorities" | "key_insights">;
+    
     ProjectAnalysis: ClassViewer<'ProjectAnalysis', "research_goal" | "question_answers" | "gap_analysis" | "key_discoveries" | "confidence_score" | "next_steps">;
     
     ProjectNameDescription: ClassViewer<'ProjectNameDescription', "name" | "description">;
@@ -211,11 +235,17 @@ export default class TypeBuilder {
     
     ResearchInsightInput: ClassViewer<'ResearchInsightInput', "title" | "summary" | "source" | "evidence">;
     
+    ResearchLearning: ClassViewer<'ResearchLearning', "learning_statement" | "relevance_to_goals" | "actionability" | "priority" | "evidence_ids">;
+    
+    ResearchLensExtraction: ClassViewer<'ResearchLensExtraction', "usability_findings" | "hypothesis_validations" | "journey_insights" | "behavior_patterns" | "research_questions" | "mental_models" | "key_learnings" | "recommended_next_research">;
+    
     ResearchPlanOut: ClassViewer<'ResearchPlanOut', "goal" | "decision_questions" | "research_questions" | "interview_prompts" | "other_data_sources">;
     
     ResearchQuestion: ClassViewer<'ResearchQuestion', "question" | "priority">;
     
     ResearchQuestionAnswer: ClassViewer<'ResearchQuestionAnswer', "research_question_id" | "findings" | "evidence_ids" | "confidence" | "reasoning">;
+    
+    ResearchQuestionInsight: ClassViewer<'ResearchQuestionInsight', "question" | "status" | "answer" | "follow_up_needed" | "evidence_ids">;
     
     ResearchQuestionItem: ClassViewer<'ResearchQuestionItem', "id" | "text" | "rationale" | "decision_question_id">;
     
@@ -245,11 +275,19 @@ export default class TypeBuilder {
     
     SuggestedQuestion: ClassViewer<'SuggestedQuestion', "question" | "rationale" | "interview_type" | "priority">;
     
+    TargetFitAssessment: ClassViewer<'TargetFitAssessment', "criterion_type" | "criterion_value" | "fit_assessment" | "reasoning" | "signals" | "evidence_ids">;
+    
     TimelineInfo: ClassViewer<'TimelineInfo', "urgency_level" | "target_date" | "deadline_type" | "implementation_timeline" | "external_drivers" | "confidence" | "evidence_ids">;
     
     TopPainCell: ClassViewer<'TopPainCell', "pain_name" | "user_group" | "impact_score" | "frequency" | "intensity" | "willingness_to_pay" | "person_count" | "evidence_count" | "sample_quote">;
     
     TurnAnchors: ClassViewer<'TurnAnchors', "start_ms" | "end_ms" | "chapter_title" | "char_span">;
+    
+    UnknownResolution: ClassViewer<'UnknownResolution', "unknown_statement" | "status" | "findings" | "remaining_uncertainty" | "suggested_follow_up" | "evidence_ids">;
+    
+    UsabilityFinding: ClassViewer<'UsabilityFinding', "finding_description" | "severity" | "affected_feature" | "user_behavior" | "user_expectation" | "actual_result" | "suggested_fix" | "evidence_ids" | "confidence">;
+    
+    UserJourneyInsight: ClassViewer<'UserJourneyInsight', "journey_stage" | "insight_description" | "pain_points" | "moments_of_delight" | "opportunity_area" | "evidence_ids">;
     
     
     BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
@@ -260,7 +298,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BudgetInfo","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","LensEvidenceHighlight","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TimelineInfo","TopPainCell","TurnAnchors",
+            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEvidenceHighlight","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -284,6 +322,10 @@ export default class TypeBuilder {
           "evaluations","overall_summary","top_priorities",
         ]);
         
+        this.BehaviorPattern = this.tb.classViewer("BehaviorPattern", [
+          "pattern_description","frequency","user_segment","triggers","implications","evidence_ids",
+        ]);
+        
         this.BudgetInfo = this.tb.classViewer("BudgetInfo", [
           "has_budget_discussion","amount_mentioned","budget_status","pricing_sensitivity","payment_terms","confidence","supporting_quote","evidence_ids",
         ]);
@@ -294,6 +336,10 @@ export default class TypeBuilder {
         
         this.Chapter = this.tb.classViewer("Chapter", [
           "start_ms","end_ms","summary","title",
+        ]);
+        
+        this.CompetitiveInsight = this.tb.classViewer("CompetitiveInsight", [
+          "competitor_name","context","comparison_type","specific_features","switching_consideration","evidence_ids",
         ]);
         
         this.ContextualSuggestions = this.tb.classViewer("ContextualSuggestions", [
@@ -330,6 +376,10 @@ export default class TypeBuilder {
         
         this.DealQualificationSignals = this.tb.classViewer("DealQualificationSignals", [
           "positive_signals","warning_flags","overall_qualification","recommended_actions",
+        ]);
+        
+        this.DecisionInsight = this.tb.classViewer("DecisionInsight", [
+          "decision_question","recommendation","rationale","risks","confidence","evidence_ids",
         ]);
         
         this.DecisionQuestionAnswer = this.tb.classViewer("DecisionQuestionAnswer", [
@@ -412,6 +462,14 @@ export default class TypeBuilder {
           "label","source","confidence",
         ]);
         
+        this.FeaturePrioritization = this.tb.classViewer("FeaturePrioritization", [
+          "feature_theme","user_segments","evidence_count","urgency_score","recommended_action",
+        ]);
+        
+        this.FeatureRequest = this.tb.classViewer("FeatureRequest", [
+          "feature_name","description","use_case","priority","related_job_description","competitive_alternative","evidence_ids","confidence",
+        ]);
+        
         this.FollowUpQuestion = this.tb.classViewer("FollowUpQuestion", [
           "id","text","rationale","estimatedMinutes","categoryId","scores",
         ]);
@@ -432,8 +490,20 @@ export default class TypeBuilder {
           "customer_problem","target_org","target_roles","offerings","competitors","research_goal","research_goal_details","assumptions","unknowns","custom_instructions","research_mode","session_id","round","total_per_round","per_category_min","per_category_max","interview_time_limit",
         ]);
         
+        this.GoalAnswer = this.tb.classViewer("GoalAnswer", [
+          "goal_statement","answer_summary","confidence","supporting_findings","counterpoints","evidence_ids",
+        ]);
+        
+        this.GoalLensExtraction = this.tb.classViewer("GoalLensExtraction", [
+          "goal_answers","decision_insights","unknown_resolutions","target_fit","research_learnings","goal_completion_score","recommended_follow_ups",
+        ]);
+        
         this.HistoryItem = this.tb.classViewer("HistoryItem", [
           "questionId","action","ts","interviewId",
+        ]);
+        
+        this.HypothesisValidation = this.tb.classViewer("HypothesisValidation", [
+          "hypothesis_statement","validation_result","supporting_evidence","confidence_level","implications","evidence_ids",
         ]);
         
         this.InsightMatch = this.tb.classViewer("InsightMatch", [
@@ -460,8 +530,16 @@ export default class TypeBuilder {
           "id","rq_ids","text","followups","bias_checks",
         ]);
         
+        this.JobToBeDone = this.tb.classViewer("JobToBeDone", [
+          "job_description","situation","desired_outcome","current_solution","frustrations","importance","satisfaction","frequency","evidence_ids","confidence",
+        ]);
+        
         this.LensEvidenceHighlight = this.tb.classViewer("LensEvidenceHighlight", [
           "gist","interview_title","interview_date","journey_stage","topic","support",
+        ]);
+        
+        this.MentalModel = this.tb.classViewer("MentalModel", [
+          "model_description","matches_product","gap_description","design_recommendation","evidence_ids",
         ]);
         
         this.NeedInfo = this.tb.classViewer("NeedInfo", [
@@ -584,6 +662,14 @@ export default class TypeBuilder {
           "personas","version","change_log","contrast_persona",
         ]);
         
+        this.ProductGap = this.tb.classViewer("ProductGap", [
+          "gap_description","impact","affected_workflow","workaround","competitive_advantage","evidence_ids",
+        ]);
+        
+        this.ProductLensExtraction = this.tb.classViewer("ProductLensExtraction", [
+          "jobs","feature_requests","product_gaps","competitive_insights","feature_priorities","key_insights",
+        ]);
+        
         this.ProjectAnalysis = this.tb.classViewer("ProjectAnalysis", [
           "research_goal","question_answers","gap_analysis","key_discoveries","confidence_score","next_steps",
         ]);
@@ -636,6 +722,14 @@ export default class TypeBuilder {
           "title","summary","source","evidence",
         ]);
         
+        this.ResearchLearning = this.tb.classViewer("ResearchLearning", [
+          "learning_statement","relevance_to_goals","actionability","priority","evidence_ids",
+        ]);
+        
+        this.ResearchLensExtraction = this.tb.classViewer("ResearchLensExtraction", [
+          "usability_findings","hypothesis_validations","journey_insights","behavior_patterns","research_questions","mental_models","key_learnings","recommended_next_research",
+        ]);
+        
         this.ResearchPlanOut = this.tb.classViewer("ResearchPlanOut", [
           "goal","decision_questions","research_questions","interview_prompts","other_data_sources",
         ]);
@@ -646,6 +740,10 @@ export default class TypeBuilder {
         
         this.ResearchQuestionAnswer = this.tb.classViewer("ResearchQuestionAnswer", [
           "research_question_id","findings","evidence_ids","confidence","reasoning",
+        ]);
+        
+        this.ResearchQuestionInsight = this.tb.classViewer("ResearchQuestionInsight", [
+          "question","status","answer","follow_up_needed","evidence_ids",
         ]);
         
         this.ResearchQuestionItem = this.tb.classViewer("ResearchQuestionItem", [
@@ -704,6 +802,10 @@ export default class TypeBuilder {
           "question","rationale","interview_type","priority",
         ]);
         
+        this.TargetFitAssessment = this.tb.classViewer("TargetFitAssessment", [
+          "criterion_type","criterion_value","fit_assessment","reasoning","signals","evidence_ids",
+        ]);
+        
         this.TimelineInfo = this.tb.classViewer("TimelineInfo", [
           "urgency_level","target_date","deadline_type","implementation_timeline","external_drivers","confidence","evidence_ids",
         ]);
@@ -714,6 +816,18 @@ export default class TypeBuilder {
         
         this.TurnAnchors = this.tb.classViewer("TurnAnchors", [
           "start_ms","end_ms","chapter_title","char_span",
+        ]);
+        
+        this.UnknownResolution = this.tb.classViewer("UnknownResolution", [
+          "unknown_statement","status","findings","remaining_uncertainty","suggested_follow_up","evidence_ids",
+        ]);
+        
+        this.UsabilityFinding = this.tb.classViewer("UsabilityFinding", [
+          "finding_description","severity","affected_feature","user_behavior","user_expectation","actual_result","suggested_fix","evidence_ids","confidence",
+        ]);
+        
+        this.UserJourneyInsight = this.tb.classViewer("UserJourneyInsight", [
+          "journey_stage","insight_description","pain_points","moments_of_delight","opportunity_area","evidence_ids",
         ]);
         
         
