@@ -61,14 +61,24 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (interview.transcript) {
 			// Have transcript - use it directly
-			transcriptData = interview.transcript_formatted || {
-				full_transcript: interview.transcript,
-				confidence: 0.9,
-				audio_duration: 0,
-				processing_duration: 0,
-				file_type: "text",
-			}
-			consola.info("Using existing transcript for reprocessing")
+			const formatted = interview.transcript_formatted as Record<string, unknown> | null
+			transcriptData = formatted
+				? {
+						...formatted,
+						// Ensure full_transcript is populated for backwards compatibility
+						full_transcript: formatted.full_transcript || interview.transcript,
+					}
+				: {
+						full_transcript: interview.transcript,
+						confidence: 0.9,
+						audio_duration: 0,
+						processing_duration: 0,
+						file_type: "text",
+					}
+			consola.info("Using existing transcript for reprocessing", {
+				hasFormattedTranscript: !!formatted,
+				fullTranscriptLength: (transcriptData.full_transcript as string)?.length ?? 0,
+			})
 		} else if (interview.media_url) {
 			// No transcript but have media - need to transcribe first via Trigger.dev
 			consola.info("No transcript found - triggering Trigger.dev pipeline with media URL")
