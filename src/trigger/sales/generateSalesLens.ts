@@ -24,53 +24,36 @@ async function generateConversationTakeaways(
         try {
                 consola.info(`[generateConversationTakeaways] Starting for interview ${interviewId}`)
 
-                // Fetch interview data
+                // Fetch interview metadata
                 const { data: interview, error: interviewError } = await client
                         .from("interviews")
-                        .select("transcript, transcript_formatted, duration_sec, evidence(count)")
+                        .select("duration_sec")
                         .eq("id", interviewId)
                         .single()
 
-                if (interviewError) {
+                if (interviewError || !interview) {
                         consola.error(`[generateConversationTakeaways] Error fetching interview ${interviewId}:`, interviewError)
                         return
                 }
 
-                if (!interview) {
-                        consola.warn(`[generateConversationTakeaways] Interview not found: ${interviewId}`)
+                // Fetch evidence items for this interview
+                const { data: evidenceItems, error: evidenceError } = await client
+                        .from("evidence")
+                        .select("id, verbatim, gist, speaker_name, evidence_type, timestamp_start")
+                        .eq("interview_id", interviewId)
+                        .order("timestamp_start", { ascending: true, nullsFirst: false })
+
+                if (evidenceError) {
+                        consola.error(`[generateConversationTakeaways] Error fetching evidence:`, evidenceError)
                         return
                 }
 
-                // Extract string transcript from JSONB object or use plain text version
-                let transcript: string = ""
-                if (interview.transcript_formatted) {
-                        // transcript_formatted is a JSONB object with structure: { full_transcript: string, ... }
-                        if (typeof interview.transcript_formatted === "string") {
-                                transcript = interview.transcript_formatted
-                        } else if (typeof interview.transcript_formatted === "object" && interview.transcript_formatted !== null) {
-                                transcript = (interview.transcript_formatted as any).full_transcript || ""
-                        }
-                }
-                // Fall back to plain transcript if formatted version didn't work
-                if (!transcript) {
-                        transcript = interview.transcript || ""
+                if (!evidenceItems || evidenceItems.length === 0) {
+                        consola.warn(`[generateConversationTakeaways] No evidence found for ${interviewId}`)
+                        return
                 }
 
-                const evidenceCount = (interview.evidence as any)?.[0]?.count || 0
                 const durationMinutes = interview.duration_sec ? Math.round(interview.duration_sec / 60) : null
-
-                consola.info(`[generateConversationTakeaways] Transcript extraction:`, {
-                        interviewId,
-                        hasTranscriptFormatted: !!interview.transcript_formatted,
-                        transcriptFormattedType: typeof interview.transcript_formatted,
-                        hasPlainTranscript: !!interview.transcript,
-                        extractedTranscriptLength: transcript.length,
-                })
-
-                if (!transcript || transcript.length === 0) {
-                        consola.warn(`[generateConversationTakeaways] No transcript available for ${interviewId}`)
-                        return
-                }
 
                 // Build summaries from extraction
                 const bantFramework = extraction.frameworks?.find((f: any) => f.name === "BANT_GPCT")
@@ -88,32 +71,40 @@ async function generateConversationTakeaways(
                         ?.map((s: any) => `${s.displayName} (${s.role || "Unknown role"})`)
                         .join(", ") || null
 
+                // Transform evidence to BAML format
+                const evidenceForBaml = evidenceItems.map((e) => ({
+                        id: e.id,
+                        verbatim: e.verbatim || "",
+                        gist: e.gist || null,
+                        speaker: e.speaker_name || null,
+                        evidence_type: e.evidence_type || null,
+                        timestamp_start: e.timestamp_start || null,
+                }))
+
                 // Log input summary for debugging
                 consola.info(`[generateConversationTakeaways] Input summary:`, {
                         interviewId,
-                        transcriptLength: transcript.length,
-                        evidenceCount,
+                        evidenceCount: evidenceItems.length,
                         durationMinutes,
                         hasBantSummary: !!bantSummary,
                         hasMeddicSummary: !!meddicSummary,
                         stakeholdersCount: extraction.entities?.stakeholders?.length || 0,
+                        evidenceTypes: [...new Set(evidenceItems.map((e) => e.evidence_type))],
                 })
 
-                // Call BAML function
-                consola.info(`[generateConversationTakeaways] Calling BAML ExtractConversationTakeaways...`)
+                // Call BAML function with evidence array
+                consola.info(`[generateConversationTakeaways] Calling BAML ExtractConversationTakeaways with ${evidenceItems.length} evidence items...`)
                 const takeaways = await b.ExtractConversationTakeaways(
-                        transcript,
+                        evidenceForBaml,
                         bantSummary,
                         meddicSummary,
                         stakeholdersSummary,
-                        null, // empathy_insights - could be added later
-                        evidenceCount,
                         durationMinutes
                 )
 
                 consola.info(`[generateConversationTakeaways] BAML extraction completed`)
 
-                // Combine into a single string
+                // Combine into a single string for storage
                 const keyTakeaways = [
                         takeaways.value_synopsis,
                         takeaways.critical_next_step,
@@ -124,6 +115,8 @@ async function generateConversationTakeaways(
                         value_synopsis: takeaways.value_synopsis?.substring(0, 100),
                         critical_next_step: takeaways.critical_next_step?.substring(0, 100),
                         future_improvement: takeaways.future_improvement?.substring(0, 100),
+                        supporting_evidence_count: takeaways.supporting_evidence_ids?.length || 0,
+                        supporting_evidence_ids: takeaways.supporting_evidence_ids?.map((id) => id.substring(0, 8)),
                 })
 
                 // Store in interviews table

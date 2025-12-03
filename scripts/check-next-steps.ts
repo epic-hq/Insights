@@ -75,7 +75,9 @@ async function main() {
 		} else if (interview) {
 			if (interview.key_takeaways) {
 				console.log(`\n  💡 Key Takeaways (${interview.key_takeaways.length} chars):`)
-				console.log(`     ${interview.key_takeaways.substring(0, 200)}${interview.key_takeaways.length > 200 ? "..." : ""}`)
+				console.log(
+					`     ${interview.key_takeaways.substring(0, 200)}${interview.key_takeaways.length > 200 ? "..." : ""}`
+				)
 			} else {
 				console.log("\n  ⚠️  Key takeaways: NOT GENERATED")
 			}

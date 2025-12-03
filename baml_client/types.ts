@@ -383,6 +383,16 @@ export interface ConversationAnalysis {
   
 }
 
+export interface ConversationEvidence {
+  id: string
+  verbatim: string
+  gist?: string | null
+  speaker?: string | null
+  evidence_type?: string | null
+  timestamp_start?: number | null
+  
+}
+
 export interface ConversationQuestion {
   question: string
   asked_by?: string | null
@@ -410,6 +420,7 @@ export interface ConversationTakeaways {
   value_synopsis: string
   critical_next_step: string
   future_improvement: string
+  supporting_evidence_ids: string[]
   
 }
 

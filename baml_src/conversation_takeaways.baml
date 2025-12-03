@@ -1,55 +1,73 @@
 // High-level conversation value assessment across all lenses
 
+class ConversationEvidence {
+  id string @description("Evidence UUID for linking back")
+  verbatim string @description("Exact quote from the conversation")
+  gist string? @description("AI-generated summary of the evidence")
+  speaker string? @description("Who said this")
+  evidence_type string? @description("Type of evidence: pain_point, desire, commitment, etc.")
+  timestamp_start float? @description("When this was said in the conversation (seconds)")
+}
+
 class ConversationTakeaways {
   value_synopsis string @description("1-2 sentences: How valuable was this conversation overall? What made it uniquely powerful or inline supportive?")
   critical_next_step string @description("1 sentence: The single most important next step or caution based on all perspectives")
   future_improvement string @description("1 sentence: What could be improved on future calls")
+  supporting_evidence_ids string[] @description("IDs of evidence items that most strongly support these takeaways")
 }
 
 function ExtractConversationTakeaways(
-  transcript: string,
+  evidence: ConversationEvidence[],
   bant_summary: string?,
   meddic_summary: string?,
   stakeholders_summary: string?,
-  empathy_insights: string?,
-  evidence_count: int,
   duration_minutes: int?
 ) -> ConversationTakeaways {
   client CustomGPT4o
   prompt #"
-    You are an expert conversation analyst. Synthesize the value of this conversation across multiple perspectives.
+    You are an expert conversation analyst. Synthesize the value of this conversation based on key evidence and framework analyses.
 
     Interview Duration: {{ duration_minutes }} minutes
-    Evidence Items: {{ evidence_count }}
+    Evidence Items Captured: {{ evidence | length }}
 
-    Transcript:
-    {{ transcript }}
+    ## Key Evidence from Conversation
+    {% for item in evidence %}
+    ---
+    Evidence #{{ loop.index }} (ID: {{ item.id | truncate(8) }})
+    {% if item.speaker %}Speaker: {{ item.speaker }}{% endif %}
+    {% if item.timestamp_start %}Time: {{ item.timestamp_start | round }}s{% endif %}
+    {% if item.evidence_type %}Type: {{ item.evidence_type }}{% endif %}
+
+    Quote: "{{ item.verbatim }}"
+    {% if item.gist %}Summary: {{ item.gist }}{% endif %}
+    {% endfor %}
 
     {% if bant_summary %}
-    BANT/GPCT Analysis:
+    ## BANT/GPCT Analysis
     {{ bant_summary }}
     {% endif %}
 
     {% if meddic_summary %}
-    MEDDIC Analysis:
+    ## MEDDIC Analysis
     {{ meddic_summary }}
     {% endif %}
 
     {% if stakeholders_summary %}
-    Stakeholders Identified:
+    ## Stakeholders Identified
     {{ stakeholders_summary }}
     {% endif %}
 
-    {% if empathy_insights %}
-    Empathy Map Insights:
-    {{ empathy_insights }}
-    {% endif %}
+    ## Your Task
+    Provide a concise executive summary in exactly 3 sentences:
 
-    Provide a concise executive summary in exactly 3-4 sentences total:
-    1. Value Synopsis: How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy across the various perspectives (BANT, MEDDIC, stakeholders, empathy)?
-    2. Critical Next Step: What is the single most important next step or caution based on all perspectives?
-    3. Future Improvement: What could be improved on future calls to extract more value?
+    1. **Value Synopsis** (1-2 sentences): How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy? Reference specific evidence by mentioning what was discussed.
 
-    Keep each point to 1 sentence. Be direct and actionable.
+    2. **Critical Next Step** (1 sentence): What is the single most important next step or caution based on the evidence and framework analyses? Be specific about commitments or needs identified.
+
+    3. **Future Improvement** (1 sentence): What could be improved on future calls to extract more value or address gaps?
+
+    Additionally, identify the 3-5 most important evidence items (by ID prefix shown above) that best support your takeaways. These should be the "smoking gun" moments that justify your analysis.
+
+    Be direct, actionable, and grounded in the actual evidence provided.
   "#
 }
