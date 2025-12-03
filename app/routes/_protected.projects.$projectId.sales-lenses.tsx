@@ -454,18 +454,31 @@ function LensCard({ framework }: LensCardProps) {
 			<CardContent className="flex flex-1 flex-col gap-4">
 				<HygieneList hygiene={framework.hygieneEvents} summary={framework.hygieneSummary} />
 				<StakeholderList stakeholders={framework.stakeholders} unlinked={framework.unlinkedAttendees} />
+
+				{/* BANT/Framework Slots */}
 				<div className="flex flex-col gap-3">
-					{framework.slots.map((slot) => (
+					{framework.slots.filter((slot) => !slot.slot.startsWith("next_step")).map((slot) => (
 						<div key={slot.id} className="rounded-lg border bg-muted/30 p-4">
 							<div className="flex flex-col gap-2">
 								<div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-									<div className="space-y-1">
-										<p className="font-medium text-muted-foreground text-xs uppercase">{slot.slot}</p>
-										<p className="font-semibold text-base text-foreground">
-											{slot.textValue ?? slot.summary ?? "No value captured"}
-										</p>
-										{slot.summary && slot.textValue && slot.textValue !== slot.summary ? (
-											<p className="text-muted-foreground text-sm">{slot.summary}</p>
+									<div className="space-y-1 flex-1">
+										<p className="font-medium text-muted-foreground text-xs uppercase">{slot.label || slot.slot}</p>
+										{slot.summary ? (
+											<p className="font-semibold text-base text-foreground">
+												{slot.summary}
+											</p>
+										) : (
+											<p className="font-semibold text-base text-foreground">No value captured</p>
+										)}
+										{slot.summary && slot.summary !== slot.summary ? (
+											<p className="text-muted-foreground text-sm">
+												{slot.summary}
+											</p>
+										) : null}
+										{slot.textValue && slot.textValue !== slot.summary ? (
+											<p className="text-muted-foreground text-sm italic">
+												"{slot.textValue}"
+											</p>
 										) : null}
 										{slot.relatedNames.length > 0 ? (
 											<p className="text-muted-foreground text-xs">Related: {slot.relatedNames.join(", ")}</p>
@@ -495,12 +508,11 @@ function LensCard({ framework }: LensCardProps) {
 												href={`/projects/${data.projectId}/insights/${ref.evidenceId}`}
 												className="rounded-md border border-dashed bg-background/50 p-2 text-sm transition-colors hover:bg-accent/50"
 											>
-												<p className="line-clamp-2 text-foreground">
-													{ref.transcriptSnippet || "View evidence"}
-												</p>
+												<p className="line-clamp-2 text-foreground">{ref.transcriptSnippet || "View evidence"}</p>
 												{ref.startMs !== null ? (
 													<p className="mt-1 text-muted-foreground text-xs">
-														{Math.floor(ref.startMs / 1000 / 60)}:{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+														{Math.floor(ref.startMs / 1000 / 60)}:
+														{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
 													</p>
 												) : null}
 											</a>
@@ -511,6 +523,52 @@ function LensCard({ framework }: LensCardProps) {
 						</div>
 					))}
 				</div>
+
+				{/* Next Steps Section */}
+				{framework.slots.filter((slot) => slot.slot.startsWith("next_step")).length > 0 ? (
+					<div className="flex flex-col gap-2">
+						<p className="font-semibold text-foreground text-sm">Next Steps</p>
+						<div className="flex flex-col gap-2">
+							{framework.slots.filter((slot) => slot.slot.startsWith("next_step")).map((step) => (
+								<div key={step.id} className="flex items-start gap-3 rounded-md border border-dashed bg-background/50 p-3">
+									<div className="flex-1">
+										<p className="font-medium text-foreground text-sm">{step.summary}</p>
+										{step.textValue && step.textValue !== step.summary ? (
+											<p className="mt-1 text-muted-foreground text-xs">{step.textValue}</p>
+										) : null}
+										{step.evidenceRefs.length > 0 ? (
+											<div className="mt-2 flex flex-wrap gap-1">
+												{step.evidenceRefs.map((ref) => (
+													<a
+														key={ref.evidenceId}
+														href={`/projects/${data.projectId}/insights/${ref.evidenceId}`}
+														className="rounded border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent/50"
+														title={ref.transcriptSnippet || "View evidence"}
+													>
+														Evidence
+													</a>
+												))}
+											</div>
+										) : null}
+									</div>
+									<div className="flex flex-col items-end gap-1">
+										{step.ownerName ? (
+											<p className="text-muted-foreground text-xs">Owner: {step.ownerName}</p>
+										) : null}
+										{step.dateValue ? (
+											<p className="text-muted-foreground text-xs">Due: {step.dateValue}</p>
+										) : null}
+										{typeof step.confidence === "number" ? (
+											<Badge variant="outline" color="green" className="text-xs">
+												{Math.round(step.confidence * 100)}%
+											</Badge>
+										) : null}
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				) : null}
 			</CardContent>
 		</Card>
 	)
@@ -596,7 +654,8 @@ function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 										>
 											{ref.startMs !== null ? (
 												<span>
-													{Math.floor(ref.startMs / 1000 / 60)}:{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
+													{Math.floor(ref.startMs / 1000 / 60)}:
+													{String(Math.floor((ref.startMs / 1000) % 60)).padStart(2, "0")}
 												</span>
 											) : (
 												<span>View</span>

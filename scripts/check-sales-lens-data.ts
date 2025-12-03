@@ -23,16 +23,16 @@ async function checkSalesLensData() {
 	console.log(`\n✅ Found ${summaries.length} sales lens summaries\n`)
 
 	for (const summary of summaries) {
-		console.log("=" .repeat(60))
+		console.log("=".repeat(60))
 		console.log(`Framework: ${summary.framework}`)
 		console.log(`Interview ID: ${summary.interview_id}`)
 		console.log(`Computed: ${summary.computed_at}`)
-		console.log(`Metadata:`, JSON.stringify(summary.metadata, null, 2))
+		console.log("Metadata:", JSON.stringify(summary.metadata, null, 2))
 
 		// Get slots for this summary
 		const { data: slots } = await supabase
 			.from("sales_lens_slots")
-			.select("slot, label, description, text_value, status, confidence")
+			.select("slot, label, description, text_value, status, confidence, evidence_refs")
 			.eq("summary_id", summary.id)
 			.order("position", { ascending: true })
 
@@ -42,6 +42,10 @@ async function checkSalesLensData() {
 				console.log(`  • ${slot.slot} (${slot.label || "no label"}):`)
 				console.log(`    ${slot.description || slot.text_value || "No value"}`)
 				if (slot.confidence) console.log(`    Confidence: ${(slot.confidence * 100).toFixed(0)}%`)
+				const evidenceRefs = Array.isArray(slot.evidence_refs) ? slot.evidence_refs : []
+				if (evidenceRefs.length > 0) {
+					console.log(`    Evidence: ${evidenceRefs.length} references`)
+				}
 			}
 		} else {
 			console.log("  No slots found")

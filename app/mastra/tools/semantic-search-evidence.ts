@@ -29,13 +29,7 @@ export const semanticSearchEvidenceTool = createTool({
 			.max(1)
 			.optional()
 			.describe("Similarity threshold (0-1). Higher = more strict. Default: 0.7"),
-		matchCount: z
-			.number()
-			.int()
-			.min(1)
-			.max(50)
-			.optional()
-			.describe("Maximum number of results to return. Default: 10"),
+		matchCount: z.number().int().min(1).max(50).optional().describe("Maximum number of results to return. Default: 10"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

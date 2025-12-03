@@ -4,6 +4,8 @@ import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { getSegmentDetail } from "../services/segmentData.server"
 import type { Route } from "./+types/detail"
@@ -63,6 +65,8 @@ function getImpactColor(score: number): string {
 
 export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 	const { segment } = loaderData
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const bullseyeScore = calculateBullseyeScore(segment)
 	const wtpPercentage =
@@ -240,7 +244,9 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 						<div className="space-y-3">
 							{segment.top_pains.map((pain, idx) => {
 								// Link to first evidence ID, or to pain matrix if no evidence IDs
-								const linkTo = pain.evidence_ids?.[0] ? `../../evidence/${pain.evidence_ids[0]}` : "../../pain-matrix"
+								const linkTo = pain.evidence_ids?.[0]
+									? routes.evidence.detail(pain.evidence_ids[0])
+									: routes.productLens()
 								return (
 									<Link key={pain.pain_theme} to={linkTo}>
 										<div
@@ -282,7 +288,7 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Link to={`../../insights?segment=${segment.label}`}>
+						<Link to={`${routes.insights.index()}?segment=${segment.label}`}>
 							<Button>View All Insights →</Button>
 						</Link>
 					</CardContent>

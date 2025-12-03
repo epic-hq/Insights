@@ -108,6 +108,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					// Budget slot
 					{
 						slot: "budget",
+						label: "Budget",
+						description: `${extraction.budget.amount_mentioned || "Not discussed"}. ${extraction.budget.pricing_sensitivity ? `Sensitivity: ${extraction.budget.pricing_sensitivity}` : ""}`.trim(),
 						summary: extraction.budget.amount_mentioned || "Not discussed",
 						textValue: extraction.budget.supporting_quote || null,
 						numericValue: null,
@@ -132,6 +134,10 @@ Notes: ${interview.observations_and_notes || "None"}
 					// Authority slot
 					{
 						slot: "authority",
+						label: "Authority",
+						description: extraction.authority.decision_maker_identified
+							? `${extraction.authority.decision_maker_name} (${extraction.authority.decision_maker_role || "role unclear"}). ${extraction.authority.approval_process || ""}`
+							: `Decision maker not identified. ${extraction.authority.approval_process || "Approval process unclear."}`,
 						summary: extraction.authority.decision_maker_name || "Decision maker not identified",
 						textValue: extraction.authority.approval_process || null,
 						numericValue: null,
@@ -161,6 +167,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					// Need slot
 					{
 						slot: "need",
+						label: "Need",
+						description: `Pain severity: ${extraction.need.pain_severity}. ${extraction.need.impact_on_business || ""}`.trim(),
 						summary: extraction.need.primary_pain_points.join(", ") || "No clear need identified",
 						textValue: extraction.need.impact_on_business || null,
 						numericValue: null,
@@ -185,6 +193,8 @@ Notes: ${interview.observations_and_notes || "None"}
 					// Timeline slot
 					{
 						slot: "timeline",
+						label: "Timeline",
+						description: `Urgency: ${extraction.timeline.urgency_level}. ${extraction.timeline.target_date ? `Target: ${extraction.timeline.target_date}` : ""}. ${extraction.timeline.external_drivers.length > 0 ? `Drivers: ${extraction.timeline.external_drivers.join(", ")}` : ""}`.trim(),
 						summary: extraction.timeline.target_date || `Urgency: ${extraction.timeline.urgency_level}`,
 						textValue: extraction.timeline.implementation_timeline || null,
 						numericValue: null,
