@@ -47,15 +47,35 @@ export async function action({ request }: ActionFunctionArgs) {
 		console.log("Analysis retry - ALWAYS re-transcribing from media, hasMedia:", !!hasMedia)
 
 		if (!hasMedia) {
-			return Response.json(
-				{ error: "No media available. Please re-upload the audio file." },
-				{ status: 400 }
-			)
+			return Response.json({ error: "No media available. Please re-upload the audio file." }, { status: 400 })
 		}
 
 		const admin = createSupabaseAdminClient()
 
 		try {
+			// Clear workflow state before retrying - this ensures all steps run fresh
+			console.log("Clearing workflow state for fresh re-run...")
+			const { data: currentInterview } = await admin
+				.from("interviews")
+				.select("conversation_analysis")
+				.eq("id", interviewId)
+				.single()
+
+			const existingAnalysis = (currentInterview?.conversation_analysis as any) || {}
+
+			await admin
+				.from("interviews")
+				.update({
+					conversation_analysis: {
+						...existingAnalysis,
+						completed_steps: [], // Clear completed steps
+						current_step: "upload", // Reset to start
+						workflow_state: null, // Clear workflow state
+						progress: 0,
+					},
+				})
+				.eq("id", interviewId)
+
 			// ALWAYS re-transcribe from media - ignore any existing transcript data
 			// Pass the RAW R2 key - the upload task will generate presigned URL
 			console.log("Re-transcribing audio file from media_url...")

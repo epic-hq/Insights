@@ -34,7 +34,7 @@ export const turnAnchorsSchema = z
 // For backwards compatibility, accept both single object and array
 const anchorsSchema = z.preprocess((value) => {
 	// If it's already a TurnAnchors object, use it
-	if (value && typeof value === 'object' && !Array.isArray(value)) return value
+	if (value && typeof value === "object" && !Array.isArray(value)) return value
 	// If it's an array, take the first element
 	if (Array.isArray(value) && value.length > 0) return value[0]
 	// Otherwise return null
@@ -76,9 +76,7 @@ export const evidenceTurnsSchema = z.array(evidenceTurnSchema)
 export type EvidenceTurnInput = z.infer<typeof evidenceTurnSchema>
 type TurnAnchorsInput = z.infer<typeof turnAnchorsSchema>
 
-interface NormalizeEvidenceOptions {
-	// Reserved for future use - currently unused but kept for API compatibility
-}
+type NormalizeEvidenceOptions = {}
 
 const trimOrUndefined = (value: unknown): string | undefined => {
 	if (typeof value === "string") {

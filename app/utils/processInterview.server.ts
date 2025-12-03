@@ -2127,20 +2127,21 @@ export async function uploadMediaAndTranscribeCore({
 	// If so, don't re-sanitize as it will strip all the fields
 	const isAlreadySanitized =
 		transcriptData &&
-		typeof transcriptData === 'object' &&
-		'speaker_transcripts' in transcriptData &&
+		typeof transcriptData === "object" &&
+		"speaker_transcripts" in transcriptData &&
 		Array.isArray((transcriptData as any).speaker_transcripts) &&
 		(transcriptData as any).speaker_transcripts.length > 0
 
 	consola.info("[uploadMediaAndTranscribeCore] Sanitization check", {
 		isAlreadySanitized,
 		hasTranscriptData: !!transcriptData,
-		transcriptDataKeys: transcriptData && typeof transcriptData === 'object' ? Object.keys(transcriptData) : [],
-		hasSpeakerTranscripts: transcriptData && typeof transcriptData === 'object' && 'speaker_transcripts' in transcriptData,
+		transcriptDataKeys: transcriptData && typeof transcriptData === "object" ? Object.keys(transcriptData) : [],
+		hasSpeakerTranscripts:
+			transcriptData && typeof transcriptData === "object" && "speaker_transcripts" in transcriptData,
 		speakerTranscriptsCount:
 			transcriptData &&
-			typeof transcriptData === 'object' &&
-			'speaker_transcripts' in transcriptData &&
+			typeof transcriptData === "object" &&
+			"speaker_transcripts" in transcriptData &&
 			Array.isArray((transcriptData as any).speaker_transcripts)
 				? (transcriptData as any).speaker_transcripts.length
 				: 0,

@@ -247,11 +247,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			const facet_mentions =
 				facetSlugs.length > 0
 					? facetSlugs.map((slug) => ({
-						person_key: personId ?? primaryPersonId,
-						kind_slug: slug,
-						value: "extracted from evidence", // This is a fallback since we don't have the original value
-						quote: null,
-					}))
+							person_key: personId ?? primaryPersonId,
+							kind_slug: slug,
+							value: "extracted from evidence", // This is a fallback since we don't have the original value
+							quote: null,
+						}))
 					: undefined
 
 			return {
