@@ -66,11 +66,12 @@ export function useSidebarCounts(accountId?: string, projectId?: string, workflo
 							.select("*", { count: "exact", head: true })
 							.eq("project_id", projectId),
 
-						// Count people by account_id (people are account-scoped, not project-scoped)
+						// Count account-level people only (exclude project-scoped people)
 						supabase
 							.from("people")
 							.select("*", { count: "exact", head: true })
-							.eq("account_id", accountId),
+							.eq("account_id", accountId)
+					.is("project_id", null),
 
 						// Count organizations
 						supabase
