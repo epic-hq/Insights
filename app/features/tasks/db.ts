@@ -72,14 +72,16 @@ export async function createTask({
 
 export async function getTasks({
 	supabase,
+	accountId,
 	projectId,
 	options = {},
 }: {
 	supabase: SupabaseClient
+	accountId: string
 	projectId: string
 	options?: TaskListOptions
 }): Promise<Task[]> {
-	let query = supabase.from("tasks").select("*").eq("project_id", projectId)
+	let query = supabase.from("tasks").select("*").eq("account_id", accountId).eq("project_id", projectId)
 
 	// Apply filters
 	if (options.filters) {
@@ -398,15 +400,18 @@ export async function bulkDeleteTasks({
 
 export async function getTasksByCluster({
 	supabase,
+	accountId,
 	projectId,
 	cluster,
 }: {
 	supabase: SupabaseClient
+	accountId: string
 	projectId: string
 	cluster: string
 }): Promise<Task[]> {
 	return getTasks({
 		supabase,
+		accountId,
 		projectId,
 		options: {
 			filters: { cluster },
@@ -416,15 +421,18 @@ export async function getTasksByCluster({
 
 export async function getTasksByStatus({
 	supabase,
+	accountId,
 	projectId,
 	status,
 }: {
 	supabase: SupabaseClient
+	accountId: string
 	projectId: string
 	status: string | string[]
 }) {
 	return getTasks({
 		supabase,
+		accountId,
 		projectId,
 		options: {
 			filters: { status: status as any },
@@ -434,15 +442,18 @@ export async function getTasksByStatus({
 
 export async function getTasksByAssignee({
 	supabase,
+	accountId,
 	projectId,
 	userId,
 }: {
 	supabase: SupabaseClient
+	accountId: string
 	projectId: string
 	userId: string
 }): Promise<Task[]> {
 	return getTasks({
 		supabase,
+		accountId,
 		projectId,
 		options: {
 			filters: { assigned_to: userId },

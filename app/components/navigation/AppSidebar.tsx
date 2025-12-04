@@ -256,7 +256,7 @@ export function AppSidebar() {
 		opportunities: "opportunities",
 	}
 
-	const { counts, loading: countsLoading } = useSidebarCounts(effectiveProjectId, project?.workflow_type)
+	const { counts, loading: countsLoading } = useSidebarCounts(accountId, effectiveProjectId, project?.workflow_type)
 
 	const renderRightBadge = (itemKey: string, isActive: boolean) => {
 		const countKey = COUNT_KEY_BY_ITEM[itemKey]

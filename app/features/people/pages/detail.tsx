@@ -1,5 +1,5 @@
 import consola from "consola"
-import { UserCircle } from "lucide-react"
+import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, UserCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import {
@@ -20,6 +20,7 @@ import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { InlineEditableField } from "~/components/ui/InlineEditableField"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
@@ -576,23 +577,44 @@ export default function PersonDetail() {
 			<PageContainer className="space-y-8 pb-16">
 				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 					<BackButton />
-					<div className="flex flex-wrap gap-2">
-						<Button variant="outline" size="sm" onClick={handleAttachRecording}>
-							Attach Recording
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<Link to={routes.people.edit(person.id)}>Edit Person</Link>
-						</Button>
-						<refreshFetcher.Form method="post" className="contents">
-							<input type="hidden" name="_action" value="refresh-description" />
-							<Button type="submit" variant="outline" size="sm" disabled={isRefreshingDescription}>
-								{isRefreshingDescription ? "Refreshing..." : "Refresh Description"}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="gap-2">
+								<MoreVertical className="h-4 w-4" />
+								Actions
 							</Button>
-						</refreshFetcher.Form>
-					</div>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onClick={handleAttachRecording}>
+								<Paperclip className="mr-2 h-4 w-4" />
+								Attach Recording
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>
+									<FileText className="mr-2 h-4 w-4" />
+									View Evidence
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link to={routes.people.edit(person.id)}>
+									<Edit2 className="mr-2 h-4 w-4" />
+									Edit Person
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => {
+									refreshFetcher.submit(
+										{ _action: "refresh-description" },
+										{ method: "post" }
+									)
+								}}
+								disabled={isRefreshingDescription}
+							>
+								<RefreshCw className="mr-2 h-4 w-4" />
+								{isRefreshingDescription ? "Refreshing..." : "Refresh Description"}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 
 				{(refreshError || fetcherRefreshError) && (

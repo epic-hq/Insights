@@ -66,8 +66,18 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const accountId = params.accountId
 	const projectId = params.projectId
 
+	consola.info("Priorities loader - params:", { accountId, projectId })
+	consola.info("Priorities loader - user accounts:", ctx.accounts?.map(a => ({ id: a.account_id, name: a.name })))
+
 	if (!accountId || !projectId) {
 		throw new Response("Missing account or project ID", { status: 400 })
+	}
+
+	// Verify user has access to this account
+	const userAccounts = ctx.accounts || []
+	const hasAccess = userAccounts.some((acc) => acc.account_id === accountId)
+	if (!hasAccess) {
+		throw new Response("Unauthorized: You don't have access to this account", { status: 403 })
 	}
 
 	if (!ctx.supabase) {
@@ -85,8 +95,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// We'll filter on the client to ensure counts are accurate
 	let tasks = await getTasks({
 		supabase: ctx.supabase,
+		accountId,
 		projectId,
 		options: {},
+	})
+
+	consola.info("Priorities loader - fetched tasks:", {
+		count: tasks.length,
+		accountIds: [...new Set(tasks.map(t => t.account_id))],
+		projectIds: [...new Set(tasks.map(t => t.project_id))],
 	})
 
 	// If no tasks exist, seed with initial data
@@ -102,6 +119,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			// Fetch again after seeding
 			tasks = await getTasks({
 				supabase: ctx.supabase,
+				accountId,
 				projectId,
 				options: {},
 			})
@@ -648,9 +666,8 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -714,9 +731,8 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}

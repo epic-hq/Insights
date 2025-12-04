@@ -1466,8 +1466,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							{/* Status indicator - compact, right side */}
 							{isProcessing && (
 								<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
-									<Loader2 className="h-3 w-3 animate-spin text-primary" />
-									<p className="text-primary text-xs">{getStatusLabel(interview.status)}</p>
+									<Loader2 className="h-5 w-5 animate-spin text-primary" />
+									<p className="text-primary text-sm font-medium">{getStatusLabel(interview.status)}</p>
 								</div>
 							)}
 							{hasError && (

@@ -31,7 +31,12 @@ export async function batchExtractEvidence(
 
 	if (!ENABLE_BATCHING) {
 		// Single call for small transcripts
-		return await extractFn(speakerTranscripts)
+		consola.info(`⚡ Single-batch mode: ${speakerTranscripts.length} utterances (≤${BATCH_SIZE}, batching disabled)`)
+		const startTime = Date.now()
+		const result = await extractFn(speakerTranscripts)
+		const duration = ((Date.now() - startTime) / 1000).toFixed(1)
+		consola.success(`✅ Single batch completed in ${duration}s`)
+		return result
 	}
 
 	consola.info(`🚀 Batching enabled: processing ${speakerTranscripts.length} utterances in chunks of ${BATCH_SIZE}`)
@@ -99,7 +104,14 @@ export async function batchExtractEvidence(
 		}
 	}
 
-	consola.success(`🎉 Batching complete: merged ${mergedEvidence.length} evidence units from ${batches.length} batches`)
+	const totalDuration = batchResults.reduce((sum, _, idx) => {
+		return sum + parseFloat(batchResults[idx].result ? "0" : "0") // Duration already logged per batch
+	}, 0)
+
+	consola.success(
+		`🎉 Batching complete: merged ${mergedEvidence.length} evidence units from ${batches.length} batches ` +
+		`(${mergedPeople.length} people, ${mergedFacetMentions.length} facet mentions, ${mergedScenes.length} scenes)`
+	)
 
 	return {
 		people: mergedPeople,

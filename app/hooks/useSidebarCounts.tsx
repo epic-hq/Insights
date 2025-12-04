@@ -20,98 +20,98 @@ type Counts = {
 	opportunities?: number
 }
 
-export function useSidebarCounts(projectId?: string, workflowType?: string | null) {
+export function useSidebarCounts(accountId?: string, projectId?: string, workflowType?: string | null) {
 	const [counts, setCounts] = useState<Counts>({})
 	const [loading, setLoading] = useState(false)
 
 	useEffect(() => {
-		if (!projectId) return
+		if (!accountId || !projectId) return
 		let isCancelled = false
 
-		;(async () => {
-			setLoading(true)
-			try {
-				const supabase = createClient()
-				// Execute all count queries in parallel
-				const [
-					interviewsResult,
-					personasResult,
-					themesResult,
-					insightsResult,
-					peopleResult,
-					organizationsResult,
-					opportunitiesResult,
-				] = await Promise.all([
-					// Count interviews
-					supabase
-						.from("interviews")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
+			; (async () => {
+				setLoading(true)
+				try {
+					const supabase = createClient()
+					// Execute all count queries in parallel
+					const [
+						interviewsResult,
+						personasResult,
+						themesResult,
+						insightsResult,
+						peopleResult,
+						organizationsResult,
+						opportunitiesResult,
+					] = await Promise.all([
+						// Count interviews
+						supabase
+							.from("interviews")
+							.select("*", { count: "exact", head: true })
+							.eq("project_id", projectId),
 
-					// Count personas
-					supabase
-						.from("personas")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
+						// Count personas
+						supabase
+							.from("personas")
+							.select("*", { count: "exact", head: true })
+							.eq("project_id", projectId),
 
-					// Count themes
-					supabase
-						.from("themes")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
+						// Count themes
+						supabase
+							.from("themes")
+							.select("*", { count: "exact", head: true })
+							.eq("project_id", projectId),
 
-					// Count insights
-					supabase
-						.from("themes")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
+						// Count insights
+						supabase
+							.from("themes")
+							.select("*", { count: "exact", head: true })
+							.eq("project_id", projectId),
 
-					// Count people
-					supabase
-						.from("people")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
+						// Count people by account_id (people are account-scoped, not project-scoped)
+						supabase
+							.from("people")
+							.select("*", { count: "exact", head: true })
+							.eq("account_id", accountId),
 
-					// Count organizations
-					supabase
-						.from("organizations")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
+						// Count organizations
+						supabase
+							.from("organizations")
+							.select("*", { count: "exact", head: true })
+							.eq("project_id", projectId),
 
-					// Count opportunities
-					supabase
-						.from("opportunities")
-						.select("*", { count: "exact", head: true })
-						.eq("project_id", projectId),
-				])
+						// Count opportunities
+						supabase
+							.from("opportunities")
+							.select("*", { count: "exact", head: true })
+							.eq("project_id", projectId),
+					])
 
-				if (!isCancelled) {
-					setCounts({
-						encounters: interviewsResult.count || 0,
-						personas: personasResult.count || 0,
-						themes: themesResult.count || 0,
-						insights: insightsResult.count || 0,
-						people: peopleResult.count || 0,
-						organizations: organizationsResult.count || 0,
-						opportunities: opportunitiesResult.count || 0,
-					})
+					if (!isCancelled) {
+						setCounts({
+							encounters: interviewsResult.count || 0,
+							personas: personasResult.count || 0,
+							themes: themesResult.count || 0,
+							insights: insightsResult.count || 0,
+							people: peopleResult.count || 0,
+							organizations: organizationsResult.count || 0,
+							opportunities: opportunitiesResult.count || 0,
+						})
+					}
+				} catch (error) {
+					console.error("[useSidebarCounts] Error fetching counts:", error)
+					if (!isCancelled) {
+						setCounts({})
+					}
+				} finally {
+					if (!isCancelled) {
+						setLoading(false)
+					}
 				}
-			} catch (error) {
-				console.error("[useSidebarCounts] Error fetching counts:", error)
-				if (!isCancelled) {
-					setCounts({})
-				}
-			} finally {
-				if (!isCancelled) {
-					setLoading(false)
-				}
-			}
-		})()
+			})()
 
 		return () => {
 			isCancelled = true
 		}
-	}, [projectId, workflowType])
+	}, [accountId, projectId])
 
 	// Only surface counts > 0 to reduce noise.
 	const visible = useMemo(() => {
