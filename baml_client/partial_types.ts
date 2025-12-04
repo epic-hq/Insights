@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobToBeDone,  LensEvidenceHighlight,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
+import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EnrichedPerson,  EnrichmentResult,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExistingOrganization,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobToBeDone,  LensEvidenceHighlight,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  OrganizationMatch,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonContext,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -193,6 +193,19 @@ export namespace partial_types {
       key_metrics: string[]
       risks_if_wrong: string[]
     }
+    export interface EnrichedPerson {
+      person_id?: string | null
+      description?: string | null
+      inferred_title?: string | null
+      inferred_seniority?: string | null
+      organization_match?: OrganizationMatch | null
+      key_expertise: string[]
+      confidence?: number | null
+    }
+    export interface EnrichmentResult {
+      enriched_people: EnrichedPerson[]
+      processing_notes?: string | null
+    }
     export interface EvidenceAnalysisResponse {
       evidence_results: EvidenceLinkResult[]
       research_question_answers: ResearchQuestionAnswer[]
@@ -264,6 +277,12 @@ export namespace partial_types {
       completion_percentage?: number | null
       confidence?: number | null
       next_action?: string | null
+    }
+    export interface ExistingOrganization {
+      id?: string | null
+      name?: string | null
+      industry?: string | null
+      description?: string | null
     }
     export interface ExtractedInsight {
       name?: string | null
@@ -517,6 +536,13 @@ export namespace partial_types {
       competitive_advantage?: string | null
       recommended_actions: ActionButton[]
     }
+    export interface OrganizationMatch {
+      organization_id?: string | null
+      organization_name?: string | null
+      confidence?: string | null
+      reasoning?: string | null
+      should_create_new?: boolean | null
+    }
     export interface PainMatrixInsights {
       summary?: string | null
       top_3_actions: string[]
@@ -548,6 +574,14 @@ export namespace partial_types {
       person_name?: string | null
       inferred_name?: string | null
       role?: string | null
+    }
+    export interface PersonContext {
+      person_id?: string | null
+      name?: string | null
+      role?: string | null
+      evidence_snippets: string[]
+      facets: string[]
+      organization_mentioned?: string | null
     }
     export interface PersonDescriptionSummary {
       summary?: string | null

@@ -248,10 +248,11 @@ export async function seedTasks({
 	try {
 		consola.info("Starting task seeding...", { accountId, projectId })
 
-		// Check if tasks already exist for this project
+		// Check if tasks already exist for this project AND account
 		const { data: existing, error: checkError } = await supabase
 			.from("tasks")
 			.select("id")
+			.eq("account_id", accountId)
 			.eq("project_id", projectId)
 			.limit(1)
 

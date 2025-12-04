@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, BamlAbortError, Collector } from "@boundaryml/
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AuthorityInfo, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GoalAnswer, GoalLensExtraction, HistoryItem, HypothesisValidation, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobToBeDone, LensEvidenceHighlight, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, PainMatrixInsights, PainMatrixInsightsInput, Participant, ParticipantGoal, Person, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonLensMetadata, PersonProfileInput, PersonScaleInput, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, SalesLensExtraction, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, StakeholderRole, SuggestedQuestion, TargetFitAssessment, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
+import type {ActionButton, AuthorityInfo, AutoInsightsResponse, BBValues, BatchEvaluationResult, BehaviorPattern, BudgetInfo, Category, Chapter, CompetitiveInsight, ContextualSuggestions, ConversationAnalysis, ConversationEvidence, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, ConversationTakeaways, DealAdvisorRecommendation, DealQualificationSignals, DecisionInsight, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EnrichedPerson, EnrichmentResult, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, ExecutiveInsight, ExecutiveSummary, ExistingOrganization, ExtractedInsight, Extraction, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetGroupInput, FacetGroupSummary, FacetMention, FacetSignalInput, FeaturePrioritization, FeatureRequest, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, GoalAnswer, GoalLensExtraction, HistoryItem, HypothesisValidation, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, JobToBeDone, LensEvidenceHighlight, MentalModel, NeedInfo, NextStepInfo, NoteSnippet, OpportunityRecommendation, OrganizationMatch, PainMatrixInsights, PainMatrixInsightsInput, Participant, ParticipantGoal, Person, PersonContext, PersonDescriptionSummary, PersonEvidenceHighlight, PersonFacetInput, PersonFacetLensRequest, PersonFacetLensResponse, PersonLensMetadata, PersonProfileInput, PersonScaleInput, Persona, Persona1, PersonaAdvisorContext, PersonaAdvisorFacetInput, PersonaAdvisorPersonaInput, PersonaAdvisorReport, PersonaAdvisorScaleInput, PersonaAdvisorThemeInput, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProductGap, ProductLensExtraction, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchInsightInput, ResearchLearning, ResearchLensExtraction, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionInsight, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, SalesLensExtraction, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, StakeholderRole, SuggestedQuestion, TargetFitAssessment, TimelineInfo, TopPainCell, TurnAnchors, UnknownResolution, UsabilityFinding, UserJourneyInsight} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -446,6 +446,51 @@ export class BamlAsyncClient {
         signal,
       )
       return raw.parsed(false) as types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async EnrichPeopleFromEvidence(
+      people_contexts: types.PersonContext[],existing_organizations: types.ExistingOrganization[],
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.EnrichmentResult> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const signal = options.signal;
+      
+      if (signal?.aborted) {
+        throw new BamlAbortError('Operation was aborted', signal.reason);
+      }
+      
+      // Check if onTick is provided - route through streaming if so
+      if (options.onTick) {
+        const stream = this.stream.EnrichPeopleFromEvidence(
+          people_contexts,existing_organizations,
+          __baml_options__
+        );
+        
+        return await stream.getFinalResponse();
+      }
+      
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "EnrichPeopleFromEvidence",
+        {
+          "people_contexts": people_contexts,"existing_organizations": existing_organizations
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+        signal,
+      )
+      return raw.parsed(false) as types.EnrichmentResult
     } catch (error) {
       throw toBamlError(error);
     }
@@ -2311,6 +2356,69 @@ class BamlStreamClient {
         raw,
         (a): partial_types.Persona => a,
         (a): types.Persona => a,
+        this.ctxManager.cloneContext(),
+        options.signal,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  EnrichPeopleFromEvidence(
+      people_contexts: types.PersonContext[],existing_organizations: types.ExistingOrganization[],
+      __baml_options__?: BamlCallOptions
+  ): BamlStream<partial_types.EnrichmentResult, types.EnrichmentResult> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const signal = options.signal;
+      
+      if (signal?.aborted) {
+        throw new BamlAbortError('Operation was aborted', signal.reason);
+      }
+      
+      let collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      
+      let onTickWrapper: (() => void) | undefined;
+      
+      // Create collector and wrap onTick if provided
+      if (options.onTick) {
+        const tickCollector = new Collector("on-tick-collector");
+        collector = [...collector, tickCollector];
+        
+        onTickWrapper = () => {
+          const log = tickCollector.last;
+          if (log) {
+            try {
+              options.onTick!("Unknown", log);
+            } catch (error) {
+              console.error("Error in onTick callback for EnrichPeopleFromEvidence", error);
+            }
+          }
+        };
+      }
+
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "EnrichPeopleFromEvidence",
+        {
+          "people_contexts": people_contexts,"existing_organizations": existing_organizations
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+        signal,
+        onTickWrapper,
+      )
+      return new BamlStream<partial_types.EnrichmentResult, types.EnrichmentResult>(
+        raw,
+        (a): partial_types.EnrichmentResult => a,
+        (a): types.EnrichmentResult => a,
         this.ctxManager.cloneContext(),
         options.signal,
       )

@@ -16,6 +16,7 @@ export { processInterviewOrchestratorV2 } from "./orchestrator"
 // Atomic Tasks
 export { uploadAndTranscribeTaskV2 } from "./uploadAndTranscribe"
 export { extractEvidenceTaskV2 } from "./extractEvidence"
+export { enrichPersonTaskV2 } from "./enrichPerson"
 export { generateInsightsTaskV2 } from "./generateInsights"
 export { assignPersonasTaskV2 } from "./assignPersonas"
 export { attributeAnswersTaskV2 } from "./attributeAnswers"
@@ -40,6 +41,8 @@ export type {
 	ProcessInterviewOrchestratorPayload,
 	ProcessInterviewOrchestratorResult,
 } from "./types"
+
+export type { EnrichPersonPayload, EnrichPersonResult } from "./enrichPerson"
 
 // State management utilities
 export {

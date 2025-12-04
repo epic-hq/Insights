@@ -4,10 +4,11 @@
  * Coordinates the entire interview processing workflow:
  * 1. Upload & Transcribe
  * 2. Extract Evidence
- * 3. Generate Insights (themes)
- * 4. Assign Personas (parallel with answers)
- * 5. Attribute Answers (parallel with personas)
- * 6. Finalize Interview
+ * 3. Enrich Person (generate descriptions, link organizations)
+ * 4. Generate Insights (themes)
+ * 5. Assign Personas (parallel with answers)
+ * 6. Attribute Answers (parallel with personas)
+ * 7. Finalize Interview
  *
  * Key features:
  * - Resume from any step
@@ -22,6 +23,7 @@ import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { workflowRetryConfig } from "~/utils/processInterview.server"
 import { uploadAndTranscribeTaskV2 } from "./uploadAndTranscribe"
 import { extractEvidenceTaskV2 } from "./extractEvidence"
+import { enrichPersonTaskV2 } from "./enrichPerson"
 import { generateInsightsTaskV2 } from "./generateInsights"
 import { assignPersonasTaskV2 } from "./assignPersonas"
 import { attributeAnswersTaskV2 } from "./attributeAnswers"
@@ -225,11 +227,41 @@ export const processInterviewOrchestratorV2 = task({
 				consola.info("[Orchestrator] Skipping: Extract Evidence")
 			}
 
-			// Step 3: Generate Insights (themes)
-			if (
-				shouldExecuteStep("insights", startFrom, state) &&
-				!skipSteps.includes("insights")
-			) {
+
+		// Step 3: Enrich Person (generate descriptions, link organizations)
+		if (
+			shouldExecuteStep("enrich-person", startFrom, state) &&
+			!skipSteps.includes("enrich-person")
+		) {
+			consola.info("[Orchestrator] Executing: Enrich Person")
+
+			const result = await enrichPersonTaskV2.triggerAndWait({
+				interviewId: state.interviewId,
+				projectId: metadata.projectId,
+				accountId: metadata.accountId,
+				personId: state.personId || null,
+				analysisJobId,
+			})
+
+			if (!result.ok) {
+				throw new Error(`Enrich person failed: ${result.error}`)
+			}
+
+			// Update state
+			state.completedSteps = [...new Set([...state.completedSteps, "enrich-person"])]
+			state.currentStep = "enrich-person"
+
+			await saveWorkflowState(client, analysisJobId, state)
+			consola.success("[Orchestrator] ✓ Enrich Person complete")
+		} else {
+			consola.info("[Orchestrator] Skipping: Enrich Person")
+		}
+
+		// Step 4: Generate Insights (themes)
+		if (
+			shouldExecuteStep("insights", startFrom, state) &&
+			!skipSteps.includes("insights")
+		) {
 				consola.info("[Orchestrator] Executing: Generate Insights")
 
 				const result = await generateInsightsTaskV2.triggerAndWait({
@@ -255,10 +287,10 @@ export const processInterviewOrchestratorV2 = task({
 				consola.info("[Orchestrator] Skipping: Generate Insights")
 			}
 
-			// Steps 4 & 5: Assign Personas + Attribute Answers (can run in parallel in future)
+			// Steps 5 & 6: Assign Personas + Attribute Answers (can run in parallel in future)
 			// For now, run sequentially for simplicity
 
-			// Step 4: Assign Personas
+			// Step 5: Assign Personas
 			if (
 				shouldExecuteStep("personas", startFrom, state) &&
 				!skipSteps.includes("personas")
@@ -288,7 +320,7 @@ export const processInterviewOrchestratorV2 = task({
 				consola.info("[Orchestrator] Skipping: Assign Personas")
 			}
 
-			// Step 5: Attribute Answers
+			// Step 6: Attribute Answers
 			if (
 				shouldExecuteStep("answers", startFrom, state) &&
 				!skipSteps.includes("answers")
@@ -312,7 +344,7 @@ export const processInterviewOrchestratorV2 = task({
 				consola.info("[Orchestrator] Skipping: Attribute Answers")
 			}
 
-			// Step 6: Finalize Interview
+			// Step 7: Finalize Interview
 			if (
 				shouldExecuteStep("finalize", startFrom, state) &&
 				!skipSteps.includes("finalize")

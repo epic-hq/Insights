@@ -71,6 +71,10 @@ export default class TypeBuilder {
     
     DecisionQuestionOut: ClassViewer<'DecisionQuestionOut', "id" | "text" | "rationale" | "key_metrics" | "risks_if_wrong">;
     
+    EnrichedPerson: ClassViewer<'EnrichedPerson', "person_id" | "description" | "inferred_title" | "inferred_seniority" | "organization_match" | "key_expertise" | "confidence">;
+    
+    EnrichmentResult: ClassViewer<'EnrichmentResult', "enriched_people" | "processing_notes">;
+    
     EvidenceAnalysisResponse: ClassViewer<'EvidenceAnalysisResponse', "evidence_results" | "research_question_answers" | "decision_question_answers" | "global_goal_summary" | "recommended_actions">;
     
     EvidenceItem: ClassViewer<'EvidenceItem', "id" | "verbatim" | "support" | "interview_id" | "context_summary">;
@@ -86,6 +90,8 @@ export default class TypeBuilder {
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
     ExecutiveSummary: ClassViewer<'ExecutiveSummary', "answered_insights" | "critical_unknowns" | "completion_percentage" | "confidence" | "next_action">;
+    
+    ExistingOrganization: ClassViewer<'ExistingOrganization', "id" | "name" | "industry" | "description">;
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
@@ -153,6 +159,8 @@ export default class TypeBuilder {
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
     
+    OrganizationMatch: ClassViewer<'OrganizationMatch', "organization_id" | "organization_name" | "confidence" | "reasoning" | "should_create_new">;
+    
     PainMatrixInsights: ClassViewer<'PainMatrixInsights', "summary" | "top_3_actions">;
     
     PainMatrixInsightsInput: ClassViewer<'PainMatrixInsightsInput', "total_pains" | "total_groups" | "total_evidence" | "high_impact_cells" | "top_pains">;
@@ -162,6 +170,8 @@ export default class TypeBuilder {
     ParticipantGoal: ClassViewer<'ParticipantGoal', "speaker" | "goal" | "evidence_snippet" | "confidence">;
     
     Person: ClassViewer<'Person', "person_key" | "speaker_label" | "person_name" | "inferred_name" | "role">;
+    
+    PersonContext: ClassViewer<'PersonContext', "person_id" | "name" | "role" | "evidence_snippets" | "facets" | "organization_mentioned">;
     
     PersonDescriptionSummary: ClassViewer<'PersonDescriptionSummary', "summary">;
     
@@ -298,7 +308,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEvidenceHighlight","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
+            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EnrichedPerson","EnrichmentResult","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExistingOrganization","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEvidenceHighlight","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","OrganizationMatch","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonContext","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -394,6 +404,14 @@ export default class TypeBuilder {
           "id","text","rationale","key_metrics","risks_if_wrong",
         ]);
         
+        this.EnrichedPerson = this.tb.classViewer("EnrichedPerson", [
+          "person_id","description","inferred_title","inferred_seniority","organization_match","key_expertise","confidence",
+        ]);
+        
+        this.EnrichmentResult = this.tb.classViewer("EnrichmentResult", [
+          "enriched_people","processing_notes",
+        ]);
+        
         this.EvidenceAnalysisResponse = this.tb.classViewer("EvidenceAnalysisResponse", [
           "evidence_results","research_question_answers","decision_question_answers","global_goal_summary","recommended_actions",
         ]);
@@ -424,6 +442,10 @@ export default class TypeBuilder {
         
         this.ExecutiveSummary = this.tb.classViewer("ExecutiveSummary", [
           "answered_insights","critical_unknowns","completion_percentage","confidence","next_action",
+        ]);
+        
+        this.ExistingOrganization = this.tb.classViewer("ExistingOrganization", [
+          "id","name","industry","description",
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
@@ -558,6 +580,10 @@ export default class TypeBuilder {
           "title","description","revenue_potential","effort_estimate","target_personas","supporting_insights","competitive_advantage","recommended_actions",
         ]);
         
+        this.OrganizationMatch = this.tb.classViewer("OrganizationMatch", [
+          "organization_id","organization_name","confidence","reasoning","should_create_new",
+        ]);
+        
         this.PainMatrixInsights = this.tb.classViewer("PainMatrixInsights", [
           "summary","top_3_actions",
         ]);
@@ -576,6 +602,10 @@ export default class TypeBuilder {
         
         this.Person = this.tb.classViewer("Person", [
           "person_key","speaker_label","person_name","inferred_name","role",
+        ]);
+        
+        this.PersonContext = this.tb.classViewer("PersonContext", [
+          "person_id","name","role","evidence_snippets","facets","organization_mentioned",
         ]);
         
         this.PersonDescriptionSummary = this.tb.classViewer("PersonDescriptionSummary", [

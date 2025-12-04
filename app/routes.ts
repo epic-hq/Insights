@@ -38,6 +38,9 @@ const routes = [
 		...teamsRoutes,
 		...docsRoutes,
 
+		// Protected API routes
+		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
+
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
 			// Account home/dashboard

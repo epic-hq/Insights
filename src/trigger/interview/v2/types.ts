@@ -32,7 +32,7 @@ export interface WorkflowState {
 /**
  * Valid workflow steps
  */
-export type WorkflowStep = "upload" | "evidence" | "insights" | "personas" | "answers" | "finalize"
+export type WorkflowStep = "upload" | "evidence" | "enrich-person" | "insights" | "personas" | "answers" | "finalize"
 
 /**
  * Task payloads for each atomic task
