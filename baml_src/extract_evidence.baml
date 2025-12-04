@@ -113,95 +113,58 @@ function ExtractEvidenceFromTranscriptV2(
   language: string,
   facet_catalog: FacetCatalog
 ) -> Extraction {
-  client "CustomGPT5"
+  client CustomGPT4oMini
   prompt #"
-You are an expert UX researcher.
-Your task is to produce an exhaustive, chronological Event Stream from an interview transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
+You are an expert UX researcher extracting structured evidence from interview transcripts.
 
 ## Steps
-1. Identify every human speaker. Populate the `people` array once with:
-   - `person_key`: deterministic slug per human such as `participant-1`, `participant-2`, `interviewer-1`. Derive the number from first appearance order. Reuse the EXACT same `person_key` string for all references to that person. Never reuse a slug for different humans.
-   - `display_name`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
-   - `inferred_name` and `role` when confident (role ∈ participant | interviewer | moderator | observer | customer | sales_rep).
-   - Include any known segments/personas/organization in the optional fields when the transcript states them.
-2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, tags, anchors, confidence, and empathy map fields.
-3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
-4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
+1. Identify all speakers and create a deterministic `person_key` (e.g., `participant-1`, `interviewer-1`) based on first appearance order.
+2. Extract one `EvidenceTurn` per speaker turn with: gist (≤12 words), chunk (2-5 sentences), verbatim quote (≤15 words), and timing anchors.
+3. For each turn, extract `FacetMention` items for distinct signals: goals, pains, behaviors, tools, values, preferences, demographics, context, artifacts, emotions.
+4. Create `Scene` segments when topics shift significantly.
 
-## Selection Priorities
-High-severity pains, frequent/recency-marked behaviors, explicit goals, success criteria.
-Workarounds, hacks, switching triggers, evaluation criteria, blockers, willingness-to-pay signals.
-Moments that reveal motivations, anxieties, decision criteria, or definitions of success.
+## What to Extract
+Focus on: pains, goals, behaviors, workarounds, switching triggers, decision criteria, tool mentions, willingness-to-pay.
 
-## SKIP Non-Evidence (Do NOT Extract)
-- Weather talk, bathroom breaks, technical difficulties
-- Social pleasantries ("nice to meet you", "how are you", "have a great day")
-- Procedural questions ("can we continue?", "is this recording?", "can you hear me?")
-- Off-topic chitchat unrelated to product, workflow, or user psychology
-- Interviewer instructions or transitions unless they reveal user confusion/friction
+## What to Skip
+Skip: weather talk, pleasantries, procedural questions, generic acknowledgments, interviewer transitions without user signals.
 
-Examples to SKIP:
-❌ "It's really hot today" - weather
-❌ "Can I grab some water real quick?" - procedural
-❌ "That's fine, go ahead" - generic acknowledgment
-❌ "So, let's talk about..." - interviewer transition (no signal)
+## EvidenceTurn Format
+- `person_key`: Match exactly to Person.person_key (e.g., 'participant-1', 'interviewer-1')
+- `gist`: ≤12 words headline
+- `chunk`: 2-5 sentences from speaker
+- `verbatim`: ≤15-word quote
+- `anchors.start_ms`: REQUIRED - use SpeakerUtterance.start (milliseconds for video playback)
+- `isQuestion`: TRUE if turn contains a question
+- `facet_mentions`: Array of FacetMention objects (one per signal)
+- Optional: empathy map fields (says, does, thinks, feels, pains, gains) - use sparingly, only when adding unique value
 
-Examples to EXTRACT:
-✅ "I wish the tool would..." - pain/goal
-✅ "I usually work around that by..." - workaround/behavior
-✅ "It's frustrating when..." - pain with emotional signal
-✅ "I use Notion because..." - tool + rationale
-
-ONLY extract turns with business or psychographic relevance.
-
-## EvidenceTurn
-- index: 0-based chronological index (strictly ascending) and equals its position in the stream.
-- **person_key**: REQUIRED. Exact match (character-for-character) to the `person_key` defined for that person in `people`. Never invent a new slug at the turn level. CRITICAL: Distinguish between interviewer and participant - if someone is asking questions, they're likely the interviewer; if answering, they're the participant.
-- gist: ≤12 words; no labels like "Quote:".
-- chunk: 2–5 sentences of the participant’s words.
-- verbatim: ≤15-word quote from the chunk.
-- **anchors.start_ms**: CRITICAL - ALWAYS use the `start` field from the corresponding SpeakerUtterance. This timing is already in milliseconds and is REQUIRED for video playback functionality.
-- anchors: include start_ms (REQUIRED), end_ms when available, speaker label, optional chapter_title.
-- confidence: low | medium | high. Map evidence strength: direct quote ≥ concrete behavior ≥ inferred belief.
-- **isQuestion**: Set to TRUE if this turn contains any question (explicit questions, requests for clarification, probes, etc.) regardless of speaker. FALSE or omit if no questions. Useful for filtering question-response patterns and conversation analysis.
-- empathy map: only when high-signal; 0–2 items per field; do not repeat gist/verbatim/facet values; leave empty if not useful.
- - why_it_matters: ≤10 words; express the consequence or importance (e.g., "blocks timely status updates").
-
-## FacetMention (extraction-only, no linking)
-- parent_index: points to the `EvidenceTurn.index` where the signal appeared.
-- **person_key**: REQUIRED. Must match the exact slug from `people` AND match the person_key of the parent EvidenceTurn. CRITICAL: Assign facets to the person who EXPRESSED the trait/behavior, not the person being discussed. If the interviewer asks "What tools do you use?", the participant's answer creates facets for the PARTICIPANT, not the interviewer.
-- kind_slug: one of goal | pain | behavior | tool | value | workflow | preference | demographic | context | artifact | emotion.
-- value: concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include frequency/recency when stated (e.g., "daily", "last week"). Include trigger/condition and objective when helpful. For preference/value, compress subject + rationale into one field when possible: e.g., "values integrated planning + calendar (tracks progress)", "prefers explicit topic mapping for workflow", "requires calendar integration to schedule study".
-- quote: include when it strengthens auditability; ≤15 words.
-- confidence: one of 1, 0.75, 0.5, 0.25, 0.
-- Output one FacetMention per distinct signal in a turn; do not merge similar mentions across turns.
+## FacetMention Format
+- `person_key`: Match person who EXPRESSED the signal (not who was discussed)
+- `kind_slug`: goal | pain | behavior | tool | value | preference | demographic | context | artifact | emotion
+- `value`: ≤12 words, concrete (e.g., "uses Google Docs for essay drafts", "frustrated by finding information")
+- `quote`: ≤15 words when high-signal
+- Output one FacetMention per distinct signal
 
 ## Scenes
-- Create a new scene when the topic/goal shifts meaningfully.
-- Each scene has `start_index`, `end_index`, and a short `topic` label.
+Create scenes when topics shift. Include `start_index`, `end_index`, `topic`.
 
-## Guardrails
-- Emit all items in ascending `index` / `parent_index` order.
-- Do not fall back to a generic person — if a turn's `person_key` cannot be matched to `people`, revisit your mapping rather than defaulting to the primary participant.
-- Do not output any catalog ids or proposals; linking occurs in a separate step.
-- Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
-- When choosing empathy vs mention: prefer FacetMention as the authoritative signal; only add empathy items if they add non-duplicative skim value.
-- Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
-- Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
+## Input Data
 
-Speaker Transcripts (language={{ language }})
-Each utterance includes speaker label, text, and timing in milliseconds:
+Speaker Transcripts ({{ language }}):
 {{ speaker_transcripts }}
 
-Chapters (optional; may help anchoring)
+{% if chapters|length > 0 %}
+Chapters:
 {{ chapters }}
+{% endif %}
 
-{% if facet_catalog and (facet_catalog.kinds|length > 0 or facet_catalog.facets|length > 0) %}
-Facet catalog (read-only; do not link in this pass)
+{% if facet_catalog and facet_catalog.facets|length > 0 %}
+Available Facets (reference only, do not link):
 {{ facet_catalog }}
 {% endif %}
 
-Output ONLY JSON conforming to {{ ctx.output_format }} (no prose/markdown). Ensure indices are contiguous from 0 and strictly ascending; each FacetMention.parent_index references an existing EvidenceTurn.index; omit empty/null fields.
+Output JSON only. Ensure contiguous 0-based indices. {{ ctx.output_format }}
 "#
 }
 

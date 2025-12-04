@@ -641,9 +641,12 @@ export async function extractEvidenceAndPeopleCore({
 
 		consola.info(`📝 Passing ${speakerTranscripts.length} speaker utterances with timing to AI`)
 
-		evidenceResponse = await batchExtractEvidence(speakerTranscripts, async (batch) => {
-			return await instrumentedClient.ExtractEvidenceFromTranscriptV2(batch, chapters, language, facetCatalog)
-		})
+		evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscriptV2(
+			speakerTranscripts,
+			chapters,
+			language,
+			facetCatalog
+		)
 		usageSummary = summarizeCollectorUsage(collector, costOptions)
 		if (usageSummary) {
 			consola.log("[BAML usage] ExtractEvidenceFromTranscriptV2:", usageSummary)
