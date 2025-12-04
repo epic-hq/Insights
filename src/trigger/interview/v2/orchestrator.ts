@@ -176,11 +176,6 @@ export const processInterviewOrchestratorV2 = task({
 
 				await saveWorkflowState(client, analysisJobId, state)
 
-				// Reload state to get merged values (in case triggerAndWait returned undefined)
-				const reloadedState = await loadWorkflowState(client, analysisJobId)
-				if (reloadedState) {
-					state = reloadedState
-				}
 
 				consola.success("[Orchestrator] ✓ Upload & Transcribe complete, state saved")
 			} else {
