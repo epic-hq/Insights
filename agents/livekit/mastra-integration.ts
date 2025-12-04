@@ -373,6 +373,7 @@ export function createMastraTools(context: { projectId: string; accountId: strin
 
 					const tasks = await getTasks({
 						supabase: supabaseAdmin as any,
+					accountId,
 						projectId,
 						options,
 					})
