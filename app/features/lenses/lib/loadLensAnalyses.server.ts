@@ -3,7 +3,6 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { Database } from "~/types/supabase.types"
 
 export type LensTemplate = {
@@ -79,8 +78,8 @@ export async function loadLensAnalyses(
 	interviewId: string,
 	accountId?: string
 ): Promise<Record<string, LensAnalysisWithTemplate>> {
-	// Use admin client for analyses to bypass RLS (accountId filter provides security)
-	let analysesQuery = supabaseAdmin.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId)
+	// Build analyses query - RLS handles access control via account membership
+	let analysesQuery = db.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId)
 
 	if (accountId) {
 		analysesQuery = analysesQuery.eq("account_id", accountId)

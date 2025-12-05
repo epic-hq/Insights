@@ -1,15 +1,31 @@
 # Conversation Lenses MVP - Reduced Scope Plan
 
+## Status: Phase 2 Complete ✅
+
+### Completed
+- ✅ Database schema with templates seeded (6 system lenses)
+- ✅ Generic BAML function `ApplyConversationLens` for dynamic template extraction
+- ✅ `applyLens.ts` task loads template from DB and applies via BAML
+- ✅ `loadLensAnalyses.server.ts` with RLS-compliant data loading
+- ✅ `GenericLensView.tsx` renders any lens based on template definition
+- ✅ `LensTabs.tsx` tabbed UI for viewing all lenses
+- ✅ Interview detail page integration with lens display
+- ✅ RLS policies for account-based access control
+
+### Remaining
+- 🔲 Hook `applyAllLensesTask` into finalize pipeline for auto-application
+- 🔲 End-to-end testing of new interview processing
+
 ## System Lenses (v1)
 
-| # | Template Key | Name | Purpose | BAML Status | Priority |
-|---|--------------|------|---------|-------------|----------|
-| 1 | `project-research` | Project Research | Answer project goals, decision questions, unknowns | ✅ `goal_lens_extraction.baml` exists | **P0** |
-| 2 | `sales-bant` | Sales BANT | Budget, Authority, Need, Timeline qualification | ✅ `sales_lens_extraction.baml` exists | **P0** |
-| 3 | `empathy-map-jtbd` | Empathy Map / JTBD | Says/Thinks/Does/Feels + Jobs-to-be-Done | ✅ Seeded in DB | **P0** |
-| 4 | `customer-discovery` | Customer Discovery | Problem/solution validation, market insights | ✅ Seeded in DB | **P1** |
-| 5 | `user-testing` | User Testing | Usability findings, friction points | ✅ `research_lens_extraction.baml` exists | **P1** |
-| 6 | `product-insights` | Product Insights | Feature requests, product gaps, competitive intel | ✅ `product_lens_extraction.baml` exists | **P1** |
+| # | Template Key | Name | Purpose | Status | Priority |
+|---|--------------|------|---------|--------|----------|
+| 1 | `project-research` | Project Research | Answer project goals, decision questions, unknowns | ✅ Working | **P0** |
+| 2 | `sales-bant` | Sales BANT | Budget, Authority, Need, Timeline qualification | ✅ Working | **P0** |
+| 3 | `empathy-map-jtbd` | Empathy Map / JTBD | Says/Thinks/Does/Feels + Jobs-to-be-Done | ✅ Working | **P0** |
+| 4 | `customer-discovery` | Customer Discovery | Problem/solution validation, market insights | ✅ Working | **P1** |
+| 5 | `user-testing` | User Testing | Usability findings, friction points | ✅ Working | **P1** |
+| 6 | `product-insights` | Product Insights | Feature requests, product gaps, competitive intel | ✅ Working | **P1** |
 
 ### Project Research Lens (P0 - Critical)
 
