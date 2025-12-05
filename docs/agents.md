@@ -18,6 +18,29 @@ This document is the landing pad for every AI agent, automation workflow, or Cop
 
 ## 3. Code Conventions
 
+### Semantic Search Implementation (Dec 2024)
+**Hybrid semantic search** for evidence and people using OpenAI embeddings + pgvector:
+
+**Database Functions:**
+- `find_similar_evidence()` - Search evidence verbatim quotes
+- `find_similar_evidence_facets()` - Search evidence facets (pains, gains, thinks, feels)
+- `find_similar_person_facets()` - Search person facets (roles, titles, demographics, behaviors)
+
+**Mastra Tools:**
+- `semanticSearchEvidence` - Searches BOTH verbatim + facets in parallel, combines results by highest similarity
+- `semanticSearchPeople` - Finds people by demographic/behavioral traits via person_facet embeddings
+
+**Key Implementation Details:**
+- `person_facet` uses composite primary key `(person_id, facet_account_id)` - NO `id` column
+- Must JOIN with `facet_account` and `facet_kind_global` to get `label` and `kind_slug`
+- Default similarity threshold: 0.5 (semantic scores are typically lower than exact matches)
+- Embeddings: `text-embedding-3-small` (1536 dims) stored in `embedding` column with HNSW index
+
+**Migration Sequencing:**
+- Always use timestamped migrations (YYYYMMDDHHMMSS format)
+- Place semantic search migrations AFTER schema changes they depend on
+- Example: `20251227000000_fix_person_facet_search.sql` runs after `20251224000000_add_key_takeaways.sql`
+
 ### URL Routing for Project-Scoped Resources
 When generating URLs that link to project-scoped resources (evidence, interviews, insights, people, etc.), always use the project-scoped route helpers:
 
@@ -48,6 +71,9 @@ The `projectPath` is formatted as `/a/{accountId}/{projectId}` and must be passe
 ## 5. Task Ledger (AI-editable)
 - [x] Document the `themes` migration, priority views, and vote-count handling in this manifest.
 - [x] Added project/theme/docs tooling that surfaces votes/priority as part of `fetchProjectStatusContext` and UI tables.
+- [x] Implemented hybrid semantic search for evidence (verbatim + facets) and people (Dec 2024).
+- [x] Fixed evidence detail page scroll bug - respects `?t=` timestamp parameter for media playback.
+- [ ] Generate embeddings for evidence/facets missing them (currently ~36% of evidence lacks embeddings).
 - [ ] Standardize instructions for any agents still referencing legacy routing (especially `projectSetupAgent`).
 - [ ] Confirm the `/themes` page only shows the Table + Cards toggles, and remove old matrix/table links.
 - [ ] Keep this checklist updated; when new automation ideas arise (e.g., priority audit, theme adoption coach), append them here so future LLMs can keep extending the ledger.

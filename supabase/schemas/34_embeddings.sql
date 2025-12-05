@@ -233,29 +233,29 @@ create or replace function public.find_similar_person_facets(
   kind_slug_filter text default null
 )
 returns table (
-  id uuid,
   person_id uuid,
+  facet_account_id int,
   kind_slug text,
   label text,
-  value text,
   confidence numeric,
   similarity float
 ) as $$
 begin
   return query
     select
-      pf.id,
       pf.person_id,
-      pf.kind_slug,
-      pf.label,
-      pf.value,
+      pf.facet_account_id,
+      fkg.slug as kind_slug,
+      fa.label,
       pf.confidence,
       1 - (pf.embedding <=> query_embedding) as similarity
     from public.person_facet pf
+    join public.facet_account fa on pf.facet_account_id = fa.id
+    join public.facet_kind_global fkg on fa.kind_id = fkg.id
     where pf.project_id = project_id_param
       and pf.embedding is not null
       and 1 - (pf.embedding <=> query_embedding) > match_threshold
-      and (kind_slug_filter is null or pf.kind_slug = kind_slug_filter)
+      and (kind_slug_filter is null or fkg.slug = kind_slug_filter)
     order by pf.embedding <=> query_embedding
     limit match_count;
 end;
@@ -525,6 +525,7 @@ comment on column public.insights.embedding is 'OpenAI text-embedding-3-small (1
 
 comment on function public.find_similar_evidence is 'Find evidence similar to a query embedding using cosine similarity';
 comment on function public.find_similar_evidence_facets is 'Find evidence facets (pains, gains, thinks, feels, etc.) similar to a query embedding using cosine similarity';
+comment on function public.find_similar_person_facets is 'Find people by searching person facets (roles, titles, demographics, behaviors) using semantic similarity';
 comment on function public.find_similar_themes is 'Find themes similar to a query embedding using cosine similarity';
 comment on function public.find_duplicate_themes is 'Find duplicate/similar themes within a project for consolidation';
 comment on function public.find_person_facet_clusters is 'Find clusters of similar person facets for semantic segment grouping (e.g., "Product Manager" + "PM" + "Product Lead")';

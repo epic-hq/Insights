@@ -715,7 +715,36 @@ export type Database = {
           updated_at?: string
           user_goals?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversation_lens_analyses_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_analyses_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_analyses_template_key_fkey"
+            columns: ["template_key"]
+            isOneToOne: false
+            referencedRelation: "conversation_lens_templates"
+            referencedColumns: ["template_key"]
+          },
+        ]
       }
       conversation_lens_templates: {
         Row: {
@@ -5074,7 +5103,10 @@ export type Database = {
           high_impact_themes: string[] | null
           id: string | null
           interview_date: string | null
+          interview_type: string | null
           interviewer_id: string | null
+          key_takeaways: string | null
+          lens_visibility: string | null
           media_type: string | null
           media_url: string | null
           observations_and_notes: string | null
@@ -5104,7 +5136,10 @@ export type Database = {
           high_impact_themes?: string[] | null
           id?: string | null
           interview_date?: string | null
+          interview_type?: string | null
           interviewer_id?: string | null
+          key_takeaways?: string | null
+          lens_visibility?: string | null
           media_type?: string | null
           media_url?: string | null
           observations_and_notes?: string | null
@@ -5134,7 +5169,10 @@ export type Database = {
           high_impact_themes?: string[] | null
           id?: string | null
           interview_date?: string | null
+          interview_type?: string | null
           interviewer_id?: string | null
+          key_takeaways?: string | null
+          lens_visibility?: string | null
           media_type?: string | null
           media_url?: string | null
           observations_and_notes?: string | null
@@ -5479,6 +5517,41 @@ export type Database = {
           similarity: number
           thinks: string[]
           verbatim: string
+        }[]
+      }
+      find_similar_evidence_facets: {
+        Args: {
+          kind_slug_filter?: string
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+          query_embedding: string
+        }
+        Returns: {
+          confidence: number
+          evidence_id: string
+          id: string
+          kind_slug: string
+          label: string
+          quote: string
+          similarity: number
+        }[]
+      }
+      find_similar_person_facets: {
+        Args: {
+          kind_slug_filter?: string
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+          query_embedding: string
+        }
+        Returns: {
+          confidence: number
+          facet_account_id: number
+          kind_slug: string
+          label: string
+          person_id: string
+          similarity: number
         }[]
       }
       find_similar_themes: {

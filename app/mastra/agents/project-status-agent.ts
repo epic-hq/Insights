@@ -27,6 +27,7 @@ import { managePersonOrganizationsTool } from "../tools/manage-person-organizati
 import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
+import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
 
@@ -56,7 +57,8 @@ Workflow:
    • If they name or clearly refer to a specific person, immediately call "fetchPeopleDetails" with peopleSearch set to that name and includePersonas/includeEvidence=true to get comprehensive person details, demographics, and interview history. Use the returned data to ground your answer, or ask for clarification if the person cannot be found.
    • If they ask about segments, customer groups, or target markets, call "fetchSegments" to get segment data with bullseye scores. This shows which customer segments are most likely to buy based on willingness to pay and pain intensity.
    • If they ask about the Product Lens or pain matrix, call "fetchPainMatrixCache" to get the cached matrix data. If no cache exists or it's stale, explain that Product Lens analysis needs to be run.
-   • If they ask to search for evidence about a specific topic, pain point, or concept (e.g., "find evidence about budget concerns", "what did people say about pricing?"), call "semanticSearchEvidence" with the query parameter set to their search terms. The query is REQUIRED - always provide a natural language search phrase. This uses AI embeddings to find semantically related evidence. Use matchThreshold between 0.4-0.6 for broad searches (default is 0.5), or 0.6-0.8 for very precise matches.
+   • If they ask to search for signals or evidence about a specific topic, pain point, or concept (e.g., "find evidence about budget concerns", "what did people say about pricing?"), call "semanticSearchEvidence" with the query parameter set to their search terms. The query is REQUIRED - always provide a natural language search phrase. This searches both verbatim quotes AND structured facets (pains, gains, thinks, feels). Use matchThreshold between 0.4-0.6 for broad searches (default is 0.5), or 0.6-0.8 for very precise matches.
+   • If they ask to find people by traits, roles, or demographics (e.g., "find CTOs", "who are the product managers?", "show me enterprise buyers"), call "semanticSearchPeople" with the query describing the traits. This searches person facets like roles, titles, company size, industry, behaviors. Use kindSlugFilter to narrow by facet type if needed.
    • If they ask about opportunities, pipeline health, or specific deals, call "fetchOpportunities" to load opportunity details (stage, amount, close date, status) before answering.
    • If they ask about a particular theme, persona, or other entity, re-call the status tool (or another relevant tool) with the matching scope and search parameters so you can cite real records.
 3. For detailed interview breakdowns or transcripts, follow up by calling "fetchInterviewContext" for the interview IDs you discovered (use includeEvidence=true unless the user prefers otherwise).
@@ -106,6 +108,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchPersonas: fetchPersonasTool,
 		fetchEvidence: fetchEvidenceTool,
 		semanticSearchEvidence: semanticSearchEvidenceTool,
+		semanticSearchPeople: semanticSearchPeopleTool,
 		fetchProjectGoals: fetchProjectGoalsTool,
 		fetchThemes: fetchThemesTool,
 		fetchPainMatrixCache: fetchPainMatrixCacheTool,
