@@ -129,7 +129,8 @@ async function generateConversationTakeaways(
                         bantSummary,
                         meddicSummary,
                         stakeholdersSummary,
-                        durationMinutes
+                        durationMinutes,
+                        null
                 )
 
                 consola.info(`[generateConversationTakeaways] BAML extraction completed`)

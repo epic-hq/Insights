@@ -242,6 +242,7 @@ export const fetchTasksTool = createTool({
 
 			const tasks = await getTasks({
 				supabase,
+				accountId,
 				projectId,
 				options: {
 					filters: {

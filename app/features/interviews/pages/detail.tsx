@@ -1766,9 +1766,63 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{/* AI Takeaways */}
 					{interview.key_takeaways && (
 						<div className="mb-6">
-							<label className="mb-2 flex items-center gap-2 font-semibold text-foreground text-lg">
-								<Sparkles className="h-5 w-5 text-amber-500" />
-								AI Takeaways
+							<label className="mb-2 flex items-center justify-between">
+								<span className="flex items-center gap-2 font-semibold text-foreground text-lg">
+									<Sparkles className="h-5 w-5 text-amber-500" />
+									AI Takeaways
+								</span>
+								<Popover>
+									<PopoverTrigger asChild>
+										<Button variant="ghost" size="sm">
+											<MoreVertical className="h-4 w-4" />
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-96 p-4">
+										<div className="space-y-4">
+											<div>
+												<h4 className="font-medium text-sm mb-2">Regenerate AI Summary</h4>
+												<p className="text-muted-foreground text-xs mb-3">
+													Optionally provide custom instructions to guide the AI's analysis
+												</p>
+											</div>
+											<Textarea
+												placeholder="e.g., Focus on technical requirements and integration concerns"
+												className="min-h-[80px] text-sm"
+												id="ai-summary-instructions"
+											/>
+											<div className="flex gap-2">
+												<Button
+													size="sm"
+													variant="outline"
+													onClick={() => {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api/regenerate-ai-summary" }
+														)
+													}}
+												>
+													Regenerate
+												</Button>
+												<Button
+													size="sm"
+													onClick={() => {
+														const textarea = document.getElementById("ai-summary-instructions") as HTMLTextAreaElement
+														const instructions = textarea?.value || ""
+														fetcher.submit(
+															{
+																interview_id: interview.id,
+																custom_instructions: instructions
+															},
+															{ method: "post", action: "/api/regenerate-ai-summary" }
+														)
+													}}
+												>
+													Regenerate with Instructions
+												</Button>
+											</div>
+										</div>
+									</PopoverContent>
+								</Popover>
 							</label>
 							<div className="rounded-lg border bg-muted/30 p-4 text-foreground text-sm leading-relaxed">
 								{interview.key_takeaways}

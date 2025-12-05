@@ -497,23 +497,6 @@ export interface DecisionQuestionOut {
   
 }
 
-export interface EnrichedPerson {
-  person_id: string
-  description: string
-  inferred_title?: string | null
-  inferred_seniority?: string | null
-  organization_match?: OrganizationMatch | null
-  key_expertise: string[]
-  confidence: number
-  
-}
-
-export interface EnrichmentResult {
-  enriched_people: EnrichedPerson[]
-  processing_notes?: string | null
-  
-}
-
 export interface EvidenceAnalysisResponse {
   evidence_results: EvidenceLinkResult[]
   research_question_answers: ResearchQuestionAnswer[]
@@ -599,14 +582,6 @@ export interface ExecutiveSummary {
   completion_percentage: number
   confidence: number
   next_action: string
-  
-}
-
-export interface ExistingOrganization {
-  id: string
-  name: string
-  industry?: string | null
-  description?: string | null
   
 }
 
@@ -928,15 +903,6 @@ export interface OpportunityRecommendation {
   
 }
 
-export interface OrganizationMatch {
-  organization_id?: string | null
-  organization_name: string
-  confidence: string
-  reasoning: string
-  should_create_new: boolean
-  
-}
-
 export interface PainMatrixInsights {
   summary: string
   top_3_actions: string[]
@@ -976,16 +942,6 @@ export interface Person {
   person_name?: string | null
   inferred_name?: string | null
   role?: string | null
-  
-}
-
-export interface PersonContext {
-  person_id: string
-  name?: string | null
-  role?: string | null
-  evidence_snippets: string[]
-  facets: string[]
-  organization_mentioned?: string | null
   
 }
 

@@ -21,19 +21,20 @@ function ExtractConversationTakeaways(
   bant_summary: string?,
   meddic_summary: string?,
   stakeholders_summary: string?,
-  duration_minutes: int?
+  duration_minutes: int?,
+  custom_instructions: string?
 ) -> ConversationTakeaways {
   client CustomGPT4o
   prompt #"
-    You are an expert conversation analyst. Synthesize the value of this conversation based on key evidence and framework analyses.
+    You are analyzing this conversation to assess its value and identify next steps.
 
     Interview Duration: {{ duration_minutes }} minutes
-    Evidence Items Captured: {{ evidence | length }}
+    Evidence Items: {{ evidence | length }}
 
-    ## Key Evidence from Conversation
+    ## Evidence from Conversation
     {% for item in evidence %}
     ---
-    Evidence #{{ loop.index }} (ID: {{ item.id[:8] }})
+    ID: {{ item.id[:8] }}
     {% if item.speaker %}Speaker: {{ item.speaker }}{% endif %}
     {% if item.timestamp_start %}Time: {{ item.timestamp_start | round }}s{% endif %}
     {% if item.evidence_type %}Type: {{ item.evidence_type }}{% endif %}
@@ -57,18 +58,26 @@ function ExtractConversationTakeaways(
     {{ stakeholders_summary }}
     {% endif %}
 
-    ## Your Task
-    Analyze this conversation and provide a structured assessment. Return a JSON object with these exact fields:
+    ## Task
+    {% if custom_instructions %}
+    **IMPORTANT: Custom analysis instructions have been provided. Follow these instructions while still returning the required JSON structure:**
+
+    {{ custom_instructions }}
+
+    You MUST still return valid JSON with the required fields below, but adapt the content, tone, language, and focus according to the custom instructions above.
+    {% endif %}
+
+    Provide a practical business assessment. Return JSON with these fields:
 
     {
-      "value_synopsis": "1-2 sentences: How valuable was this conversation? What made it uniquely powerful, inline supportive, or noteworthy? Reference specific evidence by mentioning what was discussed.",
-      "critical_next_step": "1 sentence: What is the single most important next step or caution based on the evidence and framework analyses? Be specific about commitments or needs identified.",
-      "future_improvement": "1 sentence: What could be improved on future calls to extract more value or address gaps?",
+      "value_synopsis": "1-2 sentences: What made this conversation valuable? Mention specific topics discussed (e.g., 'discussed budget constraints', 'identified key pain point with X') rather than evidence numbers.",
+      "critical_next_step": "1 sentence: Most important next action based on what was discussed. Be specific.",
+      "future_improvement": "1 sentence: One concrete improvement for future calls.",
       "supporting_evidence_ids": ["id1", "id2", "id3"]
     }
 
-    For supporting_evidence_ids, include 3-5 of the 8-character evidence ID prefixes shown above (e.g., ["156715a5", "220e82c7"]). These should be the "smoking gun" moments that justify your analysis.
+    For supporting_evidence_ids, include 3-5 evidence IDs from above (8-character prefixes like "156715a5"). Pick the most impactful quotes that support your assessment.
 
-    Be direct, actionable, and grounded in the actual evidence provided.
+    Write in clear, practical business language. Reference what was discussed, not evidence numbers.
   "#
 }
