@@ -1,0 +1,198 @@
+/**
+ * LensTabs - Tabbed view of all available conversation lenses for an interview
+ *
+ * Shows tabs for each lens template with status indicators.
+ * Renders GenericLensView for the selected tab.
+ */
+
+import { useState } from "react"
+import { CheckCircle2, Clock, Loader2, XCircle, Sparkles } from "lucide-react"
+import { cn } from "~/lib/utils"
+import { Badge } from "~/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
+import { GenericLensView } from "./GenericLensView"
+
+type Props = {
+	templates: LensTemplate[]
+	analyses: Record<string, LensAnalysisWithTemplate>
+	defaultTab?: string
+	className?: string
+}
+
+/**
+ * Status icon for a lens
+ */
+function LensStatusIcon({ analysis }: { analysis?: LensAnalysisWithTemplate }) {
+	if (!analysis) {
+		return <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+	}
+
+	switch (analysis.status) {
+		case "completed":
+			return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+		case "processing":
+			return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+		case "failed":
+			return <XCircle className="h-3.5 w-3.5 text-destructive" />
+		case "pending":
+		default:
+			return <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+	}
+}
+
+/**
+ * Category badge with color coding
+ */
+function CategoryBadge({ category }: { category: string | null }) {
+	if (!category) return null
+
+	const colors: Record<string, string> = {
+		research: "bg-purple-100 text-purple-700",
+		sales: "bg-blue-100 text-blue-700",
+		product: "bg-green-100 text-green-700",
+	}
+
+	return (
+		<Badge
+			variant="outline"
+			className={cn("text-xs", colors[category] || "bg-gray-100 text-gray-700")}
+		>
+			{category}
+		</Badge>
+	)
+}
+
+export function LensTabs({ templates, analyses, defaultTab, className }: Props) {
+	// Sort templates by display_order
+	const sortedTemplates = [...templates].sort((a, b) => a.display_order - b.display_order)
+
+	// Default to first template or project-research if available
+	const initialTab = defaultTab
+		|| (analyses["project-research"] ? "project-research" : sortedTemplates[0]?.template_key)
+		|| "project-research"
+
+	const [activeTab, setActiveTab] = useState(initialTab)
+
+	// Count completed analyses
+	const completedCount = Object.values(analyses).filter((a) => a.status === "completed").length
+	const totalCount = templates.length
+
+	if (templates.length === 0) {
+		return (
+			<div className="text-center py-12 text-muted-foreground">
+				<Sparkles className="h-8 w-8 mx-auto mb-3 opacity-50" />
+				<p>No lens templates available</p>
+			</div>
+		)
+	}
+
+	return (
+		<div className={cn("space-y-4", className)}>
+			{/* Summary header */}
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<Sparkles className="h-5 w-5 text-primary" />
+					<h3 className="font-semibold">Conversation Lenses</h3>
+				</div>
+				<Badge variant="outline">
+					{completedCount}/{totalCount} analyzed
+				</Badge>
+			</div>
+
+			<Tabs value={activeTab} onValueChange={setActiveTab}>
+				<TabsList className="w-full flex-wrap h-auto gap-1 p-1">
+					{sortedTemplates.map((template) => {
+						const analysis = analyses[template.template_key]
+						return (
+							<TabsTrigger
+								key={template.template_key}
+								value={template.template_key}
+								className="flex items-center gap-1.5 data-[state=active]:shadow-sm"
+							>
+								<LensStatusIcon analysis={analysis} />
+								<span className="hidden sm:inline">{template.template_name}</span>
+								<span className="sm:hidden">
+									{template.template_name.split(" ")[0]}
+								</span>
+							</TabsTrigger>
+						)
+					})}
+				</TabsList>
+
+				{sortedTemplates.map((template) => {
+					const analysis = analyses[template.template_key]
+					return (
+						<TabsContent
+							key={template.template_key}
+							value={template.template_key}
+							className="mt-4"
+						>
+							<div className="space-y-4">
+								{/* Template header */}
+								<div className="flex items-center justify-between">
+									<div>
+										<h4 className="font-medium">{template.template_name}</h4>
+										{template.summary && (
+											<p className="text-sm text-muted-foreground">
+												{template.summary}
+											</p>
+										)}
+									</div>
+									<CategoryBadge category={template.category} />
+								</div>
+
+								{/* Lens content */}
+								<GenericLensView
+									analysis={analysis}
+									template={template}
+								/>
+							</div>
+						</TabsContent>
+					)
+				})}
+			</Tabs>
+		</div>
+	)
+}
+
+/**
+ * Compact lens indicator for showing in headers/lists
+ */
+export function LensStatusSummary({
+	analyses,
+	className,
+}: {
+	analyses: Record<string, LensAnalysisWithTemplate>
+	className?: string
+}) {
+	const values = Object.values(analyses)
+	const completed = values.filter((a) => a.status === "completed").length
+	const processing = values.filter((a) => a.status === "processing").length
+	const failed = values.filter((a) => a.status === "failed").length
+
+	if (values.length === 0) return null
+
+	return (
+		<div className={cn("flex items-center gap-1", className)}>
+			{completed > 0 && (
+				<Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+					<CheckCircle2 className="h-3 w-3 mr-1" />
+					{completed}
+				</Badge>
+			)}
+			{processing > 0 && (
+				<Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+					<Loader2 className="h-3 w-3 mr-1 animate-spin" />
+					{processing}
+				</Badge>
+			)}
+			{failed > 0 && (
+				<Badge variant="outline" className="bg-red-50 text-red-700 text-xs">
+					<XCircle className="h-3 w-3 mr-1" />
+					{failed}
+				</Badge>
+			)}
+		</div>
+	)
+}

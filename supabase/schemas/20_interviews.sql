@@ -33,6 +33,8 @@ create table if not exists interviews (
 	open_questions_and_next_steps text,
 	observations_and_notes text,
 	source_type text, -- source of the content: realtime_recording, audio_upload, video_upload, document, transcript
+	interview_type text, -- type of interview: interview, voice_memo, note, meeting
+	lens_visibility text default 'account' check (lens_visibility in ('private', 'account')), -- controls lens application
 	file_extension text, -- file extension (mp3, mp4, pdf, csv, md, etc.)
 	original_filename text, -- original filename when uploaded
 	person_id uuid references people (id) on delete set null, -- link to person if attached
@@ -139,6 +141,25 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_mark_jobs_error ON interviews;
 CREATE TRIGGER trigger_mark_jobs_error BEFORE UPDATE ON interviews FOR EACH ROW WHEN (NEW.status = 'error') EXECUTE FUNCTION auto_mark_jobs_error();
+
+-- Auto-set voice memos and notes to private lens visibility
+CREATE OR REPLACE FUNCTION set_default_lens_visibility()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.interview_type IN ('voice_memo', 'note', 'voice-memo') THEN
+    NEW.lens_visibility := 'private';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS interview_lens_visibility_trigger ON public.interviews;
+CREATE TRIGGER interview_lens_visibility_trigger
+  BEFORE INSERT ON public.interviews
+  FOR EACH ROW
+  EXECUTE FUNCTION set_default_lens_visibility();
+
+COMMENT ON COLUMN public.interviews.lens_visibility IS 'Controls lens application: private = no lenses applied (voice memos, notes), account = all lenses applied';
 
 -- Backwards compatibility view while we generalise nomenclature
 create or replace view public.conversations as

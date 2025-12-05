@@ -76,7 +76,9 @@ export const finalizeInterviewTaskV2 = task({
 				consola.info(`Interview ${interviewId} marked as completed with conversation_analysis`)
 			}
 
-			// Trigger side effects (e.g., sales lens generation)
+			// Trigger side effects
+
+			// 1. Legacy sales lens (for backward compatibility during migration)
 			try {
 				const { generateSalesLensTask } = await import("../../sales/generateSalesLens")
 				await generateSalesLensTask.trigger({
@@ -86,6 +88,21 @@ export const finalizeInterviewTaskV2 = task({
 			} catch (sideEffectError) {
 				consola.warn("Failed to trigger generateSalesLensTask:", sideEffectError)
 				// Don't fail the task if side effect fails
+			}
+
+			// 2. Apply all conversation lenses (new generic system)
+			try {
+				const { applyAllLensesTask } = await import("../../lens/applyAllLenses")
+				await applyAllLensesTask.trigger({
+					interviewId,
+					accountId: metadata?.accountId ?? "",
+					projectId: metadata?.projectId ?? null,
+					computedBy: metadata?.userId ?? null,
+				})
+				consola.info(`[finalizeInterview] Triggered applyAllLensesTask for ${interviewId}`)
+			} catch (lensError) {
+				consola.warn("Failed to trigger applyAllLensesTask:", lensError)
+				// Don't fail the task if lens generation fails
 			}
 
 			// Send analytics

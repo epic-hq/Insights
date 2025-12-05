@@ -6,6 +6,7 @@ import {
 	Compass,
 	DollarSign,
 	File,
+	Glasses,
 	Grid3x3,
 	Lightbulb,
 	ListChecks,
@@ -78,6 +79,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		key: "analyze",
 		title: "Analysis",
 		items: [
+			{
+				key: "lenses",
+				title: "Lens Library",
+				description: "Browse conversation lenses",
+				icon: Glasses,
+				to: (routes) => routes.lensLibrary(),
+			},
 			{
 				key: "product-lens",
 				title: "ICP Discovery",

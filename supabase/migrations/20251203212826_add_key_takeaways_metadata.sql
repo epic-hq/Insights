@@ -14,7 +14,7 @@ drop policy "Anyone can read active lens templates" on "public"."conversation_le
 
 drop policy "Service role can manage lens templates" on "public"."conversation_lens_templates";
 
-drop policy "insights_read_only" on "public"."insights";
+-- drop policy "insights_read_only" on "public"."insights";
 
 revoke delete on table "public"."conversation_lens_analyses" from "anon";
 
@@ -138,43 +138,33 @@ drop view if exists "public"."insights_current";
 
 drop view if exists "public"."project_answer_metrics";
 
-alter table "public"."conversation_lens_analyses" drop constraint "conversation_lens_analyses_pkey";
+-- DO NOT drop conversation_lens tables/indexes - they were created by 20251202140000_conversation_lenses.sql
+-- alter table "public"."conversation_lens_templates" drop constraint "conversation_lens_templates_pkey";
+-- drop index if exists "public"."conversation_lens_analyses_account_idx";
+-- drop index if exists "public"."conversation_lens_analyses_interview_idx";
+-- drop index if exists "public"."conversation_lens_analyses_interview_template_unique";
+-- drop index if exists "public"."conversation_lens_analyses_pkey";
+-- drop index if exists "public"."conversation_lens_analyses_project_idx";
+-- drop index if exists "public"."conversation_lens_analyses_status_idx";
+-- drop index if exists "public"."conversation_lens_analyses_template_idx";
+-- drop index if exists "public"."conversation_lens_templates_active_idx";
+-- drop index if exists "public"."conversation_lens_templates_category_idx";
+-- drop index if exists "public"."conversation_lens_templates_pkey";
+-- drop table "public"."conversation_lens_analyses";
+-- drop table "public"."conversation_lens_templates";
 
-alter table "public"."conversation_lens_templates" drop constraint "conversation_lens_templates_pkey";
+-- Columns may already exist from previous runs
+DO $$ BEGIN
+  ALTER TABLE "public"."interviews" ADD COLUMN IF NOT EXISTS "original_filename" text;
+  ALTER TABLE "public"."interviews" ADD COLUMN IF NOT EXISTS "processing_metadata" jsonb default '{}'::jsonb;
+EXCEPTION WHEN others THEN NULL;
+END $$;
 
-drop index if exists "public"."conversation_lens_analyses_account_idx";
+CREATE INDEX IF NOT EXISTS idx_interviews_status_processing ON public.interviews USING btree (status) WHERE (status = 'processing'::public.interview_status);
 
-drop index if exists "public"."conversation_lens_analyses_interview_idx";
-
-drop index if exists "public"."conversation_lens_analyses_interview_template_unique";
-
-drop index if exists "public"."conversation_lens_analyses_pkey";
-
-drop index if exists "public"."conversation_lens_analyses_project_idx";
-
-drop index if exists "public"."conversation_lens_analyses_status_idx";
-
-drop index if exists "public"."conversation_lens_analyses_template_idx";
-
-drop index if exists "public"."conversation_lens_templates_active_idx";
-
-drop index if exists "public"."conversation_lens_templates_category_idx";
-
-drop index if exists "public"."conversation_lens_templates_pkey";
-
-drop table "public"."conversation_lens_analyses";
-
-drop table "public"."conversation_lens_templates";
-
-alter table "public"."interviews" add column "original_filename" text;
-
-alter table "public"."interviews" add column "processing_metadata" jsonb default '{}'::jsonb;
-
-CREATE INDEX idx_interviews_status_processing ON public.interviews USING btree (status) WHERE (status = 'processing'::public.interview_status);
-
-alter table "public"."insights" add constraint "insights_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES public.interviews(id) not valid;
-
-alter table "public"."insights" validate constraint "insights_interview_id_fkey";
+-- Skip: insights_interview_id_fkey already exists from table creation, will be dropped by 20251222093000
+-- alter table "public"."insights" add constraint "insights_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES public.interviews(id) not valid;
+-- alter table "public"."insights" validate constraint "insights_interview_id_fkey";
 
 alter table "public"."actions" add constraint "actions_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE SET NULL not valid;
 
@@ -256,7 +246,7 @@ create or replace view "public"."conversations" as  SELECT id,
     title,
     interview_date,
     interviewer_id,
-    key_takeaways,
+    -- key_takeaways (column added by 20251224000000_add_key_takeaways_to_interviews.sql)
     participant_pseudonym,
     segment,
     media_url,
@@ -395,8 +385,15 @@ create or replace view "public"."decision_question_summary" as  SELECT dq.projec
   GROUP BY dq.project_id, dq.id, dq.text;
 
 
-CREATE TRIGGER trigger_mark_jobs_error BEFORE UPDATE ON public.interviews FOR EACH ROW WHEN ((new.status = 'error'::public.interview_status)) EXECUTE FUNCTION public.auto_mark_jobs_error();
+-- Create triggers only if they don't exist
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_mark_jobs_error') THEN
+    CREATE TRIGGER trigger_mark_jobs_error BEFORE UPDATE ON public.interviews FOR EACH ROW WHEN ((new.status = 'error'::public.interview_status)) EXECUTE FUNCTION public.auto_mark_jobs_error();
+  END IF;
+END $$;
 
-CREATE TRIGGER set_sales_lens_hygiene_events_timestamp BEFORE INSERT OR UPDATE ON public.sales_lens_hygiene_events FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
-
-
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_sales_lens_hygiene_events_timestamp') THEN
+    CREATE TRIGGER set_sales_lens_hygiene_events_timestamp BEFORE INSERT OR UPDATE ON public.sales_lens_hygiene_events FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
+  END IF;
+END $$;

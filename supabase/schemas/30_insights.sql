@@ -2,7 +2,7 @@
 create table if not exists insights (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
-  interview_id uuid references interviews (id),
+  interview_id uuid, -- FK intentionally dropped (20251222093000) - allows deleting interviews without blocking
   name text not null,
   category text not null,
   journey_stage text,

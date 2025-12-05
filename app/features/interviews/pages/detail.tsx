@@ -34,7 +34,10 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses"
+import { LensSelector } from "~/features/lenses/components/LensSelector"
+import { LensTabs } from "~/features/lenses/components/LensTabs"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
+import { loadLensAnalyses, loadLensTemplates, type LensAnalysisWithTemplate, type LensTemplate } from "~/features/lenses/lib/loadLensAnalyses.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
@@ -554,14 +557,26 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		let salesLens: InterviewLensView | null = null
 		let linkedOpportunity: { id: string; title: string } | null = null
+		let lensTemplates: LensTemplate[] = []
+		let lensAnalyses: Record<string, LensAnalysisWithTemplate> = {}
+
 		try {
 			if (supabase) {
+				// Load legacy sales lens (for backward compatibility)
 				salesLens = await loadInterviewSalesLens({
 					db: supabase,
 					projectId,
 					interviewId,
 					peopleLookup,
 				})
+
+				// Load new generic lens system
+				const [templates, analyses] = await Promise.all([
+					loadLensTemplates(supabase),
+					loadLensAnalyses(supabase, interviewId),
+				])
+				lensTemplates = templates
+				lensAnalyses = analyses
 
 				// Check if interview is linked to an opportunity
 				const { data: summaryData } = await supabase
@@ -851,6 +866,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			conversationAnalysis,
 			salesLens,
 			linkedOpportunity,
+			lensTemplates,
+			lensAnalyses,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -896,6 +913,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		conversationAnalysis,
 		salesLens,
 		linkedOpportunity,
+		lensTemplates,
+		lensAnalyses,
 	} = useLoaderData<typeof loader>()
 
 	// Early validation - must happen before any hooks
@@ -1864,19 +1883,44 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</div>
 
 				{/* Conversation Lenses Section */}
-				<div className="mb-8">
-					{salesCrmEnabled && salesLens ? (
-						<SalesLensesSection
-							lens={salesLens}
-							customLenses={customLensOverrides}
-							customLensDefaults={customLensDefaults}
-							onUpdateLens={handleCustomLensUpdate}
-							onUpdateSlot={handleSlotUpdate}
-							updatingLensId={activeLensUpdateId}
-							personLenses={personLenses}
-							projectPath={projectPath}
-						/>
-					) : (
+				<div className="mb-8 space-y-8">
+					{/* New Generic Lens System */}
+					{lensTemplates.length > 0 && (
+						<div className="space-y-4">
+							{/* Lens selector for manual application */}
+							<LensSelector
+								interviewId={interview.id}
+								templates={lensTemplates}
+								analyses={lensAnalyses}
+								onLensApplied={() => revalidator.revalidate()}
+							/>
+
+							<LensTabs
+								templates={lensTemplates}
+								analyses={lensAnalyses}
+							/>
+						</div>
+					)}
+
+					{/* Legacy Sales Lens (for backward compatibility during migration) */}
+					{salesCrmEnabled && salesLens && (
+						<div className="mt-8 pt-8 border-t">
+							<h4 className="text-sm font-medium text-muted-foreground mb-4">Legacy Sales Lens (migrating)</h4>
+							<SalesLensesSection
+								lens={salesLens}
+								customLenses={customLensOverrides}
+								customLensDefaults={customLensDefaults}
+								onUpdateLens={handleCustomLensUpdate}
+								onUpdateSlot={handleSlotUpdate}
+								updatingLensId={activeLensUpdateId}
+								personLenses={personLenses}
+								projectPath={projectPath}
+							/>
+						</div>
+					)}
+
+					{/* Fallback when no lenses available */}
+					{lensTemplates.length === 0 && !salesLens && (
 						<div>
 							<h3 className="mb-4 font-semibold text-foreground text-lg">Conversation Lenses</h3>
 							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">

@@ -626,6 +626,136 @@ INSERT INTO public.conversation_lens_templates (
     }'::jsonb
 ) ON CONFLICT (template_key) DO NOTHING;
 
+-- Project Research Template (P0) - Maps to project goals/questions
+INSERT INTO public.conversation_lens_templates (
+    template_key,
+    template_name,
+    summary,
+    primary_objective,
+    category,
+    display_order,
+    template_definition
+) VALUES (
+    'project-research',
+    'Project Research',
+    'Answer project goals, decision questions, and resolve unknowns',
+    'Map interview findings to specific project research objectives',
+    'research',
+    5,
+    '{
+        "sections": [
+            {
+                "section_key": "goal_answers",
+                "section_name": "Research Goal Answers",
+                "description": "Direct answers to project research goals",
+                "fields": [
+                    {"field_key": "goal_statement", "field_name": "Goal", "field_type": "text"},
+                    {"field_key": "answer_summary", "field_name": "Answer", "field_type": "text"},
+                    {"field_key": "confidence", "field_name": "Confidence", "field_type": "text"},
+                    {"field_key": "supporting_findings", "field_name": "Supporting Findings", "field_type": "text_array"}
+                ]
+            },
+            {
+                "section_key": "decision_insights",
+                "section_name": "Decision Insights",
+                "description": "Recommendations for project decision questions",
+                "fields": [
+                    {"field_key": "decision_question", "field_name": "Decision Question", "field_type": "text"},
+                    {"field_key": "recommendation", "field_name": "Recommendation", "field_type": "text"},
+                    {"field_key": "rationale", "field_name": "Rationale", "field_type": "text"},
+                    {"field_key": "risks", "field_name": "Risks", "field_type": "text_array"}
+                ]
+            },
+            {
+                "section_key": "unknown_resolutions",
+                "section_name": "Unknowns Resolved",
+                "description": "Status of project unknowns and uncertainties",
+                "fields": [
+                    {"field_key": "unknown_statement", "field_name": "Unknown", "field_type": "text"},
+                    {"field_key": "status", "field_name": "Status", "field_type": "text"},
+                    {"field_key": "findings", "field_name": "Findings", "field_type": "text"},
+                    {"field_key": "suggested_follow_up", "field_name": "Follow-up", "field_type": "text"}
+                ]
+            },
+            {
+                "section_key": "target_fit",
+                "section_name": "Target Fit Assessment",
+                "description": "How well interviewee fits target criteria",
+                "fields": [
+                    {"field_key": "fit_assessment", "field_name": "Fit", "field_type": "text"},
+                    {"field_key": "reasoning", "field_name": "Reasoning", "field_type": "text"},
+                    {"field_key": "signals", "field_name": "Signals", "field_type": "text_array"}
+                ]
+            }
+        ],
+        "entities": [],
+        "recommendations_enabled": true,
+        "requires_project_context": true
+    }'::jsonb
+) ON CONFLICT (template_key) DO NOTHING;
+
+-- Product Insights Template (P1) - JTBD, feature requests, gaps
+INSERT INTO public.conversation_lens_templates (
+    template_key,
+    template_name,
+    summary,
+    primary_objective,
+    category,
+    display_order,
+    template_definition
+) VALUES (
+    'product-insights',
+    'Product Insights',
+    'Extract JTBD, feature requests, product gaps, and competitive intelligence',
+    'Identify product opportunities and user needs',
+    'product',
+    25,
+    '{
+        "sections": [
+            {
+                "section_key": "jobs_to_be_done",
+                "section_name": "Jobs to be Done",
+                "fields": [
+                    {"field_key": "job_description", "field_name": "Job", "field_type": "text"},
+                    {"field_key": "desired_outcome", "field_name": "Desired Outcome", "field_type": "text"},
+                    {"field_key": "current_solution", "field_name": "Current Solution", "field_type": "text"},
+                    {"field_key": "frustrations", "field_name": "Frustrations", "field_type": "text_array"},
+                    {"field_key": "importance", "field_name": "Importance", "field_type": "text"}
+                ]
+            },
+            {
+                "section_key": "feature_requests",
+                "section_name": "Feature Requests",
+                "fields": [
+                    {"field_key": "feature_name", "field_name": "Feature", "field_type": "text"},
+                    {"field_key": "use_case", "field_name": "Use Case", "field_type": "text"},
+                    {"field_key": "priority", "field_name": "Priority", "field_type": "text"}
+                ]
+            },
+            {
+                "section_key": "product_gaps",
+                "section_name": "Product Gaps",
+                "fields": [
+                    {"field_key": "gap_description", "field_name": "Gap", "field_type": "text"},
+                    {"field_key": "impact", "field_name": "Impact", "field_type": "text"},
+                    {"field_key": "workaround", "field_name": "Workaround", "field_type": "text"}
+                ]
+            },
+            {
+                "section_key": "competitive_insights",
+                "section_name": "Competitive Insights",
+                "fields": [
+                    {"field_key": "competitor_name", "field_name": "Competitor", "field_type": "text"},
+                    {"field_key": "context", "field_name": "Context", "field_type": "text"},
+                    {"field_key": "comparison_type", "field_name": "Comparison", "field_type": "text"}
+                ]
+            }
+        ],
+        "entities": ["competitive_insights"],
+        "recommendations_enabled": true
+    }'::jsonb
+) ON CONFLICT (template_key) DO NOTHING;
+
 -- ─────────────────────────────────────────────────────────────────────
 -- 7. Migration Notes
 -- ─────────────────────────────────────────────────────────────────────

@@ -73,6 +73,8 @@ export interface RouteDefinitions {
 	// Facets
 	facets: () => string
 
+	// Lenses
+	lensLibrary: () => string
 	// Product Lens
 	productLens: () => string
 	// BANT Lens
@@ -240,6 +242,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Facets
 		facets: () => `${base}/facets`,
 
+		// Lenses
+		lensLibrary: () => `${base}/lenses`,
 		// Product Lens
 		productLens: () => `${base}/product-lens`,
 		// BANT Lens
