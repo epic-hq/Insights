@@ -1,20 +1,23 @@
 # Conversation Lenses MVP - Reduced Scope Plan
 
-## Status: Phase 2 Complete ✅
+## Status: MVP Complete ✅
 
 ### Completed
 - ✅ Database schema with templates seeded (6 system lenses)
 - ✅ Generic BAML function `ApplyConversationLens` for dynamic template extraction
 - ✅ `applyLens.ts` task loads template from DB and applies via BAML
+- ✅ `applyAllLensesTask` applies all 6 lenses after interview finalization
+- ✅ Pipeline integration: `finalizeInterview` → `applyAllLensesTask` → `applyLensTask`
 - ✅ `loadLensAnalyses.server.ts` with RLS-compliant data loading
 - ✅ `GenericLensView.tsx` renders any lens based on template definition
 - ✅ `LensTabs.tsx` tabbed UI for viewing all lenses
 - ✅ Interview detail page integration with lens display
 - ✅ RLS policies for account-based access control
+- ✅ Voice memos/notes skip lens application (lens_visibility = 'private')
 
-### Remaining
-- 🔲 Hook `applyAllLensesTask` into finalize pipeline for auto-application
-- 🔲 End-to-end testing of new interview processing
+### Ready for Testing
+- Upload a new interview and verify all 6 lenses are applied automatically
+- Check lens data displays correctly in interview detail page
 
 ## System Lenses (v1)
 
