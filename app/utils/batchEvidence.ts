@@ -105,12 +105,12 @@ export async function batchExtractEvidence(
 	}
 
 	const totalDuration = batchResults.reduce((sum, _, idx) => {
-		return sum + parseFloat(batchResults[idx].result ? "0" : "0") // Duration already logged per batch
+		return sum + Number.parseFloat(batchResults[idx].result ? "0" : "0") // Duration already logged per batch
 	}, 0)
 
 	consola.success(
 		`🎉 Batching complete: merged ${mergedEvidence.length} evidence units from ${batches.length} batches ` +
-		`(${mergedPeople.length} people, ${mergedFacetMentions.length} facet mentions, ${mergedScenes.length} scenes)`
+			`(${mergedPeople.length} people, ${mergedFacetMentions.length} facet mentions, ${mergedScenes.length} scenes)`
 	)
 
 	return {

@@ -92,49 +92,44 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 
 /**
  * Render a section from the template
+ * fields format: [{field_key, value, confidence, evidence_ids}]
  */
 function SectionView({
 	sectionDef,
-	items,
+	fields,
 }: {
 	sectionDef: LensTemplate["template_definition"]["sections"][0]
-	items: any[]
+	fields: any[]
 }) {
-	if (!items || items.length === 0) {
+	if (!fields || fields.length === 0) {
 		return <div className="py-4 text-muted-foreground text-sm italic">No data extracted for this section</div>
 	}
 
+	// Build a map for quick lookup
+	const fieldMap = new Map(fields.map((f) => [f.field_key, f]))
+
 	return (
-		<div className="space-y-4">
-			{items.map((item, itemIndex) => (
-				<div key={itemIndex} className="space-y-3 rounded-lg border bg-card p-4">
-					{sectionDef.fields.map((field) => {
-						const value = item[field.field_key]
-						if (value === null || value === undefined) return null
+		<div className="space-y-3 rounded-lg border bg-card p-4">
+			{sectionDef.fields.map((fieldDef) => {
+				const field = fieldMap.get(fieldDef.field_key)
+				if (!field || field.value === null || field.value === undefined) return null
 
-						return (
-							<div key={field.field_key}>
-								<div className="mb-1 flex items-center gap-2">
-									<span className="font-medium text-muted-foreground text-sm">{field.field_name}</span>
-									{field.field_key === "confidence" && <ConfidenceIndicator confidence={value} />}
-								</div>
-								{field.field_key !== "confidence" && (
-									<div className="text-sm">
-										<FieldValue value={value} fieldType={field.field_type} />
-									</div>
-								)}
-							</div>
-						)
-					})}
-
-					{/* Show evidence count if present */}
-					{item.evidence_ids?.length > 0 && (
-						<div className="border-t pt-2 text-muted-foreground text-xs">
-							{item.evidence_ids.length} evidence item(s)
+				return (
+					<div key={fieldDef.field_key}>
+						<div className="mb-1 flex items-center gap-2">
+							<span className="font-medium text-muted-foreground text-sm">{fieldDef.field_name}</span>
+							{field.confidence !== undefined && <ConfidenceIndicator confidence={field.confidence} />}
 						</div>
-					)}
-				</div>
-			))}
+						<div className="text-sm">
+							<FieldValue value={field.value} fieldType={fieldDef.field_type} />
+						</div>
+						{/* Show evidence count if present */}
+						{field.evidence_ids?.length > 0 && (
+							<div className="mt-1 text-muted-foreground text-xs">{field.evidence_ids.length} evidence item(s)</div>
+						)}
+					</div>
+				)
+			})}
 		</div>
 	)
 }
@@ -212,10 +207,11 @@ export function GenericLensView({ analysis, template, isLoading }: Props) {
 	const sections = analysisData.sections || []
 
 	// Build a map of section data by section_key
+	// Format: sections[].fields = [{field_key, value, confidence, evidence_ids}]
 	const sectionDataMap: Record<string, any[]> = {}
 	for (const section of sections) {
-		if (section.section_key && section.items) {
-			sectionDataMap[section.section_key] = section.items
+		if (section.section_key && section.fields) {
+			sectionDataMap[section.section_key] = section.fields
 		}
 	}
 
@@ -242,36 +238,69 @@ export function GenericLensView({ analysis, template, isLoading }: Props) {
 						{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
 					</CardHeader>
 					<CardContent>
-						<SectionView sectionDef={sectionDef} items={sectionDataMap[sectionDef.section_key] || []} />
+						<SectionView sectionDef={sectionDef} fields={sectionDataMap[sectionDef.section_key] || []} />
 					</CardContent>
 				</Card>
 			))}
 
-			{/* Recommendations if enabled */}
-			{templateDef.recommendations_enabled && analysisData.recommendations?.length > 0 && (
+			{/* Entities (stakeholders, next_steps, etc.) */}
+			{analysisData.entities?.length > 0 && (
 				<Card>
 					<CardHeader className="pb-3">
-						<CardTitle className="text-lg">Recommendations</CardTitle>
+						<CardTitle className="text-lg">Extracted Entities</CardTitle>
 					</CardHeader>
-					<CardContent>
-						<ul className="space-y-2">
-							{analysisData.recommendations.map((rec: any, i: number) => (
-								<li key={i} className="flex items-start gap-2">
-									<Badge
-										variant={
-											rec.priority === "high" ? "destructive" : rec.priority === "medium" ? "default" : "secondary"
-										}
-										className="mt-0.5"
-									>
-										{rec.priority || "medium"}
-									</Badge>
-									<span className="text-sm">{rec.description}</span>
-								</li>
-							))}
-						</ul>
+					<CardContent className="space-y-4">
+						{analysisData.entities.map((entityGroup: any, groupIdx: number) => (
+							<div key={groupIdx}>
+								<h5 className="mb-2 font-medium text-muted-foreground text-sm capitalize">
+									{entityGroup.entity_type?.replace(/_/g, " ")}
+								</h5>
+								<div className="space-y-2">
+									{entityGroup.items?.map((item: any, itemIdx: number) => (
+										<div key={itemIdx} className="rounded border bg-muted/30 p-3 text-sm">
+											<div className="font-medium">{item.name}</div>
+											{item.role && <div className="text-muted-foreground text-xs">{item.role}</div>}
+											{item.description && <div className="mt-1 text-muted-foreground">{item.description}</div>}
+											{item.person_id && (
+												<Badge variant="outline" className="mt-1 bg-green-50 text-xs">
+													Linked to person
+												</Badge>
+											)}
+										</div>
+									))}
+								</div>
+							</div>
+						))}
 					</CardContent>
 				</Card>
 			)}
+
+			{/* Recommendations if enabled */}
+			{(templateDef.recommendations_enabled || analysisData.recommendations?.length > 0) &&
+				analysisData.recommendations?.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-lg">Recommendations</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-2">
+								{analysisData.recommendations.map((rec: any, i: number) => (
+									<li key={i} className="flex items-start gap-2">
+										<Badge
+											variant={
+												rec.priority === "high" ? "destructive" : rec.priority === "medium" ? "default" : "secondary"
+											}
+											className="mt-0.5"
+										>
+											{rec.priority || "medium"}
+										</Badge>
+										<span className="text-sm">{rec.description}</span>
+									</li>
+								))}
+							</ul>
+						</CardContent>
+					</Card>
+				)}
 
 			{/* Key insights if present */}
 			{analysisData.key_insights?.length > 0 && (

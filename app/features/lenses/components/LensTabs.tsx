@@ -5,11 +5,11 @@
  * Renders GenericLensView for the selected tab.
  */
 
+import { CheckCircle2, Clock, Loader2, Sparkles, XCircle } from "lucide-react"
 import { useState } from "react"
-import { CheckCircle2, Clock, Loader2, XCircle, Sparkles } from "lucide-react"
-import { cn } from "~/lib/utils"
 import { Badge } from "~/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { cn } from "~/lib/utils"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
 import { GenericLensView } from "./GenericLensView"
 
@@ -54,10 +54,7 @@ function CategoryBadge({ category }: { category: string | null }) {
 	}
 
 	return (
-		<Badge
-			variant="outline"
-			className={cn("text-xs", colors[category] || "bg-gray-100 text-gray-700")}
-		>
+		<Badge variant="outline" className={cn("text-xs", colors[category] || "bg-gray-100 text-gray-700")}>
 			{category}
 		</Badge>
 	)
@@ -68,9 +65,10 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 	const sortedTemplates = [...templates].sort((a, b) => a.display_order - b.display_order)
 
 	// Default to first template or project-research if available
-	const initialTab = defaultTab
-		|| (analyses["project-research"] ? "project-research" : sortedTemplates[0]?.template_key)
-		|| "project-research"
+	const initialTab =
+		defaultTab ||
+		(analyses["project-research"] ? "project-research" : sortedTemplates[0]?.template_key) ||
+		"project-research"
 
 	const [activeTab, setActiveTab] = useState(initialTab)
 
@@ -80,8 +78,8 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 
 	if (templates.length === 0) {
 		return (
-			<div className="text-center py-12 text-muted-foreground">
-				<Sparkles className="h-8 w-8 mx-auto mb-3 opacity-50" />
+			<div className="py-12 text-center text-muted-foreground">
+				<Sparkles className="mx-auto mb-3 h-8 w-8 opacity-50" />
 				<p>No lens templates available</p>
 			</div>
 		)
@@ -101,7 +99,7 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 			</div>
 
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
-				<TabsList className="w-full flex-wrap h-auto gap-1 p-1">
+				<TabsList className="h-auto w-full flex-wrap gap-1 p-1">
 					{sortedTemplates.map((template) => {
 						const analysis = analyses[template.template_key]
 						return (
@@ -112,9 +110,7 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 							>
 								<LensStatusIcon analysis={analysis} />
 								<span className="hidden sm:inline">{template.template_name}</span>
-								<span className="sm:hidden">
-									{template.template_name.split(" ")[0]}
-								</span>
+								<span className="sm:hidden">{template.template_name.split(" ")[0]}</span>
 							</TabsTrigger>
 						)
 					})}
@@ -123,30 +119,19 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 				{sortedTemplates.map((template) => {
 					const analysis = analyses[template.template_key]
 					return (
-						<TabsContent
-							key={template.template_key}
-							value={template.template_key}
-							className="mt-4"
-						>
+						<TabsContent key={template.template_key} value={template.template_key} className="mt-4">
 							<div className="space-y-4">
 								{/* Template header */}
 								<div className="flex items-center justify-between">
 									<div>
 										<h4 className="font-medium">{template.template_name}</h4>
-										{template.summary && (
-											<p className="text-sm text-muted-foreground">
-												{template.summary}
-											</p>
-										)}
+										{template.summary && <p className="text-muted-foreground text-sm">{template.summary}</p>}
 									</div>
 									<CategoryBadge category={template.category} />
 								</div>
 
 								{/* Lens content */}
-								<GenericLensView
-									analysis={analysis}
-									template={template}
-								/>
+								<GenericLensView analysis={analysis} template={template} />
 							</div>
 						</TabsContent>
 					)
@@ -177,19 +162,19 @@ export function LensStatusSummary({
 		<div className={cn("flex items-center gap-1", className)}>
 			{completed > 0 && (
 				<Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-					<CheckCircle2 className="h-3 w-3 mr-1" />
+					<CheckCircle2 className="mr-1 h-3 w-3" />
 					{completed}
 				</Badge>
 			)}
 			{processing > 0 && (
 				<Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-					<Loader2 className="h-3 w-3 mr-1 animate-spin" />
+					<Loader2 className="mr-1 h-3 w-3 animate-spin" />
 					{processing}
 				</Badge>
 			)}
 			{failed > 0 && (
 				<Badge variant="outline" className="bg-red-50 text-red-700 text-xs">
-					<XCircle className="h-3 w-3 mr-1" />
+					<XCircle className="mr-1 h-3 w-3" />
 					{failed}
 				</Badge>
 			)}

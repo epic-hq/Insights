@@ -3,6 +3,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { Database } from "~/types/supabase.types"
 
 export type LensTemplate = {
@@ -48,9 +49,7 @@ export type LensAnalysisWithTemplate = LensAnalysis & {
 /**
  * Load all available lens templates
  */
-export async function loadLensTemplates(
-	db: SupabaseClient<Database>
-): Promise<LensTemplate[]> {
+export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<LensTemplate[]> {
 	const { data, error } = await db
 		.from("conversation_lens_templates")
 		.select("*")
@@ -77,33 +76,51 @@ export async function loadLensTemplates(
  */
 export async function loadLensAnalyses(
 	db: SupabaseClient<Database>,
-	interviewId: string
+	interviewId: string,
+	accountId?: string
 ): Promise<Record<string, LensAnalysisWithTemplate>> {
-	const { data, error } = await db
-		.from("conversation_lens_analyses")
-		.select(`
-			*,
-			conversation_lens_templates (
-				template_key,
-				template_name,
-				summary,
-				category,
-				display_order,
-				template_definition
-			)
-		`)
-		.eq("interview_id", interviewId)
+	// Use admin client for analyses to bypass RLS (accountId filter provides security)
+	let analysesQuery = supabaseAdmin.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId)
 
-	if (error) {
-		console.error("[loadLensAnalyses] Error:", error)
+	if (accountId) {
+		analysesQuery = analysesQuery.eq("account_id", accountId)
+	}
+
+	// Load analyses and templates separately (avoids PostgREST FK detection issues)
+	const [analysesResult, templatesResult] = await Promise.all([
+		analysesQuery,
+		db
+			.from("conversation_lens_templates")
+			.select("template_key, template_name, summary, category, display_order, template_definition")
+			.eq("is_active", true),
+	])
+
+	if (analysesResult.error) {
 		return {}
+	}
+
+	if (templatesResult.error) {
+		return {}
+	}
+
+	// Build template map for lookup
+	const templateMap = new Map<string, LensTemplate>()
+	for (const t of templatesResult.data || []) {
+		templateMap.set(t.template_key, {
+			template_key: t.template_key,
+			template_name: t.template_name,
+			summary: t.summary,
+			category: t.category,
+			display_order: t.display_order ?? 100,
+			template_definition: t.template_definition as LensTemplate["template_definition"],
+		})
 	}
 
 	// Convert to map keyed by template_key
 	const result: Record<string, LensAnalysisWithTemplate> = {}
 
-	for (const analysis of data || []) {
-		const template = analysis.conversation_lens_templates as any
+	for (const analysis of analysesResult.data || []) {
+		const template = templateMap.get(analysis.template_key)
 		if (!template) continue
 
 		result[analysis.template_key] = {
@@ -116,14 +133,7 @@ export async function loadLensAnalyses(
 			error_message: analysis.error_message,
 			processed_at: analysis.processed_at,
 			created_at: analysis.created_at,
-			template: {
-				template_key: template.template_key,
-				template_name: template.template_name,
-				summary: template.summary,
-				category: template.category,
-				display_order: template.display_order ?? 100,
-				template_definition: template.template_definition,
-			},
+			template,
 		}
 	}
 
@@ -138,47 +148,49 @@ export async function loadLensAnalysis(
 	interviewId: string,
 	templateKey: string
 ): Promise<LensAnalysisWithTemplate | null> {
-	const { data, error } = await db
-		.from("conversation_lens_analyses")
-		.select(`
-			*,
-			conversation_lens_templates (
-				template_key,
-				template_name,
-				summary,
-				category,
-				display_order,
-				template_definition
-			)
-		`)
-		.eq("interview_id", interviewId)
-		.eq("template_key", templateKey)
-		.single()
+	// Load analysis and template separately (avoids PostgREST FK detection issues)
+	const [analysisResult, templateResult] = await Promise.all([
+		db
+			.from("conversation_lens_analyses")
+			.select("*")
+			.eq("interview_id", interviewId)
+			.eq("template_key", templateKey)
+			.single(),
+		db
+			.from("conversation_lens_templates")
+			.select("template_key, template_name, summary, category, display_order, template_definition")
+			.eq("template_key", templateKey)
+			.single(),
+	])
 
-	if (error || !data) {
+	if (analysisResult.error || !analysisResult.data) {
 		return null
 	}
 
-	const template = data.conversation_lens_templates as any
-	if (!template) return null
+	if (templateResult.error || !templateResult.data) {
+		return null
+	}
+
+	const analysis = analysisResult.data
+	const t = templateResult.data
 
 	return {
-		id: data.id,
-		interview_id: data.interview_id,
-		template_key: data.template_key,
-		analysis_data: data.analysis_data,
-		confidence_score: data.confidence_score,
-		status: data.status as LensAnalysis["status"],
-		error_message: data.error_message,
-		processed_at: data.processed_at,
-		created_at: data.created_at,
+		id: analysis.id,
+		interview_id: analysis.interview_id,
+		template_key: analysis.template_key,
+		analysis_data: analysis.analysis_data,
+		confidence_score: analysis.confidence_score,
+		status: analysis.status as LensAnalysis["status"],
+		error_message: analysis.error_message,
+		processed_at: analysis.processed_at,
+		created_at: analysis.created_at,
 		template: {
-			template_key: template.template_key,
-			template_name: template.template_name,
-			summary: template.summary,
-			category: template.category,
-			display_order: template.display_order ?? 100,
-			template_definition: template.template_definition,
+			template_key: t.template_key,
+			template_name: t.template_name,
+			summary: t.summary,
+			category: t.category,
+			display_order: t.display_order ?? 100,
+			template_definition: t.template_definition as LensTemplate["template_definition"],
 		},
 	}
 }
@@ -191,14 +203,8 @@ export async function getLensAnalysisCount(
 	interviewId: string
 ): Promise<{ completed: number; total: number }> {
 	const [analysesResult, templatesResult] = await Promise.all([
-		db
-			.from("conversation_lens_analyses")
-			.select("template_key, status")
-			.eq("interview_id", interviewId),
-		db
-			.from("conversation_lens_templates")
-			.select("template_key")
-			.eq("is_active", true),
+		db.from("conversation_lens_analyses").select("template_key, status").eq("interview_id", interviewId),
+		db.from("conversation_lens_templates").select("template_key").eq("is_active", true),
 	])
 
 	const completed = (analysesResult.data || []).filter((a) => a.status === "completed").length

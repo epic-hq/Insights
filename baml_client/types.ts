@@ -413,6 +413,15 @@ export interface ConversationEvidence {
   
 }
 
+export interface ConversationLensResult {
+  sections: LensSectionResult[]
+  entities: LensEntityResult[]
+  recommendations: LensRecommendation[]
+  overall_confidence: number
+  processing_notes?: string | null
+  
+}
+
 export interface ConversationQuestion {
   question: string
   asked_by?: string | null
@@ -842,6 +851,21 @@ export interface JobToBeDone {
   
 }
 
+export interface LensEntityItem {
+  name: string
+  role?: string | null
+  description?: string | null
+  confidence: number
+  evidence_ids: string[]
+  
+}
+
+export interface LensEntityResult {
+  entity_type: string
+  items: LensEntityItem[]
+  
+}
+
 export interface LensEvidenceHighlight {
   gist: string
   interview_title?: string | null
@@ -849,6 +873,29 @@ export interface LensEvidenceHighlight {
   journey_stage?: string | null
   topic?: string | null
   support?: string | null
+  
+}
+
+export interface LensFieldValue {
+  field_key: string
+  value: string
+  confidence: number
+  evidence_ids: string[]
+  
+}
+
+export interface LensRecommendation {
+  type: string
+  description: string
+  priority: "high" | "medium" | "low"
+  rationale?: string | null
+  evidence_ids: string[]
+  
+}
+
+export interface LensSectionResult {
+  section_key: string
+  fields: LensFieldValue[]
   
 }
 

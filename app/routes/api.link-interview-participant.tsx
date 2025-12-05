@@ -66,10 +66,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				.single()
 
 			if (createError || !newPerson) {
-				return Response.json(
-					{ ok: false, error: `Failed to create person: ${createError?.message}` },
-					{ status: 500 }
-				)
+				return Response.json({ ok: false, error: `Failed to create person: ${createError?.message}` }, { status: 500 })
 			}
 
 			finalPersonId = newPerson.id

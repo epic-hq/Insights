@@ -22,18 +22,14 @@ async function checkWorkflowState() {
 		console.log("No analysis jobs found - this confirms we don't use analysis_jobs table!")
 	} else {
 		console.log(`Found ${jobs.length} job(s):`)
-		jobs.forEach(job => {
+		jobs.forEach((job) => {
 			console.log(JSON.stringify(job, null, 2))
 		})
 	}
 
 	// Check if there's workflow state stored somewhere
 	// Maybe in interview metadata or processing_metadata?
-	const { data: interview } = await supabase
-		.from("interviews")
-		.select("*")
-		.eq("id", interviewId)
-		.single()
+	const { data: interview } = await supabase.from("interviews").select("*").eq("id", interviewId).single()
 
 	console.log("\n=== FULL INTERVIEW RECORD ===")
 	if (interview) {

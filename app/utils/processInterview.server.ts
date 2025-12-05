@@ -27,8 +27,8 @@ import { createPlannedAnswersForInterview } from "~/lib/database/project-answers
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
-import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
 import { batchExtractEvidence } from "~/utils/batchEvidence"
+import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
 import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 

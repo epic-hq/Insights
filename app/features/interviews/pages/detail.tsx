@@ -37,7 +37,12 @@ import { SalesLensesSection } from "~/features/lenses/components/ConversationLen
 import { LensSelector } from "~/features/lenses/components/LensSelector"
 import { LensTabs } from "~/features/lenses/components/LensTabs"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
-import { loadLensAnalyses, loadLensTemplates, type LensAnalysisWithTemplate, type LensTemplate } from "~/features/lenses/lib/loadLensAnalyses.server"
+import {
+	type LensAnalysisWithTemplate,
+	type LensTemplate,
+	loadLensAnalyses,
+	loadLensTemplates,
+} from "~/features/lenses/lib/loadLensAnalyses.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
@@ -489,27 +494,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							project_id: string | null
+							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -573,7 +578,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				// Load new generic lens system
 				const [templates, analyses] = await Promise.all([
 					loadLensTemplates(supabase),
-					loadLensAnalyses(supabase, interviewId),
+					loadLensAnalyses(supabase, interviewId, accountId),
 				])
 				lensTemplates = templates
 				lensAnalyses = analyses
@@ -1486,7 +1491,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							{isProcessing && (
 								<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
 									<Loader2 className="h-5 w-5 animate-spin text-primary" />
-									<p className="text-primary text-sm font-medium">{getStatusLabel(interview.status)}</p>
+									<p className="font-medium text-primary text-sm">{getStatusLabel(interview.status)}</p>
 								</div>
 							)}
 							{hasError && (
@@ -1502,132 +1507,132 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								interview.status === "transcribing" ||
 								interview.status === "processing" ||
 								interview.status === "uploaded") && (
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<button
-												disabled={fetcher.state !== "idle" || isProcessing}
-												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-												title="Actions"
-											>
-												<MoreVertical className="h-4 w-4" />
-												Actions
-											</button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											{(interview.status === "transcribing" ||
-												interview.status === "processing" ||
-												interview.status === "uploaded") && (
-													<DropdownMenuItem
-														onClick={async () => {
-															try {
-																const response = await fetch("/api/fix-stuck-interview", {
-																	method: "POST",
-																	headers: { "Content-Type": "application/json" },
-																	body: JSON.stringify({ interviewId: interview.id }),
-																})
-																const result = await response.json()
-																if (result.success) {
-																	consola.success("Interview status fixed")
-																	revalidator.revalidate()
-																} else {
-																	consola.error("Failed to fix interview:", result.error)
-																}
-															} catch (e) {
-																consola.error("Fix stuck interview failed", e)
-															}
-														}}
-														disabled={fetcher.state !== "idle" || isProcessing}
-														className="text-orange-600 focus:text-orange-600"
-													>
-														🔧 Fix Stuck Interview Status
-													</DropdownMenuItem>
-												)}
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											disabled={fetcher.state !== "idle" || isProcessing}
+											className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+											title="Actions"
+										>
+											<MoreVertical className="h-4 w-4" />
+											Actions
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										{(interview.status === "transcribing" ||
+											interview.status === "processing" ||
+											interview.status === "uploaded") && (
 											<DropdownMenuItem
-												onClick={() => {
+												onClick={async () => {
 													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.analysis-retry" }
-														)
+														const response = await fetch("/api/fix-stuck-interview", {
+															method: "POST",
+															headers: { "Content-Type": "application/json" },
+															body: JSON.stringify({ interviewId: interview.id }),
+														})
+														const result = await response.json()
+														if (result.success) {
+															consola.success("Interview status fixed")
+															revalidator.revalidate()
+														} else {
+															consola.error("Failed to fix interview:", result.error)
+														}
 													} catch (e) {
-														consola.error("Retry analysis submit failed", e)
+														consola.error("Fix stuck interview failed", e)
 													}
 												}}
 												disabled={fetcher.state !== "idle" || isProcessing}
+												className="text-orange-600 focus:text-orange-600"
 											>
-												Rerun Transcription
+												🔧 Fix Stuck Interview Status
 											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reprocess-evidence" }
-														)
-													} catch (e) {
-														consola.error("Reprocess evidence submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Evidence Collection
+										)}
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.analysis-retry" }
+													)
+												} catch (e) {
+													consola.error("Retry analysis submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+										>
+											Rerun Transcription
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.reprocess-evidence" }
+													)
+												} catch (e) {
+													consola.error("Reprocess evidence submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+										>
+											Rerun Evidence Collection
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.reanalyze-themes" }
+													)
+												} catch (e) {
+													consola.error("Re-analyze themes submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+										>
+											Re-analyze Themes
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => {
+												try {
+													fetcher.submit(
+														{ interview_id: interview.id },
+														{ method: "post", action: "/api.generate-sales-lens" }
+													)
+												} catch (e) {
+													consola.error("Generate sales lens submit failed", e)
+												}
+											}}
+											disabled={fetcher.state !== "idle" || isProcessing}
+											className="text-blue-600 focus:text-blue-600"
+										>
+											🔍 Apply Lenses
+										</DropdownMenuItem>
+										{linkedOpportunity ? (
+											<DropdownMenuItem asChild>
+												<Link
+													to={routes.opportunities.detail(linkedOpportunity.id)}
+													className="flex items-center gap-2 text-emerald-700"
+												>
+													<Briefcase className="h-4 w-4" />
+													View Opportunity: {linkedOpportunity.title}
+												</Link>
 											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reanalyze-themes" }
-														)
-													} catch (e) {
-														consola.error("Re-analyze themes submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Re-analyze Themes
+										) : (
+											<DropdownMenuItem asChild>
+												<Link
+													to={routes.opportunities.new()}
+													state={{ interviewId: interview.id, interviewTitle: interview.title }}
+													className="flex items-center gap-2 text-blue-700"
+												>
+													<Briefcase className="h-4 w-4" />
+													Create Opportunity
+												</Link>
 											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.generate-sales-lens" }
-														)
-													} catch (e) {
-														consola.error("Generate sales lens submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-												className="text-blue-600 focus:text-blue-600"
-											>
-												🔍 Apply Lenses
-											</DropdownMenuItem>
-											{linkedOpportunity ? (
-												<DropdownMenuItem asChild>
-													<Link
-														to={routes.opportunities.detail(linkedOpportunity.id)}
-														className="flex items-center gap-2 text-emerald-700"
-													>
-														<Briefcase className="h-4 w-4" />
-														View Opportunity: {linkedOpportunity.title}
-													</Link>
-												</DropdownMenuItem>
-											) : (
-												<DropdownMenuItem asChild>
-													<Link
-														to={routes.opportunities.new()}
-														state={{ interviewId: interview.id, interviewTitle: interview.title }}
-														className="flex items-center gap-2 text-blue-700"
-													>
-														<Briefcase className="h-4 w-4" />
-														Create Opportunity
-													</Link>
-												</DropdownMenuItem>
-											)}
-										</DropdownMenuContent>
-									</DropdownMenu>
-								)}
+										)}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							)}
 							{/* Edit Button */}
 							<Link
 								to={routes.interviews.edit(interview.id)}
@@ -1726,7 +1731,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
 								<label className="mb-2 block flex flex-row gap-2 font-semibold text-foreground text-lg">
 									Key Takeaways
-
 								</label>
 								<div className="flex items-center justify-between gap-4">
 									<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
@@ -1799,8 +1803,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<PopoverContent className="w-96 p-4">
 										<div className="space-y-4">
 											<div>
-												<h4 className="font-medium text-sm mb-2">Regenerate AI Summary</h4>
-												<p className="text-muted-foreground text-xs mb-3">
+												<h4 className="mb-2 font-medium text-sm">Regenerate AI Summary</h4>
+												<p className="mb-3 text-muted-foreground text-xs">
 													Optionally provide custom instructions to guide the AI's analysis
 												</p>
 											</div>
@@ -1830,7 +1834,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 														fetcher.submit(
 															{
 																interview_id: interview.id,
-																custom_instructions: instructions
+																custom_instructions: instructions,
 															},
 															{ method: "post", action: "/api/regenerate-ai-summary" }
 														)
@@ -1895,17 +1899,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								onLensApplied={() => revalidator.revalidate()}
 							/>
 
-							<LensTabs
-								templates={lensTemplates}
-								analyses={lensAnalyses}
-							/>
+							<LensTabs templates={lensTemplates} analyses={lensAnalyses} />
 						</div>
 					)}
 
 					{/* Legacy Sales Lens (for backward compatibility during migration) */}
 					{salesCrmEnabled && salesLens && (
-						<div className="mt-8 pt-8 border-t">
-							<h4 className="text-sm font-medium text-muted-foreground mb-4">Legacy Sales Lens (migrating)</h4>
+						<div className="mt-8 border-t pt-8">
+							<h4 className="mb-4 font-medium text-muted-foreground text-sm">Legacy Sales Lens (migrating)</h4>
 							<SalesLensesSection
 								lens={salesLens}
 								customLenses={customLensOverrides}

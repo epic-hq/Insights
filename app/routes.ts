@@ -185,6 +185,8 @@ const routes = [
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
 	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),
+	route("api/apply-lens", "./routes/api.apply-lens.tsx"),
+	route("api/lens-templates", "./routes/api.lens-templates.tsx"),
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 

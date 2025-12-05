@@ -1,15 +1,8 @@
+import { Check, ChevronDown, Plus, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useFetcher } from "react-router-dom"
-import { Check, ChevronDown, Plus, X } from "lucide-react"
 import { Button } from "~/components/ui/button"
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "~/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { cn } from "~/lib/utils"
 
@@ -98,12 +91,12 @@ export function ManagePeopleAssociations({
 
 					return (
 						<div key={participant.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-							<div className="flex items-center gap-3 flex-1">
-								<div className="font-medium text-sm min-w-[120px]">{speakerLabel}</div>
+							<div className="flex flex-1 items-center gap-3">
+								<div className="min-w-[120px] font-medium text-sm">{speakerLabel}</div>
 								{linkedPerson ? (
 									<div className="flex items-center gap-2">
 										<Check className="h-4 w-4 text-green-600" />
-										<span className="text-sm text-muted-foreground">Linked to:</span>
+										<span className="text-muted-foreground text-sm">Linked to:</span>
 										<span className="font-medium text-sm">{linkedPerson.name || "Unnamed Person"}</span>
 										<Button
 											variant="ghost"
@@ -119,7 +112,10 @@ export function ManagePeopleAssociations({
 								)}
 							</div>
 
-							<Popover open={openPopoverId === participant.id} onOpenChange={(open) => setOpenPopoverId(open ? participant.id : null)}>
+							<Popover
+								open={openPopoverId === participant.id}
+								onOpenChange={(open) => setOpenPopoverId(open ? participant.id : null)}
+							>
 								<PopoverTrigger asChild>
 									<Button variant="outline" size="sm" disabled={fetcher.state !== "idle"}>
 										{linkedPerson ? "Change Person" : "Link Person"}
@@ -135,9 +131,7 @@ export function ManagePeopleAssociations({
 													variant="ghost"
 													className="w-full justify-start"
 													onClick={() => {
-														const input = document.querySelector<HTMLInputElement>(
-															'[cmdk-input]'
-														)
+														const input = document.querySelector<HTMLInputElement>("[cmdk-input]")
 														const name = input?.value || ""
 														if (name.trim()) {
 															createAndLinkPerson(participant.id, name.trim())

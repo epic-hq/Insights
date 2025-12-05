@@ -72,10 +72,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const accountId = formData.get("account_id")?.toString()
 
 				if (!templateKey || !templateName || !templateDefinition) {
-					return Response.json(
-						{ ok: false, error: "Missing required fields" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Missing required fields" }, { status: 400 })
 				}
 
 				// Validate template_key format (URL-safe slug)
@@ -91,10 +88,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				try {
 					parsedDefinition = JSON.parse(templateDefinition)
 				} catch {
-					return Response.json(
-						{ ok: false, error: "Invalid template_definition JSON" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Invalid template_definition JSON" }, { status: 400 })
 				}
 
 				// Insert template
@@ -114,10 +108,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				if (error) {
 					if (error.code === "23505") {
-						return Response.json(
-							{ ok: false, error: "A template with this key already exists" },
-							{ status: 409 }
-						)
+						return Response.json({ ok: false, error: "A template with this key already exists" }, { status: 409 })
 					}
 					return Response.json({ ok: false, error: error.message }, { status: 500 })
 				}
@@ -137,10 +128,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const templateDefinition = formData.get("template_definition")?.toString()
 
 				if (!templateKey) {
-					return Response.json(
-						{ ok: false, error: "Missing template_key" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Missing template_key" }, { status: 400 })
 				}
 
 				const updates: Record<string, any> = {}
@@ -152,10 +140,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					try {
 						updates.template_definition = JSON.parse(templateDefinition)
 					} catch {
-						return Response.json(
-							{ ok: false, error: "Invalid template_definition JSON" },
-							{ status: 400 }
-						)
+						return Response.json({ ok: false, error: "Invalid template_definition JSON" }, { status: 400 })
 					}
 				}
 
@@ -181,10 +166,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const templateKey = formData.get("template_key")?.toString()
 
 				if (!templateKey) {
-					return Response.json(
-						{ ok: false, error: "Missing template_key" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Missing template_key" }, { status: 400 })
 				}
 
 				// Soft delete by setting is_active = false
@@ -204,10 +186,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 
 			default:
-				return Response.json(
-					{ ok: false, error: "Unknown intent" },
-					{ status: 400 }
-				)
+				return Response.json({ ok: false, error: "Unknown intent" }, { status: 400 })
 		}
 	} catch (error: any) {
 		console.error("[lens-templates] Action error:", error)

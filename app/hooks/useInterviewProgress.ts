@@ -238,18 +238,14 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 	// Update progress from conversation_analysis (v2 workflow) - highest priority
 	useEffect(() => {
 		if (!interview) {
-			console.log("[useInterviewProgress] No interview found")
 			return
 		}
 
 		// Use conversation_analysis as primary source of truth
 		const metadata = interview.conversation_analysis as any
 
-		console.log("[useInterviewProgress] Conversation analysis:", {
-			interviewId: interview.id,
-			status: interview.status,
-			metadata,
-		})
+		// Debug logging reduced - uncomment if needed
+		// console.log("[useInterviewProgress] status:", interview.status)
 
 		// If interview is ready, show completion
 		if (interview.status === "ready") {
@@ -280,7 +276,6 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 		// If no conversation_analysis yet or no valid progress, skip (will use fallback logic)
 		if (!metadata) {
-			console.log("[useInterviewProgress] No conversation_analysis yet, using fallback")
 			return
 		}
 
@@ -299,7 +294,6 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 		// If no current_step, use fallback
 		if (!metadata.current_step) {
-			console.log("[useInterviewProgress] No current_step in conversation_analysis, using fallback")
 			return
 		}
 
@@ -315,14 +309,7 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 		const hasError = interview.status === "error" || Boolean(metadata.failed_at)
 		const canCancel = isActiveJob && Boolean(triggerRunId)
 
-		console.log(
-			"[useInterviewProgress] canCancel:",
-			canCancel,
-			"isActiveJob:",
-			isActiveJob,
-			"has trigger_run_id:",
-			Boolean(triggerRunId)
-		)
+		// Debug logging reduced
 
 		// Map workflow steps to user-friendly labels
 		const stepLabels: Record<string, string> = {

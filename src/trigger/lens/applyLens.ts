@@ -1,8 +1,9 @@
 /**
  * Apply a single conversation lens to an interview
  *
- * Wrapper that calls the appropriate BAML extraction function based on template_key,
- * then stores the result in conversation_lens_analyses.
+ * Uses the generic ApplyConversationLens BAML function that works with any template.
+ * The template definition from the database drives the extraction - no hardcoded logic.
+ * Results are stored in conversation_lens_analyses.analysis_data as flexible JSONB.
  */
 
 import { task } from "@trigger.dev/sdk"
@@ -18,16 +19,13 @@ export type ApplyLensPayload = {
 	accountId: string
 	projectId?: string | null
 	computedBy?: string | null
+	customInstructions?: string | null
 }
 
-type EvidenceForLens = {
-	id: string
-	gist: string | null
-	verbatim: string | null
-	chunk: string | null
-	start_ms: number | null
-	end_ms: number | null
-	facet_mentions: any[] | null
+type InterviewParticipant = {
+	person_id: string
+	display_name: string | null
+	role: string | null
 }
 
 /**
@@ -46,268 +44,124 @@ function buildInterviewContext(interview: {
 }
 
 /**
- * Build project context for project-research lens
+ * Match a name string to interview participants
+ * Returns the matched participant or null
  */
-function buildProjectContext(project: {
-	project_goals?: string[] | null
-	decision_questions?: string[] | null
-	unknowns?: string[] | null
-	target_orgs?: string[] | null
-	target_roles?: string[] | null
-} | null): {
-	goals: string
-	decisionQuestions: string
-	unknowns: string
-	targetOrgs: string
-	targetRoles: string
-} | null {
-	if (!project) return null
+function matchNameToParticipant(
+	name: string | null | undefined,
+	participants: InterviewParticipant[]
+): InterviewParticipant | null {
+	if (!name || participants.length === 0) return null
 
-	return {
-		goals: project.project_goals?.join("\n") || "No goals defined",
-		decisionQuestions: project.decision_questions?.join("\n") || "No decision questions defined",
-		unknowns: project.unknowns?.join("\n") || "No unknowns defined",
-		targetOrgs: project.target_orgs?.join("\n") || "No target organizations defined",
-		targetRoles: project.target_roles?.join("\n") || "No target roles defined",
+	const nameLower = name.toLowerCase().trim()
+
+	// Try exact match first
+	const exactMatch = participants.find(
+		(p) => p.display_name?.toLowerCase().trim() === nameLower
+	)
+	if (exactMatch) return exactMatch
+
+	// Try partial match (name contains or is contained by)
+	const partialMatch = participants.find(
+		(p) =>
+			p.display_name?.toLowerCase().includes(nameLower) ||
+			nameLower.includes(p.display_name?.toLowerCase() || "")
+	)
+	if (partialMatch) return partialMatch
+
+	// Try first name match
+	const firstName = nameLower.split(" ")[0]
+	if (firstName.length > 2) {
+		const firstNameMatch = participants.find(
+			(p) => p.display_name?.toLowerCase().startsWith(firstName)
+		)
+		if (firstNameMatch) return firstNameMatch
 	}
+
+	return null
 }
 
 /**
- * Apply the appropriate BAML extraction based on template key
+ * Post-process extraction result to match entity names to people records
  */
-async function extractWithBAML(
-	templateKey: string,
-	evidenceJson: string,
-	interviewContext: string,
-	projectContext: ReturnType<typeof buildProjectContext>
-): Promise<any> {
-	switch (templateKey) {
-		case "project-research":
-			if (!projectContext) {
-				consola.warn(`[applyLens] No project context for project-research lens, skipping`)
-				return null
+function enrichEntitiesWithPeople(
+	result: any,
+	participants: InterviewParticipant[]
+): any {
+	if (!result?.entities || participants.length === 0) return result
+
+	// Process each entity type
+	for (const entityResult of result.entities || []) {
+		if (!entityResult.items) continue
+
+		entityResult.items = entityResult.items.map((item: any, idx: number) => {
+			// Try to match name field to participants
+			const matched = matchNameToParticipant(item.name, participants)
+			return {
+				...item,
+				person_id: matched?.person_id || null,
+				entity_key: `${entityResult.entity_type}-${idx}`,
+				candidate_name: matched ? null : item.name,
 			}
-			return await b.ExtractGoalLens(
-				evidenceJson,
-				interviewContext,
-				projectContext.goals,
-				projectContext.decisionQuestions,
-				projectContext.unknowns,
-				projectContext.targetOrgs,
-				projectContext.targetRoles
-			)
-
-		case "sales-bant":
-			return await b.ExtractSalesLensBant(evidenceJson, interviewContext)
-
-		case "product-insights":
-			return await b.ExtractProductLens(evidenceJson, interviewContext)
-
-		case "user-testing":
-			return await b.ExtractResearchLens(evidenceJson, interviewContext)
-
-		case "customer-discovery":
-		case "empathy-map-jtbd":
-			// These use the generic template structure - for now, skip BAML
-			// and let evidence extraction handle empathy map fields
-			consola.info(`[applyLens] Template ${templateKey} uses evidence-based extraction`)
-			return null
-
-		default:
-			consola.warn(`[applyLens] Unknown template key: ${templateKey}`)
-			return null
+		})
 	}
-}
 
-/**
- * Transform BAML extraction result to generic analysis_data format
- */
-function transformToAnalysisData(templateKey: string, extraction: any): any {
-	if (!extraction) return { sections: [], entities: {}, recommendations: [] }
-
-	// Each BAML function returns a different structure, normalize here
-	switch (templateKey) {
-		case "project-research":
-			return {
-				sections: [
-					{
-						section_key: "goal_answers",
-						items: extraction.goal_answers || [],
-					},
-					{
-						section_key: "decision_insights",
-						items: extraction.decision_insights || [],
-					},
-					{
-						section_key: "unknown_resolutions",
-						items: extraction.unknown_resolutions || [],
-					},
-					{
-						section_key: "target_fit",
-						items: extraction.target_fit || [],
-					},
-				],
-				entities: {},
-				recommendations: extraction.recommended_follow_ups?.map((r: string) => ({
-					type: "follow_up",
-					description: r,
-					priority: "medium",
-				})) || [],
-				goal_completion_score: extraction.goal_completion_score,
-				research_learnings: extraction.research_learnings || [],
-			}
-
-		case "sales-bant":
-			return {
-				sections: [
-					{
-						section_key: "bant",
-						items: [
-							{ field_key: "budget", ...extraction.budget },
-							{ field_key: "authority", ...extraction.authority },
-							{ field_key: "need", ...extraction.need },
-							{ field_key: "timeline", ...extraction.timeline },
-						],
-					},
-				],
-				entities: {
-					stakeholders: extraction.stakeholders || [],
-					next_steps: extraction.next_steps || [],
-				},
-				recommendations: extraction.deal_qualification?.recommended_actions?.map((a: string) => ({
-					type: "next_step",
-					description: a,
-					priority: "high",
-				})) || [],
-				deal_qualification: extraction.deal_qualification,
-				key_insights: extraction.key_insights || [],
-				risks_and_concerns: extraction.risks_and_concerns || [],
-			}
-
-		case "product-insights":
-			return {
-				sections: [
-					{
-						section_key: "jobs_to_be_done",
-						items: extraction.jobs || [],
-					},
-					{
-						section_key: "feature_requests",
-						items: extraction.feature_requests || [],
-					},
-					{
-						section_key: "product_gaps",
-						items: extraction.product_gaps || [],
-					},
-				],
-				entities: {
-					competitive_insights: extraction.competitive_insights || [],
-				},
-				recommendations: [],
-				feature_priorities: extraction.feature_priorities || [],
-				key_insights: extraction.key_insights || [],
-			}
-
-		case "user-testing":
-			return {
-				sections: [
-					{
-						section_key: "usability_findings",
-						items: extraction.usability_findings || [],
-					},
-					{
-						section_key: "journey_insights",
-						items: extraction.journey_insights || [],
-					},
-					{
-						section_key: "behavior_patterns",
-						items: extraction.behavior_patterns || [],
-					},
-				],
-				entities: {
-					mental_models: extraction.mental_models || [],
-				},
-				recommendations: extraction.recommended_next_research?.map((r: string) => ({
-					type: "research",
-					description: r,
-					priority: "medium",
-				})) || [],
-				hypothesis_validations: extraction.hypothesis_validations || [],
-				key_learnings: extraction.key_learnings || [],
-			}
-
-		default:
-			return { sections: [], entities: {}, recommendations: [] }
-	}
-}
-
-/**
- * Calculate overall confidence from extraction
- */
-function calculateOverallConfidence(templateKey: string, extraction: any): number {
-	if (!extraction) return 0
-
-	switch (templateKey) {
-		case "project-research":
-			return extraction.goal_completion_score || 0.5
-
-		case "sales-bant": {
-			const scores = [
-				extraction.budget?.confidence,
-				extraction.authority?.confidence,
-				extraction.need?.confidence,
-				extraction.timeline?.confidence,
-			].filter((s): s is number => typeof s === "number")
-			return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0.5
-		}
-
-		case "product-insights":
-		case "user-testing":
-			return 0.7 // Default for these lens types
-
-		default:
-			return 0.5
-	}
+	return result
 }
 
 export const applyLensTask = task({
 	id: "lens.apply-lens",
 	retry: workflowRetryConfig,
 	run: async (payload: ApplyLensPayload) => {
-		const { interviewId, templateKey, accountId, projectId, computedBy } = payload
+		const { interviewId, templateKey, accountId, projectId, computedBy, customInstructions } = payload
 		const client = createSupabaseAdminClient()
 
 		consola.info(`[applyLens] Applying ${templateKey} to interview ${interviewId}`)
 
-		// Load interview with project context
-		type InterviewWithProject = {
+		// 1. Load template definition from database
+		type TemplateRow = {
+			template_key: string
+			template_name: string
+			template_definition: any
+			is_active: boolean
+		}
+
+		const { data: template, error: templateError } = await (client as any)
+			.from("conversation_lens_templates")
+			.select("template_key, template_name, template_definition, is_active")
+			.eq("template_key", templateKey)
+			.single() as { data: TemplateRow | null; error: any }
+
+		if (templateError || !template) {
+			throw new Error(`Template not found: ${templateKey}`)
+		}
+
+		if (!template.is_active) {
+			consola.warn(`[applyLens] Template ${templateKey} is not active, skipping`)
+			return { skipped: true, reason: "template_inactive" }
+		}
+
+		// 2. Load interview
+		type InterviewRow = {
 			id: string
 			title: string | null
 			interview_date: string | null
 			duration_sec: number | null
 			lens_visibility: string | null
-			projects: {
-				id: string
-				project_goals: any | null
-				decision_questions: any | null
-				unknowns: any | null
-				target_orgs: any | null
-				target_roles: any | null
-			} | null
+			project_id: string | null
 		}
 
 		const { data: interview, error: interviewError } = await (client as any)
 			.from("interviews")
-			.select(`
-				id, title, interview_date, duration_sec, lens_visibility,
-				projects (
-					id, project_goals, decision_questions, unknowns, target_orgs, target_roles
-				)
-			`)
+			.select("id, title, interview_date, duration_sec, lens_visibility, project_id")
 			.eq("id", interviewId)
-			.single() as { data: InterviewWithProject | null; error: any }
+			.single() as { data: InterviewRow | null; error: any }
 
-		if (interviewError || !interview) {
+		if (interviewError) {
+			consola.error(`[applyLens] Supabase error loading interview:`, interviewError)
+			throw new Error(`Failed to load interview ${interviewId}: ${interviewError.message}`)
+		}
+		if (!interview) {
 			throw new Error(`Interview not found: ${interviewId}`)
 		}
 
@@ -317,22 +171,21 @@ export const applyLensTask = task({
 			return { skipped: true, reason: "private" }
 		}
 
-		// Load evidence
+		// 3. Load evidence
 		type EvidenceRow = {
 			id: string
 			gist: string | null
 			verbatim: string | null
 			chunk: string | null
-			start_ms: number | null
-			end_ms: number | null
-			facet_mentions: any | null
+			anchors: any | null
+			created_at: string
 		}
 
 		const { data: evidence, error: evidenceError } = await (client as any)
 			.from("evidence")
-			.select("id, gist, verbatim, chunk, start_ms, end_ms, facet_mentions")
+			.select("id, gist, verbatim, chunk, anchors, created_at")
 			.eq("interview_id", interviewId)
-			.order("start_ms", { ascending: true }) as { data: EvidenceRow[] | null; error: any }
+			.order("created_at", { ascending: true }) as { data: EvidenceRow[] | null; error: any }
 
 		if (evidenceError) {
 			throw new Error(`Failed to load evidence: ${evidenceError.message}`)
@@ -340,14 +193,13 @@ export const applyLensTask = task({
 
 		if (!evidence || evidence.length === 0) {
 			consola.warn(`[applyLens] No evidence for interview ${interviewId}, storing empty analysis`)
-			// Store empty result
 			await (client as any).from("conversation_lens_analyses").upsert(
 				{
 					interview_id: interviewId,
 					template_key: templateKey,
 					account_id: accountId,
 					project_id: projectId,
-					analysis_data: { sections: [], entities: {}, recommendations: [] },
+					analysis_data: { sections: [], entities: [], recommendations: [] },
 					confidence_score: 0,
 					auto_detected: true,
 					status: "completed",
@@ -359,14 +211,44 @@ export const applyLensTask = task({
 			return { templateKey, success: true, evidenceCount: 0 }
 		}
 
+		// 4. Load interview participants for person matching
+		type ParticipantRow = {
+			person_id: string
+			role: string | null
+			people: {
+				id: string
+				name: string | null
+			} | null
+		}
+
+		const { data: participantData } = await (client as any)
+			.from("interview_people")
+			.select("person_id, role, people(id, name)")
+			.eq("interview_id", interviewId) as { data: ParticipantRow[] | null; error: any }
+
+		const participants: InterviewParticipant[] = (participantData || []).map((p) => ({
+			person_id: p.person_id,
+			display_name: p.people?.name || null,
+			role: p.role,
+		}))
+
+		consola.info(`[applyLens] Loaded ${participants.length} participants for person matching`)
+
+		// 5. Call the generic BAML function
 		const evidenceJson = JSON.stringify(evidence)
 		const interviewContext = buildInterviewContext(interview)
-		const projectContext = buildProjectContext(interview.projects as any)
+		const templateDefinition = JSON.stringify(template.template_definition)
 
-		// Run BAML extraction
 		let extraction: any = null
 		try {
-			extraction = await extractWithBAML(templateKey, evidenceJson, interviewContext, projectContext)
+			consola.info(`[applyLens] Calling ApplyConversationLens for ${template.template_name}`)
+			extraction = await b.ApplyConversationLens(
+				templateDefinition,
+				template.template_name,
+				evidenceJson,
+				interviewContext,
+				customInstructions || null
+			)
 		} catch (error) {
 			consola.error(`[applyLens] BAML extraction failed for ${templateKey}:`, error)
 			// Store failed status
@@ -389,9 +271,16 @@ export const applyLensTask = task({
 			throw error
 		}
 
-		// Transform and store result
-		const analysisData = transformToAnalysisData(templateKey, extraction)
-		const confidenceScore = calculateOverallConfidence(templateKey, extraction)
+		// 6. Enrich entities with person matching
+		const enrichedResult = enrichEntitiesWithPeople(extraction, participants)
+
+		// 7. Store result - the BAML result format matches what we store
+		const analysisData = {
+			sections: enrichedResult.sections || [],
+			entities: enrichedResult.entities || [],
+			recommendations: enrichedResult.recommendations || [],
+			processing_notes: enrichedResult.processing_notes,
+		}
 
 		const { error: upsertError } = await (client as any).from("conversation_lens_analyses").upsert(
 			{
@@ -400,7 +289,7 @@ export const applyLensTask = task({
 				account_id: accountId,
 				project_id: projectId,
 				analysis_data: analysisData,
-				confidence_score: confidenceScore,
+				confidence_score: enrichedResult.overall_confidence || 0.5,
 				auto_detected: true,
 				status: "completed",
 				processed_at: new Date().toISOString(),
@@ -413,13 +302,13 @@ export const applyLensTask = task({
 			throw new Error(`Failed to store analysis: ${upsertError.message}`)
 		}
 
-		consola.success(`[applyLens] ✓ Applied ${templateKey} to ${interviewId} (confidence: ${confidenceScore.toFixed(2)})`)
+		consola.success(`[applyLens] ✓ Applied ${templateKey} to ${interviewId} (confidence: ${(enrichedResult.overall_confidence || 0.5).toFixed(2)})`)
 
 		return {
 			templateKey,
 			success: true,
 			evidenceCount: evidence.length,
-			confidenceScore,
+			confidenceScore: enrichedResult.overall_confidence || 0.5,
 		}
 	},
 })

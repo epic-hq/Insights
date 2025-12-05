@@ -603,10 +603,7 @@ export default function PersonDetail() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									refreshFetcher.submit(
-										{ _action: "refresh-description" },
-										{ method: "post" }
-									)
+									refreshFetcher.submit({ _action: "refresh-description" }, { method: "post" })
 								}}
 								disabled={isRefreshingDescription}
 							>

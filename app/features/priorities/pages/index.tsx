@@ -67,7 +67,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 
 	consola.info("Priorities loader - params:", { accountId, projectId })
-	consola.info("Priorities loader - user accounts:", ctx.accounts?.map(a => ({ id: a.account_id, name: a.name })))
+	consola.info(
+		"Priorities loader - user accounts:",
+		ctx.accounts?.map((a) => ({ id: a.account_id, name: a.name }))
+	)
 
 	if (!accountId || !projectId) {
 		throw new Response("Missing account or project ID", { status: 400 })
@@ -102,8 +105,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	consola.info("Priorities loader - fetched tasks:", {
 		count: tasks.length,
-		accountIds: [...new Set(tasks.map(t => t.account_id))],
-		projectIds: [...new Set(tasks.map(t => t.project_id))],
+		accountIds: [...new Set(tasks.map((t) => t.account_id))],
+		projectIds: [...new Set(tasks.map((t) => t.project_id))],
 	})
 
 	// If no tasks exist, seed with initial data
@@ -666,8 +669,9 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
-										}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -731,8 +735,9 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
-										}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}

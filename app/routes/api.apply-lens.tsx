@@ -6,8 +6,8 @@
 
 import { tasks } from "@trigger.dev/sdk/v3"
 import type { ActionFunctionArgs } from "react-router"
-import type { applyLensTask } from "~/../src/trigger/lens/applyLens"
 import type { applyAllLensesTask } from "~/../src/trigger/lens/applyAllLenses"
+import type { applyLensTask } from "~/../src/trigger/lens/applyLens"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
