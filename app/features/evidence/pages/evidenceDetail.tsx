@@ -1,4 +1,5 @@
 import { ChevronLeft } from "lucide-react"
+import { useEffect } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
@@ -238,8 +239,24 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 }
 
 export default function EvidenceDetail() {
-	const { evidence, relatedEvidence, projectPath } = useLoaderData<typeof loader>()
+	const { evidence, relatedEvidence, projectPath, anchorFromUrl } = useLoaderData<typeof loader>()
 	const interview = evidence.interview
+
+	// If there's a timestamp anchor from URL, inject it into evidence.anchors
+	const evidenceWithAnchor = anchorFromUrl
+		? {
+			...evidence,
+			anchors: [anchorFromUrl, ...(Array.isArray(evidence.anchors) ? evidence.anchors : [])],
+		}
+		: evidence
+
+	// Scroll to top when navigating to this page, UNLESS there's a timestamp anchor
+	useEffect(() => {
+		if (!anchorFromUrl) {
+			window.scrollTo(0, 0)
+		}
+		// If anchorFromUrl exists, let the EvidenceCard handle scrolling to the timestamp
+	}, [evidence.id, anchorFromUrl])
 
 	return (
 		<div className="space-y-4 p-4 sm:p-6">
@@ -255,7 +272,7 @@ export default function EvidenceDetail() {
 					{interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}
 				</div>
 				<EvidenceCard
-					evidence={evidence}
+					evidence={evidenceWithAnchor}
 					people={evidence.people || []}
 					interview={interview}
 					variant="expanded"

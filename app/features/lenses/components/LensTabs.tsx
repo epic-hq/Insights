@@ -13,11 +13,22 @@ import { cn } from "~/lib/utils"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
 import { GenericLensView } from "./GenericLensView"
 
+type EvidenceRecord = {
+	id: string
+	anchors?: unknown
+	start_ms?: number | null
+	gist?: string | null
+}
+
 type Props = {
 	templates: LensTemplate[]
 	analyses: Record<string, LensAnalysisWithTemplate>
 	defaultTab?: string
 	className?: string
+	/** Enable inline editing of lens fields */
+	editable?: boolean
+	/** Map of evidence ID to evidence record for hydrating timestamps */
+	evidenceMap?: Map<string, EvidenceRecord>
 }
 
 /**
@@ -60,7 +71,7 @@ function CategoryBadge({ category }: { category: string | null }) {
 	)
 }
 
-export function LensTabs({ templates, analyses, defaultTab, className }: Props) {
+export function LensTabs({ templates, analyses, defaultTab, className, editable, evidenceMap }: Props) {
 	// Sort templates by display_order
 	const sortedTemplates = [...templates].sort((a, b) => a.display_order - b.display_order)
 
@@ -71,10 +82,6 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 		"project-research"
 
 	const [activeTab, setActiveTab] = useState(initialTab)
-
-	// Count completed analyses
-	const completedCount = Object.values(analyses).filter((a) => a.status === "completed").length
-	const totalCount = templates.length
 
 	if (templates.length === 0) {
 		return (
@@ -87,17 +94,6 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 
 	return (
 		<div className={cn("space-y-4", className)}>
-			{/* Summary header */}
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-2">
-					<Sparkles className="h-5 w-5 text-primary" />
-					<h3 className="font-semibold">Conversation Lenses</h3>
-				</div>
-				<Badge variant="outline">
-					{completedCount}/{totalCount} analyzed
-				</Badge>
-			</div>
-
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
 				<TabsList className="h-auto w-full flex-wrap gap-1 p-1">
 					{sortedTemplates.map((template) => {
@@ -131,7 +127,12 @@ export function LensTabs({ templates, analyses, defaultTab, className }: Props) 
 								</div>
 
 								{/* Lens content */}
-								<GenericLensView analysis={analysis} template={template} />
+								<GenericLensView
+									analysis={analysis}
+									template={template}
+									editable={editable}
+									evidenceMap={evidenceMap}
+								/>
 							</div>
 						</TabsContent>
 					)

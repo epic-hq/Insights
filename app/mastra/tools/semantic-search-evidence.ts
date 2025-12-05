@@ -6,12 +6,12 @@ import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 const DEFAULT_MATCH_COUNT = 10
-const DEFAULT_MATCH_THRESHOLD = 0.7
+const DEFAULT_MATCH_THRESHOLD = 0.5 // Lowered from 0.7 - semantic similarity scores are typically lower than exact matches
 
 export const semanticSearchEvidenceTool = createTool({
 	id: "semantic-search-evidence",
 	description:
-		"Semantically search for evidence using natural language queries. Uses AI embeddings to find evidence that matches the meaning of your query, not just exact keywords. Great for finding related insights, pain points, goals, or specific topics mentioned in interviews.",
+		"Semantically search for evidence using natural language queries. Searches both verbatim interview quotes AND structured evidence facets (pains, gains, thinks, feels, etc.). Uses AI embeddings to find evidence that matches the meaning of your query, not just exact keywords. Great for finding related insights, pain points, goals, or specific topics mentioned in interviews.",
 	inputSchema: z.object({
 		query: z
 			.string()
@@ -28,7 +28,7 @@ export const semanticSearchEvidenceTool = createTool({
 			.min(0)
 			.max(1)
 			.optional()
-			.describe("Similarity threshold (0-1). Higher = more strict. Default: 0.7"),
+			.describe("Similarity threshold (0-1). Higher = more strict. Default: 0.5. Recommended: 0.4-0.6 for broad searches, 0.6-0.8 for precise matches."),
 		matchCount: z.number().int().min(1).max(50).optional().describe("Maximum number of results to return. Default: 10"),
 	}),
 	outputSchema: z.object({
@@ -53,9 +53,9 @@ export const semanticSearchEvidenceTool = createTool({
 		totalCount: z.number(),
 		threshold: z.number(),
 	}),
-	execute: async (context, _options) => {
+	execute: async ({ context, runtimeContext }) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context.runtimeContext?.get?.("project_id")
+		const runtimeProjectId = runtimeContext?.get?.("project_id")
 
 		const projectId = context.projectId ?? runtimeProjectId ?? null
 		const query = context.query?.trim()
@@ -124,7 +124,10 @@ export const semanticSearchEvidenceTool = createTool({
 			const queryEmbedding = embeddingData.data[0].embedding as number[]
 
 			// 2. Search for similar evidence using pgvector
-			consola.info("semantic-search-evidence: searching for similar evidence")
+			consola.info("semantic-search-evidence: searching for similar evidence", {
+				embeddingLength: queryEmbedding.length,
+				embeddingPreview: queryEmbedding.slice(0, 5),
+			})
 
 			// If interview-specific, use that function
 			if (interviewId) {
@@ -172,23 +175,144 @@ export const semanticSearchEvidenceTool = createTool({
 				}
 			}
 
-			// Project-wide search
-			const { data: evidenceData, error: evidenceError } = await supabase.rpc("find_similar_evidence", {
+			// Project-wide search - search both evidence and evidence_facets in parallel
+			consola.info("semantic-search-evidence: calling find_similar_evidence + find_similar_evidence_facets RPCs", {
+				projectId,
+				matchThreshold,
+				matchCount,
+			})
+
+			// Search evidence verbatim
+			const evidencePromise = supabase.rpc("find_similar_evidence", {
 				query_embedding: queryEmbedding,
 				project_id_param: projectId,
 				match_threshold: matchThreshold,
 				match_count: matchCount,
 			})
 
+			// Search evidence facets (pains, gains, thinks, feels, etc.)
+			const facetsPromise = supabase.rpc("find_similar_evidence_facets", {
+				query_embedding: queryEmbedding,
+				project_id_param: projectId,
+				match_threshold: matchThreshold,
+				match_count: matchCount,
+				kind_slug_filter: null, // Search all facet types
+			})
+
+			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] = await Promise.all([
+				evidencePromise,
+				facetsPromise,
+			])
+
+			consola.info("semantic-search-evidence: RPC responses", {
+				evidence: {
+					hasError: !!evidenceError,
+					dataLength: evidenceData?.length || 0,
+					sampleResults: evidenceData?.slice(0, 2).map(e => ({
+						id: e.id,
+						similarity: e.similarity,
+						verbatimPreview: e.verbatim?.substring(0, 60)
+					}))
+				},
+				facets: {
+					hasError: !!facetsError,
+					dataLength: facetsData?.length || 0,
+					sampleResults: facetsData?.slice(0, 2).map(f => ({
+						id: f.id,
+						kind: f.kind_slug,
+						label: f.label,
+						similarity: f.similarity
+					}))
+				}
+			})
+
 			if (evidenceError) {
-				consola.error("semantic-search-evidence: database error", evidenceError)
+				consola.error("semantic-search-evidence: evidence query error", evidenceError)
 				throw evidenceError
 			}
 
-			if (!evidenceData || evidenceData.length === 0) {
+			if (facetsError) {
+				consola.error("semantic-search-evidence: facets query error", facetsError)
+				throw facetsError
+			}
+
+			// Combine results from both searches
+			// Get unique evidence IDs from both sources
+			const evidenceIds = new Set<string>()
+			const facetEvidenceIds = new Set<string>()
+
+			evidenceData?.forEach(e => evidenceIds.add(e.id))
+			facetsData?.forEach(f => {
+				if (f.evidence_id) {
+					facetEvidenceIds.add(f.evidence_id)
+					evidenceIds.add(f.evidence_id)
+				}
+			})
+
+			consola.info("semantic-search-evidence: combined results", {
+				uniqueEvidenceIds: evidenceIds.size,
+				fromVerbatim: evidenceData?.length || 0,
+				fromFacets: facetEvidenceIds.size,
+			})
+
+			if (evidenceIds.size === 0) {
+				// Check if there's any evidence at all in the project
+				const { count: totalEvidenceCount } = await supabase
+					.from("evidence")
+					.select("*", { count: "exact", head: true })
+					.eq("project_id", projectId)
+
+				const { count: evidenceWithEmbeddings } = await supabase
+					.from("evidence")
+					.select("*", { count: "exact", head: true })
+					.eq("project_id", projectId)
+					.not("embedding", "is", null)
+
+				// Check what the top similarity scores actually are (without threshold filter)
+				const { data: topMatches } = await supabase.rpc("find_similar_evidence", {
+					query_embedding: queryEmbedding,
+					project_id_param: projectId,
+					match_threshold: 0.0, // No threshold to see actual scores
+					match_count: 5,
+				})
+
+				consola.warn("semantic-search-evidence: no results found", {
+					query,
+					projectId,
+					matchThreshold,
+					matchCount,
+					totalEvidenceCount,
+					evidenceWithEmbeddings,
+					topSimilarityScores: topMatches?.map(m => m.similarity) || [],
+					topMatchPreviews: topMatches?.slice(0, 2).map(m => ({
+						similarity: m.similarity,
+						preview: m.verbatim?.substring(0, 80)
+					})) || [],
+					diagnostics: {
+						hasEvidence: (totalEvidenceCount || 0) > 0,
+						hasEmbeddings: (evidenceWithEmbeddings || 0) > 0,
+						percentWithEmbeddings:
+							totalEvidenceCount && totalEvidenceCount > 0
+								? Math.round(((evidenceWithEmbeddings || 0) / totalEvidenceCount) * 100)
+								: 0,
+						highestSimilarity: topMatches?.[0]?.similarity || 0,
+						thresholdTooHigh: (topMatches?.[0]?.similarity || 0) < matchThreshold,
+					},
+				})
+
+				const highestScore = topMatches?.[0]?.similarity || 0
+				const diagnosticMessage =
+					(totalEvidenceCount || 0) === 0
+						? "No evidence exists in this project yet. Upload interviews to create evidence."
+						: (evidenceWithEmbeddings || 0) === 0
+							? `Found ${totalEvidenceCount} evidence pieces, but none have embeddings generated yet. Embeddings are being processed in the background.`
+							: highestScore > 0 && highestScore < matchThreshold
+								? `Found evidence with similarity scores up to ${highestScore.toFixed(2)}, but your threshold is ${matchThreshold}. The highest matching evidence is: "${topMatches?.[0]?.verbatim?.substring(0, 150)}...". Try lowering the threshold to 0.5 or 0.6 to see more results.`
+								: `No evidence found matching "${query}". Try lowering the similarity threshold (current: ${matchThreshold}) or using different search terms.`
+
 				return {
 					success: true,
-					message: `No evidence found matching "${query}". Try lowering the similarity threshold or using different search terms.`,
+					message: diagnosticMessage,
 					query,
 					evidence: [],
 					totalCount: 0,
@@ -196,12 +320,20 @@ export const semanticSearchEvidenceTool = createTool({
 				}
 			}
 
-			// Fetch additional data for better context
-			const evidenceIds = evidenceData.map((e) => e.id)
+			// Fetch full evidence data for all matched IDs
+			const evidenceIdsArray = Array.from(evidenceIds)
+			consola.info("semantic-search-evidence: fetching full evidence data", {
+				count: evidenceIdsArray.length,
+			})
+
 			const { data: fullEvidence } = await supabase
 				.from("evidence")
-				.select("id, interview_id, pains, gains, thinks, feels, anchors")
-				.in("id", evidenceIds)
+				.select("id, verbatim, gist, interview_id, pains, gains, thinks, feels, anchors")
+				.in("id", evidenceIdsArray)
+
+			consola.info("semantic-search-evidence: full evidence fetched", {
+				fullEvidenceCount: fullEvidence?.length || 0,
+			})
 
 			const evidenceMap = new Map(fullEvidence?.map((e) => [e.id, e]) || [])
 
@@ -213,26 +345,54 @@ export const semanticSearchEvidenceTool = createTool({
 
 			const interviewTitles = new Map(interviewData?.map((i) => [i.id, i.title]) || [])
 
-			const evidence = evidenceData.map((row) => {
-				const fullData = evidenceMap.get(row.id)
-				return {
-					id: row.id,
-					verbatim: row.verbatim || null,
-					gist: null,
-					similarity: row.similarity,
-					interviewId: fullData?.interview_id || null,
-					interviewTitle: fullData?.interview_id ? interviewTitles.get(fullData.interview_id) || null : null,
-					pains: fullData?.pains || null,
-					gains: fullData?.gains || null,
-					thinks: fullData?.thinks || null,
-					feels: fullData?.feels || null,
-					anchors: fullData?.anchors || null,
+			// Create similarity map from both sources (use highest similarity for each evidence)
+			const similarityMap = new Map<string, number>()
+			evidenceData?.forEach(e => {
+				similarityMap.set(e.id, e.similarity)
+			})
+			facetsData?.forEach((f: any) => {
+				if (f.evidence_id) {
+					const existing = similarityMap.get(f.evidence_id) || 0
+					// Use the higher similarity score
+					similarityMap.set(f.evidence_id, Math.max(existing, f.similarity))
 				}
 			})
 
+			// Map full evidence with similarity scores, sorted by similarity
+			const evidence = evidenceIdsArray
+				.map((id) => {
+					const fullData = evidenceMap.get(id)
+					if (!fullData) return null
+
+					return {
+						id,
+						verbatim: fullData.verbatim || null,
+						gist: fullData.gist || null,
+						similarity: similarityMap.get(id) || 0,
+						interviewId: fullData.interview_id || null,
+						interviewTitle: fullData.interview_id ? interviewTitles.get(fullData.interview_id) || null : null,
+						pains: fullData.pains || null,
+						gains: fullData.gains || null,
+						thinks: fullData.thinks || null,
+						feels: fullData.feels || null,
+						anchors: fullData.anchors || null,
+					}
+				})
+				.filter((e): e is NonNullable<typeof e> => e !== null)
+				.sort((a, b) => b.similarity - a.similarity)
+				.slice(0, matchCount) // Limit to requested count
+
+			const facetMatchCount = facetEvidenceIds.size
+			const verbatimMatchCount = evidenceData?.length || 0
+			const message = facetMatchCount > 0 && verbatimMatchCount > 0
+				? `Found ${evidence.length} evidence pieces matching "${query}" (${verbatimMatchCount} from verbatim, ${facetMatchCount} from facets like pains/gains).`
+				: facetMatchCount > 0
+					? `Found ${evidence.length} evidence pieces matching "${query}" from structured facets (pains, gains, thinks, feels).`
+					: `Found ${evidence.length} evidence pieces matching "${query}" from verbatim quotes.`
+
 			return {
 				success: true,
-				message: `Found ${evidence.length} evidence pieces semantically matching "${query}".`,
+				message,
 				query,
 				evidence,
 				totalCount: evidence.length,

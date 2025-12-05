@@ -23,10 +23,10 @@ export const fetchProjectGoalsTool = createTool({
 		projectId: z.string().nullable().optional(),
 		projectGoals: projectGoalsSchema.nullable(),
 	}),
-	execute: async (context, _options) => {
+	execute: async ({ context, runtimeContext }) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context.runtimeContext?.get?.("project_id")
-		const runtimeAccountId = context.runtimeContext?.get?.("account_id")
+		const runtimeProjectId = runtimeContext?.get?.("project_id")
+		const runtimeAccountId = runtimeContext?.get?.("account_id")
 
 		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
@@ -79,11 +79,11 @@ export const fetchProjectGoalsTool = createTool({
 				settings:
 					typeof merged === "object" && merged !== null && "research_mode" in merged
 						? {
-								research_mode: merged.research_mode,
-								conversation_type: merged.conversation_type,
-								target_conversations: merged.target_conversations,
-								interview_duration: merged.interview_duration,
-							}
+							research_mode: merged.research_mode,
+							conversation_type: merged.conversation_type,
+							target_conversations: merged.target_conversations,
+							interview_duration: merged.interview_duration,
+						}
 						: null,
 			}
 

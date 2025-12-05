@@ -58,10 +58,10 @@ export const fetchSegmentsTool = createTool({
 		kindSummaries: z.array(segmentKindSummarySchema).optional(),
 		segments: z.array(segmentSummarySchema).optional(),
 	}),
-	execute: async (context, _options) => {
+	execute: async ({ context, runtimeContext }) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context.runtimeContext?.get?.("project_id")
-		const runtimeAccountId = context.runtimeContext?.get?.("account_id")
+		const runtimeProjectId = runtimeContext?.get?.("project_id")
+		const runtimeAccountId = runtimeContext?.get?.("account_id")
 
 		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
 		const projectId = (context as any).projectId ?? runtimeProjectId ?? null

@@ -963,6 +963,20 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	)
 	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
 
+	// Create evidence map for lens timestamp hydration
+	const evidenceMap = useMemo(() => {
+		const map = new Map<string, { id: string; anchors?: unknown; start_ms?: number | null; gist?: string | null }>()
+		for (const e of evidence || []) {
+			map.set(e.id, {
+				id: e.id,
+				anchors: e.anchors,
+				start_ms: e.start_ms,
+				gist: e.gist,
+			})
+		}
+		return map
+	}, [evidence])
+
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
 
@@ -1899,7 +1913,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								onLensApplied={() => revalidator.revalidate()}
 							/>
 
-							<LensTabs templates={lensTemplates} analyses={lensAnalyses} />
+							<LensTabs templates={lensTemplates} analyses={lensAnalyses} editable evidenceMap={evidenceMap} />
 						</div>
 					)}
 

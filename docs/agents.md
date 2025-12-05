@@ -16,19 +16,43 @@ This document is the landing pad for every AI agent, automation workflow, or Cop
 | `projectSetupAgent` | Onboarding journey: collects 8 setup questions, saves to `project_sections`, and auto-generates research structure (decision questions, research questions, interview prompts) via BAML | `saveProjectSectionsData`, `generateResearchStructure`, `navigateToPage`, `displayUserQuestions` | ✅ Live | Automatically generates complete research plan when all 8 questions are answered. |
 | Legacy helpers (`signup-agent`, `old reporting`) | Historical workflows | Deprecated | 💤 Dormant | Archive in `agents-TEMP-SKIP.md` once downstream references are removed. |
 
-## 3. Planning & Implementation Workspace
-1. **Planning signals** – Open `docs/agents/planning.md` for the short list, central task ledger cues, and readiness checks before any automation starts a new feature.
-2. **Implementation conventions** – `docs/agents/implementation.md` describes how to wire Supabase helpers, surface votes, and coordinate deployments (linking back to `docs/supabase-howto.md` and `deploy-howto.md`).
-3. **Vision anchor** – `docs/agents/vision.md` holds the long-term hypotheses (theme adoption coach, decision question concierge, etc.) and reminds agents how `_information_architecture.md` frames the overall discovery story.
+## 3. Code Conventions
 
-## 4. Task Ledger (AI-editable)
+### URL Routing for Project-Scoped Resources
+When generating URLs that link to project-scoped resources (evidence, interviews, insights, people, etc.), always use the project-scoped route helpers:
+
+```tsx
+// ✅ CORRECT: Use useProjectRoutes with project path from context
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+
+function MyComponent() {
+  const { projectPath } = useCurrentProject()
+  const routes = useProjectRoutes(projectPath)
+
+  // This generates: /a/{accountId}/{projectId}/evidence/{id}?t=123
+  const url = `${routes.evidence.detail(evidenceId)}?t=${timestamp}`
+}
+
+// ❌ WRONG: Using useProjectRoutes without projectPath
+const routes = useProjectRoutes() // Missing projectPath - generates wrong URLs!
+```
+
+The `projectPath` is formatted as `/a/{accountId}/{projectId}` and must be passed to `useProjectRoutes()` to generate correctly scoped URLs.
+
+## 4. Planning & Implementation Workspace
+- **Planning signals** – Open `docs/agents/planning.md` for the short list, central task ledger cues, and readiness checks before any automation starts a new feature.
+- **Implementation conventions** – `docs/agents/implementation.md` describes how to wire Supabase helpers, surface votes, and coordinate deployments (linking back to `docs/supabase-howto.md` and `deploy-howto.md`).
+- **Vision anchor** – `docs/agents/vision.md` holds the long-term hypotheses (theme adoption coach, decision question concierge, etc.) and reminds agents how `_information_architecture.md` frames the overall discovery story.
+
+## 5. Task Ledger (AI-editable)
 - [x] Document the `themes` migration, priority views, and vote-count handling in this manifest.
 - [x] Added project/theme/docs tooling that surfaces votes/priority as part of `fetchProjectStatusContext` and UI tables.
 - [ ] Standardize instructions for any agents still referencing legacy routing (especially `projectSetupAgent`).
 - [ ] Confirm the `/themes` page only shows the Table + Cards toggles, and remove old matrix/table links.
 - [ ] Keep this checklist updated; when new automation ideas arise (e.g., priority audit, theme adoption coach), append them here so future LLMs can keep extending the ledger.
 
-## 5. Reference Docs
+## 6. Reference Docs
 - `_information_architecture.md` – explains the evidence → theme → insight motivators for every agent.
 - `docs/supabase-howto.md` – declarative schema workflow, manual SQL notes, and migration expectations.
 - `docs/deploy-howto.md` – release checklists for schema/view changes and automation deployments.

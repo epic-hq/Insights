@@ -126,6 +126,43 @@ begin
 end;
 $$ language plpgsql;
 
+-- Helper function to find similar evidence facets by embedding
+create or replace function public.find_similar_evidence_facets(
+  query_embedding vector(1536),
+  project_id_param uuid,
+  match_threshold float default 0.5,
+  match_count int default 10,
+  kind_slug_filter text default null
+)
+returns table (
+  id uuid,
+  evidence_id uuid,
+  kind_slug text,
+  label text,
+  quote text,
+  confidence numeric,
+  similarity float
+) as $$
+begin
+  return query
+    select
+      ef.id,
+      ef.evidence_id,
+      ef.kind_slug,
+      ef.label,
+      ef.quote,
+      ef.confidence,
+      1 - (ef.embedding <=> query_embedding) as similarity
+    from public.evidence_facet ef
+    where ef.project_id = project_id_param
+      and ef.embedding is not null
+      and 1 - (ef.embedding <=> query_embedding) > match_threshold
+      and (kind_slug_filter is null or ef.kind_slug = kind_slug_filter)
+    order by ef.embedding <=> query_embedding
+    limit match_count;
+end;
+$$ language plpgsql;
+
 -- Helper function to find similar themes by embedding
 create or replace function public.find_similar_themes(
   query_embedding vector(1536),
@@ -184,6 +221,43 @@ begin
       and t2.embedding is not null
       and 1 - (t1.embedding <=> t2.embedding) > similarity_threshold
     order by similarity desc;
+end;
+$$ language plpgsql;
+
+-- Helper function to find similar person facets by embedding (for people search)
+create or replace function public.find_similar_person_facets(
+  query_embedding vector(1536),
+  project_id_param uuid,
+  match_threshold float default 0.5,
+  match_count int default 10,
+  kind_slug_filter text default null
+)
+returns table (
+  id uuid,
+  person_id uuid,
+  kind_slug text,
+  label text,
+  value text,
+  confidence numeric,
+  similarity float
+) as $$
+begin
+  return query
+    select
+      pf.id,
+      pf.person_id,
+      pf.kind_slug,
+      pf.label,
+      pf.value,
+      pf.confidence,
+      1 - (pf.embedding <=> query_embedding) as similarity
+    from public.person_facet pf
+    where pf.project_id = project_id_param
+      and pf.embedding is not null
+      and 1 - (pf.embedding <=> query_embedding) > match_threshold
+      and (kind_slug_filter is null or pf.kind_slug = kind_slug_filter)
+    order by pf.embedding <=> query_embedding
+    limit match_count;
 end;
 $$ language plpgsql;
 
@@ -450,6 +524,7 @@ comment on column public.themes.embedding is 'OpenAI text-embedding-3-small (153
 comment on column public.insights.embedding is 'OpenAI text-embedding-3-small (1536 dims) for insight discovery and recommendations';
 
 comment on function public.find_similar_evidence is 'Find evidence similar to a query embedding using cosine similarity';
+comment on function public.find_similar_evidence_facets is 'Find evidence facets (pains, gains, thinks, feels, etc.) similar to a query embedding using cosine similarity';
 comment on function public.find_similar_themes is 'Find themes similar to a query embedding using cosine similarity';
 comment on function public.find_duplicate_themes is 'Find duplicate/similar themes within a project for consolidation';
 comment on function public.find_person_facet_clusters is 'Find clusters of similar person facets for semantic segment grouping (e.g., "Product Manager" + "PM" + "Product Lead")';

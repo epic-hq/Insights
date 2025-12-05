@@ -3,23 +3,48 @@
  *
  * Dynamically renders sections and fields based on the template structure,
  * supporting text, text_array, numeric, date, and boolean field types.
+ * Supports inline editing for text fields.
  */
 
 import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react"
+import { useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import InlineEdit from "~/components/ui/inline-edit"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
+import { EvidenceTimestampBadges, hydrateEvidenceRefs } from "./EvidenceTimestampBadges"
+
+type EvidenceRecord = {
+	id: string
+	anchors?: unknown
+	start_ms?: number | null
+	gist?: string | null
+}
 
 type Props = {
 	analysis: LensAnalysisWithTemplate | null
 	template?: LensTemplate
 	isLoading?: boolean
+	editable?: boolean
+	/** Map of evidence ID to evidence record for hydrating timestamps */
+	evidenceMap?: Map<string, EvidenceRecord>
 }
 
 /**
  * Render a field value based on its type
+ * Supports inline editing for text fields when editable=true
  */
-function FieldValue({ value, fieldType }: { value: any; fieldType: string }) {
+function FieldValue({
+	value,
+	fieldType,
+	editable,
+	onSubmit,
+}: {
+	value: any
+	fieldType: string
+	editable?: boolean
+	onSubmit?: (value: string) => void
+}) {
 	if (value === null || value === undefined) {
 		return <span className="text-muted-foreground italic">Not captured</span>
 	}
@@ -57,6 +82,19 @@ function FieldValue({ value, fieldType }: { value: any; fieldType: string }) {
 			)
 
 		default:
+			// Text fields support inline editing
+			if (editable && onSubmit) {
+				return (
+					<InlineEdit
+						value={String(value)}
+						onSubmit={onSubmit}
+						multiline={String(value).length > 100}
+						textClassName="text-sm"
+						placeholder="Click to edit"
+						showEditButton
+					/>
+				)
+			}
 			return <span>{String(value)}</span>
 	}
 }
@@ -97,9 +135,15 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 function SectionView({
 	sectionDef,
 	fields,
+	editable,
+	onFieldUpdate,
+	evidenceMap,
 }: {
 	sectionDef: LensTemplate["template_definition"]["sections"][0]
 	fields: any[]
+	editable?: boolean
+	onFieldUpdate?: (sectionKey: string, fieldKey: string, value: string) => void
+	evidenceMap?: Map<string, EvidenceRecord>
 }) {
 	if (!fields || fields.length === 0) {
 		return <div className="py-4 text-muted-foreground text-sm italic">No data extracted for this section</div>
@@ -114,6 +158,15 @@ function SectionView({
 				const field = fieldMap.get(fieldDef.field_key)
 				if (!field || field.value === null || field.value === undefined) return null
 
+				const isTextType = fieldDef.field_type === "text"
+				const canEdit = !!(editable && isTextType && onFieldUpdate)
+
+				// Hydrate evidence refs with timestamps if we have the evidence map
+				const evidenceRefs =
+					field.evidence_ids?.length > 0 && evidenceMap
+						? hydrateEvidenceRefs(field.evidence_ids, evidenceMap)
+						: undefined
+
 				return (
 					<div key={fieldDef.field_key}>
 						<div className="mb-1 flex items-center gap-2">
@@ -121,11 +174,19 @@ function SectionView({
 							{field.confidence !== undefined && <ConfidenceIndicator confidence={field.confidence} />}
 						</div>
 						<div className="text-sm">
-							<FieldValue value={field.value} fieldType={fieldDef.field_type} />
+							<FieldValue
+								value={field.value}
+								fieldType={fieldDef.field_type}
+								editable={canEdit}
+								onSubmit={canEdit ? (value) => onFieldUpdate(sectionDef.section_key, fieldDef.field_key, value) : undefined}
+							/>
 						</div>
-						{/* Show evidence count if present */}
+						{/* Show evidence timestamps or count */}
 						{field.evidence_ids?.length > 0 && (
-							<div className="mt-1 text-muted-foreground text-xs">{field.evidence_ids.length} evidence item(s)</div>
+							<EvidenceTimestampBadges
+								evidenceRefs={evidenceRefs}
+								evidenceIds={evidenceRefs ? undefined : field.evidence_ids}
+							/>
 						)}
 					</div>
 				)
@@ -167,7 +228,9 @@ function StatusIndicator({ status, errorMessage }: { status: string; errorMessag
 	}
 }
 
-export function GenericLensView({ analysis, template, isLoading }: Props) {
+export function GenericLensView({ analysis, template, isLoading, editable = false, evidenceMap }: Props) {
+	const fetcher = useFetcher()
+
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-12">
@@ -215,6 +278,24 @@ export function GenericLensView({ analysis, template, isLoading }: Props) {
 		}
 	}
 
+	// Handler for field updates via inline edit
+	const handleFieldUpdate = (sectionKey: string, fieldKey: string, value: string) => {
+		if (!analysis?.id) return
+
+		fetcher.submit(
+			{
+				analysisId: analysis.id,
+				sectionKey,
+				fieldKey,
+				value,
+			},
+			{
+				method: "post",
+				action: "/api/update-lens-analysis-field",
+			}
+		)
+	}
+
 	return (
 		<div className="space-y-6">
 			{/* Header with confidence */}
@@ -238,7 +319,13 @@ export function GenericLensView({ analysis, template, isLoading }: Props) {
 						{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
 					</CardHeader>
 					<CardContent>
-						<SectionView sectionDef={sectionDef} fields={sectionDataMap[sectionDef.section_key] || []} />
+						<SectionView
+							sectionDef={sectionDef}
+							fields={sectionDataMap[sectionDef.section_key] || []}
+							editable={editable}
+							onFieldUpdate={handleFieldUpdate}
+							evidenceMap={evidenceMap}
+						/>
 					</CardContent>
 				</Card>
 			))}
