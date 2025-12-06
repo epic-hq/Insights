@@ -115,11 +115,11 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.personas.index(),
 			},
 			{
-				key: "bant-lens",
-				title: "BANT Lens",
-				description: "Budget × authority matrix",
+				key: "sales-bant",
+				title: "Sales BANT",
+				description: "Deal qualification insights",
 				icon: DollarSign,
-				to: (routes) => routes.bantLens(),
+				to: (routes) => routes.lenses.salesBant(),
 			},
 			{
 				key: "insights",

@@ -74,10 +74,15 @@ export interface RouteDefinitions {
 	facets: () => string
 
 	// Lenses
+	lenses: {
+		library: () => string
+		salesBant: () => string
+	}
+	/** @deprecated - use lenses.library() instead */
 	lensLibrary: () => string
 	// Product Lens
 	productLens: () => string
-	// BANT Lens
+	// BANT Lens (legacy)
 	bantLens: () => string
 	personas: {
 		index: () => string
@@ -243,10 +248,15 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		facets: () => `${base}/facets`,
 
 		// Lenses
+		lenses: {
+			library: () => `${base}/lenses`,
+			salesBant: () => `${base}/lenses/sales-bant`,
+		},
+		// @deprecated - use lenses.library() instead
 		lensLibrary: () => `${base}/lenses`,
 		// Product Lens
 		productLens: () => `${base}/product-lens`,
-		// BANT Lens
+		// BANT Lens (legacy)
 		bantLens: () => `${base}/bant-lens`,
 		personas: {
 			index: () => `${base}/personas`,
