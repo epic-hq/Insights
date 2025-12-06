@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/comp
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { HOST, PRODUCTION_HOST } from "~/paths"
@@ -161,6 +162,7 @@ export function ProjectStatusAgentChat({
 	const location = useLocation()
 	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
 	const { pendingInput, setPendingInput } = useProjectStatusAgent()
+	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice")
 
 	// Handle pendingInput from context (inserted by other components like priorities table)
 	useEffect(() => {
@@ -525,7 +527,9 @@ export function ProjectStatusAgentChat({
 														</TooltipContent>
 													</Tooltip>
 												</TooltipProvider>
-												<ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
+												{isVoiceEnabled && (
+													<ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
+												)}
 											</div>
 										)}
 										<button

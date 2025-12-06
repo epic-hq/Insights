@@ -9,8 +9,10 @@
 import {
 	AlertCircle,
 	AlertTriangle,
+	ArrowUpRight,
 	Calendar,
 	CheckCircle2,
+	Circle,
 	Clock,
 	Info,
 	Loader2,
@@ -18,6 +20,7 @@ import {
 	MessageSquare,
 	User,
 	Users,
+	XCircle,
 } from "lucide-react"
 import { Link, useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
@@ -290,43 +293,58 @@ function SectionView({
 		<div className="space-y-3 rounded-lg border bg-card p-4">
 			{sectionDef.fields.map((fieldDef) => {
 				const field = fieldMap.get(fieldDef.field_key)
-				if (!field || field.value === null || field.value === undefined) return null
+				const hasValue = field && field.value !== null && field.value !== undefined
+				const isTextArray = fieldDef.field_type === "text_array"
+
+				// For text_array, check if it has actual items
+				const arrayValue = isTextArray && hasValue ? parseTextArrayValue(field.value) : null
+				const effectivelyHasValue = isTextArray ? (arrayValue?.length ?? 0) > 0 : hasValue
 
 				const isTextType = fieldDef.field_type === "text"
-				const isTextArray = fieldDef.field_type === "text_array"
-				const canEdit = !!(editable && isTextType && onFieldUpdate)
+				const canEdit = !!(editable && isTextType && onFieldUpdate && hasValue)
 
 				// Hydrate evidence refs with timestamps if we have the evidence map
 				const evidenceRefs =
-					field.evidence_ids?.length > 0 && evidenceMap
+					hasValue && field.evidence_ids?.length > 0 && evidenceMap
 						? hydrateEvidenceRefs(field.evidence_ids, evidenceMap)
 						: undefined
 
+				// Status icon
+				const StatusIcon = effectivelyHasValue ? CheckCircle2 : XCircle
+				const statusIconColor = effectivelyHasValue ? "text-emerald-600" : "text-gray-400"
+
 				return (
-					<div key={fieldDef.field_key}>
-						<div className="mb-1 flex items-center gap-2">
-							<span className="font-medium text-muted-foreground text-sm">{fieldDef.field_name}</span>
-							{field.confidence !== undefined && <ConfidenceIndicator confidence={field.confidence} />}
+					<div key={fieldDef.field_key} className="flex items-start gap-3">
+						<StatusIcon className={cn("mt-0.5 h-4 w-4 flex-shrink-0", statusIconColor)} />
+						<div className="min-w-0 flex-1">
+							<div className="mb-1 flex items-center gap-2">
+								<span className="font-medium text-muted-foreground text-sm">{fieldDef.field_name}</span>
+								{hasValue && field?.confidence !== undefined && <ConfidenceIndicator confidence={field.confidence} />}
+							</div>
+							<div className="text-sm">
+								{effectivelyHasValue ? (
+									<FieldValue
+										value={field?.value}
+										fieldType={fieldDef.field_type}
+										editable={canEdit}
+										onSubmit={
+											canEdit ? (value) => onFieldUpdate(sectionDef.section_key, fieldDef.field_key, value) : undefined
+										}
+										evidenceRefs={evidenceRefs}
+										routes={routes}
+									/>
+								) : (
+									<span className="text-muted-foreground italic">Not captured</span>
+								)}
+							</div>
+							{/* Show evidence timestamps as badges for non-array fields (arrays show inline) */}
+							{!isTextArray && hasValue && field?.evidence_ids?.length > 0 && (
+								<EvidenceTimestampBadges
+									evidenceRefs={evidenceRefs}
+									evidenceIds={evidenceRefs ? undefined : field.evidence_ids}
+								/>
+							)}
 						</div>
-						<div className="text-sm">
-							<FieldValue
-								value={field.value}
-								fieldType={fieldDef.field_type}
-								editable={canEdit}
-								onSubmit={
-									canEdit ? (value) => onFieldUpdate(sectionDef.section_key, fieldDef.field_key, value) : undefined
-								}
-								evidenceRefs={evidenceRefs}
-								routes={routes}
-							/>
-						</div>
-						{/* Show evidence timestamps as badges for non-array fields (arrays show inline) */}
-						{!isTextArray && field.evidence_ids?.length > 0 && (
-							<EvidenceTimestampBadges
-								evidenceRefs={evidenceRefs}
-								evidenceIds={evidenceRefs ? undefined : field.evidence_ids}
-							/>
-						)}
 					</div>
 				)
 			})}
@@ -510,9 +528,10 @@ function NextStepCard({
 					{nextStep.task_id && routes ? (
 						<Link
 							to={`${routes.priorities()}?taskId=${nextStep.task_id}`}
-							className="font-medium text-primary text-sm hover:underline"
+							className="group inline-flex items-center gap-1 font-medium text-primary text-sm hover:underline"
 						>
 							{nextStep.description}
+							<ArrowUpRight className="h-3 w-3 opacity-50 transition-opacity group-hover:opacity-100" />
 						</Link>
 					) : editable && onUpdate ? (
 						<InlineEdit
