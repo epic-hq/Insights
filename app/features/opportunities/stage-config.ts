@@ -8,8 +8,13 @@ export type AccountSettingsMetadata = {
 	opportunity_stages?: OpportunityStageConfig[] | null
 	journey_stages?: OpportunityStageConfig[] | null
 	priority_clusters?: OpportunityStageConfig[] | null
+	/** Default lenses enabled for new projects in this account */
+	default_lens_keys?: string[] | null
 	[key: string]: unknown
 }
+
+/** Platform fallback when account has no default_lens_keys configured */
+export const PLATFORM_DEFAULT_LENS_KEYS = ["sales-bant", "customer-discovery"]
 
 export const DEFAULT_OPPORTUNITY_STAGES: OpportunityStageConfig[] = [
 	{

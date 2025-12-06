@@ -1,3 +1,115 @@
+# Insights Project - AI Context
+
+## Project Overview
+
+Insights is a conversation intelligence platform that helps teams extract actionable insights from interviews through AI-powered analysis. Key features include:
+
+- **Conversation Lenses**: Apply structured analytical frameworks (Sales BANT, Empathy Maps, etc.) to extract specific insights
+- **Evidence Extraction**: AI-identified quotes and moments with timestamps
+- **People & Personas**: Track individuals mentioned across interviews
+- **Themes & Insights**: Clustered topics and AI-generated insights
+- **Voice Chat**: Real-time voice conversations with AI agents (LiveKit)
+- **Task System**: Project prioritization and execution tracking
+
+## Quick Reference
+
+| What | Where |
+|------|-------|
+| **Routes** | `app/routes.ts` (config) + `app/features/*/routes.ts` |
+| **Database types** | `app/database.types.ts` (generated) |
+| **Background tasks** | `src/trigger/` |
+| **AI prompts** | `baml_src/*.baml` |
+| **AI agents** | `app/mastra/agents/` |
+| **Project structure** | `docs/ai-context/project-structure.md` |
+
+## Essential How-To Guides
+
+| Guide | Purpose |
+|-------|---------|
+| [Supabase Guide](docs/supabase-howto.md) | Database changes, declarative schemas, migrations |
+| [CRUD Patterns](docs/crud-pattern-howto.md) | Standard patterns for data operations |
+| [Deploy Guide](docs/deploy-howto.md) | Deployment to Fly.io |
+| [Trigger.dev Deploy](docs/trigger-dev-deployment.md) | Background task deployment |
+| [Testing Guide](docs/testing-howto.md) | Unit and integration testing |
+| [Storybook Guide](docs/storybook-guide.md) | Component development |
+
+## Coding Conventions
+
+### CRITICAL: Project Route Links
+
+**Always use `useProjectRoutes` hook** for links to project-scoped resources:
+
+```tsx
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+
+function MyComponent({ projectPath }: { projectPath: string }) {
+  const routes = useProjectRoutes(projectPath)
+
+  // ✅ CORRECT: Use routes helper
+  return <Link to={routes.evidence.detail(evidenceId)}>View Evidence</Link>
+}
+
+// ❌ WRONG: Manual path construction breaks!
+// <Link to={`/projects/${projectPath}/insights/${id}`}>
+```
+
+**Available route helpers**: `routes.evidence.detail()`, `routes.insights.detail()`, `routes.interviews.detail()`, `routes.themes.detail()`, `routes.people.detail()`
+
+### File Organization
+- **Features**: Domain-organized in `app/features/[feature]/` with `routes.ts`, `pages/`, `components/`, `api/`
+- **Shared components**: `app/components/ui/` (shadcn primitives), `app/components/` (app-specific)
+- **Background jobs**: `src/trigger/[domain]/` using Trigger.dev v4
+
+### Code Style
+- **JSDoc comments** at the top of files describing purpose
+- **Type definitions** before main exports in the same file
+- **Path aliases**: Use `~/` for imports from `app/` (e.g., `~/components/ui/button`)
+- **Logging**: Use `consola` (NOT console.log) - `import consola from "consola"`
+- **Icons**: Use `lucide-react` for all icons
+- **Null handling**: Supabase returns `null` for nullable columns. Accept `string | null` in functions, use `if (!value)` to handle both null/undefined
+
+### React Patterns
+- **React Router 7**: Use `useLoaderData`, `useFetcher`, `Link` from `react-router`
+- **State**: Prefer local state, use Zustand for cross-component state
+- **Forms**: Use `useFetcher` for mutations, `@conform-to/zod` for validation
+- **Styling**: Tailwind CSS with `cn()` utility for conditional classes
+- **Return data directly** from loaders - don't wrap in `json()` or Response
+
+### Database & Server
+- **Supabase client**: Import from `~/lib/supabase/client.server`
+- **Type safety**: Always use generated types from `app/database.types.ts`
+- **Schema changes**: Use declarative schemas in `supabase/schemas/`, then generate migrations
+  - See [docs/@supabase/howto/declarative-schemas.md](docs/@supabase/howto/declarative-schemas.md)
+- **After DB changes**: Run `pnpm db:types` to regenerate types
+
+### AI/LLM Integration
+- **BAML**: Define prompts in `baml_src/`, run `pnpm baml-generate` after changes
+- **Mastra**: Complex agent workflows in `app/mastra/`
+- **Streaming**: Use Vercel AI SDK patterns with `useChat`
+
+### Trigger.dev Tasks
+- **Always use v4 SDK** (`@trigger.dev/sdk`), never v2 patterns
+- **Schema validation**: Use `schemaTask` with Zod for type-safe payloads
+- **Error handling**: Check `result.ok` before accessing `result.output`
+- See detailed patterns below
+
+## Key Documentation
+
+### Architecture & Design
+- [Information Architecture](docs/_information_architecture.md) - System-wide IA
+- [Interview Processing](docs/interview-processing-explained.md) - Core pipeline
+- [Lens Architecture](docs/_lens-based-architecture-v2.md) - Conversation lenses design
+
+### Feature PRDs
+- [Conversation Lenses PRD](docs/features/conversation-lenses/PRD.md)
+- [Task System Design](docs/features/task-system-technical-design.md)
+- [Onboarding Flow](docs/features/onboarding-flow.md)
+
+### Current Tasks
+See `agents.md` (root) for current todos and recent implementations
+
+---
+
 <!-- TRIGGER.DEV basic START -->
 # Trigger.dev Basic Tasks (v4)
 

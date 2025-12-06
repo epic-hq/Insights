@@ -1,0 +1,52 @@
+{
+  "hooks": [
+    {
+      "name": "db-diff-reminder",
+      "description": "After editing schema files, reminds to run the full migration loop",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "write",
+        "file_pattern": "supabase/schemas/*.sql"
+      },
+      "script": ".claude/hooks/scripts/post-schema-edit.sh",
+      "timeout_ms": 5000,
+      "stop_on_failure": false
+    },
+    {
+      "name": "pre-db-push",
+      "description": "Validates migrations are applied locally before pushing to remote",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "bash",
+        "command_pattern": "supabase db push"
+      },
+      "script": ".claude/hooks/scripts/pre-db-push.sh",
+      "timeout_ms": 15000,
+      "stop_on_failure": true
+    },
+    {
+      "name": "post-db-push",
+      "description": "Reminds to regenerate types after pushing",
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": "bash",
+        "command_pattern": "supabase db push"
+      },
+      "script": ".claude/hooks/scripts/post-db-push.sh",
+      "timeout_ms": 5000,
+      "stop_on_failure": false
+    },
+    {
+      "name": "migration-file-guard",
+      "description": "Warns when editing generated migration files directly",
+      "event": "PreToolUse",
+      "matcher": {
+        "tool_name": "write",
+        "file_pattern": "supabase/migrations/[0-9]*.sql"
+      },
+      "script": ".claude/hooks/scripts/migration-guard.sh",
+      "timeout_ms": 5000,
+      "stop_on_failure": false
+    }
+  ]
+}

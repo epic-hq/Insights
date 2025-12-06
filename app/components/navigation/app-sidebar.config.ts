@@ -45,9 +45,9 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		title: "Discovery",
 		items: [
 			{
-				key: "overview",
-				title: "Overview",
-				description: "Running report",
+				key: "dashboard",
+				title: "Dashboard",
+				description: "Project dashboard",
 				icon: Compass,
 				to: (routes) => routes.projects.dashboard(),
 			},

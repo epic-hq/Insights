@@ -1,26 +1,14 @@
 /**
- * Lens Library - Browse all available conversation lenses
+ * Lens Library - Browse and configure conversation lenses
  *
- * Shows system lenses and custom lenses with details about each.
- * Users can view lens structure and apply them to interviews.
+ * Simple single-view interface with toggle buttons on each lens card.
+ * Lenses are sorted by category then alphabetically.
  */
 
-import {
-	BookOpen,
-	Briefcase,
-	ChevronRight,
-	Eye,
-	FlaskConical,
-	Lightbulb,
-	Package,
-	Search,
-	Sparkles,
-	Target,
-	Users,
-} from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router-dom"
+import consola from "consola"
+import { Briefcase, FlaskConical, Glasses, Loader2, Package, Sparkles, Users } from "lucide-react"
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
+import { useFetcher, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -32,9 +20,8 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { Switch } from "~/components/ui/switch"
+import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
 import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server"
 
@@ -42,13 +29,175 @@ export const meta: MetaFunction = () => {
 	return [{ title: "Lens Library | Insights" }, { name: "description", content: "Browse conversation analysis lenses" }]
 }
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
+	const projectId = params.projectId
+	const accountId = params.accountId
+
+	if (!supabase) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
 
 	const templates = await loadLensTemplates(supabase as any)
 
-	return { templates }
+	// Load enabled lenses using hierarchy:
+	// 1. project_settings.enabled_lenses (if configured)
+	// 2. account_settings.metadata.default_lens_keys (account defaults)
+	// 3. PLATFORM_DEFAULT_LENS_KEYS (platform fallback)
+	let enabledLenses: string[] = [...PLATFORM_DEFAULT_LENS_KEYS]
+	let interviewCount = 0
+
+	// First, try to get account defaults
+	if (accountId) {
+		const { data: accountSettings } = await supabase
+			.from("account_settings")
+			.select("metadata")
+			.eq("account_id", accountId)
+			.maybeSingle()
+
+		if (accountSettings?.metadata) {
+			const metadata = accountSettings.metadata as AccountSettingsMetadata
+			if (Array.isArray(metadata.default_lens_keys) && metadata.default_lens_keys.length > 0) {
+				enabledLenses = metadata.default_lens_keys
+			}
+		}
+	}
+
+	// Then, check for project-specific overrides
+	if (projectId) {
+		const { data: project } = await supabase
+			.from("projects")
+			.select("project_settings")
+			.eq("id", projectId)
+			.single()
+
+		if (project?.project_settings) {
+			const settings = project.project_settings as Record<string, unknown>
+			if (Array.isArray(settings.enabled_lenses) && settings.enabled_lenses.length > 0) {
+				enabledLenses = settings.enabled_lenses as string[]
+			}
+		}
+
+		// Get interview count
+		const { count } = await supabase
+			.from("interviews")
+			.select("id", { count: "exact", head: true })
+			.eq("project_id", projectId)
+
+		interviewCount = count || 0
+	}
+
+	return { templates, enabledLenses, interviewCount, projectId }
+}
+
+export async function action({ request, context, params }: ActionFunctionArgs) {
+	const formData = await request.formData()
+	const intent = formData.get("intent") as string
+
+	if (intent !== "update_lens_settings") {
+		return { error: "Unknown action" }
+	}
+
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
+	const projectId = params.projectId
+
+	if (!supabase) {
+		return { error: "Unauthorized" }
+	}
+
+	if (!projectId) {
+		return { error: "Project ID required" }
+	}
+
+	const enabledLensesJson = (formData.get("enabled_lenses") as string) || "[]"
+	const applyToExisting = formData.get("apply_to_existing") === "true"
+
+	let enabledLenses: string[]
+	try {
+		enabledLenses = JSON.parse(enabledLensesJson)
+	} catch {
+		return { error: "Invalid lens settings" }
+	}
+
+	// Get current project settings
+	const { data: project } = await supabase
+		.from("projects")
+		.select("project_settings, account_id")
+		.eq("id", projectId)
+		.single()
+
+	const currentSettings = (project?.project_settings as Record<string, unknown>) || {}
+	let previousLenses = currentSettings.enabled_lenses as string[] | undefined
+
+	// If no project settings, get previous from account defaults or platform defaults
+	if (!previousLenses || previousLenses.length === 0) {
+		const accountId = params.accountId
+		if (accountId) {
+			const { data: accountSettings } = await supabase
+				.from("account_settings")
+				.select("metadata")
+				.eq("account_id", accountId)
+				.maybeSingle()
+
+			const metadata = (accountSettings?.metadata || {}) as AccountSettingsMetadata
+			previousLenses = metadata.default_lens_keys || PLATFORM_DEFAULT_LENS_KEYS
+		} else {
+			previousLenses = PLATFORM_DEFAULT_LENS_KEYS
+		}
+	}
+
+	// Merge new lens settings
+	const newSettings = {
+		...currentSettings,
+		enabled_lenses: enabledLenses,
+	}
+
+	const { error } = await supabase
+		.from("projects")
+		.update({ project_settings: newSettings, updated_at: new Date().toISOString() })
+		.eq("id", projectId)
+
+	if (error) {
+		return { error: `Failed to save lens settings: ${error.message}` }
+	}
+
+	// If apply to existing, trigger backfill
+	let backfillTriggered = false
+	if (applyToExisting && project?.account_id) {
+		const newlyEnabled = enabledLenses.filter((lens) => !previousLenses.includes(lens))
+
+		if (newlyEnabled.length > 0) {
+			const { data: interviews } = await supabase
+				.from("interviews")
+				.select("id")
+				.eq("project_id", projectId)
+				.neq("lens_visibility", "private")
+
+			if (interviews && interviews.length > 0) {
+				try {
+					const { applyAllLensesTask } = await import("~/../src/trigger/lens/applyAllLenses")
+
+					for (const interview of interviews) {
+						await applyAllLensesTask.trigger({
+							interviewId: interview.id,
+							accountId: project.account_id,
+							projectId,
+							lensesToApply: newlyEnabled,
+						})
+					}
+
+					backfillTriggered = true
+					consola.info(`[LensSettings] Triggered backfill for ${interviews.length} interviews`)
+				} catch (err) {
+					consola.error("[LensSettings] Failed to trigger backfill:", err)
+				}
+			}
+		}
+	}
+
+	return { success: true, backfillTriggered }
 }
 
 /**
@@ -109,116 +258,25 @@ function getCategoryColors(category: string | null): {
 }
 
 /**
- * Lens detail dialog showing the full template structure
+ * Lens card component - displays lens info with toggle in upper right
  */
-function LensDetailDialog({ template }: { template: LensTemplate }) {
+function LensCard({
+	template,
+	isEnabled,
+	onToggle,
+	isSubmitting,
+}: {
+	template: LensTemplate
+	isEnabled: boolean
+	onToggle: (templateKey: string, enabled: boolean) => void
+	isSubmitting: boolean
+}) {
 	const colors = getCategoryColors(template.category)
-	const definition = template.template_definition
-
-	return (
-		<Dialog>
-			<DialogTrigger asChild>
-				<Button variant="ghost" size="sm">
-					<Eye className="mr-1 h-4 w-4" />
-					View Structure
-				</Button>
-			</DialogTrigger>
-			<DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<div className={`rounded-lg p-2 ${colors.iconBg}`}>{getCategoryIcon(template.category)}</div>
-						{template.template_name}
-					</DialogTitle>
-					<DialogDescription>{template.summary}</DialogDescription>
-				</DialogHeader>
-
-				<div className="mt-4 space-y-6">
-					{/* Sections */}
-					<div>
-						<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-							Sections ({definition.sections.length})
-						</h4>
-						<div className="space-y-4">
-							{definition.sections.map((section) => (
-								<Card key={section.section_key} className="bg-muted/30">
-									<CardHeader className="py-3">
-										<CardTitle className="text-base">{section.section_name}</CardTitle>
-										{section.description && <CardDescription>{section.description}</CardDescription>}
-									</CardHeader>
-									<CardContent className="py-2">
-										<div className="space-y-2">
-											{section.fields.map((field) => (
-												<div
-													key={field.field_key}
-													className="flex items-center justify-between rounded bg-background px-2 py-1 text-sm"
-												>
-													<span className="font-medium">{field.field_name}</span>
-													<Badge variant="outline" className="text-xs">
-														{field.field_type}
-													</Badge>
-												</div>
-											))}
-										</div>
-									</CardContent>
-								</Card>
-							))}
-						</div>
-					</div>
-
-					{/* Entities */}
-					{definition.entities && definition.entities.length > 0 && (
-						<div>
-							<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-								Entities Extracted
-							</h4>
-							<div className="flex flex-wrap gap-2">
-								{definition.entities.map((entity) => (
-									<Badge key={entity} variant="secondary">
-										<Users className="mr-1 h-3 w-3" />
-										{entity}
-									</Badge>
-								))}
-							</div>
-						</div>
-					)}
-
-					{/* Features */}
-					<div>
-						<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">Features</h4>
-						<div className="flex flex-wrap gap-2">
-							{definition.recommendations_enabled && (
-								<Badge variant="outline" className="bg-amber-50 text-amber-700">
-									<Lightbulb className="mr-1 h-3 w-3" />
-									Recommendations
-								</Badge>
-							)}
-							{definition.requires_project_context && (
-								<Badge variant="outline" className="bg-indigo-50 text-indigo-700">
-									<Target className="mr-1 h-3 w-3" />
-									Uses Project Goals
-								</Badge>
-							)}
-						</div>
-					</div>
-				</div>
-			</DialogContent>
-		</Dialog>
-	)
-}
-
-/**
- * Lens card component
- */
-function LensCard({ template }: { template: LensTemplate }) {
-	const colors = getCategoryColors(template.category)
-	const definition = template.template_definition
-
-	const fieldCount = definition.sections.reduce((sum, section) => sum + section.fields.length, 0)
 
 	return (
 		<Card className={`${colors.border} transition-shadow hover:shadow-md`}>
-			<CardHeader>
-				<div className="flex items-start justify-between">
+			<CardHeader className="pb-2">
+				<div className="flex items-start justify-between gap-3">
 					<div className="flex items-center gap-3">
 						<div className={`rounded-lg p-2.5 ${colors.iconBg} ${colors.text}`}>
 							{getCategoryIcon(template.category)}
@@ -230,160 +288,201 @@ function LensCard({ template }: { template: LensTemplate }) {
 							</Badge>
 						</div>
 					</div>
-				</div>
-				{template.summary && <CardDescription className="mt-2">{template.summary}</CardDescription>}
-			</CardHeader>
-			<CardContent>
-				{/* Stats */}
-				<div className="mb-4 flex items-center gap-4 text-muted-foreground text-sm">
-					<span>{definition.sections.length} sections</span>
-					<span>•</span>
-					<span>{fieldCount} fields</span>
-					{definition.entities && definition.entities.length > 0 && (
-						<>
-							<span>•</span>
-							<span>{definition.entities.length} entity types</span>
-						</>
-					)}
-				</div>
-
-				{/* Section preview */}
-				<div className="mb-4 space-y-1">
-					{definition.sections.slice(0, 3).map((section) => (
-						<div key={section.section_key} className="flex items-center gap-2 py-1 text-sm">
-							<ChevronRight className="h-3 w-3 text-muted-foreground" />
-							<span>{section.section_name}</span>
-							<span className="text-muted-foreground text-xs">({section.fields.length} fields)</span>
-						</div>
-					))}
-					{definition.sections.length > 3 && (
-						<div className="pl-5 text-muted-foreground text-xs">+{definition.sections.length - 3} more sections</div>
-					)}
-				</div>
-
-				{/* Actions */}
-				<div className="flex items-center justify-between border-t pt-3">
-					<div className="flex gap-2">
-						{definition.recommendations_enabled && (
-							<Badge variant="outline" className="bg-amber-50/50 text-xs">
-								<Lightbulb className="mr-1 h-3 w-3" />
-								Recs
-							</Badge>
-						)}
-						{definition.requires_project_context && (
-							<Badge variant="outline" className="bg-indigo-50/50 text-xs">
-								<Target className="mr-1 h-3 w-3" />
-								Goals
-							</Badge>
-						)}
+					{/* Toggle in upper right */}
+					<div className="flex items-center gap-2">
+						{isSubmitting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+						<Switch
+							checked={isEnabled}
+							onCheckedChange={(checked) => onToggle(template.template_key, checked)}
+							disabled={isSubmitting}
+							aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
+						/>
 					</div>
-					<LensDetailDialog template={template} />
 				</div>
+			</CardHeader>
+			<CardContent className="pt-0">
+				{template.summary && <p className="mb-3 text-muted-foreground text-sm">{template.summary}</p>}
+				{/* Details dialog trigger */}
+				<Dialog>
+					<DialogTrigger asChild>
+						<Button variant="ghost" size="sm" className="h-auto p-0 text-primary text-xs hover:underline">
+							View details
+						</Button>
+					</DialogTrigger>
+					<DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+						<DialogHeader>
+							<DialogTitle className="flex items-center gap-2">
+								<div className={`rounded-lg p-2 ${colors.iconBg}`}>{getCategoryIcon(template.category)}</div>
+								{template.template_name}
+							</DialogTitle>
+							<DialogDescription>{template.summary}</DialogDescription>
+						</DialogHeader>
+
+						<div className="mt-4 space-y-6">
+							{/* Sections */}
+							<div>
+								<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+									Sections ({template.template_definition.sections.length})
+								</h4>
+								<div className="space-y-4">
+									{template.template_definition.sections.map((section) => (
+										<Card key={section.section_key} className="bg-muted/30">
+											<CardHeader className="py-3">
+												<CardTitle className="text-base">{section.section_name}</CardTitle>
+												{section.description && <CardDescription>{section.description}</CardDescription>}
+											</CardHeader>
+											<CardContent className="py-2">
+												<div className="space-y-2">
+													{section.fields.map((field) => (
+														<div
+															key={field.field_key}
+															className="flex items-center justify-between rounded bg-background px-2 py-1 text-sm"
+														>
+															<span className="font-medium">{field.field_name}</span>
+															<Badge variant="outline" className="text-xs">
+																{field.field_type}
+															</Badge>
+														</div>
+													))}
+												</div>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</div>
+
+							{/* Entities */}
+							{template.template_definition.entities && template.template_definition.entities.length > 0 && (
+								<div>
+									<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+										Entities Extracted
+									</h4>
+									<div className="flex flex-wrap gap-2">
+										{template.template_definition.entities.map((entity) => (
+											<Badge key={entity} variant="secondary">
+												<Users className="mr-1 h-3 w-3" />
+												{entity}
+											</Badge>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+					</DialogContent>
+				</Dialog>
 			</CardContent>
 		</Card>
 	)
 }
 
-export default function LensLibrary() {
-	const { templates } = useLoaderData<typeof loader>()
-	const [searchQuery, setSearchQuery] = useState("")
-	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-	const { projectPath } = useCurrentProject()
+/**
+ * Sort templates by category then alphabetically by name
+ */
+function sortTemplates(templates: LensTemplate[]): LensTemplate[] {
+	const categoryOrder = ["sales", "research", "product"]
 
-	// Filter templates
-	const filteredTemplates = templates.filter((t) => {
-		const matchesSearch =
-			!searchQuery ||
-			t.template_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			t.summary?.toLowerCase().includes(searchQuery.toLowerCase())
+	return [...templates].sort((a, b) => {
+		// Sort by category first
+		const catA = a.category || "zzz" // Put uncategorized last
+		const catB = b.category || "zzz"
+		const catIndexA = categoryOrder.indexOf(catA)
+		const catIndexB = categoryOrder.indexOf(catB)
 
-		const matchesCategory = !selectedCategory || t.category === selectedCategory
+		// If both in order, use that order; if one not in order, put it after
+		const orderA = catIndexA === -1 ? categoryOrder.length : catIndexA
+		const orderB = catIndexB === -1 ? categoryOrder.length : catIndexB
 
-		return matchesSearch && matchesCategory
+		if (orderA !== orderB) {
+			return orderA - orderB
+		}
+
+		// Same category: sort alphabetically by name
+		return a.template_name.localeCompare(b.template_name)
 	})
+}
 
-	// Get unique categories
-	const categories = [...new Set(templates.map((t) => t.category).filter(Boolean))]
+export default function LensLibrary() {
+	const { templates, enabledLenses, interviewCount, projectId } = useLoaderData<typeof loader>()
+	const fetcher = useFetcher()
+
+	// Track pending toggle for optimistic UI
+	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null
+	const isSubmitting = fetcher.state === "submitting"
+
+	// Compute current enabled lenses (with optimistic update)
+	const currentEnabledLenses = (() => {
+		if (pendingToggle && fetcher.formData) {
+			const enabled = fetcher.formData.get("enabled") === "true"
+			if (enabled) {
+				return [...enabledLenses, pendingToggle]
+			}
+			return enabledLenses.filter((key) => key !== pendingToggle)
+		}
+		return enabledLenses
+	})()
+
+	// Sort templates by category then alphabetically
+	const sortedTemplates = sortTemplates(templates)
+
+	// Handle toggle - immediately submit to save
+	const handleToggle = (templateKey: string, enabled: boolean) => {
+		if (!projectId) return
+
+		// Calculate new enabled lenses
+		const newEnabledLenses = enabled
+			? [...enabledLenses, templateKey]
+			: enabledLenses.filter((key) => key !== templateKey)
+
+		fetcher.submit(
+			{
+				intent: "update_lens_settings",
+				enabled_lenses: JSON.stringify(newEnabledLenses),
+				apply_to_existing: "false",
+				toggle_lens: templateKey,
+				enabled: String(enabled),
+			},
+			{ method: "post" }
+		)
+	}
+
+	// Count enabled lenses
+	const enabledCount = currentEnabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
 
 	return (
 		<div className="container max-w-6xl py-8">
 			{/* Header */}
 			<div className="mb-8">
-				<div className="mb-2 flex items-center gap-3">
-					<div className="rounded-lg bg-primary/10 p-2">
-						<BookOpen className="h-6 w-6 text-primary" />
+				<div className="mb-2 flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<div className="rounded-lg bg-primary/10 p-2">
+							<Glasses className="h-6 w-6 text-primary" />
+						</div>
+						<h1 className="font-bold text-3xl">Lens Library</h1>
 					</div>
-					<h1 className="font-bold text-3xl">Lens Library</h1>
+					<Badge variant="secondary" className="text-sm">
+						{enabledCount} of {templates.length} enabled
+					</Badge>
 				</div>
 				<p className="text-lg text-muted-foreground">
-					Browse conversation analysis frameworks to extract structured insights from interviews
+					Toggle lenses to automatically analyze new conversations in this project
 				</p>
 			</div>
 
-			{/* Filters */}
-			<div className="mb-6 flex flex-wrap items-center gap-4">
-				<div className="relative max-w-sm flex-1">
-					<Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
-					<Input
-						placeholder="Search lenses..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className="pl-9"
+			{/* Lens grid - sorted by category then alpha */}
+			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+				{sortedTemplates.map((template) => (
+					<LensCard
+						key={template.template_key}
+						template={template}
+						isEnabled={currentEnabledLenses.includes(template.template_key)}
+						onToggle={handleToggle}
+						isSubmitting={isSubmitting && pendingToggle === template.template_key}
 					/>
-				</div>
-
-				<div className="flex items-center gap-2">
-					<Button
-						variant={selectedCategory === null ? "default" : "outline"}
-						size="sm"
-						onClick={() => setSelectedCategory(null)}
-					>
-						All
-					</Button>
-					{categories.map((category) => {
-						const colors = getCategoryColors(category)
-						return (
-							<Button
-								key={category}
-								variant={selectedCategory === category ? "default" : "outline"}
-								size="sm"
-								onClick={() => setSelectedCategory(category)}
-								className={selectedCategory === category ? "" : `${colors.bg} ${colors.text} border-0`}
-							>
-								{getCategoryIcon(category)}
-								<span className="ml-1 capitalize">{category}</span>
-							</Button>
-						)
-					})}
-				</div>
+				))}
 			</div>
-
-			{/* Results count */}
-			<div className="mb-4 flex items-center justify-between">
-				<p className="text-muted-foreground text-sm">
-					{filteredTemplates.length} lens{filteredTemplates.length !== 1 ? "es" : ""} available
-				</p>
-			</div>
-
-			{/* Lens grid */}
-			{filteredTemplates.length > 0 ? (
-				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{filteredTemplates.map((template) => (
-						<LensCard key={template.template_key} template={template} />
-					))}
-				</div>
-			) : (
-				<Card className="p-12 text-center">
-					<Sparkles className="mx-auto mb-4 h-12 w-12 text-muted-foreground opacity-50" />
-					<h3 className="mb-2 font-semibold text-lg">No lenses found</h3>
-					<p className="text-muted-foreground">
-						{searchQuery ? "Try adjusting your search terms" : "No lenses available in this category"}
-					</p>
-				</Card>
-			)}
 
 			{/* Coming soon section */}
-			<div className="mt-12 rounded-lg border-2 border-dashed bg-muted/30 p-6">
+			<div className="mt-8 rounded-lg border-2 border-dashed bg-muted/30 p-6">
 				<div className="mb-3 flex items-center gap-3">
 					<Sparkles className="h-5 w-5 text-primary" />
 					<h3 className="font-semibold">Coming Soon: Custom Lenses</h3>
@@ -396,6 +495,13 @@ export default function LensLibrary() {
 					Create Custom Lens
 				</Button>
 			</div>
+
+			{/* Feedback messages */}
+			{fetcher.data?.error && (
+				<div className="mt-4 rounded-md bg-red-50 p-3 text-red-700 text-sm dark:bg-red-950/20 dark:text-red-400">
+					{fetcher.data.error}
+				</div>
+			)}
 		</div>
 	)
 }
