@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobToBeDone,  LensEntityItem,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensRecommendation,  LensSectionResult,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
+import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -133,6 +133,7 @@ export namespace partial_types {
       sections: LensSectionResult[]
       entities: LensEntityResult[]
       recommendations: LensRecommendation[]
+      hygiene: LensHygieneItem[]
       overall_confidence?: number | null
       processing_notes?: string | null
     }
@@ -475,16 +476,11 @@ export namespace partial_types {
       evidence_ids: string[]
       confidence?: number | null
     }
-    export interface LensEntityItem {
-      name?: string | null
-      role?: string | null
-      description?: string | null
-      confidence?: number | null
-      evidence_ids: string[]
-    }
     export interface LensEntityResult {
-      entity_type?: string | null
-      items: LensEntityItem[]
+      entity_type?: "stakeholders" | "next_steps" | "objections" | "other" | null
+      stakeholders?: LensStakeholderItem[] | null
+      next_steps?: LensNextStepItem[] | null
+      objections?: LensObjectionItem[] | null
     }
     export interface LensEvidenceHighlight {
       gist?: string | null
@@ -500,6 +496,29 @@ export namespace partial_types {
       confidence?: number | null
       evidence_ids: string[]
     }
+    export interface LensHygieneItem {
+      code?: string | null
+      severity?: "info" | "warning" | "critical" | null
+      message?: string | null
+      field_key?: string | null
+    }
+    export interface LensNextStepItem {
+      description?: string | null
+      owner?: string | null
+      due_date?: string | null
+      status?: "pending" | "in_progress" | "completed" | null
+      priority?: "high" | "medium" | "low" | null
+      confidence?: number | null
+      evidence_ids: string[]
+    }
+    export interface LensObjectionItem {
+      objection?: string | null
+      type?: string | null
+      status?: "raised" | "addressed" | "unresolved" | null
+      response?: string | null
+      confidence?: number | null
+      evidence_ids: string[]
+    }
     export interface LensRecommendation {
       type?: string | null
       description?: string | null
@@ -510,6 +529,16 @@ export namespace partial_types {
     export interface LensSectionResult {
       section_key?: string | null
       fields: LensFieldValue[]
+    }
+    export interface LensStakeholderItem {
+      name?: string | null
+      role?: string | null
+      influence?: "low" | "medium" | "high" | null
+      labels: string[]
+      email?: string | null
+      organization?: string | null
+      confidence?: number | null
+      evidence_ids: string[]
     }
     export interface MentalModel {
       model_description?: string | null

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database, Evidence, Insight, Interview, InterviewPeople } from "~/types"
+import type { Database, Evidence, Interview, InterviewPeople } from "~/types"
 
 const DEFAULT_EVIDENCE_LIMIT = 12
 
@@ -11,19 +11,27 @@ type InterviewRow = Interview
 type EvidenceRow = Evidence
 type InterviewParticipantRow = InterviewPeople & {
 	people?:
-		| (Database["public"]["Tables"]["people"]["Row"] & {
-				people_personas?: Array<{
-					persona_id: string | null
-					personas?: Database["public"]["Tables"]["personas"]["Row"] | null
-				}> | null
-		  })
-		| null
+	| (Database["public"]["Tables"]["people"]["Row"] & {
+		people_personas?: Array<{
+			persona_id: string | null
+			personas?: Database["public"]["Tables"]["personas"]["Row"] | null
+		}> | null
+	})
+	| null
 }
 
-type InsightRow = Insight & {
-	insight_tags?: Array<{
-		tags?: { tag?: string | null } | null
-	}> | null
+type ThemeRow = {
+	id: string
+	name: string | null
+	statement: string | null
+	pain: string | null
+	desired_outcome: string | null
+	category: string | null
+	journey_stage: string | null
+	emotional_response: string | null
+	updated_at: string | null
+	interview_id: string | null
+	project_id: string | null
 }
 
 type EmpathyMapItem = {
@@ -325,11 +333,15 @@ export const fetchInterviewContextTool = createTool({
 		const runtimeInterviewId = runtimeContext?.get?.("interview_id")
 		const runtimeProjectId = runtimeContext?.get?.("project_id")
 		const runtimeAccountId = runtimeContext?.get?.("account_id")
-		const interviewId = (context?.interviewId || runtimeInterviewId || "").trim()
-		const projectId = (runtimeProjectId || "").trim()
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const interviewId = ((context as any)?.interviewId || runtimeInterviewId || "").toString().trim()
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const projectId = (runtimeProjectId || "").toString().trim()
 		const accountId = runtimeAccountId
-		const includeEvidence = context?.includeEvidence !== false
-		const evidenceLimit = context?.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const includeEvidence = (context as any)?.includeEvidence !== false
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const evidenceLimit = (context as any)?.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
 
 		consola.info("fetch-interview-context: execute start", {
 			requestedInterviewId: context?.interviewId,
@@ -361,7 +373,7 @@ export const fetchInterviewContextTool = createTool({
 		}
 
 		try {
-			const [interviewResult, participantResult, insightsResult, evidenceResult] = await Promise.all([
+			const [interviewResult, participantResult, themesResult, evidenceResult] = await Promise.all([
 				supabase
 					.from("interviews")
 					.select(
@@ -380,21 +392,21 @@ export const fetchInterviewContextTool = createTool({
 				supabase
 					.from("themes")
 					.select(
-						"id, name, summary, pain, desired_outcome, category, journey_stage, emotional_response, updated_at, interview_id, project_id, insight_tags(tags(tag))"
+						"id, name, statement, pain, desired_outcome, category, journey_stage, emotional_response, updated_at, interview_id, project_id"
 					)
 					.eq("interview_id", interviewId)
 					.eq("project_id", projectId)
 					.order("updated_at", { ascending: false }),
 				includeEvidence
 					? supabase
-							.from("evidence")
-							.select(
-								"id, gist, verbatim, context_summary, modality, created_at, says, does, thinks, feels, pains, gains, anchors"
-							)
-							.eq("interview_id", interviewId)
-							.eq("project_id", projectId)
-							.order("created_at", { ascending: false })
-							.limit(evidenceLimit)
+						.from("evidence")
+						.select(
+							"id, gist, verbatim, context_summary, modality, created_at, says, does, thinks, feels, pains, gains, anchors"
+						)
+						.eq("interview_id", interviewId)
+						.eq("project_id", projectId)
+						.order("created_at", { ascending: false })
+						.limit(evidenceLimit)
 					: Promise.resolve({ data: null, error: null }),
 			])
 
@@ -424,11 +436,11 @@ export const fetchInterviewContextTool = createTool({
 				})
 			}
 
-			if (insightsResult.error) {
-				consola.warn("fetch-interview-context: failed to load insights", {
+			if (themesResult.error) {
+				consola.warn("fetch-interview-context: failed to load themes", {
 					interviewId,
 					projectId,
-					error: insightsResult.error,
+					error: themesResult.error,
 				})
 			}
 
@@ -442,27 +454,21 @@ export const fetchInterviewContextTool = createTool({
 
 			const participants = (participantResult.data || []) as InterviewParticipantRow[]
 			const personalFacets = summarizePersonalFacets(participants)
-			const insights = (insightsResult.data || []) as InsightRow[]
+			const themes = (themesResult.data || []) as ThemeRow[]
 			const evidence = includeEvidence ? ((evidenceResult.data || []) as EvidenceRow[]) : null
 			const empathyMap = includeEvidence ? buildEmpathyMap(evidence) : emptyEmpathyMap()
 
-			const formattedInsights = insights.map((row) => ({
+			const formattedThemes = themes.map((row) => ({
 				id: row.id,
 				name: row.name || undefined,
-				summary: row.summary || undefined,
+				summary: row.statement || undefined,
 				pain: row.pain || undefined,
 				desired_outcome: row.desired_outcome || undefined,
 				category: row.category || undefined,
 				journey_stage: row.journey_stage || undefined,
 				emotional_response: row.emotional_response || undefined,
 				updated_at: row.updated_at || undefined,
-				tags: Array.from(
-					new Set(
-						(row.insight_tags || [])
-							.map((entry) => entry?.tags?.tag)
-							.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
-					)
-				) as string[],
+				tags: [] as string[], // themes don't have tags in the junction table
 			}))
 
 			const formattedEvidence = evidence?.map((row) => ({
@@ -484,7 +490,7 @@ export const fetchInterviewContextTool = createTool({
 				interviewId,
 				projectId,
 				participantCount: participants.length,
-				insightCount: formattedInsights.length,
+				insightCount: formattedThemes.length,
 				evidenceCount: formattedEvidence?.length ?? 0,
 			})
 
@@ -511,31 +517,31 @@ export const fetchInterviewContextTool = createTool({
 						display_name: participant.display_name,
 						person: participant.people
 							? {
-									id: participant.people.id,
-									name: participant.people.name,
-									segment: participant.people.segment,
-									description: participant.people.description,
-									contact_info: participant.people.contact_info,
-									personas:
-										participant.people.people_personas
-											?.map((entry): { id: string; name: string | null; color_hex: string | null } | null =>
-												entry?.personas
-													? {
-															id: entry.personas.id,
-															name: entry.personas.name,
-															color_hex: entry.personas.color_hex,
-														}
-													: null
-											)
-											.filter(
-												(persona): persona is { id: string; name: string | null; color_hex: string | null } =>
-													persona !== null
-											) || undefined,
-								}
+								id: participant.people.id,
+								name: participant.people.name,
+								segment: participant.people.segment,
+								description: participant.people.description,
+								contact_info: participant.people.contact_info,
+								personas:
+									participant.people.people_personas
+										?.map((entry): { id: string; name: string | null; color_hex: string | null } | null =>
+											entry?.personas
+												? {
+													id: entry.personas.id,
+													name: entry.personas.name,
+													color_hex: entry.personas.color_hex,
+												}
+												: null
+										)
+										.filter(
+											(persona): persona is { id: string; name: string | null; color_hex: string | null } =>
+												persona !== null
+										) || undefined,
+							}
 							: null,
 					})),
 					personalFacets,
-					insights: formattedInsights,
+					insights: formattedThemes,
 					evidence: formattedEvidence || undefined,
 					empathyMap,
 				},

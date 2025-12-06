@@ -296,31 +296,6 @@ export type Database = {
       [_ in never]: never
     }
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_settings: {
@@ -674,6 +649,7 @@ export type Database = {
           project_id: string | null
           status: string | null
           template_key: string
+          trigger_run_id: string | null
           updated_at: string
           user_goals: string[] | null
         }
@@ -693,6 +669,7 @@ export type Database = {
           project_id?: string | null
           status?: string | null
           template_key: string
+          trigger_run_id?: string | null
           updated_at?: string
           user_goals?: string[] | null
         }
@@ -712,6 +689,7 @@ export type Database = {
           project_id?: string | null
           status?: string | null
           template_key?: string
+          trigger_run_id?: string | null
           updated_at?: string
           user_goals?: string[] | null
         }
@@ -5964,9 +5942,6 @@ export const Constants = {
         "unpaid",
       ],
     },
-  },
-  graphql_public: {
-    Enums: {},
   },
   public: {
     Enums: {

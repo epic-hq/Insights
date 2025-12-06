@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import type { Json } from "~/types/supabase.types"
 import { getServerClient } from "~/lib/supabase/client.server"
+import type { Json } from "~/types/supabase.types"
 
 /**
  * API endpoint for updating a field value within a conversation lens analysis.
@@ -18,7 +18,12 @@ export async function action({ request }: ActionFunctionArgs) {
 	const fieldKey = formData.get("fieldKey")?.toString()
 	const value = formData.get("value")?.toString() ?? ""
 
-	consola.info("[update-lens-analysis-field] Request:", { analysisId, sectionKey, fieldKey, value: value.substring(0, 50) })
+	consola.info("[update-lens-analysis-field] Request:", {
+		analysisId,
+		sectionKey,
+		fieldKey,
+		value: value.substring(0, 50),
+	})
 
 	if (!analysisId || !sectionKey || !fieldKey) {
 		consola.warn("[update-lens-analysis-field] Missing params:", { analysisId, sectionKey, fieldKey })
@@ -41,15 +46,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	// Parse and update the analysis_data
 	const analysisData = (analysis.analysis_data as Record<string, unknown>) || {}
-	const sections = (analysisData.sections as Array<{ section_key: string; fields: Array<{ field_key: string; value: unknown }> }>) || []
+	const sections =
+		(analysisData.sections as Array<{ section_key: string; fields: Array<{ field_key: string; value: unknown }> }>) ||
+		[]
 
-	consola.info("[update-lens-analysis-field] Found sections:", sections.map((s) => s.section_key))
+	consola.info(
+		"[update-lens-analysis-field] Found sections:",
+		sections.map((s) => s.section_key)
+	)
 
 	// Find and update the field
 	let fieldUpdated = false
 	for (const section of sections) {
 		if (section.section_key === sectionKey) {
-			consola.info("[update-lens-analysis-field] Found section, fields:", section.fields?.map((f) => f.field_key))
+			consola.info(
+				"[update-lens-analysis-field] Found section, fields:",
+				section.fields?.map((f) => f.field_key)
+			)
 			for (const field of section.fields || []) {
 				if (field.field_key === fieldKey) {
 					consola.info("[update-lens-analysis-field] Updating field from:", field.value, "to:", value.substring(0, 50))

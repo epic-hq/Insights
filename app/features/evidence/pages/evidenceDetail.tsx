@@ -245,9 +245,9 @@ export default function EvidenceDetail() {
 	// If there's a timestamp anchor from URL, inject it into evidence.anchors
 	const evidenceWithAnchor = anchorFromUrl
 		? {
-			...evidence,
-			anchors: [anchorFromUrl, ...(Array.isArray(evidence.anchors) ? evidence.anchors : [])],
-		}
+				...evidence,
+				anchors: [anchorFromUrl, ...(Array.isArray(evidence.anchors) ? evidence.anchors : [])],
+			}
 		: evidence
 
 	// Scroll to top when navigating to this page, UNLESS there's a timestamp anchor

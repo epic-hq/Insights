@@ -28,7 +28,9 @@ export const semanticSearchEvidenceTool = createTool({
 			.min(0)
 			.max(1)
 			.optional()
-			.describe("Similarity threshold (0-1). Higher = more strict. Default: 0.5. Recommended: 0.4-0.6 for broad searches, 0.6-0.8 for precise matches."),
+			.describe(
+				"Similarity threshold (0-1). Higher = more strict. Default: 0.5. Recommended: 0.4-0.6 for broad searches, 0.6-0.8 for precise matches."
+			),
 		matchCount: z.number().int().min(1).max(50).optional().describe("Maximum number of results to return. Default: 10"),
 	}),
 	outputSchema: z.object({
@@ -199,31 +201,29 @@ export const semanticSearchEvidenceTool = createTool({
 				kind_slug_filter: null, // Search all facet types
 			})
 
-			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] = await Promise.all([
-				evidencePromise,
-				facetsPromise,
-			])
+			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] =
+				await Promise.all([evidencePromise, facetsPromise])
 
 			consola.info("semantic-search-evidence: RPC responses", {
 				evidence: {
 					hasError: !!evidenceError,
 					dataLength: evidenceData?.length || 0,
-					sampleResults: evidenceData?.slice(0, 2).map(e => ({
+					sampleResults: evidenceData?.slice(0, 2).map((e) => ({
 						id: e.id,
 						similarity: e.similarity,
-						verbatimPreview: e.verbatim?.substring(0, 60)
-					}))
+						verbatimPreview: e.verbatim?.substring(0, 60),
+					})),
 				},
 				facets: {
 					hasError: !!facetsError,
 					dataLength: facetsData?.length || 0,
-					sampleResults: facetsData?.slice(0, 2).map(f => ({
+					sampleResults: facetsData?.slice(0, 2).map((f) => ({
 						id: f.id,
 						kind: f.kind_slug,
 						label: f.label,
-						similarity: f.similarity
-					}))
-				}
+						similarity: f.similarity,
+					})),
+				},
 			})
 
 			if (evidenceError) {
@@ -241,8 +241,8 @@ export const semanticSearchEvidenceTool = createTool({
 			const evidenceIds = new Set<string>()
 			const facetEvidenceIds = new Set<string>()
 
-			evidenceData?.forEach(e => evidenceIds.add(e.id))
-			facetsData?.forEach(f => {
+			evidenceData?.forEach((e) => evidenceIds.add(e.id))
+			facetsData?.forEach((f) => {
 				if (f.evidence_id) {
 					facetEvidenceIds.add(f.evidence_id)
 					evidenceIds.add(f.evidence_id)
@@ -283,11 +283,12 @@ export const semanticSearchEvidenceTool = createTool({
 					matchCount,
 					totalEvidenceCount,
 					evidenceWithEmbeddings,
-					topSimilarityScores: topMatches?.map(m => m.similarity) || [],
-					topMatchPreviews: topMatches?.slice(0, 2).map(m => ({
-						similarity: m.similarity,
-						preview: m.verbatim?.substring(0, 80)
-					})) || [],
+					topSimilarityScores: topMatches?.map((m) => m.similarity) || [],
+					topMatchPreviews:
+						topMatches?.slice(0, 2).map((m) => ({
+							similarity: m.similarity,
+							preview: m.verbatim?.substring(0, 80),
+						})) || [],
 					diagnostics: {
 						hasEvidence: (totalEvidenceCount || 0) > 0,
 						hasEmbeddings: (evidenceWithEmbeddings || 0) > 0,
@@ -347,7 +348,7 @@ export const semanticSearchEvidenceTool = createTool({
 
 			// Create similarity map from both sources (use highest similarity for each evidence)
 			const similarityMap = new Map<string, number>()
-			evidenceData?.forEach(e => {
+			evidenceData?.forEach((e) => {
 				similarityMap.set(e.id, e.similarity)
 			})
 			facetsData?.forEach((f: any) => {
@@ -384,11 +385,12 @@ export const semanticSearchEvidenceTool = createTool({
 
 			const facetMatchCount = facetEvidenceIds.size
 			const verbatimMatchCount = evidenceData?.length || 0
-			const message = facetMatchCount > 0 && verbatimMatchCount > 0
-				? `Found ${evidence.length} evidence pieces matching "${query}" (${verbatimMatchCount} from verbatim, ${facetMatchCount} from facets like pains/gains).`
-				: facetMatchCount > 0
-					? `Found ${evidence.length} evidence pieces matching "${query}" from structured facets (pains, gains, thinks, feels).`
-					: `Found ${evidence.length} evidence pieces matching "${query}" from verbatim quotes.`
+			const message =
+				facetMatchCount > 0 && verbatimMatchCount > 0
+					? `Found ${evidence.length} evidence pieces matching "${query}" (${verbatimMatchCount} from verbatim, ${facetMatchCount} from facets like pains/gains).`
+					: facetMatchCount > 0
+						? `Found ${evidence.length} evidence pieces matching "${query}" from structured facets (pains, gains, thinks, feels).`
+						: `Found ${evidence.length} evidence pieces matching "${query}" from verbatim quotes.`
 
 			return {
 				success: true,

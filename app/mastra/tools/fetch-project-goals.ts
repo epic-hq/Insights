@@ -79,11 +79,11 @@ export const fetchProjectGoalsTool = createTool({
 				settings:
 					typeof merged === "object" && merged !== null && "research_mode" in merged
 						? {
-							research_mode: merged.research_mode,
-							conversation_type: merged.conversation_type,
-							target_conversations: merged.target_conversations,
-							interview_duration: merged.interview_duration,
-						}
+								research_mode: merged.research_mode,
+								conversation_type: merged.conversation_type,
+								target_conversations: merged.target_conversations,
+								interview_duration: merged.interview_duration,
+							}
 						: null,
 			}
 

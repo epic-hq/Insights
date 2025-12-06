@@ -14,7 +14,7 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import consola from "consola"
-import { Bot, ChevronDown, ChevronRight, Filter, Info } from "lucide-react"
+import { Bot, ChevronDown, ChevronRight, Filter, Info, LayoutGrid, List } from "lucide-react"
 import * as React from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, redirect, useFetcher, useLoaderData } from "react-router"
@@ -911,6 +911,7 @@ Context:
 
 export default function FeaturePrioritizationPage() {
 	const { tasks, statusFilter, priorityFilter } = useLoaderData<typeof loader>()
+	const [compactView, setCompactView] = React.useState(true)
 
 	// Apply client-side filtering
 	const filteredTasks = React.useMemo(() => {
@@ -970,6 +971,10 @@ export default function FeaturePrioritizationPage() {
 			expanded,
 			columnVisibility: {
 				cluster: false, // Hide cluster column from display
+				benefit: !compactView,
+				segments: !compactView,
+				stage: !compactView,
+				reason: !compactView,
 			},
 		},
 		initialState: {
@@ -1051,6 +1056,33 @@ export default function FeaturePrioritizationPage() {
 					<Button variant="outline" size="sm" onClick={() => table.toggleAllRowsExpanded()} className="text-xs">
 						{table.getIsAllRowsExpanded() ? "Collapse All" : "Expand All"}
 					</Button>
+
+					<TooltipProvider>
+						<Tooltip delayDuration={300}>
+							<TooltipTrigger asChild>
+								<Button
+									variant={compactView ? "default" : "outline"}
+									size="sm"
+									onClick={() => setCompactView(!compactView)}
+									className="text-xs"
+								>
+									{compactView ? (
+										<List className="mr-1.5 h-3.5 w-3.5" />
+									) : (
+										<LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
+									)}
+									{compactView ? "Compact" : "Full"}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="text-xs">
+									{compactView
+										? "Showing compact view (Tasks, Impact, Priority, Status, Action)"
+										: "Switch to compact view (hide Benefits, Segments, Stage, Reason)"}
+								</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 
 				{/* Table */}

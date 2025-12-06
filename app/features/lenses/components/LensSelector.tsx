@@ -5,13 +5,15 @@
  */
 
 import { Check, Loader2, PlayCircle, Sparkles } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useFetcher } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
+import { useFetcher, useRevalidator } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
+import { Progress } from "~/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { cn } from "~/lib/utils"
+import { useLensProgress } from "../hooks/useLensProgress"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
 
 type Props = {
@@ -65,7 +67,10 @@ function getStatusInfo(analysis?: LensAnalysisWithTemplate): {
 
 export function LensSelector({ interviewId, templates, analyses, onLensApplied, className }: Props) {
 	const [selectedLens, setSelectedLens] = useState<string>("")
+	const [activeRun, setActiveRun] = useState<{ taskId: string; accessToken: string } | null>(null)
+	const hasRevalidatedRef = useRef(false)
 	const fetcher = useFetcher()
+	const revalidator = useRevalidator()
 	const isApplying = fetcher.state !== "idle"
 
 	// Track which lens is being applied
@@ -73,6 +78,35 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 		fetcher.state !== "idle" && fetcher.formData ? fetcher.formData.get("template_key")?.toString() : null
 
 	const isApplyingAll = fetcher.state !== "idle" && fetcher.formData?.get("apply_all") === "true"
+
+	// Subscribe to realtime progress (no onComplete callback to avoid infinite loops)
+	const { progressInfo, isSubscribed } = useLensProgress({
+		runId: activeRun?.taskId,
+		accessToken: activeRun?.accessToken,
+	})
+
+	// When task completes, revalidate once
+	useEffect(() => {
+		if (progressInfo.isComplete && activeRun && !hasRevalidatedRef.current) {
+			hasRevalidatedRef.current = true
+			setActiveRun(null)
+			// Small delay to ensure database is updated
+			setTimeout(() => {
+				revalidator.revalidate()
+			}, 500)
+		}
+	}, [progressInfo.isComplete, activeRun, revalidator])
+
+	// When fetcher returns, store the taskId and accessToken for realtime tracking
+	useEffect(() => {
+		if (fetcher.data?.ok && fetcher.data?.taskId && fetcher.data?.publicAccessToken) {
+			hasRevalidatedRef.current = false // Reset for new run
+			setActiveRun({
+				taskId: fetcher.data.taskId,
+				accessToken: fetcher.data.publicAccessToken,
+			})
+		}
+	}, [fetcher.data])
 
 	// Notify parent when lens application completes
 	useEffect(() => {
@@ -183,8 +217,16 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 				</Button>
 			)}
 
+			{/* Realtime progress indicator */}
+			{isSubscribed && progressInfo.progress > 0 && !progressInfo.isComplete && (
+				<div className="flex items-center gap-2">
+					<Progress value={progressInfo.progress} className="h-2 w-32" />
+					<span className="text-muted-foreground text-xs">{progressInfo.label}</span>
+				</div>
+			)}
+
 			{/* Status indicator */}
-			{pendingCount > 0 && (
+			{pendingCount > 0 && !isSubscribed && (
 				<Badge variant="outline" className="bg-blue-50 text-blue-700">
 					<Loader2 className="mr-1 h-3 w-3 animate-spin" />
 					{pendingCount} processing

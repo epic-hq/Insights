@@ -72,22 +72,28 @@ export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<L
 
 /**
  * Load all lens analyses for an interview
+ * Note: RLS handles access control - we only filter by interview_id
+ * The accountId parameter is kept for backwards compatibility but not used
  */
 export async function loadLensAnalyses(
 	db: SupabaseClient<Database>,
 	interviewId: string,
-	accountId?: string
+	_accountId?: string
 ): Promise<Record<string, LensAnalysisWithTemplate>> {
 	// Build analyses query - RLS handles access control via account membership
-	let analysesQuery = db.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId)
-
-	if (accountId) {
-		analysesQuery = analysesQuery.eq("account_id", accountId)
-	}
+	// Don't filter by accountId since the interview is already access-controlled
+	const analysesQuery = db.from("conversation_lens_analyses").select("*").eq("interview_id", interviewId)
 
 	// Load analyses and templates separately (avoids PostgREST FK detection issues)
 	const [analysesResult, templatesResult] = await Promise.all([
-		analysesQuery,
+		analysesQuery.then((result) => {
+			if (result.error) {
+				console.error("[loadLensAnalyses] Error loading analyses:", result.error)
+			} else {
+				console.log("[loadLensAnalyses] Loaded", result.data?.length || 0, "analyses for interview", interviewId)
+			}
+			return result
+		}),
 		db
 			.from("conversation_lens_templates")
 			.select("template_key, template_name, summary, category, display_order, template_definition")

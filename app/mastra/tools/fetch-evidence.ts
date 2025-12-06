@@ -208,33 +208,33 @@ export const fetchEvidenceTool = createTool({
 			const [interviewData, personData, insightsData] = await Promise.all([
 				includeInterview && evidenceRows.length > 0
 					? supabase
-						.from("interviews")
-						.select("id, title, interview_date, status")
-						.in("id", evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || [])
+							.from("interviews")
+							.select("id, title, interview_date, status")
+							.in("id", evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || [])
 					: Promise.resolve({ data: null }),
 
 				includePerson && evidenceRows.length > 0
 					? supabase
-						.from("interview_people")
-						.select(`
+							.from("interview_people")
+							.select(`
 							interview_id,
 							people:person_id(id, name)
 						`)
-						.in(
-							"interview_id",
-							evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
-						)
+							.in(
+								"interview_id",
+								evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
+							)
 					: Promise.resolve({ data: null }),
 
 				includeInsights && evidenceRows.length > 0
 					? supabase
-						.from("themes")
-						.select("id, name, details, interview_id")
-						.eq("project_id", projectIdStr)
-						.in(
-							"interview_id",
-							evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
-						)
+							.from("themes")
+							.select("id, name, details, interview_id")
+							.eq("project_id", projectIdStr)
+							.in(
+								"interview_id",
+								evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
+							)
 					: Promise.resolve({ data: null }),
 			])
 

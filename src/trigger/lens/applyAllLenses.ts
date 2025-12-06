@@ -5,12 +5,28 @@
  * Voice memos and notes are skipped (lens_visibility = 'private').
  */
 
-import { task } from "@trigger.dev/sdk"
+import { metadata, task } from "@trigger.dev/sdk"
 import consola from "consola"
 
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { workflowRetryConfig } from "~/utils/processInterview.server"
 import { applyLensTask } from "./applyLens"
+
+/**
+ * Set progress metadata for the parent task
+ */
+function setAllLensesProgress(completed: number, total: number, currentLens?: string) {
+	const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+	const label = currentLens
+		? `Applying ${currentLens} (${completed}/${total})`
+		: `Applied ${completed}/${total} lenses`
+
+	metadata.set("progressPercent", percent)
+	metadata.set("stageLabel", label)
+	metadata.set("completed", completed)
+	metadata.set("total", total)
+	metadata.set("currentLens", currentLens || null)
+}
 
 /**
  * System lenses to apply to all interviews (except private ones)
@@ -55,15 +71,32 @@ export const applyAllLensesTask = task({
 
 		consola.info(`[applyAllLenses] Starting for interview ${interviewId}`)
 
-		// Check if interview should be processed
+		// Check if interview should be processed and get the correct accountId from its project
 		const { data: interview, error: interviewError } = await (client as any)
 			.from("interviews")
-			.select("id, lens_visibility, status")
+			.select("id, lens_visibility, status, project_id, projects(account_id)")
 			.eq("id", interviewId)
-			.single() as { data: { id: string; lens_visibility: string | null; status: string | null } | null; error: any }
+			.single() as {
+				data: {
+					id: string
+					lens_visibility: string | null
+					status: string | null
+					project_id: string | null
+					projects: { account_id: string } | null
+				} | null
+				error: any
+			}
 
 		if (interviewError || !interview) {
 			throw new Error(`Interview not found: ${interviewId}`)
+		}
+
+		// Use the project's account_id to ensure tasks are created with the correct accountId
+		const effectiveAccountId = interview.projects?.account_id || accountId
+		const effectiveProjectId = projectId || interview.project_id
+
+		if (effectiveAccountId !== accountId) {
+			consola.warn(`[applyAllLenses] accountId mismatch: payload=${accountId}, project=${effectiveAccountId}. Using project's accountId.`)
 		}
 
 		// Skip private interviews (voice memos, notes)
@@ -79,22 +112,31 @@ export const applyAllLensesTask = task({
 
 		// Determine which lenses to apply
 		const lenses = lensesToApply || [...SYSTEM_LENSES]
+		const totalLenses = lenses.length
 
-		consola.info(`[applyAllLenses] Applying ${lenses.length} lenses to ${interviewId}`)
+		consola.info(`[applyAllLenses] Applying ${totalLenses} lenses to ${interviewId}`)
+
+		// Initialize progress
+		setAllLensesProgress(0, totalLenses, lenses[0])
 
 		// Apply each lens sequentially to avoid overwhelming BAML
 		// In production, could use batchTriggerAndWait for parallelism
 		const results: ApplyAllLensesResult["results"] = []
 
-		for (const templateKey of lenses) {
+		for (let i = 0; i < lenses.length; i++) {
+			const templateKey = lenses[i]
+
+			// Update progress with current lens
+			setAllLensesProgress(i, totalLenses, templateKey)
+
 			try {
 				consola.info(`[applyAllLenses] Triggering ${templateKey}...`)
 
 				const result = await applyLensTask.triggerAndWait({
 					interviewId,
 					templateKey,
-					accountId,
-					projectId,
+					accountId: effectiveAccountId,
+					projectId: effectiveProjectId,
 					computedBy,
 				})
 
@@ -121,6 +163,9 @@ export const applyAllLensesTask = task({
 				})
 				consola.error(`[applyAllLenses] ✗ ${templateKey} threw:`, error)
 			}
+
+			// Update progress after each lens completes
+			setAllLensesProgress(i + 1, totalLenses)
 		}
 
 		const successCount = results.filter((r) => r.success).length

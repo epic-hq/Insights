@@ -417,6 +417,7 @@ export interface ConversationLensResult {
   sections: LensSectionResult[]
   entities: LensEntityResult[]
   recommendations: LensRecommendation[]
+  hygiene: LensHygieneItem[]
   overall_confidence: number
   processing_notes?: string | null
   
@@ -851,18 +852,11 @@ export interface JobToBeDone {
   
 }
 
-export interface LensEntityItem {
-  name: string
-  role?: string | null
-  description?: string | null
-  confidence: number
-  evidence_ids: string[]
-  
-}
-
 export interface LensEntityResult {
-  entity_type: string
-  items: LensEntityItem[]
+  entity_type: "stakeholders" | "next_steps" | "objections" | "other"
+  stakeholders?: LensStakeholderItem[] | null
+  next_steps?: LensNextStepItem[] | null
+  objections?: LensObjectionItem[] | null
   
 }
 
@@ -884,6 +878,35 @@ export interface LensFieldValue {
   
 }
 
+export interface LensHygieneItem {
+  code: string
+  severity: "info" | "warning" | "critical"
+  message: string
+  field_key?: string | null
+  
+}
+
+export interface LensNextStepItem {
+  description: string
+  owner?: string | null
+  due_date?: string | null
+  status?: "pending" | "in_progress" | "completed" | null
+  priority?: "high" | "medium" | "low" | null
+  confidence: number
+  evidence_ids: string[]
+  
+}
+
+export interface LensObjectionItem {
+  objection: string
+  type: string
+  status?: "raised" | "addressed" | "unresolved" | null
+  response?: string | null
+  confidence: number
+  evidence_ids: string[]
+  
+}
+
 export interface LensRecommendation {
   type: string
   description: string
@@ -896,6 +919,18 @@ export interface LensRecommendation {
 export interface LensSectionResult {
   section_key: string
   fields: LensFieldValue[]
+  
+}
+
+export interface LensStakeholderItem {
+  name: string
+  role?: string | null
+  influence?: "low" | "medium" | "high" | null
+  labels: string[]
+  email?: string | null
+  organization?: string | null
+  confidence: number
+  evidence_ids: string[]
   
 }
 

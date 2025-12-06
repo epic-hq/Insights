@@ -68,17 +68,11 @@ export function EvidenceTimestampBadges({ evidenceRefs, evidenceIds, className, 
 						title={ref.transcriptSnippet || "View evidence"}
 						onClick={(e) => e.stopPropagation()}
 					>
-						{ref.startMs != null ? (
-							<span>{formatTimestamp(ref.startMs)}</span>
-						) : (
-							<span>Evidence</span>
-						)}
+						{ref.startMs != null ? <span>{formatTimestamp(ref.startMs)}</span> : <span>Evidence</span>}
 					</Link>
 				)
 			})}
-			{hiddenCount > 0 && (
-				<span className="px-2 py-1 text-muted-foreground text-xs">+{hiddenCount} more</span>
-			)}
+			{hiddenCount > 0 && <span className="px-2 py-1 text-muted-foreground text-xs">+{hiddenCount} more</span>}
 		</div>
 	)
 }

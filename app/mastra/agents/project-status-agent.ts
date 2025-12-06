@@ -4,6 +4,7 @@ import { Memory } from "@mastra/memory"
 import consola from "consola"
 import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
+import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
@@ -57,6 +58,16 @@ Workflow:
    • If they name or clearly refer to a specific person, immediately call "fetchPeopleDetails" with peopleSearch set to that name and includePersonas/includeEvidence=true to get comprehensive person details, demographics, and interview history. Use the returned data to ground your answer, or ask for clarification if the person cannot be found.
    • If they ask about segments, customer groups, or target markets, call "fetchSegments" to get segment data with bullseye scores. This shows which customer segments are most likely to buy based on willingness to pay and pain intensity.
    • If they ask about the Product Lens or pain matrix, call "fetchPainMatrixCache" to get the cached matrix data. If no cache exists or it's stale, explain that Product Lens analysis needs to be run.
+   • If they ask about conversation lenses, analytical frameworks, or structured interview analysis (e.g., "what lenses are available?", "show me the BANT analysis", "what's the customer discovery lens?"), call "fetchConversationLenses". Use mode='templates' to see available frameworks, mode='analyses' to see applied lens results for interviews, or mode='both' (default). Filter by templateKey (e.g., 'customer-discovery', 'sales-bant', 'project-research', 'user-testing', 'product-insights', 'empathy-map-jtbd') or category ('research', 'product', 'sales'). When asking about a specific interview's lens analysis, provide the interviewId.
+   • **SALES QUALIFICATION WORKFLOW**: When users ask about sales, deals, qualification, or BANT (Budget, Authority, Need, Timeline), follow this structured approach:
+     1. Call "fetchConversationLenses" with mode='analyses', templateKey='sales-bant', and projectId to get all BANT analyses
+     2. Analyze the analysis_data for each completed lens to extract: Budget signals (allocated funds, budget cycle), Authority signals (decision makers, influencers, champions), Need signals (pain severity, urgency, business impact), Timeline signals (buying timeline, implementation schedule, decision dates)
+     3. Identify what's STRONG: Look for explicit budget confirmation, direct access to economic buyers, urgent/critical needs, near-term timelines
+     4. Identify what's MISSING or WEAK: Unclear budget, no access to decision makers, vague needs, distant or undefined timelines
+     5. Cross-reference with "fetchOpportunities" to see if deals exist for these qualified prospects
+     6. Check "fetchTasks" for any open sales-related tasks (filter by cluster or search for "sales", "follow-up", "demo", etc.)
+     7. Provide a CONCISE summary with: (a) Overall qualification health (strong/moderate/weak), (b) Key strengths by BANT dimension, (c) Critical gaps that need addressing, (d) Recommended next steps (e.g., "Schedule call with CFO to discuss budget", "Get timeline commitment from VP"), (e) Related open tasks or suggest creating new tasks for follow-up actions
+     8. Format response with clear sections using markdown headers and bullet points for readability
    • If they ask to search for signals or evidence about a specific topic, pain point, or concept (e.g., "find evidence about budget concerns", "what did people say about pricing?"), call "semanticSearchEvidence" with the query parameter set to their search terms. The query is REQUIRED - always provide a natural language search phrase. This searches both verbatim quotes AND structured facets (pains, gains, thinks, feels). Use matchThreshold between 0.4-0.6 for broad searches (default is 0.5), or 0.6-0.8 for very precise matches.
    • If they ask to find people by traits, roles, or demographics (e.g., "find CTOs", "who are the product managers?", "show me enterprise buyers"), call "semanticSearchPeople" with the query describing the traits. This searches person facets like roles, titles, company size, industry, behaviors. Use kindSlugFilter to narrow by facet type if needed.
    • If they ask about opportunities, pipeline health, or specific deals, call "fetchOpportunities" to load opportunity details (stage, amount, close date, status) before answering.
@@ -113,6 +124,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchThemes: fetchThemesTool,
 		fetchPainMatrixCache: fetchPainMatrixCacheTool,
 		fetchSegments: fetchSegmentsTool,
+		fetchConversationLenses: fetchConversationLensesTool,
 		generateProjectRoutes: generateProjectRoutesTool,
 		fetchOpportunities: fetchOpportunitiesTool,
 		createOpportunity: createOpportunityTool,

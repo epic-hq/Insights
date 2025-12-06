@@ -51,7 +51,7 @@ export default class TypeBuilder {
     
     ConversationEvidence: ClassViewer<'ConversationEvidence', "id" | "verbatim" | "gist" | "speaker" | "evidence_type" | "timestamp_start">;
     
-    ConversationLensResult: ClassViewer<'ConversationLensResult', "sections" | "entities" | "recommendations" | "overall_confidence" | "processing_notes">;
+    ConversationLensResult: ClassViewer<'ConversationLensResult', "sections" | "entities" | "recommendations" | "hygiene" | "overall_confidence" | "processing_notes">;
     
     ConversationQuestion: ClassViewer<'ConversationQuestion', "question" | "asked_by" | "intent" | "evidence_snippet" | "confidence">;
     
@@ -143,17 +143,23 @@ export default class TypeBuilder {
     
     JobToBeDone: ClassViewer<'JobToBeDone', "job_description" | "situation" | "desired_outcome" | "current_solution" | "frustrations" | "importance" | "satisfaction" | "frequency" | "evidence_ids" | "confidence">;
     
-    LensEntityItem: ClassViewer<'LensEntityItem', "name" | "role" | "description" | "confidence" | "evidence_ids">;
-    
-    LensEntityResult: ClassViewer<'LensEntityResult', "entity_type" | "items">;
+    LensEntityResult: ClassViewer<'LensEntityResult', "entity_type" | "stakeholders" | "next_steps" | "objections">;
     
     LensEvidenceHighlight: ClassViewer<'LensEvidenceHighlight', "gist" | "interview_title" | "interview_date" | "journey_stage" | "topic" | "support">;
     
     LensFieldValue: ClassViewer<'LensFieldValue', "field_key" | "value" | "confidence" | "evidence_ids">;
     
+    LensHygieneItem: ClassViewer<'LensHygieneItem', "code" | "severity" | "message" | "field_key">;
+    
+    LensNextStepItem: ClassViewer<'LensNextStepItem', "description" | "owner" | "due_date" | "status" | "priority" | "confidence" | "evidence_ids">;
+    
+    LensObjectionItem: ClassViewer<'LensObjectionItem', "objection" | "type" | "status" | "response" | "confidence" | "evidence_ids">;
+    
     LensRecommendation: ClassViewer<'LensRecommendation', "type" | "description" | "priority" | "rationale" | "evidence_ids">;
     
     LensSectionResult: ClassViewer<'LensSectionResult', "section_key" | "fields">;
+    
+    LensStakeholderItem: ClassViewer<'LensStakeholderItem', "name" | "role" | "influence" | "labels" | "email" | "organization" | "confidence" | "evidence_ids">;
     
     MentalModel: ClassViewer<'MentalModel', "model_description" | "matches_product" | "gap_description" | "design_recommendation" | "evidence_ids">;
     
@@ -310,7 +316,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityItem","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensRecommendation","LensSectionResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
+            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -367,7 +373,7 @@ export default class TypeBuilder {
         ]);
         
         this.ConversationLensResult = this.tb.classViewer("ConversationLensResult", [
-          "sections","entities","recommendations","overall_confidence","processing_notes",
+          "sections","entities","recommendations","hygiene","overall_confidence","processing_notes",
         ]);
         
         this.ConversationQuestion = this.tb.classViewer("ConversationQuestion", [
@@ -550,12 +556,8 @@ export default class TypeBuilder {
           "job_description","situation","desired_outcome","current_solution","frustrations","importance","satisfaction","frequency","evidence_ids","confidence",
         ]);
         
-        this.LensEntityItem = this.tb.classViewer("LensEntityItem", [
-          "name","role","description","confidence","evidence_ids",
-        ]);
-        
         this.LensEntityResult = this.tb.classViewer("LensEntityResult", [
-          "entity_type","items",
+          "entity_type","stakeholders","next_steps","objections",
         ]);
         
         this.LensEvidenceHighlight = this.tb.classViewer("LensEvidenceHighlight", [
@@ -566,12 +568,28 @@ export default class TypeBuilder {
           "field_key","value","confidence","evidence_ids",
         ]);
         
+        this.LensHygieneItem = this.tb.classViewer("LensHygieneItem", [
+          "code","severity","message","field_key",
+        ]);
+        
+        this.LensNextStepItem = this.tb.classViewer("LensNextStepItem", [
+          "description","owner","due_date","status","priority","confidence","evidence_ids",
+        ]);
+        
+        this.LensObjectionItem = this.tb.classViewer("LensObjectionItem", [
+          "objection","type","status","response","confidence","evidence_ids",
+        ]);
+        
         this.LensRecommendation = this.tb.classViewer("LensRecommendation", [
           "type","description","priority","rationale","evidence_ids",
         ]);
         
         this.LensSectionResult = this.tb.classViewer("LensSectionResult", [
           "section_key","fields",
+        ]);
+        
+        this.LensStakeholderItem = this.tb.classViewer("LensStakeholderItem", [
+          "name","role","influence","labels","email","organization","confidence","evidence_ids",
         ]);
         
         this.MentalModel = this.tb.classViewer("MentalModel", [

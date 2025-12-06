@@ -51,6 +51,7 @@ create table if not exists public.conversation_lens_analyses (
   processed_by uuid references auth.users(id) on delete set null,
   status text default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
   error_message text,
+  trigger_run_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -379,19 +380,12 @@ insert into public.conversation_lens_templates (
         "fields": [
           {"field_key": "deal_size", "field_name": "Potential Deal Size", "field_type": "text"},
           {"field_key": "competition", "field_name": "Competition", "field_type": "text_array"},
-          {"field_key": "success_criteria", "field_name": "Success Criteria", "field_type": "text"}
-        ]
-      },
-      {
-        "section_key": "next_steps",
-        "section_name": "Next Steps",
-        "fields": [
-          {"field_key": "agreed_next_steps", "field_name": "Agreed Next Steps", "field_type": "text_array"},
+          {"field_key": "success_criteria", "field_name": "Success Criteria", "field_type": "text"},
           {"field_key": "blockers", "field_name": "Blockers/Risks", "field_type": "text_array"}
         ]
       }
     ],
-    "entities": ["stakeholders", "objections"],
+    "entities": ["stakeholders", "next_steps", "objections"],
     "recommendations_enabled": true
   }'::jsonb,
   true
