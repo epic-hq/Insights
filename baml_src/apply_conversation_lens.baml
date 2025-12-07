@@ -109,6 +109,7 @@ function ApplyConversationLens(
        - For text fields: Extract a summary or direct quote
        - For text_array fields: Extract multiple items as a list of strings
        - Never leave value empty if you have evidence_ids - synthesize the content from those evidence items
+       - For monetary/numeric fields like "deal_size", "budget", "potential value": Extract as dollar amounts (e.g., "$50K", "$100,000", "$50-100K range")
     3. Always cite evidence_ids (use the 8-character ID prefix) that support each extraction
     4. Assign confidence scores (0.0-1.0) based on how directly the evidence supports the extraction
     5. Only omit a field entirely if there is truly no relevant evidence - do NOT include a field with evidence_ids but empty value

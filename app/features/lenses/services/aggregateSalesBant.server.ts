@@ -115,6 +115,7 @@ export type AggregatedFieldValue = {
 		value: string
 		interview_id: string
 		interview_title: string
+		organization_id: string | null
 		organization_name: string | null
 		confidence: number
 	}>
@@ -125,6 +126,7 @@ export type AggregatedStakeholder = {
 	role: string | null
 	influence: string | null
 	labels: string[]
+	person_id: string | null
 	interview_count: number
 	interviews: Array<{ id: string; title: string; organization_name: string | null }>
 }
@@ -153,7 +155,12 @@ export type HygieneGap = {
 	severity: string
 	message: string
 	count: number
-	interviews: Array<{ id: string; title: string; organization_name: string | null }>
+	interviews: Array<{
+		id: string
+		title: string
+		organization_id: string | null
+		organization_name: string | null
+	}>
 }
 
 export type AggregatedSalesBant = {
@@ -203,16 +210,46 @@ const FIELD_DISPLAY_NAMES: Record<string, string> = {
 }
 
 /**
- * Extract organization name from interview people relationships
+ * Extract organization info from interview people relationships
+ * Tries multiple paths:
+ * 1. interview_people -> people -> organizations (linked stakeholders)
+ * 2. person_id -> people -> organizations (direct person link)
  */
-function extractOrganizationName(interview: any): string | null {
+function extractOrganizationInfo(interview: any): { id: string | null; name: string | null } {
+	// Path 1: Try interview_people -> people -> organizations
 	const interviewPeople = interview?.interview_people as any[] | null
-	if (!interviewPeople?.length) return null
+	if (interviewPeople?.length) {
+		for (const ip of interviewPeople) {
+			const org = ip?.people?.organizations
+			if (org?.id && org?.name) return { id: org.id, name: org.name }
+		}
+	}
 
-	// Find first person with an organization
-	for (const ip of interviewPeople) {
-		const org = ip?.people?.organizations
-		if (org?.name) return org.name
+	// Path 2: Try direct person link -> organization
+	const directPerson = interview?.people
+	if (directPerson?.organizations?.id && directPerson?.organizations?.name) {
+		return { id: directPerson.organizations.id, name: directPerson.organizations.name }
+	}
+
+	return { id: null, name: null }
+}
+
+/**
+ * Extract organization name from stakeholders in the analysis data
+ * Used as fallback when interview doesn't have linked people with organizations
+ */
+function extractOrgFromAnalysisStakeholders(
+	analysisData: ConversationLensAnalysisData
+): string | null {
+	const entities = analysisData?.entities || []
+	for (const entity of entities) {
+		if (entity.entity_type === "stakeholders" && entity.stakeholders) {
+			for (const stakeholder of entity.stakeholders) {
+				if (stakeholder.organization) {
+					return stakeholder.organization
+				}
+			}
+		}
 	}
 	return null
 }
@@ -229,8 +266,48 @@ export async function aggregateSalesBant(opts: {
 
 	consola.info(`[aggregateSalesBant] Starting aggregation for project ${projectId}`)
 
+	// Fetch all people in this project for name matching
+	const { data: projectPeople } = await supabase
+		.from("people")
+		.select("id, name, default_organization_id, organizations:default_organization_id(id, name)")
+		.eq("project_id", projectId)
+
+	// Build a map of lowercase name -> person for quick lookup
+	const peopleByName = new Map<string, { id: string; name: string; org_id: string | null; org_name: string | null }>()
+	for (const person of projectPeople || []) {
+		if (person.name) {
+			const key = person.name.toLowerCase().trim()
+			const org = person.organizations as any
+			peopleByName.set(key, {
+				id: person.id,
+				name: person.name,
+				org_id: org?.id || null,
+				org_name: org?.name || null,
+			})
+		}
+	}
+	consola.info(`[aggregateSalesBant] Loaded ${peopleByName.size} people for name matching`)
+
+	// Fetch all organizations in this project for name -> ID lookup
+	const { data: projectOrgs } = await supabase
+		.from("organizations")
+		.select("id, name")
+		.eq("project_id", projectId)
+
+	// Build a map of lowercase org name -> org for quick lookup
+	const orgsByName = new Map<string, { id: string; name: string }>()
+	for (const org of projectOrgs || []) {
+		if (org.name) {
+			const key = org.name.toLowerCase().trim()
+			orgsByName.set(key, { id: org.id, name: org.name })
+		}
+	}
+	consola.info(`[aggregateSalesBant] Loaded ${orgsByName.size} organizations for name matching`)
+
 	// Fetch all completed sales-bant analyses for this project
-	// Include organization through interview_people -> people -> organizations
+	// Include organization through multiple paths:
+	// 1. interview_people -> people -> organizations (linked stakeholders)
+	// 2. person_id -> people -> organizations (direct person link)
 	const { data: analyses, error: analysesError } = await supabase
 		.from("conversation_lens_analyses")
 		.select(
@@ -245,6 +322,16 @@ export async function aggregateSalesBant(opts: {
 				title,
 				participant_pseudonym,
 				interview_date,
+				person_id,
+				people:person_id(
+					id,
+					name,
+					default_organization_id,
+					organizations:default_organization_id(
+						id,
+						name
+					)
+				),
 				interview_people(
 					people(
 						default_organization_id,
@@ -291,11 +378,29 @@ export async function aggregateSalesBant(opts: {
 
 		if (!data) continue
 
-		const organizationName = extractOrganizationName(interview)
+		// Try to get organization from interview's linked people
+		const orgInfo = extractOrganizationInfo(interview)
+
+		// Fallback: If no org from interview, try to get from stakeholders in the analysis
+		let orgName = orgInfo.name
+		let orgId = orgInfo.id
+		if (!orgName) {
+			orgName = extractOrgFromAnalysisStakeholders(data)
+		}
+
+		// If we have org name but no ID, try to look up the ID from project orgs
+		if (orgName && !orgId) {
+			const matchedOrg = orgsByName.get(orgName.toLowerCase().trim())
+			if (matchedOrg) {
+				orgId = matchedOrg.id
+			}
+		}
+
 		const interviewInfo = {
 			id: analysis.interview_id,
 			title: interview?.title || "Untitled",
-			organization_name: organizationName,
+			organization_id: orgId,
+			organization_name: orgName,
 		}
 
 		// Track interview
@@ -304,7 +409,7 @@ export async function aggregateSalesBant(opts: {
 			interview_title: interview?.title || "Untitled",
 			interviewee_name: interview?.participant_pseudonym || null,
 			interview_date: interview?.interview_date || null,
-			organization_name: organizationName,
+			organization_name: orgName,
 			analysis_data: data,
 			confidence_score: analysis.confidence_score,
 			processed_at: analysis.processed_at,
@@ -328,7 +433,8 @@ export async function aggregateSalesBant(opts: {
 						value: field.value,
 						interview_id: analysis.interview_id,
 						interview_title: interviewInfo.title,
-						organization_name: organizationName,
+						organization_id: orgId,
+						organization_name: orgName,
 						confidence: field.confidence,
 					})
 				} else {
@@ -340,7 +446,8 @@ export async function aggregateSalesBant(opts: {
 								value: field.value,
 								interview_id: analysis.interview_id,
 								interview_title: interviewInfo.title,
-								organization_name: organizationName,
+								organization_id: orgId,
+								organization_name: orgName,
 								confidence: field.confidence,
 							},
 						],
@@ -356,6 +463,11 @@ export async function aggregateSalesBant(opts: {
 				for (const stakeholder of entity.stakeholders) {
 					const key = stakeholder.name.toLowerCase().trim()
 					const existing = stakeholderMap.get(key)
+
+					// Try to find matching person in project
+					const matchedPerson = peopleByName.get(key)
+					const personId = stakeholder.person_id || matchedPerson?.id || null
+
 					if (existing) {
 						existing.interview_count++
 						existing.interviews.push(interviewInfo)
@@ -365,12 +477,17 @@ export async function aggregateSalesBant(opts: {
 								existing.labels.push(label)
 							}
 						}
+						// Keep the person_id if we found one
+						if (!existing.person_id && personId) {
+							existing.person_id = personId
+						}
 					} else {
 						stakeholderMap.set(key, {
 							name: stakeholder.name,
 							role: stakeholder.role || null,
 							influence: stakeholder.influence || null,
 							labels: stakeholder.labels || [],
+							person_id: personId,
 							interview_count: 1,
 							interviews: [interviewInfo],
 						})
@@ -389,7 +506,7 @@ export async function aggregateSalesBant(opts: {
 						task_id: step.task_id || null,
 						interview_id: analysis.interview_id,
 						interview_title: interviewInfo.title,
-						organization_name: organizationName,
+						organization_name: orgInfo.name,
 					})
 				}
 			}
@@ -423,6 +540,7 @@ export async function aggregateSalesBant(opts: {
 				priority: rec.priority,
 				interview_id: analysis.interview_id,
 				interview_title: interviewInfo.title,
+				organization_name: orgInfo.name,
 			})
 		}
 

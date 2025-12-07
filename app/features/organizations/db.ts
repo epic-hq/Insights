@@ -76,7 +76,7 @@ export const updateOrganization = async ({
 	return await supabase.from("organizations").update(data).eq("id", id).eq("project_id", projectId).select().single()
 }
 
-const _deleteOrganization = async ({ supabase, id, projectId }: ProjectScopedParams & { id: string }) => {
+export const deleteOrganization = async ({ supabase, id, projectId }: ProjectScopedParams & { id: string }) => {
 	return await supabase.from("organizations").delete().eq("id", id).eq("project_id", projectId)
 }
 

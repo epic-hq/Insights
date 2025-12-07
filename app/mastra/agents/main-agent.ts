@@ -3,6 +3,7 @@ import { Agent } from "@mastra/core/agent"
 import { LibSQLStore } from "@mastra/libsql"
 import { Memory } from "@mastra/memory"
 import z from "zod"
+import { manageOrganizationsTool } from "../tools/manage-organizations"
 import { upsightTool } from "../tools/upsight-tool"
 
 export const AgentState = z.object({
@@ -39,6 +40,7 @@ export const mainAgent = new Agent({
       3. Identify key findings and suggest next steps
       4. Share project status information with the frontend through agent state
       5. Track critical "must do" items that need immediate attention
+      6. Manage organizations - create, update, delete, and retrieve company/organization records
       
       When users ask about project information:
       - Use the upsight_search tool to gather comprehensive project data
@@ -62,6 +64,7 @@ export const mainAgent = new Agent({
 	model: openai("gpt-4o-mini"),
 	tools: {
 		upsight_search: upsightTool,
+		manage_organizations: manageOrganizationsTool,
 	},
 	memory: new Memory({
 		storage: new LibSQLStore({
