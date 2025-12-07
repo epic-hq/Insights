@@ -22,6 +22,7 @@ import {
 	Users,
 	XCircle,
 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { Link, useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -172,18 +173,16 @@ function FieldValue({
 								{itemEvidence && itemEvidence.length > 0 && routes && (
 									<span className="ml-1 inline-flex gap-1">
 										{itemEvidence.map((ev, j) => {
-											const timestamp = ev.startMs != null ? Math.floor(ev.startMs / 1000) : null
-											const url = `${routes.evidence.detail(ev.evidenceId)}${timestamp != null ? `?t=${timestamp}` : ""}`
-											const timeLabel =
-												ev.startMs != null
-													? `${Math.floor(ev.startMs / 1000 / 60)}:${String(Math.floor(ev.startMs / 1000) % 60).padStart(2, "0")}`
-													: "📎"
+											const ms = ev.startMs ?? 0
+											const timestamp = Math.floor(ms / 1000)
+											const url = `${routes.evidence.detail(ev.evidenceId)}?t=${timestamp}`
+											const timeLabel = `${Math.floor(ms / 1000 / 60)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`
 											return (
 												<Link
 													key={j}
 													to={url}
-													className="text-primary text-xs hover:underline"
-													title={ev.transcriptSnippet || "View evidence"}
+													className="font-mono text-primary text-xs hover:underline"
+													title={ev.transcriptSnippet || "Jump to timestamp"}
 													onClick={(e) => e.stopPropagation()}
 												>
 													[{timeLabel}]
@@ -235,7 +234,7 @@ function FieldValue({
 }
 
 /**
- * Render confidence indicator
+ * Render confidence indicator with tooltip explanation
  */
 function ConfidenceIndicator({ confidence }: { confidence: string | number | null }) {
 	if (!confidence) return null
@@ -256,10 +255,21 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 		inconclusive: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 	}
 
+	const tooltipText = "AI confidence score based on transcript clarity, explicit statements, and supporting evidence"
+
 	return (
-		<Badge variant="outline" className={colors[level as keyof typeof colors] || colors.medium}>
-			{typeof confidence === "number" ? `${Math.round(confidence * 100)}%` : confidence}
-		</Badge>
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Badge variant="outline" className={cn("cursor-help", colors[level as keyof typeof colors] || colors.medium)}>
+						{typeof confidence === "number" ? `${Math.round(confidence * 100)}%` : confidence}
+					</Badge>
+				</TooltipTrigger>
+				<TooltipContent>
+					<p className="max-w-xs text-sm">{tooltipText}</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
 	)
 }
 
@@ -317,9 +327,8 @@ function SectionView({
 					<div key={fieldDef.field_key} className="flex items-start gap-3">
 						<StatusIcon className={cn("mt-0.5 h-4 w-4 flex-shrink-0", statusIconColor)} />
 						<div className="min-w-0 flex-1">
-							<div className="mb-1 flex items-center gap-2">
+							<div className="mb-1">
 								<span className="font-medium text-muted-foreground text-sm">{fieldDef.field_name}</span>
-								{hasValue && field?.confidence !== undefined && <ConfidenceIndicator confidence={field.confidence} />}
 							</div>
 							<div className="text-sm">
 								{effectivelyHasValue ? (
@@ -872,16 +881,13 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 	return (
 		<div className="space-y-6">
-			{/* Header with confidence */}
+			{/* Header with confidence and date */}
 			{analysis && (
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<CheckCircle2 className="h-4 w-4 text-green-600" />
-						<span className="text-muted-foreground text-sm">
-							Analyzed {analysis.processed_at ? new Date(analysis.processed_at).toLocaleDateString() : "recently"}
-						</span>
-					</div>
+				<div className="flex items-center justify-end gap-3">
 					{analysis.confidence_score !== null && <ConfidenceIndicator confidence={analysis.confidence_score} />}
+					<span className="text-muted-foreground text-sm">
+						Analyzed {analysis.processed_at ? new Date(analysis.processed_at).toLocaleDateString() : "recently"}
+					</span>
 				</div>
 			)}
 

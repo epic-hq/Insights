@@ -57,18 +57,18 @@ export function EvidenceTimestampBadges({ evidenceRefs, evidenceIds, className, 
 	return (
 		<div className={className || "mt-2 flex flex-wrap gap-1"}>
 			{visibleRefs.map((ref, idx) => {
-				const timestamp = ref.startMs != null ? Math.floor(ref.startMs / 1000) : null
-				const url = `${routes.evidence.detail(ref.evidenceId)}${timestamp != null ? `?t=${timestamp}` : ""}`
+				const timestamp = Math.floor((ref.startMs ?? 0) / 1000)
+				const url = `${routes.evidence.detail(ref.evidenceId)}?t=${timestamp}`
 
 				return (
 					<Link
 						key={ref.evidenceId || idx}
 						to={url}
-						className="rounded border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent/50"
-						title={ref.transcriptSnippet || "View evidence"}
+						className="rounded border bg-background px-2 py-1 font-mono text-xs transition-colors hover:bg-accent/50"
+						title={ref.transcriptSnippet || "Jump to timestamp"}
 						onClick={(e) => e.stopPropagation()}
 					>
-						{ref.startMs != null ? <span>{formatTimestamp(ref.startMs)}</span> : <span>Evidence</span>}
+						{formatTimestamp(ref.startMs ?? 0)}
 					</Link>
 				)
 			})}

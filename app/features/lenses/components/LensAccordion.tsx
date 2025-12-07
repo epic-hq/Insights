@@ -6,11 +6,13 @@
  * Includes action button to run additional analyses.
  */
 
-import { CheckCircle2, Clock, Loader2, Plus, Sparkles, XCircle } from "lucide-react"
+import { CheckCircle2, Clock, Loader2, Plus, RefreshCw, Sparkles, XCircle } from "lucide-react"
 import { useMemo, useState } from "react"
+import { useFetcher, useRevalidator } from "react-router"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { cn } from "~/lib/utils"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
 import { GenericLensView } from "./GenericLensView"
@@ -107,6 +109,57 @@ function analysisHasData(analysis: LensAnalysisWithTemplate | undefined): boolea
 	return hasFieldData || hasEntities || hasRecommendations || hasKeyInsights || hasHygiene
 }
 
+/**
+ * Re-run button for a lens analysis
+ */
+function RerunLensButton({
+	interviewId,
+	templateKey,
+	templateName,
+	isProcessing,
+	onTriggered,
+}: {
+	interviewId: string
+	templateKey: string
+	templateName: string
+	isProcessing: boolean
+	onTriggered?: () => void
+}) {
+	const fetcher = useFetcher()
+	const isSubmitting = fetcher.state !== "idle"
+	const isRunning = isSubmitting || isProcessing
+
+	const handleRerun = (e: React.MouseEvent) => {
+		e.stopPropagation() // Don't toggle accordion
+		fetcher.submit(
+			{ interview_id: interviewId, template_key: templateKey },
+			{ method: "POST", action: "/api/apply-lens" }
+		)
+		onTriggered?.()
+	}
+
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-7 w-7"
+						onClick={handleRerun}
+						disabled={isRunning}
+					>
+						<RefreshCw className={cn("h-3.5 w-3.5", isRunning && "animate-spin")} />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>
+					<p>Re-analyze with {templateName}</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	)
+}
+
 export function LensAccordion({
 	interviewId,
 	templates,
@@ -117,6 +170,7 @@ export function LensAccordion({
 	onLensApplied,
 }: Props) {
 	const [showAddLens, setShowAddLens] = useState(false)
+	const revalidator = useRevalidator()
 
 	// Sort templates by display_order
 	const sortedTemplates = useMemo(
@@ -196,7 +250,20 @@ export function LensAccordion({
 											)}
 										</div>
 									</div>
-									<CategoryBadge category={template.category} />
+									<div className="flex items-center gap-2">
+										<RerunLensButton
+											interviewId={interviewId}
+											templateKey={template.template_key}
+											templateName={template.template_name}
+											isProcessing={analysis?.status === "processing" || analysis?.status === "pending"}
+											onTriggered={() => {
+												// Revalidate after a delay to pick up status change
+												setTimeout(() => revalidator.revalidate(), 1000)
+												onLensApplied?.()
+											}}
+										/>
+										<CategoryBadge category={template.category} />
+									</div>
 								</div>
 							</AccordionTrigger>
 							<AccordionContent className="px-4 pb-4 pt-2">
