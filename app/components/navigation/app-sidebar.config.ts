@@ -11,6 +11,7 @@ import {
 	Lightbulb,
 	ListChecks,
 	ListTodo,
+	Search,
 	Sparkles,
 	Target,
 	UserCircle,
@@ -120,6 +121,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				description: "Deal qualification insights",
 				icon: DollarSign,
 				to: (routes) => routes.lenses.salesBant(),
+			},
+			{
+				key: "customer-discovery",
+				title: "Customer Discovery",
+				description: "Problem-solution validation",
+				icon: Search,
+				to: (routes) => routes.lenses.customerDiscovery(),
 			},
 			{
 				key: "insights",

@@ -5,6 +5,7 @@ export default [
 	route("lenses", "./features/lenses/pages/library.tsx"),
 	// Aggregated Lens Views - Project-wide lens analysis
 	route("lenses/sales-bant", "./features/lenses/pages/aggregated-sales-bant.tsx"),
+	route("lenses/customer-discovery", "./features/lenses/pages/aggregated-customer-discovery.tsx"),
 	// Product Lens - Pain × User Type Matrix
 	route("product-lens", "./features/lenses/pages/product-lens.tsx"),
 	// BANT Lens - Budget × Authority Matrix (legacy, uses opportunities)

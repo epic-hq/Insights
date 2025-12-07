@@ -77,6 +77,7 @@ export interface RouteDefinitions {
 	lenses: {
 		library: () => string
 		salesBant: () => string
+		customerDiscovery: () => string
 	}
 	/** @deprecated - use lenses.library() instead */
 	lensLibrary: () => string
@@ -251,6 +252,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		lenses: {
 			library: () => `${base}/lenses`,
 			salesBant: () => `${base}/lenses/sales-bant`,
+			customerDiscovery: () => `${base}/lenses/customer-discovery`,
 		},
 		// @deprecated - use lenses.library() instead
 		lensLibrary: () => `${base}/lenses`,
