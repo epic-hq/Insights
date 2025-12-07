@@ -414,6 +414,7 @@ export interface ConversationEvidence {
 }
 
 export interface ConversationLensResult {
+  executive_summary: string
   sections: LensSectionResult[]
   entities: LensEntityResult[]
   recommendations: LensRecommendation[]
@@ -918,6 +919,7 @@ export interface LensRecommendation {
 
 export interface LensSectionResult {
   section_key: string
+  summary: string
   fields: LensFieldValue[]
   
 }

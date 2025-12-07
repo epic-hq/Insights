@@ -832,10 +832,14 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 	// Build a map of section data by section_key
 	// Format: sections[].fields = [{field_key, value, confidence, evidence_ids}]
-	const sectionDataMap: Record<string, any[]> = {}
+	// Also includes summary for each section
+	const sectionDataMap: Record<string, { fields: any[]; summary?: string }> = {}
 	for (const section of sections) {
-		if (section.section_key && section.fields) {
-			sectionDataMap[section.section_key] = section.fields
+		if (section.section_key) {
+			sectionDataMap[section.section_key] = {
+				fields: section.fields || [],
+				summary: section.summary,
+			}
 		}
 	}
 
@@ -881,6 +885,13 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 	return (
 		<div className="space-y-6">
+			{/* Executive Summary (TLDR) */}
+			{analysisData.executive_summary && (
+				<div className="rounded-lg border-l-4 border-primary bg-primary/5 p-4 dark:bg-primary/10">
+					<p className="font-medium text-sm">{analysisData.executive_summary}</p>
+				</div>
+			)}
+
 			{/* Header with confidence and date */}
 			{analysis && (
 				<div className="flex items-center justify-end gap-3">
@@ -892,24 +903,49 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 			)}
 
 			{/* Render each section */}
-			{templateDef.sections.map((sectionDef) => (
-				<Card key={sectionDef.section_key}>
-					<CardHeader className="pb-3">
-						<CardTitle className="text-lg">{sectionDef.section_name}</CardTitle>
-						{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
-					</CardHeader>
-					<CardContent>
-						<SectionView
-							sectionDef={sectionDef}
-							fields={sectionDataMap[sectionDef.section_key] || []}
-							editable={editable}
-							onFieldUpdate={handleFieldUpdate}
-							evidenceMap={evidenceMap}
-							routes={routes}
-						/>
-					</CardContent>
-				</Card>
-			))}
+			{templateDef.sections.map((sectionDef) => {
+				const sectionData = sectionDataMap[sectionDef.section_key]
+				const hasSummary = sectionData?.summary
+				const hasFields = sectionData?.fields && sectionData.fields.length > 0
+
+				return (
+					<Card key={sectionDef.section_key}>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-lg">{sectionDef.section_name}</CardTitle>
+							{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
+						</CardHeader>
+						<CardContent className="space-y-3">
+							{/* Section Summary - punchy TLDR for this section */}
+							{hasSummary && (
+								<p className="text-sm text-foreground/90 leading-relaxed">{sectionData.summary}</p>
+							)}
+							{/* Detailed fields */}
+							{hasFields && (
+								<details className="group">
+									<summary className="cursor-pointer text-muted-foreground text-xs hover:text-foreground flex items-center gap-1">
+										<span className="group-open:rotate-90 transition-transform">▶</span>
+										View details ({sectionData.fields.length} fields)
+									</summary>
+									<div className="mt-3">
+										<SectionView
+											sectionDef={sectionDef}
+											fields={sectionData.fields}
+											editable={editable}
+											onFieldUpdate={handleFieldUpdate}
+											evidenceMap={evidenceMap}
+											routes={routes}
+										/>
+									</div>
+								</details>
+							)}
+							{/* Fallback when no data */}
+							{!hasSummary && !hasFields && (
+								<p className="text-muted-foreground text-sm italic">No data extracted for this section</p>
+							)}
+						</CardContent>
+					</Card>
+				)
+			})}
 
 			{/* Rich Entity Rendering - Stakeholders */}
 			{analysisData.entities?.some((e: any) => e.entity_type === "stakeholders" && e.stakeholders?.length > 0) && (

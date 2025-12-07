@@ -51,7 +51,7 @@ export default class TypeBuilder {
     
     ConversationEvidence: ClassViewer<'ConversationEvidence', "id" | "verbatim" | "gist" | "speaker" | "evidence_type" | "timestamp_start">;
     
-    ConversationLensResult: ClassViewer<'ConversationLensResult', "sections" | "entities" | "recommendations" | "hygiene" | "overall_confidence" | "processing_notes">;
+    ConversationLensResult: ClassViewer<'ConversationLensResult', "executive_summary" | "sections" | "entities" | "recommendations" | "hygiene" | "overall_confidence" | "processing_notes">;
     
     ConversationQuestion: ClassViewer<'ConversationQuestion', "question" | "asked_by" | "intent" | "evidence_snippet" | "confidence">;
     
@@ -157,7 +157,7 @@ export default class TypeBuilder {
     
     LensRecommendation: ClassViewer<'LensRecommendation', "type" | "description" | "priority" | "rationale" | "evidence_ids">;
     
-    LensSectionResult: ClassViewer<'LensSectionResult', "section_key" | "fields">;
+    LensSectionResult: ClassViewer<'LensSectionResult', "section_key" | "summary" | "fields">;
     
     LensStakeholderItem: ClassViewer<'LensStakeholderItem', "name" | "role" | "influence" | "labels" | "email" | "organization" | "confidence" | "evidence_ids">;
     
@@ -373,7 +373,7 @@ export default class TypeBuilder {
         ]);
         
         this.ConversationLensResult = this.tb.classViewer("ConversationLensResult", [
-          "sections","entities","recommendations","hygiene","overall_confidence","processing_notes",
+          "executive_summary","sections","entities","recommendations","hygiene","overall_confidence","processing_notes",
         ]);
         
         this.ConversationQuestion = this.tb.classViewer("ConversationQuestion", [
@@ -585,7 +585,7 @@ export default class TypeBuilder {
         ]);
         
         this.LensSectionResult = this.tb.classViewer("LensSectionResult", [
-          "section_key","fields",
+          "section_key","summary","fields",
         ]);
         
         this.LensStakeholderItem = this.tb.classViewer("LensStakeholderItem", [

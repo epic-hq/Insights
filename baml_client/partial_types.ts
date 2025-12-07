@@ -130,6 +130,7 @@ export namespace partial_types {
       timestamp_start?: number | null
     }
     export interface ConversationLensResult {
+      executive_summary?: string | null
       sections: LensSectionResult[]
       entities: LensEntityResult[]
       recommendations: LensRecommendation[]
@@ -528,6 +529,7 @@ export namespace partial_types {
     }
     export interface LensSectionResult {
       section_key?: string | null
+      summary?: string | null
       fields: LensFieldValue[]
     }
     export interface LensStakeholderItem {
