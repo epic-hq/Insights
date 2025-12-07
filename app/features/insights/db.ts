@@ -131,8 +131,7 @@ export const getInsights = async ({
 				definition: tag.definition,
 			})) || [],
 		linked_themes: [], // Themes are top-level now, not nested
-		// Add backward compatibility fields
-		category: null,
+		// Add backward compatibility field for interview_id
 		interview_id: themeInterviewsMap.get(insight.id)?.[0] || null, // Use first interview for backwards compat
 	}))
 	return { data: transformedData, error }

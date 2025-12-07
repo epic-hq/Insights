@@ -669,9 +669,8 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -735,9 +734,8 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}
@@ -1007,7 +1005,7 @@ export default function FeaturePrioritizationPage() {
 	return (
 		<div className="container mx-auto p-6">
 			<div className="mb-6 flex items-center justify-between">
-				<h1 className="font-bold text-2xl">Priorities</h1>
+				<h1 className="font-bold text-2xl">Tasks</h1>
 				<span className="text-muted-foreground text-sm">
 					{filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
 				</span>

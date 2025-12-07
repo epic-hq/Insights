@@ -28,6 +28,9 @@ const routes = [
 	// Public marketing landing page
 	...marketingRoutes,
 
+	// Welcome/Feature tour (public, redirects based on auth state)
+	route("welcome", "./features/onboarding/pages/welcome.tsx"),
+
 	// Signup chat (not protected, but requires auth)
 	...signupChatRoutes,
 

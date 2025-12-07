@@ -250,10 +250,10 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 			: confidence.toLowerCase()
 
 	const colors = {
-		high: "bg-green-100 text-green-700",
-		medium: "bg-yellow-100 text-yellow-700",
-		low: "bg-red-100 text-red-700",
-		inconclusive: "bg-gray-100 text-gray-700",
+		high: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+		medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+		low: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+		inconclusive: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 	}
 
 	return (
@@ -357,18 +357,18 @@ function SectionView({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const INFLUENCE_BADGE_COLORS: Record<string, string> = {
-	high: "bg-red-100 text-red-700 border-red-200",
-	medium: "bg-amber-100 text-amber-700 border-amber-200",
-	low: "bg-slate-100 text-slate-600 border-slate-200",
+	high: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
+	medium: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
+	low: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
 }
 
 const LABEL_DISPLAY: Record<string, { label: string; className: string }> = {
-	economic_buyer: { label: "Economic Buyer", className: "bg-purple-100 text-purple-700" },
-	champion: { label: "Champion", className: "bg-green-100 text-green-700" },
-	blocker: { label: "Blocker", className: "bg-red-100 text-red-700" },
-	technical_evaluator: { label: "Technical", className: "bg-blue-100 text-blue-700" },
-	end_user: { label: "End User", className: "bg-gray-100 text-gray-600" },
-	coach: { label: "Coach", className: "bg-teal-100 text-teal-700" },
+	economic_buyer: { label: "Economic Buyer", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+	champion: { label: "Champion", className: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+	blocker: { label: "Blocker", className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+	technical_evaluator: { label: "Technical", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+	end_user: { label: "End User", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
+	coach: { label: "Coach", className: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
 }
 
 /**
@@ -502,20 +502,20 @@ function NextStepCard({
 
 	// Task status colors (from tasks table)
 	const taskStatusColors: Record<string, string> = {
-		backlog: "bg-gray-100 text-gray-600",
-		todo: "bg-yellow-100 text-yellow-700",
-		in_progress: "bg-blue-100 text-blue-700",
-		blocked: "bg-red-100 text-red-700",
-		review: "bg-purple-100 text-purple-700",
-		done: "bg-green-100 text-green-700",
-		archived: "bg-gray-100 text-gray-400",
+		backlog: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+		todo: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+		in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+		blocked: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+		review: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+		done: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+		archived: "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
 	}
 
 	// Legacy next_step status colors (for pre-task-linking data)
 	const legacyStatusColors: Record<string, string> = {
-		pending: "bg-yellow-100 text-yellow-700",
-		in_progress: "bg-blue-100 text-blue-700",
-		completed: "bg-green-100 text-green-700",
+		pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+		in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+		completed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 	}
 
 	const statusColors = nextStep.task_id ? taskStatusColors : legacyStatusColors
@@ -637,9 +637,9 @@ function ObjectionCard({
 			: undefined
 
 	const statusColors: Record<string, string> = {
-		raised: "bg-red-100 text-red-700",
-		addressed: "bg-green-100 text-green-700",
-		unresolved: "bg-yellow-100 text-yellow-700",
+		raised: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+		addressed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+		unresolved: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
 	}
 
 	return (
@@ -714,9 +714,9 @@ function HygieneWarnings({ hygiene }: { hygiene: any[] }) {
 	}
 
 	const severityColors: Record<string, string> = {
-		critical: "border-red-200 bg-red-50",
-		warning: "border-amber-200 bg-amber-50",
-		info: "border-blue-200 bg-blue-50",
+		critical: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30",
+		warning: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/30",
+		info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30",
 	}
 
 	return (
