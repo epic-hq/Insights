@@ -1,20 +1,20 @@
-drop policy "Anyone can read active lens templates" on "public"."conversation_lens_templates";
+drop policy if exists "Anyone can read active lens templates" on "public"."conversation_lens_templates";
 
-drop policy "insights_read_only" on "public"."insights";
+drop policy if exists "insights_read_only" on "public"."insights";
 
-drop policy "Account members can delete lens analyses" on "public"."conversation_lens_analyses";
+drop policy if exists "Account members can delete lens analyses" on "public"."conversation_lens_analyses";
 
-drop policy "Account members can update lens analyses" on "public"."conversation_lens_analyses";
+drop policy if exists "Account members can update lens analyses" on "public"."conversation_lens_analyses";
 
-alter table "public"."actions" drop constraint "actions_insight_id_fkey";
+alter table "public"."actions" drop constraint if exists "actions_insight_id_fkey";
 
-alter table "public"."comments" drop constraint "comments_insight_id_fkey";
+alter table "public"."comments" drop constraint if exists "comments_insight_id_fkey";
 
-alter table "public"."insight_tags" drop constraint "insight_tags_insight_id_fkey";
+alter table "public"."insight_tags" drop constraint if exists "insight_tags_insight_id_fkey";
 
-alter table "public"."opportunity_insights" drop constraint "opportunity_insights_insight_id_fkey";
+alter table "public"."opportunity_insights" drop constraint if exists "opportunity_insights_insight_id_fkey";
 
-alter table "public"."persona_insights" drop constraint "persona_insights_insight_id_fkey";
+alter table "public"."persona_insights" drop constraint if exists "persona_insights_insight_id_fkey";
 
 drop view if exists "public"."insights_with_priority";
 
@@ -32,77 +32,81 @@ drop view if exists "public"."project_answer_metrics";
 
 drop index if exists "public"."conversation_lens_analyses_trigger_run_idx";
 
-alter table "public"."conversation_lens_templates" add column "account_id" uuid;
+-- Add columns if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversation_lens_templates' AND column_name = 'account_id') THEN
+    ALTER TABLE "public"."conversation_lens_templates" ADD COLUMN "account_id" uuid;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversation_lens_templates' AND column_name = 'created_by') THEN
+    ALTER TABLE "public"."conversation_lens_templates" ADD COLUMN "created_by" uuid;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversation_lens_templates' AND column_name = 'is_public') THEN
+    ALTER TABLE "public"."conversation_lens_templates" ADD COLUMN "is_public" boolean NOT NULL DEFAULT true;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversation_lens_templates' AND column_name = 'is_system') THEN
+    ALTER TABLE "public"."conversation_lens_templates" ADD COLUMN "is_system" boolean NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversation_lens_templates' AND column_name = 'nlp_source') THEN
+    ALTER TABLE "public"."conversation_lens_templates" ADD COLUMN "nlp_source" text;
+  END IF;
+END $$;
 
-alter table "public"."conversation_lens_templates" add column "created_by" uuid;
+-- Create indexes if they don't exist
+CREATE INDEX IF NOT EXISTS conversation_lens_templates_account_idx ON public.conversation_lens_templates USING btree (account_id) WHERE (account_id IS NOT NULL);
 
-alter table "public"."conversation_lens_templates" add column "is_public" boolean not null default true;
+CREATE INDEX IF NOT EXISTS conversation_lens_templates_created_by_idx ON public.conversation_lens_templates USING btree (created_by) WHERE (created_by IS NOT NULL);
 
-alter table "public"."conversation_lens_templates" add column "is_system" boolean not null default false;
+CREATE UNIQUE INDEX IF NOT EXISTS conversation_lens_templates_scoped_key_unique ON public.conversation_lens_templates USING btree (COALESCE(account_id, '00000000-0000-0000-0000-000000000000'::uuid), template_key);
 
-alter table "public"."conversation_lens_templates" add column "nlp_source" text;
+-- Add constraints idempotently (drop first if exists, then add)
+DO $$
+BEGIN
+  -- conversation_lens_analyses constraints
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_account_id_fkey";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_account_id_fkey" FOREIGN KEY (account_id) REFERENCES accounts.accounts(id) ON DELETE CASCADE;
 
-CREATE INDEX conversation_lens_templates_account_idx ON public.conversation_lens_templates USING btree (account_id) WHERE (account_id IS NOT NULL);
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_confidence_score_check";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_confidence_score_check" CHECK (((confidence_score >= (0)::double precision) AND (confidence_score <= (1)::double precision)));
 
-CREATE INDEX conversation_lens_templates_created_by_idx ON public.conversation_lens_templates USING btree (created_by) WHERE (created_by IS NOT NULL);
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_interview_id_fkey";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES public.interviews(id) ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX conversation_lens_templates_scoped_key_unique ON public.conversation_lens_templates USING btree (COALESCE(account_id, '00000000-0000-0000-0000-000000000000'::uuid), template_key);
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_processed_by_fkey";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_processed_by_fkey" FOREIGN KEY (processed_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_account_id_fkey" FOREIGN KEY (account_id) REFERENCES accounts.accounts(id) ON DELETE CASCADE not valid;
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_project_id_fkey";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_account_id_fkey";
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_status_check";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_status_check" CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])));
 
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_confidence_score_check" CHECK (((confidence_score >= (0)::double precision) AND (confidence_score <= (1)::double precision))) not valid;
+  ALTER TABLE "public"."conversation_lens_analyses" DROP CONSTRAINT IF EXISTS "conversation_lens_analyses_template_key_fkey";
+  ALTER TABLE "public"."conversation_lens_analyses" ADD CONSTRAINT "conversation_lens_analyses_template_key_fkey" FOREIGN KEY (template_key) REFERENCES public.conversation_lens_templates(template_key) ON DELETE RESTRICT;
 
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_confidence_score_check";
+  -- conversation_lens_templates constraints
+  ALTER TABLE "public"."conversation_lens_templates" DROP CONSTRAINT IF EXISTS "conversation_lens_templates_account_id_fkey";
+  ALTER TABLE "public"."conversation_lens_templates" ADD CONSTRAINT "conversation_lens_templates_account_id_fkey" FOREIGN KEY (account_id) REFERENCES accounts.accounts(id) ON DELETE CASCADE;
 
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES public.interviews(id) ON DELETE CASCADE not valid;
+  ALTER TABLE "public"."conversation_lens_templates" DROP CONSTRAINT IF EXISTS "conversation_lens_templates_created_by_fkey";
+  ALTER TABLE "public"."conversation_lens_templates" ADD CONSTRAINT "conversation_lens_templates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_interview_id_fkey";
+  -- Other table constraints
+  ALTER TABLE "public"."actions" DROP CONSTRAINT IF EXISTS "actions_insight_id_fkey";
+  ALTER TABLE "public"."actions" ADD CONSTRAINT "actions_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE SET NULL;
 
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_processed_by_fkey" FOREIGN KEY (processed_by) REFERENCES auth.users(id) ON DELETE SET NULL not valid;
+  ALTER TABLE "public"."comments" DROP CONSTRAINT IF EXISTS "comments_insight_id_fkey";
+  ALTER TABLE "public"."comments" ADD CONSTRAINT "comments_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.insights(id) ON DELETE CASCADE;
 
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_processed_by_fkey";
+  ALTER TABLE "public"."insight_tags" DROP CONSTRAINT IF EXISTS "insight_tags_insight_id_fkey";
+  ALTER TABLE "public"."insight_tags" ADD CONSTRAINT "insight_tags_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE CASCADE;
 
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+  ALTER TABLE "public"."opportunity_insights" DROP CONSTRAINT IF EXISTS "opportunity_insights_insight_id_fkey";
+  ALTER TABLE "public"."opportunity_insights" ADD CONSTRAINT "opportunity_insights_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE CASCADE;
 
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_project_id_fkey";
-
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_status_check" CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text]))) not valid;
-
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_status_check";
-
-alter table "public"."conversation_lens_analyses" add constraint "conversation_lens_analyses_template_key_fkey" FOREIGN KEY (template_key) REFERENCES public.conversation_lens_templates(template_key) ON DELETE RESTRICT not valid;
-
-alter table "public"."conversation_lens_analyses" validate constraint "conversation_lens_analyses_template_key_fkey";
-
-alter table "public"."conversation_lens_templates" add constraint "conversation_lens_templates_account_id_fkey" FOREIGN KEY (account_id) REFERENCES accounts.accounts(id) ON DELETE CASCADE not valid;
-
-alter table "public"."conversation_lens_templates" validate constraint "conversation_lens_templates_account_id_fkey";
-
-alter table "public"."conversation_lens_templates" add constraint "conversation_lens_templates_created_by_fkey" FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL not valid;
-
-alter table "public"."conversation_lens_templates" validate constraint "conversation_lens_templates_created_by_fkey";
-
-alter table "public"."actions" add constraint "actions_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE SET NULL not valid;
-
-alter table "public"."actions" validate constraint "actions_insight_id_fkey";
-
-alter table "public"."comments" add constraint "comments_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.insights(id) ON DELETE CASCADE not valid;
-
-alter table "public"."comments" validate constraint "comments_insight_id_fkey";
-
-alter table "public"."insight_tags" add constraint "insight_tags_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE CASCADE not valid;
-
-alter table "public"."insight_tags" validate constraint "insight_tags_insight_id_fkey";
-
-alter table "public"."opportunity_insights" add constraint "opportunity_insights_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE CASCADE not valid;
-
-alter table "public"."opportunity_insights" validate constraint "opportunity_insights_insight_id_fkey";
-
-alter table "public"."persona_insights" add constraint "persona_insights_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE CASCADE not valid;
-
-alter table "public"."persona_insights" validate constraint "persona_insights_insight_id_fkey";
+  ALTER TABLE "public"."persona_insights" DROP CONSTRAINT IF EXISTS "persona_insights_insight_id_fkey";
+  ALTER TABLE "public"."persona_insights" ADD CONSTRAINT "persona_insights_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES public.themes(id) ON DELETE CASCADE;
+END $$;
 
 set check_function_bodies = off;
 
@@ -337,63 +341,82 @@ grant truncate on table "public"."conversation_lens_templates" to "authenticated
 grant update on table "public"."conversation_lens_templates" to "authenticated";
 
 
-  create policy "Users can create templates in their account"
-  on "public"."conversation_lens_templates"
-  as permissive
-  for insert
-  to authenticated
-with check (((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)) AND (is_system = false)));
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_lens_templates' AND policyname = 'Users can create templates in their account') THEN
+    CREATE POLICY "Users can create templates in their account"
+    ON "public"."conversation_lens_templates"
+    AS permissive
+    FOR insert
+    TO authenticated
+    WITH CHECK (((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)) AND (is_system = false)));
+  END IF;
+END $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_lens_templates' AND policyname = 'Users can delete their own templates') THEN
+    CREATE POLICY "Users can delete their own templates"
+    ON "public"."conversation_lens_templates"
+    AS permissive
+    FOR delete
+    TO authenticated
+    USING (((created_by = auth.uid()) AND (is_system = false)));
+  END IF;
+END $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_lens_templates' AND policyname = 'Users can read accessible templates') THEN
+    CREATE POLICY "Users can read accessible templates"
+    ON "public"."conversation_lens_templates"
+    AS permissive
+    FOR select
+    TO authenticated
+    USING (((is_active = true) AND ((is_system = true) OR ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)) AND ((is_public = true) OR (created_by = auth.uid()))))));
+  END IF;
+END $$;
 
-  create policy "Users can delete their own templates"
-  on "public"."conversation_lens_templates"
-  as permissive
-  for delete
-  to authenticated
-using (((created_by = auth.uid()) AND (is_system = false)));
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_lens_templates' AND policyname = 'Users can update their own templates') THEN
+    CREATE POLICY "Users can update their own templates"
+    ON "public"."conversation_lens_templates"
+    AS permissive
+    FOR update
+    TO authenticated
+    USING (((created_by = auth.uid()) AND (is_system = false)))
+    WITH CHECK (((created_by = auth.uid()) AND (is_system = false)));
+  END IF;
+END $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_lens_analyses' AND policyname = 'Account members can delete lens analyses') THEN
+    CREATE POLICY "Account members can delete lens analyses"
+    ON "public"."conversation_lens_analyses"
+    AS permissive
+    FOR delete
+    TO authenticated
+    USING ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)));
+  END IF;
+END $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_lens_analyses' AND policyname = 'Account members can update lens analyses') THEN
+    CREATE POLICY "Account members can update lens analyses"
+    ON "public"."conversation_lens_analyses"
+    AS permissive
+    FOR update
+    TO authenticated
+    USING ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)))
+    WITH CHECK ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)));
+  END IF;
+END $$;
 
-  create policy "Users can read accessible templates"
-  on "public"."conversation_lens_templates"
-  as permissive
-  for select
-  to authenticated
-using (((is_active = true) AND ((is_system = true) OR ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)) AND ((is_public = true) OR (created_by = auth.uid()))))));
-
-
-
-  create policy "Users can update their own templates"
-  on "public"."conversation_lens_templates"
-  as permissive
-  for update
-  to authenticated
-using (((created_by = auth.uid()) AND (is_system = false)))
-with check (((created_by = auth.uid()) AND (is_system = false)));
-
-
-
-  create policy "Account members can delete lens analyses"
-  on "public"."conversation_lens_analyses"
-  as permissive
-  for delete
-  to authenticated
-using ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)));
-
-
-
-  create policy "Account members can update lens analyses"
-  on "public"."conversation_lens_analyses"
-  as permissive
-  for update
-  to authenticated
-using ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)))
-with check ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)));
-
-
+DROP TRIGGER IF EXISTS set_conversation_lens_analyses_timestamp ON public.conversation_lens_analyses;
 CREATE TRIGGER set_conversation_lens_analyses_timestamp BEFORE INSERT OR UPDATE ON public.conversation_lens_analyses FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
+DROP TRIGGER IF EXISTS set_conversation_lens_templates_timestamp ON public.conversation_lens_templates;
 CREATE TRIGGER set_conversation_lens_templates_timestamp BEFORE INSERT OR UPDATE ON public.conversation_lens_templates FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
-
-

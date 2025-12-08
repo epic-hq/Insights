@@ -59,32 +59,29 @@ export function AiInsightCard({
 
 						<p className="text-foreground text-sm leading-relaxed">"{insight}"</p>
 
-						{/* Action */}
-						{interactive && (href || onAskFollowUp) && (
+						{/* Action - only show button when there's no outer Link (to avoid nested <a> tags) */}
+						{interactive && !href && onAskFollowUp && (
 							<Button
 								variant="ghost"
 								size="sm"
 								className="mt-3 -ml-2 text-primary hover:text-primary"
-								asChild={!!href}
-								onClick={!href && onAskFollowUp ? (e) => {
+								onClick={(e) => {
 									e.stopPropagation()
 									onAskFollowUp()
-								} : undefined}
+								}}
 							>
-								{href ? (
-									<Link to={href}>
-										<MessageSquare className="h-4 w-4 mr-1.5" />
-										Ask follow-up
-										<ChevronRight className="h-4 w-4 ml-1" />
-									</Link>
-								) : (
-									<>
-										<MessageSquare className="h-4 w-4 mr-1.5" />
-										Ask follow-up
-										<ChevronRight className="h-4 w-4 ml-1" />
-									</>
-								)}
+								<MessageSquare className="h-4 w-4 mr-1.5" />
+								Ask follow-up
+								<ChevronRight className="h-4 w-4 ml-1" />
 							</Button>
+						)}
+						{/* When href is provided, show a non-interactive hint since entire card is clickable */}
+						{interactive && href && (
+							<div className="mt-3 -ml-2 flex items-center gap-1.5 text-primary text-sm">
+								<MessageSquare className="h-4 w-4" />
+								<span>Ask follow-up</span>
+								<ChevronRight className="h-4 w-4" />
+							</div>
 						)}
 					</div>
 				</div>

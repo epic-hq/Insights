@@ -1,8 +1,8 @@
 import { task } from "@trigger.dev/sdk"
 import consola from "consola"
 
-import { b } from "~/../baml_client"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { runBaml } from "../lib/baml-tracing"
 import type { Tables } from "~/types"
 import { workflowRetryConfig } from "~/utils/processInterview.server"
 
@@ -88,12 +88,23 @@ export const generatePersonaSummaryTask = task({
                         .map((entry) => entry.insights)
                         .filter((value): value is Tables<"themes"> => Boolean(value))
 
-                const bamlResult = await b.ExtractPersona(
-                        JSON.stringify(peopleRecords),
-                        JSON.stringify(insightsRecords),
-                        JSON.stringify(interviewsRecords),
-                        JSON.stringify(evidenceData ?? [])
-                )
+                const { result: bamlResult } = await runBaml({
+                        functionName: "ExtractPersona",
+                        traceName: "persona.extract",
+                        input: {
+                                peopleCount: peopleRecords.length,
+                                insightsCount: insightsRecords.length,
+                                interviewsCount: interviewsRecords.length,
+                                evidenceCount: evidenceData?.length ?? 0,
+                        },
+                        metadata: { personaId, projectId, accountId },
+                        bamlCall: (client) => client.ExtractPersona(
+                                JSON.stringify(peopleRecords),
+                                JSON.stringify(insightsRecords),
+                                JSON.stringify(interviewsRecords),
+                                JSON.stringify(evidenceData ?? [])
+                        ),
+                })
 
                 const { error: updateError } = await supabase
                         .from("personas")

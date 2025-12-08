@@ -10,8 +10,8 @@
 import { metadata, task } from "@trigger.dev/sdk"
 import consola from "consola"
 
-import { b } from "~/../baml_client"
 import { createTask } from "~/features/tasks/db"
+import { runBaml } from "../lib/baml-tracing"
 import type { TaskStatus } from "~/features/tasks/types"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { workflowRetryConfig } from "~/utils/processInterview.server"
@@ -347,13 +347,30 @@ export const applyLensTask = task({
 		let extraction: any = null
 		try {
 			consola.info(`[applyLens] Calling ApplyConversationLens for ${template.template_name}`)
-			extraction = await b.ApplyConversationLens(
-				templateDefinition,
-				template.template_name,
-				evidenceJson,
-				interviewContext,
-				customInstructions || null
-			)
+			const { result } = await runBaml({
+				functionName: "ApplyConversationLens",
+				traceName: `lens.${templateKey}`,
+				input: {
+					templateName: template.template_name,
+					evidenceCount: evidence.length,
+					interviewContext,
+					hasCustomInstructions: !!customInstructions,
+				},
+				metadata: {
+					interviewId,
+					templateKey,
+					accountId,
+					projectId,
+				},
+				bamlCall: (client) => client.ApplyConversationLens(
+					templateDefinition,
+					template.template_name,
+					evidenceJson,
+					interviewContext,
+					customInstructions || null
+				),
+			})
+			extraction = result
 		} catch (error) {
 			consola.error(`[applyLens] BAML extraction failed for ${templateKey}:`, error)
 			// Store failed status

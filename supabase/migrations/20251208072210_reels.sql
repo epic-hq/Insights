@@ -4,15 +4,15 @@ drop policy if exists "Account members can delete lens analyses" on "public"."co
 
 drop policy if exists "Account members can update lens analyses" on "public"."conversation_lens_analyses";
 
-alter table "public"."actions" drop constraint "actions_insight_id_fkey";
+alter table "public"."actions" drop constraint if exists "actions_insight_id_fkey";
 
-alter table "public"."comments" drop constraint "comments_insight_id_fkey";
+alter table "public"."comments" drop constraint if exists "comments_insight_id_fkey";
 
-alter table "public"."insight_tags" drop constraint "insight_tags_insight_id_fkey";
+alter table "public"."insight_tags" drop constraint if exists "insight_tags_insight_id_fkey";
 
-alter table "public"."opportunity_insights" drop constraint "opportunity_insights_insight_id_fkey";
+alter table "public"."opportunity_insights" drop constraint if exists "opportunity_insights_insight_id_fkey";
 
-alter table "public"."persona_insights" drop constraint "persona_insights_insight_id_fkey";
+alter table "public"."persona_insights" drop constraint if exists "persona_insights_insight_id_fkey";
 
 drop view if exists "public"."insights_with_priority";
 
@@ -316,8 +316,10 @@ using ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts
 with check ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts_with_role)));
 
 
+DROP TRIGGER IF EXISTS set_conversation_lens_analyses_timestamp ON public.conversation_lens_analyses;
 CREATE TRIGGER set_conversation_lens_analyses_timestamp BEFORE INSERT OR UPDATE ON public.conversation_lens_analyses FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
+DROP TRIGGER IF EXISTS set_conversation_lens_templates_timestamp ON public.conversation_lens_templates;
 CREATE TRIGGER set_conversation_lens_templates_timestamp BEFORE INSERT OR UPDATE ON public.conversation_lens_templates FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
 

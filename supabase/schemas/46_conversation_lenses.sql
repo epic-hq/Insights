@@ -551,7 +551,7 @@ insert into public.conversation_lens_templates (
 
 -- Consulting Project
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'consulting-project',
   'Consulting Project',
@@ -638,12 +638,14 @@ insert into public.conversation_lens_templates (
     "entities": ["stakeholders", "next_steps"],
     "recommendations_enabled": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
   primary_objective = excluded.primary_objective,
-  template_definition = excluded.template_definition;
+  template_definition = excluded.template_definition,
+  is_system = true;
 
 comment on table public.conversation_lens_templates is
   'Reusable conversation analysis templates/frameworks. Defines structure for analyzing interviews through different lenses.';

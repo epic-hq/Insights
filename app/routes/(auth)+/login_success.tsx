@@ -200,7 +200,7 @@ async function ensureDefaultAccountAndProject({
 		}
 
 		const projectRoutes = createProjectRoutes(accountId, projectId)
-		return projectRoutes.projects.setup()
+		return projectRoutes.dashboard()
 	} catch (error) {
 		consola.warn("[LOGIN_SUCCESS] Error ensuring default account/project:", error)
 		return null
@@ -429,7 +429,8 @@ async function resolveLastUsedProjectRedirect({
 			return await ensureDefaultAccountAndProject({ supabase, userId })
 		}
 
-		return `/a/${accountId}/${project.id}`
+		const projectRoutes = createProjectRoutes(accountId, project.id)
+		return projectRoutes.dashboard()
 	} catch (error) {
 		consola.warn("[LOGIN_SUCCESS] Error resolving last used redirect:", error)
 		return null

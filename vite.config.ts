@@ -1,6 +1,6 @@
 import { reactRouter } from "@react-router/dev/vite"
 import tailwindcss from "@tailwindcss/vite"
-import { reactRouterDevTools } from "react-router-devtools"
+// import { reactRouterDevTools } from "react-router-devtools"
 import { reactRouterHonoServer } from "react-router-hono-server/dev"
 import { defineConfig } from "vite"
 import babel from "vite-plugin-babel"
@@ -12,11 +12,74 @@ export default defineConfig({
 	base: "/",
 	resolve: {
 		alias: { "@": "/src" },
-		dedupe: ["react", "react-dom"],
+		dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "react-router", "react-router-dom"],
 	},
-	// Externalize BAML native modules and AWS SDK to prevent bundling issues
 	optimizeDeps: {
-		include: ["react", "react-dom"],
+		include: [
+			// React core
+			"react",
+			"react-dom",
+			"react/jsx-runtime",
+			"react/jsx-dev-runtime",
+			"react-router",
+			"react-router-dom",
+			// i18n
+			"i18next",
+			"i18next-browser-languagedetector",
+			"i18next-http-backend",
+			"react-i18next",
+			"remix-i18next/client",
+			"remix-i18next/react",
+			// UI libraries
+			"@radix-ui/react-accordion",
+			"@radix-ui/react-alert-dialog",
+			"@radix-ui/react-avatar",
+			"@radix-ui/react-dialog",
+			"@radix-ui/react-dropdown-menu",
+			"@radix-ui/react-label",
+			"@radix-ui/react-popover",
+			"@radix-ui/react-progress",
+			"@radix-ui/react-scroll-area",
+			"@radix-ui/react-select",
+			"@radix-ui/react-separator",
+			"@radix-ui/react-slot",
+			"@radix-ui/react-switch",
+			"@radix-ui/react-tabs",
+			"@radix-ui/react-toggle",
+			"@radix-ui/react-toggle-group",
+			"@radix-ui/react-tooltip",
+			"cmdk",
+			"react-resizable-panels",
+			"framer-motion",
+			"recharts",
+			"react-markdown",
+			"streamdown",
+			// Analytics/monitoring
+			"posthog-js",
+			"posthog-js/react",
+			"sonner",
+			"consola",
+			// Utilities
+			"@epic-web/client-hints",
+			"@epic-web/client-hints/color-scheme",
+			"@epic-web/client-hints/reduced-motion",
+			"@epic-web/client-hints/time-zone",
+			"class-variance-authority",
+			"clsx",
+			"tailwind-merge",
+			"date-fns",
+			"zod",
+			"zod/v4",
+			"lucide-react",
+			// AI/SDK
+			"@ai-sdk/react",
+			"ai",
+			"@supabase/ssr",
+			// Other
+			"@paper-design/shaders-react",
+			"@livekit/components-react",
+			"@trigger.dev/react-hooks",
+		],
 		exclude: [
 			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",
@@ -50,7 +113,7 @@ export default defineConfig({
 		// 	}),
 		// 	apply: "build",
 		// },
-		reactRouterDevTools(),
+		// reactRouterDevTools(), // Disabled - causes React context issues
 		reactRouter(),
 		reactRouterHonoServer({
 			dev: {
