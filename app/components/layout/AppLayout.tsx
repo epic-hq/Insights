@@ -33,6 +33,9 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const isOnboarding = searchParams.get("onboarding") === "true"
 	const showMainNav = !isOnboarding
 
+	// Should we show the mobile navigation?
+	const showMobileNav = isMobile && showJourneyNav && showMainNav
+
 	return (
 		<SidebarProvider>
 			{showMainNav && !isMobile && <AppSidebar />}
@@ -40,14 +43,14 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				<main
 					className={cn(
 						"flex min-h-screen flex-1 flex-col",
-						isMobile && showJourneyNav && showMainNav ? "pb-[72px]" : ""
+						showMobileNav ? "pb-[72px]" : ""
 					)}
 				>
 					<Outlet />
 				</main>
 
 				{/* Mobile Bottom Tab Bar */}
-				{showJourneyNav && isMobile && showMainNav && (
+				{showMobileNav && (
 					<BottomTabBar
 						routes={{
 							people: routes.people.index(),

@@ -6,6 +6,7 @@ import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
+import { getCurrentDateTool } from "../tools/get-current-date"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
@@ -53,8 +54,9 @@ Goals:
 - Always ground answers in the latest project data: insights, evidence, themes, people, personas, and research questions.
 
 Workflow:
-1. Call the "fetchProjectStatusContext" tool before answering to load the current project's data. Use project_id=${projectId || "<unknown>"} and account_id=${accountId || "<unknown>"} from the runtime context. Specify the scopes you need and adjust limits (e.g., evidenceLimit/insightLimit/interviewLimit) so you have enough detail to answer the question.
-2. Parse the user's request:
+1. **Date/Time Awareness**: When the user asks about today's date, what day it is, or any time-related information, ALWAYS call "getCurrentDate" first to get the accurate current date and time in the user's local timezone. Never guess or use your training data for current dates.
+2. Call the "fetchProjectStatusContext" tool before answering to load the current project's data. Use project_id=${projectId || "<unknown>"} and account_id=${accountId || "<unknown>"} from the runtime context. Specify the scopes you need and adjust limits (e.g., evidenceLimit/insightLimit/interviewLimit) so you have enough detail to answer the question.
+3. Parse the user's request:
    • If they name or clearly refer to a specific person, immediately call "fetchPeopleDetails" with peopleSearch set to that name and includePersonas/includeEvidence=true to get comprehensive person details, demographics, and interview history. Use the returned data to ground your answer, or ask for clarification if the person cannot be found.
    • If they ask about segments, customer groups, or target markets, call "fetchSegments" to get segment data with bullseye scores. This shows which customer segments are most likely to buy based on willingness to pay and pain intensity.
    • If they ask about the Product Lens or pain matrix, call "fetchPainMatrixCache" to get the cached matrix data. If no cache exists or it's stale, explain that Product Lens analysis needs to be run.
@@ -72,14 +74,14 @@ Workflow:
    • If they ask to find people by traits, roles, or demographics (e.g., "find CTOs", "who are the product managers?", "show me enterprise buyers"), call "semanticSearchPeople" with the query describing the traits. This searches person facets like roles, titles, company size, industry, behaviors. Use kindSlugFilter to narrow by facet type if needed.
    • If they ask about opportunities, pipeline health, or specific deals, call "fetchOpportunities" to load opportunity details (stage, amount, close date, status) before answering.
    • If they ask about a particular theme, persona, or other entity, re-call the status tool (or another relevant tool) with the matching scope and search parameters so you can cite real records.
-3. For detailed interview breakdowns or transcripts, follow up by calling "fetchInterviewContext" for the interview IDs you discovered (use includeEvidence=true unless the user prefers otherwise).
-4. When the user wants to log a new deal or assign follow-up work to sales, call "createOpportunity" with the information they provided (title, description, stage, value, close date, linked interviews). Confirm the new opportunity back to them.
-5. When they want to change deal state (e.g., move to Validate, adjust forecast, update close date), confirm which opportunity they're referencing (via link or fetch) and call "updateOpportunity" with the fields they requested.
-6. When the user provides contact information or demographic details about a person (name, email, phone, title, location, etc.), call "upsertPerson" with the relevant fields to create or update the person record. This handles basic person data ONLY.
-7. When the user wants to update where someone works or their organizational relationships (e.g., "Tim works at Acme Corp"), FIRST use "fetchPeopleDetails" to get the person's ID, THEN call "manage-person-organizations" with personId and a transcript describing the relationship. This creates proper organization links, not just text fields.
-8. When the user shares qualitative insights about a person's traits, behaviors, or characteristics, call "upsertPersonFacets" with that transcript plus the specific person_id to capture the facets in the database.
-9. When users ask you to save, create, write, or document something (e.g., "save our positioning", "create an SEO strategy", "write up meeting notes"), use "manageDocuments" with operation="upsert" and translate natural language to appropriate document kinds. The tool has full vocabulary mapping - just use natural language and it will handle the translation.
-10. When users want to add notes, comments, or reminders to specific entities (people, organizations, opportunities, interviews), use "manageAnnotations" to create annotations. Examples: "add a note to this person", "remind me to follow up with this org", "flag this opportunity as high priority". Annotations are for entity-level notes and todos, different from project-level documents managed by manageDocuments. text, keep status accurate (proposed/selected/backup/deleted), and preserve rationale/category/estimated time if provided. **Do NOT use manageDocuments for prompts; only use the interview prompt tools.**
+4. For detailed interview breakdowns or transcripts, follow up by calling "fetchInterviewContext" for the interview IDs you discovered (use includeEvidence=true unless the user prefers otherwise).
+5. When the user wants to log a new deal or assign follow-up work to sales, call "createOpportunity" with the information they provided (title, description, stage, value, close date, linked interviews). Confirm the new opportunity back to them.
+6. When they want to change deal state (e.g., move to Validate, adjust forecast, update close date), confirm which opportunity they're referencing (via link or fetch) and call "updateOpportunity" with the fields they requested.
+7. When the user provides contact information or demographic details about a person (name, email, phone, title, location, etc.), call "upsertPerson" with the relevant fields to create or update the person record. This handles basic person data ONLY.
+8. When the user wants to update where someone works or their organizational relationships (e.g., "Tim works at Acme Corp"), FIRST use "fetchPeopleDetails" to get the person's ID, THEN call "manage-person-organizations" with personId and a transcript describing the relationship. This creates proper organization links, not just text fields.
+9. When the user shares qualitative insights about a person's traits, behaviors, or characteristics, call "upsertPersonFacets" with that transcript plus the specific person_id to capture the facets in the database.
+10. When users ask you to save, create, write, or document something (e.g., "save our positioning", "create an SEO strategy", "write up meeting notes"), use "manageDocuments" with operation="upsert" and translate natural language to appropriate document kinds. The tool has full vocabulary mapping - just use natural language and it will handle the translation.
+11. When users want to add notes, comments, or reminders to specific entities (people, organizations, opportunities, interviews), use "manageAnnotations" to create annotations. Examples: "add a note to this person", "remind me to follow up with this org", "flag this opportunity as high priority". Annotations are for entity-level notes and todos, different from project-level documents managed by manageDocuments. text, keep status accurate (proposed/selected/backup/deleted), and preserve rationale/category/estimated time if provided. **Do NOT use manageDocuments for prompts; only use the interview prompt tools.**
 12. **Task Management**: Use task tools to help users track and organize work:
    • When users ask about tasks, features, or roadmap items, call "fetchTasks" to list current tasks. You can filter by status (backlog, todo, in_progress, blocked, review, done, archived), cluster, priority, or search text.
    • When users ask you to create, add, or track a task/feature/work item, call "createTask" with title and cluster (required), plus optional fields like description, status, priority (1=Now, 2=Next, 3=Later), impact (1-3), stage, benefit, segments, reason, tags, dueDate, and estimatedEffort (S/M/L/XL).
@@ -113,6 +115,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 	},
 	model: openai("gpt-4.1"),
 	tools: {
+		getCurrentDate: getCurrentDateTool,
 		fetchProjectStatusContext: fetchProjectStatusContextTool,
 		fetchInterviewContext: fetchInterviewContextTool,
 		fetchPeopleDetails: fetchPeopleDetailsTool,

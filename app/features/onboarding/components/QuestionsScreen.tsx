@@ -55,7 +55,7 @@ export default function QuestionsScreen({
 			<div className="mb-6 sm:mb-8">
 				<h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
 					<MessageCircleQuestionMark className="h-8 w-8" />
-					Interview Questions
+					Conversation Questions
 				</h2>
 				<p className="text-gray-600">
 					Generate smart questions based on your research goals and customize your question pack.
@@ -87,7 +87,7 @@ export default function QuestionsScreen({
 						className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
 					>
 						<Mic className="mr-2 h-4 w-4" />
-						Add Interview
+						Add Conversation
 					</Button>
 				</div>
 			</div>
