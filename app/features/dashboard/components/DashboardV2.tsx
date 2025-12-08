@@ -7,15 +7,15 @@
  * - Has Data: Shows lens results and AI insights
  */
 
-import { useState } from "react"
 import { Pencil } from "lucide-react"
+import { useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
 import { cn } from "~/lib/utils"
 import { AiInsightCard } from "./AiInsightCard"
 import { EmptyState } from "./EmptyState"
 import { LensResultsGrid, type LensSummary } from "./LensResultsGrid"
-import { ProcessingState, type ProcessingItem } from "./ProcessingState"
+import { type ProcessingItem, ProcessingState } from "./ProcessingState"
 import { QuickActionsBar } from "./QuickActionsBar"
 
 export interface DashboardV2Props {
@@ -54,10 +54,7 @@ export interface DashboardV2Props {
 
 type ProjectState = "empty" | "processing" | "hasData"
 
-function getProjectState(
-	conversationCount: number,
-	processingCount: number
-): ProjectState {
+function getProjectState(conversationCount: number, processingCount: number): ProjectState {
 	if (conversationCount === 0 && processingCount === 0) {
 		return "empty"
 	}
@@ -90,15 +87,8 @@ export function DashboardV2({
 			<header className="flex items-start justify-between gap-4">
 				<div className="min-w-0">
 					<div className="flex items-center gap-2">
-						<h1 className="text-xl font-semibold text-foreground truncate">
-							{projectName}
-						</h1>
-						<Button
-							asChild
-							variant="ghost"
-							size="icon"
-							className="h-7 w-7 flex-shrink-0"
-						>
+						<h1 className="truncate font-semibold text-foreground text-xl">{projectName}</h1>
+						<Button asChild variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
 							<Link to={routes.setup}>
 								<Pencil className="h-3.5 w-3.5" />
 								<span className="sr-only">Edit project</span>
@@ -106,7 +96,7 @@ export function DashboardV2({
 						</Button>
 					</div>
 					{projectState !== "empty" && (
-						<p className="text-sm text-muted-foreground mt-0.5">
+						<p className="mt-0.5 text-muted-foreground text-sm">
 							{conversationCount} conversation{conversationCount !== 1 ? "s" : ""}
 							{activeLensCount > 0 && ` · ${activeLensCount} lens${activeLensCount !== 1 ? "es" : ""} active`}
 						</p>
@@ -116,12 +106,7 @@ export function DashboardV2({
 
 			{/* State-aware content */}
 			{projectState === "empty" ? (
-				<EmptyState
-					projectName={projectName}
-					goalsHref={routes.setup}
-					uploadHref={routes.upload}
-					hasGoals={hasGoals}
-				/>
+				<EmptyState projectName={projectName} goalsHref={routes.setup} uploadHref={routes.upload} hasGoals={hasGoals} />
 			) : (
 				<>
 					{/* Processing indicator */}
@@ -134,12 +119,7 @@ export function DashboardV2({
 					)}
 
 					{/* Lens Results */}
-					{lenses.length > 0 && (
-						<LensResultsGrid
-							lenses={lenses}
-							lensLibraryHref={routes.lensLibrary}
-						/>
-					)}
+					{lenses.length > 0 && <LensResultsGrid lenses={lenses} lensLibraryHref={routes.lensLibrary} />}
 
 					{/* AI Insight */}
 					{aiInsight && (

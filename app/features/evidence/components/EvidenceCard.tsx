@@ -336,7 +336,12 @@ function MediaAnchorPlayer({
 					isLoading ? (
 						<div className="mt-2 text-muted-foreground text-sm">Loading media...</div>
 					) : isValidUrl ? (
-						<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} thumbnailUrl={thumbnailUrl} />
+						<SimpleMediaPlayer
+							mediaUrl={mediaUrl}
+							startTime={seconds}
+							title={displayTitle}
+							thumbnailUrl={thumbnailUrl}
+						/>
 					) : (
 						<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
 					)

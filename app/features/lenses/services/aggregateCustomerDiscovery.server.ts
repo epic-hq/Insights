@@ -258,10 +258,7 @@ export async function aggregateCustomerDiscovery(opts: {
 	consola.info(`[aggregateCustomerDiscovery] Starting aggregation for project ${projectId}`)
 
 	// Fetch all people in this project for name matching
-	const { data: projectPeople } = await supabase
-		.from("people")
-		.select("id, name, segment")
-		.eq("project_id", projectId)
+	const { data: projectPeople } = await supabase.from("people").select("id, name, segment").eq("project_id", projectId)
 
 	// Build a map of lowercase name -> person for quick lookup
 	const peopleByName = new Map<string, { id: string; name: string; segment: string | null }>()

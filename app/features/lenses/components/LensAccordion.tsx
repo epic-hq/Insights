@@ -142,13 +142,7 @@ function RerunLensButton({
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7"
-						onClick={handleRerun}
-						disabled={isRunning}
-					>
+					<Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRerun} disabled={isRunning}>
 						<RefreshCw className={cn("h-3.5 w-3.5", isRunning && "animate-spin")} />
 					</Button>
 				</TooltipTrigger>
@@ -173,10 +167,7 @@ export function LensAccordion({
 	const revalidator = useRevalidator()
 
 	// Sort templates by display_order
-	const sortedTemplates = useMemo(
-		() => [...templates].sort((a, b) => a.display_order - b.display_order),
-		[templates]
-	)
+	const sortedTemplates = useMemo(() => [...templates].sort((a, b) => a.display_order - b.display_order), [templates])
 
 	// Filter to only templates with completed analyses that have data
 	const templatesWithData = useMemo(
@@ -245,9 +236,7 @@ export function LensAccordion({
 										<LensStatusIcon analysis={analysis} />
 										<div className="text-left">
 											<span className="font-medium">{template.template_name}</span>
-											{template.summary && (
-												<p className="text-muted-foreground text-sm">{template.summary}</p>
-											)}
+											{template.summary && <p className="text-muted-foreground text-sm">{template.summary}</p>}
 										</div>
 									</div>
 									<div className="flex items-center gap-2">
@@ -266,7 +255,7 @@ export function LensAccordion({
 									</div>
 								</div>
 							</AccordionTrigger>
-							<AccordionContent className="px-4 pb-4 pt-2">
+							<AccordionContent className="px-4 pt-2 pb-4">
 								<GenericLensView
 									analysis={analysis}
 									template={template}
@@ -283,7 +272,7 @@ export function LensAccordion({
 			{templatesWithoutData.length > 0 && (
 				<div className="pt-2">
 					{showAddLens ? (
-						<div className="rounded-lg border bg-muted/30 dark:bg-muted/10 p-4">
+						<div className="rounded-lg border bg-muted/30 p-4 dark:bg-muted/10">
 							<div className="mb-3 flex items-center justify-between">
 								<span className="font-medium text-sm">Run Additional Analysis</span>
 								<Button variant="ghost" size="sm" onClick={() => setShowAddLens(false)}>
@@ -301,12 +290,7 @@ export function LensAccordion({
 							/>
 						</div>
 					) : (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setShowAddLens(true)}
-							className="w-full border-dashed"
-						>
+						<Button variant="outline" size="sm" onClick={() => setShowAddLens(true)} className="w-full border-dashed">
 							<Plus className="mr-2 h-4 w-4" />
 							Run Additional Lens ({templatesWithoutData.length} available)
 						</Button>
@@ -337,19 +321,22 @@ export function LensStatusSummary({
 	return (
 		<div className={cn("flex items-center gap-1", className)}>
 			{completed > 0 && (
-				<Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300 text-xs">
+				<Badge
+					variant="outline"
+					className="bg-green-50 text-green-700 text-xs dark:bg-green-900/40 dark:text-green-300"
+				>
 					<CheckCircle2 className="mr-1 h-3 w-3" />
 					{completed}
 				</Badge>
 			)}
 			{processing > 0 && (
-				<Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs">
+				<Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs dark:bg-blue-900/40 dark:text-blue-300">
 					<Loader2 className="mr-1 h-3 w-3 animate-spin" />
 					{processing}
 				</Badge>
 			)}
 			{failed > 0 && (
-				<Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-xs">
+				<Badge variant="outline" className="bg-red-50 text-red-700 text-xs dark:bg-red-900/40 dark:text-red-300">
 					<XCircle className="mr-1 h-3 w-3" />
 					{failed}
 				</Badge>

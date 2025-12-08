@@ -5,9 +5,9 @@
  * Uses touch gestures for navigation on mobile.
  */
 
-import { useState, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { ChevronLeft, ChevronRight, FileAudio, Glasses, Mic, Sparkles } from "lucide-react"
+import { useCallback, useState } from "react"
 import { useNavigate } from "react-router"
 import { Logo } from "~/components/branding"
 import { Button } from "~/components/ui/button"
@@ -72,12 +72,7 @@ interface FeatureTourProps {
 	className?: string
 }
 
-export function FeatureTour({
-	onComplete,
-	onSkip,
-	showSkip = true,
-	className,
-}: FeatureTourProps) {
+export function FeatureTour({ onComplete, onSkip, showSkip = true, className }: FeatureTourProps) {
 	const [currentIndex, setCurrentIndex] = useState(0)
 	const [direction, setDirection] = useState(0)
 
@@ -123,21 +118,11 @@ export function FeatureTour({
 	}
 
 	return (
-		<div
-			className={cn(
-				"flex min-h-screen flex-col bg-background",
-				className
-			)}
-		>
+		<div className={cn("flex min-h-screen flex-col bg-background", className)}>
 			{/* Skip button */}
 			{showSkip && !isLastSlide && (
 				<div className="absolute top-4 right-4 z-10">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={handleSkip}
-						className="text-muted-foreground"
-					>
+					<Button variant="ghost" size="sm" onClick={handleSkip} className="text-muted-foreground">
 						Skip
 					</Button>
 				</div>
@@ -157,31 +142,20 @@ export function FeatureTour({
 						className="flex flex-col items-center text-center"
 					>
 						{/* Gradient background */}
-						<div
-							className={cn(
-								"absolute inset-0 -z-10 bg-gradient-to-br opacity-50",
-								currentSlide.gradient
-							)}
-						/>
+						<div className={cn("-z-10 absolute inset-0 bg-gradient-to-br opacity-50", currentSlide.gradient)} />
 
 						{/* Icon */}
-						<div className="mb-8 rounded-2xl bg-background/80 p-6 shadow-lg backdrop-blur-sm">
-							{currentSlide.icon}
-						</div>
+						<div className="mb-8 rounded-2xl bg-background/80 p-6 shadow-lg backdrop-blur-sm">{currentSlide.icon}</div>
 
 						{/* Text */}
-						<h1 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">
-							{currentSlide.title}
-						</h1>
-						<p className="max-w-sm text-muted-foreground text-lg">
-							{currentSlide.description}
-						</p>
+						<h1 className="mb-4 font-bold text-2xl text-foreground sm:text-3xl">{currentSlide.title}</h1>
+						<p className="max-w-sm text-lg text-muted-foreground">{currentSlide.description}</p>
 					</motion.div>
 				</AnimatePresence>
 			</div>
 
 			{/* Bottom navigation */}
-			<div className="px-6 pb-8 pt-4">
+			<div className="px-6 pt-4 pb-8">
 				{/* Progress dots */}
 				<div className="mb-6 flex items-center justify-center gap-2">
 					{tourSlides.map((slide, index) => (
@@ -194,9 +168,7 @@ export function FeatureTour({
 							}}
 							className={cn(
 								"h-2 rounded-full transition-all",
-								index === currentIndex
-									? "w-6 bg-primary"
-									: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+								index === currentIndex ? "w-6 bg-primary" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
 							)}
 							aria-label={`Go to slide ${index + 1}`}
 						/>
@@ -210,20 +182,13 @@ export function FeatureTour({
 						size="lg"
 						onClick={goToPrevious}
 						disabled={isFirstSlide}
-						className={cn(
-							"min-w-[100px]",
-							isFirstSlide && "invisible"
-						)}
+						className={cn("min-w-[100px]", isFirstSlide && "invisible")}
 					>
 						<ChevronLeft className="mr-1 h-4 w-4" />
 						Back
 					</Button>
 
-					<Button
-						size="lg"
-						onClick={goToNext}
-						className="min-w-[140px]"
-					>
+					<Button size="lg" onClick={goToNext} className="min-w-[140px]">
 						{isLastSlide ? (
 							"Get Started"
 						) : (
@@ -261,12 +226,8 @@ export function SplashScreen({
 			</div>
 
 			{/* Tagline */}
-			<h1 className="mb-2 text-center text-3xl font-bold text-foreground">
-				Insights
-			</h1>
-			<p className="mb-12 text-center text-lg text-muted-foreground">
-				Turn conversations into insights
-			</p>
+			<h1 className="mb-2 text-center font-bold text-3xl text-foreground">Insights</h1>
+			<p className="mb-12 text-center text-lg text-muted-foreground">Turn conversations into insights</p>
 
 			{/* CTA */}
 			<Button size="lg" onClick={onContinue} className="mb-4 min-w-[200px]">
@@ -278,7 +239,7 @@ export function SplashScreen({
 				<button
 					type="button"
 					onClick={() => navigate(loginHref)}
-					className="text-sm text-muted-foreground hover:text-foreground"
+					className="text-muted-foreground text-sm hover:text-foreground"
 				>
 					Already have an account? Sign in
 				</button>

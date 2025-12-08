@@ -40,22 +40,13 @@ interface TabItemProps {
 	isDisabled?: boolean
 }
 
-function TabItem({
-	to,
-	icon,
-	label,
-	isActive,
-	onClick,
-	isCenter,
-	hasNotification,
-	isDisabled,
-}: TabItemProps) {
+function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification, isDisabled }: TabItemProps) {
 	const baseClasses = cn(
-		"flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[64px] flex-1",
+		"flex min-h-[48px] min-w-[64px] flex-1 flex-col items-center justify-center gap-1",
 		"text-muted-foreground transition-colors",
 		isActive && "text-primary",
 		!isCenter && "hover:text-foreground",
-		isDisabled && "opacity-50 cursor-not-allowed"
+		isDisabled && "cursor-not-allowed opacity-50"
 	)
 
 	const content = (
@@ -64,24 +55,20 @@ function TabItem({
 				<div
 					className={cn(
 						"relative flex items-center justify-center",
-						"w-14 h-14 -mt-5 rounded-full",
+						"-mt-5 h-14 w-14 rounded-full",
 						"bg-primary text-primary-foreground shadow-lg",
-						"hover:bg-primary/90 active:scale-95 transition-all"
+						"transition-all hover:bg-primary/90 active:scale-95"
 					)}
 				>
 					{icon}
 					{hasNotification && (
-						<span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
+						<span className="-top-1 -right-1 absolute h-3 w-3 rounded-full border-2 border-background bg-destructive" />
 					)}
 				</div>
 			) : (
-				<div className="relative">
-					{icon}
-				</div>
+				<div className="relative">{icon}</div>
 			)}
-			<span className={cn("text-[10px] font-medium", isCenter && "mt-1")}>
-				{label}
-			</span>
+			<span className={cn("font-medium text-[10px]", isCenter && "mt-1")}>{label}</span>
 		</>
 	)
 
@@ -95,12 +82,7 @@ function TabItem({
 
 	if (to) {
 		return (
-			<NavLink
-				to={to}
-				className={({ isActive: navActive }) =>
-					cn(baseClasses, navActive && "text-primary")
-				}
-			>
+			<NavLink to={to} className={({ isActive: navActive }) => cn(baseClasses, navActive && "text-primary")}>
 				{content}
 			</NavLink>
 		)
@@ -128,20 +110,15 @@ export function BottomTabBar({
 	return (
 		<nav
 			className={cn(
-				"fixed bottom-0 left-0 right-0 z-50",
-				"bg-background/95 backdrop-blur-md border-t border-border",
+				"fixed right-0 bottom-0 left-0 z-50",
+				"border-border border-t bg-background/95 backdrop-blur-md",
 				"pb-[env(safe-area-inset-bottom)]",
 				className
 			)}
 		>
 			<div className="flex items-end justify-around px-2 py-1">
 				{/* CRM / Directory */}
-				<TabItem
-					to={routes.crm}
-					icon={<Users className="h-5 w-5" />}
-					label="CRM"
-					isActive={isCrmActive}
-				/>
+				<TabItem to={routes.crm} icon={<Users className="h-5 w-5" />} label="CRM" isActive={isCrmActive} />
 
 				{/* AI Chat (Center - Prominent) */}
 				<TabItem
@@ -154,11 +131,7 @@ export function BottomTabBar({
 				/>
 
 				{/* Add - Links to full upload page */}
-				<TabItem
-					to={routes.upload}
-					icon={<Plus className="h-5 w-5" />}
-					label="Add"
-				/>
+				<TabItem to={routes.upload} icon={<Plus className="h-5 w-5" />} label="Add" />
 
 				{/* Profile / Team Switcher */}
 				<TabItem

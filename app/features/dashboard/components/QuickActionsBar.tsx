@@ -41,10 +41,10 @@ export function QuickActionsBar({
 				asChild
 				variant={isPrimaryUpload ? "default" : "outline"}
 				size="default"
-				className="flex-1 sm:flex-none min-h-[44px]"
+				className="min-h-[44px] flex-1 sm:flex-none"
 			>
 				<Link to={uploadHref}>
-					<Upload className="h-4 w-4 mr-2" />
+					<Upload className="mr-2 h-4 w-4" />
 					Add
 				</Link>
 			</Button>
@@ -54,23 +54,18 @@ export function QuickActionsBar({
 				asChild
 				variant={isPrimaryGoals && !isPrimaryUpload ? "default" : "outline"}
 				size="default"
-				className="flex-1 sm:flex-none min-h-[44px]"
+				className="min-h-[44px] flex-1 sm:flex-none"
 			>
 				<Link to={goalsHref}>
-					<Target className="h-4 w-4 mr-2" />
+					<Target className="mr-2 h-4 w-4" />
 					Goals
 				</Link>
 			</Button>
 
 			{/* Lens Library Action */}
-			<Button
-				asChild
-				variant="outline"
-				size="default"
-				className="flex-1 sm:flex-none min-h-[44px]"
-			>
+			<Button asChild variant="outline" size="default" className="min-h-[44px] flex-1 sm:flex-none">
 				<Link to={lensLibraryHref}>
-					<Glasses className="h-4 w-4 mr-2" />
+					<Glasses className="mr-2 h-4 w-4" />
 					Lenses
 				</Link>
 			</Button>

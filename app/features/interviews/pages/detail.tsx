@@ -1934,7 +1934,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{lensTemplates.length === 0 && !salesLens && (
 						<div>
 							<h3 className="mb-4 font-semibold text-foreground text-lg">Conversation Lenses</h3>
-							<div className="rounded-lg border border-dashed bg-muted/30 dark:bg-muted/10 p-8 text-center">
+							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center dark:bg-muted/10">
 								<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
 								<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
 							</div>

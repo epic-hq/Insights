@@ -65,7 +65,10 @@ function CategoryBadge({ category }: { category: string | null }) {
 	}
 
 	return (
-		<Badge variant="outline" className={cn("text-xs", colors[category] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300")}>
+		<Badge
+			variant="outline"
+			className={cn("text-xs", colors[category] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300")}
+		>
 			{category}
 		</Badge>
 	)
@@ -162,19 +165,22 @@ export function LensStatusSummary({
 	return (
 		<div className={cn("flex items-center gap-1", className)}>
 			{completed > 0 && (
-				<Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300 text-xs">
+				<Badge
+					variant="outline"
+					className="bg-green-50 text-green-700 text-xs dark:bg-green-900/40 dark:text-green-300"
+				>
 					<CheckCircle2 className="mr-1 h-3 w-3" />
 					{completed}
 				</Badge>
 			)}
 			{processing > 0 && (
-				<Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs">
+				<Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs dark:bg-blue-900/40 dark:text-blue-300">
 					<Loader2 className="mr-1 h-3 w-3 animate-spin" />
 					{processing}
 				</Badge>
 			)}
 			{failed > 0 && (
-				<Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-xs">
+				<Badge variant="outline" className="bg-red-50 text-red-700 text-xs dark:bg-red-900/40 dark:text-red-300">
 					<XCircle className="mr-1 h-3 w-3" />
 					{failed}
 				</Badge>

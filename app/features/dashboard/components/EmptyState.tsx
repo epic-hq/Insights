@@ -24,27 +24,17 @@ export interface EmptyStateProps {
 	className?: string
 }
 
-export function EmptyState({
-	projectName,
-	goalsHref,
-	uploadHref,
-	hasGoals = false,
-	className,
-}: EmptyStateProps) {
+export function EmptyState({ projectName, goalsHref, uploadHref, hasGoals = false, className }: EmptyStateProps) {
 	return (
 		<div className={cn("py-8", className)}>
 			{/* Welcome message */}
-			<div className="text-center mb-8">
-				<h1 className="text-2xl font-semibold text-foreground mb-2">
-					Welcome to {projectName}
-				</h1>
-				<p className="text-muted-foreground">
-					Let's get started with your research project
-				</p>
+			<div className="mb-8 text-center">
+				<h1 className="mb-2 font-semibold text-2xl text-foreground">Welcome to {projectName}</h1>
+				<p className="text-muted-foreground">Let's get started with your research project</p>
 			</div>
 
 			{/* Action cards grid */}
-			<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 max-w-lg mx-auto">
+			<div className="mx-auto grid max-w-lg grid-cols-1 gap-4 sm:grid-cols-2">
 				{/* Setup Goals Card */}
 				<Link to={goalsHref} className="block">
 					<Card
@@ -53,19 +43,13 @@ export function EmptyState({
 							!hasGoals && "ring-2 ring-primary ring-offset-2"
 						)}
 					>
-						<CardContent className="p-6 flex flex-col items-center text-center">
-							<div className="rounded-full bg-primary/10 p-4 mb-4">
+						<CardContent className="flex flex-col items-center p-6 text-center">
+							<div className="mb-4 rounded-full bg-primary/10 p-4">
 								<Target className="h-8 w-8 text-primary" />
 							</div>
-							<h3 className="font-medium text-foreground mb-2">Setup Goals</h3>
-							<p className="text-sm text-muted-foreground">
-								Define your research objectives and questions
-							</p>
-							{!hasGoals && (
-								<span className="mt-3 text-xs text-primary font-medium">
-									Recommended first step
-								</span>
-							)}
+							<h3 className="mb-2 font-medium text-foreground">Setup Goals</h3>
+							<p className="text-muted-foreground text-sm">Define your research objectives and questions</p>
+							{!hasGoals && <span className="mt-3 font-medium text-primary text-xs">Recommended first step</span>}
 						</CardContent>
 					</Card>
 				</Link>
@@ -73,14 +57,12 @@ export function EmptyState({
 				{/* Upload Content Card */}
 				<Link to={uploadHref} className="block">
 					<Card className="h-full transition-all hover:shadow-md active:scale-[0.98]">
-						<CardContent className="p-6 flex flex-col items-center text-center">
-							<div className="rounded-full bg-secondary p-4 mb-4">
+						<CardContent className="flex flex-col items-center p-6 text-center">
+							<div className="mb-4 rounded-full bg-secondary p-4">
 								<Upload className="h-8 w-8 text-secondary-foreground" />
 							</div>
-							<h3 className="font-medium text-foreground mb-2">Add Content</h3>
-							<p className="text-sm text-muted-foreground">
-								Recordings, notes, voice memos
-							</p>
+							<h3 className="mb-2 font-medium text-foreground">Add Content</h3>
+							<p className="text-muted-foreground text-sm">Recordings, notes, voice memos</p>
 						</CardContent>
 					</Card>
 				</Link>
@@ -88,7 +70,7 @@ export function EmptyState({
 
 			{/* Supported formats hint */}
 			<div className="mt-8 text-center">
-				<p className="text-xs text-muted-foreground mb-3">Supported formats</p>
+				<p className="mb-3 text-muted-foreground text-xs">Supported formats</p>
 				<div className="flex items-center justify-center gap-4">
 					<div className="flex items-center gap-1.5 text-muted-foreground">
 						<FileAudio className="h-4 w-4" />

@@ -270,13 +270,7 @@ export default function EditInterview() {
 				<div>
 					<div className="mb-1 flex items-center justify-between gap-2">
 						<Label htmlFor="media_url">Media URL</Label>
-						{interview.media_url && (
-							<MediaPlayer
-								mediaUrl={interview.media_url}
-								title="Play"
-								className="max-w-xs"
-							/>
-						)}
+						{interview.media_url && <MediaPlayer mediaUrl={interview.media_url} title="Play" className="max-w-xs" />}
 					</div>
 					<Input
 						id="media_url"

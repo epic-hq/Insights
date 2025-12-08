@@ -23,18 +23,12 @@ export interface AiInsightCardProps {
 	className?: string
 }
 
-export function AiInsightCard({
-	insight,
-	source,
-	onAskFollowUp,
-	interactive = true,
-	className,
-}: AiInsightCardProps) {
+export function AiInsightCard({ insight, source, onAskFollowUp, interactive = true, className }: AiInsightCardProps) {
 	return (
 		<Card
 			className={cn(
-				"bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20",
-				interactive && "cursor-pointer hover:shadow-md transition-all active:scale-[0.99]",
+				"border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5",
+				interactive && "cursor-pointer transition-all hover:shadow-md active:scale-[0.99]",
 				className
 			)}
 			onClick={interactive ? onAskFollowUp : undefined}
@@ -47,34 +41,28 @@ export function AiInsightCard({
 					</div>
 
 					{/* Content */}
-					<div className="flex-1 min-w-0">
-						<div className="flex items-center gap-2 mb-1.5">
-							<span className="text-xs font-medium text-primary">AI Insight</span>
-							{source && (
-								<span className="text-xs text-muted-foreground">
-									from {source}
-								</span>
-							)}
+					<div className="min-w-0 flex-1">
+						<div className="mb-1.5 flex items-center gap-2">
+							<span className="font-medium text-primary text-xs">AI Insight</span>
+							{source && <span className="text-muted-foreground text-xs">from {source}</span>}
 						</div>
 
-						<p className="text-sm text-foreground leading-relaxed">
-							"{insight}"
-						</p>
+						<p className="text-foreground text-sm leading-relaxed">"{insight}"</p>
 
 						{/* Action */}
 						{interactive && onAskFollowUp && (
 							<Button
 								variant="ghost"
 								size="sm"
-								className="mt-3 -ml-2 text-primary hover:text-primary"
+								className="-ml-2 mt-3 text-primary hover:text-primary"
 								onClick={(e) => {
 									e.stopPropagation()
 									onAskFollowUp()
 								}}
 							>
-								<MessageSquare className="h-4 w-4 mr-1.5" />
+								<MessageSquare className="mr-1.5 h-4 w-4" />
 								Ask follow-up
-								<ChevronRight className="h-4 w-4 ml-1" />
+								<ChevronRight className="ml-1 h-4 w-4" />
 							</Button>
 						)}
 					</div>
@@ -101,15 +89,15 @@ export function AiInsightPill({
 			type="button"
 			onClick={onClick}
 			className={cn(
-				"flex items-center gap-2 px-3 py-2 rounded-full",
+				"flex items-center gap-2 rounded-full px-3 py-2",
 				"bg-primary/10 text-primary text-sm",
-				"hover:bg-primary/20 transition-colors",
+				"transition-colors hover:bg-primary/20",
 				"active:scale-[0.98]",
 				className
 			)}
 		>
 			<Sparkles className="h-3.5 w-3.5" />
-			<span className="truncate max-w-[200px]">{insight}</span>
+			<span className="max-w-[200px] truncate">{insight}</span>
 			<ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
 		</button>
 	)

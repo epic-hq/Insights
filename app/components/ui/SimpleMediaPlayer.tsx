@@ -286,19 +286,15 @@ export function SimpleMediaPlayer({
 				>
 					{/* Thumbnail background for videos */}
 					{isVideo && signedThumbnailUrl && (
-						<img
-							src={signedThumbnailUrl}
-							alt=""
-							className="absolute inset-0 h-full w-full object-cover"
-						/>
+						<img src={signedThumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
 					)}
 					<div className="absolute inset-0 flex items-center justify-center">
-						<div className={cn(
-							"rounded-full p-4 transition-colors",
-							signedThumbnailUrl
-								? "bg-black/60 group-hover:bg-black/80"
-								: "bg-primary/90 group-hover:bg-primary"
-						)}>
+						<div
+							className={cn(
+								"rounded-full p-4 transition-colors",
+								signedThumbnailUrl ? "bg-black/60 group-hover:bg-black/80" : "bg-primary/90 group-hover:bg-primary"
+							)}
+						>
 							<svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
 								<path d="M8 5v14l11-7z" />
 							</svg>
@@ -313,7 +309,7 @@ export function SimpleMediaPlayer({
 				{showDebug && (
 					<details className="mt-2 text-xs" open>
 						<summary className="cursor-pointer text-muted-foreground">Debug Info</summary>
-						<div className="mt-1 space-y-1 rounded bg-gray-50 dark:bg-gray-900 p-2 text-xs">
+						<div className="mt-1 space-y-1 rounded bg-gray-50 p-2 text-xs dark:bg-gray-900">
 							<div>Original URL: {mediaUrl}</div>
 							<div>Thumbnail: {thumbnailUrl || "None"}</div>
 							<div>Signed Thumbnail: {signedThumbnailUrl || "Not loaded"}</div>

@@ -29,11 +29,7 @@ export interface LensResultsGridProps {
 	maxVisible?: number
 }
 
-export function LensResultsGrid({
-	lenses,
-	lensLibraryHref,
-	maxVisible = 4,
-}: LensResultsGridProps) {
+export function LensResultsGrid({ lenses, lensLibraryHref, maxVisible = 4 }: LensResultsGridProps) {
 	// Filter to lenses with data first, then sort by conversation count
 	const sortedLenses = [...lenses].sort((a, b) => {
 		// Prioritize lenses with data
@@ -48,12 +44,12 @@ export function LensResultsGrid({
 
 	if (lenses.length === 0) {
 		return (
-			<div className="text-center py-8">
-				<div className="rounded-full bg-muted p-4 w-fit mx-auto mb-4">
+			<div className="py-8 text-center">
+				<div className="mx-auto mb-4 w-fit rounded-full bg-muted p-4">
 					<Glasses className="h-8 w-8 text-muted-foreground" />
 				</div>
-				<h3 className="font-medium text-foreground mb-2">No lenses configured</h3>
-				<p className="text-sm text-muted-foreground mb-4">
+				<h3 className="mb-2 font-medium text-foreground">No lenses configured</h3>
+				<p className="mb-4 text-muted-foreground text-sm">
 					Enable analysis lenses to automatically extract insights from conversations
 				</p>
 				<Button asChild variant="outline">
@@ -67,17 +63,17 @@ export function LensResultsGrid({
 		<div className="space-y-4">
 			{/* Section header */}
 			<div className="flex items-center justify-between">
-				<h2 className="font-semibold text-lg text-foreground">Lens Results</h2>
+				<h2 className="font-semibold text-foreground text-lg">Lens Results</h2>
 				<Button asChild variant="ghost" size="sm" className="text-muted-foreground">
 					<Link to={lensLibraryHref}>
-						<Glasses className="h-4 w-4 mr-1.5" />
+						<Glasses className="mr-1.5 h-4 w-4" />
 						All Lenses
 					</Link>
 				</Button>
 			</div>
 
 			{/* Lens cards grid */}
-			<div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{visibleLenses.map((lens) => (
 					<LensResultCard
 						key={lens.templateKey}
@@ -96,9 +92,7 @@ export function LensResultsGrid({
 			{hasMore && (
 				<div className="text-center">
 					<Button asChild variant="ghost" size="sm">
-						<Link to={lensLibraryHref}>
-							View {sortedLenses.length - maxVisible} more lenses
-						</Link>
+						<Link to={lensLibraryHref}>View {sortedLenses.length - maxVisible} more lenses</Link>
 					</Button>
 				</div>
 			)}

@@ -27,12 +27,7 @@ export interface ProcessingStateProps {
 	className?: string
 }
 
-export function ProcessingState({
-	processingCount,
-	totalCount,
-	items,
-	className,
-}: ProcessingStateProps) {
+export function ProcessingState({ processingCount, totalCount, items, className }: ProcessingStateProps) {
 	const completedCount = totalCount - processingCount
 	const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
@@ -41,68 +36,54 @@ export function ProcessingState({
 	}
 
 	return (
-		<Card className={cn("border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20", className)}>
+		<Card className={cn("border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20", className)}>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					{/* Animated icon */}
-					<div className="flex-shrink-0 mt-0.5">
-						<Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+					<div className="mt-0.5 flex-shrink-0">
+						<Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
 					</div>
 
 					{/* Content */}
-					<div className="flex-1 min-w-0">
-						<div className="flex items-center justify-between mb-2">
+					<div className="min-w-0 flex-1">
+						<div className="mb-2 flex items-center justify-between">
 							<h3 className="font-medium text-blue-900 dark:text-blue-100">
 								Processing {processingCount} conversation{processingCount !== 1 ? "s" : ""}
 							</h3>
-							<span className="text-sm text-blue-700 dark:text-blue-300">
-								{Math.round(progressPercent)}%
-							</span>
+							<span className="text-blue-700 text-sm dark:text-blue-300">{Math.round(progressPercent)}%</span>
 						</div>
 
 						{/* Progress bar */}
-						<Progress
-							value={progressPercent}
-							className="h-2 bg-blue-200 dark:bg-blue-900"
-						/>
+						<Progress value={progressPercent} className="h-2 bg-blue-200 dark:bg-blue-900" />
 
 						{/* Item list (if provided) */}
 						{items && items.length > 0 && (
 							<div className="mt-3 space-y-1.5">
 								{items.slice(0, 3).map((item) => (
-									<div
-										key={item.id}
-										className="flex items-center gap-2 text-sm"
-									>
+									<div key={item.id} className="flex items-center gap-2 text-sm">
 										{item.status === "completed" ? (
 											<CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
 										) : item.status === "processing" ? (
-											<Loader2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
+											<Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600 dark:text-blue-400" />
 										) : (
 											<div className="h-3.5 w-3.5 rounded-full border border-blue-300 dark:border-blue-700" />
 										)}
 										<span
 											className={cn(
 												"truncate",
-												item.status === "completed"
-													? "text-muted-foreground line-through"
-													: "text-foreground"
+												item.status === "completed" ? "text-muted-foreground line-through" : "text-foreground"
 											)}
 										>
 											{item.name}
 										</span>
 									</div>
 								))}
-								{items.length > 3 && (
-									<p className="text-xs text-muted-foreground pl-5">
-										+{items.length - 3} more
-									</p>
-								)}
+								{items.length > 3 && <p className="pl-5 text-muted-foreground text-xs">+{items.length - 3} more</p>}
 							</div>
 						)}
 
 						{/* Helpful message */}
-						<p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+						<p className="mt-2 text-blue-700 text-xs dark:text-blue-300">
 							AI is analyzing your conversations. Results will appear shortly.
 						</p>
 					</div>

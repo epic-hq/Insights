@@ -7,13 +7,7 @@
 
 import { Sparkles, X } from "lucide-react"
 import { Button } from "~/components/ui/button"
-import {
-	Sheet,
-	SheetClose,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-} from "~/components/ui/sheet"
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
 import { cn } from "~/lib/utils"
 import { ProjectStatusAgentChat } from "./ProjectStatusAgentChat"
 
@@ -32,26 +26,12 @@ export interface ChatSheetProps {
 	className?: string
 }
 
-export function ChatSheet({
-	open,
-	onOpenChange,
-	accountId,
-	projectId,
-	systemContext,
-	className,
-}: ChatSheetProps) {
+export function ChatSheet({ open, onOpenChange, accountId, projectId, systemContext, className }: ChatSheetProps) {
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent
-				side="bottom"
-				className={cn(
-					"h-[85vh] rounded-t-xl p-0",
-					"flex flex-col",
-					className
-				)}
-			>
+			<SheetContent side="bottom" className={cn("h-[85vh] rounded-t-xl p-0", "flex flex-col", className)}>
 				{/* Custom header */}
-				<SheetHeader className="flex-shrink-0 px-4 py-3 border-b">
+				<SheetHeader className="flex-shrink-0 border-b px-4 py-3">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
 							<div className="rounded-full bg-primary/10 p-2">
@@ -70,11 +50,7 @@ export function ChatSheet({
 
 				{/* Chat content */}
 				<div className="flex-1 overflow-hidden">
-					<ProjectStatusAgentChat
-						accountId={accountId}
-						projectId={projectId}
-						systemContext={systemContext}
-					/>
+					<ProjectStatusAgentChat accountId={accountId} projectId={projectId} systemContext={systemContext} />
 				</div>
 			</SheetContent>
 		</Sheet>
@@ -98,7 +74,7 @@ export function ChatFloatingButton({
 			onClick={onClick}
 			size="lg"
 			className={cn(
-				"fixed bottom-20 right-4 z-40",
+				"fixed right-4 bottom-20 z-40",
 				"h-14 w-14 rounded-full shadow-lg",
 				"bg-primary hover:bg-primary/90",
 				className
@@ -106,7 +82,7 @@ export function ChatFloatingButton({
 		>
 			<Sparkles className="h-6 w-6" />
 			{hasNotification && (
-				<span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
+				<span className="-top-1 -right-1 absolute h-3 w-3 rounded-full border-2 border-background bg-destructive" />
 			)}
 			<span className="sr-only">Open AI Assistant</span>
 		</Button>

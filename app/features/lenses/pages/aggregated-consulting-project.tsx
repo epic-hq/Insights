@@ -338,7 +338,7 @@ export default function AggregatedConsultingProjectPage() {
 			<div className="grid gap-6 lg:grid-cols-2">
 				{/* Conflicts & Alignment Issues - Priority Section */}
 				{aggregatedData.all_conflicts.length > 0 && (
-					<Card className="border-amber-200 dark:border-amber-800 lg:col-span-2">
+					<Card className="border-amber-200 lg:col-span-2 dark:border-amber-800">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
 								<AlertTriangle className="h-5 w-5" />
@@ -349,11 +349,7 @@ export default function AggregatedConsultingProjectPage() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<ItemList
-								items={aggregatedData.all_conflicts}
-								routes={routes}
-								emptyMessage="No conflicts identified"
-							/>
+							<ItemList items={aggregatedData.all_conflicts} routes={routes} emptyMessage="No conflicts identified" />
 						</CardContent>
 					</Card>
 				)}
@@ -410,11 +406,7 @@ export default function AggregatedConsultingProjectPage() {
 						<CardDescription>Questions that still need answers</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ItemList
-							items={aggregatedData.all_open_questions}
-							routes={routes}
-							emptyMessage="No open questions"
-						/>
+						<ItemList items={aggregatedData.all_open_questions} routes={routes} emptyMessage="No open questions" />
 					</CardContent>
 				</Card>
 

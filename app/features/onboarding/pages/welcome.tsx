@@ -115,10 +115,7 @@ export default function WelcomePage() {
 
 	const handleTourComplete = useCallback(() => {
 		// Mark tour as complete
-		fetcher.submit(
-			{ intent: "complete_tour" },
-			{ method: "post" }
-		)
+		fetcher.submit({ intent: "complete_tour" }, { method: "post" })
 	}, [fetcher])
 
 	// Navigate after successful tour completion
@@ -138,24 +135,12 @@ export default function WelcomePage() {
 
 	// Show splash for unauthenticated users
 	if (showingSplash || !isAuthenticated) {
-		return (
-			<SplashScreen
-				onContinue={handleSplashContinue}
-				showLogin={!isAuthenticated}
-				loginHref="/login"
-			/>
-		)
+		return <SplashScreen onContinue={handleSplashContinue} showLogin={!isAuthenticated} loginHref="/login" />
 	}
 
 	// Show feature tour
 	if (showTour) {
-		return (
-			<FeatureTour
-				onComplete={handleTourComplete}
-				onSkip={handleTourComplete}
-				showSkip
-			/>
-		)
+		return <FeatureTour onComplete={handleTourComplete} onSkip={handleTourComplete} showSkip />
 	}
 
 	// Fallback - redirect handled by loader

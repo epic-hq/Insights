@@ -9,11 +9,7 @@
 
 import consola from "consola"
 import { useState } from "react"
-import {
-	type LoaderFunctionArgs,
-	type MetaFunction,
-	useLoaderData,
-} from "react-router"
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import { ChatSheet } from "~/components/chat/ChatSheet"
 import { PageContainer } from "~/components/layout/PageContainer"
@@ -43,11 +39,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	// Fetch project
-	const { data: project } = await supabase
-		.from("projects")
-		.select("*")
-		.eq("id", projectId)
-		.single()
+	const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single()
 
 	if (!project) {
 		throw new Response("Project not found", { status: 404 })
@@ -57,12 +49,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const routes = createProjectRoutes(accountId, projectId)
 
 	// Fetch counts and data in parallel
-	const [
-		interviewsResult,
-		lensTemplatesResult,
-		lensAnalysesResult,
-		projectSectionsResult,
-	] = await Promise.all([
+	const [interviewsResult, lensTemplatesResult, lensAnalysesResult, projectSectionsResult] = await Promise.all([
 		// Get interviews with status
 		supabase
 			.from("interviews")
@@ -143,9 +130,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				name: template.template_name,
 				category: template.category || "general",
 				conversationCount: stats.completed,
-				summary: hasData
-					? `${stats.completed} conversation${stats.completed !== 1 ? "s" : ""} analyzed`
-					: undefined,
+				summary: hasData ? `${stats.completed} conversation${stats.completed !== 1 ? "s" : ""} analyzed` : undefined,
 				href,
 				hasData,
 			}
@@ -160,7 +145,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.map((i) => ({
 			id: i.id,
 			name: i.participant_pseudonym || "Processing...",
-			status: i.status === "transcribing" ? "processing" as const : "queued" as const,
+			status: i.status === "transcribing" ? ("processing" as const) : ("queued" as const),
 		}))
 
 	// Generate a simple AI insight based on data

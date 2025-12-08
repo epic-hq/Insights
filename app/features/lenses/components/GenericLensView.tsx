@@ -22,11 +22,11 @@ import {
 	Users,
 	XCircle,
 } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { Link, useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import InlineEdit from "~/components/ui/inline-edit"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -372,10 +372,16 @@ const INFLUENCE_BADGE_COLORS: Record<string, string> = {
 }
 
 const LABEL_DISPLAY: Record<string, { label: string; className: string }> = {
-	economic_buyer: { label: "Economic Buyer", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+	economic_buyer: {
+		label: "Economic Buyer",
+		className: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+	},
 	champion: { label: "Champion", className: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
 	blocker: { label: "Blocker", className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-	technical_evaluator: { label: "Technical", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+	technical_evaluator: {
+		label: "Technical",
+		className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+	},
 	end_user: { label: "End User", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
 	coach: { label: "Coach", className: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
 }
@@ -887,7 +893,7 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 		<div className="space-y-6">
 			{/* Executive Summary (TLDR) */}
 			{analysisData.executive_summary && (
-				<div className="rounded-lg border-l-4 border-primary bg-primary/5 p-4 dark:bg-primary/10">
+				<div className="rounded-lg border-primary border-l-4 bg-primary/5 p-4 dark:bg-primary/10">
 					<p className="font-medium text-sm">{analysisData.executive_summary}</p>
 				</div>
 			)}
@@ -916,14 +922,12 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 						</CardHeader>
 						<CardContent className="space-y-3">
 							{/* Section Summary - punchy TLDR for this section */}
-							{hasSummary && (
-								<p className="text-sm text-foreground/90 leading-relaxed">{sectionData.summary}</p>
-							)}
+							{hasSummary && <p className="text-foreground/90 text-sm leading-relaxed">{sectionData.summary}</p>}
 							{/* Detailed fields */}
 							{hasFields && (
 								<details className="group">
-									<summary className="cursor-pointer text-muted-foreground text-xs hover:text-foreground flex items-center gap-1">
-										<span className="group-open:rotate-90 transition-transform">▶</span>
+									<summary className="flex cursor-pointer items-center gap-1 text-muted-foreground text-xs hover:text-foreground">
+										<span className="transition-transform group-open:rotate-90">▶</span>
 										View details ({sectionData.fields.length} fields)
 									</summary>
 									<div className="mt-3">
