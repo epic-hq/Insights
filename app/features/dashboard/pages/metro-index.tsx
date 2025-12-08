@@ -132,9 +132,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 			// Build href based on template key
 			let href = routes.lensLibrary()
-			if (template.template_key === "BANT_GPCT") {
+			if (template.template_key === "sales-bant") {
 				href = routes.lenses.salesBant()
-			} else if (template.template_key === "CUSTOMER_DISCOVERY") {
+			} else if (template.template_key === "customer-discovery") {
 				href = routes.lenses.customerDiscovery()
 			}
 
@@ -226,8 +226,8 @@ Active Lenses: ${activeLensCount}`
 					interviews: routes.interviews.index(),
 					upload: routes.interviews.upload(),
 					lensLibrary: routes.lensLibrary(),
+					assistant: `${projectPath}/assistant`,
 				}}
-				onOpenChat={() => setIsChatOpen(true)}
 			/>
 
 			{/* Chat Sheet */}

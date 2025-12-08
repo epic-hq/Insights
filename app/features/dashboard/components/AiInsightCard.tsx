@@ -5,7 +5,8 @@
  * Designed to encourage chat engagement.
  */
 
-import { Bot, ChevronRight, MessageSquare, Sparkles } from "lucide-react"
+import { ChevronRight, MessageSquare, Sparkles } from "lucide-react"
+import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
@@ -15,7 +16,9 @@ export interface AiInsightCardProps {
 	insight: string
 	/** Optional source/context for the insight */
 	source?: string
-	/** Callback when user wants to explore further */
+	/** Link to the AI assistant page */
+	href?: string
+	/** Callback when user wants to explore further (deprecated, use href) */
 	onAskFollowUp?: () => void
 	/** Whether the card should be interactive */
 	interactive?: boolean
@@ -26,18 +29,19 @@ export interface AiInsightCardProps {
 export function AiInsightCard({
 	insight,
 	source,
+	href,
 	onAskFollowUp,
 	interactive = true,
 	className,
 }: AiInsightCardProps) {
-	return (
+	const cardContent = (
 		<Card
 			className={cn(
 				"bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20",
 				interactive && "cursor-pointer hover:shadow-md transition-all active:scale-[0.99]",
 				className
 			)}
-			onClick={interactive ? onAskFollowUp : undefined}
+			onClick={interactive && onAskFollowUp && !href ? onAskFollowUp : undefined}
 		>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
@@ -62,19 +66,30 @@ export function AiInsightCard({
 						</p>
 
 						{/* Action */}
-						{interactive && onAskFollowUp && (
+						{interactive && (href || onAskFollowUp) && (
 							<Button
 								variant="ghost"
 								size="sm"
 								className="mt-3 -ml-2 text-primary hover:text-primary"
-								onClick={(e) => {
+								asChild={!!href}
+								onClick={!href && onAskFollowUp ? (e) => {
 									e.stopPropagation()
 									onAskFollowUp()
-								}}
+								} : undefined}
 							>
-								<MessageSquare className="h-4 w-4 mr-1.5" />
-								Ask follow-up
-								<ChevronRight className="h-4 w-4 ml-1" />
+								{href ? (
+									<Link to={href}>
+										<MessageSquare className="h-4 w-4 mr-1.5" />
+										Ask follow-up
+										<ChevronRight className="h-4 w-4 ml-1" />
+									</Link>
+								) : (
+									<>
+										<MessageSquare className="h-4 w-4 mr-1.5" />
+										Ask follow-up
+										<ChevronRight className="h-4 w-4 ml-1" />
+									</>
+								)}
 							</Button>
 						)}
 					</div>
@@ -82,6 +97,13 @@ export function AiInsightCard({
 			</CardContent>
 		</Card>
 	)
+
+	// Wrap entire card in Link if href is provided
+	if (href && interactive) {
+		return <Link to={href} className="block">{cardContent}</Link>
+	}
+
+	return cardContent
 }
 
 /**

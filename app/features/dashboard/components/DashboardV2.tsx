@@ -45,9 +45,8 @@ export interface DashboardV2Props {
 		interviews: string
 		lensLibrary: string
 		upload: string
+		assistant: string
 	}
-	/** Callback when AI chat is opened */
-	onOpenChat?: () => void
 	/** Additional CSS classes */
 	className?: string
 }
@@ -79,7 +78,6 @@ export function DashboardV2({
 	hasGoals = false,
 	aiInsight,
 	routes,
-	onOpenChat,
 	className,
 }: DashboardV2Props) {
 	const projectState = getProjectState(conversationCount, processingCount)
@@ -146,7 +144,7 @@ export function DashboardV2({
 						<AiInsightCard
 							insight={aiInsight}
 							source={`${conversationCount} conversations`}
-							onAskFollowUp={onOpenChat}
+							href={routes.assistant}
 						/>
 					)}
 
