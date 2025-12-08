@@ -1,12 +1,14 @@
+import consola from "consola"
+import { useId } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import { ImageUploader } from "~/components/ui/ImageUploader"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
-import { getOrganizations, linkPersonToOrganization } from "~/features/organizations/db"
 import { createPerson } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
 import { userContext } from "~/server/user-context"
@@ -27,14 +29,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
-	const [{ data: personas }, organizations] = await Promise.all([
+	const [{ data: personas }] = await Promise.all([
 		getPersonas({ supabase, accountId, projectId }),
-		getOrganizations({ supabase, accountId, projectId }),
 	])
-	if (organizations.error) {
-		throw new Response("Failed to load organizations", { status: 500 })
-	}
-	return { personas: personas || [], organizations: organizations.data || [] }
+	return { personas: personas || [] }
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -48,33 +46,41 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const routes = createProjectRoutes(accountId, projectId)
 
 	const formData = await request.formData()
-	const name = formData.get("name") as string
+	const firstname = formData.get("firstname") as string
+	const lastname = formData.get("lastname") as string
 	const email = formData.get("email") as string
+	const title = formData.get("title") as string
 	const _segment = formData.get("segment") as string
 	const _notes = formData.get("notes") as string
 	const image_url = formData.get("image_url") as string
 	const _persona_id = formData.get("persona_id") as string
-	const _organization_id = formData.get("organization_id") as string
 
-	if (!name?.trim()) {
-		return { error: "Name is required" }
+	if (!firstname?.trim()) {
+		return { error: "First name is required" }
 	}
 
-	// Build contact_info object if either email or image_url is present
+	// Build contact_info object if email is present
 	let contact_info: Record<string, string> | null = null
-	if (email?.trim() || image_url?.trim()) {
-		contact_info = {}
-		if (email?.trim()) contact_info.email = email.trim()
-		if (image_url?.trim()) contact_info.image_url = image_url.trim()
+	if (email?.trim()) {
+		contact_info = { email: email.trim() }
 	}
 
 	try {
+		consola.info("[people/new] Creating person with:", {
+			accountId,
+			projectId,
+			firstname: firstname.trim(),
+		})
+
 		const { data, error } = await createPerson({
 			supabase: supabase,
 			data: {
-				name: name.trim(),
+				firstname: firstname.trim(),
+				lastname: lastname?.trim() || null,
+				title: title?.trim() || null,
 				segment: _segment?.trim() || null,
 				description: _notes?.trim() || null,
+				image_url: image_url?.trim() || null,
 				account_id: accountId,
 				project_id: projectId,
 				contact_info,
@@ -82,8 +88,15 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 
 		if (error) {
+			consola.error("[people/new] Failed to create person:", error)
 			return { error: "Failed to create person" }
 		}
+
+		consola.info("[people/new] Created person:", {
+			id: data.id,
+			project_id: data.project_id,
+			firstname: data.firstname,
+		})
 
 		// Associate with persona if selected
 		if (_persona_id && _persona_id !== "none") {
@@ -99,20 +112,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			}
 		}
 
-		if (_organization_id && _organization_id !== "none") {
-			const { error: orgError } = await linkPersonToOrganization({
-				supabase,
-				accountId,
-				projectId,
-				personId: data.id,
-				organizationId: _organization_id,
-			})
-
-			if (orgError) {
-				return { error: "Person created, but failed to link organization" }
-			}
-		}
-
 		return redirect(routes.people.detail(data.id))
 	} catch (_error) {
 		return { error: "Failed to create person" }
@@ -121,35 +120,52 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 export default function NewPerson() {
 	const actionData = useActionData<typeof action>()
-	const { personas, organizations } = useLoaderData() as {
+	const { personas } = useLoaderData() as {
 		personas: { id: string; name: string }[]
-		organizations: { id: string; name: string }[]
 	}
-	// const currentProjectContext = useCurrentProject()
-	// const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
+
+	// Generate unique IDs for form fields
+	const firstnameId = useId()
+	const lastnameId = useId()
+	const emailId = useId()
+	const titleId = useId()
+	const segmentId = useId()
+	const personaId = useId()
+	const notesId = useId()
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl px-4 sm:px-6">
 			<div className="mb-8">
-				<h1 className="font-bold text-3xl text-gray-900">New Person</h1>
-				<p className="mt-2 text-gray-600">Create a new person record</p>
+				<h1 className="font-bold text-3xl text-foreground">New Person</h1>
+				<p className="mt-2 text-muted-foreground">Create a new person record</p>
 			</div>
 
 			<Form method="post" className="space-y-6">
-				<div>
-					<Label htmlFor="name">Name *</Label>
-					<Input id="name" name="name" type="text" required placeholder="Enter person's name" className="mt-1" />
+				<div className="grid grid-cols-2 gap-4">
+					<div>
+						<Label htmlFor={firstnameId}>First Name *</Label>
+						<Input id={firstnameId} name="firstname" type="text" required placeholder="Enter first name" className="mt-1" />
+					</div>
+					<div>
+						<Label htmlFor={lastnameId}>Last Name</Label>
+						<Input id={lastnameId} name="lastname" type="text" placeholder="Enter last name" className="mt-1" />
+					</div>
 				</div>
 
 				<div>
-					<Label htmlFor="email">Email</Label>
-					<Input id="email" name="email" type="email" placeholder="Enter email address" className="mt-1" />
+					<Label htmlFor={emailId}>Email</Label>
+					<Input id={emailId} name="email" type="email" placeholder="Enter email address" className="mt-1" />
 				</div>
 
 				<div>
-					<Label htmlFor="segment">Segment</Label>
+					<Label htmlFor={titleId}>Title</Label>
+					<Input id={titleId} name="title" type="text" placeholder="e.g., Product Manager, CEO, Engineer" className="mt-1" />
+				</div>
+
+				<div>
+					<Label htmlFor={segmentId}>Segment</Label>
 					<Input
-						id="segment"
+						id={segmentId}
 						name="segment"
 						type="text"
 						placeholder="e.g., Customer, Prospect, Partner"
@@ -157,19 +173,18 @@ export default function NewPerson() {
 					/>
 				</div>
 
-				<div>
-					<Label htmlFor="image_url">Image URL</Label>
-					<Input
-						id="image_url"
-						name="image_url"
-						type="text"
-						placeholder="https://example.com/image.jpg"
-						className="mt-1"
-					/>
-				</div>
+				<ImageUploader
+					name="image_url"
+					category="avatars"
+					placeholder="user"
+					size="lg"
+					circular
+					label="Profile Image"
+					hint="Upload an image for this person's avatar"
+				/>
 
 				<div>
-					<Label htmlFor="persona_id">Persona</Label>
+					<Label htmlFor={personaId}>Persona</Label>
 					<Select name="persona_id" defaultValue="none">
 						<SelectTrigger className="mt-1">
 							<SelectValue placeholder="Select a persona" />
@@ -186,26 +201,9 @@ export default function NewPerson() {
 				</div>
 
 				<div>
-					<Label htmlFor="organization_id">Organization</Label>
-					<Select name="organization_id" defaultValue="none">
-						<SelectTrigger className="mt-1">
-							<SelectValue placeholder="Select an organization" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="none">No organization</SelectItem>
-							{organizations.map((organization) => (
-								<SelectItem key={organization.id} value={organization.id}>
-									{organization.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-
-				<div>
-					<Label htmlFor="notes">Notes</Label>
+					<Label htmlFor={notesId}>Notes</Label>
 					<Textarea
-						id="notes"
+						id={notesId}
 						name="notes"
 						placeholder="Additional notes about this person"
 						className="mt-1"

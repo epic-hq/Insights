@@ -33,7 +33,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 	}
 
-	const { messages, system } = await request.json()
+	const { messages, system, userTimezone } = await request.json()
+	consola.info("project-status action: received userTimezone", { userTimezone })
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message) => {
 				if (!message || typeof message !== "object") return message
@@ -86,6 +87,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	runtimeContext.set("user_id", userId)
 	runtimeContext.set("account_id", accountId)
 	runtimeContext.set("project_id", projectId)
+	if (userTimezone) {
+		runtimeContext.set("user_timezone", userTimezone)
+	}
 
 	const agent = mastra.getAgent("projectStatusAgent")
 	const result = await agent.stream(runtimeMessages, {

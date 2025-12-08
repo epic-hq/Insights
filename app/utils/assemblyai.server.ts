@@ -81,6 +81,7 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 			const transcript = await client.transcripts.transcribe({
 				audio: url,
 				speech_model: "slam-1", // Latest high-accuracy speech model
+				language_code: "en", // Default to English transcription
 				speaker_labels: true,
 				// iab_categories: true,
 				format_text: true,

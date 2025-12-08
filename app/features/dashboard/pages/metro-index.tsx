@@ -86,9 +86,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Calculate conversation count
 	const conversationCount = interviews.length
 
-	// Calculate processing count
+	// Calculate processing count (only valid processing statuses from interview_status enum)
 	const processingCount = interviews.filter((i) =>
-		["uploading", "processing", "transcribing", "queued"].includes(i.status || "")
+		["uploading", "processing", "transcribing"].includes(i.status || "")
 	).length
 
 	// Get enabled lenses from project settings or use defaults
@@ -119,9 +119,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 			// Build href based on template key
 			let href = routes.lensLibrary()
-			if (template.template_key === "BANT_GPCT") {
+			if (template.template_key === "sales-bant") {
 				href = routes.lenses.salesBant()
-			} else if (template.template_key === "CUSTOMER_DISCOVERY") {
+			} else if (template.template_key === "customer-discovery") {
 				href = routes.lenses.customerDiscovery()
 			}
 
@@ -141,11 +141,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// Build processing items for display
 	const processingItems = interviews
-		.filter((i) => ["uploading", "processing", "transcribing", "queued"].includes(i.status || ""))
+		.filter((i) => ["uploading", "processing", "transcribing"].includes(i.status || ""))
 		.map((i) => ({
 			id: i.id,
 			name: i.participant_pseudonym || "Processing...",
-			status: i.status === "transcribing" ? ("processing" as const) : ("queued" as const),
+			status: i.status === "transcribing" || i.status === "processing" ? "processing" as const : "queued" as const,
 		}))
 
 	// Generate a simple AI insight based on data
@@ -211,8 +211,8 @@ Active Lenses: ${activeLensCount}`
 					interviews: routes.interviews.index(),
 					upload: routes.interviews.upload(),
 					lensLibrary: routes.lensLibrary(),
+					assistant: `${projectPath}/assistant`,
 				}}
-				onOpenChat={() => setIsChatOpen(true)}
 			/>
 
 			{/* Chat Sheet */}

@@ -207,10 +207,19 @@ export function ProjectStatusAgentChat({
 		return [systemContext, `Current UI Context:\n${currentPageContext}`].filter(Boolean).join("\n\n")
 	}, [systemContext, currentPageContext])
 
+	// Get user's timezone from browser
+	const userTimezone = useMemo(() => {
+		try {
+			return Intl.DateTimeFormat().resolvedOptions().timeZone
+		} catch {
+			return "UTC"
+		}
+	}, [])
+
 	const { messages, sendMessage, status, setMessages, addToolResult } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: routes.api.chat.projectStatus(),
-			body: { system: mergedSystemContext },
+			body: { system: mergedSystemContext, userTimezone },
 		}),
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 		onToolCall: async ({ toolCall }) => {

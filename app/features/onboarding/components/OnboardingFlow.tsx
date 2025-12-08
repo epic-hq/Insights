@@ -1,6 +1,8 @@
+import { X } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { Button } from "~/components/ui/button"
+import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import ProcessingScreen from "./ProcessingScreen"
 import ProjectGoalsScreen from "./ProjectGoalsScreen"
 import ProjectStatusScreen from "./ProjectStatusScreen"
@@ -61,8 +63,12 @@ export default function OnboardingFlow({
 }: OnboardingFlowProps) {
 	const [searchParams] = useSearchParams()
 	const navigate = useNavigate()
+	const { isMobile } = useDeviceDetection()
 	const isOnboarding = searchParams.get("onboarding") === "true"
 	const preselectedPersonId = searchParams.get("personId") ?? undefined
+
+	// Show mobile header when accessing upload from existing project (not full onboarding)
+	const showMobileHeader = isMobile && existingProject && !isOnboarding
 
 	// Start at upload step if we have existing project context
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
@@ -371,6 +377,21 @@ export default function OnboardingFlow({
 
 	return (
 		<div className="min-h-screen bg-background">
+			{/* Mobile action sheet header - for upload from existing project */}
+			{showMobileHeader && (
+				<div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3">
+					<h1 className="font-semibold text-lg">Add Conversation</h1>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8"
+						onClick={() => navigate(-1)}
+					>
+						<X className="h-5 w-5" />
+						<span className="sr-only">Close</span>
+					</Button>
+				</div>
+			)}
 			{renderOnboardingHeader()}
 			{stepContent}
 		</div>

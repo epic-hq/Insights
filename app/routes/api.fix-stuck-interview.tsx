@@ -41,72 +41,10 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		const body = await request.json()
 		const { interviewId, fixAll, checkProject } = body
+		const body = await request.json()
+		const { interviewId, fixAll } = body
 
 		const supabase = createSupabaseAdminClient()
-
-		// Check project mode - show all interviews in a project
-		if (checkProject) {
-			const { data: interviews, error } = await supabase
-				.from("interviews")
-				.select("id, title, status, transcript")
-				.eq("project_id", checkProject)
-				.order("created_at", { ascending: false })
-
-			if (error) {
-				return Response.json({ error: "Failed to query project" }, { status: 500 })
-			}
-
-			const summary = {
-				total: interviews?.length || 0,
-				byStatus: {} as Record<string, number>,
-				processing: interviews?.filter((i) => ["uploading", "processing", "transcribing"].includes(i.status || "")) || [],
-			}
-
-			for (const i of interviews || []) {
-				summary.byStatus[i.status || "unknown"] = (summary.byStatus[i.status || "unknown"] || 0) + 1
-			}
-
-			return Response.json({
-				project: checkProject,
-				...summary,
-				interviews: interviews?.map((i) => ({
-					id: i.id,
-					title: i.title,
-					status: i.status,
-					hasTranscript: !!i.transcript,
-				})),
-			})
-		}
-
-		// Mark failed interviews as error
-		if (body.markAsError) {
-			const ids = Array.isArray(body.markAsError) ? body.markAsError : [body.markAsError]
-			const { error: updateError } = await supabase
-				.from("interviews")
-				.update({ status: "error" })
-				.in("id", ids)
-
-			if (updateError) {
-				return Response.json({ error: "Failed to update" }, { status: 500 })
-			}
-
-			return Response.json({ success: true, marked: ids.length, message: `Marked ${ids.length} interviews as error` })
-		}
-
-		// Delete interviews
-		if (body.deleteInterviews) {
-			const ids = Array.isArray(body.deleteInterviews) ? body.deleteInterviews : [body.deleteInterviews]
-			const { error: deleteError } = await supabase
-				.from("interviews")
-				.delete()
-				.in("id", ids)
-
-			if (deleteError) {
-				return Response.json({ error: "Failed to delete" }, { status: 500 })
-			}
-
-			return Response.json({ success: true, deleted: ids.length, message: `Deleted ${ids.length} interviews` })
-		}
 
 		// Bulk fix mode
 		if (fixAll) {

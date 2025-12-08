@@ -50,6 +50,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			// model: openai.transcription('whisper-1'),
 			// model: assemblyai.transcription('nano'),
 			audio: audioData,
+			providerOptions: {
+				openai: {
+					language: "en", // Default to English transcription
+				},
+			},
 			// Provide a reasonable timeout if desired; omit to let the provider handle longer files
 			// abortSignal: AbortSignal.timeout(30_000),
 		})

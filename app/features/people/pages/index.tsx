@@ -13,6 +13,7 @@ import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopl
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { getServerClient } from "~/lib/supabase/client.server"
+import { getImageUrl } from "~/utils/storeImage.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "People" }, { name: "description", content: "Manage research participants and contacts" }]
@@ -40,7 +41,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response("Error loading people", { status: 500 })
 	}
 
-	return { people: people || [], catalog, scope }
+	// Convert R2 keys to presigned URLs for avatars
+	const peopleWithImageUrls = (people || []).map((person) => {
+		if (person.image_url?.startsWith("images/")) {
+			return { ...person, image_url: getImageUrl(person.image_url) ?? null }
+		}
+		return person
+	})
+
+	return { people: peopleWithImageUrls, catalog, scope }
 }
 
 export default function PeopleIndexPage() {
@@ -101,16 +110,16 @@ export default function PeopleIndexPage() {
 				segment: person.segment ?? null,
 				persona: persona
 					? {
-							id: persona.id,
-							name: persona.name,
-						}
+						id: persona.id,
+						name: persona.name,
+					}
 					: null,
 				personaColor: persona?.color_hex || null,
 				organization: primaryOrganization
 					? {
-							id: primaryOrganization.id,
-							name: primaryOrganization.name || primaryOrganization.website_url || null,
-						}
+						id: primaryOrganization.id,
+						name: primaryOrganization.name || primaryOrganization.website_url || null,
+					}
 					: null,
 				interviewCount: person.interview_people?.length ?? 0,
 				keySignals: facets.map((facet) => facet.label),
@@ -135,10 +144,6 @@ export default function PeopleIndexPage() {
 								<h1 className="font-semibold text-3xl text-foreground">People</h1>
 								<span className="text-foreground/75 text-sm">({people.length})</span>
 							</div>
-							<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-								Track the people behind your interviews. Explore linked personas, signals, and engagement recency from
-								one view.
-							</p>
 						</div>
 					</div>
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -190,10 +195,8 @@ export default function PeopleIndexPage() {
 				{people.length === 0 ? (
 					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
 						<div className="mx-auto max-w-md space-y-4">
-							<h3 className="font-semibold text-foreground text-xl">No people yet</h3>
-							<p className="text-muted-foreground text-sm">
-								Add your first person to start tracking research participants and contacts.
-							</p>
+							<h3 className="font-semibold text-lg text-muted-foreground">No people yet</h3>
+
 							<Button asChild>
 								<Link to={routes.people.new()}>Add Person</Link>
 							</Button>
@@ -211,9 +214,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-													name: pp.personas.name,
-													color_hex: pp.personas.color_hex || undefined,
-												}
+												name: pp.personas.name,
+												color_hex: pp.personas.color_hex || undefined,
+											}
 											: undefined,
 									})),
 								}}

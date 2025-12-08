@@ -1,8 +1,16 @@
+/**
+ * AppLayout - Main application layout wrapper
+ *
+ * Provides:
+ * - Desktop: Sidebar navigation
+ * - Mobile: Bottom tab bar + Profile sheet
+ */
+
 import { useState } from "react"
 import { Outlet, useSearchParams } from "react-router"
-import { ChatSheet } from "~/components/chat/ChatSheet"
 import { AppSidebar } from "~/components/navigation/AppSidebar"
 import { BottomTabBar } from "~/components/navigation/BottomTabBar"
+import { ProfileSheet } from "~/components/navigation/ProfileSheet"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { ProjectStatusAgentProvider } from "~/contexts/project-status-agent-context"
@@ -17,20 +25,17 @@ interface AppLayoutProps {
 export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const { isMobile } = useDeviceDetection()
 	const [searchParams] = useSearchParams()
-	const { accountId, projectId, projectPath } = useCurrentProject()
+	const { accountId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	// Chat sheet state
-	const [isChatOpen, setIsChatOpen] = useState(false)
+	// Profile sheet state
+	const [isProfileOpen, setIsProfileOpen] = useState(false)
 
 	const isOnboarding = searchParams.get("onboarding") === "true"
 	const showMainNav = !isOnboarding
 
-	// Check if we have valid project context for chat
-	const hasProjectContext = Boolean(accountId && projectId)
-
-	// Build system context for chat
-	const systemContext = `Project: ${projectPath || "Unknown"}`
+	// Should we show the mobile navigation?
+	const showMobileNav = isMobile && showJourneyNav && showMainNav
 
 	return (
 		<SidebarProvider>
@@ -39,37 +44,34 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				<main
 					className={cn(
 						"flex min-h-screen flex-1 flex-col",
-						isMobile && showJourneyNav && showMainNav ? "pb-[72px]" : ""
+						showMobileNav ? "pb-[72px]" : ""
 					)}
 				>
 					<Outlet />
 				</main>
 
 				{/* Mobile Bottom Tab Bar */}
-				{showJourneyNav && isMobile && showMainNav && (
+				{showMobileNav && (
 					<BottomTabBar
 						routes={{
-							crm: routes.people.index(),
+							dashboard: `${projectPath}/dashboard`,
+							people: routes.people.index(),
+							opportunities: routes.opportunities.index(),
+							chat: `${projectPath}/assistant`,
 							upload: routes.interviews.upload(),
-							profile: `/a/${accountId}/settings`,
 						}}
-						onChatClick={() => setIsChatOpen(true)}
-						isChatAvailable={hasProjectContext}
+						onProfileClick={() => setIsProfileOpen(true)}
 					/>
 				)}
 			</SidebarInset>
 
-			{/* Chat Sheet (mobile) - only render when we have project context */}
-			{isMobile && hasProjectContext && (
-				<ProjectStatusAgentProvider>
-					<ChatSheet
-						open={isChatOpen}
-						onOpenChange={setIsChatOpen}
-						accountId={accountId}
-						projectId={projectId}
-						systemContext={systemContext}
-					/>
-				</ProjectStatusAgentProvider>
+			{/* Profile Sheet (mobile) */}
+			{isMobile && (
+				<ProfileSheet
+					open={isProfileOpen}
+					onOpenChange={setIsProfileOpen}
+					accountSettingsHref={`/a/${accountId}/settings`}
+				/>
 			)}
 		</SidebarProvider>
 	)

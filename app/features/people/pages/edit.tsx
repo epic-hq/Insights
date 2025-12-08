@@ -16,6 +16,7 @@ import {
 	AlertDialogTrigger,
 } from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
+import { ImageUploader } from "~/components/ui/ImageUploader"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
@@ -318,18 +319,17 @@ export default function EditPerson() {
 					</div>
 				</div>
 
-				<div>
-					<Label htmlFor="image_url">Profile Image URL</Label>
-					<Input
-						id="image_url"
-						name="image_url"
-						type="url"
-						defaultValue={person.image_url || ""}
-						placeholder="https://example.com/avatar.jpg"
-						className="mt-1"
-					/>
-					<p className="mt-1 text-muted-foreground text-xs">Direct image URL shown as the person's avatar.</p>
-				</div>
+				<ImageUploader
+					name="image_url"
+					defaultValue={person.image_url}
+					category="avatars"
+					entityId={person.id}
+					placeholder="user"
+					size="lg"
+					circular
+					label="Profile Image"
+					hint="Upload or drag an image for this person's avatar"
+				/>
 
 				<div>
 					<Label htmlFor="persona_id">Persona</Label>
