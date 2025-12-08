@@ -27,6 +27,12 @@ export type LensTemplate = {
 		recommendations_enabled?: boolean
 		requires_project_context?: boolean
 	}
+	// Custom lens fields
+	account_id?: string | null
+	created_by?: string | null
+	is_system: boolean
+	is_public: boolean
+	nlp_source?: string | null
 }
 
 export type LensAnalysis = {
@@ -47,6 +53,7 @@ export type LensAnalysisWithTemplate = LensAnalysis & {
 
 /**
  * Load all available lens templates
+ * Returns system templates + custom templates accessible to current user (via RLS)
  */
 export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<LensTemplate[]> {
 	const { data, error } = await db
@@ -67,6 +74,12 @@ export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<L
 		category: t.category,
 		display_order: t.display_order ?? 100,
 		template_definition: t.template_definition as LensTemplate["template_definition"],
+		// Custom lens fields
+		account_id: t.account_id,
+		created_by: t.created_by,
+		is_system: t.is_system ?? true, // Default to true for backwards compat
+		is_public: t.is_public ?? true,
+		nlp_source: t.nlp_source,
 	}))
 }
 
@@ -96,7 +109,7 @@ export async function loadLensAnalyses(
 		}),
 		db
 			.from("conversation_lens_templates")
-			.select("template_key, template_name, summary, category, display_order, template_definition")
+			.select("*")
 			.eq("is_active", true),
 	])
 
@@ -118,6 +131,11 @@ export async function loadLensAnalyses(
 			category: t.category,
 			display_order: t.display_order ?? 100,
 			template_definition: t.template_definition as LensTemplate["template_definition"],
+			account_id: t.account_id,
+			created_by: t.created_by,
+			is_system: t.is_system ?? true,
+			is_public: t.is_public ?? true,
+			nlp_source: t.nlp_source,
 		})
 	}
 
@@ -163,7 +181,7 @@ export async function loadLensAnalysis(
 			.single(),
 		db
 			.from("conversation_lens_templates")
-			.select("template_key, template_name, summary, category, display_order, template_definition")
+			.select("*")
 			.eq("template_key", templateKey)
 			.single(),
 	])
@@ -196,6 +214,11 @@ export async function loadLensAnalysis(
 			category: t.category,
 			display_order: t.display_order ?? 100,
 			template_definition: t.template_definition as LensTemplate["template_definition"],
+			account_id: t.account_id,
+			created_by: t.created_by,
+			is_system: t.is_system ?? true,
+			is_public: t.is_public ?? true,
+			nlp_source: t.nlp_source,
 		},
 	}
 }

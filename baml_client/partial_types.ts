@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
+import type {  ActionButton,  AuthorityInfo,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GeneratedLensField,  GeneratedLensSection,  GeneratedLensTemplate,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  StakeholderRole,  SuggestedQuestion,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -394,6 +394,26 @@ export namespace partial_types {
       per_category_min?: number | null
       per_category_max?: number | null
       interview_time_limit?: number | null
+    }
+    export interface GeneratedLensField {
+      field_key?: string | null
+      field_name?: string | null
+      field_type?: "text" | "text_array" | "numeric" | "date" | "boolean" | null
+      description?: string | null
+    }
+    export interface GeneratedLensSection {
+      section_key?: string | null
+      section_name?: string | null
+      description?: string | null
+      fields: GeneratedLensField[]
+    }
+    export interface GeneratedLensTemplate {
+      template_name?: string | null
+      summary?: string | null
+      primary_objective?: string | null
+      sections: GeneratedLensSection[]
+      entities: string[]
+      recommendations_enabled?: boolean | null
     }
     export interface GoalAnswer {
       goal_statement?: string | null

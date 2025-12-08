@@ -779,10 +779,15 @@ export type Database = {
 			}
 			conversation_lens_templates: {
 				Row: {
+					account_id: string | null
 					category: string | null
 					created_at: string
+					created_by: string | null
 					display_order: number | null
 					is_active: boolean | null
+					is_public: boolean
+					is_system: boolean
+					nlp_source: string | null
 					primary_objective: string | null
 					summary: string | null
 					template_definition: Json
@@ -791,10 +796,15 @@ export type Database = {
 					updated_at: string
 				}
 				Insert: {
+					account_id?: string | null
 					category?: string | null
 					created_at?: string
+					created_by?: string | null
 					display_order?: number | null
 					is_active?: boolean | null
+					is_public?: boolean
+					is_system?: boolean
+					nlp_source?: string | null
 					primary_objective?: string | null
 					summary?: string | null
 					template_definition: Json
@@ -803,10 +813,15 @@ export type Database = {
 					updated_at?: string
 				}
 				Update: {
+					account_id?: string | null
 					category?: string | null
 					created_at?: string
+					created_by?: string | null
 					display_order?: number | null
 					is_active?: boolean | null
+					is_public?: boolean
+					is_system?: boolean
+					nlp_source?: string | null
 					primary_objective?: string | null
 					summary?: string | null
 					template_definition?: Json
@@ -814,7 +829,22 @@ export type Database = {
 					template_name?: string
 					updated_at?: string
 				}
-				Relationships: []
+				Relationships: [
+					{
+						foreignKeyName: "conversation_lens_templates_account_id_fkey"
+						columns: ["account_id"]
+						isOneToOne: false
+						referencedRelation: "accounts"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "conversation_lens_templates_created_by_fkey"
+						columns: ["created_by"]
+						isOneToOne: false
+						referencedRelation: "users"
+						referencedColumns: ["id"]
+					}
+				]
 			}
 			decision_question_metrics: {
 				Row: {

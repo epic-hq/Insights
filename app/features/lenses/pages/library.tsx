@@ -6,9 +6,9 @@
  */
 
 import consola from "consola"
-import { Briefcase, FlaskConical, Glasses, Loader2, Package, Sparkles, Users } from "lucide-react"
+import { Briefcase, FlaskConical, Glasses, Loader2, MoreVertical, Package, Sparkles, Trash2, Users, Eye, EyeOff } from "lucide-react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useFetcher, useLoaderData } from "react-router-dom"
+import { useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -20,10 +20,18 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "~/components/ui/dialog"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu"
 import { Switch } from "~/components/ui/switch"
 import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
 import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server"
+import { CreateLensDialog } from "../components/CreateLensDialog"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Lens Library | Insights" }, { name: "description", content: "Browse conversation analysis lenses" }]
@@ -88,7 +96,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		interviewCount = count || 0
 	}
 
-	return { templates, enabledLenses, interviewCount, projectId }
+	return { templates, enabledLenses, interviewCount, projectId, accountId, userId: ctx.claims?.sub }
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -264,14 +272,23 @@ function LensCard({
 	template,
 	isEnabled,
 	onToggle,
+	onDelete,
+	onToggleVisibility,
 	isSubmitting,
+	isOwner,
+	currentUserId,
 }: {
 	template: LensTemplate
 	isEnabled: boolean
 	onToggle: (templateKey: string, enabled: boolean) => void
+	onDelete?: (templateKey: string) => void
+	onToggleVisibility?: (templateKey: string, isPublic: boolean) => void
 	isSubmitting: boolean
+	isOwner: boolean
+	currentUserId?: string
 }) {
 	const colors = getCategoryColors(template.category)
+	const isCustom = !template.is_system
 
 	return (
 		<Card className={`${colors.border} transition-shadow hover:shadow-md`}>
@@ -282,13 +299,28 @@ function LensCard({
 							{getCategoryIcon(template.category)}
 						</div>
 						<div>
-							<CardTitle className="text-lg">{template.template_name}</CardTitle>
-							<Badge variant="outline" className={`mt-1 ${colors.bg} ${colors.text}`}>
-								{template.category || "general"}
-							</Badge>
+							<div className="flex items-center gap-2">
+								<CardTitle className="text-lg">{template.template_name}</CardTitle>
+								{isCustom && (
+									<Badge variant="secondary" className="text-xs">
+										Custom
+									</Badge>
+								)}
+							</div>
+							<div className="mt-1 flex items-center gap-2">
+								<Badge variant="outline" className={`${colors.bg} ${colors.text}`}>
+									{template.category || "general"}
+								</Badge>
+								{isCustom && !template.is_public && (
+									<Badge variant="outline" className="text-xs">
+										<EyeOff className="mr-1 h-3 w-3" />
+										Private
+									</Badge>
+								)}
+							</div>
 						</div>
 					</div>
-					{/* Toggle in upper right */}
+					{/* Toggle and actions in upper right */}
 					<div className="flex items-center gap-2">
 						{isSubmitting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
 						<Switch
@@ -297,6 +329,41 @@ function LensCard({
 							disabled={isSubmitting}
 							aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
 						/>
+						{/* Actions menu for custom lenses */}
+						{isCustom && isOwner && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant="ghost" size="icon" className="h-8 w-8">
+										<MoreVertical className="h-4 w-4" />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem
+										onClick={() => onToggleVisibility?.(template.template_key, !template.is_public)}
+									>
+										{template.is_public ? (
+											<>
+												<EyeOff className="mr-2 h-4 w-4" />
+												Make Private
+											</>
+										) : (
+											<>
+												<Eye className="mr-2 h-4 w-4" />
+												Share with Team
+											</>
+										)}
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										onClick={() => onDelete?.(template.template_key)}
+										className="text-red-600 focus:text-red-600"
+									>
+										<Trash2 className="mr-2 h-4 w-4" />
+										Delete Lens
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
 					</div>
 				</div>
 			</CardHeader>
@@ -314,6 +381,11 @@ function LensCard({
 							<DialogTitle className="flex items-center gap-2">
 								<div className={`rounded-lg p-2 ${colors.iconBg}`}>{getCategoryIcon(template.category)}</div>
 								{template.template_name}
+								{isCustom && (
+									<Badge variant="secondary" className="text-xs">
+										Custom
+									</Badge>
+								)}
 							</DialogTitle>
 							<DialogDescription>{template.summary}</DialogDescription>
 						</DialogHeader>
@@ -367,6 +439,16 @@ function LensCard({
 									</div>
 								</div>
 							)}
+
+							{/* Original description for custom lenses */}
+							{isCustom && template.nlp_source && (
+								<div>
+									<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+										Original Description
+									</h4>
+									<p className="text-muted-foreground text-sm italic">"{template.nlp_source}"</p>
+								</div>
+							)}
 						</div>
 					</DialogContent>
 				</Dialog>
@@ -402,8 +484,11 @@ function sortTemplates(templates: LensTemplate[]): LensTemplate[] {
 }
 
 export default function LensLibrary() {
-	const { templates, enabledLenses, interviewCount, projectId } = useLoaderData<typeof loader>()
+	const { templates, enabledLenses, interviewCount, projectId, accountId, userId } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
+	const deleteFetcher = useFetcher()
+	const visibilityFetcher = useFetcher()
+	const revalidator = useRevalidator()
 
 	// Track pending toggle for optimistic UI
 	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null
@@ -445,8 +530,49 @@ export default function LensLibrary() {
 		)
 	}
 
+	// Handle delete custom lens
+	const handleDelete = (templateKey: string) => {
+		if (!accountId || !confirm("Delete this custom lens? This cannot be undone.")) return
+
+		deleteFetcher.submit(
+			{
+				intent: "delete",
+				template_key: templateKey,
+				account_id: accountId,
+			},
+			{
+				method: "POST",
+				action: "/api/lens-templates",
+			}
+		)
+	}
+
+	// Handle toggle visibility
+	const handleToggleVisibility = (templateKey: string, isPublic: boolean) => {
+		if (!accountId) return
+
+		visibilityFetcher.submit(
+			{
+				intent: "update",
+				template_key: templateKey,
+				account_id: accountId,
+				is_public: String(isPublic),
+			},
+			{
+				method: "POST",
+				action: "/api/lens-templates",
+			}
+		)
+	}
+
+	// Handle lens created - revalidate to show new lens
+	const handleLensCreated = () => {
+		revalidator.revalidate()
+	}
+
 	// Count enabled lenses
 	const enabledCount = currentEnabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
+	const customCount = templates.filter((t) => !t.is_system).length
 
 	return (
 		<div className="container max-w-6xl py-8">
@@ -459,9 +585,12 @@ export default function LensLibrary() {
 						</div>
 						<h1 className="font-bold text-3xl">Lens Library</h1>
 					</div>
-					<Badge variant="secondary" className="text-sm">
-						{enabledCount} of {templates.length} enabled
-					</Badge>
+					<div className="flex items-center gap-3">
+						<Badge variant="secondary" className="text-sm">
+							{enabledCount} of {templates.length} enabled
+						</Badge>
+						{accountId && <CreateLensDialog accountId={accountId} onCreated={handleLensCreated} />}
+					</div>
 				</div>
 				<p className="text-lg text-muted-foreground">
 					Toggle lenses to automatically analyze new conversations in this project
@@ -476,30 +605,40 @@ export default function LensLibrary() {
 						template={template}
 						isEnabled={currentEnabledLenses.includes(template.template_key)}
 						onToggle={handleToggle}
+						onDelete={handleDelete}
+						onToggleVisibility={handleToggleVisibility}
 						isSubmitting={isSubmitting && pendingToggle === template.template_key}
+						isOwner={template.created_by === userId}
+						currentUserId={userId}
 					/>
 				))}
 			</div>
 
-			{/* Coming soon section */}
-			<div className="mt-8 rounded-lg border-2 border-dashed bg-muted/30 p-6">
-				<div className="mb-3 flex items-center gap-3">
-					<Sparkles className="h-5 w-5 text-primary" />
-					<h3 className="font-semibold">Coming Soon: Custom Lenses</h3>
+			{/* Empty state for no custom lenses - encourage creation */}
+			{customCount === 0 && (
+				<div className="mt-8 rounded-lg border-2 border-dashed bg-muted/30 p-6">
+					<div className="mb-3 flex items-center gap-3">
+						<Sparkles className="h-5 w-5 text-primary" />
+						<h3 className="font-semibold">Create Your Own Lenses</h3>
+					</div>
+					<p className="mb-4 text-muted-foreground text-sm">
+						Describe what you want to learn from conversations and AI will generate a structured analysis template
+						for you. Custom lenses work just like system lenses - toggle them on to automatically analyze new
+						conversations.
+					</p>
+					{accountId && <CreateLensDialog accountId={accountId} onCreated={handleLensCreated} />}
 				</div>
-				<p className="mb-4 text-muted-foreground text-sm">
-					Create your own conversation analysis lenses using natural language. Describe what you want to learn from
-					conversations and we'll generate a structured template for you.
-				</p>
-				<Button variant="outline" disabled>
-					Create Custom Lens
-				</Button>
-			</div>
+			)}
 
 			{/* Feedback messages */}
 			{fetcher.data?.error && (
 				<div className="mt-4 rounded-md bg-red-50 p-3 text-red-700 text-sm dark:bg-red-950/20 dark:text-red-400">
 					{fetcher.data.error}
+				</div>
+			)}
+			{deleteFetcher.data?.error && (
+				<div className="mt-4 rounded-md bg-red-50 p-3 text-red-700 text-sm dark:bg-red-950/20 dark:text-red-400">
+					{deleteFetcher.data.error}
 				</div>
 			)}
 		</div>

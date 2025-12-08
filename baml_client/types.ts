@@ -749,6 +749,32 @@ export interface GenerateInputs {
   
 }
 
+export interface GeneratedLensField {
+  field_key: string
+  field_name: string
+  field_type: "text" | "text_array" | "numeric" | "date" | "boolean"
+  description?: string | null
+  
+}
+
+export interface GeneratedLensSection {
+  section_key: string
+  section_name: string
+  description?: string | null
+  fields: GeneratedLensField[]
+  
+}
+
+export interface GeneratedLensTemplate {
+  template_name: string
+  summary: string
+  primary_objective: string
+  sections: GeneratedLensSection[]
+  entities: string[]
+  recommendations_enabled: boolean
+  
+}
+
 export interface GoalAnswer {
   goal_statement: string
   answer_summary: string

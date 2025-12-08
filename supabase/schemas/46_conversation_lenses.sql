@@ -15,6 +15,12 @@ create table if not exists public.conversation_lens_templates (
   is_active boolean default true,
   category text,
   display_order integer default 100,
+  -- Custom lens support
+  account_id uuid references accounts.accounts(id) on delete cascade,
+  created_by uuid references auth.users(id) on delete set null,
+  is_system boolean not null default false,
+  is_public boolean not null default true,
+  nlp_source text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -26,6 +32,24 @@ create index if not exists conversation_lens_templates_active_idx
 create index if not exists conversation_lens_templates_category_idx
   on public.conversation_lens_templates(category)
   where category is not null;
+
+-- Custom lens indexes
+create index if not exists conversation_lens_templates_account_idx
+  on public.conversation_lens_templates(account_id)
+  where account_id is not null;
+
+create index if not exists conversation_lens_templates_created_by_idx
+  on public.conversation_lens_templates(created_by)
+  where created_by is not null;
+
+-- Unique constraint: template_key unique per account scope
+-- System lenses (account_id null): globally unique
+-- Custom lenses: unique within account
+create unique index if not exists conversation_lens_templates_scoped_key_unique
+  on public.conversation_lens_templates(
+    coalesce(account_id, '00000000-0000-0000-0000-000000000000'::uuid),
+    template_key
+  );
 
 create trigger set_conversation_lens_templates_timestamp
   before insert or update on public.conversation_lens_templates
@@ -86,11 +110,37 @@ create trigger set_conversation_lens_analyses_timestamp
 alter table public.conversation_lens_templates enable row level security;
 alter table public.conversation_lens_analyses enable row level security;
 
--- Templates: readable by all authenticated users, managed by service role
-create policy "Anyone can read active lens templates"
+-- Templates: system templates readable by all, custom templates scoped to account
+create policy "Users can read accessible templates"
   on public.conversation_lens_templates for select to authenticated
-  using (is_active = true);
+  using (
+    is_active = true AND (
+      is_system = true OR
+      (account_id in (select accounts.get_accounts_with_role()) AND
+       (is_public = true OR created_by = auth.uid()))
+    )
+  );
 
+-- Users can create custom templates in their account
+create policy "Users can create templates in their account"
+  on public.conversation_lens_templates for insert to authenticated
+  with check (
+    account_id in (select accounts.get_accounts_with_role()) AND
+    is_system = false
+  );
+
+-- Users can update their own custom templates
+create policy "Users can update their own templates"
+  on public.conversation_lens_templates for update to authenticated
+  using (created_by = auth.uid() AND is_system = false)
+  with check (created_by = auth.uid() AND is_system = false);
+
+-- Users can delete their own custom templates (soft-delete via is_active)
+create policy "Users can delete their own templates"
+  on public.conversation_lens_templates for delete to authenticated
+  using (created_by = auth.uid() AND is_system = false);
+
+-- Service role can manage all templates (for system seeding)
 create policy "Service role can manage lens templates"
   on public.conversation_lens_templates for all to service_role
   using (true) with check (true);
@@ -117,7 +167,7 @@ create policy "Account members can delete lens analyses"
 -- 4. Grants
 -- ─────────────────────────────────────────────────────────────────────
 
-grant select on table public.conversation_lens_templates to authenticated, service_role;
+grant select, insert, update, delete on table public.conversation_lens_templates to authenticated;
 grant all on table public.conversation_lens_templates to service_role;
 grant select, insert, update, delete on table public.conversation_lens_analyses to authenticated, service_role;
 
@@ -127,7 +177,7 @@ grant select, insert, update, delete on table public.conversation_lens_analyses 
 
 -- Project Research (P0) - Answers project goals, decision questions, unknowns
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'project-research',
   'Project Research',
@@ -185,17 +235,19 @@ insert into public.conversation_lens_templates (
     "recommendations_enabled": true,
     "requires_project_context": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
   primary_objective = excluded.primary_objective,
   template_definition = excluded.template_definition,
-  display_order = excluded.display_order;
+  display_order = excluded.display_order,
+  is_system = true;
 
 -- Customer Discovery
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'customer-discovery',
   'Customer Discovery',
@@ -237,15 +289,17 @@ insert into public.conversation_lens_templates (
     "entities": ["stakeholders", "objections"],
     "recommendations_enabled": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
-  template_definition = excluded.template_definition;
+  template_definition = excluded.template_definition,
+  is_system = true;
 
 -- User Testing
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'user-testing',
   'User Testing',
@@ -286,15 +340,17 @@ insert into public.conversation_lens_templates (
     "entities": ["stakeholders"],
     "recommendations_enabled": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
-  template_definition = excluded.template_definition;
+  template_definition = excluded.template_definition,
+  is_system = true;
 
 -- Product Insights
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'product-insights',
   'Product Insights',
@@ -346,15 +402,17 @@ insert into public.conversation_lens_templates (
     "entities": ["competitive_insights"],
     "recommendations_enabled": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
-  template_definition = excluded.template_definition;
+  template_definition = excluded.template_definition,
+  is_system = true;
 
 -- Sales BANT
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'sales-bant',
   'Sales BANT',
@@ -388,15 +446,17 @@ insert into public.conversation_lens_templates (
     "entities": ["stakeholders", "next_steps", "objections"],
     "recommendations_enabled": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
-  template_definition = excluded.template_definition;
+  template_definition = excluded.template_definition,
+  is_system = true;
 
 -- Empathy Map / JTBD
 insert into public.conversation_lens_templates (
-  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active, is_system
 ) values (
   'empathy-map-jtbd',
   'Empathy Map / JTBD',
@@ -431,11 +491,13 @@ insert into public.conversation_lens_templates (
     "entities": ["stakeholders"],
     "recommendations_enabled": true
   }'::jsonb,
-  true
+  true,
+  true  -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
-  template_definition = excluded.template_definition;
+  template_definition = excluded.template_definition,
+  is_system = true;
 
 comment on table public.conversation_lens_templates is
   'Reusable conversation analysis templates/frameworks. Defines structure for analyzing interviews through different lenses.';
