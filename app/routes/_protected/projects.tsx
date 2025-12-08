@@ -16,6 +16,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "~/componen
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { ProjectStatusAgentProvider, useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { getProjectById } from "~/features/projects/db"
+import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import { currentProjectContext } from "~/server/current-project-context"
 import { type UserMetadata, userContext } from "~/server/user-context"
 import type { Database, GetAccount, Project, UserSettings } from "~/types"
@@ -109,7 +110,7 @@ async function _parse_project_id_from_params({
 	return project
 }
 
-// Layout component with main content and right sidebar
+// Layout component with main content and right sidebar (desktop only)
 function ProjectLayout({
 	statusData,
 	project,
@@ -119,7 +120,7 @@ function ProjectLayout({
 	project: ProjectRecord | null
 	userProfileContext?: string | null
 }) {
-	// Get params directly to ensure consistent values on server and client
+	const { isMobile } = useDeviceDetection()
 	const params = useParams()
 	const accountId = params.accountId || ""
 	const projectId = params.projectId || ""
@@ -135,6 +136,8 @@ function ProjectLayout({
 	)
 
 	useEffect(() => {
+		// Skip panel management on mobile
+		if (isMobile) return
 		const panel = chatPanelRef.current
 		if (!panel) return
 		const shouldCollapse = isChatCollapsed || !isExpanded
@@ -145,7 +148,7 @@ function ProjectLayout({
 		panel.expand()
 		const target = Math.max(20, Math.min(55, lastExpandedSize.current))
 		panel.resize(target)
-	}, [isChatCollapsed, isExpanded])
+	}, [isChatCollapsed, isExpanded, isMobile])
 
 	// Build comprehensive system context for the project status agent
 	const profileSection = userProfileContext ? `User Profile:\n${userProfileContext}` : ""
@@ -159,6 +162,17 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 `.trim()
 	const projectSystemContext = [profileSection, projectSection].filter(Boolean).join("\n\n")
 
+	// MOBILE LAYOUT: Simple, no resizable panels, no chat sidebar
+	// Chat is handled by ChatSheet in AppLayout for mobile
+	if (isMobile) {
+		return (
+			<div className="flex min-h-0 w-full flex-1 flex-col overflow-auto">
+				<Outlet />
+			</div>
+		)
+	}
+
+	// DESKTOP: Hide chat panel if route requests it
 	if (hideProjectStatusAgent) {
 		return (
 			<div className="flex h-dvh min-h-0 w-full overflow-hidden">
@@ -171,6 +185,7 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 		)
 	}
 
+	// DESKTOP: Full layout with resizable chat panel
 	return (
 		<div className="flex h-dvh min-h-0 w-full overflow-hidden">
 			<ResizablePanelGroup direction="horizontal" autoSaveId="project-status-layout" className="flex h-full w-full">

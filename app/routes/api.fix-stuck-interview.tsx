@@ -1,25 +1,96 @@
 import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 
 /**
  * Fix stuck interviews that have transcript but wrong status
- * POST /api/fix-stuck-interview
- * Body: { interviewId: string }
+ *
+ * GET /api/fix-stuck-interview - Find all stuck interviews (dry run)
+ * POST /api/fix-stuck-interview - Fix interviews
+ *   Body: { interviewId: string } - Fix single interview
+ *   Body: { fixAll: true } - Fix ALL stuck interviews
  */
+
+export async function loader({ request }: LoaderFunctionArgs) {
+	const supabase = createSupabaseAdminClient()
+
+	// Find all stuck interviews
+	const { data: stuck, error } = await supabase
+		.from("interviews")
+		.select("id, title, status, project_id")
+		.in("status", ["uploading", "processing", "transcribing"])
+		.not("transcript", "is", null)
+
+	if (error) {
+		consola.error("Error finding stuck interviews:", error)
+		return Response.json({ error: "Failed to query interviews" }, { status: 500 })
+	}
+
+	return Response.json({
+		found: stuck?.length || 0,
+		interviews: stuck || [],
+		message: "Use POST with { fixAll: true } to fix all, or { interviewId: 'xxx' } to fix one",
+	})
+}
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
 	try {
-		const { interviewId } = await request.json()
-
-		if (!interviewId) {
-			return Response.json({ error: "interviewId required" }, { status: 400 })
-		}
+		const body = await request.json()
+		const { interviewId, fixAll } = body
 
 		const supabase = createSupabaseAdminClient()
+
+		// Bulk fix mode
+		if (fixAll) {
+			consola.info("Bulk fixing all stuck interviews...")
+
+			// Find all stuck interviews with transcripts
+			const { data: stuck, error: findError } = await supabase
+				.from("interviews")
+				.select("id, title, status")
+				.in("status", ["uploading", "processing", "transcribing"])
+				.not("transcript", "is", null)
+
+			if (findError) {
+				consola.error("Error finding stuck interviews:", findError)
+				return Response.json({ error: "Failed to query interviews" }, { status: 500 })
+			}
+
+			if (!stuck || stuck.length === 0) {
+				return Response.json({ success: true, fixed: 0, message: "No stuck interviews found" })
+			}
+
+			consola.info(`Found ${stuck.length} stuck interviews to fix`)
+
+			// Update all at once
+			const ids = stuck.map((i) => i.id)
+			const { error: updateError } = await supabase
+				.from("interviews")
+				.update({ status: "ready" })
+				.in("id", ids)
+
+			if (updateError) {
+				consola.error("Failed to bulk update:", updateError)
+				return Response.json({ error: "Failed to update interviews" }, { status: 500 })
+			}
+
+			consola.success(`Fixed ${stuck.length} stuck interviews`)
+			return Response.json({
+				success: true,
+				fixed: stuck.length,
+				interviews: stuck,
+				message: `Fixed ${stuck.length} stuck interviews`,
+			})
+		}
+
+		// Single interview mode
+		if (!interviewId) {
+			return Response.json({ error: "interviewId or fixAll required" }, { status: 400 })
+		}
 
 		// 1. Check current state
 		const { data: interview, error: interviewError } = await supabase

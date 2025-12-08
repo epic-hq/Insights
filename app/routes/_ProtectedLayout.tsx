@@ -6,6 +6,7 @@ import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
+import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
@@ -159,6 +160,7 @@ export default function ProtectedLayout() {
 	const _params = useParams()
 	const navigation = useNavigation()
 	const location = useLocation()
+	const { isMobile } = useDeviceDetection()
 
 	const isLoading = navigation.state === "loading"
 
@@ -167,6 +169,17 @@ export default function ProtectedLayout() {
 	const isProjectNew = location.pathname.includes("/projects/new")
 	const isRealtimePage = location.pathname.includes("/realtime")
 	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage
+
+	// Disable PostHog surveys/feedback widget on mobile
+	useEffect(() => {
+		if (isMobile) {
+			// Disable surveys on mobile devices
+			posthog.config.disable_surveys = true
+		} else {
+			// Re-enable surveys on desktop
+			posthog.config.disable_surveys = false
+		}
+	}, [isMobile])
 
 	useEffect(() => {
 		// Identify user with person properties

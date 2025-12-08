@@ -99,9 +99,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Calculate conversation count
 	const conversationCount = interviews.length
 
-	// Calculate processing count
+	// Calculate processing count (only valid processing statuses from interview_status enum)
 	const processingCount = interviews.filter((i) =>
-		["uploading", "processing", "transcribing", "queued"].includes(i.status || "")
+		["uploading", "processing", "transcribing"].includes(i.status || "")
 	).length
 
 	// Get enabled lenses from project settings or use defaults
@@ -156,11 +156,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// Build processing items for display
 	const processingItems = interviews
-		.filter((i) => ["uploading", "processing", "transcribing", "queued"].includes(i.status || ""))
+		.filter((i) => ["uploading", "processing", "transcribing"].includes(i.status || ""))
 		.map((i) => ({
 			id: i.id,
 			name: i.participant_pseudonym || "Processing...",
-			status: i.status === "transcribing" ? "processing" as const : "queued" as const,
+			status: i.status === "transcribing" || i.status === "processing" ? "processing" as const : "queued" as const,
 		}))
 
 	// Generate a simple AI insight based on data

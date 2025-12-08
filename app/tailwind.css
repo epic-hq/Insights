@@ -247,3 +247,20 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* Hide PostHog feedback/survey widgets on mobile devices */
+@media (max-width: 767px) {
+	/* PostHog survey popups and feedback widgets */
+	.PostHogSurvey,
+	[class*="PostHogSurvey"],
+	[id*="posthog-survey"],
+	.posthog-survey,
+	.posthog-feedback,
+	[class*="posthog-survey"],
+	[class*="posthog-feedback"],
+	/* PostHog toolbar and widgets */
+	[id*="__posthog"],
+	[class*="__posthog"] {
+		display: none !important;
+	}
+}

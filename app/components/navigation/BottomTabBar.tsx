@@ -2,27 +2,24 @@
  * BottomTabBar - Mobile bottom navigation
  *
  * 5-tab bottom navigation with AI chat as central prominent element.
+ * Tabs: People | Opportunities | AI (center) | Add | Profile
  * Includes safe area padding for notched devices.
  */
 
-import { Home, MessageSquare, MoreHorizontal, Plus, Sparkles } from "lucide-react"
+import { Briefcase, Plus, Sparkles, User, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
 import { cn } from "~/lib/utils"
 
 export interface BottomTabBarProps {
 	/** Route helpers for navigation */
 	routes: {
-		home: string
-		recordings: string
+		people: string
+		opportunities: string
+		chat: string // Full page AI chat
 		upload: string
-		more: string
 	}
-	/** Callback when AI chat tab is clicked */
-	onChatClick?: () => void
-	/** Whether chat has new suggestions to show */
-	hasChatNotification?: boolean
-	/** Whether chat is available (has project context) */
-	isChatAvailable?: boolean
+	/** Callback when profile tab is clicked */
+	onProfileClick?: () => void
 	/** Additional CSS classes */
 	className?: string
 }
@@ -49,7 +46,7 @@ function TabItem({
 	isDisabled,
 }: TabItemProps) {
 	const baseClasses = cn(
-		"flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[64px] flex-1",
+		"flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[48px] flex-1",
 		"text-muted-foreground transition-colors",
 		isActive && "text-primary",
 		!isCenter && "hover:text-foreground",
@@ -109,15 +106,15 @@ function TabItem({
 
 export function BottomTabBar({
 	routes,
-	onChatClick,
-	hasChatNotification,
-	isChatAvailable = true,
+	onProfileClick,
 	className,
 }: BottomTabBarProps) {
 	const location = useLocation()
 
-	// Check if current path matches recordings section
-	const isRecordingsActive = location.pathname.includes("/interviews")
+	// Check active states
+	const isPeopleActive = location.pathname.includes("/people")
+	const isOpportunitiesActive = location.pathname.includes("/opportunities")
+	const isChatActive = location.pathname.includes("/assistant")
 
 	return (
 		<nav
@@ -129,29 +126,29 @@ export function BottomTabBar({
 			)}
 		>
 			<div className="flex items-end justify-around px-2 py-1">
-				{/* Home */}
+				{/* People */}
 				<TabItem
-					to={routes.home}
-					icon={<Home className="h-5 w-5" />}
-					label="Home"
+					to={routes.people}
+					icon={<Users className="h-5 w-5" />}
+					label="People"
+					isActive={isPeopleActive}
 				/>
 
-				{/* Recordings (Conversations) */}
+				{/* Opportunities */}
 				<TabItem
-					to={routes.recordings}
-					icon={<MessageSquare className="h-5 w-5" />}
-					label="Recordings"
-					isActive={isRecordingsActive}
+					to={routes.opportunities}
+					icon={<Briefcase className="h-5 w-5" />}
+					label="Opps"
+					isActive={isOpportunitiesActive}
 				/>
 
-				{/* AI Chat (Center - Prominent) */}
+				{/* AI Chat (Center - Full Page) */}
 				<TabItem
-					onClick={isChatAvailable ? onChatClick : undefined}
+					to={routes.chat}
 					icon={<Sparkles className="h-6 w-6" />}
 					label="AI"
 					isCenter
-					hasNotification={hasChatNotification}
-					isDisabled={!isChatAvailable}
+					isActive={isChatActive}
 				/>
 
 				{/* Add - Links to full upload page */}
@@ -161,11 +158,11 @@ export function BottomTabBar({
 					label="Add"
 				/>
 
-				{/* More */}
+				{/* Profile - Opens sheet */}
 				<TabItem
-					to={routes.more}
-					icon={<MoreHorizontal className="h-5 w-5" />}
-					label="More"
+					onClick={onProfileClick}
+					icon={<User className="h-5 w-5" />}
+					label="Profile"
 				/>
 			</div>
 		</nav>

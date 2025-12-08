@@ -1,8 +1,16 @@
+/**
+ * AppLayout - Main application layout wrapper
+ *
+ * Provides:
+ * - Desktop: Sidebar navigation
+ * - Mobile: Bottom tab bar + Profile sheet
+ */
+
 import { useState } from "react"
 import { Outlet, useSearchParams } from "react-router"
-import { ChatSheet } from "~/components/chat/ChatSheet"
 import { AppSidebar } from "~/components/navigation/AppSidebar"
 import { BottomTabBar } from "~/components/navigation/BottomTabBar"
+import { ProfileSheet } from "~/components/navigation/ProfileSheet"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
@@ -16,20 +24,14 @@ interface AppLayoutProps {
 export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const { isMobile } = useDeviceDetection()
 	const [searchParams] = useSearchParams()
-	const { accountId, projectId, projectPath } = useCurrentProject()
+	const { accountId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	// Chat sheet state
-	const [isChatOpen, setIsChatOpen] = useState(false)
+	// Profile sheet state
+	const [isProfileOpen, setIsProfileOpen] = useState(false)
 
 	const isOnboarding = searchParams.get("onboarding") === "true"
 	const showMainNav = !isOnboarding
-
-	// Check if we have valid project context for chat
-	const hasProjectContext = Boolean(accountId && projectId)
-
-	// Build system context for chat
-	const systemContext = `Project: ${projectPath || "Unknown"}`
 
 	return (
 		<SidebarProvider>
@@ -48,25 +50,22 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				{showJourneyNav && isMobile && showMainNav && (
 					<BottomTabBar
 						routes={{
-							home: routes.dashboard(),
-							recordings: routes.interviews.index(),
+							people: routes.people.index(),
+							opportunities: routes.opportunities.index(),
+							chat: `${projectPath}/assistant`,
 							upload: routes.interviews.upload(),
-							more: routes.projects.setup(),
 						}}
-						onChatClick={() => setIsChatOpen(true)}
-						isChatAvailable={hasProjectContext}
+						onProfileClick={() => setIsProfileOpen(true)}
 					/>
 				)}
 			</SidebarInset>
 
-			{/* Chat Sheet (mobile) - only render when we have project context */}
-			{isMobile && hasProjectContext && (
-				<ChatSheet
-					open={isChatOpen}
-					onOpenChange={setIsChatOpen}
-					accountId={accountId}
-					projectId={projectId}
-					systemContext={systemContext}
+			{/* Profile Sheet (mobile) */}
+			{isMobile && (
+				<ProfileSheet
+					open={isProfileOpen}
+					onOpenChange={setIsProfileOpen}
+					accountSettingsHref={`/a/${accountId}/settings`}
 				/>
 			)}
 		</SidebarProvider>
