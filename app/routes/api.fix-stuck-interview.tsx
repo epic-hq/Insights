@@ -40,8 +40,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		const body = await request.json()
-		const { interviewId, fixAll, checkProject } = body
-		const body = await request.json()
 		const { interviewId, fixAll } = body
 
 		const supabase = createSupabaseAdminClient()
