@@ -210,12 +210,18 @@ export async function action({ request }: ActionFunctionArgs) {
 				})
 			}
 
-			// Update a custom template (regenerate or change visibility)
+			// Update a custom template (regenerate, direct update, or change visibility)
 			case "update": {
 				const templateKey = formData.get("template_key")?.toString()
 				const accountId = formData.get("account_id")?.toString()
 				const description = formData.get("description")?.toString()
 				const isPublicStr = formData.get("is_public")?.toString()
+				// Direct updates (from EditLensDialog after regenerating preview)
+				const templateName = formData.get("template_name")?.toString()
+				const summary = formData.get("summary")?.toString()
+				const primaryObjective = formData.get("primary_objective")?.toString()
+				const templateDefinition = formData.get("template_definition")?.toString()
+				const nlpSource = formData.get("nlp_source")?.toString()
 
 				if (!templateKey || !accountId) {
 					return Response.json({ ok: false, error: "Missing template_key or account_id" }, { status: 400 })
@@ -236,8 +242,22 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				const updates: Record<string, any> = {}
 
-				// Regenerate from new description
-				if (description && description.length >= 10) {
+				// Direct template updates (e.g., from EditLensDialog after preview)
+				if (templateDefinition) {
+					try {
+						updates.template_definition = JSON.parse(templateDefinition)
+					} catch {
+						return Response.json({ ok: false, error: "Invalid template_definition JSON" }, { status: 400 })
+					}
+				}
+
+				if (templateName) updates.template_name = templateName
+				if (summary !== undefined) updates.summary = summary || null
+				if (primaryObjective !== undefined) updates.primary_objective = primaryObjective || null
+				if (nlpSource !== undefined) updates.nlp_source = nlpSource || null
+
+				// Legacy: Regenerate from description if no direct template updates provided
+				if (!templateDefinition && description && description.length >= 10) {
 					consola.info("[lens-templates] Regenerating template from description:", description.substring(0, 100))
 					try {
 						const generated = await b.GenerateLensTemplate(description, null)

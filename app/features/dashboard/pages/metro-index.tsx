@@ -117,12 +117,23 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			const stats = lensAnalysesByTemplate.get(template.template_key) || { count: 0, completed: 0 }
 			const hasData = stats.completed > 0
 
-			// Build href based on template key
-			let href = routes.lensLibrary()
-			if (template.template_key === "sales-bant") {
-				href = routes.lenses.salesBant()
-			} else if (template.template_key === "customer-discovery") {
-				href = routes.lenses.customerDiscovery()
+			// Build href based on template key - all lenses now have their own results page
+			// Specific system lenses have dedicated routes, custom lenses use the generic route
+			let href: string
+			switch (template.template_key) {
+				case "sales-bant":
+					href = routes.lenses.salesBant()
+					break
+				case "customer-discovery":
+					href = routes.lenses.customerDiscovery()
+					break
+				case "consulting-project":
+					href = routes.lenses.consultingProject()
+					break
+				default:
+					// All other lenses (including custom ones) use the generic route
+					href = routes.lenses.byTemplateKey(template.template_key)
+					break
 			}
 
 			return {

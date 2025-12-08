@@ -1901,7 +1901,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 				{/* Conversation Lenses Section */}
 				<div className="mb-8 space-y-8">
-					{/* New Generic Lens System - Accordion view */}
+					<h3 className="font-semibold text-foreground text-lg">Conversation Lenses</h3>
+
+					{/* Generic Lens System - Accordion view */}
 					{lensTemplates.length > 0 && (
 						<LensAccordion
 							interviewId={interview.id}
@@ -1913,7 +1915,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						/>
 					)}
 
-					{/* Legacy Sales Lens (for backward compatibility during migration) */}
+					{/* Legacy Sales Lens - commented out during migration
 					{salesCrmEnabled && salesLens && (
 						<div className="mt-8 border-t pt-8">
 							<h4 className="mb-4 font-medium text-muted-foreground text-sm">Legacy Sales Lens (migrating)</h4>
@@ -1929,15 +1931,13 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							/>
 						</div>
 					)}
+					*/}
 
 					{/* Fallback when no lenses available */}
-					{lensTemplates.length === 0 && !salesLens && (
-						<div>
-							<h3 className="mb-4 font-semibold text-foreground text-lg">Conversation Lenses</h3>
-							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center dark:bg-muted/10">
-								<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
-								<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
-							</div>
+					{lensTemplates.length === 0 && (
+						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center dark:bg-muted/10">
+							<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
+							<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
 						</div>
 					)}
 				</div>

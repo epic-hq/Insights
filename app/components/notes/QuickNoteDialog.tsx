@@ -1,5 +1,5 @@
 import { X } from "lucide-react"
-import { useState } from "react"
+import { useId, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import {
@@ -48,6 +48,11 @@ export function QuickNoteDialog({
 	availableOrgs = [],
 	availableOpportunities = [],
 }: QuickNoteDialogProps) {
+	const titleId = useId()
+	const noteTypeId = useId()
+	const contentId = useId()
+	const tagsId = useId()
+
 	const [title, setTitle] = useState("")
 	const [content, setContent] = useState("")
 	const [noteType, setNoteType] = useState<NoteType>("meeting_notes")
@@ -122,20 +127,20 @@ export function QuickNoteDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+			<DialogContent className="h-[100vh] max-h-[100vh] max-w-2xl overflow-y-auto sm:h-[75vh] sm:max-h-[75vh]">
 				<DialogHeader>
 					<DialogTitle>Quick Note</DialogTitle>
-					<DialogDescription>
+					<DialogDescription className="hidden sm:block">
 						Capture notes, observations, or ideas. Associate with people, organizations, or opportunities.
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="space-y-4 py-4">
+				<div className="flex h-full flex-col space-y-4 py-4">
 					{/* Title (optional) */}
 					<div className="space-y-2">
-						<Label htmlFor="title">Title (optional)</Label>
+						<Label htmlFor={titleId}>Title (optional)</Label>
 						<Input
-							id="title"
+							id={titleId}
 							placeholder="Auto-generated if left blank"
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
@@ -143,10 +148,10 @@ export function QuickNoteDialog({
 					</div>
 
 					{/* Note Type */}
-					<div className="space-y-2">
-						<Label htmlFor="noteType">Note Type</Label>
+					<div className="hidden space-y-2 sm:block">
+						<Label htmlFor={noteTypeId}>Note Type</Label>
 						<Select value={noteType} onValueChange={(value) => setNoteType(value as NoteType)}>
-							<SelectTrigger id="noteType">
+							<SelectTrigger id={noteTypeId}>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -161,15 +166,14 @@ export function QuickNoteDialog({
 					</div>
 
 					{/* Content */}
-					<div className="space-y-2">
-						<Label htmlFor="content">Content (Markdown supported)</Label>
+					<div className="flex-1 space-y-2">
+						<Label htmlFor={contentId}>Content (Markdown supported)</Label>
 						<Textarea
-							id="content"
+							id={contentId}
 							placeholder="Write your note here... You can use markdown formatting."
 							value={content}
 							onChange={(e) => setContent(e.target.value)}
-							rows={10}
-							className="font-mono text-sm"
+							className="h-full min-h-[6rem] resize-none font-mono text-sm sm:min-h-[10rem]"
 						/>
 					</div>
 
@@ -231,11 +235,11 @@ export function QuickNoteDialog({
 					)}
 
 					{/* Tags */}
-					<div className="space-y-2">
-						<Label htmlFor="tags">Tags</Label>
+					<div className="hidden space-y-2 sm:block">
+						<Label htmlFor={tagsId}>Tags</Label>
 						<div className="flex gap-2">
 							<Input
-								id="tags"
+								id={tagsId}
 								placeholder="Add tag..."
 								value={tagInput}
 								onChange={(e) => setTagInput(e.target.value)}

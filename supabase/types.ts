@@ -749,12 +749,98 @@ export type Database = {
           },
         ]
       }
+      conversation_lens_summaries: {
+        Row: {
+          account_id: string
+          conflicts_to_review: Json | null
+          created_at: string
+          custom_instructions: string | null
+          error_message: string | null
+          executive_summary: string | null
+          id: string
+          interview_count: number
+          key_takeaways: Json | null
+          overall_confidence: number | null
+          processed_at: string | null
+          processed_by: string | null
+          project_id: string
+          recommendations: Json | null
+          status: string | null
+          synthesis_data: Json
+          template_key: string
+          trigger_run_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          conflicts_to_review?: Json | null
+          created_at?: string
+          custom_instructions?: string | null
+          error_message?: string | null
+          executive_summary?: string | null
+          id?: string
+          interview_count?: number
+          key_takeaways?: Json | null
+          overall_confidence?: number | null
+          processed_at?: string | null
+          processed_by?: string | null
+          project_id: string
+          recommendations?: Json | null
+          status?: string | null
+          synthesis_data?: Json
+          template_key: string
+          trigger_run_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          conflicts_to_review?: Json | null
+          created_at?: string
+          custom_instructions?: string | null
+          error_message?: string | null
+          executive_summary?: string | null
+          id?: string
+          interview_count?: number
+          key_takeaways?: Json | null
+          overall_confidence?: number | null
+          processed_at?: string | null
+          processed_by?: string | null
+          project_id?: string
+          recommendations?: Json | null
+          status?: string | null
+          synthesis_data?: Json
+          template_key?: string
+          trigger_run_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_lens_summaries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_lens_summaries_template_key_fkey"
+            columns: ["template_key"]
+            isOneToOne: false
+            referencedRelation: "conversation_lens_templates"
+            referencedColumns: ["template_key"]
+          },
+        ]
+      }
       conversation_lens_templates: {
         Row: {
+          account_id: string | null
           category: string | null
           created_at: string
+          created_by: string | null
           display_order: number | null
           is_active: boolean | null
+          is_public: boolean
+          is_system: boolean
+          nlp_source: string | null
           primary_objective: string | null
           summary: string | null
           template_definition: Json
@@ -763,10 +849,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id?: string | null
           category?: string | null
           created_at?: string
+          created_by?: string | null
           display_order?: number | null
           is_active?: boolean | null
+          is_public?: boolean
+          is_system?: boolean
+          nlp_source?: string | null
           primary_objective?: string | null
           summary?: string | null
           template_definition: Json
@@ -775,10 +866,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string | null
           category?: string | null
           created_at?: string
+          created_by?: string | null
           display_order?: number | null
           is_active?: boolean | null
+          is_public?: boolean
+          is_system?: boolean
+          nlp_source?: string | null
           primary_objective?: string | null
           summary?: string | null
           template_definition?: Json

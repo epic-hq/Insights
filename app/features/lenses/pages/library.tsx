@@ -6,7 +6,8 @@
  */
 
 import consola from "consola"
-import { Briefcase, FlaskConical, Glasses, Loader2, MoreVertical, Package, Sparkles, Trash2, Users, Eye, EyeOff } from "lucide-react"
+import { Briefcase, FlaskConical, Glasses, Loader2, MoreVertical, Package, Pencil, Sparkles, Trash2, Users, Eye, EyeOff } from "lucide-react"
+import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -32,6 +33,7 @@ import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/feat
 import { userContext } from "~/server/user-context"
 import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server"
 import { CreateLensDialog } from "../components/CreateLensDialog"
+import { EditLensDialog } from "../components/EditLensDialog"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Lens Library | Insights" }, { name: "description", content: "Browse conversation analysis lenses" }]
@@ -270,18 +272,22 @@ function LensCard({
 	onToggle,
 	onDelete,
 	onToggleVisibility,
+	onEdit,
 	isSubmitting,
 	isOwner,
 	currentUserId,
+	accountId,
 }: {
 	template: LensTemplate
 	isEnabled: boolean
 	onToggle: (templateKey: string, enabled: boolean) => void
 	onDelete?: (templateKey: string) => void
 	onToggleVisibility?: (templateKey: string, isPublic: boolean) => void
+	onEdit?: (template: LensTemplate) => void
 	isSubmitting: boolean
 	isOwner: boolean
 	currentUserId?: string
+	accountId?: string
 }) {
 	const colors = getCategoryColors(template.category)
 	const isCustom = !template.is_system
@@ -334,6 +340,10 @@ function LensCard({
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
+									<DropdownMenuItem onClick={() => onEdit?.(template)}>
+										<Pencil className="mr-2 h-4 w-4" />
+										Edit Lens
+									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={() => onToggleVisibility?.(template.template_key, !template.is_public)}
 									>
@@ -486,6 +496,9 @@ export default function LensLibrary() {
 	const visibilityFetcher = useFetcher()
 	const revalidator = useRevalidator()
 
+	// Edit dialog state
+	const [editingTemplate, setEditingTemplate] = useState<LensTemplate | null>(null)
+
 	// Track pending toggle for optimistic UI
 	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null
 	const isSubmitting = fetcher.state === "submitting"
@@ -566,6 +579,17 @@ export default function LensLibrary() {
 		revalidator.revalidate()
 	}
 
+	// Handle edit custom lens
+	const handleEdit = (template: LensTemplate) => {
+		setEditingTemplate(template)
+	}
+
+	// Handle lens updated - revalidate and close dialog
+	const handleLensUpdated = () => {
+		revalidator.revalidate()
+		setEditingTemplate(null)
+	}
+
 	// Count enabled lenses
 	const enabledCount = currentEnabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
 	const customCount = templates.filter((t) => !t.is_system).length
@@ -603,12 +627,25 @@ export default function LensLibrary() {
 						onToggle={handleToggle}
 						onDelete={handleDelete}
 						onToggleVisibility={handleToggleVisibility}
+						onEdit={handleEdit}
 						isSubmitting={isSubmitting && pendingToggle === template.template_key}
 						isOwner={template.created_by === userId}
 						currentUserId={userId}
+						accountId={accountId}
 					/>
 				))}
 			</div>
+
+			{/* Edit Lens Dialog */}
+			{editingTemplate && accountId && (
+				<EditLensDialog
+					open={!!editingTemplate}
+					onOpenChange={(open) => !open && setEditingTemplate(null)}
+					template={editingTemplate}
+					accountId={accountId}
+					onUpdated={handleLensUpdated}
+				/>
+			)}
 
 			{/* Empty state for no custom lenses - encourage creation */}
 			{customCount === 0 && (

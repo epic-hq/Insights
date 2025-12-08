@@ -508,6 +508,14 @@ export interface DecisionQuestionOut {
   
 }
 
+export interface EntityAggregation {
+  entity_type: string
+  total_count: number
+  top_items: string[]
+  patterns?: string | null
+  
+}
+
 export interface EvidenceAnalysisResponse {
   evidence_results: EvidenceLinkResult[]
   research_question_answers: ResearchQuestionAnswer[]
@@ -695,6 +703,16 @@ export interface FeatureRequest {
   competitive_alternative?: string | null
   evidence_ids: string[]
   confidence: number
+  
+}
+
+export interface FieldSynthesis {
+  field_key: string
+  field_name: string
+  consensus_value?: string | null
+  value_range?: string | null
+  discrepancies?: SynthesisDiscrepancy[] | null
+  interview_count: number
   
 }
 
@@ -959,6 +977,19 @@ export interface LensStakeholderItem {
   organization?: string | null
   confidence: number
   evidence_ids: string[]
+  
+}
+
+export interface LensSynthesisResult {
+  executive_summary: string
+  key_takeaways: SynthesizedInsight[]
+  sections: SectionSynthesis[]
+  entities: EntityAggregation[]
+  recommendations: string[]
+  conflicts_to_review: string[]
+  overall_confidence: number
+  interview_count: number
+  synthesis_notes?: string | null
   
 }
 
@@ -1580,6 +1611,14 @@ export interface Scores {
   
 }
 
+export interface SectionSynthesis {
+  section_key: string
+  section_name: string
+  summary: string
+  fields: FieldSynthesis[]
+  
+}
+
 export interface Set {
   name: string
   description: string
@@ -1630,6 +1669,23 @@ export interface SuggestedQuestion {
   rationale: string
   interview_type: "user_interview" | "stakeholder_interview" | "expert_interview"
   priority: number
+  
+}
+
+export interface SynthesisDiscrepancy {
+  interview_id: string
+  interview_title: string
+  value: string
+  note: string
+  
+}
+
+export interface SynthesizedInsight {
+  title: string
+  insight: string
+  supporting_interviews: string[]
+  confidence: number
+  category: "consensus" | "pattern" | "discrepancy" | "recommendation"
   
 }
 

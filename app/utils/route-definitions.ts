@@ -78,6 +78,9 @@ export interface RouteDefinitions {
 		library: () => string
 		salesBant: () => string
 		customerDiscovery: () => string
+		consultingProject: () => string
+		/** Generic lens view for any template_key (including custom lenses) */
+		byTemplateKey: (templateKey: string) => string
 	}
 	/** @deprecated - use lenses.library() instead */
 	lensLibrary: () => string
@@ -253,6 +256,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			library: () => `${base}/lenses`,
 			salesBant: () => `${base}/lenses/sales-bant`,
 			customerDiscovery: () => `${base}/lenses/customer-discovery`,
+			consultingProject: () => `${base}/lenses/consulting-project`,
+			byTemplateKey: (templateKey: string) => `${base}/lenses/${templateKey}`,
 		},
 		// @deprecated - use lenses.library() instead
 		lensLibrary: () => `${base}/lenses`,
