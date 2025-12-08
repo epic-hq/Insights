@@ -179,6 +179,8 @@ export const getPersonById = async ({
 
 	type PersonById = QueryData<typeof personByIdQuery>
 
+	consola.info("getPersonById query params:", { accountId, projectId, id })
+
 	const { data, error } = await personByIdQuery
 
 	if (error) {
@@ -192,6 +194,25 @@ export const getPersonById = async ({
 			hint: supabaseError?.hint,
 			code: supabaseError?.code,
 		})
+
+		// Debug: try to fetch without project_id filter to see if person exists
+		const { data: debugPerson } = await supabase
+			.from("people")
+			.select("id, project_id, firstname, account_id")
+			.eq("id", id)
+			.maybeSingle()
+
+		if (debugPerson) {
+			consola.error("getPersonById DEBUG - person exists with different project_id:", {
+				personId: id,
+				expectedProjectId: projectId,
+				actualProjectId: debugPerson.project_id,
+				accountId: debugPerson.account_id,
+			})
+		} else {
+			consola.error("getPersonById DEBUG - person does not exist at all:", { id })
+		}
+
 		throw new Response("Failed to load person", { status: 500 })
 	}
 

@@ -33,6 +33,7 @@ import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 import type { Insight } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
+import { getImageUrl } from "~/utils/storeImage.server"
 import { PersonFacetLenses } from "../components/PersonFacetLenses"
 import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server"
 
@@ -87,7 +88,18 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			projectId,
 			accountId,
 		})
-		const personWithFacetSummaries = { ...person, person_facet_summaries: facetSummaries }
+
+		// Convert R2 key to presigned URL if needed
+		let imageUrl = person.image_url
+		if (imageUrl?.startsWith("images/")) {
+			imageUrl = getImageUrl(imageUrl) ?? null
+		}
+
+		const personWithFacetSummaries = {
+			...person,
+			person_facet_summaries: facetSummaries,
+			image_url: imageUrl,
+		}
 
 		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0 })
 		return { person: personWithFacetSummaries, catalog, organizations: organizations.data ?? [] }

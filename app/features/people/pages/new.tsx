@@ -1,8 +1,10 @@
+import consola from "consola"
 import { useId } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import { ImageUploader } from "~/components/ui/ImageUploader"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
@@ -47,6 +49,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const firstname = formData.get("firstname") as string
 	const lastname = formData.get("lastname") as string
 	const email = formData.get("email") as string
+	const title = formData.get("title") as string
 	const _segment = formData.get("segment") as string
 	const _notes = formData.get("notes") as string
 	const image_url = formData.get("image_url") as string
@@ -56,22 +59,28 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		return { error: "First name is required" }
 	}
 
-	// Build contact_info object if either email or image_url is present
+	// Build contact_info object if email is present
 	let contact_info: Record<string, string> | null = null
-	if (email?.trim() || image_url?.trim()) {
-		contact_info = {}
-		if (email?.trim()) contact_info.email = email.trim()
-		if (image_url?.trim()) contact_info.image_url = image_url.trim()
+	if (email?.trim()) {
+		contact_info = { email: email.trim() }
 	}
 
 	try {
+		consola.info("[people/new] Creating person with:", {
+			accountId,
+			projectId,
+			firstname: firstname.trim(),
+		})
+
 		const { data, error } = await createPerson({
 			supabase: supabase,
 			data: {
 				firstname: firstname.trim(),
 				lastname: lastname?.trim() || null,
+				title: title?.trim() || null,
 				segment: _segment?.trim() || null,
 				description: _notes?.trim() || null,
+				image_url: image_url?.trim() || null,
 				account_id: accountId,
 				project_id: projectId,
 				contact_info,
@@ -79,8 +88,15 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 
 		if (error) {
+			consola.error("[people/new] Failed to create person:", error)
 			return { error: "Failed to create person" }
 		}
+
+		consola.info("[people/new] Created person:", {
+			id: data.id,
+			project_id: data.project_id,
+			firstname: data.firstname,
+		})
 
 		// Associate with persona if selected
 		if (_persona_id && _persona_id !== "none") {
@@ -112,8 +128,8 @@ export default function NewPerson() {
 	const firstnameId = useId()
 	const lastnameId = useId()
 	const emailId = useId()
+	const titleId = useId()
 	const segmentId = useId()
-	const imageUrlId = useId()
 	const personaId = useId()
 	const notesId = useId()
 
@@ -142,6 +158,11 @@ export default function NewPerson() {
 				</div>
 
 				<div>
+					<Label htmlFor={titleId}>Title</Label>
+					<Input id={titleId} name="title" type="text" placeholder="e.g., Product Manager, CEO, Engineer" className="mt-1" />
+				</div>
+
+				<div>
 					<Label htmlFor={segmentId}>Segment</Label>
 					<Input
 						id={segmentId}
@@ -152,16 +173,15 @@ export default function NewPerson() {
 					/>
 				</div>
 
-				<div>
-					<Label htmlFor={imageUrlId}>Image URL</Label>
-					<Input
-						id={imageUrlId}
-						name="image_url"
-						type="text"
-						placeholder="https://example.com/image.jpg"
-						className="mt-1"
-					/>
-				</div>
+				<ImageUploader
+					name="image_url"
+					category="avatars"
+					placeholder="user"
+					size="lg"
+					circular
+					label="Profile Image"
+					hint="Upload an image for this person's avatar"
+				/>
 
 				<div>
 					<Label htmlFor={personaId}>Persona</Label>

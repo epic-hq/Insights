@@ -13,6 +13,7 @@ import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopl
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { getServerClient } from "~/lib/supabase/client.server"
+import { getImageUrl } from "~/utils/storeImage.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "People" }, { name: "description", content: "Manage research participants and contacts" }]
@@ -40,7 +41,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response("Error loading people", { status: 500 })
 	}
 
-	return { people: people || [], catalog, scope }
+	// Convert R2 keys to presigned URLs for avatars
+	const peopleWithImageUrls = (people || []).map((person) => {
+		if (person.image_url?.startsWith("images/")) {
+			return { ...person, image_url: getImageUrl(person.image_url) ?? null }
+		}
+		return person
+	})
+
+	return { people: peopleWithImageUrls, catalog, scope }
 }
 
 export default function PeopleIndexPage() {
