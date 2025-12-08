@@ -1,18 +1,19 @@
 /**
  * BottomTabBar - Mobile bottom navigation
  *
- * 5-tab bottom navigation with AI chat as central prominent element.
- * Tabs: People | Opportunities | AI (center) | Add | Profile
+ * 6-tab bottom navigation with AI chat as central prominent element.
+ * Tabs: Dashboard | People | Opportunities | AI (center) | Add | Profile
  * Includes safe area padding for notched devices.
  */
 
-import { Briefcase, Plus, Sparkles, User, Users } from "lucide-react"
+import { Briefcase, LayoutDashboard, Plus, Sparkles, User, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
 import { cn } from "~/lib/utils"
 
 export interface BottomTabBarProps {
 	/** Route helpers for navigation */
 	routes: {
+		dashboard: string
 		people: string
 		opportunities: string
 		chat: string // Full page AI chat
@@ -112,6 +113,7 @@ export function BottomTabBar({
 	const location = useLocation()
 
 	// Check active states
+	const isDashboardActive = location.pathname.includes("/dashboard") || location.pathname.endsWith(routes.dashboard.replace(/\/$/, ""))
 	const isPeopleActive = location.pathname.includes("/people")
 	const isOpportunitiesActive = location.pathname.includes("/opportunities")
 	const isChatActive = location.pathname.includes("/assistant")
@@ -126,6 +128,14 @@ export function BottomTabBar({
 			)}
 		>
 			<div className="flex items-end justify-around px-2 py-1">
+				{/* Dashboard */}
+				<TabItem
+					to={routes.dashboard}
+					icon={<LayoutDashboard className="h-5 w-5" />}
+					label="Home"
+					isActive={isDashboardActive}
+				/>
+
 				{/* People */}
 				<TabItem
 					to={routes.people}

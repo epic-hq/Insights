@@ -53,6 +53,7 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				{showMobileNav && (
 					<BottomTabBar
 						routes={{
+							dashboard: `${projectPath}/dashboard`,
 							people: routes.people.index(),
 							opportunities: routes.opportunities.index(),
 							chat: `${projectPath}/assistant`,
