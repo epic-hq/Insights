@@ -12,6 +12,8 @@ export interface SimpleMediaPlayerProps {
 	autoPlay?: boolean
 	showDebug?: boolean
 	lazyLoad?: boolean // Only fetch signed URL when user clicks play
+	/** R2 key or URL for video thumbnail (displayed before video loads) */
+	thumbnailUrl?: string | null
 }
 
 function parseTimeToSeconds(time: string | number | undefined): number {
@@ -65,11 +67,15 @@ function extractFilenameFromUrl(url: string): string | null {
 }
 
 function isAudioFile(url: string): boolean {
-	return /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(url)
+	// Strip query params before checking extension
+	const pathOnly = url.split("?")[0] || url
+	return /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(pathOnly)
 }
 
 function isVideoFile(url: string): boolean {
-	return /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(url)
+	// Strip query params before checking extension
+	const pathOnly = url.split("?")[0] || url
+	return /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(pathOnly)
 }
 
 export function SimpleMediaPlayer({
@@ -80,10 +86,12 @@ export function SimpleMediaPlayer({
 	autoPlay = false,
 	showDebug = false,
 	lazyLoad = true, // Default to lazy loading
+	thumbnailUrl,
 }: SimpleMediaPlayerProps) {
 	const startSeconds = parseTimeToSeconds(startTime)
 	const [isClient, setIsClient] = useState(false)
 	const [signedUrl, setSignedUrl] = useState<string | null>(null)
+	const [signedThumbnailUrl, setSignedThumbnailUrl] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [hasUserInteracted, setHasUserInteracted] = useState(false)
@@ -93,6 +101,39 @@ export function SimpleMediaPlayer({
 	useEffect(() => {
 		setIsClient(true)
 	}, [])
+
+	// Fetch signed thumbnail URL on mount (lightweight, improves UX)
+	useEffect(() => {
+		if (!thumbnailUrl) return
+
+		const fetchThumbnailUrl = async () => {
+			try {
+				const response = await fetch("/api/media/signed-url", {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ mediaUrl: thumbnailUrl, intent: "playback" }),
+				})
+
+				if (response.ok) {
+					const data = (await response.json()) as { signedUrl?: string }
+					if (data.signedUrl) {
+						setSignedThumbnailUrl(data.signedUrl)
+					} else {
+						consola.warn("Thumbnail signed URL response missing signedUrl:", data)
+					}
+				} else {
+					const errorText = await response.text()
+					consola.warn("Thumbnail signed URL request failed:", response.status, errorText)
+				}
+			} catch (err) {
+				// Log thumbnail fetch errors for debugging
+				consola.warn("Failed to fetch thumbnail URL:", err)
+			}
+		}
+
+		void fetchThumbnailUrl()
+	}, [thumbnailUrl])
 
 	// Fetch signed URL - either on mount (if autoPlay or !lazyLoad) or when user clicks play
 	const fetchSignedUrl = useCallback(async () => {
@@ -243,18 +284,39 @@ export function SimpleMediaPlayer({
 						isVideo ? "aspect-video" : "h-16"
 					)}
 				>
+					{/* Thumbnail background for videos */}
+					{isVideo && signedThumbnailUrl && (
+						<img src={signedThumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+					)}
 					<div className="absolute inset-0 flex items-center justify-center">
-						<div className="rounded-full bg-primary/90 p-4 transition-colors group-hover:bg-primary">
-							<svg className="h-8 w-8 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
+						<div
+							className={cn(
+								"rounded-full p-4 transition-colors",
+								signedThumbnailUrl ? "bg-black/60 group-hover:bg-black/80" : "bg-primary/90 group-hover:bg-primary"
+							)}
+						>
+							<svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
 								<path d="M8 5v14l11-7z" />
 							</svg>
 						</div>
 					</div>
-					{isVideo && (
+					{isVideo && !signedThumbnailUrl && (
 						<div className="absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-white text-xs">Load video</div>
 					)}
 					{isAudio && <div className="absolute left-4 text-muted-foreground text-sm">Load audio</div>}
 				</button>
+
+				{showDebug && (
+					<details className="mt-2 text-xs" open>
+						<summary className="cursor-pointer text-muted-foreground">Debug Info</summary>
+						<div className="mt-1 space-y-1 rounded bg-gray-50 p-2 text-xs dark:bg-gray-900">
+							<div>Original URL: {mediaUrl}</div>
+							<div>Thumbnail: {thumbnailUrl || "None"}</div>
+							<div>Signed Thumbnail: {signedThumbnailUrl || "Not loaded"}</div>
+							<div>Media type: {isAudio ? "audio" : isVideo ? "video" : "unknown"}</div>
+						</div>
+					</details>
+				)}
 			</div>
 		)
 	}
@@ -298,6 +360,7 @@ export function SimpleMediaPlayer({
 						src={signedUrl}
 						controls
 						autoPlay={autoPlay || hasUserInteracted}
+						poster={signedThumbnailUrl || undefined}
 						className="aspect-video w-full rounded-md border bg-black"
 					/>
 				) : (
@@ -306,6 +369,7 @@ export function SimpleMediaPlayer({
 						src={signedUrl}
 						controls
 						autoPlay={autoPlay || hasUserInteracted}
+						poster={signedThumbnailUrl || undefined}
 						className="w-full rounded-md border"
 					/>
 				))}
@@ -316,6 +380,8 @@ export function SimpleMediaPlayer({
 					<div className="mt-1 space-y-1 rounded bg-gray-50 p-2 text-xs">
 						<div>Original URL: {mediaUrl}</div>
 						<div>Signed URL: {signedUrl || "Not loaded"}</div>
+						<div>Thumbnail: {thumbnailUrl || "None"}</div>
+						<div>Signed Thumbnail: {signedThumbnailUrl || "Not loaded"}</div>
 						<div>Start time: {startSeconds}s</div>
 						<div>Media type: {isAudio ? "audio" : isVideo ? "video" : "unknown"}</div>
 						<div>Lazy load: {lazyLoad ? "enabled" : "disabled"}</div>

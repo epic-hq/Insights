@@ -13,9 +13,7 @@ import {
 import React, { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
-import { EmotionBadge } from "~/components/ui/emotion-badge"
 import { Input } from "~/components/ui/input"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -45,20 +43,6 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				cell: (cell: CellContext<Insight, unknown>) => <div className="font-medium">{cell.getValue() as string}</div>,
 			},
 			{
-				id: "statement",
-				accessorFn: (row) => (row as any).statement || "—",
-				header: () => "Statement",
-				filterFn: "includesString",
-				cell: (cell: CellContext<Insight, unknown>) => {
-					const value = cell.getValue() as string
-					return value && value !== "—" ? (
-						<div className="max-w-md truncate text-muted-foreground text-sm">{value}</div>
-					) : (
-						<span className="text-muted-foreground/60">—</span>
-					)
-				},
-			},
-			{
 				id: "category",
 				accessorFn: (row) => (row as any).category || "—",
 				header: () => "Category",
@@ -71,56 +55,6 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 					) : (
 						<span className="text-muted-foreground/60">—</span>
 					)
-				},
-			},
-			{
-				id: "pain",
-				accessorFn: (row) => (row as any).pain || "—",
-				header: () => "Pain",
-				filterFn: "includesString",
-				cell: (cell: CellContext<Insight, unknown>) => {
-					const value = cell.getValue() as string
-					return value && value !== "—" ? (
-						<div className="max-w-xs truncate text-muted-foreground text-sm">{value}</div>
-					) : (
-						<span className="text-muted-foreground/60">—</span>
-					)
-				},
-			},
-			{
-				id: "jtbd",
-				accessorFn: (row) => (row as any).jtbd || "—",
-				header: () => "JTBD",
-				filterFn: "includesString",
-				cell: (cell: CellContext<Insight, unknown>) => {
-					const value = cell.getValue() as string
-					return value && value !== "—" ? (
-						<div className="max-w-xs truncate text-muted-foreground text-sm">{value}</div>
-					) : (
-						<span className="text-muted-foreground/60">—</span>
-					)
-				},
-			},
-			{
-				id: "personas",
-				header: () => "Personas",
-				accessorFn: (row: any) =>
-					(row.persona_insights ?? [])
-						.map((pi: any) => pi.personas?.name)
-						.filter(Boolean)
-						.join(", "),
-				cell: (cell: CellContext<Insight, unknown>) => {
-					const personasStr = cell.getValue() as string
-					const personas = personasStr ? personasStr.split(/,\s*/) : []
-					return personas.length > 0 ? (
-						<div className="flex flex-wrap gap-1">
-							{personas.map((p) => (
-								<Badge key={p} variant="outline">
-									{p}
-								</Badge>
-							))}
-						</div>
-					) : null
 				},
 			},
 			{
@@ -187,67 +121,19 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 								{headerGroup.headers.map((header) => {
 									const colId = header.column.id
 									const col = table.getColumn(colId)
-									const isFacet = ["personas"].includes(colId)
-									const isTextFilter = ["name", "statement"].includes(colId)
-									if (!isFacet && !isTextFilter) return <TableHead key={colId} />
+									const isTextFilter = colId === "name"
+									if (!isTextFilter) return <TableHead key={colId} />
 
-									// Handle text filters for Name and Statement columns
-									if (isTextFilter) {
-										const filterValue = col?.getFilterValue() as string | undefined
-										const placeholder = colId === "name" ? "Filter themes..." : "Filter statement..."
-										return (
-											<TableHead key={colId}>
-												<Input
-													placeholder={placeholder}
-													value={filterValue ?? ""}
-													onChange={(e) => col?.setFilterValue(e.target.value || undefined)}
-													className="h-7 w-full text-xs"
-												/>
-											</TableHead>
-										)
-									}
-
-									// Handle persona facet filter
-									let uniqueValues: string[] = []
-									if (colId === "personas") {
-										uniqueValues = Array.from(
-											new Set(
-												data.flatMap((row: any) =>
-													(row.persona_insights ?? []).map((pi: any) => pi.personas?.name).filter(Boolean)
-												)
-											)
-										)
-									}
+									// Handle text filter for Name column
 									const filterValue = col?.getFilterValue() as string | undefined
-
-									// Persona filter with buttons
 									return (
 										<TableHead key={colId}>
-											<div className="flex flex-wrap gap-1">
-												{uniqueValues.map((val) => (
-													<button
-														key={String(val)}
-														type="button"
-														className={`rounded border px-2 py-1 text-xs transition-colors ${
-															filterValue === val
-																? "border-blue-500 bg-blue-500 text-white dark:border-blue-400 dark:bg-blue-500"
-																: "border-border bg-background text-foreground hover:bg-muted"
-														}`}
-														onClick={() => col?.setFilterValue(filterValue === val ? undefined : val)}
-													>
-														{String(val)}
-													</button>
-												))}
-												{filterValue && (
-													<button
-														type="button"
-														className="ml-2 rounded border border-border bg-muted px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted/80"
-														onClick={() => col?.setFilterValue(undefined)}
-													>
-														Clear
-													</button>
-												)}
-											</div>
+											<Input
+												placeholder="Filter themes..."
+												value={filterValue ?? ""}
+												onChange={(e) => col?.setFilterValue(e.target.value || undefined)}
+												className="h-7 w-full text-xs"
+											/>
 										</TableHead>
 									)
 								})}

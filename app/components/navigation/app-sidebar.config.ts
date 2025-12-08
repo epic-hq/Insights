@@ -3,14 +3,13 @@ import {
 	BookOpen,
 	Briefcase,
 	Building2,
+	CheckSquare,
 	Compass,
 	DollarSign,
 	File,
 	Glasses,
 	Grid3x3,
 	Lightbulb,
-	ListChecks,
-	ListTodo,
 	Search,
 	Sparkles,
 	Target,
@@ -35,10 +34,10 @@ export interface AppSidebarSection {
 }
 
 /**
- * Order:
- * 1) Discovery
- * 2) Analyze
- * 3) Directory  ⟵ moved here (above any Revenue-specific controls in the sidebar)
+ * Sidebar sections organized for clarity:
+ * 1) Discovery - Setup, content, conversations
+ * 2) Results - Lens analysis outputs (key differentiator)
+ * 3) Directory - CRM entities
  */
 export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	{
@@ -48,129 +47,110 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			{
 				key: "dashboard",
 				title: "Dashboard",
-				description: "Project dashboard",
+				description: "Project overview",
 				icon: Compass,
 				to: (routes) => routes.projects.dashboard(),
 			},
 			{
 				key: "objectives",
 				title: "Objectives",
-				description: "Learning goals & signals",
+				description: "Research goals",
 				icon: Target,
 				to: (routes) => routes.projects.setup(),
 			},
 			{
-				key: "guide",
-				title: "Prompts",
-				description: "Interview & prompt sets",
-				icon: ListChecks,
-				to: (routes) => routes.questions.index(),
-			},
-			{
 				key: "conversations",
-				// keep key "conversations" for count mapping; label is Encounters
-				title: "Calls & Notes",
-				description: "Calls, meetings, uploads",
+				title: "Conversations",
+				description: "Calls, notes, uploads",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
+			},
+			{
+				key: "tasks",
+				title: "Tasks",
+				description: "Priorities & actions",
+				icon: CheckSquare,
+				to: (routes) => routes.priorities(),
 			},
 		],
 	},
 	{
-		key: "analyze",
-		title: "Analysis",
+		key: "results",
+		title: "Results",
 		items: [
 			{
 				key: "lenses",
 				title: "Lens Library",
-				description: "Browse conversation lenses",
+				description: "Configure analysis lenses",
 				icon: Glasses,
 				to: (routes) => routes.lensLibrary(),
 			},
 			{
-				key: "product-lens",
-				title: "ICP Discovery",
-				description: "Pain × user segments matrix",
-				icon: Grid3x3,
-				to: (routes) => routes.productLens(),
-			},
-			{
-				key: "segments",
-				title: "Segments",
-				description: "Customer groups",
-				icon: Target,
-				to: (routes) => routes.segments.index(),
-			},
-			{
-				key: "topics",
-				title: "Themes",
-				description: "Signals & themes",
-				icon: Sparkles,
-				to: (routes) => routes.themes.index(),
-			},
-			{
-				key: "personas",
-				title: "Personas",
-				description: "Segments & patterns",
-				icon: UserCircle,
-				to: (routes) => routes.personas.index(),
-			},
-			{
 				key: "sales-bant",
 				title: "Sales BANT",
-				description: "Deal qualification insights",
+				description: "Deal qualification",
 				icon: DollarSign,
 				to: (routes) => routes.lenses.salesBant(),
 			},
 			{
 				key: "customer-discovery",
 				title: "Customer Discovery",
-				description: "Problem-solution validation",
+				description: "Problem validation",
 				icon: Search,
 				to: (routes) => routes.lenses.customerDiscovery(),
 			},
 			{
-				key: "insights",
-				title: "Findings",
-				description: "Published insights & next steps",
-				icon: Lightbulb,
-				to: (routes) => routes.insights.index(),
+				key: "product-lens",
+				title: "ICP Discovery",
+				description: "Pain × user matrix",
+				icon: Grid3x3,
+				to: (routes) => routes.productLens(),
 			},
 			{
-				key: "priorities",
-				title: "Priorities",
-				description: "Task planning & roadmap",
-				icon: ListTodo,
-				to: (routes) => routes.priorities(),
-				featureFlag: "ffPriorities",
+				key: "topics",
+				title: "Themes",
+				description: "Signals & patterns",
+				icon: Sparkles,
+				to: (routes) => routes.themes.index(),
+			},
+			{
+				key: "personas",
+				title: "Personas",
+				description: "User segments",
+				icon: UserCircle,
+				to: (routes) => routes.personas.index(),
+			},
+			{
+				key: "insights",
+				title: "Findings",
+				description: "Published insights",
+				icon: Lightbulb,
+				to: (routes) => routes.insights.index(),
 			},
 		],
 	},
 	{
 		key: "directory",
-		title: "CRM",
+		title: "Directory",
 		items: [
 			{
 				key: "people",
 				title: "People",
 				description: "All individuals",
 				icon: Users,
-				to: (routes) => routes.people.index(), // implement tab switching inside the page
+				to: (routes) => routes.people.index(),
 			},
 			{
 				key: "organizations",
 				title: "Organizations",
 				description: "Companies & groups",
 				icon: Building2,
-				// Simple deep-link via query param (adjust if you add a helper)
-				to: (routes) => {
-					return routes.organizations.index()
-				},
+				to: (routes) => routes.organizations.index(),
 			},
 			{
 				key: "opportunities",
 				title: "Opportunities",
-				description: "Sales pipeline & deals",
+				description: "Sales pipeline",
 				icon: Briefcase,
 				to: (routes) => routes.opportunities.index(),
 			},

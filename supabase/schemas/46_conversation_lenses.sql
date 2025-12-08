@@ -251,15 +251,52 @@ insert into public.conversation_lens_templates (
 ) values (
   'customer-discovery',
   'Customer Discovery',
-  'Validate problem-solution fit and gather insights for product development',
-  'Understand customer problems, validate hypotheses, and identify opportunities',
+  'Profile customers, validate problems, and gather insights for product development',
+  'Understand WHO the customer is, their problems, and opportunities',
   'research',
   10,
   '{
     "sections": [
       {
+        "section_key": "interviewee_profile",
+        "section_name": "Interviewee Profile",
+        "description": "Who is this person - their role, responsibilities, and context",
+        "fields": [
+          {"field_key": "role_title", "field_name": "Role/Title", "field_type": "text"},
+          {"field_key": "responsibilities", "field_name": "Key Responsibilities", "field_type": "text_array"},
+          {"field_key": "experience_level", "field_name": "Experience Level", "field_type": "text"},
+          {"field_key": "team_size", "field_name": "Team Size/Structure", "field_type": "text"},
+          {"field_key": "decision_authority", "field_name": "Decision Authority", "field_type": "text"}
+        ]
+      },
+      {
+        "section_key": "organization_context",
+        "section_name": "Organization Context",
+        "description": "Company/organization characteristics for segmentation",
+        "fields": [
+          {"field_key": "org_type", "field_name": "Organization Type", "field_type": "text"},
+          {"field_key": "org_size", "field_name": "Organization Size", "field_type": "text"},
+          {"field_key": "industry_vertical", "field_name": "Industry/Vertical", "field_type": "text"},
+          {"field_key": "tech_maturity", "field_name": "Tech Maturity", "field_type": "text"},
+          {"field_key": "growth_stage", "field_name": "Growth Stage", "field_type": "text"}
+        ]
+      },
+      {
+        "section_key": "behavioral_characteristics",
+        "section_name": "Behavioral Characteristics",
+        "description": "Behaviors, habits, and patterns relevant to product adoption",
+        "fields": [
+          {"field_key": "adopter_type", "field_name": "Adopter Type", "field_type": "text"},
+          {"field_key": "buying_behavior", "field_name": "Buying Behavior", "field_type": "text"},
+          {"field_key": "information_sources", "field_name": "Information Sources", "field_type": "text_array"},
+          {"field_key": "tool_ecosystem", "field_name": "Tool Ecosystem", "field_type": "text_array"},
+          {"field_key": "workflow_patterns", "field_name": "Workflow Patterns", "field_type": "text"}
+        ]
+      },
+      {
         "section_key": "problem_validation",
         "section_name": "Problem Validation",
+        "description": "Primary problems, frequency, and severity",
         "fields": [
           {"field_key": "problem_statement", "field_name": "Primary Problem", "field_type": "text"},
           {"field_key": "problem_frequency", "field_name": "Problem Frequency", "field_type": "text"},
@@ -270,6 +307,7 @@ insert into public.conversation_lens_templates (
       {
         "section_key": "solution_validation",
         "section_name": "Solution Validation",
+        "description": "Reactions to proposed solutions and value propositions",
         "fields": [
           {"field_key": "proposed_solution_reaction", "field_name": "Solution Reaction", "field_type": "text"},
           {"field_key": "value_proposition_resonance", "field_name": "Value Prop Resonance", "field_type": "text"},
@@ -279,10 +317,21 @@ insert into public.conversation_lens_templates (
       {
         "section_key": "market_insights",
         "section_name": "Market Insights",
+        "description": "Competitive landscape and willingness to pay",
         "fields": [
           {"field_key": "competitive_alternatives", "field_name": "Competitive Alternatives", "field_type": "text_array"},
           {"field_key": "switching_costs", "field_name": "Switching Costs", "field_type": "text"},
           {"field_key": "willingness_to_pay", "field_name": "Willingness to Pay", "field_type": "text"}
+        ]
+      },
+      {
+        "section_key": "segment_signals",
+        "section_name": "Segment Signals",
+        "description": "Key indicators for ICP fit and segmentation",
+        "fields": [
+          {"field_key": "icp_fit_assessment", "field_name": "ICP Fit", "field_type": "text"},
+          {"field_key": "segment_indicators", "field_name": "Segment Indicators", "field_type": "text_array"},
+          {"field_key": "differentiating_attributes", "field_name": "Differentiating Attributes", "field_type": "text_array"}
         ]
       }
     ],
@@ -294,6 +343,7 @@ insert into public.conversation_lens_templates (
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
+  primary_objective = excluded.primary_objective,
   template_definition = excluded.template_definition,
   is_system = true;
 
@@ -492,12 +542,108 @@ insert into public.conversation_lens_templates (
     "recommendations_enabled": true
   }'::jsonb,
   true,
-  true  -- is_system
+	true -- is_system
 ) on conflict (template_key) do update set
   template_name = excluded.template_name,
   summary = excluded.summary,
   template_definition = excluded.template_definition,
   is_system = true;
+
+-- Consulting Project
+insert into public.conversation_lens_templates (
+  template_key, template_name, summary, primary_objective, category, display_order, template_definition, is_active
+) values (
+  'consulting-project',
+  'Consulting Project',
+  'Align goals, scope, risks, and expectations across stakeholder conversations',
+  'Make the delivery plan explicit, achievable, and agreed by the client',
+  'research',
+  15,
+  '{
+    "sections": [
+      {
+        "section_key": "context_brief",
+        "section_name": "Context & Brief",
+        "description": "Client problem, goals, success measures, scope boundaries",
+        "fields": [
+          {"field_key": "client_problem", "field_name": "Client Problem", "field_type": "text"},
+          {"field_key": "stated_goals", "field_name": "Stated Goals", "field_type": "text_array"},
+          {"field_key": "success_measures", "field_name": "Success Measures", "field_type": "text_array"},
+          {"field_key": "scope_boundaries", "field_name": "Scope Boundaries", "field_type": "text"},
+          {"field_key": "constraints", "field_name": "Constraints", "field_type": "text_array"},
+          {"field_key": "key_dates", "field_name": "Key Dates", "field_type": "text_array"}
+        ]
+      },
+      {
+        "section_key": "stakeholder_inputs",
+        "section_name": "Stakeholder Inputs",
+        "description": "Individual goals, expectations, concerns, and success/failure definitions",
+        "fields": [
+          {"field_key": "stakeholder_goals", "field_name": "Stakeholder Goals", "field_type": "text_array"},
+          {"field_key": "expectations", "field_name": "Expectations", "field_type": "text_array"},
+          {"field_key": "concerns", "field_name": "Concerns", "field_type": "text_array"},
+          {"field_key": "decision_criteria", "field_name": "Decision Criteria", "field_type": "text_array"},
+          {"field_key": "success_definition", "field_name": "What Success Looks Like", "field_type": "text"},
+          {"field_key": "failure_definition", "field_name": "What Would Make It Fail", "field_type": "text"}
+        ]
+      },
+      {
+        "section_key": "alignment_gaps",
+        "section_name": "Alignment & Gaps",
+        "description": "Agreements, conflicts, ambiguities that need resolution",
+        "fields": [
+          {"field_key": "agreements", "field_name": "Agreements", "field_type": "text_array"},
+          {"field_key": "conflicts", "field_name": "Conflicts/Disagreements", "field_type": "text_array"},
+          {"field_key": "ambiguities", "field_name": "Ambiguities", "field_type": "text_array"},
+          {"field_key": "dependencies", "field_name": "Dependencies", "field_type": "text_array"}
+        ]
+      },
+      {
+        "section_key": "plan_milestones",
+        "section_name": "Plan & Milestones",
+        "description": "Phases, deliverables, owners, checkpoints",
+        "fields": [
+          {"field_key": "phases", "field_name": "Phases", "field_type": "text_array"},
+          {"field_key": "deliverables", "field_name": "Deliverables", "field_type": "text_array"},
+          {"field_key": "owners", "field_name": "Owners", "field_type": "text_array"},
+          {"field_key": "checkpoints", "field_name": "Checkpoints/Decision Gates", "field_type": "text_array"},
+          {"field_key": "assumptions", "field_name": "Assumptions", "field_type": "text_array"}
+        ]
+      },
+      {
+        "section_key": "risks_mitigations",
+        "section_name": "Risks & Mitigations",
+        "description": "Top risks and how to address them",
+        "fields": [
+          {"field_key": "scope_risks", "field_name": "Scope Risks", "field_type": "text_array"},
+          {"field_key": "timeline_risks", "field_name": "Timeline Risks", "field_type": "text_array"},
+          {"field_key": "adoption_risks", "field_name": "Adoption Risks", "field_type": "text_array"},
+          {"field_key": "resource_risks", "field_name": "Resource Risks", "field_type": "text_array"},
+          {"field_key": "mitigations", "field_name": "Mitigations", "field_type": "text_array"},
+          {"field_key": "contingency_triggers", "field_name": "Contingency Triggers", "field_type": "text_array"}
+        ]
+      },
+      {
+        "section_key": "commitments_next_steps",
+        "section_name": "Commitments & Next Steps",
+        "description": "Confirmed expectations and immediate actions",
+        "fields": [
+          {"field_key": "confirmed_expectations", "field_name": "Confirmed Expectations", "field_type": "text_array"},
+          {"field_key": "open_questions", "field_name": "Open Questions", "field_type": "text_array"},
+          {"field_key": "immediate_actions", "field_name": "Immediate Actions", "field_type": "text_array"},
+          {"field_key": "communication_cadence", "field_name": "Communication Cadence", "field_type": "text"}
+        ]
+      }
+    ],
+    "entities": ["stakeholders", "next_steps"],
+    "recommendations_enabled": true
+  }'::jsonb,
+  true
+) on conflict (template_key) do update set
+  template_name = excluded.template_name,
+  summary = excluded.summary,
+  primary_objective = excluded.primary_objective,
+  template_definition = excluded.template_definition;
 
 comment on table public.conversation_lens_templates is
   'Reusable conversation analysis templates/frameworks. Defines structure for analyzing interviews through different lenses.';

@@ -4,6 +4,39 @@
 
 **Conversation Lenses** is a template-based system for analyzing interviews through different analytical frameworks. Instead of being limited to sales-specific analysis, users can apply multiple "lenses" to the same interview to extract different insights.
 
+## Consulting Project Lens
+
+Use this lens to align a consulting team and client around a clear, achievable delivery plan when multiple stakeholders and documents are involved.
+
+### Flexible Prompt (for interviews and document review)
+
+- **Purpose**: Capture goals, expectations, risks, and decision criteria from every stakeholder conversation or uploaded brief.
+- **When to use**: Before or during discovery to keep the consulting plan transparent and feasible.
+- **Instructions (plain language)**:
+  1. Read the project brief and any shared materials first. List stated goals, scope boundaries, success measures, timelines, and constraints.
+  2. For each stakeholder conversation, ask for their goals, expected outcomes, concerns, and must-have requirements. Note what “success” looks like for them and what would make the project fail.
+  3. Confirm where stakeholders agree or disagree (goals, priorities, risks, timelines, decision process). Flag any conflicts or unclear items.
+  4. Translate findings into a proposed path: phases, milestones, owners, and decision gates. Keep it realistic and transparent about trade-offs and assumptions.
+  5. Close by reflecting back the plan in simple terms and confirming acceptance, open questions, and next steps.
+
+### Lens Definition (Consulting Project)
+
+- **Summary**: Creates a shared plan to solve a client problem, aligning goals, scope, risks, and expectations across conversations and documents.
+- **Primary Objective**: Make the delivery plan explicit, achievable, and agreed by the client.
+- **Sections**:
+  - **Context & Brief**: Client problem, goals, success measures, scope boundaries, constraints, key dates.
+  - **Stakeholder Inputs**: Goals, expectations, concerns, decision criteria, and what success/failure looks like for each stakeholder.
+  - **Alignment & Gaps**: Agreements, conflicts, ambiguities, and dependencies that need resolution.
+  - **Plan & Milestones**: Phases, deliverables, owners, checkpoints/decision gates, and assumptions.
+  - **Risks & Mitigations**: Top risks (scope, timeline, adoption, resources), mitigations, and contingency triggers.
+  - **Commitments & Next Steps**: Confirmed expectations, open questions, immediate actions, and communication cadence.
+
+**Use Cases**:
+- Consulting engagements that require expectation management and visible alignment.
+- Projects with multiple stakeholder interviews plus uploaded briefs or prior plans.
+- Pre-kickoff preparation to ensure the client is bought into the proposed path.
+
+
 ## Key Concepts
 
 ### What is a Lens?

@@ -74,11 +74,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// Then, check for project-specific overrides
 	if (projectId) {
-		const { data: project } = await supabase
-			.from("projects")
-			.select("project_settings")
-			.eq("id", projectId)
-			.single()
+		const { data: project } = await supabase.from("projects").select("project_settings").eq("id", projectId).single()
 
 		if (project?.project_settings) {
 			const settings = project.project_settings as Record<string, unknown>

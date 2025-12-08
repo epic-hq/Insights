@@ -186,11 +186,11 @@ export default function InlineEdit({
 			)}
 		>
 			{markdown ? (
-				<Streamdown className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
+				<Streamdown className={cn("min-w-0 text-foreground", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{textToShow || placeholder}
 				</Streamdown>
 			) : (
-				<TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
+				<TextComponent className={cn("min-w-0 text-foreground", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{multiline ? (
 						textToShow ? (
 							textToShow.split("\n").map((line, i) => (
@@ -200,10 +200,10 @@ export default function InlineEdit({
 								</span>
 							))
 						) : (
-							<span className="text-gray-400 text-xs italic">{placeholder}</span>
+							<span className="text-muted-foreground text-xs italic">{placeholder}</span>
 						)
 					) : (
-						textToShow || <span className="text-gray-400 text-xs italic">{placeholder}</span>
+						textToShow || <span className="text-muted-foreground text-xs italic">{placeholder}</span>
 					)}
 				</TextComponent>
 			)}

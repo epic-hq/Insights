@@ -26,6 +26,7 @@ import { Link, useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import InlineEdit from "~/components/ui/inline-edit"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -172,18 +173,16 @@ function FieldValue({
 								{itemEvidence && itemEvidence.length > 0 && routes && (
 									<span className="ml-1 inline-flex gap-1">
 										{itemEvidence.map((ev, j) => {
-											const timestamp = ev.startMs != null ? Math.floor(ev.startMs / 1000) : null
-											const url = `${routes.evidence.detail(ev.evidenceId)}${timestamp != null ? `?t=${timestamp}` : ""}`
-											const timeLabel =
-												ev.startMs != null
-													? `${Math.floor(ev.startMs / 1000 / 60)}:${String(Math.floor(ev.startMs / 1000) % 60).padStart(2, "0")}`
-													: "📎"
+											const ms = ev.startMs ?? 0
+											const timestamp = Math.floor(ms / 1000)
+											const url = `${routes.evidence.detail(ev.evidenceId)}?t=${timestamp}`
+											const timeLabel = `${Math.floor(ms / 1000 / 60)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`
 											return (
 												<Link
 													key={j}
 													to={url}
-													className="text-primary text-xs hover:underline"
-													title={ev.transcriptSnippet || "View evidence"}
+													className="font-mono text-primary text-xs hover:underline"
+													title={ev.transcriptSnippet || "Jump to timestamp"}
 													onClick={(e) => e.stopPropagation()}
 												>
 													[{timeLabel}]
@@ -235,7 +234,7 @@ function FieldValue({
 }
 
 /**
- * Render confidence indicator
+ * Render confidence indicator with tooltip explanation
  */
 function ConfidenceIndicator({ confidence }: { confidence: string | number | null }) {
 	if (!confidence) return null
@@ -250,16 +249,27 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 			: confidence.toLowerCase()
 
 	const colors = {
-		high: "bg-green-100 text-green-700",
-		medium: "bg-yellow-100 text-yellow-700",
-		low: "bg-red-100 text-red-700",
-		inconclusive: "bg-gray-100 text-gray-700",
+		high: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+		medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+		low: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+		inconclusive: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 	}
 
+	const tooltipText = "AI confidence score based on transcript clarity, explicit statements, and supporting evidence"
+
 	return (
-		<Badge variant="outline" className={colors[level as keyof typeof colors] || colors.medium}>
-			{typeof confidence === "number" ? `${Math.round(confidence * 100)}%` : confidence}
-		</Badge>
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Badge variant="outline" className={cn("cursor-help", colors[level as keyof typeof colors] || colors.medium)}>
+						{typeof confidence === "number" ? `${Math.round(confidence * 100)}%` : confidence}
+					</Badge>
+				</TooltipTrigger>
+				<TooltipContent>
+					<p className="max-w-xs text-sm">{tooltipText}</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
 	)
 }
 
@@ -317,9 +327,8 @@ function SectionView({
 					<div key={fieldDef.field_key} className="flex items-start gap-3">
 						<StatusIcon className={cn("mt-0.5 h-4 w-4 flex-shrink-0", statusIconColor)} />
 						<div className="min-w-0 flex-1">
-							<div className="mb-1 flex items-center gap-2">
+							<div className="mb-1">
 								<span className="font-medium text-muted-foreground text-sm">{fieldDef.field_name}</span>
-								{hasValue && field?.confidence !== undefined && <ConfidenceIndicator confidence={field.confidence} />}
 							</div>
 							<div className="text-sm">
 								{effectivelyHasValue ? (
@@ -357,18 +366,24 @@ function SectionView({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const INFLUENCE_BADGE_COLORS: Record<string, string> = {
-	high: "bg-red-100 text-red-700 border-red-200",
-	medium: "bg-amber-100 text-amber-700 border-amber-200",
-	low: "bg-slate-100 text-slate-600 border-slate-200",
+	high: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
+	medium: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
+	low: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
 }
 
 const LABEL_DISPLAY: Record<string, { label: string; className: string }> = {
-	economic_buyer: { label: "Economic Buyer", className: "bg-purple-100 text-purple-700" },
-	champion: { label: "Champion", className: "bg-green-100 text-green-700" },
-	blocker: { label: "Blocker", className: "bg-red-100 text-red-700" },
-	technical_evaluator: { label: "Technical", className: "bg-blue-100 text-blue-700" },
-	end_user: { label: "End User", className: "bg-gray-100 text-gray-600" },
-	coach: { label: "Coach", className: "bg-teal-100 text-teal-700" },
+	economic_buyer: {
+		label: "Economic Buyer",
+		className: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+	},
+	champion: { label: "Champion", className: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+	blocker: { label: "Blocker", className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+	technical_evaluator: {
+		label: "Technical",
+		className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+	},
+	end_user: { label: "End User", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
+	coach: { label: "Coach", className: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
 }
 
 /**
@@ -502,20 +517,20 @@ function NextStepCard({
 
 	// Task status colors (from tasks table)
 	const taskStatusColors: Record<string, string> = {
-		backlog: "bg-gray-100 text-gray-600",
-		todo: "bg-yellow-100 text-yellow-700",
-		in_progress: "bg-blue-100 text-blue-700",
-		blocked: "bg-red-100 text-red-700",
-		review: "bg-purple-100 text-purple-700",
-		done: "bg-green-100 text-green-700",
-		archived: "bg-gray-100 text-gray-400",
+		backlog: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+		todo: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+		in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+		blocked: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+		review: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+		done: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+		archived: "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
 	}
 
 	// Legacy next_step status colors (for pre-task-linking data)
 	const legacyStatusColors: Record<string, string> = {
-		pending: "bg-yellow-100 text-yellow-700",
-		in_progress: "bg-blue-100 text-blue-700",
-		completed: "bg-green-100 text-green-700",
+		pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+		in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+		completed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 	}
 
 	const statusColors = nextStep.task_id ? taskStatusColors : legacyStatusColors
@@ -637,9 +652,9 @@ function ObjectionCard({
 			: undefined
 
 	const statusColors: Record<string, string> = {
-		raised: "bg-red-100 text-red-700",
-		addressed: "bg-green-100 text-green-700",
-		unresolved: "bg-yellow-100 text-yellow-700",
+		raised: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+		addressed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+		unresolved: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
 	}
 
 	return (
@@ -714,9 +729,9 @@ function HygieneWarnings({ hygiene }: { hygiene: any[] }) {
 	}
 
 	const severityColors: Record<string, string> = {
-		critical: "border-red-200 bg-red-50",
-		warning: "border-amber-200 bg-amber-50",
-		info: "border-blue-200 bg-blue-50",
+		critical: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30",
+		warning: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/30",
+		info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30",
 	}
 
 	return (
@@ -823,10 +838,14 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 	// Build a map of section data by section_key
 	// Format: sections[].fields = [{field_key, value, confidence, evidence_ids}]
-	const sectionDataMap: Record<string, any[]> = {}
+	// Also includes summary for each section
+	const sectionDataMap: Record<string, { fields: any[]; summary?: string }> = {}
 	for (const section of sections) {
-		if (section.section_key && section.fields) {
-			sectionDataMap[section.section_key] = section.fields
+		if (section.section_key) {
+			sectionDataMap[section.section_key] = {
+				fields: section.fields || [],
+				summary: section.summary,
+			}
 		}
 	}
 
@@ -872,38 +891,65 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 	return (
 		<div className="space-y-6">
-			{/* Header with confidence */}
+			{/* Executive Summary (TLDR) */}
+			{analysisData.executive_summary && (
+				<div className="rounded-lg border-primary border-l-4 bg-primary/5 p-4 dark:bg-primary/10">
+					<p className="font-medium text-sm">{analysisData.executive_summary}</p>
+				</div>
+			)}
+
+			{/* Header with confidence and date */}
 			{analysis && (
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<CheckCircle2 className="h-4 w-4 text-green-600" />
-						<span className="text-muted-foreground text-sm">
-							Analyzed {analysis.processed_at ? new Date(analysis.processed_at).toLocaleDateString() : "recently"}
-						</span>
-					</div>
+				<div className="flex items-center justify-end gap-3">
 					{analysis.confidence_score !== null && <ConfidenceIndicator confidence={analysis.confidence_score} />}
+					<span className="text-muted-foreground text-sm">
+						Analyzed {analysis.processed_at ? new Date(analysis.processed_at).toLocaleDateString() : "recently"}
+					</span>
 				</div>
 			)}
 
 			{/* Render each section */}
-			{templateDef.sections.map((sectionDef) => (
-				<Card key={sectionDef.section_key}>
-					<CardHeader className="pb-3">
-						<CardTitle className="text-lg">{sectionDef.section_name}</CardTitle>
-						{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
-					</CardHeader>
-					<CardContent>
-						<SectionView
-							sectionDef={sectionDef}
-							fields={sectionDataMap[sectionDef.section_key] || []}
-							editable={editable}
-							onFieldUpdate={handleFieldUpdate}
-							evidenceMap={evidenceMap}
-							routes={routes}
-						/>
-					</CardContent>
-				</Card>
-			))}
+			{templateDef.sections.map((sectionDef) => {
+				const sectionData = sectionDataMap[sectionDef.section_key]
+				const hasSummary = sectionData?.summary
+				const hasFields = sectionData?.fields && sectionData.fields.length > 0
+
+				return (
+					<Card key={sectionDef.section_key}>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-lg">{sectionDef.section_name}</CardTitle>
+							{sectionDef.description && <CardDescription>{sectionDef.description}</CardDescription>}
+						</CardHeader>
+						<CardContent className="space-y-3">
+							{/* Section Summary - punchy TLDR for this section */}
+							{hasSummary && <p className="text-foreground/90 text-sm leading-relaxed">{sectionData.summary}</p>}
+							{/* Detailed fields */}
+							{hasFields && (
+								<details className="group">
+									<summary className="flex cursor-pointer items-center gap-1 text-muted-foreground text-xs hover:text-foreground">
+										<span className="transition-transform group-open:rotate-90">▶</span>
+										View details ({sectionData.fields.length} fields)
+									</summary>
+									<div className="mt-3">
+										<SectionView
+											sectionDef={sectionDef}
+											fields={sectionData.fields}
+											editable={editable}
+											onFieldUpdate={handleFieldUpdate}
+											evidenceMap={evidenceMap}
+											routes={routes}
+										/>
+									</div>
+								</details>
+							)}
+							{/* Fallback when no data */}
+							{!hasSummary && !hasFields && (
+								<p className="text-muted-foreground text-sm italic">No data extracted for this section</p>
+							)}
+						</CardContent>
+					</Card>
+				)
+			})}
 
 			{/* Rich Entity Rendering - Stakeholders */}
 			{analysisData.entities?.some((e: any) => e.entity_type === "stakeholders" && e.stakeholders?.length > 0) && (

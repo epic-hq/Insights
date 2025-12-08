@@ -113,6 +113,7 @@ export const getInterviewById = async ({
 			key_takeaways,
 			status,
 			media_url,
+			thumbnail_url,
 			media_type,
 			source_type,
 			file_extension,

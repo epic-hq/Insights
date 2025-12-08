@@ -63,6 +63,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				id,
 				title,
 				media_url,
+				thumbnail_url,
 				transcript,
 				transcript_formatted,
 				duration_sec

@@ -1,21 +1,21 @@
 /**
- * Customer Discovery Lens Aggregation Service
+ * Consulting Project Lens Aggregation Service
  *
- * Aggregates Customer Discovery lens analyses across all interviews in a project,
- * providing summary metrics, common patterns, and insights for product development.
+ * Aggregates Consulting Project lens analyses across all interviews in a project,
+ * surfacing alignment, gaps, risks, and commitments across stakeholder conversations.
  *
- * Expected analysis_data structure (from ConversationLensResult):
- * - sections[]: { section_key, fields[]: { field_key, value, confidence, evidence_ids } }
- * - entities[]: { entity_type, stakeholders[], objections[] }
- * - recommendations[]
- * - hygiene[]
+ * Key aggregations:
+ * - Goals alignment across stakeholders
+ * - Conflicts and ambiguities to resolve
+ * - Risk patterns across interviews
+ * - Consolidated next steps and commitments
  */
 
 import consola from "consola"
 import type { SupabaseClient } from "~/types"
 
 // ============================================================================
-// Types matching BAML ConversationLensResult
+// Types
 // ============================================================================
 
 type LensFieldValue = {
@@ -42,26 +42,21 @@ type LensStakeholderItem = {
 	person_id?: string | null
 }
 
-type LensObjectionItem = {
-	objection: string
-	type: string
-	status?: "raised" | "addressed" | "unresolved" | null
-	response?: string | null
+type LensNextStepItem = {
+	description: string
+	owner?: string | null
+	due_date?: string | null
+	status?: "pending" | "in_progress" | "completed" | null
+	priority?: "high" | "medium" | "low" | null
 	confidence: number
 	evidence_ids: string[]
+	task_id?: string | null
 }
 
 type LensEntityResult = {
 	entity_type: "stakeholders" | "next_steps" | "objections" | "other"
 	stakeholders?: LensStakeholderItem[]
-	objections?: LensObjectionItem[]
-}
-
-type LensHygieneItem = {
-	code: string
-	severity: "info" | "warning" | "critical"
-	message: string
-	field_key?: string | null
+	next_steps?: LensNextStepItem[]
 }
 
 type LensRecommendation = {
@@ -70,6 +65,13 @@ type LensRecommendation = {
 	priority: "high" | "medium" | "low"
 	rationale?: string | null
 	evidence_ids: string[]
+}
+
+type LensHygieneItem = {
+	code: string
+	severity: "info" | "warning" | "critical"
+	message: string
+	field_key?: string | null
 }
 
 type ConversationLensAnalysisData = {
@@ -85,13 +87,11 @@ type ConversationLensAnalysisData = {
 // Output Types
 // ============================================================================
 
-export type InterviewWithLensAnalysis = {
+export type InterviewWithConsultingAnalysis = {
 	interview_id: string
 	interview_title: string
 	interviewee_name: string | null
 	interview_date: string | null
-	organization_name: string | null
-	segment: string | null
 	analysis_data: ConversationLensAnalysisData
 	confidence_score: number | null
 	processed_at: string | null
@@ -105,9 +105,14 @@ export type AggregatedFieldValue = {
 		interview_id: string
 		interview_title: string
 		interviewee_name: string | null
-		segment: string | null
 		confidence: number
 	}>
+}
+
+export type AggregatedItem = {
+	item: string
+	count: number
+	interviews: Array<{ id: string; title: string; interviewee_name: string | null }>
 }
 
 export type AggregatedStakeholder = {
@@ -120,13 +125,16 @@ export type AggregatedStakeholder = {
 	interviews: Array<{ id: string; title: string; interviewee_name: string | null }>
 }
 
-export type AggregatedObjection = {
-	objection: string
-	type: string
+export type AggregatedNextStep = {
+	description: string
+	owner: string | null
+	due_date: string | null
 	status: string | null
-	response: string | null
-	count: number
-	interviews: Array<{ id: string; title: string; interviewee_name: string | null }>
+	priority: string | null
+	task_id: string | null
+	interview_id: string
+	interview_title: string
+	interviewee_name: string | null
 }
 
 export type HygieneGap = {
@@ -134,34 +142,30 @@ export type HygieneGap = {
 	severity: string
 	message: string
 	count: number
-	interviews: Array<{
-		id: string
-		title: string
-		interviewee_name: string | null
-		segment: string | null
-	}>
-}
-
-// Aggregated patterns for discovery insights
-export type AggregatedPattern = {
-	pattern: string
-	count: number
 	interviews: Array<{ id: string; title: string; interviewee_name: string | null }>
 }
 
-export type AggregatedCustomerDiscovery = {
+export type AggregatedConsultingProject = {
 	// Field values by section
-	problem_validation_fields: AggregatedFieldValue[]
-	solution_validation_fields: AggregatedFieldValue[]
-	market_insights_fields: AggregatedFieldValue[]
+	context_brief_fields: AggregatedFieldValue[]
+	stakeholder_inputs_fields: AggregatedFieldValue[]
+	alignment_gaps_fields: AggregatedFieldValue[]
+	plan_milestones_fields: AggregatedFieldValue[]
+	risks_mitigations_fields: AggregatedFieldValue[]
+	commitments_next_steps_fields: AggregatedFieldValue[]
+
+	// Aggregated patterns
+	all_goals: AggregatedItem[]
+	all_concerns: AggregatedItem[]
+	all_conflicts: AggregatedItem[]
+	all_risks: AggregatedItem[]
+	all_open_questions: AggregatedItem[]
+
 	// Entities
 	stakeholders: AggregatedStakeholder[]
-	objections: AggregatedObjection[]
-	// Aggregated patterns (common problems, solutions, competitors)
-	common_problems: AggregatedPattern[]
-	current_solutions: AggregatedPattern[]
-	competitive_alternatives: AggregatedPattern[]
-	// Recommendations aggregated
+	next_steps: AggregatedNextStep[]
+
+	// Recommendations
 	recommendations: Array<{
 		type: string
 		description: string
@@ -170,10 +174,13 @@ export type AggregatedCustomerDiscovery = {
 		interview_title: string
 		interviewee_name: string | null
 	}>
+
 	// Hygiene gaps
 	hygiene_gaps: HygieneGap[]
+
 	// Source interviews
-	interviews: InterviewWithLensAnalysis[]
+	interviews: InterviewWithConsultingAnalysis[]
+
 	// Summary stats
 	summary: {
 		total_interviews: number
@@ -181,40 +188,66 @@ export type AggregatedCustomerDiscovery = {
 		last_updated: string | null
 		fields_captured: number
 		fields_missing: number
-		unique_segments: string[]
+		total_stakeholders: number
+		total_next_steps: number
+		unresolved_conflicts: number
 	}
 }
 
 // ============================================================================
-// Helper to get field display name
+// Helpers
 // ============================================================================
 
 const FIELD_DISPLAY_NAMES: Record<string, string> = {
-	// Problem Validation
-	problem_statement: "Primary Problem",
-	problem_frequency: "Problem Frequency",
-	current_solutions: "Current Solutions",
-	pain_severity: "Pain Severity",
-	// Solution Validation
-	proposed_solution_reaction: "Solution Reaction",
-	value_proposition_resonance: "Value Prop Resonance",
-	concerns_objections: "Concerns/Objections",
-	// Market Insights
-	competitive_alternatives: "Competitive Alternatives",
-	switching_costs: "Switching Costs",
-	willingness_to_pay: "Willingness to Pay",
+	// Context & Brief
+	client_problem: "Client Problem",
+	stated_goals: "Stated Goals",
+	success_measures: "Success Measures",
+	scope_boundaries: "Scope Boundaries",
+	constraints: "Constraints",
+	key_dates: "Key Dates",
+	// Stakeholder Inputs
+	stakeholder_goals: "Stakeholder Goals",
+	expectations: "Expectations",
+	concerns: "Concerns",
+	decision_criteria: "Decision Criteria",
+	success_definition: "What Success Looks Like",
+	failure_definition: "What Would Make It Fail",
+	// Alignment & Gaps
+	agreements: "Agreements",
+	conflicts: "Conflicts/Disagreements",
+	ambiguities: "Ambiguities",
+	dependencies: "Dependencies",
+	// Plan & Milestones
+	phases: "Phases",
+	deliverables: "Deliverables",
+	owners: "Owners",
+	checkpoints: "Checkpoints/Decision Gates",
+	assumptions: "Assumptions",
+	// Risks & Mitigations
+	scope_risks: "Scope Risks",
+	timeline_risks: "Timeline Risks",
+	adoption_risks: "Adoption Risks",
+	resource_risks: "Resource Risks",
+	mitigations: "Mitigations",
+	contingency_triggers: "Contingency Triggers",
+	// Commitments & Next Steps
+	confirmed_expectations: "Confirmed Expectations",
+	open_questions: "Open Questions",
+	immediate_actions: "Immediate Actions",
+	communication_cadence: "Communication Cadence",
 }
 
 /**
  * Extract patterns from text array fields
  */
-function extractPatterns(
+function extractItems(
 	values: Array<{ value: string; interview_id: string; interview_title: string; interviewee_name: string | null }>
-): AggregatedPattern[] {
-	const patternMap = new Map<string, AggregatedPattern>()
+): AggregatedItem[] {
+	const itemMap = new Map<string, AggregatedItem>()
 
 	for (const v of values) {
-		// Handle both single values and arrays (text_array fields store as comma-separated or newline-separated)
+		// Handle both single values and arrays
 		const items = v.value
 			.split(/[,\n]/)
 			.map((s) => s.trim())
@@ -222,7 +255,7 @@ function extractPatterns(
 
 		for (const item of items) {
 			const normalized = item.toLowerCase()
-			const existing = patternMap.get(normalized)
+			const existing = itemMap.get(normalized)
 			if (existing) {
 				existing.count++
 				if (!existing.interviews.find((i) => i.id === v.interview_id)) {
@@ -233,8 +266,8 @@ function extractPatterns(
 					})
 				}
 			} else {
-				patternMap.set(normalized, {
-					pattern: item, // Keep original case
+				itemMap.set(normalized, {
+					item, // Keep original case
 					count: 1,
 					interviews: [{ id: v.interview_id, title: v.interview_title, interviewee_name: v.interviewee_name }],
 				})
@@ -242,39 +275,32 @@ function extractPatterns(
 		}
 	}
 
-	return Array.from(patternMap.values()).sort((a, b) => b.count - a.count)
+	return Array.from(itemMap.values()).sort((a, b) => b.count - a.count)
 }
 
 // ============================================================================
 // Aggregation Function
 // ============================================================================
 
-export async function aggregateCustomerDiscovery(opts: {
+export async function aggregateConsultingProject(opts: {
 	supabase: SupabaseClient
 	projectId: string
-}): Promise<AggregatedCustomerDiscovery> {
+}): Promise<AggregatedConsultingProject> {
 	const { supabase, projectId } = opts
 
-	consola.info(`[aggregateCustomerDiscovery] Starting aggregation for project ${projectId}`)
+	consola.info(`[aggregateConsultingProject] Starting aggregation for project ${projectId}`)
 
 	// Fetch all people in this project for name matching
-	const { data: projectPeople } = await supabase.from("people").select("id, name, segment").eq("project_id", projectId)
+	const { data: projectPeople } = await supabase.from("people").select("id, name").eq("project_id", projectId)
 
-	// Build a map of lowercase name -> person for quick lookup
-	const peopleByName = new Map<string, { id: string; name: string; segment: string | null }>()
+	const peopleByName = new Map<string, { id: string; name: string }>()
 	for (const person of projectPeople || []) {
 		if (person.name) {
-			const key = person.name.toLowerCase().trim()
-			peopleByName.set(key, {
-				id: person.id,
-				name: person.name,
-				segment: person.segment,
-			})
+			peopleByName.set(person.name.toLowerCase().trim(), { id: person.id, name: person.name })
 		}
 	}
-	consola.info(`[aggregateCustomerDiscovery] Loaded ${peopleByName.size} people for name matching`)
 
-	// Fetch all completed customer-discovery analyses for this project
+	// Fetch all completed consulting-project analyses for this project
 	const { data: analyses, error: analysesError } = await supabase
 		.from("conversation_lens_analyses")
 		.select(
@@ -290,50 +316,61 @@ export async function aggregateCustomerDiscovery(opts: {
 				participant_pseudonym,
 				interview_date,
 				person_id,
-				people:person_id(
-					id,
-					name,
-					segment
-				)
+				people:person_id(id, name)
 			)
 		`
 		)
 		.eq("project_id", projectId)
-		.eq("template_key", "customer-discovery")
+		.eq("template_key", "consulting-project")
 		.eq("status", "completed")
 
 	if (analysesError) {
-		consola.error("[aggregateCustomerDiscovery] Error fetching analyses:", analysesError)
+		consola.error("[aggregateConsultingProject] Error fetching analyses:", analysesError)
 		throw analysesError
 	}
 
-	consola.info(`[aggregateCustomerDiscovery] Found ${analyses?.length || 0} completed customer-discovery analyses`)
+	consola.info(`[aggregateConsultingProject] Found ${analyses?.length || 0} completed consulting-project analyses`)
 
-	// Initialize aggregation containers
-	const problemFieldsMap = new Map<string, AggregatedFieldValue>()
-	const solutionFieldsMap = new Map<string, AggregatedFieldValue>()
-	const marketFieldsMap = new Map<string, AggregatedFieldValue>()
+	// Initialize containers
+	const contextFieldsMap = new Map<string, AggregatedFieldValue>()
+	const stakeholderInputsFieldsMap = new Map<string, AggregatedFieldValue>()
+	const alignmentFieldsMap = new Map<string, AggregatedFieldValue>()
+	const planFieldsMap = new Map<string, AggregatedFieldValue>()
+	const risksFieldsMap = new Map<string, AggregatedFieldValue>()
+	const commitmentsFieldsMap = new Map<string, AggregatedFieldValue>()
+
 	const stakeholderMap = new Map<string, AggregatedStakeholder>()
-	const objectionMap = new Map<string, AggregatedObjection>()
-	const recommendations: AggregatedCustomerDiscovery["recommendations"] = []
+	const nextSteps: AggregatedNextStep[] = []
+	const recommendations: AggregatedConsultingProject["recommendations"] = []
 	const hygieneMap = new Map<string, HygieneGap>()
-	const interviews: InterviewWithLensAnalysis[] = []
-	const segmentSet = new Set<string>()
+	const interviews: InterviewWithConsultingAnalysis[] = []
 
 	// For pattern extraction
-	const problemStatements: Array<{
+	const goalsValues: Array<{
 		value: string
 		interview_id: string
 		interview_title: string
 		interviewee_name: string | null
 	}> = []
-	const currentSolutions: Array<{
+	const concernsValues: Array<{
 		value: string
 		interview_id: string
 		interview_title: string
 		interviewee_name: string | null
 	}> = []
-	const competitiveAlternatives: Array<{
+	const conflictsValues: Array<{
+		value: string
+		interview_id: string
+		interview_title: string
+		interviewee_name: string | null
+	}> = []
+	const risksValues: Array<{
+		value: string
+		interview_id: string
+		interview_title: string
+		interviewee_name: string | null
+	}> = []
+	const openQuestionsValues: Array<{
 		value: string
 		interview_id: string
 		interview_title: string
@@ -353,30 +390,20 @@ export async function aggregateCustomerDiscovery(opts: {
 
 		if (!data) continue
 
-		// Get person info
 		const person = interview?.people as any
 		const intervieweeName = person?.name || interview?.participant_pseudonym || null
-		const segment = person?.segment || null
-
-		if (segment) {
-			segmentSet.add(segment)
-		}
 
 		const interviewInfo = {
 			id: analysis.interview_id,
 			title: interview?.title || "Untitled",
 			interviewee_name: intervieweeName,
-			segment,
 		}
 
-		// Track interview
 		interviews.push({
 			interview_id: analysis.interview_id,
 			interview_title: interview?.title || "Untitled",
 			interviewee_name: intervieweeName,
 			interview_date: interview?.interview_date || null,
-			organization_name: null,
-			segment,
 			analysis_data: data,
 			confidence_score: analysis.confidence_score,
 			processed_at: analysis.processed_at,
@@ -386,14 +413,27 @@ export async function aggregateCustomerDiscovery(opts: {
 		for (const section of data.sections || []) {
 			let targetMap: Map<string, AggregatedFieldValue>
 
-			if (section.section_key === "problem_validation") {
-				targetMap = problemFieldsMap
-			} else if (section.section_key === "solution_validation") {
-				targetMap = solutionFieldsMap
-			} else if (section.section_key === "market_insights") {
-				targetMap = marketFieldsMap
-			} else {
-				continue
+			switch (section.section_key) {
+				case "context_brief":
+					targetMap = contextFieldsMap
+					break
+				case "stakeholder_inputs":
+					targetMap = stakeholderInputsFieldsMap
+					break
+				case "alignment_gaps":
+					targetMap = alignmentFieldsMap
+					break
+				case "plan_milestones":
+					targetMap = planFieldsMap
+					break
+				case "risks_mitigations":
+					targetMap = risksFieldsMap
+					break
+				case "commitments_next_steps":
+					targetMap = commitmentsFieldsMap
+					break
+				default:
+					continue
 			}
 
 			for (const field of section.fields || []) {
@@ -405,22 +445,45 @@ export async function aggregateCustomerDiscovery(opts: {
 				fieldsCaptured++
 
 				// Collect for pattern extraction
-				if (field.field_key === "problem_statement") {
-					problemStatements.push({
+				if (field.field_key === "stated_goals" || field.field_key === "stakeholder_goals") {
+					goalsValues.push({
 						value: field.value,
 						interview_id: analysis.interview_id,
 						interview_title: interviewInfo.title,
 						interviewee_name: intervieweeName,
 					})
-				} else if (field.field_key === "current_solutions") {
-					currentSolutions.push({
+				}
+				if (field.field_key === "concerns") {
+					concernsValues.push({
 						value: field.value,
 						interview_id: analysis.interview_id,
 						interview_title: interviewInfo.title,
 						interviewee_name: intervieweeName,
 					})
-				} else if (field.field_key === "competitive_alternatives") {
-					competitiveAlternatives.push({
+				}
+				if (field.field_key === "conflicts") {
+					conflictsValues.push({
+						value: field.value,
+						interview_id: analysis.interview_id,
+						interview_title: interviewInfo.title,
+						interviewee_name: intervieweeName,
+					})
+				}
+				if (
+					field.field_key === "scope_risks" ||
+					field.field_key === "timeline_risks" ||
+					field.field_key === "adoption_risks" ||
+					field.field_key === "resource_risks"
+				) {
+					risksValues.push({
+						value: field.value,
+						interview_id: analysis.interview_id,
+						interview_title: interviewInfo.title,
+						interviewee_name: intervieweeName,
+					})
+				}
+				if (field.field_key === "open_questions") {
+					openQuestionsValues.push({
 						value: field.value,
 						interview_id: analysis.interview_id,
 						interview_title: interviewInfo.title,
@@ -435,7 +498,6 @@ export async function aggregateCustomerDiscovery(opts: {
 						interview_id: analysis.interview_id,
 						interview_title: interviewInfo.title,
 						interviewee_name: intervieweeName,
-						segment,
 						confidence: field.confidence,
 					})
 				} else {
@@ -448,7 +510,6 @@ export async function aggregateCustomerDiscovery(opts: {
 								interview_id: analysis.interview_id,
 								interview_title: interviewInfo.title,
 								interviewee_name: intervieweeName,
-								segment,
 								confidence: field.confidence,
 							},
 						],
@@ -459,20 +520,16 @@ export async function aggregateCustomerDiscovery(opts: {
 
 		// Process entities
 		for (const entity of data.entities || []) {
-			// Stakeholders
 			if (entity.entity_type === "stakeholders" && entity.stakeholders) {
 				for (const stakeholder of entity.stakeholders) {
 					const key = stakeholder.name.toLowerCase().trim()
 					const existing = stakeholderMap.get(key)
-
-					// Try to find matching person in project
 					const matchedPerson = peopleByName.get(key)
 					const personId = stakeholder.person_id || matchedPerson?.id || null
 
 					if (existing) {
 						existing.interview_count++
 						existing.interviews.push(interviewInfo)
-						// Merge labels
 						for (const label of stakeholder.labels || []) {
 							if (!existing.labels.includes(label)) {
 								existing.labels.push(label)
@@ -495,24 +552,19 @@ export async function aggregateCustomerDiscovery(opts: {
 				}
 			}
 
-			// Objections
-			if (entity.entity_type === "objections" && entity.objections) {
-				for (const objection of entity.objections) {
-					const key = objection.objection.toLowerCase().trim()
-					const existing = objectionMap.get(key)
-					if (existing) {
-						existing.count++
-						existing.interviews.push(interviewInfo)
-					} else {
-						objectionMap.set(key, {
-							objection: objection.objection,
-							type: objection.type,
-							status: objection.status || null,
-							response: objection.response || null,
-							count: 1,
-							interviews: [interviewInfo],
-						})
-					}
+			if (entity.entity_type === "next_steps" && entity.next_steps) {
+				for (const step of entity.next_steps) {
+					nextSteps.push({
+						description: step.description,
+						owner: step.owner || null,
+						due_date: step.due_date || null,
+						status: step.status || null,
+						priority: step.priority || null,
+						task_id: step.task_id || null,
+						interview_id: analysis.interview_id,
+						interview_title: interviewInfo.title,
+						interviewee_name: intervieweeName,
+					})
 				}
 			}
 		}
@@ -546,46 +598,53 @@ export async function aggregateCustomerDiscovery(opts: {
 			}
 		}
 
-		// Confidence tracking
 		if (analysis.confidence_score != null) {
 			totalConfidence += analysis.confidence_score
 			confidenceCount++
 		}
 
-		// Last updated tracking
 		if (analysis.processed_at && (!lastUpdated || analysis.processed_at > lastUpdated)) {
 			lastUpdated = analysis.processed_at
 		}
 	}
 
-	// Convert maps to sorted arrays
-	const problemFields = Array.from(problemFieldsMap.values())
-	const solutionFields = Array.from(solutionFieldsMap.values())
-	const marketFields = Array.from(marketFieldsMap.values())
+	// Convert maps to arrays
+	const contextFields = Array.from(contextFieldsMap.values())
+	const stakeholderInputsFields = Array.from(stakeholderInputsFieldsMap.values())
+	const alignmentFields = Array.from(alignmentFieldsMap.values())
+	const planFields = Array.from(planFieldsMap.values())
+	const risksFields = Array.from(risksFieldsMap.values())
+	const commitmentsFields = Array.from(commitmentsFieldsMap.values())
 	const stakeholders = Array.from(stakeholderMap.values()).sort((a, b) => b.interview_count - a.interview_count)
-	const objections = Array.from(objectionMap.values()).sort((a, b) => b.count - a.count)
 	const hygieneGaps = Array.from(hygieneMap.values()).sort((a, b) => b.count - a.count)
 
 	// Extract patterns
-	const commonProblems = extractPatterns(problemStatements)
-	const commonSolutions = extractPatterns(currentSolutions)
-	const commonCompetitors = extractPatterns(competitiveAlternatives)
+	const allGoals = extractItems(goalsValues)
+	const allConcerns = extractItems(concernsValues)
+	const allConflicts = extractItems(conflictsValues)
+	const allRisks = extractItems(risksValues)
+	const allOpenQuestions = extractItems(openQuestionsValues)
 
 	consola.success(
-		`[aggregateCustomerDiscovery] Aggregated ${interviews.length} interviews, ` +
-			`${stakeholders.length} stakeholders, ${objections.length} objections, ` +
-			`${commonProblems.length} problem patterns`
+		`[aggregateConsultingProject] Aggregated ${interviews.length} interviews, ` +
+			`${stakeholders.length} stakeholders, ${nextSteps.length} next steps, ` +
+			`${allConflicts.length} conflicts to resolve`
 	)
 
 	return {
-		problem_validation_fields: problemFields,
-		solution_validation_fields: solutionFields,
-		market_insights_fields: marketFields,
+		context_brief_fields: contextFields,
+		stakeholder_inputs_fields: stakeholderInputsFields,
+		alignment_gaps_fields: alignmentFields,
+		plan_milestones_fields: planFields,
+		risks_mitigations_fields: risksFields,
+		commitments_next_steps_fields: commitmentsFields,
+		all_goals: allGoals,
+		all_concerns: allConcerns,
+		all_conflicts: allConflicts,
+		all_risks: allRisks,
+		all_open_questions: allOpenQuestions,
 		stakeholders,
-		objections,
-		common_problems: commonProblems,
-		current_solutions: commonSolutions,
-		competitive_alternatives: commonCompetitors,
+		next_steps: nextSteps,
 		recommendations,
 		hygiene_gaps: hygieneGaps,
 		interviews,
@@ -595,7 +654,9 @@ export async function aggregateCustomerDiscovery(opts: {
 			last_updated: lastUpdated,
 			fields_captured: fieldsCaptured,
 			fields_missing: fieldsMissing,
-			unique_segments: Array.from(segmentSet),
+			total_stakeholders: stakeholders.length,
+			total_next_steps: nextSteps.length,
+			unresolved_conflicts: allConflicts.length,
 		},
 	}
 }

@@ -238,9 +238,7 @@ function extractOrganizationInfo(interview: any): { id: string | null; name: str
  * Extract organization name from stakeholders in the analysis data
  * Used as fallback when interview doesn't have linked people with organizations
  */
-function extractOrgFromAnalysisStakeholders(
-	analysisData: ConversationLensAnalysisData
-): string | null {
+function extractOrgFromAnalysisStakeholders(analysisData: ConversationLensAnalysisData): string | null {
 	const entities = analysisData?.entities || []
 	for (const entity of entities) {
 		if (entity.entity_type === "stakeholders" && entity.stakeholders) {
@@ -289,10 +287,7 @@ export async function aggregateSalesBant(opts: {
 	consola.info(`[aggregateSalesBant] Loaded ${peopleByName.size} people for name matching`)
 
 	// Fetch all organizations in this project for name -> ID lookup
-	const { data: projectOrgs } = await supabase
-		.from("organizations")
-		.select("id, name")
-		.eq("project_id", projectId)
+	const { data: projectOrgs } = await supabase.from("organizations").select("id, name").eq("project_id", projectId)
 
 	// Build a map of lowercase org name -> org for quick lookup
 	const orgsByName = new Map<string, { id: string; name: string }>()
@@ -576,9 +571,7 @@ export async function aggregateSalesBant(opts: {
 	// Convert maps to sorted arrays
 	const bantFields = Array.from(bantFieldsMap.values())
 	const opportunityFields = Array.from(opportunityFieldsMap.values())
-	const stakeholders = Array.from(stakeholderMap.values()).sort(
-		(a, b) => b.interview_count - a.interview_count
-	)
+	const stakeholders = Array.from(stakeholderMap.values()).sort((a, b) => b.interview_count - a.interview_count)
 	const objections = Array.from(objectionMap.values()).sort((a, b) => b.count - a.count)
 	const hygieneGaps = Array.from(hygieneMap.values()).sort((a, b) => b.count - a.count)
 

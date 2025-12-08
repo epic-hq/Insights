@@ -527,9 +527,7 @@ export function ProjectStatusAgentChat({
 														</TooltipContent>
 													</Tooltip>
 												</TooltipProvider>
-												{isVoiceEnabled && (
-													<ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />
-												)}
+												{isVoiceEnabled && <ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />}
 											</div>
 										)}
 										<button

@@ -34,8 +34,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses"
-import { LensSelector } from "~/features/lenses/components/LensSelector"
-import { LensTabs } from "~/features/lenses/components/LensTabs"
+import { LensAccordion } from "~/features/lenses/components/LensAccordion"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import {
 	type LensAnalysisWithTemplate,
@@ -1902,19 +1901,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 				{/* Conversation Lenses Section */}
 				<div className="mb-8 space-y-8">
-					{/* New Generic Lens System */}
+					{/* New Generic Lens System - Accordion view */}
 					{lensTemplates.length > 0 && (
-						<div className="space-y-4">
-							{/* Lens selector for manual application */}
-							<LensSelector
-								interviewId={interview.id}
-								templates={lensTemplates}
-								analyses={lensAnalyses}
-								onLensApplied={() => revalidator.revalidate()}
-							/>
-
-							<LensTabs templates={lensTemplates} analyses={lensAnalyses} editable evidenceMap={evidenceMap} />
-						</div>
+						<LensAccordion
+							interviewId={interview.id}
+							templates={lensTemplates}
+							analyses={lensAnalyses}
+							editable
+							evidenceMap={evidenceMap}
+							onLensApplied={() => revalidator.revalidate()}
+						/>
 					)}
 
 					{/* Legacy Sales Lens (for backward compatibility during migration) */}
@@ -1938,7 +1934,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{lensTemplates.length === 0 && !salesLens && (
 						<div>
 							<h3 className="mb-4 font-semibold text-foreground text-lg">Conversation Lenses</h3>
-							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center dark:bg-muted/10">
 								<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
 								<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
 							</div>
@@ -1956,10 +1952,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<div className="mb-4">
 						<MediaPlayer
 							mediaUrl={interview.media_url}
+							thumbnailUrl={interview.thumbnail_url}
 							title="Play Recording"
-							size="sm"
-							className="max-w-xs"
-							duration_sec={interview.duration_sec || undefined}
+							className="max-w-md"
 						/>
 					</div>
 				)}

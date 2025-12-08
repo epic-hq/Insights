@@ -28,6 +28,9 @@ const routes = [
 	// Public marketing landing page
 	...marketingRoutes,
 
+	// Welcome/Feature tour (public, redirects based on auth state)
+	route("welcome", "./features/onboarding/pages/welcome.tsx"),
+
 	// Signup chat (not protected, but requires auth)
 	...signupChatRoutes,
 
@@ -191,6 +194,7 @@ const routes = [
 	route("api/update-lens-entity", "./routes/api.update-lens-entity.tsx"),
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
+	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
 
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
