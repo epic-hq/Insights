@@ -21,7 +21,7 @@ export default defineConfig({
 	},
 	dirs: ["./src/trigger"],
 	build: {
-		external: ["@boundaryml/baml", "@boundaryml/baml-*", "@aws-sdk/client-s3", "execa", "ffmpeg-static"],
+		external: ["@boundaryml/baml", "@boundaryml/baml-*", "@aws-sdk/*", "@aws-sdk/client-s3", "execa", "ffmpeg-static"],
 		extensions: [
 			syncEnvVars(async (ctx) => {
 				// Sync all required environment variables from process.env
@@ -42,9 +42,13 @@ export default defineConfig({
 					{ name: "R2_ACCESS_KEY_ID", value: process.env.R2_ACCESS_KEY_ID || "" },
 					{ name: "R2_SECRET_ACCESS_KEY", value: process.env.R2_SECRET_ACCESS_KEY || "" },
 					{ name: "R2_BUCKET_NAME", value: process.env.R2_BUCKET_NAME || "" },
+					{ name: "R2_BUCKET", value: process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "" },
 					{ name: "R2_PUBLIC_BASE_URL", value: process.env.R2_PUBLIC_BASE_URL || "" },
 					{ name: "R2_ENDPOINT", value: process.env.R2_ENDPOINT || "" },
+					{ name: "R2_S3_ENDPOINT", value: process.env.R2_S3_ENDPOINT || process.env.R2_ENDPOINT || "" },
 					{ name: "R2_REGION", value: process.env.R2_REGION || "" },
+					{ name: "SHARED_SIGNING_SECRET", value: process.env.SHARED_SIGNING_SECRET || "" },
+					{ name: "FILE_GATEWAY_URL", value: process.env.FILE_GATEWAY_URL || "" },
 					{ name: "TRIGGER_SECRET_KEY", value: process.env.TRIGGER_SECRET_KEY || "" },
 					{ name: "ENABLE_PERSONA_ANALYSIS", value: process.env.ENABLE_PERSONA_ANALYSIS || "" },
 				];

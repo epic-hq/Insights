@@ -5,6 +5,7 @@ import { AppSidebar } from "~/components/navigation/AppSidebar"
 import { BottomTabBar } from "~/components/navigation/BottomTabBar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { ProjectStatusAgentProvider } from "~/contexts/project-status-agent-context"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -48,10 +49,9 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				{showJourneyNav && isMobile && showMainNav && (
 					<BottomTabBar
 						routes={{
-							home: routes.dashboard(),
-							recordings: routes.interviews.index(),
+							crm: routes.people.index(),
 							upload: routes.interviews.upload(),
-							more: routes.projects.setup(),
+							profile: `/a/${accountId}/settings`,
 						}}
 						onChatClick={() => setIsChatOpen(true)}
 						isChatAvailable={hasProjectContext}
@@ -61,13 +61,15 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 
 			{/* Chat Sheet (mobile) - only render when we have project context */}
 			{isMobile && hasProjectContext && (
-				<ChatSheet
-					open={isChatOpen}
-					onOpenChange={setIsChatOpen}
-					accountId={accountId}
-					projectId={projectId}
-					systemContext={systemContext}
-				/>
+				<ProjectStatusAgentProvider>
+					<ChatSheet
+						open={isChatOpen}
+						onOpenChange={setIsChatOpen}
+						accountId={accountId}
+						projectId={projectId}
+						systemContext={systemContext}
+					/>
+				</ProjectStatusAgentProvider>
 			)}
 		</SidebarProvider>
 	)

@@ -124,7 +124,7 @@ export default function InterviewDetailStorybook({ data }: { data: MockInterview
 					{/* Media Player */}
 					{interview.media_url && (
 						<div className="border-b p-4">
-							<MediaPlayer src={interview.media_url} type={interview.media_type || "audio/mpeg"} />
+							<MediaPlayer mediaUrl={interview.media_url} />
 							{interview.duration_seconds && (
 								<p className="mt-2 text-muted-foreground text-xs">
 									Duration: {formatDuration(interview.duration_seconds)}

@@ -274,9 +274,7 @@ export default function EditInterview() {
 							<MediaPlayer
 								mediaUrl={interview.media_url}
 								title="Play"
-								size="sm"
 								className="max-w-xs"
-								duration_sec={interview.duration_sec || undefined}
 							/>
 						)}
 					</div>

@@ -296,6 +296,31 @@ export type Database = {
       [_ in never]: never
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -1992,6 +2017,7 @@ export type Database = {
           segment: string | null
           source_type: string | null
           status: Database["public"]["Enums"]["interview_status"]
+          thumbnail_url: string | null
           title: string | null
           transcript: string | null
           transcript_formatted: Json | null
@@ -2025,6 +2051,7 @@ export type Database = {
           segment?: string | null
           source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"]
+          thumbnail_url?: string | null
           title?: string | null
           transcript?: string | null
           transcript_formatted?: Json | null
@@ -2058,6 +2085,7 @@ export type Database = {
           segment?: string | null
           source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"]
+          thumbnail_url?: string | null
           title?: string | null
           transcript?: string | null
           transcript_formatted?: Json | null
@@ -5942,6 +5970,9 @@ export const Constants = {
         "unpaid",
       ],
     },
+  },
+  graphql_public: {
+    Enums: {},
   },
   public: {
     Enums: {

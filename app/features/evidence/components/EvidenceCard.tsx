@@ -53,6 +53,7 @@ type EvidenceInterview = {
 	title?: string | null
 	media_url?: string | null
 	duration_sec?: number | null
+	thumbnail_url?: string | null
 }
 
 // Removed - use MediaAnchor from media-url.client instead
@@ -202,6 +203,7 @@ function EvidenceCard({
 					variant={variant}
 					evidenceId={evidence.id}
 					projectPath={projectPath}
+					thumbnailUrl={interview?.thumbnail_url}
 				/>
 			)}
 
@@ -288,12 +290,14 @@ function MediaAnchorPlayer({
 	variant,
 	evidenceId,
 	projectPath,
+	thumbnailUrl,
 }: {
 	anchor: MediaAnchor
 	fallbackMediaUrl?: string | null
 	variant?: "mini" | "expanded"
 	evidenceId?: string
 	projectPath?: string
+	thumbnailUrl?: string | null
 }) {
 	const [mediaUrl, setMediaUrl] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -332,7 +336,7 @@ function MediaAnchorPlayer({
 					isLoading ? (
 						<div className="mt-2 text-muted-foreground text-sm">Loading media...</div>
 					) : isValidUrl ? (
-						<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
+						<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} thumbnailUrl={thumbnailUrl} />
 					) : (
 						<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
 					)
@@ -340,7 +344,7 @@ function MediaAnchorPlayer({
 					<div className="mt-2 text-muted-foreground text-xs">Loading...</div>
 				) : isValidUrl ? (
 					// Media available - play inline instead of navigating
-					<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
+					<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} thumbnailUrl={thumbnailUrl} />
 				) : evidenceId && projectPath ? (
 					// Fallback: link to detail page if media not available
 					<Link

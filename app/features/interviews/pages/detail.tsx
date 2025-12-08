@@ -1952,10 +1952,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<div className="mb-4">
 						<MediaPlayer
 							mediaUrl={interview.media_url}
+							thumbnailUrl={interview.thumbnail_url}
 							title="Play Recording"
-							size="sm"
-							className="max-w-xs"
-							duration_sec={interview.duration_sec || undefined}
+							className="max-w-md"
 						/>
 					</div>
 				)}

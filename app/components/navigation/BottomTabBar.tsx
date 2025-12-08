@@ -1,24 +1,26 @@
 /**
  * BottomTabBar - Mobile bottom navigation
  *
- * 5-tab bottom navigation with AI chat as central prominent element.
+ * 4-tab bottom navigation with AI chat as central prominent element.
+ * Tabs: CRM | AI (center) | Add | Profile
  * Includes safe area padding for notched devices.
  */
 
-import { Home, MessageSquare, MoreHorizontal, Plus, Sparkles } from "lucide-react"
+import { Building2, Plus, Sparkles, User, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
 import { cn } from "~/lib/utils"
 
 export interface BottomTabBarProps {
 	/** Route helpers for navigation */
 	routes: {
-		home: string
-		recordings: string
+		crm: string // people/directory
 		upload: string
-		more: string
+		profile: string
 	}
 	/** Callback when AI chat tab is clicked */
 	onChatClick?: () => void
+	/** Callback when profile tab is clicked (for team switcher) */
+	onProfileClick?: () => void
 	/** Whether chat has new suggestions to show */
 	hasChatNotification?: boolean
 	/** Whether chat is available (has project context) */
@@ -110,14 +112,18 @@ function TabItem({
 export function BottomTabBar({
 	routes,
 	onChatClick,
+	onProfileClick,
 	hasChatNotification,
 	isChatAvailable = true,
 	className,
 }: BottomTabBarProps) {
 	const location = useLocation()
 
-	// Check if current path matches recordings section
-	const isRecordingsActive = location.pathname.includes("/interviews")
+	// Check if current path matches CRM sections
+	const isCrmActive =
+		location.pathname.includes("/people") ||
+		location.pathname.includes("/organizations") ||
+		location.pathname.includes("/opportunities")
 
 	return (
 		<nav
@@ -129,19 +135,12 @@ export function BottomTabBar({
 			)}
 		>
 			<div className="flex items-end justify-around px-2 py-1">
-				{/* Home */}
+				{/* CRM / Directory */}
 				<TabItem
-					to={routes.home}
-					icon={<Home className="h-5 w-5" />}
-					label="Home"
-				/>
-
-				{/* Recordings (Conversations) */}
-				<TabItem
-					to={routes.recordings}
-					icon={<MessageSquare className="h-5 w-5" />}
-					label="Recordings"
-					isActive={isRecordingsActive}
+					to={routes.crm}
+					icon={<Users className="h-5 w-5" />}
+					label="CRM"
+					isActive={isCrmActive}
 				/>
 
 				{/* AI Chat (Center - Prominent) */}
@@ -161,11 +160,12 @@ export function BottomTabBar({
 					label="Add"
 				/>
 
-				{/* More */}
+				{/* Profile / Team Switcher */}
 				<TabItem
-					to={routes.more}
-					icon={<MoreHorizontal className="h-5 w-5" />}
-					label="More"
+					onClick={onProfileClick}
+					to={onProfileClick ? undefined : routes.profile}
+					icon={<User className="h-5 w-5" />}
+					label="Profile"
 				/>
 			</div>
 		</nav>
