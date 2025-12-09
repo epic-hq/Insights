@@ -8,6 +8,7 @@ Build sharing and distribution loops that help researchers and consultants sprea
 - Reduce friction for stakeholders to consume insights without full account creation.
 - Attribute distribution loop performance and conversion back to the sharer.
 - Enable embeddable, provable insight artifacts that drive traffic back to the app.
+- Incorporate proven activation/growth loops from BuildBetter, Gong, Clari, VoicePanel, and Dovetail while reusing existing infra (calendar/email/SMS, Tasks, planned Feed).
 
 ## Success Metrics
 - **Share creation**: ≥40% of published insights have at least one external share within 7 days.
@@ -21,6 +22,7 @@ Build sharing and distribution loops that help researchers and consultants sprea
 - As a consultant, I can invite multiple interview participants, capture their perspectives, and share a consensus view with clients while preserving who said what.
 - As a marketer, I can embed a highlight card in Notion or a newsletter that links back to the full insight.
 - As an admin, I can see who viewed shared links and how many sign-ups those views generated.
+- As a project lead, I receive automated prompts (calendar/email/SMS) to schedule interviews and share recaps, mirroring competitor loops that reduce time-to-first-value.
 
 ## Functional Requirements
 1. **Shareable insight links**
@@ -43,10 +45,12 @@ Build sharing and distribution loops that help researchers and consultants sprea
    - Track views, reactions, and conversions per shared link with UTM-friendly URLs.
    - Surface metrics in a “Share Performance” panel on each insight and in a workspace-level dashboard.
    - Gamified “conversations this week / last 7 days” KPI leveraging existing interview logging to encourage more interviews and shares.
+   - Attribute shares/mentions to downstream sign-ups, task completions, and interview scheduling to reward advocates (inspired by Gong/Clari attribution loops).
 7. **Contextual prompts**
    - After publishing or updating an insight, show a nudge to create a share link and embed highlights.
    - In interview completion flow, recommend creating a highlight share or summary card.
    - In the Task system, suggest converting comments/feedback on shared pages into tasks assigned to people or AI bots.
+   - Offer calendar/email/SMS reminders for interview scheduling and follow-ups to match competitor activation loops without new infrastructure.
 
 ## Non-Functional Requirements
 - Respect privacy settings; default to private with explicit opt-in to share externally.
@@ -72,12 +76,14 @@ Build sharing and distribution loops that help researchers and consultants sprea
 - Create read-only share page for insights/highlights with summary, evidence provenance, reactions, and CTA to request access or start a trial.
 - Implement share link creation UI with default private settings and revoke/expiration controls.
 - Instrument view/reaction/conversion tracking for each link; expose basic counts on the insight page.
+ - Hook existing calendar/email/SMS services to prompt interview scheduling and post-interview recaps, focusing on time-to-first-share inspired by BuildBetter/VoicePanel.
 
 ### Phase 2: Embeds, Social Proof, and Task Integrations
 - Publish embeddable highlight/summary cards (HTML/Markdown snippets) with light/dark themes and auto-refreshing content.
 - Add social proof elements to shared pages (view counts, “Updated recently” badge, reactions surface) with rate limits.
 - Improve share performance panel to show per-link metrics, trendlines, and “conversations this week / rolling 7 days.”
 - Wire comments and feedback on shared pages into the existing Task system, enabling quick task creation/assignment to people or AI bots.
+ - Add share/referral attribution reporting (sign-ups, task completions, interview bookings) to reinforce sharing habits in line with Gong/Clari loops.
 
 ### Phase 3: Growth Loops & Expansion
 - Add contextual prompts post-publish and post-interview to encourage sharing and embedding.
@@ -85,6 +91,7 @@ Build sharing and distribution loops that help researchers and consultants sprea
 - Launch referral path for engaged viewers to start a guided trial or request access with sharer attribution.
 - Workspace-level dashboard aggregating share performance, conversion, repeat-sharing behavior, and conversation momentum.
 - Tighten governance: audit logs for link lifecycle events and workspace-level controls for sharing defaults.
+ - Iterate on Feed/alert content mix based on conversion metrics to mirror competitor exec-visibility loops without overbuilding custom channels.
 
 ## Acceptance Criteria
 - Users can create, revoke, and monitor share links with configurable access levels and expirations.

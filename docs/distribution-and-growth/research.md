@@ -7,7 +7,21 @@ Establish how to build sustainable distribution loops for the app by understandi
 - Stakeholder conversations about desired growth loops (sharing insights to attract adjacent teams).
 - Review of current product analytics (activation drop-offs around project creation and invite flow).
 - Competitive teardown of research/insight platforms with viral sharing patterns (public read-only links, highlights embeds, social proof banners).
+- Competitor activation & growth loop research across BuildBetter, Gong, Clari, VoicePanel, and Dovetail to identify which tactics measurably convert viewers into participants.
 - Heuristic analysis of current onboarding, sharing, and collaboration touchpoints.
+
+## Competitive Activation & Growth Loops
+- **BuildBetter**: emphasizes frictionless scheduling and automated note sharing; rapid calendar-driven invite flows and AI-summarized recaps keep interview momentum high and reduce time-to-first-share.
+- **Gong**: strong looping between call insights and pipeline visibility; exec dashboards and alert feeds showcase outcomes, prompting shares to leadership and adjacent teams; clear attribution from listener to deal impact reinforces advocacy.
+- **Clari**: adoption is driven by forecast accountability—team rollups and risk alerts push users back into the product weekly; “one-click share” of deal health to Slack/email sustains engagement.
+- **VoicePanel**: lightweight participant recruitment plus SMS/email reminders accelerate interview completion; public-style preview links for panels make it easy to validate scripts and capture early feedback.
+- **Dovetail**: polished public links and highlight embeds are core; viewers can request access and leave reactions; templates and project checklists shorten activation and encourage repeat sharing.
+
+**Actionable takeaways**
+- Prioritize calendar/email/SMS-powered interview scheduling and reminders to lift time-to-first-interview (BuildBetter, VoicePanel).
+- Ship polished read-only links with reactions and request-access to turn passive viewers into collaborators (Dovetail).
+- Use Feed surfaces and alerting to spotlight new insights and risks, mirroring Gong/Clari’s loop of “insight ➜ exec visibility ➜ follow-up.”
+- Tie shares and mentions to attributable outcomes (e.g., sign-ups, task completions) so sharers get credit, encouraging ongoing distribution.
 
 ## Key Findings
 1. **Primary audiences**
