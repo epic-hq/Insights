@@ -11,7 +11,7 @@ export type TaskEffort = "S" | "M" | "L" | "XL"
 
 export type AgentType = "code-generation" | "research" | "testing" | "documentation"
 
-export type AssigneeType = "human" | "agent"
+export type AssigneeType = "human" | "agent" | "person"
 
 export interface HumanAssignee {
 	type: "human"
@@ -25,7 +25,15 @@ export interface AgentAssignee {
 	agent_type: AgentType
 }
 
-export type Assignee = HumanAssignee | AgentAssignee
+/** Project person (from people table) */
+export interface PersonAssignee {
+	type: "person"
+	person_id: string
+	name: string
+	avatar_url?: string
+}
+
+export type Assignee = HumanAssignee | AgentAssignee | PersonAssignee
 
 export interface Task {
 	id: string

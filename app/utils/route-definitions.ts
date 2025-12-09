@@ -106,6 +106,10 @@ export interface RouteDefinitions {
 
 	// Priorities / roadmap tasks
 	priorities: () => string
+	tasks: {
+		index: () => string
+		detail: (id: string) => string
+	}
 
 	// Organizations
 	organizations: {
@@ -283,6 +287,10 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 
 		// Priorities / task system
 		priorities: () => `${base}/priorities`,
+		tasks: {
+			index: () => `${base}/priorities`,
+			detail: (id: string) => `${base}/priorities/${id}`,
+		},
 
 		organizations: {
 			index: () => `${base}/organizations`,

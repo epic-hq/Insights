@@ -10,7 +10,7 @@ export type AnnotationInsert = DB["Tables"]["annotations"]["Insert"]
 type AnnotationUpdate = DB["Tables"]["annotations"]["Update"]
 
 // Entity types that can have annotations
-export type EntityType = "insight" | "persona" | "opportunity" | "interview" | "person" | "project"
+export type EntityType = "insight" | "persona" | "opportunity" | "interview" | "person" | "project" | "task"
 export type AnnotationType = "comment" | "ai_suggestion" | "flag" | "note" | "todo" | "reaction"
 export type FlagType = "hidden" | "archived" | "starred" | "priority"
 

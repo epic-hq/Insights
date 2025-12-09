@@ -74,7 +74,7 @@ export const fetchSegmentsTool = createTool({
 
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null
 
-		consola.info("[fetch-segments] execute start", {
+		consola.debug("[fetch-segments] execute start", {
 			projectId,
 			accountId,
 			summaryOnly,

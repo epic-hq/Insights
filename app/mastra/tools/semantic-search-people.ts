@@ -69,7 +69,7 @@ export const semanticSearchPeopleTool = createTool({
 		const matchThreshold = context.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
 		const matchCount = context.matchCount ?? DEFAULT_MATCH_COUNT
 
-		consola.info("semantic-search-people: execute start", {
+		consola.debug("semantic-search-people: execute start", {
 			projectId,
 			query,
 			kindSlugFilter,
@@ -108,7 +108,7 @@ export const semanticSearchPeopleTool = createTool({
 				throw new Error("OPENAI_API_KEY environment variable is not set")
 			}
 
-			consola.info("semantic-search-people: generating query embedding")
+			consola.debug("semantic-search-people: generating query embedding")
 			const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
 				method: "POST",
 				headers: {
@@ -130,12 +130,12 @@ export const semanticSearchPeopleTool = createTool({
 			const queryEmbedding = embeddingData.data[0].embedding as number[]
 
 			// 2. Search for similar person facets using pgvector
-			consola.info("semantic-search-people: searching for similar person facets", {
+			consola.debug("semantic-search-people: searching for similar person facets", {
 				embeddingLength: queryEmbedding.length,
 				embeddingPreview: queryEmbedding.slice(0, 5),
 			})
 
-			consola.info("semantic-search-people: calling find_similar_person_facets RPC", {
+			consola.debug("semantic-search-people: calling find_similar_person_facets RPC", {
 				projectId,
 				matchThreshold,
 				matchCount: matchCount * 3, // Get more facets to ensure we have enough unique people
@@ -150,7 +150,7 @@ export const semanticSearchPeopleTool = createTool({
 				kind_slug_filter: kindSlugFilter ?? null,
 			})
 
-			consola.info("semantic-search-people: RPC response", {
+			consola.debug("semantic-search-people: RPC response", {
 				hasError: !!facetsError,
 				dataLength: facetsData?.length || 0,
 				error: facetsError,
@@ -229,7 +229,7 @@ export const semanticSearchPeopleTool = createTool({
 
 			const uniquePersonIds = Array.from(personFacetsMap.keys()).slice(0, matchCount)
 
-			consola.info("semantic-search-people: fetching person details", {
+			consola.debug("semantic-search-people: fetching person details", {
 				uniquePeopleCount: uniquePersonIds.length,
 			})
 
@@ -244,7 +244,7 @@ export const semanticSearchPeopleTool = createTool({
 				throw peopleError
 			}
 
-			consola.info("semantic-search-people: people fetched", {
+			consola.debug("semantic-search-people: people fetched", {
 				peopleCount: peopleData?.length || 0,
 			})
 

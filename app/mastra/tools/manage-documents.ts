@@ -105,7 +105,7 @@ Operations:
 		const content = toolContext.content
 		const metadata = toolContext.metadata
 
-		consola.info("manage-documents: execute start", {
+		consola.debug("manage-documents: execute start", {
 			projectId,
 			operation,
 			kind,

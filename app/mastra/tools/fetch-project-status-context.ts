@@ -401,7 +401,7 @@ export const fetchProjectStatusContextTool = createTool({
 		const includePersonEvidence = context?.includePersonEvidence ?? sanitizedPersonSearch.length > 0
 		const personEvidenceLimit = context?.personEvidenceLimit ?? DEFAULT_PERSON_EVIDENCE_LIMIT
 
-		consola.info("fetch-project-status-context: execute start", {
+		consola.debug("fetch-project-status-context: execute start", {
 			projectId,
 			accountId,
 			scopes,
@@ -462,7 +462,7 @@ export const fetchProjectStatusContextTool = createTool({
 			}
 
 			if (accountId && project.account_id && project.account_id !== accountId) {
-				consola.info("fetch-project-status-context: runtime account differs from project account", {
+				consola.debug("fetch-project-status-context: runtime account differs from project account", {
 					expectedAccountId: accountId,
 					projectAccountId: project.account_id,
 				})
@@ -599,7 +599,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 			if (scopeSet.has("evidence")) {
 				if (!includeEvidence) {
-					consola.info("fetch-project-status-context: evidence scope skipped due to includeEvidence=false")
+					consola.debug("fetch-project-status-context: evidence scope skipped due to includeEvidence=false")
 					data.evidence = []
 				} else {
 					try {
@@ -700,7 +700,7 @@ export const fetchProjectStatusContextTool = createTool({
 							}
 						}
 					} else if (!includeEvidence) {
-						consola.info("fetch-project-status-context: skipping theme evidence details due to includeEvidence=false")
+						consola.debug("fetch-project-status-context: skipping theme evidence details due to includeEvidence=false")
 					}
 
 					const serialized: ThemePayload[] = themeRows.map((theme) => ({

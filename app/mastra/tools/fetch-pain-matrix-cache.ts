@@ -68,7 +68,7 @@ export const fetchPainMatrixCacheTool = createTool({
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null
 		const projectId = requestedProjectId ? String(requestedProjectId).trim() : null
 
-		consola.info("[fetch-pain-matrix-cache] execute start", {
+		consola.debug("[fetch-pain-matrix-cache] execute start", {
 			projectId,
 			accountId,
 			computeFreshness,
@@ -107,7 +107,7 @@ export const fetchPainMatrixCacheTool = createTool({
 			const cached = rows?.[0] ?? null
 
 			if (!cached) {
-				consola.info("[fetch-pain-matrix-cache] no cache found", { projectId })
+				consola.debug("[fetch-pain-matrix-cache] no cache found", { projectId })
 				return {
 					success: true,
 					message: "No cached pain matrix found for this project.",

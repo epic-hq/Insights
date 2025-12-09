@@ -476,3 +476,205 @@ export async function getSubtasks({
 
 	return (data as Task[]) || []
 }
+
+// ============================================================================
+// Task Link Operations
+// ============================================================================
+
+export type TaskLinkEntityType = "evidence" | "person" | "organization" | "opportunity" | "interview" | "insight" | "persona"
+export type TaskLinkType = "supports" | "blocks" | "related" | "source"
+
+export interface TaskLink {
+	id: string
+	task_id: string
+	entity_type: TaskLinkEntityType
+	entity_id: string
+	link_type: TaskLinkType
+	description: string | null
+	created_by: string | null
+	created_at: string
+	updated_at: string
+}
+
+export interface TaskLinkInsert {
+	task_id: string
+	entity_type: TaskLinkEntityType
+	entity_id: string
+	link_type?: TaskLinkType
+	description?: string
+}
+
+export async function createTaskLink({
+	supabase,
+	userId,
+	data,
+}: {
+	supabase: SupabaseClient
+	userId: string
+	data: TaskLinkInsert
+}): Promise<TaskLink> {
+	const linkData = {
+		...data,
+		link_type: data.link_type || "supports",
+		created_by: userId,
+	}
+
+	const { data: created, error } = await supabase.from("task_links").insert(linkData).select().single()
+
+	if (error) {
+		consola.error("Error creating task link:", error)
+		throw error
+	}
+
+	// Log activity
+	await logTaskActivity({
+		supabase,
+		taskId: data.task_id,
+		activityType: "field_update",
+		userId,
+		fieldName: "links",
+		newValue: { entity_type: data.entity_type, entity_id: data.entity_id, link_type: data.link_type },
+		content: `Added ${data.entity_type} link`,
+	})
+
+	return created as TaskLink
+}
+
+export async function getTaskLinks({
+	supabase,
+	taskId,
+	entityType,
+	linkType,
+}: {
+	supabase: SupabaseClient
+	taskId: string
+	entityType?: TaskLinkEntityType
+	linkType?: TaskLinkType
+}): Promise<TaskLink[]> {
+	let query = supabase.from("task_links").select("*").eq("task_id", taskId)
+
+	if (entityType) {
+		query = query.eq("entity_type", entityType)
+	}
+
+	if (linkType) {
+		query = query.eq("link_type", linkType)
+	}
+
+	const { data, error } = await query.order("created_at", { ascending: false })
+
+	if (error) {
+		consola.error("Error fetching task links:", error)
+		throw error
+	}
+
+	return (data as TaskLink[]) || []
+}
+
+export async function getTaskLinkById({
+	supabase,
+	linkId,
+}: {
+	supabase: SupabaseClient
+	linkId: string
+}): Promise<TaskLink | null> {
+	const { data, error } = await supabase.from("task_links").select("*").eq("id", linkId).single()
+
+	if (error) {
+		if (error.code === "PGRST116") {
+			return null
+		}
+		consola.error("Error fetching task link:", error)
+		throw error
+	}
+
+	return data as TaskLink
+}
+
+export async function updateTaskLink({
+	supabase,
+	linkId,
+	updates,
+}: {
+	supabase: SupabaseClient
+	linkId: string
+	updates: Partial<Pick<TaskLink, "link_type" | "description">>
+}): Promise<TaskLink> {
+	const { data, error } = await supabase
+		.from("task_links")
+		.update({
+			...updates,
+			updated_at: new Date().toISOString(),
+		})
+		.eq("id", linkId)
+		.select()
+		.single()
+
+	if (error) {
+		consola.error("Error updating task link:", error)
+		throw error
+	}
+
+	return data as TaskLink
+}
+
+export async function deleteTaskLink({
+	supabase,
+	linkId,
+	userId,
+}: {
+	supabase: SupabaseClient
+	linkId: string
+	userId: string
+}): Promise<void> {
+	// Get the link first for activity logging
+	const link = await getTaskLinkById({ supabase, linkId })
+
+	const { error } = await supabase.from("task_links").delete().eq("id", linkId)
+
+	if (error) {
+		consola.error("Error deleting task link:", error)
+		throw error
+	}
+
+	// Log activity if we had the link
+	if (link) {
+		await logTaskActivity({
+			supabase,
+			taskId: link.task_id,
+			activityType: "field_update",
+			userId,
+			fieldName: "links",
+			oldValue: { entity_type: link.entity_type, entity_id: link.entity_id },
+			content: `Removed ${link.entity_type} link`,
+		})
+	}
+}
+
+export async function getTasksLinkedToEntity({
+	supabase,
+	entityType,
+	entityId,
+}: {
+	supabase: SupabaseClient
+	entityType: TaskLinkEntityType
+	entityId: string
+}): Promise<Task[]> {
+	const { data: links, error: linksError } = await supabase
+		.from("task_links")
+		.select("task_id")
+		.eq("entity_type", entityType)
+		.eq("entity_id", entityId)
+
+	if (linksError) {
+		consola.error("Error fetching task links for entity:", linksError)
+		throw linksError
+	}
+
+	if (!links || links.length === 0) {
+		return []
+	}
+
+	const taskIds = links.map((l) => l.task_id)
+	return getTasksByIds({ supabase, taskIds })
+}

@@ -180,7 +180,7 @@ export const createInterviewPromptTool = createTool({
 			const { accountId, projectId, userId } = ensureContext(runtimeContext)
 			const projectPath = buildProjectPath(accountId, projectId)
 
-			consola.info("createInterviewPromptTool invoked", {
+			consola.debug("createInterviewPromptTool invoked", {
 				projectId,
 				accountId,
 				hasText: typeof context?.text === "string" && context.text.length > 0,
@@ -276,7 +276,7 @@ export const updateInterviewPromptTool = createTool({
 			const { accountId, projectId, userId } = ensureContext(runtimeContext)
 			const projectPath = buildProjectPath(accountId, projectId)
 
-			consola.info("updateInterviewPromptTool invoked", {
+			consola.debug("updateInterviewPromptTool invoked", {
 				projectId,
 				accountId,
 				id: context?.id,
@@ -306,7 +306,7 @@ export const updateInterviewPromptTool = createTool({
 						...existingScores,
 						...context.scores,
 					}
-					consola.info("Merged scores", {
+					consola.debug("Merged scores", {
 						existing: existingScores,
 						new: context.scores,
 						merged: finalScores,

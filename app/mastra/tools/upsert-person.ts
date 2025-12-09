@@ -89,7 +89,7 @@ export const upsertPersonTool = createTool({
 		const projectId = (runtimeProjectId as string) || null
 		const accountId = (runtimeAccountId as string) || null
 
-		consola.info("upsert-person: execute start", {
+		consola.debug("upsert-person: execute start", {
 			personId,
 			projectId,
 			accountId,

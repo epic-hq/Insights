@@ -343,7 +343,7 @@ export const fetchInterviewContextTool = createTool({
 		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const evidenceLimit = (context as any)?.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
 
-		consola.info("fetch-interview-context: execute start", {
+		consola.debug("fetch-interview-context: execute start", {
 			requestedInterviewId: context?.interviewId,
 			resolvedInterviewId: interviewId,
 			projectId,
@@ -486,7 +486,7 @@ export const fetchInterviewContextTool = createTool({
 				gains: toStringArray(row.gains),
 			}))
 
-			consola.info("fetch-interview-context: success", {
+			consola.debug("fetch-interview-context: success", {
 				interviewId,
 				projectId,
 				participantCount: participants.length,

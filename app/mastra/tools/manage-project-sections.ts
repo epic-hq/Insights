@@ -143,7 +143,7 @@ export const updateProjectSectionMetaTool = createTool({
 						}
 					}
 
-					consola.info("Merged meta", {
+					consola.debug("Merged meta", {
 						kind: context.kind,
 						existing: existingMeta,
 						new: context.meta,

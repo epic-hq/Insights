@@ -43,7 +43,7 @@ export const fetchThemesTool = createTool({
 
 		const sanitizedThemeSearch = themeSearch.trim().toLowerCase()
 
-		consola.info("fetch-themes: execute start", {
+		consola.debug("fetch-themes: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
 			themeSearch: sanitizedThemeSearch,

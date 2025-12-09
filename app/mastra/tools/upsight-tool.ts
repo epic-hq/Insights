@@ -97,8 +97,8 @@ export const upsightTool = createTool({
 	}),
 	execute: async ({ context, runtimeContext }) => {
 		try {
-			consola.log("Upsight tool executing with context:", context)
-			consola.log("Runtime context:", runtimeContext)
+			consola.debug("Upsight tool executing with context:", context)
+			consola.debug("Runtime context:", runtimeContext)
 
 			// Get accountId and projectId from runtime context or input
 			const runtimeAccountId = runtimeContext?.get("account_id") || runtimeContext?.get("accountId")
@@ -109,7 +109,7 @@ export const upsightTool = createTool({
 			const finalAccountId = runtimeAccountId || context.accountId
 			const finalProjectId = runtimeProjectId || context.projectId
 
-			consola.log("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId)
+			consola.debug("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId)
 
 			if (!finalAccountId) {
 				throw new Error("accountId is required - must be provided either in context or runtime headers")

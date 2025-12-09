@@ -46,7 +46,7 @@ export const fetchPersonasTool = createTool({
 
 		const sanitizedPersonasSearch = personasSearch.trim().toLowerCase()
 
-		consola.info("fetch-personas: execute start", {
+		consola.debug("fetch-personas: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
 			personasSearch: sanitizedPersonasSearch,

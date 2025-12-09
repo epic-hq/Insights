@@ -50,6 +50,7 @@ export type FeatureRow = {
 	priority: Priority
 	reason: string
 	cluster: Cluster
+	due_date: string | null
 }
 
 // ============================================================================
@@ -129,7 +130,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		}
 	}
 
-	return { tasks, accountId, projectId, statusFilter, priorityFilter }
+	const projectPath = `/a/${accountId}/${projectId}`
+	return { tasks, accountId, projectId, statusFilter, priorityFilter, projectPath }
 }
 
 // ============================================================================
@@ -200,6 +202,7 @@ function taskToFeatureRow(task: Task): FeatureRow {
 		priority: task.priority as Priority,
 		reason: task.reason || "",
 		cluster: task.cluster as Cluster,
+		due_date: task.due_date,
 	}
 }
 
@@ -231,6 +234,33 @@ function EditableTextCell({ taskId, field, value }: { taskId: string; field: str
 			multiline={field === "benefit" || field === "reason"}
 			autoSize={true}
 		/>
+	)
+}
+
+function TaskTitleCell({ taskId, value, detailHref }: { taskId: string; value: string; detailHref: string }) {
+	const fetcher = useFetcher()
+
+	const handleSubmit = (newValue: string) => {
+		if (newValue === value) return
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", "title")
+		formData.append("value", newValue)
+
+		fetcher.submit(formData, { method: "POST" })
+	}
+
+	return (
+		<div className="flex items-center gap-2">
+			<Link
+				to={detailHref}
+				className="text-sm font-medium text-foreground hover:text-primary hover:underline flex-1"
+			>
+				{value}
+			</Link>
+		</div>
 	)
 }
 
@@ -758,7 +788,7 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 // Table Columns
 // ============================================================================
 
-const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: string): ColumnDef<FeatureRow>[] => [
+const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: string, projectPath: string): ColumnDef<FeatureRow>[] => [
 	{
 		accessorKey: "cluster",
 		header: "Cluster",
@@ -776,7 +806,13 @@ const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: stri
 				/>
 			)
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="title" value={row.original.feature} />,
+		cell: ({ row }) => (
+			<TaskTitleCell
+				taskId={row.original.id}
+				value={row.original.feature}
+				detailHref={`${projectPath}/priorities/${row.original.id}`}
+			/>
+		),
 	},
 	{
 		accessorKey: "benefit",
@@ -823,6 +859,28 @@ const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: stri
 			return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
 		},
 		cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
+	},
+	{
+		accessorKey: "due_date",
+		header: () => {
+			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
+		},
+		cell: ({ row }) => {
+			const dueDate = row.original.due_date
+			if (!dueDate) {
+				return <span className="text-muted-foreground text-xs">—</span>
+			}
+			const date = new Date(dueDate)
+			const now = new Date()
+			const isOverdue = date < now && date.toDateString() !== now.toDateString()
+			const isToday = date.toDateString() === now.toDateString()
+			const formatted = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+			return (
+				<span className={`text-xs ${isOverdue ? "text-red-600 dark:text-red-400" : isToday ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+					{formatted}
+				</span>
+			)
+		},
 	},
 	{
 		accessorKey: "status",
@@ -910,7 +968,7 @@ Context:
 // ============================================================================
 
 export default function FeaturePrioritizationPage() {
-	const { tasks, statusFilter, priorityFilter } = useLoaderData<typeof loader>()
+	const { tasks, statusFilter, priorityFilter, projectPath } = useLoaderData<typeof loader>()
 	const [compactView, setCompactView] = React.useState(true)
 
 	// Apply client-side filtering
@@ -942,8 +1000,8 @@ export default function FeaturePrioritizationPage() {
 
 	// Create columns with ALL tasks (for accurate counts) and filters
 	const columns = React.useMemo(
-		() => createColumns(tasks, statusFilter, priorityFilter),
-		[tasks, statusFilter, priorityFilter]
+		() => createColumns(tasks, statusFilter, priorityFilter, projectPath),
+		[tasks, statusFilter, priorityFilter, projectPath]
 	)
 
 	const [sorting, setSorting] = React.useState<SortingState>([
@@ -973,6 +1031,7 @@ export default function FeaturePrioritizationPage() {
 				cluster: false, // Hide cluster column from display
 				benefit: !compactView,
 				segments: !compactView,
+				impact: !compactView, // Hide impact in compact view
 				stage: !compactView,
 				reason: !compactView,
 			},
@@ -1077,8 +1136,8 @@ export default function FeaturePrioritizationPage() {
 							<TooltipContent>
 								<p className="text-xs">
 									{compactView
-										? "Showing compact view (Tasks, Impact, Priority, Status, Action)"
-										: "Switch to compact view (hide Benefits, Segments, Stage, Reason)"}
+										? "Showing compact view (Tasks, Priority, Due, Status, Action)"
+										: "Switch to compact view (hide Benefits, Segments, Impact, Stage, Reason)"}
 								</p>
 							</TooltipContent>
 						</Tooltip>
@@ -1104,12 +1163,12 @@ export default function FeaturePrioritizationPage() {
 								if (row.getIsGrouped()) {
 									// Group row (cluster header)
 									return (
-										<tr key={row.id} className="border-b bg-muted/70 font-semibold">
-											<td colSpan={columns.length} className="px-4 py-2">
+										<tr key={row.id} className="border-b bg-slate-200 dark:bg-slate-800 font-semibold">
+											<td colSpan={columns.length} className="px-4 py-2.5">
 												<button
 													type="button"
 													onClick={row.getToggleExpandedHandler()}
-													className="flex items-center gap-2 hover:text-primary"
+													className="flex items-center gap-2 text-slate-700 dark:text-slate-200 hover:text-primary"
 												>
 													{row.getIsExpanded() ? (
 														<ChevronDown className="h-4 w-4" />

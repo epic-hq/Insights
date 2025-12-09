@@ -23,7 +23,7 @@ export const getCurrentDateTool = createTool({
 	}),
 	execute: async ({ context, runtimeContext }) => {
 		// Debug logging
-		consola.info("getCurrentDate tool called", {
+		consola.debug("getCurrentDate tool called", {
 			contextTimezone: context.timezone,
 			runtimeContextAvailable: !!runtimeContext,
 			userTimezone: runtimeContext?.get?.("user_timezone"),
@@ -33,7 +33,7 @@ export const getCurrentDateTool = createTool({
 		const timezone =
 			context.timezone || runtimeContext?.get?.("user_timezone") || runtimeContext?.get?.("timezone") || "UTC"
 
-		consola.info("getCurrentDate using timezone", { timezone })
+		consola.debug("getCurrentDate using timezone", { timezone })
 
 		try {
 			const now = new Date()

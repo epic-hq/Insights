@@ -65,7 +65,7 @@ export const semanticSearchEvidenceTool = createTool({
 		const matchThreshold = context.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
 		const matchCount = context.matchCount ?? DEFAULT_MATCH_COUNT
 
-		consola.info("semantic-search-evidence: execute start", {
+		consola.debug("semantic-search-evidence: execute start", {
 			projectId,
 			query,
 			interviewId,
@@ -104,7 +104,7 @@ export const semanticSearchEvidenceTool = createTool({
 				throw new Error("OPENAI_API_KEY environment variable is not set")
 			}
 
-			consola.info("semantic-search-evidence: generating query embedding")
+			consola.debug("semantic-search-evidence: generating query embedding")
 			const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
 				method: "POST",
 				headers: {
@@ -126,7 +126,7 @@ export const semanticSearchEvidenceTool = createTool({
 			const queryEmbedding = embeddingData.data[0].embedding as number[]
 
 			// 2. Search for similar evidence using pgvector
-			consola.info("semantic-search-evidence: searching for similar evidence", {
+			consola.debug("semantic-search-evidence: searching for similar evidence", {
 				embeddingLength: queryEmbedding.length,
 				embeddingPreview: queryEmbedding.slice(0, 5),
 			})
@@ -178,7 +178,7 @@ export const semanticSearchEvidenceTool = createTool({
 			}
 
 			// Project-wide search - search both evidence and evidence_facets in parallel
-			consola.info("semantic-search-evidence: calling find_similar_evidence + find_similar_evidence_facets RPCs", {
+			consola.debug("semantic-search-evidence: calling find_similar_evidence + find_similar_evidence_facets RPCs", {
 				projectId,
 				matchThreshold,
 				matchCount,
@@ -204,7 +204,7 @@ export const semanticSearchEvidenceTool = createTool({
 			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] =
 				await Promise.all([evidencePromise, facetsPromise])
 
-			consola.info("semantic-search-evidence: RPC responses", {
+			consola.debug("semantic-search-evidence: RPC responses", {
 				evidence: {
 					hasError: !!evidenceError,
 					dataLength: evidenceData?.length || 0,
@@ -249,7 +249,7 @@ export const semanticSearchEvidenceTool = createTool({
 				}
 			})
 
-			consola.info("semantic-search-evidence: combined results", {
+			consola.debug("semantic-search-evidence: combined results", {
 				uniqueEvidenceIds: evidenceIds.size,
 				fromVerbatim: evidenceData?.length || 0,
 				fromFacets: facetEvidenceIds.size,
@@ -323,7 +323,7 @@ export const semanticSearchEvidenceTool = createTool({
 
 			// Fetch full evidence data for all matched IDs
 			const evidenceIdsArray = Array.from(evidenceIds)
-			consola.info("semantic-search-evidence: fetching full evidence data", {
+			consola.debug("semantic-search-evidence: fetching full evidence data", {
 				count: evidenceIdsArray.length,
 			})
 
@@ -332,7 +332,7 @@ export const semanticSearchEvidenceTool = createTool({
 				.select("id, verbatim, gist, interview_id, pains, gains, thinks, feels, anchors")
 				.in("id", evidenceIdsArray)
 
-			consola.info("semantic-search-evidence: full evidence fetched", {
+			consola.debug("semantic-search-evidence: full evidence fetched", {
 				fullEvidenceCount: fullEvidence?.length || 0,
 			})
 

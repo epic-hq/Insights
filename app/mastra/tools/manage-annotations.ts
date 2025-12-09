@@ -144,7 +144,7 @@ Entity Types Supported:
 		const filterByType = toolContext.filterByType
 		const includeArchived = toolContext.includeArchived ?? false
 
-		consola.info("manage-annotations: execute start", {
+		consola.debug("manage-annotations: execute start", {
 			projectId,
 			accountId,
 			operation,

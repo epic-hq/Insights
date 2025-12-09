@@ -31,7 +31,7 @@ export const fetchProjectGoalsTool = createTool({
 		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
 
-		consola.info("fetch-project-goals: execute start", {
+		consola.debug("fetch-project-goals: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
 		})
@@ -54,7 +54,7 @@ export const fetchProjectGoalsTool = createTool({
 			const projectContext = await getProjectContextGeneric(supabase, projectIdStr)
 
 			if (!projectContext?.merged) {
-				consola.info("fetch-project-goals: no project sections found")
+				consola.debug("fetch-project-goals: no project sections found")
 				return {
 					success: true,
 					message: "No project goals found for this project.",

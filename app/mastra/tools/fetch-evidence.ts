@@ -79,7 +79,7 @@ export const fetchEvidenceTool = createTool({
 			confidence: confidence || null,
 		}
 
-		consola.info("fetch-evidence: execute start", {
+		consola.debug("fetch-evidence: execute start", {
 			projectId,
 			accountId,
 			interviewId,

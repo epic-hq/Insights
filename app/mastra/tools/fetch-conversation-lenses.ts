@@ -125,7 +125,7 @@ export const fetchConversationLensesTool = createTool({
 		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const limit = (context as any).limit ?? 50
 
-		consola.info("fetch-conversation-lenses: execute start", {
+		consola.debug("fetch-conversation-lenses: execute start", {
 			mode,
 			projectId,
 			interviewId,

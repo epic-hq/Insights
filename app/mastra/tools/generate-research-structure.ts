@@ -57,7 +57,7 @@ export const generateResearchStructureTool = createTool({
 		// Extract projectId from tool parameters or runtime context
 		const projectId = toolContext.projectId ?? runtimeProjectId ?? null
 
-		consola.info("generate-research-structure: execute start", {
+		consola.debug("generate-research-structure: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
 		})
@@ -132,7 +132,7 @@ export const generateResearchStructureTool = createTool({
 				existingResearchQuestions.length > 0
 
 			if (hasExistingStructure) {
-				consola.info("generate-research-structure: structure already exists, skipping generation")
+				consola.debug("generate-research-structure: structure already exists, skipping generation")
 				return {
 					success: true,
 					message: "Research structure already exists for this project.",
@@ -209,7 +209,7 @@ export const generateResearchStructureTool = createTool({
 
 			const result = await response.json()
 
-			consola.info("generate-research-structure: successfully generated", {
+			consola.debug("generate-research-structure: successfully generated", {
 				projectId: projectIdStr,
 				decisionQuestions: result.structure?.decision_questions?.length ?? 0,
 				researchQuestions: result.structure?.research_questions?.length ?? 0,

@@ -181,7 +181,7 @@ export const fetchPeopleDetailsTool = createTool({
 		const includeFacets = context?.includeFacets ?? false
 		const specificPersonIds = context?.specificPersonIds ?? []
 
-		consola.info("fetch-people-details: execute start", {
+		consola.debug("fetch-people-details: execute start", {
 			projectId,
 			accountId,
 			peopleSearch: sanitizedPersonSearch,
@@ -218,7 +218,7 @@ export const fetchPeopleDetailsTool = createTool({
 
 			// If searching and no results in project, expand to account level
 			if (sanitizedPersonSearch && (!peopleData || peopleData.length === 0) && accountId) {
-				consola.info("fetch-people-details: no project results, expanding to account scope", {
+				consola.debug("fetch-people-details: no project results, expanding to account scope", {
 					projectId,
 					accountId,
 					searchTerm: sanitizedPersonSearch,
@@ -229,7 +229,7 @@ export const fetchPeopleDetailsTool = createTool({
 				if (accountQuery.data && accountQuery.data.length > 0) {
 					peopleData = accountQuery.data as Person[]
 					searchScope = "account"
-					consola.info("fetch-people-details: found results at account scope", {
+					consola.debug("fetch-people-details: found results at account scope", {
 						count: peopleData?.length || 0,
 					})
 				}
@@ -242,12 +242,12 @@ export const fetchPeopleDetailsTool = createTool({
 
 			// Debug: Log raw response to see exact structure
 			if (peopleData && peopleData.length > 0) {
-				consola.info("fetch-people-details: RAW first result", JSON.stringify(peopleData[0], null, 2))
+				consola.debug("fetch-people-details: RAW first result", JSON.stringify(peopleData[0], null, 2))
 			}
 
 			let people = peopleData ?? []
 
-			consola.info("fetch-people-details: query results", {
+			consola.debug("fetch-people-details: query results", {
 				projectId,
 				searchTerm: sanitizedPersonSearch,
 				rawResultsCount: people.length,
@@ -276,7 +276,7 @@ export const fetchPeopleDetailsTool = createTool({
 					return nameMatch || titleMatch || companyMatch || roleMatch
 				})
 
-				consola.info("fetch-people-details: after search filter", {
+				consola.debug("fetch-people-details: after search filter", {
 					projectId,
 					searchTerm: sanitizedPersonSearch,
 					filteredResultsCount: people.length,
@@ -584,7 +584,7 @@ export const fetchPeopleDetailsTool = createTool({
 					: `Found ${result.length} people matching "${sanitizedPersonSearch}" in current project.`
 				: `Retrieved ${result.length} people from current project.`
 
-			consola.info("fetch-people-details: final result", {
+			consola.debug("fetch-people-details: final result", {
 				projectId,
 				accountId,
 				searchTerm: sanitizedPersonSearch,

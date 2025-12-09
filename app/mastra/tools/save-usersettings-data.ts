@@ -29,8 +29,8 @@ export const saveUserSettingsDataTool = createTool({
 	}),
 	execute: async ({ context, runtimeContext }) => {
 		try {
-			consola.log("runtimeContext", runtimeContext)
-			consola.log("runtimeContext user_id", runtimeContext.get("user_id"))
+			consola.debug("runtimeContext", runtimeContext)
+			consola.debug("runtimeContext user_id", runtimeContext.get("user_id"))
 			const user_id = runtimeContext.get("user_id")
 			const { problem, challenges, content_types, other_feedback, completed } = context
 
