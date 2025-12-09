@@ -1,6 +1,6 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
-import { Calendar, FileText, Tag } from "lucide-react"
+import { Calendar, FileText } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"

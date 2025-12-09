@@ -10,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOpportunities } from "~/features/opportunities/db"
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
-import { ensureStageValue, normalizeStageId, type OpportunityStageConfig } from "~/features/opportunities/stage-config"
+import { ensureStageValue, normalizeStageId } from "~/features/opportunities/stage-config"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 

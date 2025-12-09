@@ -2,7 +2,6 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
 import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
-import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {

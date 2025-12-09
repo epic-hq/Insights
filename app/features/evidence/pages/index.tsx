@@ -1,5 +1,5 @@
 import consola from "consola"
-import { ChevronLeft, Grid3X3, List } from "lucide-react"
+import { Grid3X3, List } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom"

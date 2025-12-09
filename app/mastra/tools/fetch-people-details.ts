@@ -97,7 +97,7 @@ function buildSearchableText(row: ProjectPeopleRow): string {
 	return parts.join(" ").toLowerCase()
 }
 
-function computeSearchScore({
+function _computeSearchScore({
 	row,
 	normalizedSearch,
 	tokens,

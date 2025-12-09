@@ -4,7 +4,6 @@
 // is accessible via `~/../baml_client`.
 // Import BAML client - this file is server-only so it's safe to import directly
 
-import { createHash } from "node:crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import posthog from "posthog-js"
@@ -13,7 +12,6 @@ import type {
 	FacetCatalog,
 	FacetMention,
 	InterviewExtraction,
-	Person,
 	PersonFacetInput,
 	PersonScaleInput,
 } from "~/../baml_client/types"
@@ -338,7 +336,7 @@ function sanitizeFacetLabel(label: string | null | undefined): string | null {
 	if (typeof label !== "string") return null
 	const trimmed = label.replace(/\s+/g, " ").trim()
 	if (!trimmed.length) return null
-	return trimmed.length > 240 ? trimmed.slice(0, 237).trimEnd() + "..." : trimmed
+	return trimmed.length > 240 ? `${trimmed.slice(0, 237).trimEnd()}...` : trimmed
 }
 
 function normalizeForSearchText(value: string | null | undefined): string {
@@ -423,7 +421,7 @@ const GENERIC_PERSON_LABEL_PATTERNS: RegExp[] = [
 	/^(participant|speaker)\s*(one|two|three|first|second|third)$/i,
 ]
 
-function isGenericPersonLabel(label: string | null | undefined): boolean {
+function _isGenericPersonLabel(label: string | null | undefined): boolean {
 	if (!label) return false
 	const normalized = label.trim().toLowerCase()
 	if (!normalized.length) return false

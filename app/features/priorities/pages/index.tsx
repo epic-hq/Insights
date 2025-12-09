@@ -14,14 +14,14 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import consola from "consola"
-import { Bot, ChevronDown, ChevronRight, Filter, Info, LayoutGrid, List } from "lucide-react"
+import { Bot, ChevronDown, ChevronRight, Filter, LayoutGrid, List } from "lucide-react"
 import * as React from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, redirect, useFetcher, useLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { getTasks, updateTask } from "~/features/tasks/db"
@@ -163,7 +163,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 			// Parse value based on field type
 			let parsedValue: unknown = value
 			if (field === "priority" || field === "impact") {
-				parsedValue = Number.parseInt(value)
+				parsedValue = Number.parseInt(value, 10)
 			} else if (field === "status") {
 				parsedValue = value as TaskStatus
 			}
@@ -330,7 +330,7 @@ function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priori
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "priority") {
 			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? (Number.parseInt(optimisticValue as string) as Priority) : value
+			return optimisticValue ? (Number.parseInt(optimisticValue as string, 10) as Priority) : value
 		}
 		return value
 	}, [fetcher.formData, taskId, value])
@@ -440,7 +440,7 @@ function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "impact") {
 			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? (Number.parseInt(optimisticValue as string) as Impact) : value
+			return optimisticValue ? (Number.parseInt(optimisticValue as string, 10) as Impact) : value
 		}
 		return value
 	}, [fetcher.formData, taskId, value])
@@ -588,7 +588,7 @@ function SortableColumnHeader({ title, tooltip, column }: { title: string; toolt
 // Status Display Components
 // ============================================================================
 
-function StatusBadge({ status }: { status: TaskStatus }) {
+function _StatusBadge({ status }: { status: TaskStatus }) {
 	const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
 		backlog: { label: "Backlog", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
 		todo: { label: "To Do", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
@@ -669,8 +669,9 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
-										}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -734,8 +735,9 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
-										}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}
@@ -957,7 +959,7 @@ export default function FeaturePrioritizationPage() {
 	// Keep groups expanded on fresh load and after filtering
 	React.useEffect(() => {
 		setExpanded(true)
-	}, [data, columnFilters])
+	}, [])
 
 	const table = useReactTable({
 		data,

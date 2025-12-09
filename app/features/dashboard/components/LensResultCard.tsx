@@ -5,7 +5,7 @@
  * Mobile-first design with touch-friendly targets.
  */
 
-import { Briefcase, ChevronRight, FlaskConical, Glasses, Package, Sparkles } from "lucide-react"
+import { Briefcase, ChevronRight, FlaskConical, Package, Sparkles } from "lucide-react"
 import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"

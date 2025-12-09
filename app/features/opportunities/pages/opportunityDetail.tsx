@@ -498,7 +498,7 @@ function StakeholderMatrix({
 		if (showAddDialog && !peopleFetcher.data) {
 			peopleFetcher.load("/api/people/search?limit=50")
 		}
-	}, [showAddDialog, peopleFetcher, accountId, projectId])
+	}, [showAddDialog, peopleFetcher])
 
 	// Map next steps to stakeholders by owner name
 	const nextStepsByOwner = new Map<string, typeof nextSteps>()
@@ -519,7 +519,7 @@ function StakeholderMatrix({
 			revalidator.revalidate()
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [stakeholderFetcher.state, stakeholderFetcher.data])
+	}, [stakeholderFetcher.state, stakeholderFetcher.data, revalidator.revalidate])
 
 	// Revalidate after adding stakeholder
 	useEffect(() => {
@@ -527,7 +527,7 @@ function StakeholderMatrix({
 			revalidator.revalidate()
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [addStakeholderFetcher.state, addStakeholderFetcher.data])
+	}, [addStakeholderFetcher.state, addStakeholderFetcher.data, revalidator.revalidate])
 
 	const handleAddStakeholder = () => {
 		setShowAddDialog(true)

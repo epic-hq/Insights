@@ -66,7 +66,7 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 	// Clean up media URL - should be an absolute URL (R2 presigned URL)
 	// The loader should have converted R2 keys to presigned URLs
 	// If media_url is still a relative path, it means the database has a bad value
-	const mediaUrl = interview.media_url
+	const _mediaUrl = interview.media_url
 
 	return (
 		<div className={cn("mx-auto max-w-4xl px-4 py-8", className)}>

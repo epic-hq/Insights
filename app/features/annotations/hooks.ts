@@ -55,7 +55,10 @@ function useAnnotations({
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
-	const annotationsEndpoint = useMemo(() => (projectPath ? routes.api.annotations() : null), [projectPath])
+	const annotationsEndpoint = useMemo(
+		() => (projectPath ? routes.api.annotations() : null),
+		[projectPath, routes.api.annotations]
+	)
 
 	// Fetch annotations on mount and when parameters change
 	useEffect(() => {
@@ -73,7 +76,7 @@ function useAnnotations({
 
 		fetcher.load(`${annotationsEndpoint}?${searchParams}`)
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, annotationType, includeThreads, annotationsEndpoint])
+	}, [entityType, entityId, annotationType, includeThreads, annotationsEndpoint, fetcher.load])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -184,7 +187,7 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
-	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath])
+	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath, routes.api.votes])
 
 	// Fetch vote counts on mount and when parameters change
 	useEffect(() => {
@@ -199,7 +202,7 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 		})
 		fetcher.load(`${votesEndpoint}?${searchParams}`)
 		// Depend only on stable inputs to avoid loops
-	}, [entityType, entityId, votesEndpoint])
+	}, [entityType, entityId, votesEndpoint, fetcher.load])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -303,7 +306,10 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
-	const entityFlagsEndpoint = useMemo(() => (projectPath ? routes.api.entityFlags() : null), [projectPath])
+	const entityFlagsEndpoint = useMemo(
+		() => (projectPath ? routes.api.entityFlags() : null),
+		[projectPath, routes.api.entityFlags]
+	)
 
 	// Fetch flags on mount and when parameters change
 	useEffect(() => {
@@ -319,7 +325,7 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 
 		fetcher.load(`${entityFlagsEndpoint}?${searchParams}`)
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, entityFlagsEndpoint])
+	}, [entityType, entityId, entityFlagsEndpoint, fetcher.load])
 
 	// Handle fetcher state changes
 	useEffect(() => {

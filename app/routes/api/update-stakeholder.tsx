@@ -1,6 +1,5 @@
 import type { ActionFunctionArgs } from "react-router"
 import { data } from "react-router"
-import { supabaseServer } from "~/lib/supabase.server"
 import { userContext } from "~/server/user-context"
 
 export async function action({ request, context }: ActionFunctionArgs) {

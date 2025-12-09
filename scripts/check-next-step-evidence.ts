@@ -28,7 +28,7 @@ async function main() {
 
 	let found = 0
 	evidence?.forEach((ev, idx) => {
-		const text = (ev.verbatim + " " + (ev.gist || "")).toLowerCase()
+		const text = `${ev.verbatim} ${ev.gist || ""}`.toLowerCase()
 		const hasNextStep = nextStepKeywords.some((keyword) => text.includes(keyword))
 		if (hasNextStep) {
 			found++

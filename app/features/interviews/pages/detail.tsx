@@ -2,24 +2,12 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import {
-	BotMessageSquare,
-	Briefcase,
-	Edit2,
-	Loader2,
-	MessageCircleQuestionIcon,
-	MoreVertical,
-	Sparkle,
-	Sparkles,
-	Trash2,
-	User,
-} from "lucide-react"
+import { BotMessageSquare, Briefcase, Edit2, Loader2, MoreVertical, Sparkles, User } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
-import { LinkPersonDialog } from "~/components/dialogs/LinkPersonDialog"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -27,13 +15,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
 import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
-import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses"
 import { LensAccordion } from "~/features/lenses/components/LensAccordion"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import {
@@ -43,7 +29,6 @@ import {
 	loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server"
 import type { InterviewLensView } from "~/features/lenses/types"
-import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
@@ -641,7 +626,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (!r2Key && !interviewData.media_url.startsWith("http")) {
 					const pathParts = interviewData.media_url.split("/").filter(Boolean)
 					// Look for "interviews" in the path and extract everything after it
-					const interviewsIndex = pathParts.findIndex((part) => part === "interviews")
+					const interviewsIndex = pathParts.indexOf("interviews")
 					if (interviewsIndex >= 0 && interviewsIndex < pathParts.length - 1) {
 						// Check if next part is also "interviews" (doubled path bug)
 						const startIndex =
@@ -649,7 +634,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						r2Key = pathParts.slice(startIndex).join("/")
 						// Add interviews prefix if not already there
 						if (!r2Key.startsWith("interviews/")) {
-							r2Key = "interviews/" + r2Key
+							r2Key = `interviews/${r2Key}`
 						}
 					}
 				}
@@ -957,10 +942,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
-	const [customLensOverrides, setCustomLensOverrides] = useState<Record<string, { summary?: string; notes?: string }>>(
+	const [_customLensOverrides, setCustomLensOverrides] = useState<Record<string, { summary?: string; notes?: string }>>(
 		conversationAnalysis?.customLenses ?? {}
 	)
-	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
+	const [_isChatOpen, _setIsChatOpen] = useState(() => assistantMessages.length > 0)
 
 	// Create evidence map for lens timestamp hydration
 	const evidenceMap = useMemo(() => {
@@ -984,7 +969,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		runId: activeRunId ?? undefined,
 		accessToken: triggerAccessToken,
 	})
-	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
+	const _progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
 
 	const revalidator = useRevalidator()
 	const refreshTriggeredRef = useRef(false)
@@ -1007,7 +992,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	// Extract data needed for memoized computations
 	const participants = interview.participants || []
 	const interviewTitle = interview.title || "Untitled Interview"
-	const primaryParticipant = participants[0]?.people
+	const _primaryParticipant = participants[0]?.people
 	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
 	const conversationUpdatedLabel =
 		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
@@ -1091,7 +1076,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return lines.slice(0, 8).join("\n")
 	}, [participants])
 
-	const interviewSystemContext = useMemo(() => {
+	const _interviewSystemContext = useMemo(() => {
 		const sections: string[] = []
 		sections.push(`Interview title: ${interviewTitle}`)
 		if (interview.segment) sections.push(`Target segment: ${interview.segment}`)
@@ -1107,16 +1092,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return combined
 	}, [interviewTitle, interview.segment, keyTakeawaysDraft, personalFacetSummary, notesDraft])
 
-	const initialInterviewPrompt =
+	const _initialInterviewPrompt =
 		"Summarize the key takeaways from this interview and list 2 next steps that consider the participant's personal facets."
-	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
+	const _hasAnalysisError = analysisState ? analysisState.status === "error" : false
 	const formatStatusLabel = (status: string) =>
 		status
 			.split("_")
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(" ")
-	const analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null
-	const analysisStatusTone = analysisState?.status
+	const _analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null
+	const _analysisStatusTone = analysisState?.status
 		? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status)
 			? "bg-primary/10 text-primary"
 			: analysisState.status === "error"
@@ -1159,7 +1144,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		})
 	}, [empathyMap])
 
-	const personLenses = useMemo(() => {
+	const _personLenses = useMemo(() => {
 		return uniqueSpeakers.map((speaker) => {
 			const filterByPerson = (items: typeof empathyMap.says) => {
 				return items
@@ -1188,7 +1173,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		})
 	}, [uniqueSpeakers, empathyMap])
 
-	const customLensDefaults = useMemo<
+	const _customLensDefaults = useMemo<
 		Record<string, { summary?: string; notes?: string; highlights?: string[] }>
 	>(() => {
 		const firstNonEmpty = (...values: Array<string | null | undefined>) => {
@@ -1420,7 +1405,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [progressInfo.isComplete, revalidator])
 
-	const handleCustomLensUpdate = (lensId: string, field: "summary" | "notes", value: string) => {
+	const _handleCustomLensUpdate = (lensId: string, field: "summary" | "notes", value: string) => {
 		setCustomLensOverrides((prev) => ({
 			...prev,
 			[lensId]: {
@@ -1448,7 +1433,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}
 
-	const handleSlotUpdate = (slotId: string, field: "summary" | "textValue", value: string) => {
+	const _handleSlotUpdate = (slotId: string, field: "summary" | "textValue", value: string) => {
 		try {
 			// Convert textValue to text_value for database column name
 			const dbField = field === "textValue" ? "text_value" : field
@@ -1466,7 +1451,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}
 
-	const activeLensUpdateId =
+	const _activeLensUpdateId =
 		lensFetcher.state !== "idle" && lensFetcher.formData
 			? (lensFetcher.formData.get("lensId")?.toString() ?? null)
 			: null
@@ -1974,7 +1959,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	)
 }
 
-function InterviewCopilotDrawer({
+function _InterviewCopilotDrawer({
 	open,
 	onOpenChange,
 	accountId,
@@ -2018,7 +2003,7 @@ function InterviewCopilotDrawer({
 		if (messagesEndRef.current) {
 			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
 		}
-	}, [visibleMessages])
+	}, [])
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()

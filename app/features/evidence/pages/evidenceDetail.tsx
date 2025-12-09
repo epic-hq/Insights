@@ -1,10 +1,8 @@
-import { ChevronLeft } from "lucide-react"
 import { useEffect } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { BackButton } from "~/components/ui/back-button"
-import { Button } from "~/components/ui/button"
 import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
 
@@ -257,7 +255,7 @@ export default function EvidenceDetail() {
 			window.scrollTo(0, 0)
 		}
 		// If anchorFromUrl exists, let the EvidenceCard handle scrolling to the timestamp
-	}, [evidence.id, anchorFromUrl])
+	}, [anchorFromUrl])
 
 	return (
 		<div className="space-y-4 p-4 sm:p-6">

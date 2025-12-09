@@ -18,5 +18,5 @@ const { count: total } = await supabase
 console.log("\nUpSight Interviews Project:")
 console.log("- Total person_facets:", total)
 console.log("- With embeddings:", embeddings)
-console.log("- Progress:", Math.round(((embeddings || 0) / (total || 1)) * 100) + "%")
+console.log("- Progress:", `${Math.round(((embeddings || 0) / (total || 1)) * 100)}%`)
 console.log("- Remaining:", (total || 0) - (embeddings || 0), "\n")

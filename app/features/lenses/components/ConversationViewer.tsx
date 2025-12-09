@@ -43,11 +43,11 @@ export function LensExecutionPanel({ nextSteps, mapMilestones, objections, class
 						<header className="flex items-center justify-between">
 							<h3 className="font-medium text-foreground text-sm uppercase tracking-wide">Next steps</h3>
 							<Badge variant="secondary" className="text-xs">
-								{nextSteps!.length}
+								{nextSteps?.length}
 							</Badge>
 						</header>
 						<ul className="space-y-4">
-							{nextSteps!.map((step) => (
+							{nextSteps?.map((step) => (
 								<li key={step.id} className="rounded-lg border bg-muted/30 p-4">
 									<p className="font-semibold text-foreground text-sm">{step.description}</p>
 									<div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs">
@@ -73,11 +73,11 @@ export function LensExecutionPanel({ nextSteps, mapMilestones, objections, class
 							<header className="flex items-center justify-between">
 								<h3 className="font-medium text-foreground text-sm uppercase tracking-wide">Mutual action plan</h3>
 								<Badge variant="secondary" className="text-xs">
-									{mapMilestones!.length}
+									{mapMilestones?.length}
 								</Badge>
 							</header>
 							<ul className="space-y-3">
-								{mapMilestones!.map((milestone) => (
+								{mapMilestones?.map((milestone) => (
 									<li key={milestone.id} className="rounded-lg border bg-muted/30 p-3">
 										<div className="flex flex-wrap items-center justify-between gap-2">
 											<p className="font-semibold text-foreground text-sm">{milestone.label}</p>
@@ -108,11 +108,11 @@ export function LensExecutionPanel({ nextSteps, mapMilestones, objections, class
 							<header className="flex items-center justify-between">
 								<h3 className="font-medium text-foreground text-sm uppercase tracking-wide">Objections</h3>
 								<Badge variant="secondary" className="text-xs">
-									{objections!.length}
+									{objections?.length}
 								</Badge>
 							</header>
 							<ul className="space-y-3">
-								{objections!.map((objection) => (
+								{objections?.map((objection) => (
 									<li key={objection.id} className="rounded-lg border bg-muted/30 p-3">
 										<div className="flex flex-wrap items-center justify-between gap-2">
 											<p className="font-semibold text-foreground text-sm">{titleCase(objection.type)} objection</p>

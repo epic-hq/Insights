@@ -69,7 +69,13 @@ export const manageOrganizationsTool = createTool({
 	execute: async ({ context, runtimeContext }) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
 
-		const { action, organizationId, accountId: accountOverride, projectId: projectOverride, data } = context as ToolInput
+		const {
+			action,
+			organizationId,
+			accountId: accountOverride,
+			projectId: projectOverride,
+			data,
+		} = context as ToolInput
 
 		const runtimeAccountId = runtimeContext?.get?.("account_id") as string | undefined
 		const runtimeProjectId = runtimeContext?.get?.("project_id") as string | undefined

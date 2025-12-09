@@ -1,17 +1,7 @@
-import { ChevronRight, Command, Lightbulb, MessageSquare, Mic, TrendingUp, User, Users } from "lucide-react"
+import { ChevronRight, Command, Lightbulb, MessageSquare, Mic, TrendingUp, Users } from "lucide-react"
 import { useState } from "react"
 import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router"
 import { UserProfile } from "~/components/auth/UserProfile"
-import { Button } from "~/components/ui/button"
-import {
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-	Command as CommandPrimitive,
-} from "~/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -115,16 +105,16 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 	const navigate = useNavigate()
 	const { accountId, projectId, projectPath, setLastProjectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
-	const [teamSwitcherOpen, setTeamSwitcherOpen] = useState(false)
+	const [_teamSwitcherOpen, setTeamSwitcherOpen] = useState(false)
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
 
 	const accounts = (protectedData?.accounts || []).filter((acct) => !acct.personal_account)
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
 	const currentProject =
 		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
-	const initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
+	const _initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
 
-	const handleSelectProject = (acctId: string, projId: string) => {
+	const _handleSelectProject = (acctId: string, projId: string) => {
 		if (!acctId || !projId) return
 		setLastProjectPath({ accountId: acctId, projectId: projId })
 		const basePath = `/a/${acctId}/${projId}`

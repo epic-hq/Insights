@@ -26,7 +26,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const personId = formData.get("person_id")?.toString()
 		const createPerson = formData.get("create_person")?.toString() === "true"
 		const personName = formData.get("person_name")?.toString()
-		const interviewId = formData.get("interview_id")?.toString()
+		const _interviewId = formData.get("interview_id")?.toString()
 
 		if (!participantId) {
 			return Response.json({ ok: false, error: "Missing participant_id" }, { status: 400 })

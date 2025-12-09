@@ -91,7 +91,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("all")
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
-	const fetcher = useFetcher()
+	const _fetcher = useFetcher()
 
 	// Sort interviews chronologically (includes notes now)
 	const allItems = [...interviews].sort((a, b) => {

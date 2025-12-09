@@ -8,6 +8,7 @@
  * - Drill-down to source interviews
  */
 
+import type { LucideIcon } from "lucide-react"
 import {
 	AlertTriangle,
 	ArrowRight,
@@ -18,30 +19,29 @@ import {
 	ChevronDown,
 	ChevronRight,
 	CircleDollarSign,
-	Crown,
 	Crosshair,
+	Crown,
 	Filter,
 	ListPlus,
 	Swords,
 	Target,
-	Trophy,
 	TrendingUp,
+	Trophy,
 	Users,
 	Wallet,
 	X,
 	XCircle,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link, useFetcher, type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router"
+import { type ActionFunctionArgs, Link, type LoaderFunctionArgs, useFetcher, useLoaderData } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createTask } from "~/features/tasks/db"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import { userContext } from "~/server/user-context"
 import {
@@ -49,8 +49,8 @@ import {
 	type AggregatedObjection,
 	type AggregatedSalesBant,
 	type AggregatedStakeholder,
-	type InterviewWithLensAnalysis,
 	aggregateSalesBant,
+	type InterviewWithLensAnalysis,
 } from "../services/aggregateSalesBant.server"
 
 // ============================================================================
@@ -171,9 +171,10 @@ export default function AggregatedSalesBantPage() {
 	// Filter data based on selections
 	const filteredData = useMemo(() => {
 		const now = new Date()
-		const cutoffDate = dateRangeFilter === "all"
-			? null
-			: new Date(now.getTime() - parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000)
+		const cutoffDate =
+			dateRangeFilter === "all"
+				? null
+				: new Date(now.getTime() - Number.parseInt(dateRangeFilter, 10) * 24 * 60 * 60 * 1000)
 
 		// Filter interviews
 		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
@@ -198,7 +199,9 @@ export default function AggregatedSalesBantPage() {
 		const filteredInterviewIds = new Set(filteredInterviews.map((i) => i.interview_id))
 
 		// Filter other data based on filtered interviews
-		const filterByInterviews = <T extends { interview_id?: string; interviews?: Array<{ id: string }> }>(items: T[]): T[] => {
+		const _filterByInterviews = <T extends { interview_id?: string; interviews?: Array<{ id: string }> }>(
+			items: T[]
+		): T[] => {
 			return items.filter((item) => {
 				if (item.interview_id) {
 					return filteredInterviewIds.has(item.interview_id)
@@ -213,26 +216,24 @@ export default function AggregatedSalesBantPage() {
 		return {
 			...aggregatedData,
 			interviews: filteredInterviews,
-			bant_fields: aggregatedData.bant_fields.map((field) => ({
-				...field,
-				values: field.values.filter((v) => filteredInterviewIds.has(v.interview_id)),
-			})).filter((f) => f.values.length > 0),
-			opportunity_fields: aggregatedData.opportunity_fields.map((field) => ({
-				...field,
-				values: field.values.filter((v) => filteredInterviewIds.has(v.interview_id)),
-			})).filter((f) => f.values.length > 0),
+			bant_fields: aggregatedData.bant_fields
+				.map((field) => ({
+					...field,
+					values: field.values.filter((v) => filteredInterviewIds.has(v.interview_id)),
+				}))
+				.filter((f) => f.values.length > 0),
+			opportunity_fields: aggregatedData.opportunity_fields
+				.map((field) => ({
+					...field,
+					values: field.values.filter((v) => filteredInterviewIds.has(v.interview_id)),
+				}))
+				.filter((f) => f.values.length > 0),
 			stakeholders: aggregatedData.stakeholders.filter((s) =>
 				s.interviews.some((int) => filteredInterviewIds.has(int.id))
 			),
-			objections: aggregatedData.objections.filter((o) =>
-				o.interviews.some((int) => filteredInterviewIds.has(int.id))
-			),
-			next_steps: aggregatedData.next_steps.filter((ns) =>
-				filteredInterviewIds.has(ns.interview_id)
-			),
-			recommendations: aggregatedData.recommendations.filter((r) =>
-				filteredInterviewIds.has(r.interview_id)
-			),
+			objections: aggregatedData.objections.filter((o) => o.interviews.some((int) => filteredInterviewIds.has(int.id))),
+			next_steps: aggregatedData.next_steps.filter((ns) => filteredInterviewIds.has(ns.interview_id)),
+			recommendations: aggregatedData.recommendations.filter((r) => filteredInterviewIds.has(r.interview_id)),
 			hygiene_gaps: aggregatedData.hygiene_gaps.filter((g) =>
 				g.interviews.some((int) => filteredInterviewIds.has(int.id))
 			),
@@ -255,8 +256,8 @@ export default function AggregatedSalesBantPage() {
 						<Target className="mb-4 h-12 w-12 text-muted-foreground/50" />
 						<h3 className="mb-2 font-semibold text-lg">No Sales BANT analyses yet</h3>
 						<p className="mb-4 max-w-md text-muted-foreground text-sm">
-							Run the Sales BANT lens on conversations to see aggregated qualification data, stakeholders, and
-							insights across your conversations.
+							Run the Sales BANT lens on conversations to see aggregated qualification data, stakeholders, and insights
+							across your conversations.
 						</p>
 						<Button asChild>
 							<Link to={routes.lenses.library()}>Configure Lenses</Link>
@@ -284,7 +285,7 @@ export default function AggregatedSalesBantPage() {
 
 				{/* Organization Filter */}
 				<Select value={orgFilter} onValueChange={setOrgFilter}>
-					<SelectTrigger className="w-[180px] h-9 text-sm">
+					<SelectTrigger className="h-9 w-[180px] text-sm">
 						<SelectValue placeholder="All Organizations" />
 					</SelectTrigger>
 					<SelectContent>
@@ -299,7 +300,7 @@ export default function AggregatedSalesBantPage() {
 
 				{/* Conversation Filter */}
 				<Select value={conversationFilter} onValueChange={setConversationFilter}>
-					<SelectTrigger className="w-[200px] h-9 text-sm">
+					<SelectTrigger className="h-9 w-[200px] text-sm">
 						<SelectValue placeholder="All Conversations" />
 					</SelectTrigger>
 					<SelectContent>
@@ -314,7 +315,7 @@ export default function AggregatedSalesBantPage() {
 
 				{/* Date Range Filter */}
 				<Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
-					<SelectTrigger className="w-[140px] h-9 text-sm">
+					<SelectTrigger className="h-9 w-[140px] text-sm">
 						<SelectValue placeholder="Date Range" />
 					</SelectTrigger>
 					<SelectContent>
@@ -352,12 +353,7 @@ export default function AggregatedSalesBantPage() {
 					icon={Target}
 					href="#conversations"
 				/>
-				<SummaryCard
-					title="Stakeholders"
-					value={filteredData.stakeholders.length}
-					icon={Users}
-					href="#stakeholders"
-				/>
+				<SummaryCard title="Stakeholders" value={filteredData.stakeholders.length} icon={Users} href="#stakeholders" />
 				<SummaryCard
 					title="Objections"
 					value={filteredData.objections.length}
@@ -365,21 +361,12 @@ export default function AggregatedSalesBantPage() {
 					variant={filteredData.objections.length > 0 ? "warning" : "default"}
 					href="#objections"
 				/>
-				<SummaryCard
-					title="Next Steps"
-					value={filteredData.next_steps.length}
-					icon={CheckCircle2}
-					href="#next-steps"
-				/>
+				<SummaryCard title="Next Steps" value={filteredData.next_steps.length} icon={CheckCircle2} href="#next-steps" />
 			</div>
 
 			{/* BANT Fields */}
 			{filteredData.bant_fields.length > 0 && (
-				<BANTFieldsSection
-					fields={filteredData.bant_fields}
-					onSelect={setSelectedField}
-					projectPath={projectPath}
-				/>
+				<BANTFieldsSection fields={filteredData.bant_fields} onSelect={setSelectedField} projectPath={projectPath} />
 			)}
 
 			{/* Opportunity Fields */}
@@ -404,10 +391,7 @@ export default function AggregatedSalesBantPage() {
 			{/* Stakeholders & Objections */}
 			<div className="grid gap-6 lg:grid-cols-2">
 				<div id="stakeholders">
-					<StakeholdersSection
-						stakeholders={filteredData.stakeholders}
-						projectPath={projectPath}
-					/>
+					<StakeholdersSection stakeholders={filteredData.stakeholders} projectPath={projectPath} />
 				</div>
 				<div id="objections">
 					<ObjectionsSection objections={filteredData.objections} onSelect={setSelectedObjection} />
@@ -426,10 +410,7 @@ export default function AggregatedSalesBantPage() {
 
 			{/* Recommendations */}
 			{filteredData.recommendations.length > 0 && (
-				<RecommendationsSection
-					recommendations={filteredData.recommendations}
-					projectPath={projectPath}
-				/>
+				<RecommendationsSection recommendations={filteredData.recommendations} projectPath={projectPath} />
 			)}
 
 			{/* Interview List */}
@@ -444,11 +425,7 @@ export default function AggregatedSalesBantPage() {
 
 			{/* Drawers */}
 			{selectedField && (
-				<FieldDetailDrawer
-					field={selectedField}
-					onClose={() => setSelectedField(null)}
-					projectPath={projectPath}
-				/>
+				<FieldDetailDrawer field={selectedField} onClose={() => setSelectedField(null)} projectPath={projectPath} />
 			)}
 			{selectedObjection && (
 				<ObjectionDrawer
@@ -487,7 +464,7 @@ function PageHeader({
 				<TooltipProvider>
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<div className="text-right text-sm cursor-help">
+							<div className="cursor-help text-right text-sm">
 								<div className="text-muted-foreground">Avg Confidence</div>
 								<div className="font-semibold">{(avgConfidence * 100).toFixed(0)}%</div>
 							</div>
@@ -496,9 +473,9 @@ function PageHeader({
 							<p className="text-sm">
 								<strong>AI Analysis Confidence</strong>
 							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Average confidence score from AI analysis across all {totalConversations} analyzed conversations.
-								Higher confidence indicates clearer evidence in the transcripts for extracted data points.
+							<p className="mt-1 text-muted-foreground text-xs">
+								Average confidence score from AI analysis across all {totalConversations} analyzed conversations. Higher
+								confidence indicates clearer evidence in the transcripts for extracted data points.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -528,12 +505,7 @@ function SummaryCard({
 	const content = (
 		<Card className={cn(href && "cursor-pointer transition-colors hover:bg-muted/50")}>
 			<CardHeader className="pb-2">
-				<CardTitle
-					className={cn(
-						"flex items-center gap-2 text-base",
-						variant === "warning" && "text-amber-600"
-					)}
-				>
+				<CardTitle className={cn("flex items-center gap-2 text-base", variant === "warning" && "text-amber-600")}>
 					<Icon className="h-4 w-4" />
 					{title}
 				</CardTitle>
@@ -570,9 +542,7 @@ function BANTFieldsSection({
 }) {
 	// Order: Budget, Authority, Need, Timeline
 	const orderedKeys = ["budget", "authority", "need", "timeline"]
-	const sortedFields = [...fields].sort(
-		(a, b) => orderedKeys.indexOf(a.field_key) - orderedKeys.indexOf(b.field_key)
-	)
+	const sortedFields = [...fields].sort((a, b) => orderedKeys.indexOf(a.field_key) - orderedKeys.indexOf(b.field_key))
 
 	return (
 		<Card>
@@ -634,8 +604,8 @@ function parseDealSizeValue(value: string): number | null {
 	for (const pattern of rangePatterns) {
 		const match = cleaned.match(pattern)
 		if (match) {
-			let low = parseFloat(match[1])
-			let high = parseFloat(match[2])
+			let low = Number.parseFloat(match[1])
+			let high = Number.parseFloat(match[2])
 			const suffix = match[3] || ""
 
 			// Apply multiplier from suffix or context
@@ -662,7 +632,7 @@ function parseDealSizeValue(value: string): number | null {
 	for (const pattern of numberPatterns) {
 		const match = cleaned.match(pattern)
 		if (match) {
-			let num = parseFloat(match[1])
+			let num = Number.parseFloat(match[1])
 			const suffix = match[2] || ""
 
 			// Apply multiplier
@@ -798,10 +768,7 @@ function FieldCard({
 					{orgList.map((org) =>
 						org.id ? (
 							<Link key={org.name} to={routes.organizations.detail(org.id)}>
-								<Badge
-									variant="outline"
-									className="cursor-pointer text-xs transition-colors hover:bg-muted"
-								>
+								<Badge variant="outline" className="cursor-pointer text-xs transition-colors hover:bg-muted">
 									<Building2 className="mr-1 h-3 w-3" />
 									{org.name}
 								</Badge>
@@ -1021,15 +988,10 @@ function NextStepsSection({
 											{step.priority}
 										</Badge>
 									)}
-									<Link
-										to={routes.interviews.detail(step.interview_id)}
-										className="text-primary hover:underline"
-									>
+									<Link to={routes.interviews.detail(step.interview_id)} className="text-primary hover:underline">
 										{step.interview_title}
 									</Link>
-									{step.organization_name && (
-										<span className="text-muted-foreground">({step.organization_name})</span>
-									)}
+									{step.organization_name && <span className="text-muted-foreground">({step.organization_name})</span>}
 								</div>
 							</div>
 							{step.task_id && (
@@ -1062,13 +1024,7 @@ const GAP_CODE_LABELS: Record<string, { label: string; description: string }> = 
 	unaddressed_objection: { label: "Objection", description: "Objection raised but not resolved" },
 }
 
-function HygieneGapsSection({
-	gaps,
-	projectPath,
-}: {
-	gaps: AggregatedSalesBant["hygiene_gaps"]
-	projectPath: string
-}) {
+function HygieneGapsSection({ gaps, projectPath }: { gaps: AggregatedSalesBant["hygiene_gaps"]; projectPath: string }) {
 	const routes = useProjectRoutes(projectPath)
 
 	// Only show if there are actual gaps
@@ -1119,7 +1075,8 @@ function HygieneGapsSection({
 					Information Gaps
 				</CardTitle>
 				<CardDescription>
-					Missing information flagged by AI analysis ({sortedOrgs.length} org{sortedOrgs.length !== 1 ? "s" : ""} with gaps)
+					Missing information flagged by AI analysis ({sortedOrgs.length} org{sortedOrgs.length !== 1 ? "s" : ""} with
+					gaps)
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -1135,7 +1092,7 @@ function HygieneGapsSection({
 											<TooltipProvider>
 												<Tooltip>
 													<TooltipTrigger asChild>
-														<span className="text-xs cursor-help">{info?.label || code}</span>
+														<span className="cursor-help text-xs">{info?.label || code}</span>
 													</TooltipTrigger>
 													<TooltipContent side="top" className="max-w-xs">
 														<p className="text-sm">{info?.description || code}</p>
@@ -1145,7 +1102,7 @@ function HygieneGapsSection({
 										</th>
 									)
 								})}
-								<th className="pl-4 py-2 text-right font-medium text-xs">Total</th>
+								<th className="py-2 pl-4 text-right font-medium text-xs">Total</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1176,7 +1133,7 @@ function HygieneGapsSection({
 											)}
 										</td>
 									))}
-									<td className="pl-4 py-3 text-right">
+									<td className="py-3 pl-4 text-right">
 										<Badge variant="destructive" className="text-xs">
 											{org.gapCodes.size}
 										</Badge>
@@ -1188,7 +1145,7 @@ function HygieneGapsSection({
 				</div>
 				{/* Summary by gap type */}
 				<div className="mt-4 border-t pt-3">
-					<div className="text-xs text-muted-foreground mb-2">Gap frequency:</div>
+					<div className="mb-2 text-muted-foreground text-xs">Gap frequency:</div>
 					<div className="flex flex-wrap gap-2">
 						{gaps
 							.filter((g) => GAP_CODE_LABELS[g.code])
@@ -1255,24 +1212,13 @@ function RecommendationCard({
 					<Badge variant="outline" className="text-xs">
 						{rec.type}
 					</Badge>
-					<Badge
-						variant="outline"
-						className={cn(
-							"text-xs",
-							rec.priority === "high" && "border-red-200 text-red-600"
-						)}
-					>
+					<Badge variant="outline" className={cn("text-xs", rec.priority === "high" && "border-red-200 text-red-600")}>
 						{rec.priority}
 					</Badge>
-					<Link
-						to={routes.interviews.detail(rec.interview_id)}
-						className="text-primary hover:underline"
-					>
+					<Link to={routes.interviews.detail(rec.interview_id)} className="text-primary hover:underline">
 						{rec.interview_title}
 					</Link>
-					{rec.organization_name && (
-						<span className="text-muted-foreground">({rec.organization_name})</span>
-					)}
+					{rec.organization_name && <span className="text-muted-foreground">({rec.organization_name})</span>}
 				</div>
 			</div>
 			<fetcher.Form method="post">
@@ -1290,13 +1236,7 @@ function RecommendationCard({
 						</Badge>
 					</Link>
 				) : (
-					<Button
-						type="submit"
-						variant="outline"
-						size="sm"
-						className="gap-1 text-xs"
-						disabled={isCreating}
-					>
+					<Button type="submit" variant="outline" size="sm" className="gap-1 text-xs" disabled={isCreating}>
 						<ListPlus className="h-3 w-3" />
 						{isCreating ? "Creating..." : "Create Task"}
 					</Button>
@@ -1345,8 +1285,7 @@ function InterviewListSection({
 								<div className="text-muted-foreground text-xs">
 									{interview.organization_name && <span>{interview.organization_name} • </span>}
 									{interview.interviewee_name && <span>{interview.interviewee_name} • </span>}
-									{interview.interview_date &&
-										new Date(interview.interview_date).toLocaleDateString()}
+									{interview.interview_date && new Date(interview.interview_date).toLocaleDateString()}
 								</div>
 							</div>
 							<div className="ml-4 flex items-center gap-2">
@@ -1394,7 +1333,7 @@ function FieldDetailDrawer({
 	return (
 		<div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={onClose}>
 			<div
-				className="h-full w-full max-w-md animate-in slide-in-from-right bg-background shadow-xl"
+				className="slide-in-from-right h-full w-full max-w-md animate-in bg-background shadow-xl"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex h-full flex-col">
@@ -1413,15 +1352,10 @@ function FieldDetailDrawer({
 								<div key={i} className="rounded-lg border bg-card p-3">
 									<p className="text-sm">{v.value}</p>
 									<div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-										<Link
-											to={routes.interviews.detail(v.interview_id)}
-											className="text-primary hover:underline"
-										>
+										<Link to={routes.interviews.detail(v.interview_id)} className="text-primary hover:underline">
 											{v.interview_title}
 										</Link>
-										{v.organization_name && (
-											<span className="text-muted-foreground">({v.organization_name})</span>
-										)}
+										{v.organization_name && <span className="text-muted-foreground">({v.organization_name})</span>}
 										<Badge variant="outline" className="ml-auto">
 											{(v.confidence * 100).toFixed(0)}%
 										</Badge>
@@ -1450,7 +1384,7 @@ function ObjectionDrawer({
 	return (
 		<div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={onClose}>
 			<div
-				className="h-full w-full max-w-md animate-in slide-in-from-right bg-background shadow-xl"
+				className="slide-in-from-right h-full w-full max-w-md animate-in bg-background shadow-xl"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex h-full flex-col">

@@ -37,10 +37,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const file = formData.get("file") as File | null
 
 		if (!file || !(file instanceof File)) {
-			return Response.json(
-				{ error: "No file provided. Expected 'file' field in form data." },
-				{ status: 400 }
-			)
+			return Response.json({ error: "No file provided. Expected 'file' field in form data." }, { status: 400 })
 		}
 
 		// Store the image
@@ -53,10 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		})
 
 		if (result.error || !result.imageKey) {
-			return Response.json(
-				{ error: result.error || "Failed to upload image" },
-				{ status: 400 }
-			)
+			return Response.json({ error: result.error || "Failed to upload image" }, { status: 400 })
 		}
 
 		return Response.json({

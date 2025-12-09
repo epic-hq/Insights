@@ -114,18 +114,21 @@ export function useMediaRecorder({
 		const setup = async () => {
 			try {
 				// await register(await connect());
-			} catch (e) {
+			} catch (_e) {
 				//
 			}
 		}
 
 		setup()
 		setInit(true)
-	}, [])
+	}, [init])
+
+	// Define stopRecording ref to avoid circular dependency with getMediaStream
+	const stopRecordingRef = useRef<() => void>(() => {})
 
 	const getMediaStream = useCallback(async () => {
 		// If we already have a valid stream that's active, reuse it
-		if (mediaStream.current && mediaStream.current.active && mediaStream.current.getAudioTracks().length > 0) {
+		if (mediaStream.current?.active && mediaStream.current.getAudioTracks().length > 0) {
 			return mediaStream.current
 		}
 
@@ -144,7 +147,7 @@ export function useMediaRecorder({
 					selfBrowserSurface,
 				})) as MediaStream
 				stream.getVideoTracks()[0].addEventListener("ended", () => {
-					stopRecording()
+					stopRecordingRef.current()
 				})
 				if (audio) {
 					const audioStream = await window.navigator.mediaDevices.getUserMedia({
@@ -172,7 +175,13 @@ export function useMediaRecorder({
 			setError(err.name)
 			setStatus("idle")
 		}
-	}, [audio, video, screen])
+	}, [
+		audio,
+		video,
+		screen,
+		customMediaStream, // @ts-expect-error experimental feature, useful for Chrome
+		selfBrowserSurface,
+	])
 
 	useEffect(() => {
 		if (!window.MediaRecorder) {
@@ -207,7 +216,7 @@ export function useMediaRecorder({
 			video = checkConstraints(video)
 		}
 
-		if (mediaRecorderOptions && mediaRecorderOptions.mimeType) {
+		if (mediaRecorderOptions?.mimeType) {
 			if (!MediaRecorder.isTypeSupported(mediaRecorderOptions.mimeType)) {
 				console.error(`The specified MIME type you supplied for MediaRecorder doesn't support this browser`)
 			}
@@ -331,6 +340,11 @@ export function useMediaRecorder({
 		setStatus("stopped")
 	}, [stopStreamsOnStop])
 
+	// Keep the ref in sync with the latest stopRecording function
+	useEffect(() => {
+		stopRecordingRef.current = stopRecording
+	}, [stopRecording])
+
 	return {
 		error: RecorderErrors[error],
 		muteAudio: () => muteAudio(true),
@@ -359,4 +373,4 @@ export function useMediaRecorder({
 	}
 }
 
-const ReactMediaRecorder = (props: ReactMediaRecorderProps) => props.render(useMediaRecorder(props))
+const _ReactMediaRecorder = (props: ReactMediaRecorderProps) => props.render(useMediaRecorder(props))

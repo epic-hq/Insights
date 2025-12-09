@@ -5,10 +5,12 @@
  * Shows the existing structure as context for editing.
  */
 
-import { useState, useEffect } from "react"
-import { Loader2, Sparkles, RefreshCw, Check, Pencil } from "lucide-react"
+import { Check, Loader2, Pencil, RefreshCw } from "lucide-react"
+import { useEffect, useState } from "react"
 import { useFetcher } from "react-router"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogContent,
@@ -18,11 +20,9 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog"
 import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Switch } from "~/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { Textarea } from "~/components/ui/textarea"
 import type { LensTemplate } from "../lib/loadLensAnalyses.server"
 
 type GeneratedTemplate = {
@@ -191,12 +191,7 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 									{isPublic ? "All team members can use this lens" : "Only you can use this lens"}
 								</p>
 							</div>
-							<Switch
-								id="is-public-current"
-								checked={isPublic}
-								onCheckedChange={setIsPublic}
-								disabled={isUpdating}
-							/>
+							<Switch id="is-public-current" checked={isPublic} onCheckedChange={setIsPublic} disabled={isUpdating} />
 						</div>
 
 						{/* Current template info */}
@@ -209,9 +204,7 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 							{/* Original description */}
 							{template.nlp_source && (
 								<div className="rounded border bg-muted/30 p-3">
-									<p className="text-muted-foreground text-sm italic">
-										Original prompt: "{template.nlp_source}"
-									</p>
+									<p className="text-muted-foreground text-sm italic">Original prompt: "{template.nlp_source}"</p>
 								</div>
 							)}
 
@@ -276,8 +269,8 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 					{/* Regenerate Tab */}
 					<TabsContent value="regenerate" className="space-y-4">
 						<div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 text-sm dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-							<strong>Note:</strong> Regenerating will replace the lens structure. Existing analyses will
-							remain but may not align perfectly with the new structure.
+							<strong>Note:</strong> Regenerating will replace the lens structure. Existing analyses will remain but may
+							not align perfectly with the new structure.
 						</div>
 
 						{/* Description input */}
@@ -292,8 +285,8 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 								disabled={isGenerating || isUpdating}
 							/>
 							<p className="text-muted-foreground text-xs">
-								Be specific about the information you want to capture. The existing lens structure is shown
-								above for reference.
+								Be specific about the information you want to capture. The existing lens structure is shown above for
+								reference.
 							</p>
 						</div>
 
@@ -386,12 +379,7 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 											{isPublic ? "All team members can use this lens" : "Only you can use this lens"}
 										</p>
 									</div>
-									<Switch
-										id="is-public-new"
-										checked={isPublic}
-										onCheckedChange={setIsPublic}
-										disabled={isUpdating}
-									/>
+									<Switch id="is-public-new" checked={isPublic} onCheckedChange={setIsPublic} disabled={isUpdating} />
 								</div>
 
 								{/* Actions */}

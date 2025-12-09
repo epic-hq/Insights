@@ -52,7 +52,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		// Get task activity
 		if (action === "activity" && taskId) {
 			const limitParam = url.searchParams.get("limit")
-			const limit = limitParam ? Number.parseInt(limitParam) : undefined
+			const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
 			const activity = await getTaskActivity({ supabase, taskId, limit })
 			return json({ activity })
 		}
@@ -74,7 +74,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				filters: {
 					...(status && { status: status.split(",") as any }),
 					...(cluster && { cluster }),
-					...(priority && { priority: Number.parseInt(priority) as any }),
+					...(priority && { priority: Number.parseInt(priority, 10) as any }),
 					...(assignedTo && { assigned_to: assignedTo }),
 					...(search && { search }),
 				},
@@ -84,8 +84,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 						direction: (sortDirection as "asc" | "desc") || "asc",
 					},
 				}),
-				...(limitParam && { limit: Number.parseInt(limitParam) }),
-				...(offsetParam && { offset: Number.parseInt(offsetParam) }),
+				...(limitParam && { limit: Number.parseInt(limitParam, 10) }),
+				...(offsetParam && { offset: Number.parseInt(offsetParam, 10) }),
 			}
 
 			const tasks = await getTasks({ supabase, projectId, options })

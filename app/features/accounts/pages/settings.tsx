@@ -258,7 +258,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 export default function AccountSettingsPage() {
 	const { accountId, metadata } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const location = useLocation()
+	const _location = useLocation()
 	const fetcher = useFetcher()
 
 	const [opportunityStages, setOpportunityStages] = useState<OpportunityStageConfig[]>(

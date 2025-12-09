@@ -8,7 +8,6 @@
  */
 
 import { Pencil } from "lucide-react"
-import { useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
 import { cn } from "~/lib/utils"
@@ -121,11 +120,7 @@ export function DashboardV2({
 
 					{/* AI Insight */}
 					{aiInsight && (
-						<AiInsightCard
-							insight={aiInsight}
-							source={`${conversationCount} conversations`}
-							href={routes.assistant}
-						/>
+						<AiInsightCard insight={aiInsight} source={`${conversationCount} conversations`} href={routes.assistant} />
 					)}
 
 					{/* Quick Actions */}

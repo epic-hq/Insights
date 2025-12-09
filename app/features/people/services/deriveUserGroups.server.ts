@@ -136,7 +136,7 @@ export async function deriveUserGroups(opts: {
 			})
 		}
 
-		facetAccountGroups.get(facetAccountId)!.personIds.add(pf.person_id)
+		facetAccountGroups.get(facetAccountId)?.personIds.add(pf.person_id)
 	}
 
 	// Apply semantic clustering to group similar facets (e.g., "PM" + "Product Manager")
@@ -152,7 +152,7 @@ export async function deriveUserGroups(opts: {
 	const groups: DerivedGroup[] = []
 	const behavioralFacets = ["tool", "workflow", "preference", "value"]
 
-	for (const [rootFacetId, facetIdsInCluster] of clusterMap.entries()) {
+	for (const [_rootFacetId, facetIdsInCluster] of clusterMap.entries()) {
 		// Combine all people from facets in this cluster
 		const allPersonIds = new Set<string>()
 		const labels: string[] = []
@@ -309,7 +309,7 @@ async function clusterFacetsBySemantic(opts: {
 		if (!clusterMap.has(root)) {
 			clusterMap.set(root, new Set())
 		}
-		clusterMap.get(root)!.add(facetAccountId)
+		clusterMap.get(root)?.add(facetAccountId)
 	}
 
 	return clusterMap

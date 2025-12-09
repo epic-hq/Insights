@@ -182,7 +182,7 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 							{/* Evidence Link - Prominent placement */}
 							{(insight as any).evidence_count > 0 && (
 								<Link
-									to={routes.evidence.index() + `?theme_id=${insight.id}`}
+									to={`${routes.evidence.index()}?theme_id=${insight.id}`}
 									className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
 								>
 									<div className="rounded-full bg-primary/10 p-2">
@@ -209,7 +209,7 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 										</div>
 										<div className="flex flex-wrap gap-2">
 											{(insight as any).organizations.map((org: any, idx: number) => (
-												<Link key={idx} to={routes.evidence.index() + `?theme_id=${insight.id}`}>
+												<Link key={idx} to={`${routes.evidence.index()}?theme_id=${insight.id}`}>
 													<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
 														{org.name}
 														<span className="text-[10px] opacity-70">({org.count})</span>
@@ -236,7 +236,7 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 												</Link>
 											))}
 											{(insight as any).people.length > 10 && (
-												<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
+												<Link to={`${routes.evidence.index()}?theme_id=${insight.id}`}>
 													<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
 														+{(insight as any).people.length - 10} more
 													</Badge>

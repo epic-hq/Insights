@@ -83,7 +83,7 @@ async function main() {
 			}
 		}
 
-		console.log("\n" + "=".repeat(80) + "\n")
+		console.log(`\n${"=".repeat(80)}\n`)
 	}
 }
 

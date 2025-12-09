@@ -12,7 +12,6 @@ import {
 	ArrowUpRight,
 	Calendar,
 	CheckCircle2,
-	Circle,
 	Clock,
 	Info,
 	Loader2,

@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import { ChevronRight, Mic, Send } from "lucide-react"
+import { ChevronRight, Mic, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
@@ -184,7 +184,7 @@ export function ProjectStatusAgentChat({
 		if (!accountId || !projectId) return
 		historyFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/history`)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [accountId, projectId])
+	}, [accountId, projectId, historyFetcher.load])
 
 	// Load chat history when project changes
 	useEffect(() => {
@@ -216,7 +216,7 @@ export function ProjectStatusAgentChat({
 		}
 	}, [])
 
-	const { messages, sendMessage, status, setMessages, addToolResult } = useChat<UpsightMessage>({
+	const { messages, sendMessage, status, setMessages, addToolResult, stop } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: routes.api.chat.projectStatus(),
 			body: { system: mergedSystemContext, userTimezone },
@@ -309,17 +309,17 @@ export function ProjectStatusAgentChat({
 			const isLatestAssistantPlaceholder = awaitingAssistant && message === lastMessage
 			return hasContent || isLatestAssistantPlaceholder
 		})
-	}, [messages, status])
+	}, [messages, awaitingAssistant])
 
 	const visibleMessages = useMemo(() => displayableMessages.slice(-12), [displayableMessages])
 
 	// Auto-scroll to bottom whenever messages change (including during streaming)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We intentionally scroll on visibleMessages changes
 	useEffect(() => {
 		if (messagesEndRef.current) {
 			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
 		}
-		// biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll on any message change including streaming
-	}, [visibleMessages, status])
+	}, [visibleMessages])
 
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {
@@ -539,14 +539,25 @@ export function ProjectStatusAgentChat({
 												{isVoiceEnabled && <ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />}
 											</div>
 										)}
-										<button
-											type="submit"
-											disabled={!input.trim() || isBusy}
-											className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 font-medium text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-										>
-											<Send className="h-3.5 w-3.5" />
-											Send
-										</button>
+										{isBusy ? (
+											<button
+												type="button"
+												onClick={stop}
+												className="flex h-8 items-center gap-1.5 rounded-md bg-red-600 px-3 font-medium text-sm text-white hover:bg-red-700"
+											>
+												<Square className="h-3.5 w-3.5" />
+												Stop
+											</button>
+										) : (
+											<button
+												type="submit"
+												disabled={!input.trim()}
+												className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 font-medium text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+											>
+												<Send className="h-3.5 w-3.5" />
+												Send
+											</button>
+										)}
 									</div>
 								</div>
 							</form>

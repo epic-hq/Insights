@@ -1,13 +1,10 @@
 import consola from "consola"
-import { ArrowRight, Hash, Plus } from "lucide-react"
-import { usePostHog } from "posthog-js/react"
-import { useEffect, useState } from "react"
+import { Hash, Plus } from "lucide-react"
 import {
 	Link,
 	type LoaderFunctionArgs,
 	redirect,
 	useLoaderData,
-	useNavigate,
 	useParams,
 	useRouteLoaderData,
 } from "react-router"
@@ -15,9 +12,8 @@ import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent } from "~/components/ui/card"
 import { getProjects } from "~/features/projects/db"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Project, Project_Section } from "~/types"
 
@@ -77,69 +73,10 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		.order("created_at", { ascending: false })
 		.limit(10)
 
-	let salesWorkspace: {
-		project: Project
-		kpis: { organizations: number; people: number; opportunities: number }
-	} | null = null
-
-	const salesProjects = (projects || []).filter((project) => project.workflow_type === "sales")
-
-	if (salesProjects.length > 0) {
-		const primarySalesProject = salesProjects[0]
-		try {
-			consola.log("[HOME] Sales workspace KPI queries starting", {
-				account_id,
-				primarySalesProjectId: primarySalesProject.id,
-			})
-
-			const [organizationsResult, peopleResult, opportunitiesResult] = await Promise.all([
-				supabase.from("organizations").select("id", { count: "exact", head: true }).eq("account_id", account_id),
-				supabase.from("people").select("id", { count: "exact", head: true }).eq("account_id", account_id),
-				supabase.from("opportunities").select("id", { count: "exact", head: true }).eq("account_id", account_id),
-			])
-
-			consola.log("[HOME] Sales workspace KPI query results", {
-				organizationsResult: { count: organizationsResult.count, error: organizationsResult.error },
-				peopleResult: { count: peopleResult.count, error: peopleResult.error },
-				opportunitiesResult: { count: opportunitiesResult.count, error: opportunitiesResult.error },
-			})
-
-			if (organizationsResult.error || peopleResult.error || opportunitiesResult.error) {
-				consola.warn("[HOME] Sales KPI query errors", {
-					organizationsError: organizationsResult.error?.message,
-					peopleError: peopleResult.error?.message,
-					opportunitiesError: opportunitiesResult.error?.message,
-				})
-			}
-
-			const organizations = organizationsResult.count ?? 0
-			const people = peopleResult.count ?? 0
-			const opportunities = opportunitiesResult.count ?? 0
-
-			consola.log("[HOME] Sales workspace KPI counts", {
-				account_id,
-				organizations,
-				people,
-				opportunities,
-			})
-
-			salesWorkspace = {
-				project: primarySalesProject,
-				kpis: { organizations, people, opportunities },
-			}
-		} catch (error) {
-			consola.warn("[HOME] Failed to load sales workspace KPIs", error)
-			salesWorkspace = {
-				project: primarySalesProject,
-				kpis: { organizations: 0, people: 0, opportunities: 0 },
-			}
-		}
-	}
 
 	return {
 		projects: projects || [],
 		latest_sections: latest_sections || [],
-		salesWorkspace,
 	}
 }
 
@@ -222,7 +159,7 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 }
 
 export default function Index() {
-	const { projects, latest_sections, salesWorkspace } = useLoaderData<typeof loader>()
+	const { projects, latest_sections } = useLoaderData<typeof loader>()
 	const params = useParams()
 	const accountId = params.accountId as string
 
@@ -233,83 +170,10 @@ export default function Index() {
 	const currentAccount = accounts?.find((acc) => acc.account_id === accountId)
 	const accountBase = `/a/${accountId}`
 
-	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
+	// Call hook once at top level for the first project (we'll use it as a template)
+	// and create routes dynamically as needed
 
-	const salesWorkspaceActive = Boolean(salesWorkspace?.project)
 
-	const navigate = useNavigate()
-	const [creatingSales, setCreatingSales] = useState(false)
-	const [salesError, setSalesError] = useState<string | null>(null)
-	const posthog = usePostHog()
-
-	// Check PostHog feature flag for Sales CRM
-	const [salesCrmEnabled, setSalesCrmEnabled] = useState(false)
-	const [salesCrmLoading, setSalesCrmLoading] = useState(true)
-
-	// Computed values that depend on state
-	const isSalesCtaDisabled = salesCrmLoading || (!salesWorkspaceActive && !salesCrmEnabled)
-	const salesCtaLabel = salesCrmLoading
-		? "Checking access…"
-		: salesWorkspaceActive
-			? "Open sales workspace"
-			: salesCrmEnabled
-				? creatingSales
-					? "Creating…"
-					: "Launch sales workspace"
-				: "Sales workspace coming soon"
-
-	useEffect(() => {
-		if (!posthog) {
-			setSalesCrmLoading(false)
-			return
-		}
-
-		// Wait for flags to be loaded
-		posthog.onFeatureFlags(() => {
-			const flagValue = posthog.isFeatureEnabled("ffSalesCRM")
-			setSalesCrmEnabled(flagValue || false)
-			setSalesCrmLoading(false)
-		})
-	}, [posthog])
-
-	const salesProject = salesWorkspace?.project ?? null
-	const salesProjectColor = salesProject != null ? stringToColor(salesProject.slug || salesProject.name || "S") : null
-	const salesProjectInitials =
-		salesProject != null
-			? (salesProject.slug || salesProject.name || "S")
-					.split(" ")
-					.map((n) => n[0])
-					.join("")
-					.toUpperCase()
-					.slice(0, 2)
-			: ""
-
-	// Use the route helper for consistent path construction
-	const salesRoutes = useProjectRoutes(salesProject ? `${accountBase}/${salesProject.id}` : "")
-	const salesBase = salesProject ? salesRoutes.salesBase() : null
-
-	// Creates a sales-focused project and routes directly to the sales lens view.
-	async function handleCreateSalesWorkspace() {
-		try {
-			setSalesError(null)
-			setCreatingSales(true)
-			const response = await fetch(`${accountBase}/api/sales/create-workspace`, { method: "POST" })
-			const payload = await response.json().catch(() => ({ error: "Failed to create workspace" }))
-
-			if (!response.ok || !payload?.projectId) {
-				const message = payload?.error ?? "Unable to create workspace"
-				setSalesError(message)
-				return
-			}
-
-			navigate(`/a/${accountId}/${payload.projectId}/sales-lenses`)
-		} catch (error) {
-			const message = error instanceof Error ? error.message : "Failed to create workspace"
-			setSalesError(message)
-		} finally {
-			setCreatingSales(false)
-		}
-	}
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -321,7 +185,7 @@ export default function Index() {
 				<section className="space-y-4">
 					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 						<div>
-							<h2 className="font-semibold text-2xl text-foreground">Discovery projects</h2>
+							<h2 className="font-semibold text-2xl text-foreground">Projects</h2>
 							<p className="text-muted-foreground text-sm">
 								Plan, execute, and analyze conversations to drive better insights and outcomes.
 							</p>
@@ -335,15 +199,15 @@ export default function Index() {
 							</Button>
 						</div>
 					</div>
-					{researchProjects.length ? (
+					{projects.length ? (
 						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-							{researchProjects.slice(0, 4).map((project) => {
+							{projects.slice(0, 4).map((project) => {
 								const projectSections = latest_sections.filter((section) => section.project_id === project.id)
 								return (
 									<CompactProjectCard
 										key={project.id}
 										project={project}
-										projectPath={`${accountBase}/${project.id}`}
+										projectPath={`${accountBase}/${project.id}/dashboard`}
 										sections={projectSections}
 									/>
 								)
@@ -353,7 +217,7 @@ export default function Index() {
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-start gap-4 p-6 md:flex-row md:items-center md:justify-between">
 								<div>
-									<h3 className="font-semibold text-foreground text-lg">No discovery projects yet</h3>
+									<h3 className="font-semibold text-foreground text-lg">No projects yet</h3>
 									<p className="text-muted-foreground text-sm">
 										Kick off your first project to start capturing interviews.
 									</p>
@@ -368,86 +232,6 @@ export default function Index() {
 						</Card>
 					)}
 				</section>
-
-				{salesCrmEnabled && (
-					<section className="space-y-4">
-						<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-							<div>
-								<h2 className="font-semibold text-2xl text-foreground">Sales workspace</h2>
-								<p className="text-muted-foreground text-sm">Monitor CRM hygiene and MAP progress at a glance.</p>
-							</div>
-							{salesWorkspace?.project ? (
-								<Button asChild>
-									<Link to={`${accountBase}/${salesWorkspace.project.id}/sales-lenses`}>
-										Open workspace
-										<ArrowRight className="ml-2 h-4 w-4" />
-									</Link>
-								</Button>
-							) : (
-								<Button onClick={handleCreateSalesWorkspace} disabled={isSalesCtaDisabled}>
-									{salesCtaLabel}
-								</Button>
-							)}
-						</div>
-						{salesWorkspace?.project ? (
-							<Card>
-								<CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
-									<Link to={`${salesBase}/sales-lenses`} className="flex flex-1 items-center gap-3">
-										<Avatar
-											className="h-12 w-12 border"
-											style={salesProjectColor ? { borderColor: salesProjectColor } : undefined}
-										>
-											<AvatarFallback
-												className="font-semibold text-base text-white"
-												style={salesProjectColor ? { backgroundColor: salesProjectColor } : undefined}
-											>
-												{salesProjectInitials}
-											</AvatarFallback>
-										</Avatar>
-										<div className="min-w-0">
-											<h3 className="truncate font-semibold text-lg">{salesProject?.name}</h3>
-											{salesProject?.slug && (
-												<div className="flex items-center gap-1 text-muted-foreground text-xs">
-													<Hash className="h-3 w-3" />
-													{salesProject.slug}
-												</div>
-											)}
-											{salesProject?.status && (
-												<Badge variant="secondary" className="mt-2 h-5 w-fit px-2 text-xs">
-													{salesProject.status}
-												</Badge>
-											)}
-										</div>
-									</Link>
-									<div className="flex flex-wrap gap-3">
-										<Link to={`${salesBase}/organizations`} className="inline-flex">
-											<Badge variant="outline" className="px-3 py-1.5 text-sm">
-												{salesWorkspace.kpis.organizations} Organizations
-											</Badge>
-										</Link>
-										<Link to={`${salesBase}/people`} className="inline-flex">
-											<Badge variant="outline" className="px-3 py-1.5 text-sm">
-												{salesWorkspace.kpis.people} People
-											</Badge>
-										</Link>
-										<Link to={`${salesBase}/opportunities`} className="inline-flex">
-											<Badge variant="outline" className="px-3 py-1.5 text-sm">
-												{salesWorkspace.kpis.opportunities} Opportunities
-											</Badge>
-										</Link>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<Card className="border-dashed">
-								<CardContent className="space-y-3 p-6 text-muted-foreground text-sm">
-									<p>Launch a sales workspace to see MEDDIC coverage and draft MAPs automatically.</p>
-									{salesError && <p className="text-destructive">{salesError}</p>}
-								</CardContent>
-							</Card>
-						)}
-					</section>
-				)}
 			</PageContainer>
 		</div>
 	)

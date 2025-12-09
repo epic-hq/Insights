@@ -98,7 +98,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
 
 			setFiles(newFiles)
 		},
-		[files, setFiles]
+		[files]
 	)
 
 	const dropzoneProps = useDropzone({
@@ -148,7 +148,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
 		setSuccesses(newSuccesses)
 
 		setLoading(false)
-	}, [files, path, bucketName, errors, successes])
+	}, [files, path, bucketName, errors, successes, cacheControl.toString, upsert])
 
 	useEffect(() => {
 		if (files.length === 0) {
@@ -169,7 +169,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
 				setFiles(newFiles)
 			}
 		}
-	}, [files.length, setFiles, maxFiles])
+	}, [files.length, maxFiles, files.map])
 
 	return {
 		files,

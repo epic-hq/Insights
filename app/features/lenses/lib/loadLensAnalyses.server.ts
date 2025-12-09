@@ -107,10 +107,7 @@ export async function loadLensAnalyses(
 			}
 			return result
 		}),
-		db
-			.from("conversation_lens_templates")
-			.select("*")
-			.eq("is_active", true),
+		db.from("conversation_lens_templates").select("*").eq("is_active", true),
 	])
 
 	if (analysesResult.error) {
@@ -179,11 +176,7 @@ export async function loadLensAnalysis(
 			.eq("interview_id", interviewId)
 			.eq("template_key", templateKey)
 			.single(),
-		db
-			.from("conversation_lens_templates")
-			.select("*")
-			.eq("template_key", templateKey)
-			.single(),
+		db.from("conversation_lens_templates").select("*").eq("template_key", templateKey).single(),
 	])
 
 	if (analysisResult.error || !analysisResult.data) {

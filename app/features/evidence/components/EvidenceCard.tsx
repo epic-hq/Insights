@@ -102,13 +102,13 @@ function EvidenceCard({
 		return people.find((p) => p.role?.toLowerCase() === "speaker") ?? people[0]
 	}, [people])
 
-	const speakerLabel = primarySpeaker
+	const _speakerLabel = primarySpeaker
 		? `${primarySpeaker.name ?? "Unknown"}${primarySpeaker.role ? ` (${primarySpeaker.role})` : ""}`
 		: null
 
 	const personaBadges = primarySpeaker?.personas ?? []
 	const _supportLevel = getSupportConfidenceLevel(evidence.support)
-	const supportLabel = formatSupportLabel(evidence.support)
+	const _supportLabel = formatSupportLabel(evidence.support)
 	const createdLabel = evidence.created_at ? new Date(evidence.created_at).toLocaleDateString() : null
 
 	// Filter for media anchors - any anchor with timing or media_key

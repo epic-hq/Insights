@@ -1,7 +1,7 @@
 import { ChevronDown, Target, TrendingUp, Users } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
-import { Link, useLoaderData } from "react-router"
+import { Link } from "react-router"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -50,7 +50,7 @@ function getBullseyeColor(score: number): string {
 	return "text-gray-600 bg-gray-50 border-gray-200"
 }
 
-function getBullseyeLabel(score: number): { label: string; icon: React.ComponentType<{ className?: string }> } {
+function _getBullseyeLabel(score: number): { label: string; icon: React.ComponentType<{ className?: string }> } {
 	if (score >= 75)
 		return {
 			label: "Bullseye",

@@ -65,7 +65,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Create people-persona links
 		const linksToInsert = people_links.map((link, idx) => ({
-			persona_id: createdPersonas![Math.floor(idx / (people_links.length / personas.length))].id,
+			persona_id: createdPersonas?.[Math.floor(idx / (people_links.length / personas.length))].id,
 			person_id: link.person_id,
 		}))
 

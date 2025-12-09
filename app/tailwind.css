@@ -259,8 +259,8 @@
 	[class*="posthog-survey"],
 	[class*="posthog-feedback"],
 	/* PostHog toolbar and widgets */
-	[id*="__posthog"],
+		[id*="__posthog"],
 	[class*="__posthog"] {
-		display: none !important;
+		display: none;
 	}
 }

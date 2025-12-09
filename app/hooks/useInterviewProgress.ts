@@ -37,7 +37,7 @@ interface UseInterviewProgressOptions {
 
 export function useInterviewProgress({ interviewId, runId, accessToken }: UseInterviewProgressOptions) {
 	const [interview, setInterview] = useState<Interview | null>(null)
-	const [conversationAnalysis, setConversationAnalysis] = useState<ConversationAnalysis | null>(null)
+	const [_conversationAnalysis, setConversationAnalysis] = useState<ConversationAnalysis | null>(null)
 	const [progressInfo, setProgressInfo] = useState<ProgressInfo>({
 		status: "uploading",
 		progress: 5, // Start with small progress to show activity
@@ -347,7 +347,7 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 		// Defer to conversation_analysis if available
 		const metadata = interview.conversation_analysis as any
-		if (metadata && metadata.current_step) return
+		if (metadata?.current_step) return
 
 		const status = interview.status
 		let baseProgress = 0

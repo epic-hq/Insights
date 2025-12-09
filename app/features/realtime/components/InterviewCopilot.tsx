@@ -15,7 +15,6 @@ import {
 } from "~/components/ui/alert-dialog"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogContent,
@@ -66,7 +65,7 @@ export function InterviewCopilot({
 	const [currentCaption, setCurrentCaption] = useState("")
 	const [_aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
-	const [notesExpanded, setNotesExpanded] = useState(false)
+	const [_notesExpanded, setNotesExpanded] = useState(false)
 	const supabase = createClient()
 	const navigate = useNavigate()
 	const { accountId, projectPath } = useCurrentProject()
@@ -809,6 +808,10 @@ export function InterviewCopilot({
 			cleanupMediaStreams,
 			getAudioDuration,
 			projectPath,
+			attachType,
+			entityId,
+			mode,
+			turns,
 		]
 	)
 
@@ -1180,18 +1183,14 @@ export function InterviewCopilot({
 								<>
 									<Pause className="mr-2 h-5 w-5" /> Pause
 								</>
+							) : streamStatus === "connecting" ? (
+								<>
+									<Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connecting…
+								</>
 							) : (
 								<>
-									{streamStatus === "connecting" ? (
-										<>
-											<Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connecting…
-										</>
-									) : (
-										<>
-											<Play className="mr-2 h-5 w-5" />
-											{streamStatus === "paused" ? "Resume" : "Start Recording"}
-										</>
-									)}
+									<Play className="mr-2 h-5 w-5" />
+									{streamStatus === "paused" ? "Resume" : "Start Recording"}
 								</>
 							)}
 						</Button>

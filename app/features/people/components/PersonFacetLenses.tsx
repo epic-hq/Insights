@@ -8,7 +8,6 @@ import {
 	Image,
 	Layers,
 	PersonStanding,
-	Settings,
 	Sparkles,
 	Target,
 	Users,
@@ -153,7 +152,7 @@ export function PersonFacetLenses({
 			<Accordion type="single" collapsible defaultValue={defaultAccordionValue} className="mx-auto max-w-3xl space-y-3">
 				{groups.map((group) => {
 					const iconConfig = getIcon(group.kind_slug)
-					const summaryText = group.summary?.trim() || fallbackSummary(group.facets)
+					const _summaryText = group.summary?.trim() || fallbackSummary(group.facets)
 					const availableFacets = availableFacetsByKind[group.kind_slug] || []
 					// Filter out facets that are already linked to this person
 					const linkedFacetIds = new Set(group.facets.map((f) => f.facet_account_id))

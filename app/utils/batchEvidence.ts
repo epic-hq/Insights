@@ -104,7 +104,7 @@ export async function batchExtractEvidence(
 		}
 	}
 
-	const totalDuration = batchResults.reduce((sum, _, idx) => {
+	const _totalDuration = batchResults.reduce((sum, _, idx) => {
 		return sum + Number.parseFloat(batchResults[idx].result ? "0" : "0") // Duration already logged per batch
 	}, 0)
 

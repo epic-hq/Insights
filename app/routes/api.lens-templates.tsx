@@ -11,8 +11,8 @@
  * - delete: Soft-delete a custom template
  */
 
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import consola from "consola"
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { b } from "~/../baml_client"
 import { getServerClient } from "~/lib/supabase/client.server"
 
@@ -101,17 +101,11 @@ export async function action({ request }: ActionFunctionArgs) {
 				const context = formData.get("context")?.toString()
 
 				if (!description || description.length < 10) {
-					return Response.json(
-						{ ok: false, error: "Description must be at least 10 characters" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Description must be at least 10 characters" }, { status: 400 })
 				}
 
 				if (description.length > 1000) {
-					return Response.json(
-						{ ok: false, error: "Description must be under 1000 characters" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Description must be under 1000 characters" }, { status: 400 })
 				}
 
 				consola.info("[lens-templates] Generating template from description:", description.substring(0, 100))
@@ -152,7 +146,10 @@ export async function action({ request }: ActionFunctionArgs) {
 				const isPublic = formData.get("is_public")?.toString() !== "false"
 
 				if (!templateName || !templateDefinition || !accountId) {
-					return Response.json({ ok: false, error: "Missing required fields (template_name, template_definition, account_id)" }, { status: 400 })
+					return Response.json(
+						{ ok: false, error: "Missing required fields (template_name, template_definition, account_id)" },
+						{ status: 400 }
+					)
 				}
 
 				// Parse and validate template definition

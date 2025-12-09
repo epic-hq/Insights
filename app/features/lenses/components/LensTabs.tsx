@@ -46,7 +46,6 @@ function LensStatusIcon({ analysis }: { analysis?: LensAnalysisWithTemplate }) {
 			return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
 		case "failed":
 			return <XCircle className="h-3.5 w-3.5 text-destructive" />
-		case "pending":
 		default:
 			return <Clock className="h-3.5 w-3.5 text-muted-foreground" />
 	}

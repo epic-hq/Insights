@@ -1,5 +1,5 @@
-import { AlertCircle, ArrowLeft, DollarSign, Target, TrendingUp, Users } from "lucide-react"
-import { Link, useLoaderData } from "react-router"
+import { AlertCircle, DollarSign, Target, TrendingUp, Users } from "lucide-react"
+import { Link } from "react-router"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"

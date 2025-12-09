@@ -202,11 +202,8 @@ export function AppSidebar() {
 			.map((section) => ({
 				...section,
 				items: section.items.filter((item) => {
-					if (!icpFeatureEnabled && ["insights", "segments", "product-lens"].includes(item.key)) {
-						return false
-					}
-					// Hide "Insights" item when sales CRM is enabled
-					if (item.key === "insights" && salesCrmEnabled) {
+					// Hide ICP-specific features when flag is off
+					if (!icpFeatureEnabled && ["segments", "product-lens"].includes(item.key)) {
 						return false
 					}
 					// Only show BANT Lens when the ffSalesCRM flag is on
@@ -239,21 +236,21 @@ export function AppSidebar() {
 		| "contacts"
 		| "opportunities"
 	> = {
-		// Discovery (your current keys)
-		conversations: "encounters", // your "Conversations" list = encounters
-		personas: "personas",
-		topics: "themes", // "Topics" item = themes count
-		insights: "insights",
+		// Main navigation
+		conversations: "encounters", // Conversations = encounters/interviews count
+		insights: "themes", // Insights = themes count (renamed from Topics)
 
 		// Directory
 		people: "people",
 		organizations: "organizations",
+		opportunities: "opportunities",
 
-		// Revenue (future keys, safe to keep here)
+		// Legacy/future keys
+		personas: "personas",
+		topics: "themes",
 		accounts: "accounts",
 		deals: "deals",
 		contacts: "contacts",
-		opportunities: "opportunities",
 	}
 
 	const { counts, loading: countsLoading } = useSidebarCounts(accountId, effectiveProjectId, project?.workflow_type)
@@ -296,7 +293,7 @@ export function AppSidebar() {
 			<SidebarContent>
 				{sectionsToRender.map((section) => (
 					<SidebarGroup key={section.key}>
-						{section.key !== "home" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
+						{section.key !== "home" && section.key !== "main" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
 						<SidebarGroupContent>
 							<SidebarMenu>
 								{section.items.map((item) => {

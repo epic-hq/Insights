@@ -20,7 +20,7 @@ type Counts = {
 	opportunities?: number
 }
 
-export function useSidebarCounts(accountId?: string, projectId?: string, workflowType?: string | null) {
+export function useSidebarCounts(accountId?: string, projectId?: string, _workflowType?: string | null) {
 	const [counts, setCounts] = useState<Counts>({})
 	const [loading, setLoading] = useState(false)
 
@@ -66,11 +66,11 @@ export function useSidebarCounts(accountId?: string, projectId?: string, workflo
 						.select("*", { count: "exact", head: true })
 						.eq("project_id", projectId),
 
-					// Count account-level people only (exclude project-scoped people)
+					// Count people for this project
 					supabase
 						.from("people")
 						.select("*", { count: "exact", head: true })
-						.eq("account_id", accountId),
+						.eq("project_id", projectId),
 
 					// Count organizations
 					supabase

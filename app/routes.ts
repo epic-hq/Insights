@@ -59,6 +59,8 @@ const routes = [
 			route(":projectId", "./routes/_protected/projects.tsx", [
 				// Default index: show Project Status screen
 				index("./features/projects/pages/project-index.tsx"),
+				// Dashboard V3 preview
+				route("dashboard-v3", "./features/dashboard-v3/pages/index.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
 				route("sales-lenses", "./routes/_protected.projects.$projectId.sales-lenses.tsx"),

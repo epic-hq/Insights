@@ -146,7 +146,7 @@ export const semanticSearchEvidenceTool = createTool({
 				}
 
 				// Fetch interview titles for the results
-				const interviewIds = [...new Set(evidenceData?.map((e) => interviewId).filter(Boolean) || [])]
+				const interviewIds = [...new Set(evidenceData?.map((_e) => interviewId).filter(Boolean) || [])]
 				const { data: interviewData } = interviewIds.length
 					? await supabase.from("interviews").select("id, title").in("id", interviewIds)
 					: { data: [] }

@@ -15,7 +15,6 @@ import {
 	MessageCircleQuestion,
 	MoreHorizontal,
 	Plus,
-	RecycleIcon,
 	RefreshCcw,
 	Settings,
 	Sparkles,
@@ -241,10 +240,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	// Zustand store for question queue management
 	const store = useMemo(() => createQuestionQueueStore(), [])
 	const orderedIds = useQuestionQueueStore(store, (s) => s.orderedIds)
-	const backlogIds = useQuestionQueueStore(store, (s) => s.backlogIds)
+	const _backlogIds = useQuestionQueueStore(store, (s) => s.backlogIds)
 	const mustHavesOnly = useQuestionQueueStore(store, (s) => s.mustHavesOnly)
 	const setOrderedQuestionIds = useQuestionQueueStore(store, (s) => s.setOrderedIds)
-	const setBacklogIds = useQuestionQueueStore(store, (s) => s.setBacklogIds)
+	const _setBacklogIds = useQuestionQueueStore(store, (s) => s.setBacklogIds)
 	const initializeStore = useQuestionQueueStore(store, (s) => s.initialize)
 	const setMustHavesOnly = useQuestionQueueStore(store, (s) => s.setMustHavesOnly)
 	const appendIds = useQuestionQueueStore(store, (s) => s.appendIds)

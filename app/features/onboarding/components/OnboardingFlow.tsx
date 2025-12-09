@@ -256,7 +256,7 @@ export default function OnboardingFlow({
 				setCurrentStep("upload") // Return to upload screen so user can retry
 			}
 		},
-		[data]
+		[data, accountId]
 	)
 
 	const handleProcessingComplete = useCallback(() => {
@@ -381,12 +381,7 @@ export default function OnboardingFlow({
 			{showMobileHeader && (
 				<div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3">
 					<h1 className="font-semibold text-lg">Add Conversation</h1>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-8 w-8"
-						onClick={() => navigate(-1)}
-					>
+					<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
 						<X className="h-5 w-5" />
 						<span className="sr-only">Close</span>
 					</Button>

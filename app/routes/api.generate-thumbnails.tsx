@@ -38,7 +38,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const action = formData.get("action")?.toString()
 		const interviewId = formData.get("interview_id")?.toString()
 		const projectId = formData.get("project_id")?.toString()
-		const limit = parseInt(formData.get("limit")?.toString() || "50", 10)
+		const limit = Number.parseInt(formData.get("limit")?.toString() || "50", 10)
 
 		// Get stats about interviews needing thumbnails
 		if (action === "stats") {
@@ -183,10 +183,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			})
 		}
 
-		return Response.json(
-			{ error: "Invalid request. Provide interview_id, or action=stats/backfill" },
-			{ status: 400 }
-		)
+		return Response.json({ error: "Invalid request. Provide interview_id, or action=stats/backfill" }, { status: 400 })
 	} catch (error) {
 		consola.error("Generate thumbnails API error:", error)
 		return Response.json({ error: error instanceof Error ? error.message : "Internal error" }, { status: 500 })

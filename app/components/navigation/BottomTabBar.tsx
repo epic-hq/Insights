@@ -38,7 +38,7 @@ interface TabItemProps {
 
 function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification, isDisabled }: TabItemProps) {
 	const baseClasses = cn(
-		"flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[48px] flex-1",
+		"flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1",
 		"text-muted-foreground transition-colors",
 		isActive && "text-primary",
 		!isCenter && "hover:text-foreground",
@@ -87,15 +87,12 @@ function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification
 	return <div className={baseClasses}>{content}</div>
 }
 
-export function BottomTabBar({
-	routes,
-	onProfileClick,
-	className,
-}: BottomTabBarProps) {
+export function BottomTabBar({ routes, onProfileClick, className }: BottomTabBarProps) {
 	const location = useLocation()
 
 	// Check active states
-	const isDashboardActive = location.pathname.includes("/dashboard") || location.pathname.endsWith(routes.dashboard.replace(/\/$/, ""))
+	const isDashboardActive =
+		location.pathname.includes("/dashboard") || location.pathname.endsWith(routes.dashboard.replace(/\/$/, ""))
 	const isPeopleActive = location.pathname.includes("/people")
 	const isOpportunitiesActive = location.pathname.includes("/opportunities")
 	const isChatActive = location.pathname.includes("/assistant")
@@ -119,12 +116,7 @@ export function BottomTabBar({
 				/>
 
 				{/* People */}
-				<TabItem
-					to={routes.people}
-					icon={<Users className="h-5 w-5" />}
-					label="People"
-					isActive={isPeopleActive}
-				/>
+				<TabItem to={routes.people} icon={<Users className="h-5 w-5" />} label="People" isActive={isPeopleActive} />
 
 				{/* Opportunities */}
 				<TabItem
@@ -135,23 +127,13 @@ export function BottomTabBar({
 				/>
 
 				{/* AI Chat (Center - Full Page) */}
-				<TabItem
-					to={routes.chat}
-					icon={<Sparkles className="h-6 w-6" />}
-					label="AI"
-					isCenter
-					isActive={isChatActive}
-				/>
+				<TabItem to={routes.chat} icon={<Sparkles className="h-6 w-6" />} label="AI" isCenter isActive={isChatActive} />
 
 				{/* Add - Links to full upload page */}
 				<TabItem to={routes.upload} icon={<Plus className="h-5 w-5" />} label="Add" />
 
 				{/* Profile - Opens sheet */}
-				<TabItem
-					onClick={onProfileClick}
-					icon={<User className="h-5 w-5" />}
-					label="Profile"
-				/>
+				<TabItem onClick={onProfileClick} icon={<User className="h-5 w-5" />} label="Profile" />
 			</div>
 		</nav>
 	)

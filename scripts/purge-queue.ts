@@ -43,7 +43,7 @@ async function main() {
 			consola.info(`Batch ${i + 1}: ${processResult}`)
 
 			// If no messages processed, we're done
-			if (processResult && processResult.includes("0 person facet")) {
+			if (processResult?.includes("0 person facet")) {
 				consola.success("Queue is empty!")
 				break
 			}

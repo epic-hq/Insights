@@ -306,7 +306,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 		}
 	}, [selectedFile])
 
-	const recordModeOptions: { value: "voice_memo" | "conversation"; label: string; helper: string }[] = [
+	const _recordModeOptions: { value: "voice_memo" | "conversation"; label: string; helper: string }[] = [
 		{ value: "voice_memo", label: "Voice Memo", helper: "Updates, Notes, Todos, etc." },
 		{ value: "conversation", label: "Live Conversation", helper: "Calls, meetings, interviews" },
 	]

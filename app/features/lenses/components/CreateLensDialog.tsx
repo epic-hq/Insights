@@ -7,10 +7,12 @@
  * 3. User can save or edit description and regenerate
  */
 
+import { Check, Loader2, RefreshCw, Sparkles, Wand2 } from "lucide-react"
 import { useState } from "react"
-import { Loader2, Sparkles, Wand2, Check, RefreshCw } from "lucide-react"
 import { useFetcher } from "react-router"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogContent,
@@ -21,10 +23,8 @@ import {
 	DialogTrigger,
 } from "~/components/ui/dialog"
 import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Switch } from "~/components/ui/switch"
+import { Textarea } from "~/components/ui/textarea"
 
 type GeneratedTemplate = {
 	template_name: string
@@ -163,17 +163,14 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 						Create Custom Lens
 					</DialogTitle>
 					<DialogDescription>
-						Describe what you want to extract from conversations. AI will generate a structured analysis
-						template.
+						Describe what you want to extract from conversations. AI will generate a structured analysis template.
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 py-4">
 					{/* Description input */}
 					<div className="space-y-2">
-						<Label htmlFor="description">
-							What do you want to learn from conversations?
-						</Label>
+						<Label htmlFor="description">What do you want to learn from conversations?</Label>
 						<Textarea
 							id="description"
 							placeholder="e.g., Extract competitive intelligence including which competitors were mentioned, how they compare to us, why customers switched, and pricing information shared"
@@ -183,18 +180,14 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 							disabled={isGenerating || isCreating}
 						/>
 						<p className="text-muted-foreground text-xs">
-							Be specific about the information you want to capture. Mention key themes, data points, and
-							any frameworks you want to apply.
+							Be specific about the information you want to capture. Mention key themes, data points, and any frameworks
+							you want to apply.
 						</p>
 					</div>
 
 					{/* Generate button */}
 					{!generated && (
-						<Button
-							onClick={handleGenerate}
-							disabled={description.length < 10 || isGenerating}
-							className="w-full"
-						>
+						<Button onClick={handleGenerate} disabled={description.length < 10 || isGenerating} className="w-full">
 							{isGenerating ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -273,17 +266,10 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 										Share with team
 									</Label>
 									<p className="text-muted-foreground text-xs">
-										{isPublic
-											? "All team members can use this lens"
-											: "Only you can use this lens"}
+										{isPublic ? "All team members can use this lens" : "Only you can use this lens"}
 									</p>
 								</div>
-								<Switch
-									id="is-public"
-									checked={isPublic}
-									onCheckedChange={setIsPublic}
-									disabled={isCreating}
-								/>
+								<Switch id="is-public" checked={isPublic} onCheckedChange={setIsPublic} disabled={isCreating} />
 							</div>
 
 							{/* Actions */}

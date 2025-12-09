@@ -8,7 +8,6 @@ import { createProject } from "~/features/projects/db"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
@@ -92,7 +91,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const onboardingDataStr = formData.get("onboardingData") as string
 		const projectId = formData.get("projectId") as UUID
 		const personId = formData.get("personId") as string | null
-		const attachType = formData.get("attachType") as string | null
+		const _attachType = formData.get("attachType") as string | null
 		const entityId = formData.get("entityId") as string | null
 		const fileExtension = formData.get("fileExtension") as string | null
 		const sourceType = formData.get("sourceType") as string | null
@@ -629,7 +628,7 @@ Please extract insights that specifically address these research questions and h
 			})
 
 			if (!transcriptResponse.ok) {
-				const errorText = await transcriptResponse.text()
+				const _errorText = await transcriptResponse.text()
 				audioSpan?.end?.({
 					level: "ERROR",
 					statusMessage: `AssemblyAI failed: ${transcriptResponse.status}`,
@@ -766,7 +765,7 @@ Please extract insights that specifically address these research questions and h
 
 				consola.info("🎙️ [ONBOARDING] Submitting to Assembly AI...", {
 					webhookUrl,
-					presignedUrl: presignedUrl.substring(0, 100) + "...",
+					presignedUrl: `${presignedUrl.substring(0, 100)}...`,
 					elapsedMs: Date.now() - startTime,
 				})
 

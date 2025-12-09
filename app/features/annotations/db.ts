@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { Database } from "~/types"
-import type { AISuggestionContent, AnnotationContentJsonb, OpportunityAdviceContent } from "./types"
+import type { AISuggestionContent, OpportunityAdviceContent } from "./types"
 
 // Database types for annotations system
 type DB = Database["public"]

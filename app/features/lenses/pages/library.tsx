@@ -6,7 +6,20 @@
  */
 
 import consola from "consola"
-import { Briefcase, FlaskConical, Glasses, Loader2, MoreVertical, Package, Pencil, Sparkles, Trash2, Users, Eye, EyeOff } from "lucide-react"
+import {
+	Briefcase,
+	Eye,
+	EyeOff,
+	FlaskConical,
+	Glasses,
+	Loader2,
+	MoreVertical,
+	Package,
+	Pencil,
+	Sparkles,
+	Trash2,
+	Users,
+} from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
@@ -31,9 +44,9 @@ import {
 import { Switch } from "~/components/ui/switch"
 import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
-import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server"
 import { CreateLensDialog } from "../components/CreateLensDialog"
 import { EditLensDialog } from "../components/EditLensDialog"
+import { type LensTemplate, loadLensTemplates } from "../lib/loadLensAnalyses.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Lens Library | Insights" }, { name: "description", content: "Browse conversation analysis lenses" }]
@@ -344,9 +357,7 @@ function LensCard({
 										<Pencil className="mr-2 h-4 w-4" />
 										Edit Lens
 									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => onToggleVisibility?.(template.template_key, !template.is_public)}
-									>
+									<DropdownMenuItem onClick={() => onToggleVisibility?.(template.template_key, !template.is_public)}>
 										{template.is_public ? (
 											<>
 												<EyeOff className="mr-2 h-4 w-4" />
@@ -655,9 +666,8 @@ export default function LensLibrary() {
 						<h3 className="font-semibold">Create Your Own Lenses</h3>
 					</div>
 					<p className="mb-4 text-muted-foreground text-sm">
-						Describe what you want to learn from conversations and AI will generate a structured analysis template
-						for you. Custom lenses work just like system lenses - toggle them on to automatically analyze new
-						conversations.
+						Describe what you want to learn from conversations and AI will generate a structured analysis template for
+						you. Custom lenses work just like system lenses - toggle them on to automatically analyze new conversations.
 					</p>
 					{accountId && <CreateLensDialog accountId={accountId} onCreated={handleLensCreated} />}
 				</div>

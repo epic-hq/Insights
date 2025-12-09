@@ -1,19 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import {
-	BookOpen,
-	Briefcase,
-	Building2,
-	Compass,
-	DollarSign,
-	File,
-	Grid3x3,
-	Lightbulb,
-	ListChecks,
-	Sparkles,
-	Target,
-	UserCircle,
-	Users,
-} from "lucide-react"
+import { DollarSign, Sparkles } from "lucide-react"
 import { Badge } from "~/components/ui/badge"
 // Create a simplified version of AppSidebar for Storybook
 import {
@@ -24,12 +10,10 @@ import {
 	SidebarGroupContent,
 	SidebarGroupLabel,
 	SidebarHeader,
-	SidebarInset,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarProvider,
-	SidebarRail,
 	SidebarTrigger,
 } from "~/components/ui/sidebar"
 // Import the real config!

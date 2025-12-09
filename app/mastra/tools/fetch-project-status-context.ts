@@ -398,7 +398,7 @@ export const fetchProjectStatusContextTool = createTool({
 		const interviewLimit = context?.interviewLimit ?? DEFAULT_INTERVIEW_LIMIT
 		const personSearch = (context?.peopleSearch ?? "").trim()
 		const sanitizedPersonSearch = personSearch.replace(/[%*"'()]/g, "").trim()
-		const includePersonEvidence = context?.includePersonEvidence ?? (sanitizedPersonSearch.length > 0 ? true : false)
+		const includePersonEvidence = context?.includePersonEvidence ?? sanitizedPersonSearch.length > 0
 		const personEvidenceLimit = context?.personEvidenceLimit ?? DEFAULT_PERSON_EVIDENCE_LIMIT
 
 		consola.info("fetch-project-status-context: execute start", {

@@ -5,7 +5,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import type { TaskInsert } from "./types"
 
 interface MockFeature {
 	id: string

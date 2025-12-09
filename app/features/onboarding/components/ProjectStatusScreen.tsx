@@ -1,12 +1,8 @@
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { motion } from "framer-motion"
 import {
 	ArrowRight,
 	BookOpen,
-	BotMessageSquare,
-	Eye,
 	Headphones,
 	Lightbulb,
 	ListTree,
@@ -14,22 +10,20 @@ import {
 	MessageCircleQuestionIcon,
 	Pencil,
 	Target,
-	Upload,
 	Users,
 	Zap,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRevalidator } from "react-router"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
 import { Button } from "~/components/ui/button"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useValidationView } from "~/contexts/ValidationViewContext"
 import type { DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
-import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
 import { AnalyzeStageValidation } from "~/features/projects/pages/validationStatus"
 import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers"
 import {
@@ -97,7 +91,7 @@ export default function ProjectStatusScreen({
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
 	const { showValidationView } = useValidationView()
-	const projectPath =
+	const _projectPath =
 		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
 	const routes = useProjectRoutesFromIds(accountId, projectId)
 	const supabase = createClient()
@@ -318,7 +312,7 @@ export default function ProjectStatusScreen({
 
 	// Use helper functions to extract data from research rollup
 	const _answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
-	const openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
+	const _openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
 	const _researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup])
 
 	const recommendedNextSteps = useMemo(() => {

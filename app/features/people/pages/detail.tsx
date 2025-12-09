@@ -1,9 +1,8 @@
 import consola from "consola"
 import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, UserCircle } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import {
-	Form,
 	Link,
 	redirect,
 	useActionData,
@@ -222,7 +221,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			person_id: personId,
 			account_id: accountId,
 			project_id: projectId,
-			facet_account_id: Number.parseInt(facetAccountId),
+			facet_account_id: Number.parseInt(facetAccountId, 10),
 			source: "manual",
 			confidence: 1.0,
 			noted_at: new Date().toISOString(),
@@ -325,7 +324,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.from("person_facet")
 			.delete()
 			.eq("person_id", personId)
-			.eq("facet_account_id", Number.parseInt(facetAccountId))
+			.eq("facet_account_id", Number.parseInt(facetAccountId, 10))
 
 		if (error) {
 			consola.error("Failed to remove facet signal:", error)
@@ -385,12 +384,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 export default function PersonDetail() {
 	const { person, catalog, organizations } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const organizationActionData = actionData?.organization
+	const _organizationActionData = actionData?.organization
 	const refreshError = actionData?.refresh?.error
 	const { projectPath } = useCurrentProject()
 	const { accountId, projectId } = useParams()
 	const navigate = useNavigate()
-	const navigation = useNavigation()
+	const _navigation = useNavigation()
 	const refreshFetcher = useFetcher<typeof action>()
 	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
 	const routesByPath = useProjectRoutes(projectPath || "")
@@ -402,7 +401,7 @@ export default function PersonDetail() {
 	const persona = primaryPersona?.personas
 	const themeColor = persona?.color_hex || "#6366f1"
 	const name = person.name || "Unnamed Person"
-	const descriptionText =
+	const _descriptionText =
 		person.description ||
 		[person.title, person.segment, persona?.name].filter(Boolean).join(" • ") ||
 		"Interview participant profile"

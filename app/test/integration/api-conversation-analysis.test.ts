@@ -7,12 +7,11 @@
  * 3. Cancel Analysis Run API
  */
 
-import { tasks } from "@trigger.dev/sdk"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { action as cancelAnalysisAction } from "~/routes/api.cancel-analysis-run"
 import { action as reanalyzeThemesAction } from "~/routes/api.reanalyze-themes"
 import { action as reprocessEvidenceAction } from "~/routes/api.reprocess-evidence"
-import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
+import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Mock Supabase server client
 vi.mock("~/lib/supabase/client.server", () => ({
@@ -77,7 +76,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single()
 
 			const formData = new FormData()
-			formData.append("interview_id", interview!.id)
+			formData.append("interview_id", interview?.id)
 
 			const request = new Request("http://localhost/api/reprocess-evidence", {
 				method: "POST",
@@ -94,7 +93,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("status, conversation_analysis")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			expect(updated?.status).toBe("processing")
@@ -107,8 +106,8 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			expect(mockTrigger).toHaveBeenCalledWith(
 				expect.stringContaining("orchestrator"),
 				expect.objectContaining({
-					analysisJobId: interview!.id,
-					existingInterviewId: interview!.id,
+					analysisJobId: interview?.id,
+					existingInterviewId: interview?.id,
 					resumeFrom: "evidence",
 				})
 			)
@@ -127,7 +126,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single()
 
 			const formData = new FormData()
-			formData.append("interview_id", interview!.id)
+			formData.append("interview_id", interview?.id)
 
 			const request = new Request("http://localhost/api/reprocess-evidence", {
 				method: "POST",
@@ -169,7 +168,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.insert({
 					account_id: TEST_ACCOUNT_ID,
 					project_id: "project-1",
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					verbatim: "This is test evidence",
 					gist: "Test evidence",
 					chunk: "Test context",
@@ -178,7 +177,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single()
 
 			const formData = new FormData()
-			formData.append("interview_id", interview!.id)
+			formData.append("interview_id", interview?.id)
 
 			const request = new Request("http://localhost/api/reanalyze-themes", {
 				method: "POST",
@@ -195,7 +194,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("status, conversation_analysis")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			expect(updated?.status).toBe("processing")
@@ -206,8 +205,8 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			// Verify workflow_state was stored
 			expect(analysis?.workflow_state).toBeDefined()
-			expect(analysis?.workflow_state?.interviewId).toBe(interview!.id)
-			expect(analysis?.workflow_state?.evidenceIds).toContain(evidence!.id)
+			expect(analysis?.workflow_state?.interviewId).toBe(interview?.id)
+			expect(analysis?.workflow_state?.evidenceIds).toContain(evidence?.id)
 			expect(analysis?.workflow_state?.completedSteps).toContain("upload")
 			expect(analysis?.workflow_state?.completedSteps).toContain("evidence")
 		})
@@ -228,7 +227,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single()
 
 			const formData = new FormData()
-			formData.append("interview_id", interview!.id)
+			formData.append("interview_id", interview?.id)
 
 			const request = new Request("http://localhost/api/reanalyze-themes", {
 				method: "POST",
@@ -266,13 +265,13 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			await testDb.from("evidence").insert({
 				account_id: TEST_ACCOUNT_ID,
 				project_id: "project-1",
-				interview_id: interview!.id,
+				interview_id: interview?.id,
 				verbatim: "Test evidence",
 				gist: "Test",
 			})
 
 			const formData = new FormData()
-			formData.append("interview_id", interview!.id)
+			formData.append("interview_id", interview?.id)
 
 			const request = new Request("http://localhost/api/reanalyze-themes", {
 				method: "POST",
@@ -292,7 +291,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: updated } = await testDb
 				.from("interviews")
 				.select("conversation_analysis")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			const analysis = updated?.conversation_analysis as any
@@ -323,7 +322,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			const formData = new FormData()
 			formData.append("runId", triggerRunId)
-			formData.append("analysisJobId", interview!.id)
+			formData.append("analysisJobId", interview?.id)
 
 			const request = new Request("http://localhost/api/cancel-analysis-run", {
 				method: "POST",
@@ -339,7 +338,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			const { data: canceled } = await testDb
 				.from("interviews")
 				.select("status, conversation_analysis")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			expect(canceled?.status).toBe("error")
@@ -367,7 +366,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			const formData = new FormData()
 			formData.append("runId", "run_wrong_456")
-			formData.append("analysisJobId", interview!.id)
+			formData.append("analysisJobId", interview?.id)
 
 			const request = new Request("http://localhost/api/cancel-analysis-run", {
 				method: "POST",
@@ -398,7 +397,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 
 			const formData = new FormData()
 			formData.append("runId", "run_complete_123")
-			formData.append("analysisJobId", interview!.id)
+			formData.append("analysisJobId", interview?.id)
 
 			const request = new Request("http://localhost/api/cancel-analysis-run", {
 				method: "POST",
@@ -435,7 +434,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 				.single()
 
 			const formData = new FormData()
-			formData.append("interview_id", interview!.id)
+			formData.append("interview_id", interview?.id)
 
 			const request = new Request("http://localhost/api/reprocess-evidence", {
 				method: "POST",
@@ -448,7 +447,7 @@ describe("API Routes - Conversation Analysis Consolidation", () => {
 			expect(mockTrigger).toHaveBeenCalledWith(
 				"interview.v2.orchestrator",
 				expect.objectContaining({
-					analysisJobId: interview!.id,
+					analysisJobId: interview?.id,
 					resumeFrom: "evidence",
 				})
 			)

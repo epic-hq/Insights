@@ -1,21 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import {
-	BookOpen,
-	Briefcase,
-	Building2,
-	CheckSquare,
-	Compass,
-	DollarSign,
-	File,
-	Glasses,
-	Grid3x3,
-	Lightbulb,
-	Search,
-	Sparkles,
-	Target,
-	UserCircle,
-	Users,
-} from "lucide-react"
+import { BookOpen, Briefcase, Building2, CheckSquare, Compass, File, Sparkles, Users } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface AppSidebarNavItem {
@@ -34,15 +18,13 @@ export interface AppSidebarSection {
 }
 
 /**
- * Sidebar sections organized for clarity:
- * 1) Discovery - Setup, content, conversations
- * 2) Results - Lens analysis outputs (key differentiator)
- * 3) Directory - CRM entities
+ * Sidebar navigation - lean and focused
+ * Single section with core navigation items
  */
 export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	{
-		key: "discovery",
-		title: "Discovery",
+		key: "main",
+		title: "Main",
 		items: [
 			{
 				key: "dashboard",
@@ -52,93 +34,25 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.projects.dashboard(),
 			},
 			{
-				key: "objectives",
-				title: "Objectives",
-				description: "Research goals",
-				icon: Target,
-				to: (routes) => routes.projects.setup(),
-			},
-			{
-				key: "conversations",
-				title: "Conversations",
-				description: "Calls, notes, uploads",
-				icon: File,
-				to: (routes) => routes.interviews.index(),
-			},
-			{
 				key: "tasks",
 				title: "Tasks",
 				description: "Priorities & actions",
 				icon: CheckSquare,
 				to: (routes) => routes.priorities(),
 			},
-		],
-	},
-	{
-		key: "results",
-		title: "Results",
-		items: [
 			{
-				key: "lenses",
-				title: "Lens Library",
-				description: "Configure analysis lenses",
-				icon: Glasses,
-				to: (routes) => routes.lensLibrary(),
-			},
-			{
-				key: "sales-bant",
-				title: "Sales BANT",
-				description: "Deal qualification",
-				icon: DollarSign,
-				to: (routes) => routes.lenses.salesBant(),
-			},
-			{
-				key: "customer-discovery",
-				title: "Customer Discovery",
-				description: "Problem validation",
-				icon: Search,
-				to: (routes) => routes.lenses.customerDiscovery(),
-			},
-			{
-				key: "product-lens",
-				title: "ICP Discovery",
-				description: "Pain × user matrix",
-				icon: Grid3x3,
-				to: (routes) => routes.productLens(),
-			},
-			{
-				key: "topics",
-				title: "Themes",
-				description: "Signals & patterns",
+				key: "insights",
+				title: "Insights",
+				description: "Themes & patterns",
 				icon: Sparkles,
 				to: (routes) => routes.themes.index(),
 			},
 			{
-				key: "personas",
-				title: "Personas",
-				description: "User segments",
-				icon: UserCircle,
-				to: (routes) => routes.personas.index(),
-			},
-			{
-				key: "insights",
-				title: "Findings",
-				description: "Published insights",
-				icon: Lightbulb,
-				to: (routes) => routes.insights.index(),
-			},
-		],
-	},
-	{
-		key: "directory",
-		title: "Directory",
-		items: [
-			{
-				key: "people",
-				title: "People",
-				description: "All individuals",
-				icon: Users,
-				to: (routes) => routes.people.index(),
+				key: "opportunities",
+				title: "Opportunities",
+				description: "Sales pipeline",
+				icon: Briefcase,
+				to: (routes) => routes.opportunities.index(),
 			},
 			{
 				key: "organizations",
@@ -148,11 +62,18 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.organizations.index(),
 			},
 			{
-				key: "opportunities",
-				title: "Opportunities",
-				description: "Sales pipeline",
-				icon: Briefcase,
-				to: (routes) => routes.opportunities.index(),
+				key: "people",
+				title: "People",
+				description: "All individuals",
+				icon: Users,
+				to: (routes) => routes.people.index(),
+			},
+			{
+				key: "conversations",
+				title: "Conversations",
+				description: "Calls, notes, uploads",
+				icon: File,
+				to: (routes) => routes.interviews.index(),
 			},
 		],
 	},

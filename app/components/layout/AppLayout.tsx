@@ -13,7 +13,6 @@ import { BottomTabBar } from "~/components/navigation/BottomTabBar"
 import { ProfileSheet } from "~/components/navigation/ProfileSheet"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { ProjectStatusAgentProvider } from "~/contexts/project-status-agent-context"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -41,12 +40,7 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 		<SidebarProvider>
 			{showMainNav && !isMobile && <AppSidebar />}
 			<SidebarInset>
-				<main
-					className={cn(
-						"flex min-h-screen flex-1 flex-col",
-						showMobileNav ? "pb-[72px]" : ""
-					)}
-				>
+				<main className={cn("flex min-h-screen flex-1 flex-col", showMobileNav ? "pb-[72px]" : "")}>
 					<Outlet />
 				</main>
 

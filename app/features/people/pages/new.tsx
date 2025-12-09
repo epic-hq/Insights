@@ -29,9 +29,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
-	const [{ data: personas }] = await Promise.all([
-		getPersonas({ supabase, accountId, projectId }),
-	])
+	const [{ data: personas }] = await Promise.all([getPersonas({ supabase, accountId, projectId })])
 	return { personas: personas || [] }
 }
 
@@ -144,7 +142,14 @@ export default function NewPerson() {
 				<div className="grid grid-cols-2 gap-4">
 					<div>
 						<Label htmlFor={firstnameId}>First Name *</Label>
-						<Input id={firstnameId} name="firstname" type="text" required placeholder="Enter first name" className="mt-1" />
+						<Input
+							id={firstnameId}
+							name="firstname"
+							type="text"
+							required
+							placeholder="Enter first name"
+							className="mt-1"
+						/>
 					</div>
 					<div>
 						<Label htmlFor={lastnameId}>Last Name</Label>
@@ -159,7 +164,13 @@ export default function NewPerson() {
 
 				<div>
 					<Label htmlFor={titleId}>Title</Label>
-					<Input id={titleId} name="title" type="text" placeholder="e.g., Product Manager, CEO, Engineer" className="mt-1" />
+					<Input
+						id={titleId}
+						name="title"
+						type="text"
+						placeholder="e.g., Product Manager, CEO, Engineer"
+						className="mt-1"
+					/>
 				</div>
 
 				<div>

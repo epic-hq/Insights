@@ -15,7 +15,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const accountId = String(params.accountId || ctx?.account_id || "")
 	const projectId = String(params.projectId || "")
 	const interviewId = String(params.interviewId || params.interview_id || "")
-	const userId = ctx.claims.sub
+	const userId = ctx?.claims?.sub || ""
 
 	if (!projectId || !interviewId) {
 		return new Response(JSON.stringify({ error: "Missing projectId or interviewId" }), {
@@ -55,6 +55,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const agent = mastra.getAgent("interviewStatusAgent")
 	const result = await agent.stream(messages, {
+		format: "aisdk",
 		memory: {
 			thread: threadId,
 			resource: resourceId,
@@ -81,6 +82,5 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		},
 	})
 
-	// @ts-expect-error added at runtime via attachStreamResultAliases
-	return result.toDataStreamResponse()
+	return result.toUIMessageStreamResponse()
 }

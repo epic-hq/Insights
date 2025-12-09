@@ -7,12 +7,7 @@
 import { LogOut, Settings, User } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-} from "~/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
 import { useAuth } from "~/contexts/AuthContext"
 import { TeamSwitcher } from "./TeamSwitcher"
 
@@ -22,11 +17,7 @@ export interface ProfileSheetProps {
 	accountSettingsHref: string
 }
 
-export function ProfileSheet({
-	open,
-	onOpenChange,
-	accountSettingsHref,
-}: ProfileSheetProps) {
+export function ProfileSheet({ open, onOpenChange, accountSettingsHref }: ProfileSheetProps) {
 	const { user } = useAuth()
 
 	const userEmail = user?.email || "Unknown"
@@ -41,22 +32,22 @@ export function ProfileSheet({
 
 				<div className="space-y-6">
 					{/* User Info */}
-					<div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+					<div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
 						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
 							<User className="h-5 w-5 text-primary" />
 						</div>
-						<div className="flex-1 min-w-0">
-							<p className="font-medium text-sm truncate">{userName}</p>
-							<p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+						<div className="min-w-0 flex-1">
+							<p className="truncate font-medium text-sm">{userName}</p>
+							<p className="truncate text-muted-foreground text-xs">{userEmail}</p>
 						</div>
 					</div>
 
 					{/* Team/Project Switcher */}
 					<div>
-						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">
+						<p className="mb-2 px-1 font-medium text-muted-foreground text-xs uppercase tracking-wider">
 							Switch Project
 						</p>
-						<div className="border rounded-lg p-2">
+						<div className="rounded-lg border p-2">
 							<TeamSwitcher />
 						</div>
 					</div>
@@ -65,7 +56,7 @@ export function ProfileSheet({
 					<div className="space-y-2">
 						<Button
 							variant="ghost"
-							className="w-full justify-start gap-3 h-12"
+							className="h-12 w-full justify-start gap-3"
 							asChild
 							onClick={() => onOpenChange(false)}
 						>
@@ -77,7 +68,7 @@ export function ProfileSheet({
 
 						<Button
 							variant="ghost"
-							className="w-full justify-start gap-3 h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
+							className="h-12 w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
 							asChild
 							onClick={() => onOpenChange(false)}
 						>

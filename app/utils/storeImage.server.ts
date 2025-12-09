@@ -158,10 +158,7 @@ export function getImageUrl(imageKey: string, expiresInSeconds = 3600): string |
 /**
  * Get multiple presigned URLs for images
  */
-export function getImageUrls(
-	imageKeys: string[],
-	expiresInSeconds = 3600
-): Record<string, string> {
+export function getImageUrls(imageKeys: string[], expiresInSeconds = 3600): Record<string, string> {
 	const urls: Record<string, string> = {}
 	for (const key of imageKeys) {
 		const url = getImageUrl(key, expiresInSeconds)

@@ -138,13 +138,13 @@ export default function ProjectGoalsScreen({
 	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
-	const [showOfferingSuggestions, setShowOfferingSuggestions] = useState(false)
+	const [_showOfferingSuggestions, _setShowOfferingSuggestions] = useState(false)
 	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
 	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
-	const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-	const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
+	const [_validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+	const [_hasAttemptedNext, setHasAttemptedNext] = useState(false)
 	const supabase = createClient()
 
 	// Feature flag for chat setup button
@@ -483,7 +483,18 @@ export default function ProjectGoalsScreen({
 			prefillAppliedRef.current = true
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [prefill, contextLoaded, currentProjectId])
+	}, [
+		prefill,
+		contextLoaded,
+		currentProjectId,
+		assumptions.length,
+		custom_instructions,
+		research_goal,
+		saveSection,
+		target_orgs.length,
+		target_roles.length,
+		unknowns.length,
+	])
 
 	const addOrg = async () => {
 		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
@@ -1582,7 +1593,7 @@ export default function ProjectGoalsScreen({
 														researchGoal={research_goal}
 														existingItems={assumptions}
 														apiPath={apiPath}
-														shownSuggestions={shownSuggestionsByType["assumptions"] || []}
+														shownSuggestions={shownSuggestionsByType.assumptions || []}
 														isActive={activeSuggestionType === null || activeSuggestionType === "assumptions"}
 														onSuggestionClick={(suggestion) => {
 															setNewAssumption(suggestion)

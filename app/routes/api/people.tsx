@@ -1,6 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { json } from "react-router"
-import { supabaseServer } from "~/lib/supabase.server"
 import { userContext } from "~/server/user-context"
 
 export async function loader({ request, context }: LoaderFunctionArgs) {

@@ -156,7 +156,7 @@ function deduplicateClusters(clusters: PersonaCluster[]): PersonaCluster[] {
  */
 async function aggregateEvidenceForClusters(
 	supabase: SupabaseClient,
-	projectId: string,
+	_projectId: string,
 	clusters: PersonaCluster[]
 ): Promise<PersonaCluster[]> {
 	consola.info("[Persona Generation] Step 2: Aggregating evidence for each cluster")

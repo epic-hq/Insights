@@ -17,7 +17,6 @@ import { BackButton } from "~/components/ui/back-button"
 import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
@@ -30,7 +29,7 @@ interface NoteViewerProps {
 
 export function NoteViewer({ interview, projectId, className }: NoteViewerProps) {
 	const fetcher = useFetcher()
-	const navigate = useNavigate()
+	const _navigate = useNavigate()
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
 	const handleSave = (value: string) => {

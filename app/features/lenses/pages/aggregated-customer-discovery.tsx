@@ -20,7 +20,6 @@ import {
 	Target,
 	TrendingUp,
 	X,
-	XCircle,
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router"
@@ -28,12 +27,10 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import { userContext } from "~/server/user-context"
 import {
-	type AggregatedCustomerDiscovery,
 	type AggregatedFieldValue,
 	type AggregatedPattern,
 	aggregateCustomerDiscovery,
@@ -138,7 +135,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 		const cutoffDate =
 			dateRangeFilter === "all"
 				? null
-				: new Date(now.getTime() - parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000)
+				: new Date(now.getTime() - Number.parseInt(dateRangeFilter, 10) * 24 * 60 * 60 * 1000)
 
 		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
 			if (segmentFilter !== "all" && interview.segment !== segmentFilter) return false
@@ -187,9 +184,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 					count: o.interviews.filter((i) => filteredInterviewIds.has(i.id)).length,
 				}))
 				.filter((o) => o.count > 0),
-			recommendations: aggregatedData.recommendations.filter((r) =>
-				filteredInterviewIds.has(r.interview_id)
-			),
+			recommendations: aggregatedData.recommendations.filter((r) => filteredInterviewIds.has(r.interview_id)),
 			hygiene_gaps: aggregatedData.hygiene_gaps
 				.map((g) => ({
 					...g,
@@ -222,25 +217,24 @@ export default function AggregatedCustomerDiscoveryPage() {
 		filteredData.current_solutions.length + filteredData.competitive_alternatives.length
 	)
 	const wtpSignal = getSignalStrength(
-		filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values
-			.length || 0
+		filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values.length || 0
 	)
 
 	if (totalConversations === 0 && !hasFilters) {
 		return (
 			<div className="container py-8">
-				<div className="text-center py-16">
-					<div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
+				<div className="py-16 text-center">
+					<div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
 						<Search className="h-8 w-8 text-muted-foreground" />
 					</div>
-					<h2 className="text-xl font-semibold mb-2">Start Your Discovery</h2>
-					<p className="text-muted-foreground mb-6 max-w-md mx-auto">
-						Apply the Customer Discovery lens to your conversations to uncover insights about
-						problems, solutions, and market dynamics.
+					<h2 className="mb-2 font-semibold text-xl">Start Your Discovery</h2>
+					<p className="mx-auto mb-6 max-w-md text-muted-foreground">
+						Apply the Customer Discovery lens to your conversations to uncover insights about problems, solutions, and
+						market dynamics.
 					</p>
 					<Link to={routes.interviews.index()}>
 						<Button>
-							<MessageSquare className="h-4 w-4 mr-2" />
+							<MessageSquare className="mr-2 h-4 w-4" />
 							Go to Conversations
 						</Button>
 					</Link>
@@ -250,11 +244,11 @@ export default function AggregatedCustomerDiscoveryPage() {
 	}
 
 	return (
-		<div className="container py-6 space-y-8">
+		<div className="container space-y-8 py-6">
 			{/* Header */}
 			<div>
-				<h1 className="text-2xl font-bold tracking-tight">Customer Discovery</h1>
-				<p className="text-muted-foreground mt-1">
+				<h1 className="font-bold text-2xl tracking-tight">Customer Discovery</h1>
+				<p className="mt-1 text-muted-foreground">
 					Learnings from {totalConversations} conversation{totalConversations !== 1 ? "s" : ""}
 				</p>
 			</div>
@@ -265,7 +259,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 					<Filter className="h-4 w-4 text-muted-foreground" />
 					{uniqueSegments.length > 0 && (
 						<Select value={segmentFilter} onValueChange={setSegmentFilter}>
-							<SelectTrigger className="w-[160px] h-8">
+							<SelectTrigger className="h-8 w-[160px]">
 								<SelectValue placeholder="All Segments" />
 							</SelectTrigger>
 							<SelectContent>
@@ -279,7 +273,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 						</Select>
 					)}
 					<Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
-						<SelectTrigger className="w-[140px] h-8">
+						<SelectTrigger className="h-8 w-[140px]">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -292,7 +286,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 					</Select>
 					{hasFilters && (
 						<Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2">
-							<X className="h-4 w-4 mr-1" />
+							<X className="mr-1 h-4 w-4" />
 							Clear
 						</Button>
 					)}
@@ -312,19 +306,14 @@ export default function AggregatedCustomerDiscoveryPage() {
 					title="Solution"
 					question="Does our solution resonate?"
 					signal={solutionSignal}
-					evidenceCount={filteredData.solution_validation_fields.reduce(
-						(sum, f) => sum + f.values.length,
-						0
-					)}
+					evidenceCount={filteredData.solution_validation_fields.reduce((sum, f) => sum + f.values.length, 0)}
 					highlight={filteredData.solution_validation_fields[0]?.values[0]?.value}
 				/>
 				<ValidationCard
 					title="Market"
 					question="What exists today?"
 					signal={marketSignal}
-					evidenceCount={
-						filteredData.current_solutions.length + filteredData.competitive_alternatives.length
-					}
+					evidenceCount={filteredData.current_solutions.length + filteredData.competitive_alternatives.length}
 					highlight={filteredData.current_solutions[0]?.pattern}
 				/>
 				<ValidationCard
@@ -332,12 +321,10 @@ export default function AggregatedCustomerDiscoveryPage() {
 					question="Will they pay for it?"
 					signal={wtpSignal}
 					evidenceCount={
-						filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))
-							?.values.length || 0
+						filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values.length || 0
 					}
 					highlight={
-						filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))
-							?.values[0]?.value
+						filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values[0]?.value
 					}
 				/>
 			</div>
@@ -393,8 +380,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 			)}
 
 			{/* Market Reality */}
-			{(filteredData.current_solutions.length > 0 ||
-				filteredData.competitive_alternatives.length > 0) && (
+			{(filteredData.current_solutions.length > 0 || filteredData.competitive_alternatives.length > 0) && (
 				<LearningSection
 					title="Market Reality"
 					subtitle="How customers solve this problem today"
@@ -404,12 +390,9 @@ export default function AggregatedCustomerDiscoveryPage() {
 					<div className="grid gap-4 md:grid-cols-2">
 						{filteredData.current_solutions.length > 0 && (
 							<div className="space-y-2">
-								<h4 className="text-sm font-medium text-muted-foreground">Current Solutions</h4>
+								<h4 className="font-medium text-muted-foreground text-sm">Current Solutions</h4>
 								{filteredData.current_solutions.slice(0, 4).map((solution, i) => (
-									<div
-										key={i}
-										className="flex items-center justify-between rounded-lg border bg-card p-3"
-									>
+									<div key={i} className="flex items-center justify-between rounded-lg border bg-card p-3">
 										<span className="text-sm">{solution.pattern}</span>
 										<Badge variant="secondary" className="ml-2">
 											{solution.count}
@@ -420,14 +403,9 @@ export default function AggregatedCustomerDiscoveryPage() {
 						)}
 						{filteredData.competitive_alternatives.length > 0 && (
 							<div className="space-y-2">
-								<h4 className="text-sm font-medium text-muted-foreground">
-									Alternatives Considered
-								</h4>
+								<h4 className="font-medium text-muted-foreground text-sm">Alternatives Considered</h4>
 								{filteredData.competitive_alternatives.slice(0, 4).map((alt, i) => (
-									<div
-										key={i}
-										className="flex items-center justify-between rounded-lg border bg-card p-3"
-									>
+									<div key={i} className="flex items-center justify-between rounded-lg border bg-card p-3">
 										<span className="text-sm">{alt.pattern}</span>
 										<Badge variant="secondary" className="ml-2">
 											{alt.count}
@@ -455,9 +433,8 @@ export default function AggregatedCustomerDiscoveryPage() {
 									<div className="flex-1">
 										<p className="font-medium">{obj.objection}</p>
 										{obj.response && (
-											<p className="mt-2 text-sm text-muted-foreground">
-												<span className="font-medium text-foreground">Our response:</span>{" "}
-												{obj.response}
+											<p className="mt-2 text-muted-foreground text-sm">
+												<span className="font-medium text-foreground">Our response:</span> {obj.response}
 											</p>
 										)}
 									</div>
@@ -465,7 +442,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 										{obj.status === "addressed" ? (
 											<Badge className="bg-emerald-100 text-emerald-700">Addressed</Badge>
 										) : (
-											<Badge variant="outline" className="text-amber-600 border-amber-200">
+											<Badge variant="outline" className="border-amber-200 text-amber-600">
 												Open
 											</Badge>
 										)}
@@ -490,12 +467,12 @@ export default function AggregatedCustomerDiscoveryPage() {
 						{filteredData.hygiene_gaps.map((gap, i) => (
 							<div
 								key={i}
-								className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/50 p-4"
+								className="flex items-start gap-3 rounded-lg border border-blue-200 border-dashed bg-blue-50/50 p-4"
 							>
-								<CircleDashed className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+								<CircleDashed className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
 								<div>
 									<p className="font-medium text-sm">{formatGapCode(gap.code)}</p>
-									<p className="text-xs text-muted-foreground mt-1">
+									<p className="mt-1 text-muted-foreground text-xs">
 										Missing from {gap.count} conversation{gap.count !== 1 ? "s" : ""}
 									</p>
 								</div>
@@ -516,7 +493,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 					<div className="space-y-2">
 						{filteredData.recommendations.slice(0, 6).map((rec, i) => (
 							<div key={i} className="flex items-start gap-3 rounded-lg border bg-card p-4">
-								<ChevronRight className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+								<ChevronRight className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
 								<div className="flex-1">
 									<p className="text-sm">{rec.description}</p>
 									<div className="mt-2 flex items-center gap-2">
@@ -532,7 +509,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 										</Badge>
 										<Link
 											to={routes.interviews.detail(rec.interview_id)}
-											className="text-xs text-muted-foreground hover:text-primary hover:underline"
+											className="text-muted-foreground text-xs hover:text-primary hover:underline"
 										>
 											from {rec.interviewee_name || rec.interview_title}
 										</Link>
@@ -568,19 +545,19 @@ function ValidationCard({
 		<Card className="relative overflow-hidden">
 			<CardHeader className="pb-2">
 				<div className="flex items-start justify-between">
-					<CardTitle className="text-sm font-medium">{title}</CardTitle>
+					<CardTitle className="font-medium text-sm">{title}</CardTitle>
 					<SignalBadge strength={signal} />
 				</div>
 				<CardDescription className="text-xs">{question}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{highlight ? (
-					<p className="text-sm line-clamp-2">{highlight}</p>
+					<p className="line-clamp-2 text-sm">{highlight}</p>
 				) : (
-					<p className="text-sm text-muted-foreground italic">No data yet</p>
+					<p className="text-muted-foreground text-sm italic">No data yet</p>
 				)}
 				{evidenceCount > 0 && (
-					<p className="mt-2 text-xs text-muted-foreground">
+					<p className="mt-2 text-muted-foreground text-xs">
 						{evidenceCount} data point{evidenceCount !== 1 ? "s" : ""}
 					</p>
 				)}
@@ -609,12 +586,12 @@ function LearningSection({
 	return (
 		<section className="space-y-4">
 			<div className="flex items-center gap-3">
-				<div className={cn("p-2 rounded-lg bg-muted", iconColor)}>
+				<div className={cn("rounded-lg bg-muted p-2", iconColor)}>
 					<Icon className="h-5 w-5" />
 				</div>
 				<div>
-					<h2 className="text-lg font-semibold">{title}</h2>
-					<p className="text-sm text-muted-foreground">{subtitle}</p>
+					<h2 className="font-semibold text-lg">{title}</h2>
+					<p className="text-muted-foreground text-sm">{subtitle}</p>
 				</div>
 			</div>
 			{children}
@@ -647,28 +624,18 @@ function QuoteCard({
 	return (
 		<div className="rounded-lg border bg-card p-4">
 			<div className="flex gap-3">
-				<Quote className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-				<div className="flex-1 min-w-0">
-					{label && (
-						<span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-							{label}
-						</span>
-					)}
-					<p className="text-sm mt-1">{quote}</p>
+				<Quote className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
+				<div className="min-w-0 flex-1">
+					{label && <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{label}</span>}
+					<p className="mt-1 text-sm">{quote}</p>
 					<div className="mt-3 flex items-center justify-between">
-						<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+						<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
 							{displaySources.slice(0, 3).map((s) => (
-								<Link
-									key={s.id}
-									to={routes.interviews.detail(s.id)}
-									className="hover:text-primary hover:underline"
-								>
+								<Link key={s.id} to={routes.interviews.detail(s.id)} className="hover:text-primary hover:underline">
 									{s.interviewee_name || s.title}
 								</Link>
 							))}
-							{displaySources.length > 3 && (
-								<span>+{displaySources.length - 3} more</span>
-							)}
+							{displaySources.length > 3 && <span>+{displaySources.length - 3} more</span>}
 						</div>
 						{count && count > 1 && (
 							<Badge variant="secondary" className="text-xs">

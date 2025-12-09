@@ -115,7 +115,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const newFacetKind = formData.get("newFacetKind")?.toString().trim() ?? ""
 	const newFacetLabel = formData.get("newFacetLabel")?.toString().trim() ?? ""
 	const newFacetSynonyms = formData.get("newFacetSynonyms")?.toString().trim() ?? ""
-	const newFacetNotes = formData.get("newFacetNotes")?.toString().trim() ?? ""
+	const _newFacetNotes = formData.get("newFacetNotes")?.toString().trim() ?? ""
 
 	if (!firstname?.trim()) {
 		return { error: "First name is required" }

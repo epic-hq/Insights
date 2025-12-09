@@ -1,7 +1,6 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {

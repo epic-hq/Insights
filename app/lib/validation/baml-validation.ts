@@ -86,7 +86,7 @@ const trimOrUndefined = (value: unknown): string | undefined => {
 	return undefined
 }
 
-const chooseString = (...values: Array<string | undefined>): string | undefined => {
+const _chooseString = (...values: Array<string | undefined>): string | undefined => {
 	for (const value of values) {
 		const trimmed = trimOrUndefined(value)
 		if (trimmed) return trimmed
@@ -94,7 +94,7 @@ const chooseString = (...values: Array<string | undefined>): string | undefined 
 	return undefined
 }
 
-const toSecondsString = (value: unknown): { secondsString?: string; milliseconds?: number } => {
+const _toSecondsString = (value: unknown): { secondsString?: string; milliseconds?: number } => {
 	if (typeof value === "number" && Number.isFinite(value)) {
 		const seconds = value >= 1000 ? value / 1000 : value
 		return { secondsString: seconds.toString(), milliseconds: Math.round(seconds * 1000) }

@@ -64,7 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			// This ensures fresh, accurate transcripts with proper speaker diarization
 			consola.info("Reprocess: Re-transcribing from media_url", {
 				hasTranscript: !!interview.transcript,
-				mediaUrl: interview.media_url.substring(0, 50) + "...",
+				mediaUrl: `${interview.media_url.substring(0, 50)}...`,
 			})
 
 			transcriptData = {

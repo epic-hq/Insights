@@ -5,7 +5,7 @@ import { z } from "zod"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
-import type { GetAccount, Project, SupabaseClient } from "~/types"
+import type { GetAccount, SupabaseClient } from "~/types"
 import type { Route } from "../+types/root"
 
 function isUUID(str: string) {

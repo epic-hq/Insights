@@ -19,18 +19,6 @@ import { Form, Link, redirect, useActionData, useLoaderData } from "react-router
 import { LinkPersonDialog } from "~/components/dialogs/LinkPersonDialog"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import {
-	deleteOrganization,
-	getOrganizationById,
-	getProjectPeopleSummary,
-	linkPersonToOrganization,
-	unlinkPersonFromOrganization,
-} from "~/features/organizations/db"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -42,11 +30,23 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "~/components/ui/alert-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { DEFAULT_OPPORTUNITY_STAGES } from "~/features/opportunities/stage-config"
+import {
+	deleteOrganization,
+	getOrganizationById,
+	getProjectPeopleSummary,
+	linkPersonToOrganization,
+	unlinkPersonFromOrganization,
+} from "~/features/organizations/db"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
-import { DEFAULT_OPPORTUNITY_STAGES } from "~/features/opportunities/stage-config"
 import type { Database, Interview, Opportunity, Organization, Person } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
 
@@ -126,7 +126,21 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			>
 		},
 		people: (people as Array<Pick<Person, "id" | "name" | "image_url" | "segment" | "title">>) ?? [],
-		opportunities: (opportunities as Array<Pick<Opportunity, "id" | "title" | "stage" | "amount" | "currency" | "next_step" | "next_step_due" | "close_date" | "description">>) ?? [],
+		opportunities:
+			(opportunities as Array<
+				Pick<
+					Opportunity,
+					| "id"
+					| "title"
+					| "stage"
+					| "amount"
+					| "currency"
+					| "next_step"
+					| "next_step_due"
+					| "close_date"
+					| "description"
+				>
+			>) ?? [],
 		conversations: (conversations as Array<Pick<Interview, "id" | "title" | "interview_date" | "status">>) ?? [],
 	}
 }
@@ -335,7 +349,11 @@ export default function OrganizationDetailPage() {
 					</Button>
 					<AlertDialog>
 						<AlertDialogTrigger asChild>
-							<Button variant="outline" size="sm" className="text-destructive hover:bg-destructive hover:text-destructive-foreground">
+							<Button
+								variant="outline"
+								size="sm"
+								className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+							>
 								<Trash2 className="mr-2 h-4 w-4" />
 								Delete
 							</Button>
@@ -344,7 +362,8 @@ export default function OrganizationDetailPage() {
 							<AlertDialogHeader>
 								<AlertDialogTitle>Delete Organization</AlertDialogTitle>
 								<AlertDialogDescription>
-									Are you sure you want to delete "{organization.name}"? This will also remove all links to people associated with this organization. This action cannot be undone.
+									Are you sure you want to delete "{organization.name}"? This will also remove all links to people
+									associated with this organization. This action cannot be undone.
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
@@ -425,12 +444,13 @@ export default function OrganizationDetailPage() {
 							Sales Opportunities
 						</CardTitle>
 						<CardDescription>
-							{opportunities.length} opportunit{opportunities.length === 1 ? "y" : "ies"} associated with this organization
+							{opportunities.length} opportunit{opportunities.length === 1 ? "y" : "ies"} associated with this
+							organization
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{opportunities.length === 0 ? (
-							<div className="rounded-lg border border-dashed border-muted-foreground/30 p-6 text-center text-muted-foreground text-sm">
+							<div className="rounded-lg border border-muted-foreground/30 border-dashed p-6 text-center text-muted-foreground text-sm">
 								No opportunities linked to this organization yet.
 							</div>
 						) : (
@@ -457,8 +477,7 @@ export default function OrganizationDetailPage() {
 												)}
 												{opp.next_step && (
 													<div className="text-sm">
-														<span className="font-medium text-muted-foreground">Next Step:</span>{" "}
-														{opp.next_step}
+														<span className="font-medium text-muted-foreground">Next Step:</span> {opp.next_step}
 														{opp.next_step_due && (
 															<span className="ml-2 text-muted-foreground">
 																(due {new Date(opp.next_step_due).toLocaleDateString()})
@@ -490,12 +509,13 @@ export default function OrganizationDetailPage() {
 							Conversations
 						</CardTitle>
 						<CardDescription>
-							{conversations.length} conversation{conversations.length !== 1 ? "s" : ""} with people from this organization
+							{conversations.length} conversation{conversations.length !== 1 ? "s" : ""} with people from this
+							organization
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{conversations.length === 0 ? (
-							<div className="rounded-lg border border-dashed border-muted-foreground/30 p-6 text-center text-muted-foreground text-sm">
+							<div className="rounded-lg border border-muted-foreground/30 border-dashed p-6 text-center text-muted-foreground text-sm">
 								No conversations found with people from this organization.
 							</div>
 						) : (
@@ -509,9 +529,7 @@ export default function OrganizationDetailPage() {
 										<div className="min-w-0 flex-1">
 											<div className="truncate font-medium text-sm">{conv.title || "Untitled Conversation"}</div>
 											<div className="flex items-center gap-2 text-muted-foreground text-xs">
-												{conv.interview_date && (
-													<span>{new Date(conv.interview_date).toLocaleDateString()}</span>
-												)}
+												{conv.interview_date && <span>{new Date(conv.interview_date).toLocaleDateString()}</span>}
 												{conv.status && (
 													<Badge variant="outline" className="text-xs">
 														{conv.status}

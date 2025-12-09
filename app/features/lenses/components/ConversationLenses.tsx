@@ -437,7 +437,7 @@ function renderNextStepsView(
 				<div className="space-y-3">
 					<h4 className="font-medium text-foreground text-sm">Next Steps</h4>
 					<div className="space-y-2">
-						{nextSteps!.map((step) => (
+						{nextSteps?.map((step) => (
 							<div key={step.id} className="rounded-lg border border-border/50 bg-background p-3">
 								<p className="text-foreground text-sm">{step.description}</p>
 								<div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs">
@@ -453,7 +453,7 @@ function renderNextStepsView(
 				<div className="space-y-3">
 					<h4 className="font-medium text-foreground text-sm">Milestones</h4>
 					<div className="space-y-2">
-						{milestones!.map((milestone) => (
+						{milestones?.map((milestone) => (
 							<div key={milestone.id} className="rounded-lg border border-border/50 bg-background p-3">
 								<div className="flex items-center justify-between gap-2">
 									<p className="font-medium text-foreground text-sm">{milestone.label}</p>
@@ -972,7 +972,7 @@ function deriveKeyTakeaway(framework: InterviewLensFramework) {
 function deriveFrameworkNotes(framework: InterviewLensFramework) {
 	const meaningful = framework.slots
 		.map((slot) => slot.summary || slot.textValue)
-		.filter((value): value is string => Boolean(value && value.trim()))
+		.filter((value): value is string => Boolean(value?.trim()))
 
 	if (meaningful.length === 0) return undefined
 	return meaningful.slice(0, 2).join("; ")

@@ -13,16 +13,14 @@ import {
 	FileText,
 	Flag,
 	HelpCircle,
-	Lightbulb,
 	Target,
 	Users,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import { userContext } from "~/server/user-context"

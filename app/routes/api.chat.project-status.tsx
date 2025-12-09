@@ -37,28 +37,34 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	consola.info("project-status action: received userTimezone", { userTimezone })
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message) => {
-				if (!message || typeof message !== "object") return message
-				const cloned = { ...message }
-				if ("id" in cloned) {
-					delete (cloned as Record<string, unknown>).id
-				}
-				return cloned
-			})
+			if (!message || typeof message !== "object") return message
+			const cloned = { ...message }
+			if ("id" in cloned) {
+				delete (cloned as Record<string, unknown>).id
+			}
+			return cloned
+		})
 		: []
 
-	const latestUserMessage = [...sanitizedMessages]
-		.reverse()
-		.find((message) => Boolean(message && typeof message === "object" && message.role === "user"))
+	// Validate that we have at least one user message
+	const hasUserMessage = sanitizedMessages.some(
+		(message: { role?: string }) => message && typeof message === "object" && message.role === "user"
+	)
 
-	if (!latestUserMessage || typeof latestUserMessage !== "object") {
-		consola.warn("project-status action: missing latest user message in payload")
+	if (!hasUserMessage) {
+		consola.warn("project-status action: missing user message in payload")
 		return new Response(JSON.stringify({ error: "Missing user prompt" }), {
 			status: 400,
 			headers: { "Content-Type": "application/json" },
 		})
 	}
 
-	const runtimeMessages = [latestUserMessage]
+	// Pass all messages to the agent - memory handles history persistence
+	const runtimeMessages = sanitizedMessages
+	consola.info("project-status action: sending messages to agent", {
+		messageCount: runtimeMessages.length,
+		roles: runtimeMessages.map((m: { role?: string }) => m?.role),
+	})
 
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`
 
@@ -93,6 +99,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const agent = mastra.getAgent("projectStatusAgent")
 	const result = await agent.stream(runtimeMessages, {
+		format: "aisdk",
 		memory: {
 			thread: threadId,
 			resource: resourceId,
@@ -100,11 +107,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		runtimeContext,
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("project-status onFinish", data)
@@ -119,6 +126,5 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		},
 	})
 
-	// @ts-expect-error added at runtime via attachStreamResultAliases
-	return result.toDataStreamResponse()
+	return result.toUIMessageStreamResponse()
 }

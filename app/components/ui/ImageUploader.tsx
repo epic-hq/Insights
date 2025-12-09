@@ -179,7 +179,7 @@ export function ImageUploader({
 					onClick={handleClick}
 					disabled={isUploading}
 					className={cn(
-						"relative flex items-center justify-center overflow-hidden border-2 border-dashed border-muted-foreground/25 bg-muted/50 transition-colors hover:border-muted-foreground/50 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+						"relative flex items-center justify-center overflow-hidden border-2 border-muted-foreground/25 border-dashed bg-muted/50 transition-colors hover:border-muted-foreground/50 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
 						sizeClasses[size],
 						circular ? "rounded-full" : "rounded-lg"
 					)}
@@ -187,11 +187,7 @@ export function ImageUploader({
 					{isUploading || isLoadingUrl ? (
 						<Loader2 className={cn("animate-spin text-muted-foreground", iconSizeClasses[size])} />
 					) : displayUrl || previewUrl ? (
-						<img
-							src={previewUrl || displayUrl || ""}
-							alt="Preview"
-							className="h-full w-full object-cover"
-						/>
+						<img src={previewUrl || displayUrl || ""} alt="Preview" className="h-full w-full object-cover" />
 					) : (
 						<PlaceholderIcon className={cn("text-muted-foreground/50", iconSizeClasses[size])} />
 					)}
@@ -211,13 +207,7 @@ export function ImageUploader({
 
 				{/* Actions */}
 				<div className="flex flex-col gap-2">
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={handleClick}
-						disabled={isUploading}
-					>
+					<Button type="button" variant="outline" size="sm" onClick={handleClick} disabled={isUploading}>
 						{isUploading ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -251,13 +241,7 @@ export function ImageUploader({
 			<input type="hidden" name={name} value={imageKey || ""} />
 
 			{/* File input (hidden) */}
-			<input
-				ref={inputRef}
-				type="file"
-				accept="image/*"
-				onChange={handleFileSelect}
-				className="hidden"
-			/>
+			<input ref={inputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
 
 			{/* Error message */}
 			{error && <p className="text-destructive text-sm">{error}</p>}

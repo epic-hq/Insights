@@ -8,7 +8,7 @@ import { userContext } from "~/server/user-context"
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const projectId = String(params.projectId || "")
-	const accountId = String(params.accountId || "")
+	const _accountId = String(params.accountId || "")
 	const userId = ctx?.claims?.sub || ""
 
 	// consola.info("project-status history: params received", {

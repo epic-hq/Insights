@@ -15,21 +15,13 @@ import {
 	MoreVertical,
 	SparkleIcon,
 } from "lucide-react"
-import { Link } from "react-router-dom"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet"
-import { Textarea } from "~/components/ui/textarea"
-import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
-// import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses" // Disabled: complex component with specific data requirements
-import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
-import { cn } from "~/lib/utils"
-import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 // Mock data types

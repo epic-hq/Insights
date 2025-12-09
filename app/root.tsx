@@ -10,7 +10,6 @@ import {
 	Meta,
 	type MetaFunction,
 	Outlet,
-	redirect,
 	Scripts,
 	ScrollRestoration,
 	useRouteError,

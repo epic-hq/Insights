@@ -8,7 +8,6 @@ import type {
 	TaskActivity,
 	TaskActivitySource,
 	TaskActivityType,
-	TaskFilters,
 	TaskInsert,
 	TaskListOptions,
 	TaskUpdate,

@@ -34,12 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { EditLensDialog } from "../components/EditLensDialog"
@@ -419,7 +414,7 @@ function SynthesisHeroSection({
 				{/* Executive Summary */}
 				{synthesis.executive_summary && (
 					<div>
-						<h4 className="mb-2 font-medium text-sm text-muted-foreground">Executive Summary</h4>
+						<h4 className="mb-2 font-medium text-muted-foreground text-sm">Executive Summary</h4>
 						<div className="whitespace-pre-line text-sm">{synthesis.executive_summary}</div>
 					</div>
 				)}
@@ -427,7 +422,7 @@ function SynthesisHeroSection({
 				{/* Key Takeaways */}
 				{synthesis.key_takeaways.length > 0 && (
 					<div>
-						<h4 className="mb-3 font-medium text-sm text-muted-foreground">Key Takeaways</h4>
+						<h4 className="mb-3 font-medium text-muted-foreground text-sm">Key Takeaways</h4>
 						<div className="space-y-3">
 							{synthesis.key_takeaways.map((takeaway, i) => (
 								<div key={i} className="rounded-lg border bg-muted/30 p-3">
@@ -454,7 +449,7 @@ function SynthesisHeroSection({
 				{/* Recommendations */}
 				{synthesis.recommendations.length > 0 && (
 					<div>
-						<h4 className="mb-2 font-medium text-sm text-muted-foreground">Recommendations</h4>
+						<h4 className="mb-2 font-medium text-muted-foreground text-sm">Recommendations</h4>
 						<ul className="space-y-1 text-sm">
 							{synthesis.recommendations.map((rec, i) => (
 								<li key={i} className="flex items-start gap-2">

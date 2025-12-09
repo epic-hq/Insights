@@ -7,10 +7,8 @@
  * - Has Data: Displays lens results and AI insights
  */
 
-import consola from "consola"
 import { useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
-import type { Database } from "~/../supabase/types"
 import { ChatSheet } from "~/components/chat/ChatSheet"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -156,7 +154,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.map((i) => ({
 			id: i.id,
 			name: i.participant_pseudonym || "Processing...",
-			status: i.status === "transcribing" || i.status === "processing" ? "processing" as const : "queued" as const,
+			status: i.status === "transcribing" || i.status === "processing" ? ("processing" as const) : ("queued" as const),
 		}))
 
 	// Generate a simple AI insight based on data

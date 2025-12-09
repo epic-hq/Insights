@@ -15,7 +15,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const formData = await request.formData()
 	const projectId = formData.get("project_id") as string
 	const accountId = formData.get("account_id") as string
-	const maxThemes = Number.parseInt(formData.get("max_themes") as string) || 50
+	const maxThemes = Number.parseInt(formData.get("max_themes") as string, 10) || 50
 
 	if (!projectId || !accountId) {
 		throw new Response("Missing project_id or account_id", { status: 400 })

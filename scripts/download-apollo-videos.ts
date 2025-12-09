@@ -10,10 +10,10 @@
  * 3. Extract and download the video
  */
 
-import fs from "fs"
-import http from "http"
-import https from "https"
-import path from "path"
+import fs from "node:fs"
+import http from "node:http"
+import https from "node:https"
+import path from "node:path"
 import { chromium } from "playwright"
 
 const URLS = [
@@ -120,7 +120,7 @@ async function main() {
 							break
 						}
 					}
-				} catch (e) {
+				} catch (_e) {
 					// Continue to next selector
 				}
 			}

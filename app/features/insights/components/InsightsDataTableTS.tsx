@@ -65,7 +65,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 					const count = cell.getValue() as number
 					const insightId = cell.row.original.id
 					return count > 0 ? (
-						<Link to={routes.evidence.index() + `?theme_id=${insightId}`} className="hover:underline">
+						<Link to={`${routes.evidence.index()}?theme_id=${insightId}`} className="hover:underline">
 							<span className="font-semibold text-sm">{count}</span>
 						</Link>
 					) : (
@@ -82,7 +82,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				),
 			},
 		],
-		[]
+		[routes.evidence.index]
 	)
 
 	const table = useReactTable({
@@ -103,7 +103,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 		<div>
 			<Table>
 				<TableHeader>
-					{table.getHeaderGroups().map((headerGroup, idx) => (
+					{table.getHeaderGroups().map((headerGroup, _idx) => (
 						<React.Fragment key={headerGroup.id}>
 							<TableRow key={`${headerGroup.id}-header`}>
 								{headerGroup.headers.map((header) => (

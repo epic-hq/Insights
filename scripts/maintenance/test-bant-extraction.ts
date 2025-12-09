@@ -73,7 +73,7 @@ async function testBantExtraction() {
 			consola.error(`Failed to extract BANT for ${interview.id}:`, err)
 		}
 
-		consola.log("\n" + "─".repeat(80) + "\n")
+		consola.log(`\n${"─".repeat(80)}\n`)
 	}
 
 	consola.success("BANT extraction test complete!")

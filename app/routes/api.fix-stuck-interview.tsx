@@ -68,10 +68,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			// Update all at once
 			const ids = stuck.map((i) => i.id)
-			const { error: updateError } = await supabase
-				.from("interviews")
-				.update({ status: "ready" })
-				.in("id", ids)
+			const { error: updateError } = await supabase.from("interviews").update({ status: "ready" }).in("id", ids)
 
 			if (updateError) {
 				consola.error("Failed to bulk update:", updateError)
