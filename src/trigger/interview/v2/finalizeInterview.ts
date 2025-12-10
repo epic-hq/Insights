@@ -105,6 +105,35 @@ export const finalizeInterviewTaskV2 = task({
 				// Don't fail the task if lens generation fails
 			}
 
+			// 3. Generate thumbnail for video files
+			try {
+				// Fetch interview to get media info
+				const { data: interviewForThumb } = await client
+					.from("interviews")
+					.select("media_url, file_extension, account_id")
+					.eq("id", interviewId)
+					.single()
+
+				const videoExtensions = ["mp4", "mov", "avi", "mkv", "webm", "m4v"]
+				const isVideo =
+					interviewForThumb?.file_extension &&
+					videoExtensions.includes(interviewForThumb.file_extension.toLowerCase())
+
+				if (isVideo && interviewForThumb.media_url) {
+					const { generateThumbnail } = await import("../../generate-thumbnail")
+					await generateThumbnail.trigger({
+						mediaKey: interviewForThumb.media_url,
+						interviewId,
+						timestampSec: 1, // Extract frame at 1 second
+						accountId: interviewForThumb.account_id,
+					})
+					consola.info(`[finalizeInterview] Triggered generateThumbnail for video ${interviewId}`)
+				}
+			} catch (thumbError) {
+				consola.warn("Failed to trigger generateThumbnail:", thumbError)
+				// Don't fail the task if thumbnail generation fails
+			}
+
 			// Send analytics
 			try {
 				if (!posthog) {

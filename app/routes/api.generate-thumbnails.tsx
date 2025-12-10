@@ -11,7 +11,7 @@ import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import type { generateThumbnail } from "~/../../src/trigger/generate-thumbnail"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
+import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server"
 
 // Video file extensions that support thumbnail generation
 const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "webm", "mkv", "m4v"]
@@ -33,7 +33,8 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
 
-		const { client: userDb } = getServerClient(request)
+		// Use admin client to bypass RLS - auth is verified above
+		const adminDb = createSupabaseAdminClient()
 		const formData = await request.formData()
 		const action = formData.get("action")?.toString()
 		const interviewId = formData.get("interview_id")?.toString()
@@ -42,7 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Get stats about interviews needing thumbnails
 		if (action === "stats") {
-			const { data: interviews, error } = await userDb
+			const { data: interviews, error } = await adminDb
 				.from("interviews")
 				.select("id, media_url, thumbnail_url, project_id")
 				.not("media_url", "is", null)
@@ -81,7 +82,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Generate thumbnail for a single interview
 		if (interviewId) {
-			const { data: interview, error } = await userDb
+			const { data: interview, error } = await adminDb
 				.from("interviews")
 				.select("id, media_url, account_id")
 				.eq("id", interviewId)
@@ -125,7 +126,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Batch backfill for all interviews without thumbnails
 		if (action === "backfill") {
-			let query = userDb
+			let query = adminDb
 				.from("interviews")
 				.select("id, media_url, account_id, project_id")
 				.not("media_url", "is", null)

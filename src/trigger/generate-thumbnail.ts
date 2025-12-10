@@ -78,6 +78,33 @@ export const generateThumbnail = schemaTask({
 		// ffmpeg will stream directly from this URL - no need to download the whole file
 		const signedSourceUrl = await makeSignedReadUrl(mediaKey, 3600) // 1 hour TTL
 
+		// First, probe the file to check if it has video streams
+		// Use ffmpeg to get stream info - if no video stream, skip thumbnail generation
+		try {
+			const probeResult = await execa(
+				ffmpeg,
+				["-hide_banner", "-i", signedSourceUrl, "-f", "null", "-"],
+				{ timeout: 30000, reject: false }
+			)
+			// ffmpeg outputs stream info to stderr
+			const probeOutput = probeResult.stderr || ""
+			const hasVideoStream = /Stream.*Video:/i.test(probeOutput)
+
+			if (!hasVideoStream) {
+				console.log(`Skipping thumbnail for ${mediaKey} - no video stream (audio-only file)`)
+				return {
+					success: false,
+					skipped: true,
+					reason: "audio-only",
+					interviewId,
+					message: "File has no video stream - audio-only file",
+				}
+			}
+		} catch (probeError) {
+			console.warn("Failed to probe file, attempting thumbnail anyway:", probeError)
+			// Continue anyway - the actual extraction will fail if there's no video
+		}
+
 		const outputPath = join(tmpdir(), `thumb-${randomUUID()}.jpg`)
 
 		try {
