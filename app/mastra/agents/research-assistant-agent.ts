@@ -34,6 +34,6 @@ Topics you can help with:
 - Best practices for customer discovery
 - Research methodologies (Jobs to be Done, empathy mapping, etc.)
 `,
-	model: openai("gpt-4o-mini"),
+	model: openai("gpt-5-mini"),
 	tools: {},
 });

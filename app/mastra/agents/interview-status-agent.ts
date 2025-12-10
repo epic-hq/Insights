@@ -37,7 +37,7 @@ Tone:
 
 `
 	},
-	model: openai("gpt-4o-mini"),
+	model: openai("gpt-5-mini"),
 	tools: {
 		fetchInterviewContext: fetchInterviewContextTool,
 		semanticSearchEvidence: semanticSearchEvidenceTool,

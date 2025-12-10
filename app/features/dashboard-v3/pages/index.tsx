@@ -21,9 +21,19 @@ import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => [{ title: "Dashboard | UpSight Customer Intelligence" }]
 
-/** Hide the ProjectStatusAgent panel on this route - we have our own ContextPanel */
+/**
+ * Hide the ProjectStatusAgent panel on this route only if we are in onboarding state (empty).
+ * Once the project has data (active/processing) OR goals (setup complete), we show the agent.
+ */
 export const handle = {
-	hideProjectStatusAgent: true,
+	hideProjectStatusAgent: (
+		data: { conversationCount?: number; processingCount?: number; hasGoals?: boolean } | undefined
+	) => {
+		if (!data) return true
+		// Hide if no data AND no goals (pure empty state)
+		// Show if we have conversations, processing items, OR goals
+		return (data.conversationCount || 0) === 0 && (data.processingCount || 0) === 0 && !data.hasGoals
+	},
 }
 
 // ============================================================================

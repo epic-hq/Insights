@@ -2,10 +2,11 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { Mic, Send, Square } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useNavigate } from "react-router"
 import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
 import { Response as AiResponse } from "~/components/ai-elements/response"
+import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
 import { Card, CardContent } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
@@ -13,6 +14,7 @@ import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
+import { extractSuggestions } from "~/utils/generate-suggestions"
 
 function WizardIcon({ className }: { className?: string }) {
 	return (
@@ -234,6 +236,51 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 		}
 	}, [])
 
+	// Extract suggestions from assistant's response via tool invocations
+	const suggestions = useMemo(() => {
+		// Initial suggestions when no messages
+		if (displayableMessages.length === 0) {
+			return [
+				"We're building a B2B SaaS for HR teams",
+				"I run an e-commerce store selling fitness gear",
+				"We help small businesses manage their finances",
+			]
+		}
+
+		// Find the last assistant message
+		const lastAssistantMsg = [...displayableMessages].reverse().find((m) => m.role === "assistant")
+		if (!lastAssistantMsg) return []
+
+		// Check for suggestNextSteps tool invocation
+		const suggestionToolCall = lastAssistantMsg.toolInvocations?.find(
+			(t) => t.toolName === "suggestNextSteps" && "result" in t
+		)
+
+		if (suggestionToolCall && "args" in suggestionToolCall) {
+			const args = suggestionToolCall.args as { suggestions?: string[] }
+			if (args.suggestions && Array.isArray(args.suggestions) && args.suggestions.length > 0) {
+				return args.suggestions
+			}
+		}
+
+		// Fallback to text extraction if no tool call (backward compatibility)
+		const lastText =
+			lastAssistantMsg.parts
+				?.filter((p) => p.type === "text")
+				.map((p) => p.text)
+				.join("\n") || ""
+
+		// Extract suggestions from the assistant's response
+		return extractSuggestions({ assistantMessage: lastText })
+	}, [displayableMessages])
+
+	const handleSuggestionClick = useCallback(
+		(suggestion: string) => {
+			sendMessage({ text: suggestion })
+		},
+		[sendMessage]
+	)
+
 	const submitMessage = () => {
 		const trimmed = input.trim()
 		if (!trimmed) return
@@ -275,8 +322,7 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 							displayableMessages.map((message, index) => {
 								const key = message.id || `${message.role}-${index}`
 								const isUser = message.role === "user"
-								const textParts =
-									message.parts?.filter((part) => part.type === "text").map((part) => part.text) ?? []
+								const textParts = message.parts?.filter((part) => part.type === "text").map((part) => part.text) ?? []
 								const messageText = textParts.filter(Boolean).join("\n").trim()
 								return (
 									<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -289,9 +335,7 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 												<div
 													className={cn(
 														"whitespace-pre-wrap rounded-lg px-4 py-3 shadow-sm",
-														isUser
-															? "bg-blue-600 text-white"
-															: "bg-muted/50 text-foreground ring-1 ring-border/60"
+														isUser ? "bg-blue-600 text-white" : "bg-muted/50 text-foreground ring-1 ring-border/60"
 													)}
 												>
 													{messageText ? (
@@ -318,6 +362,14 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 
 				{/* Input area */}
 				<div className="mt-4 flex-shrink-0 border-t pt-4">
+					{/* Suggestions */}
+					{suggestions.length > 0 && !isBusy && (
+						<Suggestions className="mb-3">
+							{suggestions.map((suggestion) => (
+								<Suggestion key={suggestion} suggestion={suggestion} onClick={handleSuggestionClick} />
+							))}
+						</Suggestions>
+					)}
 					<form onSubmit={handleSubmit} className="space-y-3">
 						<Textarea
 							ref={textareaRef}

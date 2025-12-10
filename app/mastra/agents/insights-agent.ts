@@ -15,7 +15,7 @@ export const insightsAgent = new Agent({
 3. Help users understand patterns in their research insights
 
 When a user asks for a daily brief, use the dailyBriefWorkflow to get the latest insights for their project.`,
-	model: openai("gpt-4o-mini"),
+	model: openai("gpt-5-mini"),
 	workflows: {
 		dailyBriefWorkflow,
 	},

@@ -30,9 +30,11 @@ import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
+import { suggestionTool } from "../tools/suggestion-tool"
 import { switchAgentTool } from "../tools/switch-agent"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
+import { findSimilarPagesTool, webResearchTool } from "../tools/web-research"
 
 const ProjectStatusMemoryState = z.object({
 	lastProjectId: z.string().optional(),
@@ -104,6 +106,13 @@ Use "generateProjectRoutes" to get URLs, format as **[Name](route)**. Call "navi
 
 ## Tone
 Direct and analytical. You're a trusted advisor, not a search engine. Use markdown formatting. Ask clarifying questions when the request is ambiguous.
+
+## Suggestion Loop
+AT THE END OF EVERY TURN, you MUST call the "suggestNextSteps" tool with 2-3 brief, context-aware suggestions for what the user might want to do next.
+- **Format**: Imperative commands to YOU (the AI).
+- **Length**: Ultra-short (2-5 words).
+- **Examples**: "Fetch Don's details", "Find similar people", "Show evidence", "Run BANT analysis", "Update deal stage".
+- **Avoid**: "Would you like...", "Yes, please...", or questions.
 `
 		} catch (error) {
 			consola.error("Error in project status agent instructions:", error)
@@ -116,7 +125,7 @@ Please try:
 2. Contacting support if the issue persists`
 		}
 	},
-	model: openai("gpt-4.1"),
+	model: openai("gpt-5-mini"),
 	tools: {
 		getCurrentDate: getCurrentDateTool,
 		fetchProjectStatusContext: fetchProjectStatusContextTool,
@@ -150,6 +159,9 @@ Please try:
 		manageDocuments: manageDocumentsTool,
 		manageAnnotations: manageAnnotationsTool,
 		switchAgent: switchAgentTool,
+		suggestNextSteps: suggestionTool,
+		webResearch: webResearchTool,
+		findSimilarPages: findSimilarPagesTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

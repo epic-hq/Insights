@@ -55,7 +55,7 @@ Current signup_data snapshot:
 ${JSON.stringify(data)}
 `
 	},
-	model: openai("gpt-4.1"),
+	model: openai("gpt-5-mini"),
 	tools: {
 		// Validation guard to ensure the agent never prematurely completes
 		// signupCompletionGuardTool,

@@ -5,6 +5,7 @@ import { ChevronRight, Mic, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
+import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
@@ -16,6 +17,7 @@ import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { HOST, PRODUCTION_HOST } from "~/paths"
+import { extractSuggestions } from "~/utils/generate-suggestions"
 
 function WizardIcon({ className }: { className?: string }) {
 	return (
@@ -373,6 +375,40 @@ export function ProjectStatusAgentChat({
 		onCollapsedChange?.(isCollapsed)
 	}, [isCollapsed, onCollapsedChange])
 
+	// Extract suggestions from assistant's response via tool invocations
+	const suggestions = useMemo(() => {
+		// Initial suggestions when no messages
+		if (displayableMessages.length === 0) {
+			return ["Show project status", "Suggest next steps", "Summarize findings"]
+		}
+
+		// Find the last assistant message
+		const lastAssistantMsg = [...displayableMessages].reverse().find((m) => m.role === "assistant")
+		if (!lastAssistantMsg) return []
+
+		// Check for suggestNextSteps tool invocation
+		const suggestionToolCall = lastAssistantMsg.toolInvocations?.find(
+			(t) => t.toolName === "suggestNextSteps" && "result" in t
+		)
+
+		if (suggestionToolCall && "args" in suggestionToolCall) {
+			const args = suggestionToolCall.args as { suggestions?: string[] }
+			if (args.suggestions && Array.isArray(args.suggestions) && args.suggestions.length > 0) {
+				return args.suggestions
+			}
+		}
+
+		// NO fallback text extraction (regex removed per user request)
+		return []
+	}, [displayableMessages])
+
+	const handleSuggestionClick = useCallback(
+		(suggestion: string) => {
+			sendMessage({ text: suggestion })
+		},
+		[sendMessage]
+	)
+
 	const submitMessage = () => {
 		const trimmed = input.trim()
 		if (!trimmed) return
@@ -531,6 +567,19 @@ export function ProjectStatusAgentChat({
 						</div>
 
 						<div className="mt-3 flex-shrink-0">
+							{/* Suggestions */}
+							{suggestions.length > 0 && !isBusy && (
+								<Suggestions className="mb-2 flex-wrap">
+									{suggestions.slice(0, 3).map((suggestion) => (
+										<Suggestion
+											key={suggestion}
+											suggestion={suggestion}
+											onClick={handleSuggestionClick}
+											className="text-xs"
+										/>
+									))}
+								</Suggestions>
+							)}
 							<form onSubmit={handleSubmit} className="space-y-2">
 								<Textarea
 									ref={textareaRef}

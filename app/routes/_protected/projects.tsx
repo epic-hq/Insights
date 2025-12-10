@@ -130,10 +130,15 @@ function ProjectLayout({
 	const chatPanelRef = useRef<ImperativePanelHandle | null>(null)
 	const lastExpandedSize = useRef(30)
 
-	const hideProjectStatusAgent = matches.some(
-		(match) =>
-			typeof match.handle === "object" && (match.handle as { hideProjectStatusAgent?: boolean }).hideProjectStatusAgent
-	)
+	const hideProjectStatusAgent = matches.some((match) => {
+		const handle = match.handle as { hideProjectStatusAgent?: boolean | ((data: unknown) => boolean) }
+		if (!handle?.hideProjectStatusAgent) return false
+
+		if (typeof handle.hideProjectStatusAgent === "function") {
+			return handle.hideProjectStatusAgent(match.data)
+		}
+		return handle.hideProjectStatusAgent
+	})
 
 	useEffect(() => {
 		// Skip panel management on mobile

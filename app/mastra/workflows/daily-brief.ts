@@ -7,27 +7,10 @@ import { getLangfuseClient } from "~/lib/langfuse.server"
 import type { SupabaseClient } from "~/types"
 import { llmAgent } from "../agents/llmAgent"
 
-// FLOW: get insights, analyze, recommend & get user choice
-
-// setup types by entity
-// schemas/entity/
-
-// Schemas are runtime helpers, eg validation of IO
-// TODO: account for all fields in types
-const _InsightSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	tag: z.string(),
-	category: z.string(),
-	journeyStage: z.string(),
-	impact: z.number(),
-	novelty: z.number(),
-	description: z.string().optional().default("some descriptive stuff"),
-})
-
-// we get types from supabase dynamically (better)
-// type Insight = z.infer<typeof InsightSchema> // TS static - unused for now
-// type InsightInput = z.input<typeof InsightSchema> // unused for now
+/**
+ * Daily Brief Workflow
+ * Fetches recent insights and generates a summarized brief with key patterns and recommendations.
+ */
 
 const getInsightsStep = createStep({
 	id: "get-insights",
@@ -145,11 +128,3 @@ const dailyBriefWorkflow = createWorkflow({
 dailyBriefWorkflow.commit()
 
 export { dailyBriefWorkflow }
-
-// const run = await mastra.getWorkflow("workflow").createRunAsync();
-
-// const result = await run.start({...});
-
-// if (result.status === "suspended") {
-//   const resumedResult = await run.resume({...});
-// }

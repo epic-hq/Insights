@@ -6,5 +6,5 @@ export const llmAgent = new Agent({
 	name: "LLM Agent",
 	description: "An agent that generates responses using OpenAI's GPT model.",
 	instructions: "Generate a response based on the provided input.",
-	model: openai("gpt-4o-mini"),
+	model: openai("gpt-5-mini"),
 });
