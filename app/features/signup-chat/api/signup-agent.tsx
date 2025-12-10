@@ -55,7 +55,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	//  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
 	consola.log("System prompt from frontend: ", system)
 	const last_message = convertToModelMessages(messages)?.[-1]
-	const result = await agent.streamVNext(last_message, {
+	const result = await agent.stream(last_message, {
 		format: "aisdk",
 		memory: {
 			thread: threadId,

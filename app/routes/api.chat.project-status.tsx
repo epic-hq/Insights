@@ -59,9 +59,18 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 	}
 
-	// Pass all messages to the agent - memory handles history persistence
-	const runtimeMessages = sanitizedMessages
+	// Only pass NEW messages to the agent - Mastra's memory handles historical context.
+	// This prevents duplicate messages when both client history and memory are present.
+	// We look for messages that came after any assistant response (new conversation turn).
+	const lastAssistantIndex = sanitizedMessages.findLastIndex(
+		(m: { role?: string }) => m?.role === "assistant"
+	)
+	const runtimeMessages = lastAssistantIndex >= 0
+		? sanitizedMessages.slice(lastAssistantIndex + 1)
+		: sanitizedMessages
+
 	consola.info("project-status action: sending messages to agent", {
+		totalReceived: sanitizedMessages.length,
 		messageCount: runtimeMessages.length,
 		roles: runtimeMessages.map((m: { role?: string }) => m?.role),
 	})
@@ -100,6 +109,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const agent = mastra.getAgent("projectStatusAgent")
 	const result = await agent.stream(runtimeMessages, {
 		format: "aisdk",
+		maxSteps: 10, // Prevent infinite tool loops (default is 5)
 		memory: {
 			thread: threadId,
 			resource: resourceId,

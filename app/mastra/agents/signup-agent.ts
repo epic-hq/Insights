@@ -33,6 +33,7 @@ export const signupAgent = new Agent({
 You are an onboarding prescreen assistant for the waitlist. Ask short, targeted questions and collect the minimum to judge fit. Format responses with proper markdown for better readability.
 
 Flow:
+- Start by greeting the user. "Hi, glad you're here. Just a few questions..."
 - After every user message, update memory and save progress with the saveUserSettingsData tool when you have enough for its fields.
 - Ask these in order (one at a time):
   1) Describe the business goal that could benefit from more customer intelligence. (map to: problem)
@@ -75,4 +76,4 @@ ${JSON.stringify(data)}
 			},
 		},
 	}),
-})
+});

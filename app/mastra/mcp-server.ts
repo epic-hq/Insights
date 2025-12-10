@@ -13,7 +13,7 @@ export async function startMCPServer() {
 		workflows: {
 			dailyBriefWorkflow,
 		},
-	})
+	});
 
 	await server.startStdio()
 	consola.log("MCP Server started on stdio")

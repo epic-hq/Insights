@@ -35,7 +35,6 @@ import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
-import type { UpsightMessage } from "~/mastra/message-types"
 import type { Project_Section } from "~/types"
 
 const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
@@ -61,7 +60,6 @@ interface ProjectStatusScreenProps {
 	personas?: any[]
 	insights?: any[]
 	projectSections?: Project_Section[]
-	initialChatMessages?: UpsightMessage[]
 }
 
 export default function ProjectStatusScreen({
@@ -72,7 +70,6 @@ export default function ProjectStatusScreen({
 	personas = [],
 	insights = [],
 	projectSections: initialSections,
-	initialChatMessages = [],
 }: ProjectStatusScreenProps) {
 	const [isAnalyzing, setIsAnalyzing] = useState(false)
 	const [customInstructions, setCustomInstructions] = useState("")
@@ -538,7 +535,6 @@ export default function ProjectStatusScreen({
 								<ProjectStatusAgentChat
 									accountId={effectiveAccountId}
 									projectId={effectiveProjectId}
-									initialMessages={initialChatMessages}
 									systemContext={projectSystemContext}
 								/>
 							)}

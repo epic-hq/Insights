@@ -1,9 +1,13 @@
 // Soft import baml client (works even if new function not generated yet)
 import { b } from "baml_client"
+import { FileText, MessageSquare } from "lucide-react"
+import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { Button } from "~/components/ui/button"
 import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned"
+import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
@@ -82,7 +86,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (extra && extra.trim().length > 0) {
 			signup.custom_instructions = String(extra)
 		}
-	} catch {}
+	} catch { }
 
 	let prefill: TemplatePrefill = fallbackPrefill(template_key, projectResult.data.name || "Project", signup)
 	try {
@@ -125,10 +129,16 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	}
 }
 
+// Hide the project status agent sidebar on this page (we have our own chat)
+export const handle = {
+	hideProjectStatusAgent: true,
+}
+
 export default function ProjectSetupPage() {
 	const { project, accountId, projectId, template_key, prefill } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
+	const [mode, setMode] = useState<"chat" | "form">("chat")
 
 	const handleNext = () => {
 		// After goals, go to questions step inside project context, mark onboarding
@@ -137,17 +147,66 @@ export default function ProjectSetupPage() {
 		navigate(url)
 	}
 
+	const handleSetupComplete = () => {
+		// Navigate to dashboard or questions after chat-based setup
+		navigate(routes.dashboard())
+	}
+
 	return (
 		<div className="min-h-screen">
 			<PageContainer size="lg" padded={false} className="max-w-4xl px-4 py-8">
-				<ProjectGoalsScreenRedesigned
-					onNext={handleNext}
-					project={project}
-					projectId={projectId}
-					accountId={accountId}
-					templateKey={template_key}
-					prefill={prefill}
-				/>
+				{/* Mode Toggle */}
+				<div className="mb-6 flex items-center justify-between">
+					<div>
+						<h1 className="font-semibold text-2xl text-foreground">
+							{project?.name ? `Set up ${project.name}` : "Project Setup"}
+						</h1>
+						<p className="mt-1 text-muted-foreground text-sm">
+							{mode === "chat"
+								? "Tell me about your project and I'll help you set it up"
+								: "Fill out the form to configure your project"}
+						</p>
+					</div>
+					<div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-1">
+						<Button
+							variant={mode === "chat" ? "default" : "ghost"}
+							size="sm"
+							onClick={() => setMode("chat")}
+							className="gap-2"
+						>
+							<MessageSquare className="h-4 w-4" />
+							Chat
+						</Button>
+						<Button
+							variant={mode === "form" ? "default" : "ghost"}
+							size="sm"
+							onClick={() => setMode("form")}
+							className="gap-2"
+						>
+							<FileText className="h-4 w-4" />
+							Form
+						</Button>
+					</div>
+				</div>
+
+				{/* Content based on mode */}
+				{mode === "chat" ? (
+					<ProjectSetupChat
+						accountId={accountId}
+						projectId={projectId}
+						projectName={project?.name || "Project"}
+						onSetupComplete={handleSetupComplete}
+					/>
+				) : (
+					<ProjectGoalsScreenRedesigned
+						onNext={handleNext}
+						project={project}
+						projectId={projectId}
+						accountId={accountId}
+						templateKey={template_key}
+						prefill={prefill}
+					/>
+				)}
 			</PageContainer>
 		</div>
 	)

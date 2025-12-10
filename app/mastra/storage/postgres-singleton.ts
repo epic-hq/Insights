@@ -15,7 +15,7 @@ export function getSharedPostgresStore(): PostgresStore {
 			// Limit pool size to prevent "Max client connections reached" errors
 			// With multiple Fly.io instances/processes, we need to keep this low
 			max: 5,
-		})
+		});
 	}
 
 	return postgresStoreInstance

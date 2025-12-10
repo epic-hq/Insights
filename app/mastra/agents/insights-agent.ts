@@ -19,4 +19,4 @@ When a user asks for a daily brief, use the dailyBriefWorkflow to get the latest
 	workflows: {
 		dailyBriefWorkflow,
 	},
-})
+});

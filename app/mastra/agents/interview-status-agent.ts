@@ -49,4 +49,4 @@ Tone:
 			threads: { generateTitle: false },
 		},
 	}),
-})
+});

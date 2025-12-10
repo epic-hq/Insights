@@ -71,9 +71,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 
 	consola.info("Priorities loader - params:", { accountId, projectId })
+	consola.info("Priorities loader - user email:", ctx.claims?.email)
+	consola.info("Priorities loader - user id:", ctx.claims?.sub)
 	consola.info(
 		"Priorities loader - user accounts:",
-		ctx.accounts?.map((a) => ({ id: a.account_id, name: a.name }))
+		ctx.accounts?.map((a) => ({ id: a.account_id, name: a.name, personal: a.personal_account }))
 	)
 
 	if (!accountId || !projectId) {

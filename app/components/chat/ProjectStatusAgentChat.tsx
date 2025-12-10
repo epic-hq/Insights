@@ -1,5 +1,6 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
+import consola from "consola"
 import { ChevronRight, Mic, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
@@ -158,11 +159,16 @@ export function ProjectStatusAgentChat({
 	})
 	const messagesEndRef = useRef<HTMLDivElement | null>(null)
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
 	const location = useLocation()
-	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
 	const { pendingInput, setPendingInput } = useProjectStatusAgent()
 	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice")
+
+	// Load chat history from the server for display
+	// The history is loaded for UI display only - when sending new messages,
+	// we only send the new message. Mastra's memory system handles including
+	// historical context server-side, so we don't send history to avoid duplicates.
+	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
+	const historyLoadedRef = useRef(false)
 
 	// Handle pendingInput from context (inserted by other components like priorities table)
 	useEffect(() => {
@@ -178,18 +184,6 @@ export function ProjectStatusAgentChat({
 			}, 100)
 		}
 	}, [pendingInput, setPendingInput])
-
-	// Stabilize history loading function to avoid useEffect dependency issues
-	const loadHistory = useCallback(() => {
-		if (!accountId || !projectId) return
-		historyFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/history`)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [accountId, projectId, historyFetcher.load])
-
-	// Load chat history when project changes
-	useEffect(() => {
-		loadHistory()
-	}, [loadHistory])
 
 	const navigate = useNavigate()
 
@@ -216,11 +210,14 @@ export function ProjectStatusAgentChat({
 		}
 	}, [])
 
-	const { messages, sendMessage, status, setMessages, addToolResult, stop } = useChat<UpsightMessage>({
+	const { messages, sendMessage, status, addToolResult, stop, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
-			api: routes.api.chat.projectStatus(),
+			api: `/a/${accountId}/${projectId}/api/chat/project-status`,
 			body: { system: mergedSystemContext, userTimezone },
 		}),
+		// Note: Mastra's memory system on the server handles historical context.
+		// We load history for display but don't need to send it back since the server
+		// already includes it via the memory thread.
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 		onToolCall: async ({ toolCall }) => {
 			if (toolCall.dynamic) return
@@ -244,12 +241,56 @@ export function ProjectStatusAgentChat({
 					})
 				}
 			}
+
+			// Handle agent switching for handoff pattern
+			if (toolCall.toolName === "switchAgent") {
+				const input = toolCall.input as { targetAgent?: string; reason?: string }
+				const targetAgent = input?.targetAgent
+				const reason = input?.reason || "Switching agents..."
+
+				consola.info("switchAgent tool called:", { targetAgent, reason })
+
+				if (targetAgent === "project-setup") {
+					// Navigate to setup page which uses the setup agent
+					const setupPath = `/a/${accountId}/${projectId}/setup`
+					navigate(setupPath)
+					addToolResult({
+						tool: "switchAgent",
+						toolCallId: toolCall.toolCallId,
+						output: { success: true, targetAgent, message: reason },
+					})
+				} else if (targetAgent === "project-status") {
+					// Already on status agent, just acknowledge
+					addToolResult({
+						tool: "switchAgent",
+						toolCallId: toolCall.toolCallId,
+						output: { success: true, targetAgent, message: "Already using project status agent." },
+					})
+				} else {
+					addToolResult({
+						tool: "switchAgent",
+						toolCallId: toolCall.toolCallId,
+						output: { success: false, error: `Unknown agent: ${targetAgent}` },
+					})
+				}
+			}
 		},
 	})
 
-	// Set messages from history when loaded
+	// Load history once on mount
+	useEffect(() => {
+		if (historyLoadedRef.current) return
+		historyLoadedRef.current = true
+
+		const historyUrl = `/a/${accountId}/${projectId}/api/chat/project-status/history`
+		consola.info("Loading chat history from:", historyUrl)
+		historyFetcher.load(historyUrl)
+	}, [accountId, projectId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Update messages when history loads (setMessages comes from useChat)
 	useEffect(() => {
 		if (historyFetcher.data?.messages && historyFetcher.data.messages.length > 0) {
+			consola.info("Chat history loaded, updating messages:", historyFetcher.data.messages.length, "messages")
 			setMessages(historyFetcher.data.messages)
 		}
 	}, [historyFetcher.data, setMessages])

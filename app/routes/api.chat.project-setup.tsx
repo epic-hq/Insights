@@ -24,6 +24,33 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const { messages, system } = await request.json()
 
+	// Sanitize messages - remove id fields that can cause duplicate errors
+	const sanitizedMessages = Array.isArray(messages)
+		? messages.map((message) => {
+				if (!message || typeof message !== "object") return message
+				const cloned = { ...message }
+				if ("id" in cloned) {
+					delete (cloned as Record<string, unknown>).id
+				}
+				return cloned
+			})
+		: []
+
+	// Only pass NEW messages to the agent - Mastra's memory handles historical context.
+	// This prevents duplicate messages when both client history and memory are present.
+	const lastAssistantIndex = sanitizedMessages.findLastIndex(
+		(m: { role?: string }) => m?.role === "assistant"
+	)
+	const runtimeMessages = lastAssistantIndex >= 0
+		? sanitizedMessages.slice(lastAssistantIndex + 1)
+		: sanitizedMessages
+
+	consola.info("project-setup action: sending messages to agent", {
+		totalReceived: sanitizedMessages.length,
+		messageCount: runtimeMessages.length,
+		roles: runtimeMessages.map((m: { role?: string }) => m?.role),
+	})
+
 	// Reuse latest thread for this project-scoped agent
 	// TODO pass in threadId instead of refetching
 	// TODO abstract into thread primitives lib
@@ -54,7 +81,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	runtimeContext.set("project_id", projectId)
 
 	const agent = mastra.getAgent("projectSetupAgent")
-	const result = await agent.stream(messages, {
+	const result = await agent.stream(runtimeMessages, {
+		format: "aisdk",
 		memory: {
 			thread: threadId,
 			resource: resourceId,
@@ -135,7 +163,5 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		},
 	})
 
-	// Return AI SDK v5 compatible stream response
-	// @ts-expect-error - toDataStreamResponse is added at runtime by attachStreamResultAliases
-	return result.toDataStreamResponse()
+	return result.toUIMessageStreamResponse()
 }

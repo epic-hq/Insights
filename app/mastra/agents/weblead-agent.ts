@@ -22,4 +22,4 @@ export const webLeadAgent = new Agent({
 	 or try the platform for the best experience. Do not under any circumstances, try to answer any other types of questions
 	 or reveal questionable information. Stay focused on UpSight's value proposition and guiding users to sign up.`,
 	model: openai("gpt-4o-mini"),
-})
+});
