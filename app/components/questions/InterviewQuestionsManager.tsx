@@ -767,9 +767,18 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				// Handle API error response
 				try {
 					const errorData = await response.json()
-					toast.error("Failed to generate questions", {
-						description: errorData.error || `Server error: ${response.status}`,
-					})
+					const missingFields = errorData.missingFields as string[] | undefined
+					if (missingFields?.length) {
+						toast.error("Missing project setup", {
+							description: `Please complete project setup: ${missingFields.join(", ")}`,
+							duration: 8000,
+						})
+					} else {
+						toast.error("Failed to generate questions", {
+							description: errorData.error || `Server error: ${response.status}`,
+							duration: 6000,
+						})
+					}
 				} catch {
 					toast.error("Failed to generate questions", {
 						description: `Server error: ${response.status}`,
@@ -821,13 +830,11 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			// Close dialog
 			setShowRegenerateDialog(false)
 
-			// Trigger regeneration
+			// Trigger regeneration - generateQuestions handles its own success/error toasts
 			setAutoGenerateInitial(true)
 			await generateQuestions()
-
-			toast.success(`Regenerating questions${regenerateInstructions.trim() ? " with new instructions" : ""}`)
 		} catch (error) {
-			console.error("Error regenerating questions:", error)
+			consola.error("Error regenerating questions:", error)
 			toast.error("Failed to regenerate questions")
 		}
 	}, [regenerateInstructions, generateQuestions, setOrderedQuestionIds])
@@ -2474,10 +2481,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																										const updated = questions.map((q) =>
 																											q.id === question.id
 																												? {
-																														...q,
-																														text: editingText,
-																														qualityFlag: quality ?? undefined,
-																													}
+																													...q,
+																													text: editingText,
+																													qualityFlag: quality ?? undefined,
+																												}
 																												: q
 																										)
 																										setQuestions(updated)

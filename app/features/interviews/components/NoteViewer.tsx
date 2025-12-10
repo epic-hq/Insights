@@ -1,7 +1,7 @@
 import { formatDistance } from "date-fns"
 import consola from "consola"
 import { Calendar, Loader2, Search, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useFetcher, useNavigate, useRevalidator } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import {
@@ -29,11 +29,20 @@ interface NoteViewerProps {
 }
 
 export function NoteViewer({ interview, projectId, className }: NoteViewerProps) {
-	const fetcher = useFetcher()
-	const _navigate = useNavigate()
+	const fetcher = useFetcher<{ success?: boolean; redirectTo?: string; error?: string }>()
+	const navigate = useNavigate()
 	const revalidator = useRevalidator()
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isIndexing, setIsIndexing] = useState(false)
+
+	// Handle delete response - navigate after successful delete
+	useEffect(() => {
+		if (fetcher.data?.success && fetcher.data?.redirectTo) {
+			navigate(fetcher.data.redirectTo)
+		} else if (fetcher.data?.error) {
+			consola.error("Delete failed:", fetcher.data.error)
+		}
+	}, [fetcher.data, navigate])
 
 	// Check indexing status from conversation_analysis
 	const conversationAnalysis = interview.conversation_analysis as {

@@ -263,6 +263,24 @@ export const webResearchTool = createTool({
 						}
 
 						consola.info(`[web-research] Created ${evidenceCount} evidence records`)
+
+						// Update note with indexing status so NoteCard shows it as indexed
+						if (evidenceCount > 0) {
+							await supabaseAdmin
+								.schema("public")
+								.from("interviews")
+								.update({
+									conversation_analysis: {
+										note_type: "web_research",
+										query,
+										result_count: resultCount,
+										search_date: new Date().toISOString(),
+										indexed_at: new Date().toISOString(),
+										evidence_count: evidenceCount,
+									},
+								})
+								.eq("id", noteId)
+						}
 					}
 				} catch (saveError) {
 					consola.error("[web-research] Error saving note:", saveError)
@@ -517,6 +535,24 @@ export const findSimilarPagesTool = createTool({
 						}
 
 						consola.info(`[find-similar] Created ${evidenceCount} evidence records`)
+
+						// Update note with indexing status so NoteCard shows it as indexed
+						if (evidenceCount > 0) {
+							await supabaseAdmin
+								.schema("public")
+								.from("interviews")
+								.update({
+									conversation_analysis: {
+										note_type: "similar_pages",
+										source_url: url,
+										result_count: resultCount,
+										search_date: new Date().toISOString(),
+										indexed_at: new Date().toISOString(),
+										evidence_count: evidenceCount,
+									},
+								})
+								.eq("id", noteId)
+						}
 					}
 				} catch (saveError) {
 					consola.error("[find-similar] Error saving note:", saveError)

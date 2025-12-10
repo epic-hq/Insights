@@ -153,6 +153,7 @@ const routes = [
 	route("api/opportunity-advisor", "./routes/api.opportunity-advisor.tsx"),
 	route("api/update-user-project-preference", "./routes/api.update-user-project-preference.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
+	route("api/interviews/delete", "./routes/api.interviews.delete.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),
 	route("api/create-project", "./routes/api.create-project.tsx"),

@@ -350,13 +350,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 
 		if (interviewError) {
+			// If interview was deleted (0 rows), redirect to interviews list instead of error
+			if (interviewError.code === "PGRST116") {
+				consola.info("Interview deleted or not found, redirecting to list")
+				throw Response.redirect(`/a/${accountId}/${projectId}/interviews`, 302)
+			}
 			consola.error("❌ Error fetching interview:", interviewError)
 			throw new Response(`Error fetching interview: ${interviewError.message}`, { status: 500 })
 		}
 
 		if (!interviewData) {
-			consola.error("❌ Interview/note not found:", { interviewId, projectId, accountId })
-			throw new Response("Interview or note not found", { status: 404 })
+			consola.info("Interview not found, redirecting to list")
+			throw Response.redirect(`/a/${accountId}/${projectId}/interviews`, 302)
 		}
 
 		consola.info("✅ Interview data fetched successfully:", {

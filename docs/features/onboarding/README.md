@@ -9,6 +9,7 @@ This directory contains all documentation related to user onboarding flows.
 | [implementation.md](./implementation.md) | Technical implementation details, key files, URL structure, and troubleshooting |
 | [storyboard.md](./storyboard.md) | Mobile-first UX storyboard with frame-by-frame design specs |
 | [dashboard-tasks.md](./dashboard-tasks.md) | Dashboard onboarding tasks shown to new users |
+| [../interview-prompts-system.md](../interview-prompts-system.md) | Interview prompts generation and management system |
 
 ## Overview
 

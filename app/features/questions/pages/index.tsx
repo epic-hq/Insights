@@ -7,28 +7,63 @@ import InterviewQuestionsManager from "~/components/questions/InterviewQuestions
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
+import { getProjectContextGeneric } from "~/features/questions/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useRecordNow } from "~/hooks/useRecordNow"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
 	const { projectId } = params
-	if (!projectId) return { research_goal: null }
+	if (!projectId) {
+		return {
+			research_goal: null,
+			target_roles: [],
+			target_orgs: [],
+			assumptions: [],
+			unknowns: [],
+			hasPrompts: false,
+			needsGeneration: false,
+		}
+	}
 
 	const { client: supabase } = getServerClient(request)
 
-	// Load research_goal from project_sections
-	const { data } = await supabase
-		.from("project_sections")
-		.select("content_md")
+	// Load full project context using the generic helper
+	const projectContext = await getProjectContextGeneric(supabase, projectId)
+	const merged = projectContext?.merged || {}
+
+	// Check if interview_prompts exist
+	const { data: prompts } = await supabase
+		.from("interview_prompts")
+		.select("id")
 		.eq("project_id", projectId)
-		.eq("kind", "research_goal")
-		.order("created_at", { ascending: false })
 		.limit(1)
-		.maybeSingle()
+
+	const hasPrompts = (prompts?.length ?? 0) > 0
+
+	// Extract arrays safely
+	const toStringArray = (val: unknown): string[] => {
+		if (Array.isArray(val)) return val.filter((v) => typeof v === "string")
+		return []
+	}
+
+	const research_goal = typeof merged.research_goal === "string" ? merged.research_goal : null
+	const target_roles = toStringArray(merged.target_roles)
+	const target_orgs = toStringArray(merged.target_orgs)
+	const assumptions = toStringArray(merged.assumptions)
+	const unknowns = toStringArray(merged.unknowns)
+
+	// Determine if we need to auto-generate
+	const needsGeneration = !hasPrompts && !!research_goal && target_roles.length > 0
 
 	return {
-		research_goal: data?.content_md || null,
+		research_goal,
+		target_roles,
+		target_orgs,
+		assumptions,
+		unknowns,
+		hasPrompts,
+		needsGeneration,
 	}
 }
 
@@ -75,6 +110,10 @@ export default function QuestionsIndex() {
 				projectId={projectId}
 				projectPath={projectPath}
 				research_goal={loaderData.research_goal || undefined}
+				target_roles={loaderData.target_roles}
+				target_orgs={loaderData.target_orgs}
+				assumptions={loaderData.assumptions}
+				unknowns={loaderData.unknowns}
 			/>
 			<div className="flex flex-row justify-center gap-3 p-4">
 				<Button

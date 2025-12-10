@@ -222,7 +222,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		unknowns = unknowns || ""
 		if (coreMissing.length > 0) {
 			const baseMsg = `Missing required fields: ${coreMissing.join(", ")}`
-			return Response.json({ error: `${baseMsg} in project context` }, { status: 400 })
+			consola.warn(`[api.generate-questions] ${baseMsg} for project ${project_id}`)
+			return Response.json(
+				{
+					error: `${baseMsg}. Please complete project setup first by filling in your research goal and target roles.`,
+					missingFields: coreMissing,
+				},
+				{ status: 400 }
+			)
 		}
 
 		consola.log("Generating questions (canonical) for:", {
