@@ -513,6 +513,25 @@ export interface DecisionQuestionOut {
   
 }
 
+export interface DocumentEvidence {
+  gist: string
+  verbatim: string
+  context_summary?: string | null
+  source_section?: string | null
+  pains?: string[] | null
+  gains?: string[] | null
+  thinks?: string[] | null
+  feels?: string[] | null
+  
+}
+
+export interface DocumentExtraction {
+  summary: string
+  evidence: DocumentEvidence[]
+  topics: string[]
+  
+}
+
 export interface EntityAggregation {
   entity_type: string
   total_count: number
@@ -1411,6 +1430,29 @@ export interface ProposedTheme {
   synonyms: string[]
   anti_examples: string[]
   links: ThemeLink[]
+  
+}
+
+export interface QALensResult {
+  executive_summary: string
+  qa_pairs: QAPair[]
+  unanswered_questions: string[]
+  key_takeaways: string[]
+  topics_covered: string[]
+  overall_confidence: number
+  
+}
+
+export interface QAPair {
+  question: string
+  question_evidence_id: string
+  answer: string
+  answer_evidence_ids: string[]
+  answer_verbatim?: string | null
+  answer_start_ms?: number | null
+  confidence: number
+  follow_up_needed: boolean
+  topic?: string | null
   
 }
 

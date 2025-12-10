@@ -1,7 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { FileText, Grid, List, MessageSquare, MessagesSquare, Upload } from "lucide-react"
+import { FileText, Grid, List, MessageSquare, MessageSquareText, MessagesSquare, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router"
@@ -52,11 +52,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+		; (rows || []).forEach((interview) => {
+			const primaryParticipant = interview.interview_people?.[0]
+			const segment = primaryParticipant?.people?.segment || "Unknown"
+			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+		})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -206,9 +206,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 										<List className="h-4 w-4" />
 									</ToggleGroupItem>
 								</ToggleGroup>
-								<Button variant="outline" onClick={() => setNoteDialogOpen(true)} className="w-full text-sm sm:w-auto">
-									<FileText className="h-4 w-4" />
-									Quick Note
+								<Button asChild variant="outline" className="w-full text-sm sm:w-auto" title="Generate & edit effective prompts for your conversations">
+									<Link to={routes.questions.index()}>
+										<MessageSquareText className="h-4 w-4" />
+										Prompts
+									</Link>
 								</Button>
 								<Button
 									asChild
@@ -368,13 +370,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-														interview.status === "ready"
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
 															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 															: interview.status === "transcribed"
 																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
 																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-													}`}
+														}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>

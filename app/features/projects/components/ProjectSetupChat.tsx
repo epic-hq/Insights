@@ -14,7 +14,6 @@ import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
-import { extractSuggestions } from "~/utils/generate-suggestions"
 
 function WizardIcon({ className }: { className?: string }) {
 	return (
@@ -236,8 +235,12 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 		}
 	}, [])
 
+	// State for LLM-generated suggestions (fallback)
+	const [generatedSuggestions, setGeneratedSuggestions] = useState<string[]>([])
+	const lastProcessedMessageId = useRef<string | null>(null)
+
 	// Extract suggestions from assistant's response via tool invocations
-	const suggestions = useMemo(() => {
+	const toolSuggestions = useMemo(() => {
 		// Initial suggestions when no messages
 		if (displayableMessages.length === 0) {
 			return [
@@ -263,16 +266,51 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 			}
 		}
 
-		// Fallback to text extraction if no tool call (backward compatibility)
-		const lastText =
-			lastAssistantMsg.parts
-				?.filter((p) => p.type === "text")
-				.map((p) => p.text)
-				.join("\n") || ""
-
-		// Extract suggestions from the assistant's response
-		return extractSuggestions({ assistantMessage: lastText })
+		return []
 	}, [displayableMessages])
+
+	// Fallback: Generate suggestions if no tool calls found
+	useEffect(() => {
+		if (displayableMessages.length === 0) return
+
+		const lastMsg = displayableMessages[displayableMessages.length - 1]
+		if (!lastMsg || lastMsg.role !== "assistant" || status === "streaming") return
+
+		// If we already processed this message, skip
+		if (lastProcessedMessageId.current === lastMsg.id) return
+
+		// If we have tool suggestions, use those (clear generated)
+		if (toolSuggestions.length > 0) {
+			setGeneratedSuggestions([])
+			lastProcessedMessageId.current = lastMsg.id
+			return
+		}
+
+		// Otherwise, generate new ones via API
+		lastProcessedMessageId.current = lastMsg.id
+
+		const lastText = lastMsg.parts?.filter(p => p.type === "text").map(p => p.text).join("\n") || ""
+		if (!lastText) return
+
+		fetch("/api/generate-suggestions", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				lastMessage: lastText,
+				context: `Project Setup: ${projectName}`
+			}),
+		})
+			.then(res => res.json())
+			.then(data => {
+				if (data.suggestions && Array.isArray(data.suggestions)) {
+					setGeneratedSuggestions(data.suggestions)
+				}
+			})
+			.catch(err => console.error("Failed to generate suggestions:", err))
+
+	}, [displayableMessages, toolSuggestions, status, accountId, projectId, projectName])
+
+	const suggestions = toolSuggestions.length > 0 ? toolSuggestions : generatedSuggestions
 
 	const handleSuggestionClick = useCallback(
 		(suggestion: string) => {

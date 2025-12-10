@@ -1,9 +1,10 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
-import { Calendar, FileText } from "lucide-react"
+import { Calendar, CheckCircle2, Clock, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -15,7 +16,14 @@ interface NoteCardProps {
 		content_md?: string
 		created_at: string
 		note_type: string
+		media_type?: string | null
+		source_type?: string | null
 		tags?: string[]
+		status?: string | null
+		conversation_analysis?: {
+			indexed_at?: string
+			evidence_count?: number
+		} | null
 	}
 	className?: string
 }
@@ -24,34 +32,6 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
-
-	// Get note type display name
-	const getNoteTypeLabel = (type: string) => {
-		switch (type) {
-			case "observation":
-				return "Observation"
-			case "insight":
-				return "Insight"
-			case "followup":
-				return "Follow-up"
-			default:
-				return "Note"
-		}
-	}
-
-	// Get note type color
-	const getNoteTypeColor = (type: string) => {
-		switch (type) {
-			case "observation":
-				return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300"
-			case "insight":
-				return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
-			case "followup":
-				return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-			default:
-				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
-		}
-	}
 
 	// Truncate content for preview
 	const contentPreview = note.content_md
@@ -74,51 +54,69 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 			>
 				{/* Card Content */}
 				<div className="p-5">
-					{/* Header - Note Type */}
-					<div className="mb-3 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<FileText className="h-4 w-4 text-amber-600" />
-							<span className="font-medium text-foreground/40 text-sm">Note</span>
-						</div>
-						<Badge className={cn("font-medium text-xs", getNoteTypeColor(note.note_type))}>
-							{getNoteTypeLabel(note.note_type)}
-						</Badge>
-					</div>
-
-					{/* Note Title - Prominent */}
-					<div className="mb-4">
-						<h3 className="line-clamp-2 font-semibold text-foreground text-lg dark:text-foreground">{note.title}</h3>
+					{/* Header: Title + Type */}
+					<div className="mb-2 flex items-start justify-between gap-3">
+						<h3 className="line-clamp-2 font-semibold text-foreground text-lg dark:text-foreground">
+							{note.title}
+						</h3>
+						<MediaTypeIcon
+							mediaType={note.media_type}
+							sourceType={note.source_type}
+							showLabel={true}
+							iconClassName="h-3.5 w-3.5"
+							labelClassName="text-xs text-muted-foreground"
+						/>
 					</div>
 
 					{/* Content Preview */}
 					{contentPreview && (
-						<div className="mb-4">
-							<p className="line-clamp-2 text-gray-600 text-sm dark:text-gray-400">{contentPreview}</p>
-						</div>
+						<p className="mb-3 line-clamp-2 text-gray-600 text-sm dark:text-gray-400">
+							{contentPreview}
+						</p>
 					)}
 
 					{/* Tags */}
 					{note.tags && note.tags.length > 0 && (
-						<div className="mb-4">
-							<div className="flex flex-wrap gap-1.5">
-								{note.tags.slice(0, 3).map((tag, idx) => (
-									<Badge
-										key={idx}
-										variant="outline"
-										className="border-gray-300 text-gray-700 text-xs dark:border-gray-600 dark:text-gray-300"
-									>
-										{tag}
-									</Badge>
-								))}
-							</div>
+						<div className="mb-3 flex flex-wrap gap-1.5">
+							{note.tags.slice(0, 3).map((tag, idx) => (
+								<Badge
+									key={idx}
+									variant="outline"
+									className="border-gray-300 text-gray-700 text-xs dark:border-gray-600 dark:text-gray-300"
+								>
+									{tag}
+								</Badge>
+							))}
 						</div>
 					)}
 
-					{/* Metadata */}
-					<div className="flex items-center gap-3 text-sm">
+					{/* Footer: Status + Date */}
+					<div className="flex items-center justify-end gap-3 text-muted-foreground">
+						{/* Status indicator */}
+						{note.status === "processing" && (
+							<div className="flex items-center gap-1">
+								<Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+								<span className="text-xs text-amber-600">Processing</span>
+							</div>
+						)}
+						{note.status === "ready" && note.conversation_analysis?.indexed_at && (
+							<div className="flex items-center gap-1">
+								<CheckCircle2 className="h-3 w-3 text-emerald-500" />
+								<span className="text-xs text-emerald-600">
+									{note.conversation_analysis.evidence_count || 0} indexed
+								</span>
+							</div>
+						)}
+						{note.status === "ready" && !note.conversation_analysis?.indexed_at && (
+							<div className="flex items-center gap-1">
+								<Clock className="h-3 w-3 text-gray-400" />
+								<span className="text-xs text-gray-500">Not indexed</span>
+							</div>
+						)}
+						{/* Date */}
 						<div className="flex items-center gap-1.5">
-							<Calendar className="h-3.5 w-3.5 text-gray-500" />
-							<span className="text-gray-600 text-xs dark:text-gray-400">
+							<Calendar className="h-3.5 w-3.5" />
+							<span className="text-xs">
 								{formatDistance(new Date(note.created_at), new Date(), { addSuffix: true })}
 							</span>
 						</div>

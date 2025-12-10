@@ -1,7 +1,8 @@
 import { formatDistance } from "date-fns"
-import { Calendar, Trash2 } from "lucide-react"
+import consola from "consola"
+import { Calendar, Loader2, Search, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { useFetcher, useNavigate } from "react-router"
+import { useFetcher, useNavigate, useRevalidator } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import {
 	AlertDialog,
@@ -30,9 +31,42 @@ interface NoteViewerProps {
 export function NoteViewer({ interview, projectId, className }: NoteViewerProps) {
 	const fetcher = useFetcher()
 	const _navigate = useNavigate()
+	const revalidator = useRevalidator()
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+	const [isIndexing, setIsIndexing] = useState(false)
 
-	const handleSave = (value: string) => {
+	// Check indexing status from conversation_analysis
+	const conversationAnalysis = interview.conversation_analysis as {
+		indexed_at?: string
+		evidence_count?: number
+	} | null
+	const isIndexed = !!conversationAnalysis?.indexed_at
+	const evidenceCount = conversationAnalysis?.evidence_count ?? 0
+
+	const handleIndexNote = async () => {
+		setIsIndexing(true)
+		try {
+			const response = await fetch("/api/index-note", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ interviewId: interview.id }),
+			})
+			const result = await response.json()
+			if (result.success) {
+				consola.success("Note indexing started", result.runId)
+				// Revalidate after a short delay to give the task time to start
+				setTimeout(() => revalidator.revalidate(), 2000)
+			} else {
+				consola.error("Failed to index note:", result.error)
+			}
+		} catch (e) {
+			consola.error("Index note failed", e)
+		} finally {
+			setIsIndexing(false)
+		}
+	}
+
+	const handleSaveContent = (value: string) => {
 		fetcher.submit(
 			{
 				entity: "interview",
@@ -40,6 +74,23 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				accountId: interview.account_id,
 				projectId: projectId,
 				fieldName: "observations_and_notes",
+				fieldValue: value,
+			},
+			{
+				method: "POST",
+				action: "/api/update-field",
+			}
+		)
+	}
+
+	const handleSaveTitle = (value: string) => {
+		fetcher.submit(
+			{
+				entity: "interview",
+				entityId: interview.id,
+				accountId: interview.account_id,
+				projectId: projectId,
+				fieldName: "title",
 				fieldValue: value,
 			},
 			{
@@ -77,13 +128,46 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 							iconClassName="h-5 w-5"
 							labelClassName="text-base font-semibold"
 						/>
+						{isIndexed && (
+							<span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 text-xs">
+								{evidenceCount} evidence indexed
+							</span>
+						)}
 					</div>
-					<Button variant="ghost" size="sm" onClick={() => setShowDeleteDialog(true)}>
-						<Trash2 className="h-4 w-4 text-destructive" />
-					</Button>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleIndexNote}
+							disabled={isIndexing}
+							title={isIndexed ? "Re-index this note for semantic search" : "Index this note for semantic search"}
+						>
+							{isIndexing ? (
+								<>
+									<Loader2 className="mr-1 h-4 w-4 animate-spin" />
+									Indexing...
+								</>
+							) : (
+								<>
+									<Search className="mr-1 h-4 w-4" />
+									{isIndexed ? "Re-index" : "Index Now"}
+								</>
+							)}
+						</Button>
+						<Button variant="ghost" size="sm" onClick={() => setShowDeleteDialog(true)}>
+							<Trash2 className="h-4 w-4 text-destructive" />
+						</Button>
+					</div>
 				</div>
 
-				<h1 className="mb-3 font-bold text-3xl text-slate-900 dark:text-white">{interview.title || "Untitled Note"}</h1>
+				<InlineEdit
+					value={interview.title || ""}
+					onSubmit={handleSaveTitle}
+					placeholder="Untitled Note"
+					submitOnBlur={true}
+					textClassName="font-bold text-3xl text-slate-900 dark:text-white"
+					inputClassName="font-bold text-3xl"
+				/>
 
 				{/* Metadata */}
 				<div className="flex flex-wrap items-center gap-4 text-slate-600 text-sm dark:text-slate-400">
@@ -114,7 +198,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 			<div className="prose max-w-none text-foreground">
 				<InlineEdit
 					value={interview.observations_and_notes || ""}
-					onSubmit={handleSave}
+					onSubmit={handleSaveContent}
 					multiline={true}
 					markdown={true}
 					submitOnBlur={true}

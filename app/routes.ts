@@ -45,6 +45,7 @@ const routes = [
 		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
 		route("api/similar-themes", "./routes/api.similar-themes.tsx"),
 		route("api/delete-empty-themes", "./routes/api.delete-empty-themes.tsx"),
+		route("api/generate-suggestions", "./routes/api.generate-suggestions.tsx"),
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -202,6 +203,7 @@ const routes = [
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
+	route("api/index-note", "./routes/api.index-note.tsx"),
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
 	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),

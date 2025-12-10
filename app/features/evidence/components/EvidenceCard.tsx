@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { Clock, Minus, Play, Plus } from "lucide-react"
+import { Clock, FileText, Mic, Minus, Play, Plus } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -29,6 +29,7 @@ type EvidenceSnippet = (Pick<
 	| "method"
 	| "anchors"
 	| "interview_id"
+	| "source_type"
 > & { context_summary?: string | null }) & { facets?: EvidenceFacetChip[] }
 
 interface EvidenceCardProps {
@@ -149,7 +150,19 @@ function EvidenceCard({
 			<div className="flex items-start justify-between px-4 pt-3">
 				{/* <Badge variant="outline" className="text-muted-foreground">Gist</Badge> */}
 				<h3 className="font-semibold text-base text-foreground text-lg leading-5">{gist}</h3>
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-2">
+					{/* Source type indicator */}
+					{evidence.source_type === "secondary" ? (
+						<span className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs" title="From note or document">
+							<FileText className="h-3 w-3" />
+							Note
+						</span>
+					) : evidence.source_type === "primary" ? (
+						<span className="flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 text-xs" title="From interview">
+							<Mic className="h-3 w-3" />
+							Interview
+						</span>
+					) : null}
 					{evidence.support?.toLowerCase() === "supports" && <Plus className="h-4 w-4 text-emerald-600" />}
 					{evidence.support?.toLowerCase() === "opposes" && <Minus className="h-4 w-4 text-destructive" />}
 				</div>
