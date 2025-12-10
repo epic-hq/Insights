@@ -25,6 +25,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
+import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
 import { getTasks, updateTask } from "~/features/tasks/db"
 import { seedTasks } from "~/features/tasks/seed"
 import type { Task, TaskStatus } from "~/features/tasks/types"
@@ -279,79 +281,25 @@ function EditableStatusCell({ taskId, value }: { taskId: string; value: TaskStat
 		return value
 	}, [fetcher.formData, taskId, value])
 
-	const handleChange = (newValue: string) => {
-		if (newValue === value) return
+	const handleStatusChange = (_taskId: string, newStatus: TaskStatus) => {
+		if (newStatus === value) return
 
 		const formData = new FormData()
 		formData.append("_action", "update-field")
 		formData.append("taskId", taskId)
 		formData.append("field", "status")
-		formData.append("value", newValue)
+		formData.append("value", newStatus)
 
 		fetcher.submit(formData, { method: "POST" })
 	}
 
-	const statusConfig: Record<TaskStatus, { label: string; className: string; shortLabel: string }> = {
-		backlog: {
-			label: "Backlog",
-			shortLabel: "Backlog",
-			className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-		},
-		todo: {
-			label: "To Do",
-			shortLabel: "Todo",
-			className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-		},
-		in_progress: {
-			label: "In Progress",
-			shortLabel: "In Progress",
-			className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-		},
-		blocked: {
-			label: "Blocked",
-			shortLabel: "Blocked",
-			className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-		},
-		review: {
-			label: "In Review",
-			shortLabel: "Review",
-			className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-		},
-		done: {
-			label: "Done",
-			shortLabel: "Done",
-			className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-		},
-		archived: {
-			label: "Archived",
-			shortLabel: "Archived",
-			className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
-		},
-	}
-
-	const currentStatus = statusConfig[displayValue] || statusConfig.backlog
-
 	return (
-		<Select value={displayValue} onValueChange={handleChange}>
-			<SelectTrigger className="h-7 w-28 border-0 bg-transparent p-0 text-xs hover:bg-muted">
-				<span
-					className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentStatus.className}`}
-				>
-					{currentStatus.shortLabel}
-				</span>
-			</SelectTrigger>
-			<SelectContent>
-				{Object.entries(statusConfig).map(([val, config]) => (
-					<SelectItem key={val} value={val} className="text-xs">
-						<span
-							className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}
-						>
-							{config.label}
-						</span>
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+		<StatusDropdown
+			currentStatus={displayValue}
+			taskId={taskId}
+			onStatusChange={handleStatusChange}
+			size="sm"
+		/>
 	)
 }
 
@@ -384,80 +332,29 @@ function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priori
 		setOpen(false)
 	}
 
-	const getPriorityBars = (priority: number, isButton = false) => {
-		const colors = {
-			3: "bg-emerald-600",
-			2: "bg-amber-600",
-			1: "bg-slate-600",
-		}
-		const color = colors[priority as 3 | 2 | 1]
-		const mutedColor = isButton ? "bg-muted" : "bg-muted-foreground/30"
-
-		if (priority === 3) {
-			return (
-				<div className="flex items-end gap-0.5">
-					<div className={`h-2.5 w-1 rounded-sm ${color}`} />
-					<div className={`h-3 w-1 rounded-sm ${color}`} />
-					<div className={`h-3.5 w-1 rounded-sm ${color}`} />
-				</div>
-			)
-		}
-		if (priority === 2) {
-			return (
-				<div className="flex items-end gap-0.5">
-					<div className={`h-2.5 w-1 rounded-sm ${color}`} />
-					<div className={`h-3 w-1 rounded-sm ${color}`} />
-					<div className={`h-3.5 w-1 rounded-sm ${mutedColor}`} />
-				</div>
-			)
-		}
-		return (
-			<div className="flex items-end gap-0.5">
-				<div className={`h-2.5 w-1 rounded-sm ${color}`} />
-				<div className={`h-3 w-1 rounded-sm ${mutedColor}`} />
-				<div className={`h-3.5 w-1 rounded-sm ${mutedColor}`} />
-			</div>
-		)
-	}
-
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button variant="ghost" size="sm" className="h-auto p-1 hover:bg-muted">
-					{getPriorityBars(displayValue)}
+					<PriorityBars priority={displayValue} size="default" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-48" align="center">
 				<div className="space-y-2">
 					<h4 className="font-semibold text-sm">Set Priority</h4>
 					<div className="space-y-1">
-						<Button
-							variant={displayValue === 3 ? "default" : "ghost"}
-							size="sm"
-							className="w-full justify-start"
-							onClick={() => handleSelect(3)}
-						>
-							{getPriorityBars(3, true)}
-							<span className="ml-2">High (3)</span>
-						</Button>
-						<Button
-							variant={displayValue === 2 ? "default" : "ghost"}
-							size="sm"
-							className="w-full justify-start"
-							onClick={() => handleSelect(2)}
-						>
-							{getPriorityBars(2, true)}
-							<span className="ml-2">Medium (2)</span>
-						</Button>
-						<Button
-							variant={displayValue === 1 ? "default" : "ghost"}
-							size="sm"
-							className="w-full justify-start"
-							onClick={() => handleSelect(1)}
-						>
-							{getPriorityBars(1, true)}
-							<span className="ml-2">Low (1)</span>
-						</Button>
+						{[3, 2, 1].map((p) => (
+							<Button
+								key={p}
+								variant={displayValue === p ? "default" : "ghost"}
+								size="sm"
+								className="w-full justify-start"
+								onClick={() => handleSelect(p)}
+							>
+								<PriorityBars priority={p} size="default" />
+								<span className="ml-2">{priorityConfig[p as 1 | 2 | 3].label}</span>
+							</Button>
+						))}
 					</div>
 				</div>
 			</PopoverContent>
@@ -494,80 +391,29 @@ function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }
 		setOpen(false)
 	}
 
-	const getImpactBars = (impact: number, isButton = false) => {
-		const colors = {
-			3: "bg-emerald-600",
-			2: "bg-amber-600",
-			1: "bg-slate-600",
-		}
-		const color = colors[impact as 3 | 2 | 1]
-		const mutedColor = isButton ? "bg-muted" : "bg-muted-foreground/30"
-
-		if (impact === 3) {
-			return (
-				<div className="flex items-end gap-0.5">
-					<div className={`h-2.5 w-1 rounded-sm ${color}`} />
-					<div className={`h-3 w-1 rounded-sm ${color}`} />
-					<div className={`h-3.5 w-1 rounded-sm ${color}`} />
-				</div>
-			)
-		}
-		if (impact === 2) {
-			return (
-				<div className="flex items-end gap-0.5">
-					<div className={`h-2.5 w-1 rounded-sm ${color}`} />
-					<div className={`h-3 w-1 rounded-sm ${color}`} />
-					<div className={`h-3.5 w-1 rounded-sm ${mutedColor}`} />
-				</div>
-			)
-		}
-		return (
-			<div className="flex items-end gap-0.5">
-				<div className={`h-2.5 w-1 rounded-sm ${color}`} />
-				<div className={`h-3 w-1 rounded-sm ${mutedColor}`} />
-				<div className={`h-3.5 w-1 rounded-sm ${mutedColor}`} />
-			</div>
-		)
-	}
-
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button variant="ghost" size="sm" className="h-auto p-1 hover:bg-muted">
-					{getImpactBars(displayValue)}
+					<PriorityBars priority={displayValue} size="default" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-48" align="center">
 				<div className="space-y-2">
 					<h4 className="font-semibold text-sm">Set Impact</h4>
 					<div className="space-y-1">
-						<Button
-							variant={displayValue === 3 ? "default" : "ghost"}
-							size="sm"
-							className="w-full justify-start"
-							onClick={() => handleSelect(3)}
-						>
-							{getImpactBars(3, true)}
-							<span className="ml-2">High (3)</span>
-						</Button>
-						<Button
-							variant={displayValue === 2 ? "default" : "ghost"}
-							size="sm"
-							className="w-full justify-start"
-							onClick={() => handleSelect(2)}
-						>
-							{getImpactBars(2, true)}
-							<span className="ml-2">Medium (2)</span>
-						</Button>
-						<Button
-							variant={displayValue === 1 ? "default" : "ghost"}
-							size="sm"
-							className="w-full justify-start"
-							onClick={() => handleSelect(1)}
-						>
-							{getImpactBars(1, true)}
-							<span className="ml-2">Low (1)</span>
-						</Button>
+						{[3, 2, 1].map((i) => (
+							<Button
+								key={i}
+								variant={displayValue === i ? "default" : "ghost"}
+								size="sm"
+								className="w-full justify-start"
+								onClick={() => handleSelect(i)}
+							>
+								<PriorityBars priority={i} size="default" />
+								<span className="ml-2">{priorityConfig[i as 1 | 2 | 3].label}</span>
+							</Button>
+						))}
 					</div>
 				</div>
 			</PopoverContent>
@@ -704,29 +550,6 @@ function SortableColumnHeader({ title, tooltip, column }: { title: string; toolt
 // ============================================================================
 // Status Display Components
 // ============================================================================
-
-function _StatusBadge({ status }: { status: TaskStatus }) {
-	const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
-		backlog: { label: "Backlog", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-		todo: { label: "To Do", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-		in_progress: {
-			label: "In Progress",
-			className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-		},
-		blocked: { label: "Blocked", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
-		review: { label: "In Review", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
-		done: { label: "Done", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-		archived: { label: "Archived", className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300" },
-	}
-
-	const config = statusConfig[status] || statusConfig.backlog
-
-	return (
-		<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}>
-			{config.label}
-		</span>
-	)
-}
 
 function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; tasks: Task[] }) {
 	const [open, setOpen] = React.useState(false)

@@ -55,6 +55,8 @@ import {
 	type TaskLinkEntityType,
 	updateTask,
 } from "~/features/tasks/db"
+import { PriorityBars, priorityConfig as sharedPriorityConfig } from "~/features/tasks/components/PriorityBars"
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
 import type { AgentType, Assignee, TaskActivity, TaskStatus } from "~/features/tasks/types"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
@@ -472,45 +474,8 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 }
 
 // ============================================================================
-// Status Config
+// Config
 // ============================================================================
-
-const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
-	backlog: {
-		label: "Backlog",
-		className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-	},
-	todo: {
-		label: "To Do",
-		className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-	},
-	in_progress: {
-		label: "In Progress",
-		className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-	},
-	blocked: {
-		label: "Blocked",
-		className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-	},
-	review: {
-		label: "In Review",
-		className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-	},
-	done: {
-		label: "Done",
-		className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-	},
-	archived: {
-		label: "Archived",
-		className: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
-	},
-}
-
-const priorityConfig = {
-	1: { label: "Low", className: "bg-slate-100 text-slate-700" },
-	2: { label: "Medium", className: "bg-amber-100 text-amber-700" },
-	3: { label: "High", className: "bg-emerald-100 text-emerald-700" },
-}
 
 const impactConfig = {
 	1: { label: "Low", className: "bg-slate-100 text-slate-700", description: "Minor improvement" },
@@ -568,84 +533,77 @@ function EditableField({
 	)
 }
 
-function StatusSelect({ taskId, value }: { taskId: string; value: TaskStatus }) {
+function StatusSelectField({ taskId, value }: { taskId: string; value: TaskStatus }) {
 	const fetcher = useFetcher()
 
-	const handleChange = (newValue: string) => {
-		if (newValue === value) return
+	const handleStatusChange = (_taskId: string, newStatus: TaskStatus) => {
+		if (newStatus === value) return
 
 		const formData = new FormData()
 		formData.append("_action", "update-field")
 		formData.append("field", "status")
-		formData.append("value", newValue)
+		formData.append("value", newStatus)
 
 		fetcher.submit(formData, { method: "POST" })
 	}
 
-	const currentStatus = statusConfig[value] || statusConfig.backlog
-
 	return (
-		<Select value={value} onValueChange={handleChange}>
-			<SelectTrigger className="w-40">
-				<span
-					className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentStatus.className}`}
-				>
-					{currentStatus.label}
-				</span>
-			</SelectTrigger>
-			<SelectContent>
-				{Object.entries(statusConfig).map(([val, config]) => (
-					<SelectItem key={val} value={val}>
-						<span
-							className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}
-						>
-							{config.label}
-						</span>
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+		<StatusDropdown
+			currentStatus={value}
+			taskId={taskId}
+			onStatusChange={handleStatusChange}
+			size="default"
+		/>
 	)
 }
 
-function PrioritySelect({ taskId, value }: { taskId: string; value: 1 | 2 | 3 }) {
+function PrioritySelectField({ taskId, value }: { taskId: string; value: 1 | 2 | 3 }) {
 	const fetcher = useFetcher()
+	const [open, setOpen] = useState(false)
 
-	const handleChange = (newValue: string) => {
-		const numValue = Number.parseInt(newValue, 10)
-		if (numValue === value) return
+	const handleSelect = (newValue: number) => {
+		if (newValue === value) {
+			setOpen(false)
+			return
+		}
 
 		const formData = new FormData()
 		formData.append("_action", "update-field")
 		formData.append("field", "priority")
-		formData.append("value", newValue)
+		formData.append("value", newValue.toString())
 
 		fetcher.submit(formData, { method: "POST" })
+		setOpen(false)
 	}
 
-	const currentPriority = priorityConfig[value] || priorityConfig[1]
-
 	return (
-		<Select value={value.toString()} onValueChange={handleChange}>
-			<SelectTrigger className="w-32">
-				<span
-					className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentPriority.className}`}
-				>
-					{currentPriority.label}
-				</span>
-			</SelectTrigger>
-			<SelectContent>
-				{Object.entries(priorityConfig).map(([val, config]) => (
-					<SelectItem key={val} value={val}>
-						<span
-							className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}
-						>
-							{config.label}
-						</span>
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button variant="outline" size="sm" className="gap-2">
+					<PriorityBars priority={value} size="default" />
+					<span className="text-sm">{sharedPriorityConfig[value].label}</span>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-48" align="start">
+				<div className="space-y-2">
+					<h4 className="font-semibold text-sm">Set Priority</h4>
+					<div className="space-y-1">
+						{[3, 2, 1].map((p) => (
+							<Button
+								key={p}
+								variant={value === p ? "default" : "ghost"}
+								size="sm"
+								className="w-full justify-start"
+								onClick={() => handleSelect(p)}
+							>
+								<PriorityBars priority={p} size="default" />
+								<span className="ml-2">{sharedPriorityConfig[p as 1 | 2 | 3].label}</span>
+							</Button>
+						))}
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
 	)
 }
 
@@ -1499,8 +1457,8 @@ export default function TaskDetailPage() {
 					<div className="min-w-0 flex-1">
 						<EditableField taskId={task.id} field="title" value={task.title} />
 						<div className="mt-3 flex items-center gap-3">
-							<StatusSelect taskId={task.id} value={task.status} />
-							<PrioritySelect taskId={task.id} value={task.priority} />
+							<StatusSelectField taskId={task.id} value={task.status} />
+							<PrioritySelectField taskId={task.id} value={task.priority} />
 							{task.cluster && (
 								<Badge variant="outline" className="text-xs">
 									{task.cluster}

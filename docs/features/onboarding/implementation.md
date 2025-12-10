@@ -1,12 +1,11 @@
-# Onboarding Flow Documentation
+# Onboarding Implementation
 
-## Overview
-
-The onboarding flow provides a streamlined experience for new users to create their first project and get started with the platform. It automatically triggers for users who don't have any projects and guides them through project setup, goals definition, interview questions generation, and document upload.
+Technical implementation details for the onboarding flow.
 
 ## Flow Architecture
 
 ### 1. Auto-Detection & Redirect
+
 - **Location**: `app/routes/_ProtectedLayout.tsx:84-101`
 - **Trigger**: When authenticated users have zero projects
 - **Redirect**: `/projects/new?onboarding=true`
@@ -17,7 +16,7 @@ The onboarding flow provides a streamlined experience for new users to create th
 The onboarding consists of 4 main steps:
 
 1. **Welcome/Goals** (`welcome`) - Project goals and research context setup
-2. **Questions** (`questions`) - Interview questions generation and review  
+2. **Questions** (`questions`) - Interview questions generation and review
 3. **Upload** (`upload`) - First document/interview upload
 4. **Processing** (`processing`) - Real-time processing feedback
 
@@ -28,20 +27,21 @@ The onboarding consists of 4 main steps:
 - **Exit Option**: "← Exit Onboarding" button available
 - **Clean Interface**: Only essential elements visible
 
-## Implementation Details
+## Key Files
 
-### Key Files
-
+```text
+app/routes/_ProtectedLayout.tsx                          # Auto-redirect logic
+app/routes/_protected.projects.new.tsx                   # New project route handler
+app/components/layout/AppLayout.tsx                      # Conditional navigation
+app/features/onboarding/components/OnboardingFlow.tsx    # Main flow component
+app/features/dashboard-v3/components/OnboardingDashboard.tsx  # Dashboard tasks
+app/features/dashboard-v3/components/DashboardShell.tsx  # Dashboard state wrapper
+app/features/dashboard-v3/hooks/useDashboardState.ts     # Dashboard state logic
 ```
-app/routes/_ProtectedLayout.tsx          # Auto-redirect logic
-app/routes/_protected.projects.new.tsx   # New project route handler  
-app/components/layout/AppLayout.tsx      # Conditional navigation
-app/features/onboarding/components/OnboardingFlow.tsx  # Main flow component
-```
 
-### URL Structure
+## URL Structure
 
-```
+```text
 Normal project creation:    /projects/new
 Onboarding mode:           /projects/new?onboarding=true
 ```
@@ -50,11 +50,26 @@ Onboarding mode:           /projects/new?onboarding=true
 
 - `onboarding=true` - Enables onboarding mode with hidden navigation
 
+## Dashboard State Machine
+
+The dashboard uses a state machine to determine what to show:
+
+```typescript
+type DashboardState = "empty" | "processing" | "active"
+
+// State determination logic (useDashboardState.ts)
+if (conversationCount === 0) {
+  return "empty"      // Shows OnboardingDashboard
+}
+if (processingCount > 0 && conversationCount === processingCount) {
+  return "processing" // Shows processing state
+}
+return "active"       // Shows full dashboard
+```
+
 ## Usage Examples
 
-### 1. Testing Onboarding Flow
-
-To simulate the onboarding experience:
+### Testing Onboarding Flow
 
 ```bash
 # Method 1: Direct URL (requires user with no projects)
@@ -65,7 +80,7 @@ DELETE FROM projects WHERE account_id = 'user-account-id';
 # Then visit any protected route
 ```
 
-### 2. Programmatic Triggering
+### Programmatic Triggering
 
 ```typescript
 // Redirect to onboarding
@@ -75,7 +90,7 @@ navigate('/projects/new?onboarding=true')
 navigate('/home') // Removes onboarding param
 ```
 
-### 3. Conditional Rendering Based on Onboarding
+### Conditional Rendering Based on Onboarding
 
 ```typescript
 const [searchParams] = useSearchParams()
@@ -92,16 +107,19 @@ return (
 ## Navigation Controls
 
 ### Exit Onboarding
-- **Button**: "← Exit Onboarding" 
+
+- **Button**: "← Exit Onboarding"
 - **Action**: Navigate to `/home` (removes onboarding param)
 - **Location**: Top-left of onboarding header
 
 ### Step Navigation
+
 - **Forward**: Natural progression through steps
 - **Backward**: Back button available on steps 2-4
 - **Progress**: Visual step counter "Step X of 4"
 
 ### Escape Routes
+
 - Users can exit at any time via the exit button
 - Browser back button works for step navigation
 - No forced completion required
@@ -109,6 +127,7 @@ return (
 ## Error Prevention
 
 ### Redirect Loop Protection
+
 ```typescript
 // Prevents infinite redirects
 if (!pathname.includes('/projects/new') && !pathname.includes('onboarding=true')) {
@@ -117,33 +136,39 @@ if (!pathname.includes('/projects/new') && !pathname.includes('onboarding=true')
 ```
 
 ### Hook Call Issues
+
 - Use `react-router-dom` imports, not `react-router`
 - Ensure components are properly wrapped in Router context
 
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 # Skip signup-chat and use onboarding (recommended)
 SIGNUP_CHAT_REQUIRED=false
 ```
 
 ### Feature Flags
+
 - Currently always enabled for users without projects
 - Can be disabled by modifying redirect logic in `_ProtectedLayout.tsx`
 
 ## Customization
 
 ### Adding New Steps
+
 1. Add step to `OnboardingStep` type
 2. Update step counter logic
 3. Add case to `stepContent()` switch statement
 4. Create new screen component
 
 ### Changing Step Order
+
 Modify the progression logic in:
+
 - `handleWelcomeNext()`
-- `handleQuestionsNext()` 
+- `handleQuestionsNext()`
 - `handleUploadNext()`
 - `handleBack()`
 
@@ -152,21 +177,27 @@ Modify the progression logic in:
 ### Common Issues
 
 1. **React Hooks Error**
-   ```
+
+   ```text
    Invalid hook call. Hooks can only be called inside function components.
    ```
+
    **Solution**: Ensure using `react-router-dom` imports, not `react-router`
 
 2. **Redirect Loops**
-   ```
+
+   ```text
    Too many redirects error
    ```
+
    **Solution**: Check redirect logic and URL patterns in middleware
 
 3. **Missing Navigation**
-   ```
+
+   ```text
    MainNav not showing after onboarding
    ```
+
    **Solution**: Verify `?onboarding=true` is removed from URL after completion
 
 ### Debug Tips

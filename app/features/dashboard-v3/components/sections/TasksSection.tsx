@@ -1,14 +1,18 @@
 /**
  * TasksSection - Dashboard section showing top priority tasks
  *
- * Displays up to 3 high-priority tasks with status indicators.
- * Links to full tasks page for management.
+ * Displays up to 3 high-priority tasks (non-completed) with status indicators.
+ * Tasks are sorted by priority (highest first).
+ * Clicking a card navigates to the task detail page.
+ * Status can be changed inline via dropdown.
  */
 
 import { CheckSquare } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
+import { useMemo } from "react"
+import { Link, useFetcher } from "react-router"
 import { Card, CardContent } from "~/components/ui/card"
+import { PriorityBars } from "~/features/tasks/components/PriorityBars"
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
 import type { Task, TaskStatus } from "~/features/tasks/types"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -28,59 +32,79 @@ export interface TasksSectionProps {
 
 interface TaskPreviewCardProps {
 	task: Task
-	prioritiesHref: string
+	detailHref: string
 }
 
-const priorityConfig = {
-	3: { label: "High", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
-	2: { label: "Medium", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
-	1: { label: "Low", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-}
+function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
+	const fetcher = useFetcher()
 
-const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-	backlog: { label: "Backlog", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-	todo: { label: "To Do", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-	in_progress: {
-		label: "In Progress",
-		color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-	},
-	blocked: { label: "Blocked", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
-	review: { label: "Review", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
-	done: { label: "Done", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-	archived: { label: "Archived", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },
-}
+	// Get optimistic status while update is in flight
+	const displayStatus = useMemo(() => {
+		if (fetcher.formData) {
+			const status = fetcher.formData.get("status")
+			if (status) return status as TaskStatus
+		}
+		return task.status as TaskStatus
+	}, [fetcher.formData, task.status])
 
-function TaskPreviewCard({ task, prioritiesHref }: TaskPreviewCardProps) {
-	const priority = priorityConfig[task.priority as 1 | 2 | 3] || priorityConfig[1]
-	const status = statusConfig[task.status as TaskStatus] || statusConfig.backlog
+	const handleStatusChange = (_taskId: string, newStatus: TaskStatus) => {
+		if (newStatus === task.status) return
+
+		const formData = new FormData()
+		formData.append("_action", "update-task-status")
+		formData.append("taskId", task.id)
+		formData.append("status", newStatus)
+
+		// Post to current page's action (no explicit action URL)
+		fetcher.submit(formData, { method: "POST" })
+	}
 
 	return (
-		<Link to={prioritiesHref}>
+		<Link to={detailHref}>
 			<Card className="h-full transition-all hover:border-primary/30 hover:shadow-sm">
 				<CardContent className="p-4">
-					{/* Priority & Status badges */}
-					<div className="mb-3 flex items-center gap-2">
-						<Badge className={cn("text-xs", priority.color)}>{priority.label}</Badge>
-						<Badge variant="outline" className="text-xs">
-							{status.label}
-						</Badge>
+					{/* Title & Status on same row */}
+					<div className="mb-2 flex items-start justify-between gap-2">
+						<h3 className="line-clamp-2 flex-1 font-medium text-foreground text-sm">{task.title}</h3>
+						<StatusDropdown
+							currentStatus={displayStatus}
+							onStatusChange={handleStatusChange}
+							taskId={task.id}
+							iconOnly
+						/>
 					</div>
 
-					{/* Task title */}
-					<h3 className="mb-2 line-clamp-2 font-medium text-foreground text-sm">{task.title}</h3>
+					{/* Benefit with priority bar at start */}
+					{task.benefit && (
+						<div className="flex items-start gap-2">
+							<div className="mt-1 flex-shrink-0">
+								<PriorityBars priority={task.priority || 1} size="sm" />
+							</div>
+							<p className="line-clamp-2 text-muted-foreground text-xs">{task.benefit}</p>
+						</div>
+					)}
 
-					{/* Benefit preview */}
-					{task.benefit && <p className="line-clamp-2 text-muted-foreground text-xs">{task.benefit}</p>}
+					{/* Show priority bars alone if no benefit */}
+					{!task.benefit && task.priority && (
+						<div className="flex items-center gap-2">
+							<PriorityBars priority={task.priority} size="sm" />
+						</div>
+					)}
 				</CardContent>
 			</Card>
 		</Link>
 	)
 }
 
-export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: TasksSectionProps) {
+export function TasksSection({
+	tasks,
+	projectPath,
+	maxVisible = 3,
+	className,
+}: TasksSectionProps) {
 	const routes = useProjectRoutes(projectPath)
 
-	// Filter out completed/archived tasks and sort by priority
+	// Filter out completed/archived tasks and sort by priority (high first)
 	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived")
 	const topTasks = [...activeTasks].sort((a, b) => (b.priority || 1) - (a.priority || 1)).slice(0, maxVisible)
 
@@ -111,7 +135,11 @@ export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: 
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				{topTasks.map((task) => (
-					<TaskPreviewCard key={task.id} task={task} prioritiesHref={routes.tasks.detail(task.id)} />
+					<TaskPreviewCard
+						key={task.id}
+						task={task}
+						detailHref={routes.tasks.detail(task.id)}
+					/>
 				))}
 			</div>
 		</section>

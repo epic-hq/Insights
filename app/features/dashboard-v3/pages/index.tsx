@@ -7,14 +7,15 @@
  * - Active: Full dashboard with tasks, insights, and lens feed
  */
 
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
+import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
 import { DashboardShell } from "~/features/dashboard-v3/components/DashboardShell"
 import type { LensActivityItem } from "~/features/dashboard-v3/components/sections/LensFeed"
 import { PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
-import { getTasks } from "~/features/tasks/db"
+import { getTasks, updateTask } from "~/features/tasks/db"
+import type { TaskStatus } from "~/features/tasks/types"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
 
@@ -24,6 +25,47 @@ export const meta: MetaFunction = () => [{ title: "Dashboard | UpSight Customer 
 export const handle = {
 	hideProjectStatusAgent: true,
 }
+
+// ============================================================================
+// Action - Handle task status updates
+// ============================================================================
+
+export async function action({ request, context }: ActionFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
+	const userId = ctx.claims?.sub
+
+	if (!supabase || !userId) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+
+	const formData = await request.formData()
+	const actionType = formData.get("_action") as string
+
+	if (actionType === "update-task-status") {
+		const taskId = formData.get("taskId") as string
+		const newStatus = formData.get("status") as TaskStatus
+
+		if (!taskId || !newStatus) {
+			throw new Response("Missing taskId or status", { status: 400 })
+		}
+
+		await updateTask({
+			supabase,
+			taskId,
+			userId,
+			updates: { status: newStatus },
+		})
+
+		return { success: true }
+	}
+
+	throw new Response("Invalid action", { status: 400 })
+}
+
+// ============================================================================
+// Loader
+// ============================================================================
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -115,7 +157,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Get insights (themes) for this project
 		supabase
 			.from("themes")
-			.select("id, name, category, pain, statement, created_at")
+			.select("*")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false })
 			.limit(10),
