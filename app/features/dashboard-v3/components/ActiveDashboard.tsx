@@ -9,7 +9,7 @@ import type { LensSummary } from "~/features/dashboard/components/LensResultsGri
 import type { Task } from "~/features/tasks/types"
 import { cn } from "~/lib/utils"
 import type { Insight } from "~/types"
-import { ContextPanel } from "./sections/ContextPanel"
+import { ContextPanel, type ProjectContext } from "./sections/ContextPanel"
 import { InsightsSection } from "./sections/InsightsSection"
 import { type LensActivityItem, LensFeed } from "./sections/LensFeed"
 import { TasksSection } from "./sections/TasksSection"
@@ -29,6 +29,8 @@ export interface ActiveDashboardProps {
 	recentActivity?: LensActivityItem[]
 	/** Project research goal */
 	researchGoal?: string
+	/** Full project context for setup progress */
+	projectContext?: ProjectContext
 	/** Total conversation count */
 	conversationCount: number
 	/** Number of active lenses */
@@ -47,6 +49,7 @@ export function ActiveDashboard({
 	lenses,
 	recentActivity,
 	researchGoal,
+	projectContext,
 	conversationCount,
 	activeLensCount,
 	hideHeader,
@@ -79,6 +82,7 @@ export function ActiveDashboard({
 					<div className="sticky top-6">
 						<ContextPanel
 							researchGoal={researchGoal}
+							projectContext={projectContext}
 							conversationCount={conversationCount}
 							activeLensCount={activeLensCount}
 							projectPath={projectPath}
@@ -91,6 +95,7 @@ export function ActiveDashboard({
 			<div className="mt-8 lg:hidden">
 				<ContextPanel
 					researchGoal={researchGoal}
+					projectContext={projectContext}
 					conversationCount={conversationCount}
 					activeLensCount={activeLensCount}
 					projectPath={projectPath}

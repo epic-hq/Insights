@@ -767,18 +767,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				// Handle API error response
 				try {
 					const errorData = await response.json()
-					const missingFields = errorData.missingFields as string[] | undefined
-					if (missingFields?.length) {
-						toast.error("Missing project setup", {
-							description: `Please complete project setup: ${missingFields.join(", ")}`,
-							duration: 8000,
-						})
-					} else {
-						toast.error("Failed to generate questions", {
-							description: errorData.error || `Server error: ${response.status}`,
-							duration: 6000,
-						})
-					}
+					toast.error("Failed to generate questions", {
+						description: errorData.error || `Server error: ${response.status}`,
+						duration: 6000,
+					})
 				} catch {
 					toast.error("Failed to generate questions", {
 						description: `Server error: ${response.status}`,
@@ -2188,7 +2180,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				{/* Simple Add Question Button + Regenerate control */}
 				<div className="flex flex-wrap items-start gap-3">
 					<Button
-						variant="outline"
+						variant={questions.length === 0 ? "default" : "outline"}
 						size="sm"
 						onClick={() => {
 							setRegenerateInstructions(customInstructions)
@@ -2198,7 +2190,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						className="flex items-center gap-2"
 					>
 						<RefreshCcw className="h-4 w-4" />
-						Regenerate Prompts
+						{questions.length === 0 ? "Generate Prompts" : "Regenerate Prompts"}
 					</Button>
 					<div className="min-w-[260px] flex-1">
 						{!showContextualInput ? (
@@ -2398,6 +2390,17 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				</Dialog>
 
 				<div className="space-y-4">
+					{/* Empty state when no questions */}
+					{questions.length === 0 && !generating && (
+						<div className="rounded-lg border-2 border-muted-foreground/25 border-dashed bg-muted/30 p-8 text-center">
+							<MessageCircleQuestion className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+							<h3 className="mb-1 font-medium text-foreground">No prompts yet</h3>
+							<p className="mb-4 text-muted-foreground text-sm">
+								Click "Generate Prompts" above to create interview questions based on your project context.
+							</p>
+						</div>
+					)}
+
 					<DragDropContext onDragEnd={onDragEnd}>
 						<Droppable droppableId="question-pack">
 							{(provided) => (

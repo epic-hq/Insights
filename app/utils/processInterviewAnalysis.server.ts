@@ -199,14 +199,24 @@ export async function createAndProcessAnalysisJob({
 		// Always use v2 modular workflow (v1 monolithic workflow is deprecated)
 		consola.log("Triggering v2 orchestrator...")
 
-		const handle = await tasks.trigger("interview.v2.orchestrator", {
-			analysisJobId: interviewId, // Use interview ID as job identifier
-			metadata,
-			transcriptData,
-			mediaUrl: mediaUrl || interview.media_url || "",
-			existingInterviewId: interviewId,
-			userCustomInstructions: customInstructions,
-		})
+		// Use interview ID as idempotency key to prevent duplicate orchestrator runs
+		const idempotencyKey = `interview-orchestrator-${interviewId}`
+
+		const handle = await tasks.trigger(
+			"interview.v2.orchestrator",
+			{
+				analysisJobId: interviewId, // Use interview ID as job identifier
+				metadata,
+				transcriptData,
+				mediaUrl: mediaUrl || interview.media_url || "",
+				existingInterviewId: interviewId,
+				userCustomInstructions: customInstructions,
+			},
+			{
+				idempotencyKey,
+				idempotencyKeyTTL: "24h", // Prevent duplicate runs for 24 hours
+			}
+		)
 
 		consola.log(`Trigger.dev v2 orchestrator triggered successfully with handle: ${handle.id}`)
 

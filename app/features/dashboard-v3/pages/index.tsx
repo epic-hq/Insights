@@ -149,12 +149,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.order("processed_at", { ascending: false })
 			.limit(10),
 
-		// Check if goals are set up
+		// Get project sections for setup progress
 		supabase
 			.from("project_sections")
-			.select("id, kind, content_md")
+			.select("id, kind, content_md, meta")
 			.eq("project_id", projectId)
-			.in("kind", ["customer_problem", "research_goal", "decision_questions"]),
+			.in("kind", ["customer_problem", "research_goal", "decision_questions", "target_roles", "target_orgs", "assumptions", "unknowns"]),
 
 		// Get tasks for this project
 		getTasks({
@@ -258,6 +258,23 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const researchGoalSection = projectSections.find((s) => s.kind === "research_goal")
 	const researchGoal = researchGoalSection?.content_md || undefined
 
+	// Build project context for setup progress
+	const getArrayFromSection = (kind: string): string[] => {
+		const section = projectSections.find((s) => s.kind === kind)
+		const meta = section?.meta as Record<string, unknown> | null
+		const value = meta?.[kind]
+		if (Array.isArray(value)) return value.filter((v) => typeof v === "string")
+		return []
+	}
+
+	const projectContext = {
+		research_goal: researchGoal || null,
+		target_roles: getArrayFromSection("target_roles"),
+		target_orgs: getArrayFromSection("target_orgs"),
+		assumptions: getArrayFromSection("assumptions"),
+		unknowns: getArrayFromSection("unknowns"),
+	}
+
 	// Build activity feed items from recent lens analyses
 	const activityFeedItems: LensActivityItem[] = recentLensActivity.map((analysis) => {
 		const template = templateMap.get(analysis.template_key)
@@ -326,6 +343,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		hasGoals,
 		hasLenses,
 		researchGoal,
+		projectContext,
 		tasks,
 		insights,
 	}
@@ -342,6 +360,7 @@ export default function DashboardV3Page() {
 		hasGoals,
 		hasLenses,
 		researchGoal,
+		projectContext,
 		tasks,
 		insights,
 	} = useLoaderData<typeof loader>()
@@ -359,6 +378,7 @@ export default function DashboardV3Page() {
 				hasGoals={hasGoals}
 				hasLenses={hasLenses}
 				researchGoal={researchGoal}
+				projectContext={projectContext}
 				tasks={tasks}
 				insights={insights}
 				lenses={lensSummaries}

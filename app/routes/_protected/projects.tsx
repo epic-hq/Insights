@@ -128,7 +128,7 @@ function ProjectLayout({
 	const { isExpanded } = useProjectStatusAgent()
 	const [isChatCollapsed, setIsChatCollapsed] = useState(false)
 	const chatPanelRef = useRef<ImperativePanelHandle | null>(null)
-	const lastExpandedSize = useRef(30)
+	const lastExpandedSize = useRef(22)
 
 	const hideProjectStatusAgent = matches.some((match) => {
 		const handle = match.handle as { hideProjectStatusAgent?: boolean | ((data: unknown) => boolean) }
@@ -151,7 +151,7 @@ function ProjectLayout({
 			return
 		}
 		panel.expand()
-		const target = Math.max(20, Math.min(55, lastExpandedSize.current))
+		const target = Math.max(18, Math.min(40, lastExpandedSize.current))
 		panel.resize(target)
 	}, [isChatCollapsed, isExpanded, isMobile])
 
@@ -194,7 +194,7 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 	return (
 		<div className="flex h-dvh min-h-0 w-full overflow-hidden">
 			<ResizablePanelGroup direction="horizontal" autoSaveId="project-status-layout" className="flex h-full w-full">
-				<ResizablePanel tagName="main" defaultSize={70} minSize={45} className="flex min-h-0 min-w-0 flex-1 flex-col">
+				<ResizablePanel tagName="main" defaultSize={78} minSize={50} className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<div className="min-h-0 min-w-0 flex-1 overflow-auto">
 						<div className="mx-auto h-full w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 							<Outlet />
@@ -206,9 +206,9 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 
 				<ResizablePanel
 					tagName="aside"
-					defaultSize={30}
-					minSize={20}
-					maxSize={55}
+					defaultSize={22}
+					minSize={18}
+					maxSize={40}
 					collapsible
 					collapsedSize={5}
 					ref={chatPanelRef}

@@ -128,19 +128,38 @@ export async function action({ request }: ActionFunctionArgs) {
 		})
 
 		// Idempotency check - prevent duplicate processing
-		// Interview is already transcribed means we've already processed this webhook
-		if (interview.status === "ready" || (interview.status === "transcribed" && interview.transcript)) {
-			consola.log("Interview already processed, skipping:", payload.transcript_id)
+		// Check multiple conditions to prevent duplicate orchestrator triggers:
+		// 1. Interview is already ready (fully processed)
+		// 2. Interview is transcribed with transcript (waiting for analysis)
+		// 3. Interview is processing AND has trigger_run_id (orchestrator already running)
+		// 4. Interview is processing AND has orchestrator_pending (orchestrator being triggered)
+		const existingTriggerRunId = conversationAnalysis?.trigger_run_id
+		const orchestratorPending = conversationAnalysis?.orchestrator_pending
+		if (
+			interview.status === "ready" ||
+			(interview.status === "transcribed" && interview.transcript) ||
+			(interview.status === "processing" && (existingTriggerRunId || orchestratorPending))
+		) {
+			consola.log("Interview already processed or processing, skipping:", {
+				transcriptId: payload.transcript_id,
+				status: interview.status,
+				existingTriggerRunId,
+				orchestratorPending,
+			})
 			trace?.event?.({
 				name: "interview.already-processed",
 				metadata: {
 					interviewId: interview.id,
+					existingTriggerRunId,
+					orchestratorPending,
 				},
 			})
 			traceEndPayload = {
 				output: {
 					interviewId: interview.id,
 					status: "already_processed",
+					existingTriggerRunId,
+					orchestratorPending,
 				},
 			}
 			return Response.json({ success: true, message: "Already processed" })
@@ -274,7 +293,12 @@ export async function action({ request }: ActionFunctionArgs) {
 			try {
 				consola.info("Triggering analysis orchestrator for interview:", interviewId)
 
+				// Generate a unique request ID to prevent duplicate triggers
+				// Set this BEFORE triggering so concurrent webhook calls will see it
+				const webhookRequestId = `webhook_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+
 				// Update conversation_analysis to mark workflow as in progress
+				// Include orchestrator_pending flag to prevent race conditions
 				await supabase
 					.from("interviews")
 					.update({
@@ -283,6 +307,7 @@ export async function action({ request }: ActionFunctionArgs) {
 							...updatedConversationAnalysis,
 							current_step: "upload",
 							status_detail: "Transcription complete, starting analysis",
+							orchestrator_pending: webhookRequestId, // Lock to prevent duplicates
 						} as Json,
 					})
 					.eq("id", interviewId)
@@ -305,23 +330,41 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
 
+				// Use interview ID as idempotency key to prevent duplicate orchestrator runs
+				// This ensures only ONE orchestrator runs per interview, even if webhook is called multiple times
+				const idempotencyKey = `interview-orchestrator-${interviewId}`
+
 				const handle = useV2Workflow
-					? await tasks.trigger("interview.v2.orchestrator", {
-							analysisJobId: interviewId, // Use interview ID as the job identifier
-							metadata,
-							transcriptData: formattedTranscriptData,
-							mediaUrl: uploadMetadata.external_url || "",
-							existingInterviewId: interviewId,
-							userCustomInstructions: customInstructions,
-						})
-					: await tasks.trigger("interview.upload-media-and-transcribe", {
-							analysisJobId: interviewId, // Use interview ID as the job identifier
-							metadata,
-							transcriptData: formattedTranscriptData,
-							mediaUrl: uploadMetadata.external_url || "",
-							existingInterviewId: interviewId,
-							userCustomInstructions: customInstructions,
-						})
+					? await tasks.trigger(
+							"interview.v2.orchestrator",
+							{
+								analysisJobId: interviewId, // Use interview ID as the job identifier
+								metadata,
+								transcriptData: formattedTranscriptData,
+								mediaUrl: uploadMetadata.external_url || "",
+								existingInterviewId: interviewId,
+								userCustomInstructions: customInstructions,
+							},
+							{
+								idempotencyKey,
+								idempotencyKeyTTL: "24h", // Prevent duplicate runs for 24 hours
+							}
+						)
+					: await tasks.trigger(
+							"interview.upload-media-and-transcribe",
+							{
+								analysisJobId: interviewId, // Use interview ID as the job identifier
+								metadata,
+								transcriptData: formattedTranscriptData,
+								mediaUrl: uploadMetadata.external_url || "",
+								existingInterviewId: interviewId,
+								userCustomInstructions: customInstructions,
+							},
+							{
+								idempotencyKey,
+								idempotencyKeyTTL: "24h",
+							}
+						)
 
 				// Store trigger_run_id in conversation_analysis
 				await supabase

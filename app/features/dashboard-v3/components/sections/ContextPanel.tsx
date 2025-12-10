@@ -1,20 +1,41 @@
 /**
  * ContextPanel - Project context sidebar for dashboard
  *
- * Displays project goals, quick stats, and add conversation CTA.
- * Positioned as right sidebar on desktop, collapsible on mobile.
+ * Displays project setup progress, quick stats, and add conversation CTA.
+ * Uses progressive disclosure with accordion for details.
  */
 
-import { FileAudio, Glasses, MessageCircle, Plus, Target } from "lucide-react"
+import { ChevronDown, FileAudio, Glasses, Plus, Settings } from "lucide-react"
+import { useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import { Card, CardContent } from "~/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
+import { Progress } from "~/components/ui/progress"
 import { cn } from "~/lib/utils"
 
+/** Setup fields we track for completion */
+const SETUP_FIELDS = [
+	{ key: "research_goal", label: "Research Goal" },
+	{ key: "target_roles", label: "Target Roles" },
+	{ key: "target_orgs", label: "Target Organizations" },
+	{ key: "assumptions", label: "Assumptions" },
+	{ key: "unknowns", label: "Unknowns" },
+] as const
+
+export interface ProjectContext {
+	research_goal?: string | null
+	target_roles?: string[] | null
+	target_orgs?: string[] | null
+	assumptions?: string[] | null
+	unknowns?: string[] | null
+}
+
 export interface ContextPanelProps {
-	/** Project research goal text */
+	/** Project research goal text (legacy prop) */
 	researchGoal?: string
+	/** Full project context for % complete calculation */
+	projectContext?: ProjectContext
 	/** Total conversation count */
 	conversationCount: number
 	/** Number of active lenses */
@@ -25,120 +46,126 @@ export interface ContextPanelProps {
 	className?: string
 }
 
-interface QuickStatProps {
-	icon: React.ElementType
-	label: string
-	value: string | number
-	href?: string
+/** Calculate setup completion percentage */
+function calculateSetupCompletion(context?: ProjectContext, researchGoal?: string): number {
+	if (!context && !researchGoal) return 0
+
+	let filled = 0
+	const total = SETUP_FIELDS.length
+
+	// Check each field
+	if (context?.research_goal || researchGoal) filled++
+	if (context?.target_roles && context.target_roles.length > 0) filled++
+	if (context?.target_orgs && context.target_orgs.length > 0) filled++
+	if (context?.assumptions && context.assumptions.length > 0) filled++
+	if (context?.unknowns && context.unknowns.length > 0) filled++
+
+	return Math.round((filled / total) * 100)
 }
 
-function QuickStat({ icon: Icon, label, value, href }: QuickStatProps) {
-	const content = (
-		<div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
-			<div className="rounded-md bg-muted p-2">
-				<Icon className="h-4 w-4 text-muted-foreground" />
-			</div>
-			<div>
-				<p className="font-medium text-foreground text-sm">{value}</p>
-				<p className="text-muted-foreground text-xs">{label}</p>
-			</div>
-		</div>
-	)
+/** Get list of filled fields for display */
+function getFilledFields(context?: ProjectContext, researchGoal?: string): string[] {
+	const filled: string[] = []
 
-	if (href) {
-		return <Link to={href}>{content}</Link>
-	}
+	if (context?.research_goal || researchGoal) filled.push("Research Goal")
+	if (context?.target_roles && context.target_roles.length > 0) filled.push("Target Roles")
+	if (context?.target_orgs && context.target_orgs.length > 0) filled.push("Target Orgs")
+	if (context?.assumptions && context.assumptions.length > 0) filled.push("Assumptions")
+	if (context?.unknowns && context.unknowns.length > 0) filled.push("Unknowns")
 
-	return content
+	return filled
 }
 
 export function ContextPanel({
 	researchGoal,
+	projectContext,
 	conversationCount,
 	activeLensCount,
 	projectPath,
 	className,
 }: ContextPanelProps) {
+	const [isOpen, setIsOpen] = useState(false)
+	const completionPercent = calculateSetupCompletion(projectContext, researchGoal)
+	const filledFields = getFilledFields(projectContext, researchGoal)
+	const displayGoal = projectContext?.research_goal || researchGoal
+
 	return (
-		<aside className={cn("space-y-4", className)}>
-			{/* Add Conversation CTA */}
-			<Button asChild size="lg" className="w-full">
+		<aside className={cn("space-y-3", className)}>
+			{/* Add Conversation - Compact */}
+			<Button asChild size="sm" className="w-full">
 				<Link to={`${projectPath}/interviews/upload`}>
-					<Plus className="mr-2 h-4 w-4" />
+					<Plus className="mr-1.5 h-3.5 w-3.5" />
 					Add Conversation
 				</Link>
 			</Button>
 
-			{/* Project Context Card */}
+			{/* Quick Stats - Inline */}
+			<div className="flex gap-2">
+				<Link
+					to={`${projectPath}/interviews`}
+					className="flex flex-1 items-center justify-center gap-1.5 rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
+				>
+					<FileAudio className="h-3.5 w-3.5 text-muted-foreground" />
+					<span className="font-medium text-foreground text-sm">{conversationCount}</span>
+				</Link>
+				<Link
+					to={`${projectPath}/lens-library`}
+					className="flex flex-1 items-center justify-center gap-1.5 rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
+				>
+					<Glasses className="h-3.5 w-3.5 text-muted-foreground" />
+					<span className="font-medium text-foreground text-sm">{activeLensCount}</span>
+				</Link>
+			</div>
+
+			{/* Project Setup Progress - Collapsible */}
 			<Card>
-				<CardHeader className="pb-3">
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<CardTitle className="flex cursor-help items-center gap-2 text-sm">
-									<Target className="h-4 w-4" />
-									Project Context
-								</CardTitle>
-							</TooltipTrigger>
-							<TooltipContent side="bottom" className="max-w-xs">
-								<p className="text-sm">Your research goal and key project stats at a glance.</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					{/* Research Goal */}
-					{researchGoal ? (
-						<div>
-							<h4 className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wider">Research Goal</h4>
-							<p className="line-clamp-4 text-foreground text-sm leading-relaxed">{researchGoal}</p>
-							<Link to={`${projectPath}/setup`} className="mt-2 inline-block text-primary text-xs hover:underline">
-								Edit goal
-							</Link>
-						</div>
-					) : (
-						<div className="rounded-lg border border-muted-foreground/20 border-dashed p-3 text-center">
-							<p className="mb-2 text-muted-foreground text-sm">No research goal defined</p>
-							<Button asChild variant="outline" size="sm">
-								<Link to={`${projectPath}/setup`}>Set Goal</Link>
+				<Collapsible open={isOpen} onOpenChange={setIsOpen}>
+					<CollapsibleTrigger asChild>
+						<button
+							type="button"
+							className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-muted/50"
+						>
+							<Settings className="h-4 w-4 text-muted-foreground" />
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center justify-between">
+									<span className="font-medium text-foreground text-sm">Project Setup</span>
+									<span className="text-muted-foreground text-xs">{completionPercent}%</span>
+								</div>
+								<Progress value={completionPercent} className="mt-1.5 h-1" />
+							</div>
+							<ChevronDown
+								className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+							/>
+						</button>
+					</CollapsibleTrigger>
+
+					<CollapsibleContent>
+						<CardContent className="border-t px-3 pt-2 pb-3">
+							{/* Show filled fields */}
+							{filledFields.length > 0 ? (
+								<div className="space-y-2">
+									{displayGoal && (
+										<div>
+											<p className="text-muted-foreground text-xs">Goal</p>
+											<p className="line-clamp-2 text-foreground text-xs leading-relaxed">{displayGoal}</p>
+										</div>
+									)}
+									{filledFields.length > 1 && (
+										<p className="text-muted-foreground text-xs">
+											+{filledFields.length - 1} more field{filledFields.length > 2 ? "s" : ""} set
+										</p>
+									)}
+								</div>
+							) : (
+								<p className="text-muted-foreground text-xs">No setup completed yet</p>
+							)}
+
+							<Button asChild variant="outline" size="sm" className="mt-2 w-full">
+								<Link to={`${projectPath}/setup`}>{completionPercent < 100 ? "Complete Setup" : "Edit Setup"}</Link>
 							</Button>
-						</div>
-					)}
-
-					{/* Quick Stats */}
-					<div className="space-y-1 border-t pt-4">
-						<QuickStat
-							icon={FileAudio}
-							label="Conversations"
-							value={conversationCount}
-							href={`${projectPath}/interviews`}
-						/>
-						<QuickStat
-							icon={Glasses}
-							label="Active Lenses"
-							value={activeLensCount}
-							href={`${projectPath}/lens-library`}
-						/>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* AI Assistant Card */}
-			<Card className="bg-gradient-to-br from-primary/5 to-primary/10">
-				<CardContent className="p-4">
-					<div className="mb-3 flex items-center gap-2">
-						<div className="rounded-full bg-primary/10 p-2">
-							<MessageCircle className="h-4 w-4 text-primary" />
-						</div>
-						<h3 className="font-medium text-foreground text-sm">AI Assistant</h3>
-					</div>
-					<p className="mb-3 text-muted-foreground text-xs">
-						Ask questions about your conversations, get summaries, or explore insights.
-					</p>
-					<Button asChild variant="secondary" size="sm" className="w-full">
-						<Link to={`${projectPath}/assistant`}>Open Chat</Link>
-					</Button>
-				</CardContent>
+						</CardContent>
+					</CollapsibleContent>
+				</Collapsible>
 			</Card>
 		</aside>
 	)

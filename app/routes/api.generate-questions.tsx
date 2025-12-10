@@ -81,7 +81,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			// Load from database, keep custom_instructions from request
 			target_orgs = meta.target_orgs?.join?.(", ") || meta.target_orgs || target_orgs || ""
 			target_roles = meta.target_roles?.join?.(", ") || meta.target_roles || target_roles || ""
-			research_goal = meta.research_goal || research_goal || ""
+			// Use research_goal, fall back to customer_problem if not set
+			research_goal = meta.research_goal || meta.customer_problem || research_goal || ""
 			research_goal_details = meta.research_goal_details || research_goal_details || ""
 			assumptions = meta.assumptions?.join?.(", ") || meta.assumptions || assumptions || ""
 			unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
@@ -213,23 +214,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			questionCount = firstTime ? 8 : 10
 		}
 
-		// Final validation after potentially loading from database
-		const coreMissing: string[] = []
-		if (!target_roles?.trim()) coreMissing.push("target_roles")
-		if (!research_goal?.trim()) coreMissing.push("research_goal")
+		// Normalize empty values - project_sections kinds are dynamic, so work with whatever we have
 		research_goal_details = research_goal_details || ""
 		assumptions = assumptions || ""
 		unknowns = unknowns || ""
-		if (coreMissing.length > 0) {
-			const baseMsg = `Missing required fields: ${coreMissing.join(", ")}`
-			consola.warn(`[api.generate-questions] ${baseMsg} for project ${project_id}`)
-			return Response.json(
-				{
-					error: `${baseMsg}. Please complete project setup first by filling in your research goal and target roles.`,
-					missingFields: coreMissing,
-				},
-				{ status: 400 }
-			)
+
+		// Provide sensible defaults if key fields are missing - don't fail, just generate with less context
+		if (!research_goal?.trim()) {
+			research_goal = "General customer research"
+			consola.info(`[api.generate-questions] No research_goal for project ${project_id}, using default`)
+		}
+		if (!target_roles?.trim()) {
+			target_roles = "Target users"
+			consola.info(`[api.generate-questions] No target_roles for project ${project_id}, using default`)
 		}
 
 		consola.log("Generating questions (canonical) for:", {

@@ -12,6 +12,7 @@ import { cn } from "~/lib/utils"
 import type { Insight } from "~/types"
 import { ActiveDashboard } from "./ActiveDashboard"
 import { OnboardingDashboard } from "./OnboardingDashboard"
+import type { ProjectContext } from "./sections/ContextPanel"
 import type { LensActivityItem } from "./sections/LensFeed"
 
 export type DashboardState = "empty" | "processing" | "active"
@@ -33,6 +34,8 @@ export interface DashboardShellProps {
 	hasLenses: boolean
 	/** Project research goal text */
 	researchGoal?: string
+	/** Full project context for setup progress */
+	projectContext?: ProjectContext
 	/** Array of tasks */
 	tasks: Task[]
 	/** Array of insights */
@@ -85,6 +88,7 @@ export function DashboardShell({
 	hasGoals,
 	hasLenses,
 	researchGoal,
+	projectContext,
 	tasks,
 	insights,
 	lenses,
@@ -125,6 +129,7 @@ export function DashboardShell({
 							lenses={lenses}
 							recentActivity={recentActivity}
 							researchGoal={researchGoal}
+							projectContext={projectContext}
 							conversationCount={conversationCount}
 							activeLensCount={activeLensCount}
 							hideHeader
@@ -153,6 +158,7 @@ export function DashboardShell({
 					lenses={lenses}
 					recentActivity={recentActivity}
 					researchGoal={researchGoal}
+					projectContext={projectContext}
 					conversationCount={conversationCount}
 					activeLensCount={activeLensCount}
 				/>
