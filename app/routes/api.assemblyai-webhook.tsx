@@ -316,9 +316,34 @@ export async function action({ request }: ActionFunctionArgs) {
 				const { tasks } = await import("@trigger.dev/sdk")
 				const fetchedInterview = await supabase
 					.from("interviews")
-					.select("account_id, project_id, title")
+					.select("account_id, project_id, title, participant_pseudonym, person_id")
 					.eq("id", interviewId)
 					.single()
+
+				// Fetch linked participant names from interview_people
+				// This preserves names entered by users during upload
+				let participantName: string | undefined
+				const { data: interviewPeople } = await supabase
+					.from("interview_people")
+					.select("display_name, role, people(name)")
+					.eq("interview_id", interviewId)
+
+				if (interviewPeople?.length) {
+					// Prefer display_name, then linked person's name
+					const participant = interviewPeople.find((p) => p.role !== "interviewer") || interviewPeople[0]
+					participantName =
+						participant?.display_name ||
+						(participant?.people as { name: string | null } | null)?.name ||
+						undefined
+				}
+				// Fallback to participant_pseudonym from interview record
+				if (!participantName && fetchedInterview.data?.participant_pseudonym) {
+					const pseudonym = fetchedInterview.data.participant_pseudonym
+					// Only use if it's not a generic placeholder
+					if (pseudonym && !pseudonym.match(/^(Participant|Anonymous)\s*\d*$/i)) {
+						participantName = pseudonym
+					}
+				}
 
 				const metadata = {
 					accountId: fetchedInterview.data?.account_id,
@@ -326,6 +351,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					projectId: fetchedInterview.data?.project_id ?? undefined,
 					interviewTitle: fetchedInterview.data?.title ?? undefined,
 					fileName: uploadMetadata.file_name ?? undefined,
+					participantName, // Pass the linked person's name to BAML extraction
 				}
 
 				const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"

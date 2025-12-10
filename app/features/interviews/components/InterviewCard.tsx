@@ -81,31 +81,26 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 			>
 				{/* Card Content */}
 				<div className="p-5">
-					{/* Header - Interview Label */}
-					<div className="mb-3 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<MediaTypeIcon mediaType={interview.media_type} sourceType={interview.source_type} showLabel={true} />
-							{/* <span className="text-foreground/40 text-sm font-medium">Interview</span> */}
+					{/* Header - Title on left, Media Type on right */}
+					<div className="mb-3 flex items-start justify-between gap-3">
+						<h3 className="line-clamp-2 font-semibold text-foreground text-lg leading-tight dark:text-foreground">
+							{interviewTitle}
+						</h3>
+						<div className="flex shrink-0 items-center gap-2">
+							<MediaTypeIcon mediaType={interview.media_type} sourceType={interview.source_type} showLabel={true} iconClassName="h-4 w-4" labelClassName="text-xs font-medium" />
 						</div>
-						<Badge className={cn("font-medium text-xs", getStatusColor(interview.status))}>
+					</div>
+
+					{/* Participant Info */}
+					<div className="mb-4 flex items-center gap-2">
+						<Users className="h-4 w-4 text-gray-500" />
+						<span className="text-gray-600 text-sm dark:text-gray-400">{participantName}</span>
+						{participantSegment && participantSegment !== "Participant" && (
+							<span className="text-gray-400 text-sm">• {participantSegment}</span>
+						)}
+						<Badge className={cn("ml-auto font-medium text-xs", getStatusColor(interview.status))}>
 							{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 						</Badge>
-					</div>
-
-					{/* Interview Title - Prominent */}
-					<div className="mb-4">
-						<h3 className="line-clamp-2 flex items-center gap-2 font-semibold text-foreground text-lg dark:text-foreground">
-							<Users className="h-4 w-4" />
-							<span>{participantName}</span>
-							{participantSegment && participantSegment !== "Participant" && (
-								<span className="text-foreground/50">• {participantSegment}</span>
-							)}
-						</h3>
-					</div>
-
-					{/* Participants */}
-					<div className="mb-4">
-						<div className="flex items-center gap-2 text-gray-600 text-sm dark:text-gray-400">{interviewTitle}</div>
 					</div>
 
 					{/* Top Themes */}

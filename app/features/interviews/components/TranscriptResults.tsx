@@ -68,10 +68,29 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 	const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({})
 
 	// Create speaker name mapping from participants
+	// Handles AssemblyAI speaker keys ("A", "B") and transcript_key formats ("SPEAKER A", "A", "participant-1")
 	const getSpeakerName = (speakerKey: string): string => {
 		const normalizedKey = speakerKey.toUpperCase()
-		const participant = participants.find((p) => p.transcript_key?.toUpperCase() === normalizedKey)
+
+		// Try to find a matching participant
+		const participant = participants.find((p) => {
+			if (!p.transcript_key) return false
+			const tk = p.transcript_key.toUpperCase()
+
+			// Exact match
+			if (tk === normalizedKey) return true
+
+			// "SPEAKER A" matches "A"
+			if (tk === `SPEAKER ${normalizedKey}`) return true
+
+			// "A" matches "SPEAKER A"
+			if (`SPEAKER ${tk}` === normalizedKey) return true
+
+			return false
+		})
+
 		if (participant) {
+			// Prefer linked person name, then display_name, then fallback to Speaker label
 			return participant.people?.name || participant.display_name || `Speaker ${normalizedKey}`
 		}
 		return `Speaker ${normalizedKey}`

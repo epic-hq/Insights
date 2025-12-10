@@ -697,7 +697,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 									</Button>
 									<div className="flex-1">
 										<DialogTitle>New Contact/Organization</DialogTitle>
-										<DialogDescription>Quick details to get started</DialogDescription>
+										<DialogDescription>Link to Contact</DialogDescription>
 									</div>
 								</div>
 							</DialogHeader>
@@ -749,8 +749,8 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 									onClick={() => handleAttachmentSelect("new")}
 									disabled={!newPersonFirstName.trim()}
 								>
-									<Mic className="mr-2 h-4 w-4" />
-									Start Recording
+									{/* <Mic className="mr-2 h-4 w-4" /> */}
+									Create
 								</Button>
 							</div>
 						</>

@@ -293,24 +293,28 @@ ${questionsInput.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
 Please extract insights that specifically address these research questions and help understand ${primaryRole} at ${primaryOrg} better.`
 
-		let linkedPerson: { id: string; name: string | null; project_id: string | null } | null = null
-		if (personId) {
+		// Resolve linked person from personId (URL param) or entityId (form data from new contact dialog)
+		let linkedPerson: { id: string; name: string | null; project_id: string | null; company?: string | null } | null =
+			null
+		const personIdToResolve = personId || entityId
+		if (personIdToResolve) {
 			const { data: person, error: personError } = await supabase
 				.from("people")
-				.select("id, name, project_id")
-				.eq("id", personId)
+				.select("id, name, project_id, company")
+				.eq("id", personIdToResolve)
 				.maybeSingle()
 
 			if (personError || !person) {
-				consola.error("Failed to resolve person for recording", personError)
-				return Response.json({ error: "Unable to link person to interview" }, { status: 400 })
+				consola.error("Failed to resolve person for recording", { personIdToResolve, personError })
+				// Don't fail - just continue without linking
+				consola.warn("Continuing without person link")
+			} else {
+				if (person.project_id && projectId && person.project_id !== projectId) {
+					consola.warn("Person project mismatch", { personProject: person.project_id, requestedProject: projectId })
+				}
+				linkedPerson = person
+				consola.info("Resolved linked person:", { id: person.id, name: person.name, company: person.company })
 			}
-
-			if (person.project_id && projectId && person.project_id !== projectId) {
-				consola.warn("Person project mismatch", { personProject: person.project_id, requestedProject: projectId })
-			}
-
-			linkedPerson = person
 		}
 
 		const interviewDate = new Date()
@@ -342,7 +346,7 @@ Please extract insights that specifically address these research questions and h
 			status: "uploaded", // Starting status for pipeline
 			source_type: sourceType || undefined, // Store source type (audio_upload, video_upload, document, transcript)
 			file_extension: fileExtension || undefined, // Store file extension
-			person_id: entityId || linkedPerson?.id || undefined, // Link to person if provided
+			person_id: linkedPerson?.id || undefined, // Link to person if provided
 		} as InterviewInsert
 
 		const interviewSpan = trace?.span?.({
@@ -391,10 +395,25 @@ Please extract insights that specifically address these research questions and h
 			interviewId: interview.id,
 		})
 
+		// Create interview_people junction record for linked person
+		// Note: transcript_key will be set later during BAML extraction when we know which speaker this person is
 		if (linkedPerson) {
-			await supabase
-				.from("interview_people")
-				.upsert({ interview_id: interview.id, person_id: linkedPerson.id }, { onConflict: "interview_id,person_id" })
+			consola.info("🔗 [ONBOARDING] Creating initial interview_people link", {
+				interviewId: interview.id,
+				personId: linkedPerson.id,
+				personName: linkedPerson.name,
+			})
+			await supabase.from("interview_people").upsert(
+				{
+					interview_id: interview.id,
+					person_id: linkedPerson.id,
+					project_id: finalProjectId,
+					role: "participant",
+					display_name: linkedPerson.name || null,
+					// Note: transcript_key is intentionally null here - it will be matched to a speaker during BAML extraction
+				},
+				{ onConflict: "interview_id,person_id" }
+			)
 		}
 
 		consola.log("Created interview:", interview.id)

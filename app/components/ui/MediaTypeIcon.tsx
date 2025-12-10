@@ -21,12 +21,12 @@ const sourceTypeConfig = {
 	},
 	audio_upload: {
 		icon: FileAudio,
-		label: "Audio Upload",
+		label: "Audio",
 		color: "text-blue-600",
 	},
 	video_upload: {
 		icon: FileVideo,
-		label: "Video Upload",
+		label: "Video",
 		color: "text-purple-600",
 	},
 	document: {

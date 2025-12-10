@@ -159,6 +159,7 @@ export const getInterviewParticipants = async ({
 				id,
 				name,
 				segment,
+				company,
 				description,
 				contact_info,
 				people_personas (

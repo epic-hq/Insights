@@ -402,6 +402,7 @@ type EvidenceTurn = EvidenceFromBaml["evidence"][number]
 
 interface NormalizedParticipant {
 	person_key: string
+	speaker_label: string | null // AssemblyAI speaker label (e.g., "SPEAKER A")
 	role: string | null
 	display_name: string | null
 	inferred_name: string | null
@@ -763,6 +764,18 @@ export async function extractEvidenceAndPeopleCore({
 		? (((evidenceResponse as { people?: EvidenceParticipant[] }).people ?? []) as EvidenceParticipant[])
 		: []
 	consola.info(`📋 Phase 1 extracted ${rawPeople.length} people from transcript`)
+	// Debug: Log raw BAML people output
+	for (let i = 0; i < rawPeople.length; i++) {
+		const raw = rawPeople[i] as any
+		consola.info(`📋 BAML Person ${i}:`, {
+			person_key: raw?.person_key,
+			speaker_label: raw?.speaker_label,
+			display_name: raw?.display_name,
+			inferred_name: raw?.inferred_name,
+			person_name: raw?.person_name,
+			role: raw?.role,
+		})
+	}
 	const participants: NormalizedParticipant[] = []
 	const participantByKey = new Map<string, NormalizedParticipant>()
 
@@ -781,6 +794,8 @@ export async function extractEvidenceAndPeopleCore({
 			person_key = `${person_key}-${i}`
 		}
 		const role = coerceString((raw as EvidenceParticipant).role)
+		// Extract speaker_label from BAML Person (AssemblyAI format like "SPEAKER A")
+		const speaker_label = coerceString((raw as any).speaker_label)
 		const display_name = coerceString((raw as EvidenceParticipant).display_name)
 		const inferred_name = coerceString((raw as EvidenceParticipant).inferred_name)
 		const organization = coerceString((raw as EvidenceParticipant).organization)
@@ -830,6 +845,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		const normalized: NormalizedParticipant = {
 			person_key,
+			speaker_label,
 			role,
 			display_name,
 			inferred_name,
@@ -850,6 +866,7 @@ export async function extractEvidenceAndPeopleCore({
 		const fallbackName = metadata.participantName?.trim() || generateFallbackPersonName(metadata)
 		const fallbackParticipant: NormalizedParticipant = {
 			person_key: fallbackKey,
+			speaker_label: null,
 			role: null,
 			display_name: fallbackName,
 			inferred_name: fallbackName,
@@ -1239,6 +1256,7 @@ export async function extractEvidenceAndPeopleCore({
 	const personIdByKey = new Map<string, string>()
 	const personNameByKey = new Map<string, string>()
 	const keyByPersonId = new Map<string, string>()
+	const speakerLabelByPersonId = new Map<string, string>() // AssemblyAI speaker label (e.g., "SPEAKER A")
 	const displayNameByKey = new Map<string, string>()
 	const personRoleById = new Map<string, string | null>()
 
@@ -1335,6 +1353,10 @@ export async function extractEvidenceAndPeopleCore({
 			personIdByKey.set(participantKey, personRecord.id)
 			personNameByKey.set(participantKey, personRecord.name)
 			keyByPersonId.set(personRecord.id, participantKey)
+			// Use speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key
+			if (participant.speaker_label) {
+				speakerLabelByPersonId.set(personRecord.id, participant.speaker_label)
+			}
 			const preferredDisplayName = participant.display_name?.trim() || personRecord.name || null
 			if (preferredDisplayName) {
 				displayNameByKey.set(participantKey, preferredDisplayName)
@@ -1389,19 +1411,150 @@ export async function extractEvidenceAndPeopleCore({
 	for (const id of personIdByKey.values()) ensuredPersonIds.add(id)
 	for (const personId of ensuredPersonIds) {
 		const role = personRoleById.get(personId) ?? null
+		const personKey = keyByPersonId.get(personId) ?? null
+		// Prefer speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key,
+		// fall back to person_key (BAML format like "participant-1") if speaker_label not available
+		const transcriptKey = speakerLabelByPersonId.get(personId) ?? personKey
+
+		consola.info(`🔗 Creating interview_people for person ${personId}:`, {
+			personKey,
+			speakerLabel: speakerLabelByPersonId.get(personId),
+			transcriptKey,
+			role,
+		})
+
+		// Check existing interview_people record to preserve user-entered display_name
+		const { data: existingLink } = await db
+			.from("interview_people")
+			.select("display_name")
+			.eq("interview_id", interviewRecord.id)
+			.eq("person_id", personId)
+			.single()
+
+		const existingDisplayName = existingLink?.display_name
+		const isExistingDisplayNameGeneric =
+			!existingDisplayName ||
+			/^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingDisplayName)
+
+		const bamlDisplayName = personKey ? (displayNameByKey.get(personKey) ?? null) : null
+		const isBamlDisplayNameGeneric =
+			!bamlDisplayName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(bamlDisplayName)
+
+		// Preserve existing non-generic display_name, only use BAML value if existing is generic or BAML has a better name
+		const finalDisplayName =
+			!isExistingDisplayNameGeneric ? existingDisplayName : isBamlDisplayNameGeneric ? existingDisplayName : bamlDisplayName
+
 		const linkPayload: InterviewPeopleInsert = {
 			interview_id: interviewRecord.id,
 			person_id: personId,
 			project_id: metadata.projectId ?? null,
 			role,
-			transcript_key: keyByPersonId.get(personId) ?? null,
-			display_name: keyByPersonId.get(personId) ? (displayNameByKey.get(keyByPersonId.get(personId)!) ?? null) : null,
+			transcript_key: transcriptKey,
+			display_name: finalDisplayName,
 		}
 		const { error: linkErr } = await db
 			.from("interview_people")
 			.upsert(linkPayload, { onConflict: "interview_id,person_id" })
 		if (linkErr && !linkErr.message?.includes("duplicate")) {
 			consola.warn(`Failed linking person ${personId} to interview ${interviewRecord.id}`, linkErr.message)
+		}
+	}
+
+	// Ensure ALL transcript speakers have interview_people records, not just BAML-extracted ones
+	// This handles the case where BAML only extracts the primary participant but not the interviewer
+	const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>).speaker_transcripts
+	consola.info(`🎙️  Checking transcript speakers for interview ${interviewRecord.id}`, {
+		hasSpeakerTranscripts: Array.isArray(speakerTranscriptsRaw),
+		speakerTranscriptsCount: Array.isArray(speakerTranscriptsRaw) ? speakerTranscriptsRaw.length : 0,
+	})
+
+	if (Array.isArray(speakerTranscriptsRaw) && speakerTranscriptsRaw.length > 0) {
+		// Get unique speaker labels from transcript
+		const uniqueSpeakers = new Set<string>()
+		for (const utterance of speakerTranscriptsRaw as Array<Record<string, unknown>>) {
+			const speaker = typeof utterance.speaker === "string" ? utterance.speaker.trim() : ""
+			if (speaker) uniqueSpeakers.add(speaker)
+		}
+
+		consola.info(`🎙️  Found unique speakers in transcript: ${Array.from(uniqueSpeakers).join(", ")}`)
+
+		// Get existing transcript_keys that are already linked
+		const existingTranscriptKeys = new Set<string>()
+		const { data: existingLinks } = await db
+			.from("interview_people")
+			.select("transcript_key")
+			.eq("interview_id", interviewRecord.id)
+		if (existingLinks) {
+			for (const link of existingLinks) {
+				if (link.transcript_key) {
+					// Normalize to uppercase for comparison
+					existingTranscriptKeys.add(link.transcript_key.toUpperCase())
+				}
+			}
+		}
+
+		consola.info(`🎙️  Existing transcript_keys in interview_people: ${Array.from(existingTranscriptKeys).join(", ") || "(none)"}`)
+
+		// Find speakers without interview_people records
+		const missingSpeakers: string[] = []
+		for (const speaker of uniqueSpeakers) {
+			const normalizedSpeaker = speaker.toUpperCase()
+			// Check if this speaker is already linked (could be "A", "SPEAKER A", etc.)
+			const isLinked =
+				existingTranscriptKeys.has(normalizedSpeaker) ||
+				existingTranscriptKeys.has(`SPEAKER ${normalizedSpeaker}`) ||
+				(normalizedSpeaker.startsWith("SPEAKER ") && existingTranscriptKeys.has(normalizedSpeaker.replace("SPEAKER ", "")))
+
+			consola.debug(`🎙️  Speaker "${speaker}" (normalized: "${normalizedSpeaker}") isLinked: ${isLinked}`)
+
+			if (!isLinked) {
+				missingSpeakers.push(speaker)
+			}
+		}
+
+		if (missingSpeakers.length > 0) {
+			consola.info(`🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`)
+
+			for (const speakerLabel of missingSpeakers) {
+				// Create a placeholder person record for this speaker
+				// The user can later link them to a real person or the system can auto-link to the uploading user
+				const placeholderName = `Speaker ${speakerLabel.replace(/^SPEAKER\s*/i, "").toUpperCase()}`
+				const { data: placeholderPerson, error: personErr } = await db
+					.from("people")
+					.insert({
+						account_id: metadata.accountId,
+						name: placeholderName,
+						source: "interview_upload",
+					})
+					.select("id, name")
+					.single()
+
+				if (personErr || !placeholderPerson) {
+					consola.warn(`Failed to create placeholder person for speaker ${speakerLabel}:`, personErr?.message)
+					continue
+				}
+
+				// Determine role - if we already have a primary participant, this is likely the interviewer
+				const speakerRole = primaryPersonId && ensuredPersonIds.size > 0 ? "interviewer" : null
+
+				const linkPayload: InterviewPeopleInsert = {
+					interview_id: interviewRecord.id,
+					person_id: placeholderPerson.id,
+					project_id: metadata.projectId ?? null,
+					role: speakerRole,
+					transcript_key: speakerLabel.toUpperCase().startsWith("SPEAKER ") ? speakerLabel : `SPEAKER ${speakerLabel}`.toUpperCase(),
+					display_name: placeholderName,
+				}
+
+				const { error: linkErr } = await db
+					.from("interview_people")
+					.upsert(linkPayload, { onConflict: "interview_id,person_id" })
+				if (linkErr && !linkErr.message?.includes("duplicate")) {
+					consola.warn(`Failed linking placeholder speaker ${speakerLabel} to interview:`, linkErr.message)
+				} else {
+					consola.info(`  ✅ Created interview_people record for speaker "${speakerLabel}" as ${speakerRole || "unknown role"}`)
+				}
+			}
 		}
 	}
 
@@ -1648,11 +1801,30 @@ export async function analyzeThemesAndPersonaCore({
 	}
 
 	const personData = evidenceResult.personData
+
+	// Check if the person already has a real (non-generic) name that we should preserve
+	// This prevents BAML-extracted generic names from overwriting user-entered names
+	const { data: existingPerson } = await db
+		.from("people")
+		.select("firstname, lastname, name")
+		.eq("id", personData.id)
+		.single()
+
+	const existingName = existingPerson?.name || `${existingPerson?.firstname || ""} ${existingPerson?.lastname || ""}`.trim()
+	const isExistingNameGeneric = !existingName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingName)
+
 	const personName = participant?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
-	const { firstname, lastname } = parseFullName(personName)
+	const isNewNameGeneric = /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(personName)
+
+	// Only update name if:
+	// 1. Existing name is generic (user didn't enter a real name), OR
+	// 2. New name is NOT generic (BAML found a real name in the transcript)
+	const shouldUpdateName = isExistingNameGeneric || !isNewNameGeneric
+	const { firstname, lastname } = shouldUpdateName ? parseFullName(personName) : { firstname: null, lastname: null }
+
 	const personUpdatePayload: PeopleUpdate = {
-		firstname: firstname || null,
-		lastname: lastname || null,
+		// Only update name fields if we should
+		...(shouldUpdateName && { firstname: firstname || null, lastname: lastname || null }),
 		description: participant?.participantDescription?.trim() || evidenceResult.primaryPersonDescription || null,
 		segment: participant?.segment?.trim() || evidenceResult.primaryPersonSegments[0] || metadata.segment || null,
 		contact_info: participant?.contactInfo || null,
@@ -1660,6 +1832,11 @@ export async function analyzeThemesAndPersonaCore({
 		role: evidenceResult.primaryPersonRole || null,
 		preferences: participant?.facetSummary ?? null,
 	}
+
+	if (!shouldUpdateName) {
+		consola.info(`Preserving user-entered name "${existingName}" (not overwriting with "${personName}")`)
+	}
+
 	const { error: personUpdateErr } = await db.from("people").update(personUpdatePayload).eq("id", personData.id)
 	if (personUpdateErr) {
 		consola.warn("Failed to update primary person with participant details", personUpdateErr.message)

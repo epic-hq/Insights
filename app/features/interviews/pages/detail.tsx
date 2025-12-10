@@ -2,7 +2,7 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { BotMessageSquare, Briefcase, Edit2, Loader2, MoreVertical, Sparkles, User, XCircle } from "lucide-react"
+import { AlertTriangle, BotMessageSquare, Briefcase, Edit2, Loader2, MoreVertical, Sparkles, User, Users, XCircle } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
@@ -11,6 +11,7 @@ import type { Database } from "~/../supabase/types"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
@@ -42,6 +43,7 @@ import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { DocumentViewer } from "../components/DocumentViewer"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
+import { ManagePeopleAssociations } from "../components/ManagePeopleAssociations"
 import { NoteViewer } from "../components/NoteViewer"
 
 // Helper to parse full name into first and last
@@ -462,6 +464,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				id?: string
 				name?: string | null
 				segment?: string | null
+				company?: string | null
 				project_id?: string | null
 				people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
 			}
@@ -486,6 +489,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						id: string
 						name: string | null
 						segment: string | null
+						company: string | null
 						project_id: string | null
 						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
 						[key: string]: unknown
@@ -497,6 +501,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						id: person.id,
 						name: person.name,
 						segment: person.segment,
+						company: person.company,
 						project_id: person.project_id,
 						people_personas: Array.isArray(person.people_personas)
 							? person.people_personas.map((pp) => ({
@@ -951,6 +956,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		conversationAnalysis?.customLenses ?? {}
 	)
 	const [_isChatOpen, _setIsChatOpen] = useState(() => assistantMessages.length > 0)
+	const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false)
 
 	// Create evidence map for lens timestamp hydration
 	const evidenceMap = useMemo(() => {
@@ -1462,6 +1468,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			: null
 
 	return (
+		<>
 		<div className="relative mx-auto mt-6 w-full max-w-5xl px-4 sm:px-6 lg:px-8">
 			{/* <InterviewCopilotDrawer
 				open={isChatOpen}
@@ -1649,63 +1656,86 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-					{/* Participant info - shows all participants */}
-					<div className="flex flex-wrap items-center gap-3 text-sm">
-						{participants.length > 0 ? (
-							<>
-								<span className="text-muted-foreground">
-									{participants.length === 1 ? "Participant:" : "Participants:"}
-								</span>
-								{participants.map((participant, idx) => {
-									const person = participant.people as {
-										id?: string
-										name?: string | null
-										segment?: string | null
-									} | null
+					{/* Participant info - with edit capability */}
+					{(() => {
+						// Check if participants need attention (no linked person, or placeholder names)
+						const hasUnlinkedParticipants = participants.some((p) => !p.people?.id)
+						const hasPlaceholderNames = participants.some((p) => {
+							const name = p.people?.name || p.display_name || ""
+							return !name || /^(Participant|Interviewer)\s*\d*$/i.test(name)
+						})
+						const needsAttention = participants.length > 0 && (hasUnlinkedParticipants || hasPlaceholderNames)
 
-									const displayName =
-										person?.name ||
-										participant.display_name ||
-										(participant.transcript_key ? `Speaker ${participant.transcript_key}` : `Participant ${idx + 1}`)
+						// Get linked participants with real names for display
+						const linkedParticipants = participants.filter((p) => {
+							const person = p.people as { id?: string; name?: string | null } | null
+							return person?.id && person?.name && !/^(Participant|Interviewer)\s*\d*$/i.test(person.name)
+						})
 
-									return (
-										<div key={participant.id} className="flex items-center gap-2">
-											{person?.id ? (
-												<Link
-													to={routes.people.detail(person.id)}
-													className="font-medium text-foreground hover:underline"
-												>
-													{displayName}
-												</Link>
-											) : (
-												<span className="font-medium text-foreground">{displayName}</span>
-											)}
-											{participant.role && (
-												<Badge variant="outline" className="text-xs">
-													{participant.role}
-												</Badge>
-											)}
-											{person?.segment && (
-												<Badge variant="outline" className="text-xs">
-													{person.segment}
-												</Badge>
-											)}
-											{participant.transcript_key && (
-												<Badge variant="secondary" className="text-xs">
-													Speaker {participant.transcript_key}
-												</Badge>
-											)}
-										</div>
-									)
-								})}
-							</>
-						) : interview.participant_pseudonym ? (
-							<>
-								<span className="text-muted-foreground">Participant:</span>
-								<span className="font-medium text-foreground">{interview.participant_pseudonym}</span>
-							</>
-						) : null}
-					</div>
+						return (
+							<div className="flex flex-wrap items-center gap-3 text-sm">
+								{linkedParticipants.length > 0 ? (
+									<>
+										<span className="text-muted-foreground">
+											{linkedParticipants.length === 1 ? "Participant:" : "Participants:"}
+										</span>
+										{linkedParticipants.map((participant) => {
+											const person = participant.people as {
+												id: string
+												name: string
+												segment?: string | null
+												company?: string | null
+											}
+											return (
+												<div key={participant.id} className="flex items-center gap-1.5">
+													<Link
+														to={routes.people.detail(person.id)}
+														className="font-medium text-foreground hover:underline"
+													>
+														{person.name}
+													</Link>
+													{person.company && (
+														<span className="text-muted-foreground">({person.company})</span>
+													)}
+													{person.segment && person.segment !== "Unknown" && (
+														<Badge variant="outline" className="text-xs">
+															{person.segment}
+														</Badge>
+													)}
+												</div>
+											)
+										})}
+									</>
+								) : interview.participant_pseudonym &&
+								  interview.participant_pseudonym !== "Anonymous" &&
+								  interview.participant_pseudonym !== "Participant 1" ? (
+									<>
+										<span className="text-muted-foreground">Participant:</span>
+										<span className="font-medium text-foreground">{interview.participant_pseudonym}</span>
+									</>
+								) : null}
+
+								{/* Edit button - always show if there are participants, with warning if needs attention */}
+								{participants.length > 0 && (
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => setParticipantsDialogOpen(true)}
+										className={cn(
+											"h-7 gap-1.5 px-2",
+											needsAttention && "text-amber-600 hover:text-amber-700"
+										)}
+									>
+										{needsAttention && <AlertTriangle className="h-3.5 w-3.5" />}
+										<Users className="h-3.5 w-3.5" />
+										<span className="text-xs">
+											{needsAttention ? "Link speakers" : "Edit"}
+										</span>
+									</Button>
+								)}
+							</div>
+						)
+					})()}
 
 					{/* Metadata - single line */}
 					<div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
@@ -1956,6 +1986,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						interviewId={interview.id}
 						hasTranscript={interview.hasTranscript}
 						hasFormattedTranscript={interview.hasFormattedTranscript}
+						participants={participants}
 					/>
 				</div>
 
@@ -1963,6 +1994,38 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
 			</div>
 		</div>
+
+		{/* Participants Management Dialog */}
+		<Dialog open={participantsDialogOpen} onOpenChange={setParticipantsDialogOpen}>
+			<DialogContent className="max-w-lg">
+				<DialogHeader>
+					<DialogTitle>Manage Participants</DialogTitle>
+				</DialogHeader>
+				<p className="text-muted-foreground text-sm mb-4">
+					Link speakers from the transcript to people in your project. This helps track insights across conversations.
+				</p>
+				<ManagePeopleAssociations
+					interviewId={interview.id}
+					participants={participants.map((p) => ({
+						id: String(p.id),
+						role: p.role,
+						transcript_key: p.transcript_key,
+						display_name: p.display_name,
+						people: p.people
+							? { id: (p.people as any).id, name: (p.people as any).name }
+							: null,
+					}))}
+					availablePeople={peopleOptions.map((p) => ({
+						id: p.id,
+						name: p.name,
+					}))}
+					onUpdate={() => {
+						revalidator.revalidate()
+					}}
+				/>
+			</DialogContent>
+		</Dialog>
+		</>
 	)
 }
 

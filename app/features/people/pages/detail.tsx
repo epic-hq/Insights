@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, UserCircle } from "lucide-react"
+import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, Trash2, UserCircle } from "lucide-react"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import {
@@ -24,7 +24,7 @@ import { InlineEditableField } from "~/components/ui/InlineEditableField"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
-import { getPersonById, updatePerson } from "~/features/people/db"
+import { deletePerson, getPersonById, updatePerson } from "~/features/people/db"
 import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -334,6 +334,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		return redirect(routes.people.detail(personId))
 	}
 
+	if (intent === "delete") {
+		try {
+			await deletePerson({
+				supabase,
+				id: personId,
+				accountId,
+				projectId,
+			})
+			return redirect(routes.people.index())
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to delete person"
+			consola.error("Failed to delete person:", error)
+			return { delete: { error: message } }
+		}
+	}
+
 	if (intent === "create-and-link-organization") {
 		const name = (formData.get("name") as string | null)?.trim()
 		if (!name) {
@@ -620,6 +636,21 @@ export default function PersonDetail() {
 							>
 								<RefreshCw className="mr-2 h-4 w-4" />
 								{isRefreshingDescription ? "Refreshing..." : "Refresh Description"}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								className="text-destructive focus:text-destructive"
+								onClick={() => {
+									if (
+										window.confirm(
+											`Are you sure you want to delete ${person.name || "this person"}? This action cannot be undone.`
+										)
+									) {
+										refreshFetcher.submit({ _action: "delete" }, { method: "post" })
+									}
+								}}
+							>
+								<Trash2 className="mr-2 h-4 w-4" />
+								Delete Person
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>

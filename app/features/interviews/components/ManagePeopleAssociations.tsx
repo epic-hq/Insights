@@ -78,53 +78,77 @@ export function ManagePeopleAssociations({
 		setOpenPopoverId(null)
 	}
 
+	// Format transcript key to a clean speaker label
+	// Handles both AssemblyAI format ("A", "SPEAKER A") and BAML format ("participant-1", "interviewer-1")
+	const formatSpeakerLabel = (transcriptKey: string | null, idx: number): string => {
+		if (!transcriptKey) return `Speaker ${idx + 1}`
+
+		// Single letter like "A", "B" -> "Speaker A", "Speaker B"
+		if (/^[A-Z]$/i.test(transcriptKey)) {
+			return `Speaker ${transcriptKey.toUpperCase()}`
+		}
+		// Already formatted like "SPEAKER A", "Speaker B" -> "Speaker A"
+		if (/^SPEAKER\s+[A-Z]$/i.test(transcriptKey)) {
+			return `Speaker ${transcriptKey.split(/\s+/)[1].toUpperCase()}`
+		}
+		// BAML format: "participant-1" -> "Participant 1", "interviewer-1" -> "Interviewer 1"
+		if (/^(participant|interviewer|observer|moderator)-\d+$/i.test(transcriptKey)) {
+			const [role, num] = transcriptKey.split("-")
+			return `${role.charAt(0).toUpperCase()}${role.slice(1)} ${num}`
+		}
+		// Fallback - just use the key
+		return transcriptKey
+	}
+
 	return (
-		<div className="space-y-3">
+		<div className="space-y-2">
 			<h4 className="font-medium text-sm">Interview Participants</h4>
 			<div className="space-y-2">
 				{participants.map((participant, idx) => {
-					const speakerLabel = participant.transcript_key
-						? `Speaker ${participant.transcript_key}`
-						: participant.display_name || `Participant ${idx + 1}`
-
+					const speakerLabel = formatSpeakerLabel(participant.transcript_key, idx)
 					const linkedPerson = participant.people
 
 					return (
-						<div key={participant.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-							<div className="flex flex-1 items-center gap-3">
-								<div className="min-w-[120px] font-medium text-sm">{speakerLabel}</div>
-								{linkedPerson ? (
-									<div className="flex items-center gap-2">
-										<Check className="h-4 w-4 text-green-600" />
-										<span className="text-muted-foreground text-sm">Linked to:</span>
-										<span className="font-medium text-sm">{linkedPerson.name || "Unnamed Person"}</span>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => unlinkPerson(participant.id)}
-											disabled={fetcher.state !== "idle"}
-										>
-											<X className="h-4 w-4" />
-										</Button>
-									</div>
-								) : (
-									<span className="text-muted-foreground text-sm">Not linked to anyone</span>
-								)}
-							</div>
+						<div key={participant.id} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+							<div className="min-w-[80px] font-medium text-sm">{speakerLabel}</div>
+
+							{linkedPerson ? (
+								<>
+									<Check className="h-4 w-4 shrink-0 text-green-600" />
+									<span className="text-muted-foreground text-sm">Linked to:</span>
+									<span className="font-medium text-sm">{linkedPerson.name || "Unnamed"}</span>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="ml-auto h-7 w-7"
+										onClick={() => unlinkPerson(participant.id)}
+										disabled={fetcher.state !== "idle"}
+									>
+										<X className="h-3.5 w-3.5" />
+									</Button>
+								</>
+							) : (
+								<span className="text-muted-foreground text-sm">Not linked</span>
+							)}
 
 							<Popover
 								open={openPopoverId === participant.id}
 								onOpenChange={(open) => setOpenPopoverId(open ? participant.id : null)}
 							>
 								<PopoverTrigger asChild>
-									<Button variant="outline" size="sm" disabled={fetcher.state !== "idle"}>
+									<Button
+										variant="outline"
+										size="sm"
+										className={cn("h-7 text-xs", linkedPerson ? "" : "ml-auto")}
+										disabled={fetcher.state !== "idle"}
+									>
 										{linkedPerson ? "Change Person" : "Link Person"}
-										<ChevronDown className="ml-2 h-4 w-4" />
+										<ChevronDown className="ml-1 h-3.5 w-3.5" />
 									</Button>
 								</PopoverTrigger>
-								<PopoverContent className="w-[300px] p-0" align="end">
+								<PopoverContent className="w-[280px] p-0" align="end">
 									<Command>
-										<CommandInput placeholder="Search people or create new..." />
+										<CommandInput placeholder="Search or create..." />
 										<CommandList>
 											<CommandEmpty>
 												<Button

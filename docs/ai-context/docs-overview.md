@@ -80,6 +80,7 @@ This project has extensive documentation organized by purpose. AI agents should 
 | **Task System** | [Proposal](/docs/features/task-system-proposal.md) | [Design](/docs/features/task-system-technical-design.md) |
 | **BANT Lens** | [User Guide](/docs/features/bant-lens-user-guide.md) | [Technical](/docs/features/bant-lens-technical-design.md) |
 | **Onboarding** | [Flow](/docs/features/onboarding-flow.md) | [Storyboard](/docs/features/onboarding-storyboard.md) |
+| **People Linking** | [Overview](/docs/features/people-linking/README.md) | [Implementation](/docs/features/people-linking/implementation.md) |
 | **Settings** | - | [Architecture](/docs/features/settings-architecture.md) |
 | **Project Chat** | [PRD](/docs/features/project-chat.md) | - |
 | **Signup Chat** | [PRD](/docs/features/signup-chat.md) | - |

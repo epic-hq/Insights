@@ -289,7 +289,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 						</div>
 					</div>
 				) : viewMode === "cards" ? (
-					<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+					<div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
 						{filteredInterviews.map((item) =>
 							item.source_type === "note" ? (
 								<NoteCard key={item.id} note={item as any} />
@@ -371,10 +371,10 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
 													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
-															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-															: interview.status === "transcribed"
-																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+														: interview.status === "transcribed"
+															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+															: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
 														}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
