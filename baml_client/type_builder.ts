@@ -31,6 +31,8 @@ export default class TypeBuilder {
     
     AuthorityInfo: ClassViewer<'AuthorityInfo', "decision_maker_identified" | "decision_maker_name" | "decision_maker_role" | "approval_process" | "stakeholders_involved" | "blockers" | "political_dynamics" | "confidence" | "evidence_ids">;
     
+    AutoGroupThemesResponse: ClassViewer<'AutoGroupThemesResponse', "themes">;
+    
     AutoInsightsResponse: ClassViewer<'AutoInsightsResponse', "executive_summary" | "top_opportunities" | "critical_insights" | "persona_analysis" | "competitive_considerations" | "immediate_actions" | "strategic_recommendations">;
     
     BatchEvaluationResult: ClassViewer<'BatchEvaluationResult', "evaluations" | "overall_summary" | "top_priorities">;
@@ -245,6 +247,8 @@ export default class TypeBuilder {
     
     ProjectTemplateOut: ClassViewer<'ProjectTemplateOut', "template_key" | "target_orgs" | "target_roles" | "research_goal" | "research_goal_details" | "decision_questions" | "assumptions" | "unknowns" | "custom_instructions">;
     
+    ProposedTheme: ClassViewer<'ProposedTheme', "name" | "statement" | "inclusion_criteria" | "exclusion_criteria" | "synonyms" | "anti_examples" | "links">;
+    
     Question: ClassViewer<'Question', "id" | "text" | "categoryId" | "rationale" | "tags" | "scores" | "estimatedMinutes" | "status" | "source" | "displayOrder" | "externalRef">;
     
     QuestionAnalysisSummary: ClassViewer<'QuestionAnalysisSummary', "question_id" | "question_kind" | "decision_question_id" | "confidence" | "summary" | "goal_achievement_summary" | "next_steps">;
@@ -313,6 +317,8 @@ export default class TypeBuilder {
     
     TargetFitAssessment: ClassViewer<'TargetFitAssessment', "criterion_type" | "criterion_value" | "fit_assessment" | "reasoning" | "signals" | "evidence_ids">;
     
+    ThemeLink: ClassViewer<'ThemeLink', "evidence_id" | "rationale" | "confidence">;
+    
     TimelineInfo: ClassViewer<'TimelineInfo', "urgency_level" | "target_date" | "deadline_type" | "implementation_timeline" | "external_drivers" | "confidence" | "evidence_ids">;
     
     TopPainCell: ClassViewer<'TopPainCell', "pain_name" | "user_group" | "impact_score" | "frequency" | "intensity" | "willingness_to_pay" | "person_count" | "evidence_count" | "sample_quote">;
@@ -334,7 +340,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","SectionSynthesis","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
+            "ActionButton","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","SectionSynthesis","Set","SetRecord","Source","SpeakerUtterance","Spectrum","StakeholderRole","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","ThemeLink","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -348,6 +354,10 @@ export default class TypeBuilder {
         
         this.AuthorityInfo = this.tb.classViewer("AuthorityInfo", [
           "decision_maker_identified","decision_maker_name","decision_maker_role","approval_process","stakeholders_involved","blockers","political_dynamics","confidence","evidence_ids",
+        ]);
+        
+        this.AutoGroupThemesResponse = this.tb.classViewer("AutoGroupThemesResponse", [
+          "themes",
         ]);
         
         this.AutoInsightsResponse = this.tb.classViewer("AutoInsightsResponse", [
@@ -778,6 +788,10 @@ export default class TypeBuilder {
           "template_key","target_orgs","target_roles","research_goal","research_goal_details","decision_questions","assumptions","unknowns","custom_instructions",
         ]);
         
+        this.ProposedTheme = this.tb.classViewer("ProposedTheme", [
+          "name","statement","inclusion_criteria","exclusion_criteria","synonyms","anti_examples","links",
+        ]);
+        
         this.Question = this.tb.classViewer("Question", [
           "id","text","categoryId","rationale","tags","scores","estimatedMinutes","status","source","displayOrder","externalRef",
         ]);
@@ -912,6 +926,10 @@ export default class TypeBuilder {
         
         this.TargetFitAssessment = this.tb.classViewer("TargetFitAssessment", [
           "criterion_type","criterion_value","fit_assessment","reasoning","signals","evidence_ids",
+        ]);
+        
+        this.ThemeLink = this.tb.classViewer("ThemeLink", [
+          "evidence_id","rationale","confidence",
         ]);
         
         this.TimelineInfo = this.tb.classViewer("TimelineInfo", [

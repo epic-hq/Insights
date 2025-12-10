@@ -21,6 +21,7 @@ import {
 	Users,
 	XCircle,
 } from "lucide-react"
+import { useState } from "react"
 import { Link, useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -30,6 +31,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
+import { EvidenceModal } from "./EvidenceModal"
 import { EvidenceTimestampBadges, hydrateEvidenceRefs } from "./EvidenceTimestampBadges"
 
 type EvidenceRecord = {
@@ -126,6 +128,46 @@ function distributeEvidenceToItems(items: string[], evidenceRefs: EvidenceRefFor
 }
 
 /**
+ * Inline evidence link that opens a modal instead of navigating
+ */
+function InlineEvidenceLink({
+	evidenceRef,
+	projectPath,
+}: {
+	evidenceRef: EvidenceRefForField
+	projectPath: string
+}) {
+	const [modalOpen, setModalOpen] = useState(false)
+	const ms = evidenceRef.startMs ?? 0
+	const startTime = Math.floor(ms / 1000)
+	const timeLabel = `${Math.floor(ms / 1000 / 60)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`
+
+	return (
+		<>
+			<button
+				type="button"
+				onClick={(e) => {
+					e.preventDefault()
+					e.stopPropagation()
+					setModalOpen(true)
+				}}
+				className="font-mono text-primary text-xs hover:underline"
+				title={evidenceRef.transcriptSnippet || "View evidence"}
+			>
+				[{timeLabel}]
+			</button>
+			<EvidenceModal
+				open={modalOpen}
+				onOpenChange={setModalOpen}
+				evidenceId={evidenceRef.evidenceId}
+				startTime={startTime}
+				projectPath={projectPath}
+			/>
+		</>
+	)
+}
+
+/**
  * Render a field value based on its type
  * Supports inline editing for text fields when editable=true
  * For text_array fields, can show inline evidence links
@@ -136,14 +178,14 @@ function FieldValue({
 	editable,
 	onSubmit,
 	evidenceRefs,
-	routes,
+	projectPath,
 }: {
 	value: any
 	fieldType: string
 	editable?: boolean
 	onSubmit?: (value: string) => void
 	evidenceRefs?: EvidenceRefForField[]
-	routes?: ReturnType<typeof useProjectRoutes>
+	projectPath?: string
 }) {
 	if (value === null || value === undefined) {
 		return <span className="text-muted-foreground italic">Not captured</span>
@@ -156,10 +198,10 @@ function FieldValue({
 				return <span className="text-muted-foreground italic">None</span>
 			}
 
-			// If we have evidence refs and routes, try to match evidence to items by text similarity
+			// If we have evidence refs and projectPath, try to match evidence to items by text similarity
 			// Since evidence_ids are at the field level, we distribute them across items
 			const evidencePerItem =
-				evidenceRefs && routes && evidenceRefs.length > 0 ? distributeEvidenceToItems(arrayValue, evidenceRefs) : null
+				evidenceRefs && projectPath && evidenceRefs.length > 0 ? distributeEvidenceToItems(arrayValue, evidenceRefs) : null
 
 			return (
 				<ul className="list-inside list-disc space-y-1">
@@ -169,25 +211,15 @@ function FieldValue({
 						return (
 							<li key={i} className="text-sm">
 								<span>{item}</span>
-								{itemEvidence && itemEvidence.length > 0 && routes && (
+								{itemEvidence && itemEvidence.length > 0 && projectPath && (
 									<span className="ml-1 inline-flex gap-1">
-										{itemEvidence.map((ev, j) => {
-											const ms = ev.startMs ?? 0
-											const timestamp = Math.floor(ms / 1000)
-											const url = `${routes.evidence.detail(ev.evidenceId)}?t=${timestamp}`
-											const timeLabel = `${Math.floor(ms / 1000 / 60)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`
-											return (
-												<Link
-													key={j}
-													to={url}
-													className="font-mono text-primary text-xs hover:underline"
-													title={ev.transcriptSnippet || "Jump to timestamp"}
-													onClick={(e) => e.stopPropagation()}
-												>
-													[{timeLabel}]
-												</Link>
-											)
-										})}
+										{itemEvidence.map((ev) => (
+											<InlineEvidenceLink
+												key={ev.evidenceId}
+												evidenceRef={ev}
+												projectPath={projectPath}
+											/>
+										))}
 									</span>
 								)}
 							</li>
@@ -282,14 +314,14 @@ function SectionView({
 	editable,
 	onFieldUpdate,
 	evidenceMap,
-	routes,
+	projectPath,
 }: {
 	sectionDef: LensTemplate["template_definition"]["sections"][0]
 	fields: any[]
 	editable?: boolean
 	onFieldUpdate?: (sectionKey: string, fieldKey: string, value: string) => void
 	evidenceMap?: Map<string, EvidenceRecord>
-	routes?: ReturnType<typeof useProjectRoutes>
+	projectPath?: string
 }) {
 	if (!fields || fields.length === 0) {
 		return <div className="py-4 text-muted-foreground text-sm italic">No data extracted for this section</div>
@@ -339,7 +371,7 @@ function SectionView({
 											canEdit ? (value) => onFieldUpdate(sectionDef.section_key, fieldDef.field_key, value) : undefined
 										}
 										evidenceRefs={evidenceRefs}
-										routes={routes}
+										projectPath={projectPath}
 									/>
 								) : (
 									<span className="text-muted-foreground italic">Not captured</span>
@@ -936,7 +968,7 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 											editable={editable}
 											onFieldUpdate={handleFieldUpdate}
 											evidenceMap={evidenceMap}
-											routes={routes}
+											projectPath={projectPath}
 										/>
 									</div>
 								</details>

@@ -19,6 +19,7 @@ import {
 	Sparkles,
 	Trash2,
 	Users,
+	Wand2,
 } from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
@@ -30,6 +31,7 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -41,7 +43,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
+import InlineEdit from "~/components/ui/inline-edit"
 import { Switch } from "~/components/ui/switch"
+import { Textarea } from "~/components/ui/textarea"
 import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
 import { userContext } from "~/server/user-context"
 import { CreateLensDialog } from "../components/CreateLensDialog"
@@ -277,6 +281,78 @@ function getCategoryColors(category: string | null): {
 }
 
 /**
+ * Card for creating a new custom lens - shows textarea and generate button
+ */
+function CreateLensCard({ accountId, onCreated }: { accountId: string; onCreated?: () => void }) {
+	const [description, setDescription] = useState("")
+	const fetcher = useFetcher()
+
+	const isGenerating = fetcher.state === "submitting"
+	const canGenerate = description.trim().length >= 10
+
+	// Handle successful creation - reset and notify parent
+	if (fetcher.data?.ok && !isGenerating) {
+		setDescription("")
+		onCreated?.()
+	}
+
+	function handleGenerate() {
+		if (!canGenerate) return
+
+		fetcher.submit(
+			{
+				intent: "generate_and_create",
+				account_id: accountId,
+				description: description.trim(),
+				is_public: "true",
+			},
+			{
+				method: "POST",
+				action: "/api/lens-templates",
+			}
+		)
+	}
+
+	return (
+		<Card className="border-2 border-primary/30 border-dashed bg-primary/5 transition-shadow hover:shadow-md">
+			<CardHeader className="pb-2">
+				<div className="flex items-center gap-3">
+					<div className="rounded-lg bg-primary/10 p-2.5">
+						<Sparkles className="h-5 w-5 text-primary" />
+					</div>
+					<CardTitle className="text-lg">Create Custom Lens</CardTitle>
+				</div>
+			</CardHeader>
+			<CardContent className="space-y-3">
+				<Textarea
+					placeholder="Describe what you want to extract from conversations..."
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
+					className="min-h-[80px] resize-none bg-background"
+					disabled={isGenerating}
+				/>
+				<div className="flex justify-end">
+					<Button size="sm" onClick={handleGenerate} disabled={!canGenerate || isGenerating}>
+						{isGenerating ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Generating...
+							</>
+						) : (
+							<>
+								<Wand2 className="mr-2 h-4 w-4" />
+								Generate
+							</>
+						)}
+					</Button>
+				</div>
+				{fetcher.data?.error && <p className="text-red-500 text-sm">{fetcher.data.error}</p>}
+			</CardContent>
+		</Card>
+	)
+}
+
+/**
  * Lens card component - displays lens info with toggle in upper right
  */
 function LensCard({
@@ -286,10 +362,9 @@ function LensCard({
 	onDelete,
 	onToggleVisibility,
 	onEdit,
+	onUpdateField,
 	isSubmitting,
 	isOwner,
-	currentUserId,
-	accountId,
 }: {
 	template: LensTemplate
 	isEnabled: boolean
@@ -297,183 +372,216 @@ function LensCard({
 	onDelete?: (templateKey: string) => void
 	onToggleVisibility?: (templateKey: string, isPublic: boolean) => void
 	onEdit?: (template: LensTemplate) => void
+	onUpdateField?: (templateKey: string, field: "template_name" | "summary", value: string) => void
 	isSubmitting: boolean
 	isOwner: boolean
-	currentUserId?: string
-	accountId?: string
 }) {
+	const [dialogOpen, setDialogOpen] = useState(false)
 	const colors = getCategoryColors(template.category)
 	const isCustom = !template.is_system
 
+	function handleEditClick() {
+		setDialogOpen(false)
+		onEdit?.(template)
+	}
+
 	return (
-		<Card className={`${colors.border} transition-shadow hover:shadow-md`}>
-			<CardHeader className="pb-2">
-				<div className="flex items-start justify-between gap-3">
-					<div className="flex items-center gap-3">
-						<div className={`rounded-lg p-2.5 ${colors.iconBg} ${colors.text}`}>
-							{getCategoryIcon(template.category)}
-						</div>
-						<div>
-							<div className="flex items-center gap-2">
-								<CardTitle className="text-lg">{template.template_name}</CardTitle>
-								{isCustom && (
-									<Badge variant="secondary" className="text-xs">
-										Custom
-									</Badge>
-								)}
-							</div>
-							<div className="mt-1 flex items-center gap-2">
-								<Badge variant="outline" className={`${colors.bg} ${colors.text}`}>
-									{template.category || "general"}
-								</Badge>
-								{isCustom && !template.is_public && (
-									<Badge variant="outline" className="text-xs">
-										<EyeOff className="mr-1 h-3 w-3" />
-										Private
-									</Badge>
-								)}
-							</div>
-						</div>
-					</div>
-					{/* Toggle and actions in upper right */}
-					<div className="flex items-center gap-2">
-						{isSubmitting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-						<Switch
-							checked={isEnabled}
-							onCheckedChange={(checked) => onToggle(template.template_key, checked)}
-							disabled={isSubmitting}
-							aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
-						/>
-						{/* Actions menu for custom lenses */}
-						{isCustom && isOwner && (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="icon" className="h-8 w-8">
-										<MoreVertical className="h-4 w-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem onClick={() => onEdit?.(template)}>
-										<Pencil className="mr-2 h-4 w-4" />
-										Edit Lens
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => onToggleVisibility?.(template.template_key, !template.is_public)}>
-										{template.is_public ? (
-											<>
-												<EyeOff className="mr-2 h-4 w-4" />
-												Make Private
-											</>
-										) : (
-											<>
-												<Eye className="mr-2 h-4 w-4" />
-												Share with Team
-											</>
-										)}
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										onClick={() => onDelete?.(template.template_key)}
-										className="text-red-600 focus:text-red-600"
-									>
-										<Trash2 className="mr-2 h-4 w-4" />
-										Delete Lens
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						)}
-					</div>
-				</div>
-			</CardHeader>
-			<CardContent className="pt-0">
-				{template.summary && <p className="mb-3 text-muted-foreground text-sm">{template.summary}</p>}
-				{/* Details dialog trigger */}
-				<Dialog>
-					<DialogTrigger asChild>
-						<Button variant="ghost" size="sm" className="h-auto p-0 text-primary text-xs hover:underline">
-							View details
-						</Button>
-					</DialogTrigger>
-					<DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
-						<DialogHeader>
-							<DialogTitle className="flex items-center gap-2">
-								<div className={`rounded-lg p-2 ${colors.iconBg}`}>{getCategoryIcon(template.category)}</div>
-								{template.template_name}
-								{isCustom && (
-									<Badge variant="secondary" className="text-xs">
-										Custom
-									</Badge>
-								)}
-							</DialogTitle>
-							<DialogDescription>{template.summary}</DialogDescription>
-						</DialogHeader>
-
-						<div className="mt-4 space-y-6">
-							{/* Sections */}
-							<div>
-								<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-									Sections ({template.template_definition.sections.length})
-								</h4>
-								<div className="space-y-4">
-									{template.template_definition.sections.map((section) => (
-										<Card key={section.section_key} className="bg-muted/30">
-											<CardHeader className="py-3">
-												<CardTitle className="text-base">{section.section_name}</CardTitle>
-												{section.description && <CardDescription>{section.description}</CardDescription>}
-											</CardHeader>
-											<CardContent className="py-2">
-												<div className="space-y-2">
-													{section.fields.map((field) => (
-														<div
-															key={field.field_key}
-															className="flex items-center justify-between rounded bg-background px-2 py-1 text-sm"
-														>
-															<span className="font-medium">{field.field_name}</span>
-															<Badge variant="outline" className="text-xs">
-																{field.field_type}
-															</Badge>
-														</div>
-													))}
-												</div>
-											</CardContent>
-										</Card>
-									))}
+		<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+			<Card className={`${colors.border} transition-shadow hover:shadow-md`}>
+				<CardHeader className="pb-2">
+					<div className="flex items-start justify-between gap-3">
+						{/* Clickable area to open details */}
+						<DialogTrigger asChild>
+							<button type="button" className="flex items-center gap-3 text-left hover:opacity-80">
+								<div className={`rounded-lg p-2.5 ${colors.iconBg} ${colors.text}`}>
+									{getCategoryIcon(template.category)}
 								</div>
-							</div>
-
-							{/* Entities */}
-							{template.template_definition.entities && template.template_definition.entities.length > 0 && (
 								<div>
-									<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-										Entities Extracted
-									</h4>
-									<div className="flex flex-wrap gap-2">
-										{template.template_definition.entities.map((entity) => (
-											<Badge key={entity} variant="secondary">
-												<Users className="mr-1 h-3 w-3" />
-												{entity}
+									<CardTitle className="text-lg">{template.template_name}</CardTitle>
+									<div className="mt-1 flex items-center gap-2">
+										<Badge variant="outline" className="text-muted-foreground">
+											{isCustom ? "Custom" : template.category || "general"}
+										</Badge>
+										{isCustom && !template.is_public && (
+											<Badge variant="outline" className="text-xs">
+												<EyeOff className="mr-1 h-3 w-3" />
+												Private
 											</Badge>
-										))}
+										)}
 									</div>
 								</div>
-							)}
+							</button>
+						</DialogTrigger>
 
-							{/* Original description for custom lenses */}
-							{isCustom && template.nlp_source && (
-								<div>
-									<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-										Original Description
-									</h4>
-									<p className="text-muted-foreground text-sm italic">"{template.nlp_source}"</p>
-								</div>
+						{/* Toggle and actions in upper right */}
+						<div className="flex items-center gap-2">
+							{isSubmitting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+							<Switch
+								checked={isEnabled}
+								onCheckedChange={(checked) => onToggle(template.template_key, checked)}
+								disabled={isSubmitting}
+								aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
+							/>
+							{/* Actions menu for custom lenses - show for all custom, but only owner can edit/delete */}
+							{isCustom && (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button variant="ghost" size="icon" className="h-8 w-8">
+											<MoreVertical className="h-4 w-4" />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										{isOwner ? (
+											<>
+												<DropdownMenuItem onClick={() => onEdit?.(template)}>
+													<Pencil className="mr-2 h-4 w-4" />
+													Edit Lens
+												</DropdownMenuItem>
+												<DropdownMenuItem
+													onClick={() => onToggleVisibility?.(template.template_key, !template.is_public)}
+												>
+													{template.is_public ? (
+														<>
+															<EyeOff className="mr-2 h-4 w-4" />
+															Make Private
+														</>
+													) : (
+														<>
+															<Eye className="mr-2 h-4 w-4" />
+															Share with Team
+														</>
+													)}
+												</DropdownMenuItem>
+												<DropdownMenuSeparator />
+												<DropdownMenuItem
+													onClick={() => onDelete?.(template.template_key)}
+													className="text-red-600 focus:text-red-600"
+												>
+													<Trash2 className="mr-2 h-4 w-4" />
+													Delete Lens
+												</DropdownMenuItem>
+											</>
+										) : (
+											<DropdownMenuItem disabled className="text-muted-foreground">
+												Shared by team member
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuContent>
+								</DropdownMenu>
 							)}
 						</div>
-					</DialogContent>
-				</Dialog>
-			</CardContent>
-		</Card>
+					</div>
+				</CardHeader>
+				<CardContent className="pt-0">
+					{template.summary && <p className="text-muted-foreground text-sm">{template.summary}</p>}
+				</CardContent>
+			</Card>
+
+			{/* Details dialog content */}
+			<DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2">
+						<div className={`rounded-lg p-2 ${colors.iconBg}`}>{getCategoryIcon(template.category)}</div>
+						{isCustom && isOwner && onUpdateField ? (
+							<InlineEdit
+								value={template.template_name}
+								placeholder="Lens name..."
+								textClassName="text-lg font-semibold"
+								onSubmit={(value) => onUpdateField(template.template_key, "template_name", value)}
+							/>
+						) : (
+							template.template_name
+						)}
+					</DialogTitle>
+					{isCustom && isOwner && onUpdateField ? (
+						<InlineEdit
+							value={template.summary || ""}
+							placeholder="Add a description..."
+							textClassName="text-muted-foreground text-sm"
+							onSubmit={(value) => onUpdateField(template.template_key, "summary", value)}
+						/>
+					) : (
+						<DialogDescription>{template.summary}</DialogDescription>
+					)}
+				</DialogHeader>
+
+				<div className="mt-4 space-y-6">
+					{/* Sections */}
+					<div>
+						<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+							Sections ({template.template_definition.sections.length})
+						</h4>
+						<div className="space-y-4">
+							{template.template_definition.sections.map((section) => (
+								<Card key={section.section_key} className="bg-muted/30">
+									<CardHeader className="py-3">
+										<CardTitle className="text-base">{section.section_name}</CardTitle>
+										{section.description && <CardDescription>{section.description}</CardDescription>}
+									</CardHeader>
+									<CardContent className="py-2">
+										<div className="space-y-2">
+											{section.fields.map((field) => (
+												<div
+													key={field.field_key}
+													className="flex items-center justify-between rounded bg-background px-2 py-1 text-sm"
+												>
+													<span className="font-medium">{field.field_name}</span>
+													<Badge variant="outline" className="text-xs">
+														{field.field_type}
+													</Badge>
+												</div>
+											))}
+										</div>
+									</CardContent>
+								</Card>
+							))}
+						</div>
+					</div>
+
+					{/* Entities */}
+					{template.template_definition.entities && template.template_definition.entities.length > 0 && (
+						<div>
+							<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+								Entities Extracted
+							</h4>
+							<div className="flex flex-wrap gap-2">
+								{template.template_definition.entities.map((entity) => (
+									<Badge key={entity} variant="secondary">
+										<Users className="mr-1 h-3 w-3" />
+										{entity}
+									</Badge>
+								))}
+							</div>
+						</div>
+					)}
+
+					{/* Original description for custom lenses */}
+					{isCustom && template.nlp_source && (
+						<div>
+							<h4 className="mb-3 font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+								Original Description
+							</h4>
+							<p className="text-muted-foreground text-sm italic">"{template.nlp_source}"</p>
+						</div>
+					)}
+
+					{/* Created by info for custom lenses */}
+					{isCustom && isOwner && <div className="border-t pt-4 text-muted-foreground text-xs">Mine</div>}
+				</div>
+
+				{/* Edit button for custom lenses owned by user */}
+				{isCustom && isOwner && onEdit && (
+					<DialogFooter className="mt-6">
+						<Button variant="outline" onClick={handleEditClick}>
+							<Pencil className="mr-2 h-4 w-4" />
+							Edit Lens
+						</Button>
+					</DialogFooter>
+				)}
+			</DialogContent>
+		</Dialog>
 	)
 }
-
 /**
  * Sort templates by category then alphabetically by name
  */
@@ -501,7 +609,7 @@ function sortTemplates(templates: LensTemplate[]): LensTemplate[] {
 }
 
 export default function LensLibrary() {
-	const { templates, enabledLenses, interviewCount, projectId, accountId, userId } = useLoaderData<typeof loader>()
+	const { templates, enabledLenses, projectId, accountId, userId } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const deleteFetcher = useFetcher()
 	const visibilityFetcher = useFetcher()
@@ -601,9 +709,46 @@ export default function LensLibrary() {
 		setEditingTemplate(null)
 	}
 
+	// Handle inline field update
+	const handleUpdateField = (templateKey: string, field: "template_name" | "summary", value: string) => {
+		if (!accountId) return
+
+		visibilityFetcher.submit(
+			{
+				intent: "update",
+				template_key: templateKey,
+				account_id: accountId,
+				[field]: value,
+			},
+			{
+				method: "POST",
+				action: "/api/lens-templates",
+			}
+		)
+	}
+
 	// Count enabled lenses
 	const enabledCount = currentEnabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
-	const customCount = templates.filter((t) => !t.is_system).length
+
+	// Group templates: custom first, then system
+	const customTemplates = sortedTemplates.filter((t) => !t.is_system)
+	const systemTemplates = sortedTemplates.filter((t) => t.is_system)
+
+	// Helper to render a lens card
+	const renderLensCard = (template: LensTemplate) => (
+		<LensCard
+			key={template.template_key}
+			template={template}
+			isEnabled={currentEnabledLenses.includes(template.template_key)}
+			onToggle={handleToggle}
+			onDelete={handleDelete}
+			onToggleVisibility={handleToggleVisibility}
+			onEdit={handleEdit}
+			onUpdateField={handleUpdateField}
+			isSubmitting={isSubmitting && pendingToggle === template.template_key}
+			isOwner={template.created_by === userId}
+		/>
+	)
 
 	return (
 		<div className="container max-w-6xl py-8">
@@ -628,23 +773,26 @@ export default function LensLibrary() {
 				</p>
 			</div>
 
-			{/* Lens grid - sorted by category then alpha */}
-			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-				{sortedTemplates.map((template) => (
-					<LensCard
-						key={template.template_key}
-						template={template}
-						isEnabled={currentEnabledLenses.includes(template.template_key)}
-						onToggle={handleToggle}
-						onDelete={handleDelete}
-						onToggleVisibility={handleToggleVisibility}
-						onEdit={handleEdit}
-						isSubmitting={isSubmitting && pendingToggle === template.template_key}
-						isOwner={template.created_by === userId}
-						currentUserId={userId}
-						accountId={accountId}
-					/>
-				))}
+			{/* Custom Lenses Section - always show with create card */}
+			<div className="mb-8">
+				<h2 className="mb-4 flex items-center gap-2 font-semibold text-lg">
+					<Sparkles className="h-5 w-5 text-primary" />
+					Custom Lenses
+				</h2>
+				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+					{/* Create new lens card - always first */}
+					{accountId && <CreateLensCard accountId={accountId} onCreated={handleLensCreated} />}
+					{customTemplates.map(renderLensCard)}
+				</div>
+			</div>
+
+			{/* System Lenses Section */}
+			<div>
+				<h2 className="mb-4 flex items-center gap-2 font-semibold text-lg">
+					<Package className="h-5 w-5 text-muted-foreground" />
+					System Lenses
+				</h2>
+				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{systemTemplates.map(renderLensCard)}</div>
 			</div>
 
 			{/* Edit Lens Dialog */}
@@ -656,21 +804,6 @@ export default function LensLibrary() {
 					accountId={accountId}
 					onUpdated={handleLensUpdated}
 				/>
-			)}
-
-			{/* Empty state for no custom lenses - encourage creation */}
-			{customCount === 0 && (
-				<div className="mt-8 rounded-lg border-2 border-dashed bg-muted/30 p-6">
-					<div className="mb-3 flex items-center gap-3">
-						<Sparkles className="h-5 w-5 text-primary" />
-						<h3 className="font-semibold">Create Your Own Lenses</h3>
-					</div>
-					<p className="mb-4 text-muted-foreground text-sm">
-						Describe what you want to learn from conversations and AI will generate a structured analysis template for
-						you. Custom lenses work just like system lenses - toggle them on to automatically analyze new conversations.
-					</p>
-					{accountId && <CreateLensDialog accountId={accountId} onCreated={handleLensCreated} />}
-				</div>
 			)}
 
 			{/* Feedback messages */}

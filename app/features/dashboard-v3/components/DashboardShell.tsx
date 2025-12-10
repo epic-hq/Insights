@@ -6,8 +6,7 @@
  */
 
 import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
-import type { ProcessingItem } from "~/features/dashboard/components/ProcessingState"
-import { ProcessingState } from "~/features/dashboard/components/ProcessingState"
+import { ProcessingBadge } from "~/features/dashboard/components/ProcessingBadge"
 import type { Task } from "~/features/tasks/types"
 import { cn } from "~/lib/utils"
 import type { Insight } from "~/types"
@@ -26,8 +25,6 @@ export interface DashboardShellProps {
 	conversationCount: number
 	/** Number of items currently processing */
 	processingCount: number
-	/** Processing items for display */
-	processingItems?: ProcessingItem[]
 	/** Number of active lenses */
 	activeLensCount: number
 	/** Whether goals have been set up */
@@ -84,7 +81,6 @@ export function DashboardShell({
 	projectPath,
 	conversationCount,
 	processingCount,
-	processingItems,
 	activeLensCount,
 	hasGoals,
 	hasLenses,
@@ -106,25 +102,21 @@ export function DashboardShell({
 					projectPath={projectPath}
 					hasGoals={hasGoals}
 					hasLenses={hasLenses}
+					hasConversations={conversationCount > 0}
+					hasAppliedLenses={lenses.some((l) => l.conversationCount > 0)}
 				/>
 			)}
 
-			{/* Processing State: Show progress + partial dashboard */}
+			{/* Processing State: Show compact badge + dashboard */}
 			{state === "processing" && (
-				<div className="space-y-8">
-					<header>
+				<div className="space-y-6">
+					<header className="flex items-center justify-between">
 						<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
-						<p className="text-muted-foreground text-sm">Processing your conversations...</p>
+						<ProcessingBadge processingCount={processingCount} />
 					</header>
 
-					<ProcessingState
-						processingCount={processingCount}
-						totalCount={conversationCount + processingCount}
-						items={processingItems}
-					/>
-
-					{/* Show partial dashboard if we have some data */}
-					{conversationCount > 0 && (
+					{/* Show dashboard (partial if no data yet) */}
+					{conversationCount > 0 ? (
 						<ActiveDashboard
 							projectName={projectName}
 							projectPath={projectPath}
@@ -135,6 +127,17 @@ export function DashboardShell({
 							researchGoal={researchGoal}
 							conversationCount={conversationCount}
 							activeLensCount={activeLensCount}
+							hideHeader
+						/>
+					) : (
+						<OnboardingDashboard
+							projectName={projectName}
+							projectPath={projectPath}
+							hasGoals={hasGoals}
+							hasLenses={hasLenses}
+							hasConversations={false}
+							hasAppliedLenses={false}
+							hideHeader
 						/>
 					)}
 				</div>

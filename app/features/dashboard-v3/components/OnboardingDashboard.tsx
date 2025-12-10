@@ -6,7 +6,7 @@
  * Does NOT render the sidebar to reduce cognitive load.
  */
 
-import { CheckSquare, Glasses, Lightbulb, Target, Upload } from "lucide-react"
+import { CalendarPlus, CheckSquare, Glasses, Lightbulb, MessageSquareText, Search, Settings } from "lucide-react"
 import { type OnboardingTask, OnboardingTaskCard } from "./onboarding/OnboardingTaskCard"
 import { WelcomeHeader } from "./onboarding/WelcomeHeader"
 import { EmptyStateBox } from "./shared/EmptyStateBox"
@@ -20,6 +20,12 @@ export interface OnboardingDashboardProps {
 	hasGoals: boolean
 	/** Whether lenses have been configured */
 	hasLenses: boolean
+	/** Whether the user has conversations */
+	hasConversations?: boolean
+	/** Whether the user has applied lenses */
+	hasAppliedLenses?: boolean
+	/** Hide the header (when parent provides it) */
+	hideHeader?: boolean
 	/** Additional CSS classes */
 	className?: string
 }
@@ -29,43 +35,55 @@ export function OnboardingDashboard({
 	projectPath,
 	hasGoals,
 	hasLenses,
+	hasConversations = false,
+	hasAppliedLenses = false,
+	hideHeader,
 	className,
 }: OnboardingDashboardProps) {
-	// Build onboarding tasks with completion state
+	// Build onboarding tasks with completion state based on user's progress
 	const onboardingTasks: OnboardingTask[] = [
 		{
-			id: "goals",
-			title: "Define your research goals",
-			description: "Set clear objectives for what you want to learn from your conversations",
-			icon: Target,
+			id: "setup",
+			title: "Provide context",
+			description: "Chat with our AI to set up your project goals and optionally create interview prompts",
+			icon: Settings,
 			href: `${projectPath}/setup`,
 			isComplete: hasGoals,
 			priority: 1,
 		},
 		{
 			id: "upload",
-			title: "Upload your first conversation",
-			description: "Add a recording, transcript, or notes to start extracting insights",
-			icon: Upload,
+			title: "Add a conversation",
+			description: "Upload a recording, transcript, or notes to start extracting insights",
+			icon: MessageSquareText,
 			href: `${projectPath}/interviews/upload`,
-			isComplete: false, // Will be true once they have conversations
+			isComplete: hasConversations,
 			priority: 2,
 		},
 		{
-			id: "lenses",
-			title: "Configure your analysis lenses",
-			description: "Choose which frameworks to apply (Sales BANT, Customer Discovery, etc)",
-			icon: Glasses,
-			href: `${projectPath}/lens-library`,
-			isComplete: hasLenses,
+			id: "review",
+			title: "Review takeaways and apply lenses",
+			description: "Explore AI-extracted evidence, insights, and apply analytical frameworks",
+			icon: Search,
+			href: hasConversations ? `${projectPath}/evidence` : undefined,
+			isComplete: hasAppliedLenses,
 			priority: 3,
+		},
+		{
+			id: "tasks",
+			title: "Review tasks and schedule conversations",
+			description: "Check AI-generated action items and plan your next interviews",
+			icon: CalendarPlus,
+			href: hasConversations ? `${projectPath}/priorities` : undefined,
+			isComplete: false,
+			priority: 4,
 		},
 	]
 
 	return (
 		<div className={className}>
 			{/* Welcome Header */}
-			<WelcomeHeader projectName={projectName} className="mb-10" />
+			{!hideHeader && <WelcomeHeader projectName={projectName} className="mb-10" />}
 
 			{/* Onboarding Tasks */}
 			<section className="mx-auto mb-12 max-w-2xl">
@@ -102,7 +120,7 @@ export function OnboardingDashboard({
 						title="Lens Results"
 						message="Configure lenses, then upload conversations to see structured analysis here"
 						ctaText="Configure Lenses"
-						ctaHref={`${projectPath}/lens-library`}
+						ctaHref={`${projectPath}/lenses`}
 						variant="subtle"
 					/>
 				</div>

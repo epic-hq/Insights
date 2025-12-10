@@ -9,6 +9,7 @@ import { FileAudio, Glasses, MessageCircle, Plus, Target } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { cn } from "~/lib/utils"
 
 export interface ContextPanelProps {
@@ -71,10 +72,19 @@ export function ContextPanel({
 			{/* Project Context Card */}
 			<Card>
 				<CardHeader className="pb-3">
-					<CardTitle className="flex items-center gap-2 text-sm">
-						<Target className="h-4 w-4" />
-						Project Context
-					</CardTitle>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<CardTitle className="flex cursor-help items-center gap-2 text-sm">
+									<Target className="h-4 w-4" />
+									Project Context
+								</CardTitle>
+							</TooltipTrigger>
+							<TooltipContent side="bottom" className="max-w-xs">
+								<p className="text-sm">Your research goal and key project stats at a glance.</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{/* Research Goal */}

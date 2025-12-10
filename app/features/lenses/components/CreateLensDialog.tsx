@@ -7,7 +7,7 @@
  * 3. User can save or edit description and regenerate
  */
 
-import { Check, Loader2, RefreshCw, Sparkles, Wand2 } from "lucide-react"
+import { Check, Loader2, Pencil, Sparkles, Wand2 } from "lucide-react"
 import { useState } from "react"
 import { useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
@@ -115,9 +115,10 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 		)
 	}
 
-	function handleRegenerate() {
+	// Clear preview so user can edit description before regenerating
+	function handleEditDescription() {
 		setGenerated(null)
-		handleGenerate()
+		// Don't auto-regenerate - let user edit and click Generate
 	}
 
 	function handleSave() {
@@ -276,16 +277,12 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 							<div className="flex gap-2">
 								<Button
 									variant="outline"
-									onClick={handleRegenerate}
+									onClick={handleEditDescription}
 									disabled={isGenerating || isCreating}
 									className="flex-1"
 								>
-									{isGenerating ? (
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									) : (
-										<RefreshCw className="mr-2 h-4 w-4" />
-									)}
-									Edit & Regenerate
+									<Pencil className="mr-2 h-4 w-4" />
+									Edit Description
 								</Button>
 								<Button onClick={handleSave} disabled={isCreating} className="flex-1">
 									{isCreating ? (

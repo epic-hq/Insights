@@ -30,6 +30,7 @@ export type LensTemplate = {
 	// Custom lens fields
 	account_id?: string | null
 	created_by?: string | null
+	created_by_name?: string | null // Username portion of email (before @)
 	is_system: boolean
 	is_public: boolean
 	nlp_source?: string | null
@@ -77,6 +78,7 @@ export async function loadLensTemplates(db: SupabaseClient<Database>): Promise<L
 		// Custom lens fields
 		account_id: t.account_id,
 		created_by: t.created_by,
+		created_by_name: null, // Will be populated by the loader if needed
 		is_system: t.is_system ?? true, // Default to true for backwards compat
 		is_public: t.is_public ?? true,
 		nlp_source: t.nlp_source,

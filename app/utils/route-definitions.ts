@@ -195,8 +195,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		login: () => PATHS.AUTH.LOGIN,
 		register: () => PATHS.AUTH.REGISTER,
 
-		// Dashboard
-		dashboard: () => `${base}/dashboard`,
+		// Dashboard (project root is now dashboard-v3)
+		dashboard: () => base || "/",
 		help: () => PATHS.HELP,
 		docs: () => PATHS.DOCS,
 		accountHome: () => `${base.replace(/\/[^/]+$/, "")}/home`,

@@ -9,6 +9,7 @@ import type { LucideIcon } from "lucide-react"
 import { ChevronRight } from "lucide-react"
 import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { cn } from "~/lib/utils"
 
 export interface SectionHeaderProps {
@@ -16,6 +17,8 @@ export interface SectionHeaderProps {
 	title: string
 	/** Optional icon to display before title */
 	icon?: LucideIcon
+	/** Optional tooltip text to explain the section */
+	tooltip?: string
 	/** Optional count to display in badge */
 	count?: number
 	/** Optional "View all" link href */
@@ -29,6 +32,7 @@ export interface SectionHeaderProps {
 export function SectionHeader({
 	title,
 	icon: Icon,
+	tooltip,
 	count,
 	viewAllHref,
 	viewAllText = "View all",
@@ -38,7 +42,20 @@ export function SectionHeader({
 		<div className={cn("flex items-center justify-between", className)}>
 			<div className="flex items-center gap-2">
 				{Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-				<h2 className="font-semibold text-foreground">{title}</h2>
+				{tooltip ? (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<h2 className="cursor-help font-semibold text-foreground">{title}</h2>
+							</TooltipTrigger>
+							<TooltipContent side="bottom" className="max-w-xs">
+								<p className="text-sm">{tooltip}</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				) : (
+					<h2 className="font-semibold text-foreground">{title}</h2>
+				)}
 				{typeof count === "number" && count > 0 && (
 					<Badge variant="secondary" className="px-2 py-0.5 text-xs">
 						{count}

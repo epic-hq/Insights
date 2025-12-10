@@ -33,6 +33,8 @@ export interface ActiveDashboardProps {
 	conversationCount: number
 	/** Number of active lenses */
 	activeLensCount: number
+	/** Hide the header (when parent provides it) */
+	hideHeader?: boolean
 	/** Additional CSS classes */
 	className?: string
 }
@@ -47,18 +49,21 @@ export function ActiveDashboard({
 	researchGoal,
 	conversationCount,
 	activeLensCount,
+	hideHeader,
 	className,
 }: ActiveDashboardProps) {
 	return (
 		<div className={cn("", className)}>
 			{/* Page Header */}
-			<header className="mb-8">
-				<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
-				<p className="text-muted-foreground text-sm">
-					{conversationCount} conversation{conversationCount !== 1 ? "s" : ""}
-					{activeLensCount > 0 && ` | ${activeLensCount} lens${activeLensCount !== 1 ? "es" : ""} active`}
-				</p>
-			</header>
+			{!hideHeader && (
+				<header className="mb-8">
+					<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
+					<p className="text-muted-foreground text-sm">
+						{conversationCount} conversation{conversationCount !== 1 ? "s" : ""}
+						{activeLensCount > 0 && ` | ${activeLensCount} lens${activeLensCount !== 1 ? "es" : ""} active`}
+					</p>
+				</header>
+			)}
 
 			{/* Main Content Grid */}
 			<div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr,280px]">

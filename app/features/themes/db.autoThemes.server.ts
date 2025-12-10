@@ -41,10 +41,10 @@ async function loadEvidence(
 	}
 	let query = supabase
 		.from("evidence")
-		.select("id, verbatim, personas, segments, journey_stage, support")
+		.select("id, verbatim, personas, segments, journey_stage, support, is_question")
 		.eq("project_id", project_id)
+		.or("is_question.is.null,is_question.eq.false") // Filter out interviewer questions
 
-	// if (project_id) query = query.eq("project_id", project_id)
 	if (evidence_ids && evidence_ids.length > 0) query = query.in("id", evidence_ids)
 	else query = query.order("created_at", { ascending: false }).limit(limit)
 

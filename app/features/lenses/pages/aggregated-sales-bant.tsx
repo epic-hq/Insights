@@ -21,7 +21,6 @@ import {
 	CircleDollarSign,
 	Crosshair,
 	Crown,
-	Filter,
 	ListPlus,
 	Swords,
 	Target,
@@ -153,20 +152,7 @@ export default function AggregatedSalesBantPage() {
 	const [showAllInterviews, setShowAllInterviews] = useState(false)
 
 	// Filter state
-	const [orgFilter, setOrgFilter] = useState<string>("all")
-	const [conversationFilter, setConversationFilter] = useState<string>("all")
 	const [dateRangeFilter, setDateRangeFilter] = useState<string>("30")
-
-	// Get unique organizations for filter dropdown
-	const uniqueOrgs = useMemo(() => {
-		const orgs = new Map<string, { id: string | null; name: string }>()
-		for (const interview of aggregatedData.interviews) {
-			if (interview.organization_name) {
-				orgs.set(interview.organization_name, { id: null, name: interview.organization_name })
-			}
-		}
-		return Array.from(orgs.values()).sort((a, b) => a.name.localeCompare(b.name))
-	}, [aggregatedData.interviews])
 
 	// Filter data based on selections
 	const filteredData = useMemo(() => {
@@ -176,17 +162,8 @@ export default function AggregatedSalesBantPage() {
 				? null
 				: new Date(now.getTime() - Number.parseInt(dateRangeFilter, 10) * 24 * 60 * 60 * 1000)
 
-		// Filter interviews
+		// Filter interviews by date
 		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
-			// Organization filter
-			if (orgFilter !== "all" && interview.organization_name !== orgFilter) {
-				return false
-			}
-			// Conversation filter
-			if (conversationFilter !== "all" && interview.interview_id !== conversationFilter) {
-				return false
-			}
-			// Date filter
 			if (cutoffDate && interview.processed_at) {
 				const processedDate = new Date(interview.processed_at)
 				if (processedDate < cutoffDate) {
@@ -242,9 +219,7 @@ export default function AggregatedSalesBantPage() {
 				total_interviews: filteredInterviews.length,
 			},
 		}
-	}, [aggregatedData, orgFilter, conversationFilter, dateRangeFilter])
-
-	const hasActiveFilters = orgFilter !== "all" || conversationFilter !== "all" || dateRangeFilter !== "30"
+	}, [aggregatedData, dateRangeFilter])
 
 	// Empty state
 	if (aggregatedData.summary.total_interviews === 0) {
@@ -276,44 +251,8 @@ export default function AggregatedSalesBantPage() {
 				lastUpdated={filteredData.summary.last_updated}
 			/>
 
-			{/* Filters */}
-			<div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3">
-				<div className="flex items-center gap-2 text-muted-foreground text-sm">
-					<Filter className="h-4 w-4" />
-					<span>Filters:</span>
-				</div>
-
-				{/* Organization Filter */}
-				<Select value={orgFilter} onValueChange={setOrgFilter}>
-					<SelectTrigger className="h-9 w-[180px] text-sm">
-						<SelectValue placeholder="All Organizations" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All Organizations</SelectItem>
-						{uniqueOrgs.map((org) => (
-							<SelectItem key={org.name} value={org.name}>
-								{org.name}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-
-				{/* Conversation Filter */}
-				<Select value={conversationFilter} onValueChange={setConversationFilter}>
-					<SelectTrigger className="h-9 w-[200px] text-sm">
-						<SelectValue placeholder="All Conversations" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All Conversations</SelectItem>
-						{aggregatedData.interviews.map((interview) => (
-							<SelectItem key={interview.interview_id} value={interview.interview_id}>
-								{interview.interview_title}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-
-				{/* Date Range Filter */}
+			{/* Filters - Date only, right-aligned */}
+			<div className="flex justify-end">
 				<Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
 					<SelectTrigger className="h-9 w-[140px] text-sm">
 						<SelectValue placeholder="Date Range" />
@@ -326,23 +265,6 @@ export default function AggregatedSalesBantPage() {
 						))}
 					</SelectContent>
 				</Select>
-
-				{/* Clear Filters Button */}
-				{hasActiveFilters && (
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							setOrgFilter("all")
-							setConversationFilter("all")
-							setDateRangeFilter("30")
-						}}
-						className="h-9 text-xs"
-					>
-						<X className="mr-1 h-3 w-3" />
-						Clear
-					</Button>
-				)}
 			</div>
 
 			{/* Summary Stats - clickable to scroll to sections */}
@@ -837,11 +759,8 @@ function StakeholdersSection({
 						const hasPersonLink = !!stakeholder.person_id
 
 						const content = (
-							<div className="relative flex w-full items-center justify-between rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50">
-								<Badge variant="secondary" className="absolute top-2 right-2 text-xs">
-									{stakeholder.interview_count}
-								</Badge>
-								<div className="flex-1 pr-10">
+							<div className="flex w-full flex-row items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50">
+								<div className="min-w-0 flex-1">
 									<div className="font-medium text-sm">{stakeholder.name}</div>
 									<div className="text-muted-foreground text-xs">
 										{stakeholder.role || "Role unknown"}
@@ -849,14 +768,14 @@ function StakeholdersSection({
 										{orgName && ` • ${orgName}`}
 									</div>
 								</div>
-								<div className="mr-6 flex items-center gap-1">
+								<div className="flex shrink-0 items-center gap-1">
 									{stakeholder.labels.slice(0, 2).map((label) => (
 										<Badge key={label} variant="outline" className="text-xs">
 											{label.replace("_", " ")}
 										</Badge>
 									))}
 								</div>
-								{hasPersonLink && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+								{hasPersonLink && <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
 							</div>
 						)
 

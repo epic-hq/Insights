@@ -43,6 +43,8 @@ const routes = [
 
 		// Protected API routes
 		route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
+		route("api/similar-themes", "./routes/api.similar-themes.tsx"),
+		route("api/delete-empty-themes", "./routes/api.delete-empty-themes.tsx"),
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -57,10 +59,10 @@ const routes = [
 
 			// Nested project detail children - Layout route with sidebar
 			route(":projectId", "./routes/_protected/projects.tsx", [
-				// Default index: show Project Status screen
-				index("./features/projects/pages/project-index.tsx"),
-				// Dashboard V3 preview
-				route("dashboard-v3", "./features/dashboard-v3/pages/index.tsx"),
+				// Default index: Dashboard V3
+				index("./features/dashboard-v3/pages/index.tsx"),
+				// Legacy project status screen
+				route("project-status", "./features/projects/pages/project-index.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
 				route("sales-lenses", "./routes/_protected.projects.$projectId.sales-lenses.tsx"),
@@ -188,6 +190,7 @@ const routes = [
 	route("api/cancel-analysis", "./routes/api.cancel-analysis.tsx"),
 	route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
 	route("api/enrich-themes", "./routes/api.enrich-themes.tsx"),
+	route("api/consolidate-themes", "./routes/api.consolidate-themes.tsx"),
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
 	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),
@@ -198,7 +201,6 @@ const routes = [
 	route("api/regenerate-ai-summary", "./routes/api.regenerate-ai-summary.tsx"),
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
-
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
 	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),

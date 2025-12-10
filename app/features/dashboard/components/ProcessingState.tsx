@@ -3,9 +3,13 @@
  *
  * Displays progress indicator and status for ongoing processing.
  * Keeps users informed while background tasks complete.
+ * Includes a reset button for stuck processing states.
  */
 
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, RotateCcw } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useFetcher, useRevalidator } from "react-router"
+import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Progress } from "~/components/ui/progress"
 import { cn } from "~/lib/utils"
@@ -25,11 +29,45 @@ export interface ProcessingStateProps {
 	items?: ProcessingItem[]
 	/** Additional CSS classes */
 	className?: string
+	/** Callback when reset is successful */
+	onReset?: () => void
 }
 
-export function ProcessingState({ processingCount, totalCount, items, className }: ProcessingStateProps) {
+export function ProcessingState({ processingCount, totalCount, items, className, onReset }: ProcessingStateProps) {
 	const completedCount = totalCount - processingCount
 	const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+	const [showResetConfirm, setShowResetConfirm] = useState(false)
+	const [isResetting, setIsResetting] = useState(false)
+	const fetcher = useFetcher()
+	const revalidator = useRevalidator()
+
+	// Revalidate page data when reset completes successfully
+	useEffect(() => {
+		if (fetcher.state === "idle" && fetcher.data?.success && isResetting) {
+			revalidator.revalidate()
+			onReset?.()
+		}
+	}, [fetcher.state, fetcher.data, revalidator, onReset, isResetting])
+
+	// Track when revalidation completes
+	useEffect(() => {
+		if (revalidator.state === "idle" && isResetting && fetcher.data?.success) {
+			setIsResetting(false)
+			setShowResetConfirm(false)
+		}
+	}, [revalidator.state, isResetting, fetcher.data])
+
+	const handleReset = () => {
+		setIsResetting(true)
+		fetcher.submit(
+			{ fixAll: true },
+			{
+				method: "POST",
+				action: "/api/fix-stuck-interview",
+				encType: "application/json",
+			}
+		)
+	}
 
 	if (processingCount === 0) {
 		return null
@@ -82,10 +120,47 @@ export function ProcessingState({ processingCount, totalCount, items, className 
 							</div>
 						)}
 
-						{/* Helpful message */}
-						<p className="mt-2 text-blue-700 text-xs dark:text-blue-300">
-							AI is analyzing your conversations. Results will appear shortly.
-						</p>
+						{/* Helpful message and reset option */}
+						<div className="mt-2 flex items-center justify-between gap-2">
+							<p className="text-blue-700 text-xs dark:text-blue-300">
+								AI is analyzing your conversations. Results will appear shortly.
+							</p>
+							{isResetting ? (
+								<div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+									<Loader2 className="h-3 w-3 animate-spin" />
+									<span>Resetting...</span>
+								</div>
+							) : !showResetConfirm ? (
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-6 shrink-0 px-2 text-blue-600 text-xs hover:bg-blue-100 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900 dark:hover:text-blue-300"
+									onClick={() => setShowResetConfirm(true)}
+								>
+									<RotateCcw className="mr-1 h-3 w-3" />
+									Stuck?
+								</Button>
+							) : (
+								<div className="flex shrink-0 items-center gap-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-6 px-2 text-xs"
+										onClick={() => setShowResetConfirm(false)}
+									>
+										Cancel
+									</Button>
+									<Button
+										variant="destructive"
+										size="sm"
+										className="h-6 px-2 text-xs"
+										onClick={handleReset}
+									>
+										Reset All
+									</Button>
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
 			</CardContent>

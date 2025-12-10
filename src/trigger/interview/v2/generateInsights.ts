@@ -31,7 +31,7 @@ export const generateInsightsTaskV2 = task({
 	id: "interview.v2.generate-insights",
 	retry: workflowRetryConfig,
 	run: async (payload: GenerateInsightsPayload, { ctx }): Promise<GenerateInsightsResult> => {
-		const { interviewId, evidenceUnits, userCustomInstructions, analysisJobId, metadata } = payload
+		const { interviewId, evidenceUnits, evidenceIds, userCustomInstructions, analysisJobId, metadata } = payload
 		const client = createSupabaseAdminClient()
 
 		try {
@@ -109,6 +109,49 @@ export const generateInsightsTaskV2 = task({
 			}
 
 			consola.success(`[generateInsights] Created ${createdThemes.length} themes/insights for interview ${interviewId}`)
+
+			// Step 3: Link themes to evidence via theme_evidence junction table
+			// This creates the semantic connection between themes and their supporting evidence
+			if (evidenceIds && evidenceIds.length > 0 && createdThemes.length > 0) {
+				const themeEvidenceRows: Array<{
+					account_id: string
+					project_id: string | null
+					theme_id: string
+					evidence_id: string
+					rationale: string | null
+					confidence: number
+				}> = []
+
+				// For each theme, link it to all evidence from this interview
+				// The theme was generated from this evidence, so they're all related
+				for (const theme of createdThemes) {
+					for (const evidenceId of evidenceIds) {
+						themeEvidenceRows.push({
+							account_id: interview.account_id,
+							project_id: interview.project_id,
+							theme_id: theme.id,
+							evidence_id: evidenceId,
+							rationale: "Generated from interview evidence",
+							confidence: 0.8,
+						})
+					}
+				}
+
+				if (themeEvidenceRows.length > 0) {
+					const { error: linkError } = await client
+						.from("theme_evidence")
+						.upsert(themeEvidenceRows, {
+							onConflict: "theme_id,evidence_id,account_id",
+							ignoreDuplicates: true,
+						})
+
+					if (linkError) {
+						consola.warn(`[generateInsights] Failed to link themes to evidence: ${linkError.message}`)
+					} else {
+						consola.success(`[generateInsights] Linked ${themeEvidenceRows.length} theme-evidence relationships`)
+					}
+				}
+			}
 
 			// Update workflow state
 			if (analysisJobId) {

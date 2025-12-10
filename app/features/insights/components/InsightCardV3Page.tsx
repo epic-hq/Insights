@@ -1,4 +1,4 @@
-import { Building2, Flame, Quote, Target, TrendingUp, Users } from "lucide-react"
+import { Building2, FileText, Flame, Quote, Target, TrendingUp, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
@@ -6,55 +6,49 @@ import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
-import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Insight } from "~/types"
+import type { InsightEvidence } from "../pages/insight-detail"
+
+// Card and CardContent still used for Pain/JTBD/Outcome cards within the page
 
 interface InsightCardV3Props {
 	insight: Insight
+	evidence?: InsightEvidence[]
+	projectPath?: string
 	extended?: boolean
 }
 
-export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
+export function InsightCardV3Page({ insight, evidence = [], projectPath: propProjectPath, extended }: InsightCardV3Props) {
 	const [_selected, _setSelected] = useState<Insight | null>(null)
 	const _projectId = insight.project_id
-	const { accountId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const routes = useProjectRoutes(propProjectPath || "")
 
 	return (
-		<Card className="mx-4 my-8 max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl overflow-hidden sm:mx-auto sm:w-full">
-			<CardContent className="p-8">
-				{/* Header Section */}
-				<div className="mb-8 space-y-4">
-					<div className="space-y-3">
-						<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Insight Theme</div>
-						<h1 className="font-bold text-3xl tracking-tight">{insight.name}</h1>
-						{insight.statement && <p className="text-foreground text-lg leading-relaxed">{insight.statement}</p>}
-					</div>
-
-					<div className="flex flex-wrap items-center gap-2">
-						{insight.category && (
-							<Badge variant="secondary" className="px-3 py-1">
-								{insight.category}
-							</Badge>
-						)}
-						{insight.journey_stage && (
-							<Badge variant="outline" className="px-3 py-1">
-								{insight.journey_stage}
-							</Badge>
-						)}
-						{/* {(insight as any).evidence_count > 0 && (
-							<Link to={routes.evidence.index() + `?theme_id=${insight.id}`}>
-								<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
-									<Quote className="h-3.5 w-3.5" />
-									{(insight as any).evidence_count} evidence
-								</Badge>
-							</Link>
-						)} */}
-					</div>
+		<div className="mx-auto max-w-4xl px-4 py-8 sm:px-0">
+			{/* Header Section */}
+			<div className="mb-8 space-y-4">
+				<div className="space-y-3">
+					<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Insight Theme</div>
+					<h1 className="font-bold text-3xl tracking-tight">{insight.name}</h1>
+					{insight.statement && <p className="text-foreground text-lg leading-relaxed">{insight.statement}</p>}
 				</div>
 
-				<div className="max-h-[60vh] space-y-8 overflow-y-auto pr-2">
+				<div className="flex flex-wrap items-center gap-2">
+					{insight.category && (
+						<Badge variant="secondary" className="px-3 py-1">
+							{insight.category}
+						</Badge>
+					)}
+					{insight.journey_stage && (
+						<Badge variant="outline" className="px-3 py-1">
+							{insight.journey_stage}
+						</Badge>
+					)}
+				</div>
+			</div>
+
+			<div className="space-y-8">
 					{/* Pain & Gain - Side by Side */}
 					{(insight.pain || insight.jtbd) && (
 						<div className="grid gap-6 md:grid-cols-2">
@@ -116,7 +110,7 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 						<div className="space-y-3">
 							<h4 className="font-semibold text-foreground text-sm">Emotional Response</h4>
 							<div className="flex items-center gap-2">
-								<EmotionBadge emotion={insight.emotional_response} />
+								<EmotionBadge emotion_string={insight.emotional_response} />
 							</div>
 						</div>
 					)}
@@ -169,91 +163,136 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 						</div>
 					)}
 
-					{/* Signals and Evidence Section */}
-					{((insight as any).people?.length > 0 ||
-						(insight as any).organizations?.length > 0 ||
-						(insight as any).evidence_count > 0) && (
-						<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
+				{/* Evidence Section - Mini Cards */}
+				{evidence.length > 0 && (
+					<div className="space-y-4">
+						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-2">
 								<Quote className="h-5 w-5 text-muted-foreground" />
-								<h4 className="font-semibold text-base text-foreground">Signals and Evidence</h4>
+								<h4 className="font-semibold text-base text-foreground">Supporting Evidence</h4>
 							</div>
-
-							{/* Evidence Link - Prominent placement */}
-							{(insight as any).evidence_count > 0 && (
+							{(insight as any).evidence_count > evidence.length && (
 								<Link
 									to={`${routes.evidence.index()}?theme_id=${insight.id}`}
-									className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/10"
+									className="text-primary text-sm hover:underline"
 								>
-									<div className="rounded-full bg-primary/10 p-2">
-										<Quote className="h-5 w-5 text-primary" />
-									</div>
-									<div className="flex-1">
-										<div className="font-medium text-foreground text-sm">View Evidence</div>
-										<div className="text-muted-foreground text-xs">
-											{(insight as any).evidence_count} piece{(insight as any).evidence_count !== 1 ? "s" : ""} of
-											supporting evidence
-										</div>
-									</div>
+									View all {(insight as any).evidence_count} →
 								</Link>
 							)}
-
-							<div className="space-y-6">
-								{(insight as any).organizations?.length > 0 && (
-									<div className="space-y-3">
-										<div className="flex items-center gap-2">
-											<Building2 className="h-4 w-4 text-muted-foreground" />
-											<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-												Organizations
-											</div>
-										</div>
-										<div className="flex flex-wrap gap-2">
-											{(insight as any).organizations.map((org: any, idx: number) => (
-												<Link key={idx} to={`${routes.evidence.index()}?theme_id=${insight.id}`}>
-													<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
-														{org.name}
-														<span className="text-[10px] opacity-70">({org.count})</span>
-													</Badge>
-												</Link>
-											))}
-										</div>
-									</div>
-								)}
-
-								{(insight as any).people?.length > 0 && (
-									<div className="space-y-3">
-										<div className="flex items-center gap-2">
-											<Users className="h-4 w-4 text-muted-foreground" />
-											<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">People</div>
-										</div>
-										<div className="flex flex-wrap gap-2">
-											{(insight as any).people.slice(0, 10).map((person: any, idx: number) => (
-												<Link key={idx} to={routes.people.detail(person.id)}>
-													<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
-														{person.name}
-														{person.role && <span className="text-[10px] opacity-70">({person.role})</span>}
-													</Badge>
-												</Link>
-											))}
-											{(insight as any).people.length > 10 && (
-												<Link to={`${routes.evidence.index()}?theme_id=${insight.id}`}>
-													<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
-														+{(insight as any).people.length - 10} more
-													</Badge>
-												</Link>
-											)}
-										</div>
-									</div>
-								)}
-							</div>
 						</div>
-					)}
-				</div>
 
-				<div className="mt-6">
-					<EntityInteractionPanel entityType="insight" entityId={insight.id} />
-				</div>
-			</CardContent>
-		</Card>
+						<div className="grid gap-3 sm:grid-cols-2">
+							{evidence.map((ev) => (
+								<MiniEvidenceCard
+									key={ev.id}
+									evidence={ev}
+									projectPath={propProjectPath || ""}
+								/>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* Organizations & People Section */}
+				{((insight as any).organizations?.length > 0 || (insight as any).people?.length > 0) && (
+					<div className="space-y-6 rounded-lg border bg-muted/30 p-6">
+						{(insight as any).organizations?.length > 0 && (
+							<div className="space-y-3">
+								<div className="flex items-center gap-2">
+									<Building2 className="h-4 w-4 text-muted-foreground" />
+									<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+										Organizations
+									</div>
+								</div>
+								<div className="flex flex-wrap gap-2">
+									{(insight as any).organizations.map((org: any, idx: number) => (
+										<Link key={idx} to={`${routes.evidence.index()}?theme_id=${insight.id}`}>
+											<Badge variant="secondary" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-secondary/80">
+												{org.name}
+												<span className="text-[10px] opacity-70">({org.count})</span>
+											</Badge>
+										</Link>
+									))}
+								</div>
+							</div>
+						)}
+
+						{(insight as any).people?.length > 0 && (
+							<div className="space-y-3">
+								<div className="flex items-center gap-2">
+									<Users className="h-4 w-4 text-muted-foreground" />
+									<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">People</div>
+								</div>
+								<div className="flex flex-wrap gap-2">
+									{(insight as any).people.slice(0, 10).map((person: any, idx: number) => (
+										<Link key={idx} to={routes.people.detail(person.id)}>
+											<Badge variant="outline" className="cursor-pointer gap-1.5 px-3 py-1 hover:bg-accent">
+												{person.name}
+												{person.role && <span className="text-[10px] opacity-70">({person.role})</span>}
+											</Badge>
+										</Link>
+									))}
+									{(insight as any).people.length > 10 && (
+										<Link to={`${routes.evidence.index()}?theme_id=${insight.id}`}>
+											<Badge variant="outline" className="cursor-pointer px-3 py-1 hover:bg-accent">
+												+{(insight as any).people.length - 10} more
+											</Badge>
+										</Link>
+									)}
+								</div>
+							</div>
+						)}
+					</div>
+				)}
+			</div>
+
+			<div className="mt-6">
+				<EntityInteractionPanel entityType="insight" entityId={insight.id} />
+			</div>
+		</div>
+	)
+}
+
+/** Mini evidence card with thumbnail and key statement */
+function MiniEvidenceCard({
+	evidence,
+	projectPath,
+}: {
+	evidence: InsightEvidence
+	projectPath: string
+}) {
+	const thumbnail = evidence.interview?.thumbnail_url
+	const statement = evidence.gist || evidence.verbatim || "No statement"
+
+	return (
+		<Link
+			to={`${projectPath}/evidence/${evidence.id}`}
+			className="group flex gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm"
+		>
+			{/* Thumbnail or placeholder */}
+			<div className="h-16 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+				{thumbnail ? (
+					<img
+						src={thumbnail}
+						alt=""
+						className="h-full w-full object-cover transition-transform group-hover:scale-105"
+					/>
+				) : (
+					<div className="flex h-full w-full items-center justify-center">
+						<FileText className="h-6 w-6 text-muted-foreground/50" />
+					</div>
+				)}
+			</div>
+
+			{/* Content */}
+			<div className="min-w-0 flex-1">
+				<p className="line-clamp-2 text-foreground text-sm leading-snug">
+					"{statement}"
+				</p>
+				<p className="mt-1 truncate text-muted-foreground text-xs">
+					— {evidence.attribution}
+				</p>
+			</div>
+		</Link>
 	)
 }

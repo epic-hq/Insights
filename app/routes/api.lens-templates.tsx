@@ -338,6 +338,83 @@ export async function action({ request }: ActionFunctionArgs) {
 				})
 			}
 
+			// Generate and immediately create a template (one-step flow for inline card)
+			case "generate_and_create": {
+				const description = formData.get("description")?.toString()
+				const accountId = formData.get("account_id")?.toString()
+				const isPublic = formData.get("is_public")?.toString() !== "false"
+
+				if (!description || description.length < 10) {
+					return Response.json({ ok: false, error: "Description must be at least 10 characters" }, { status: 400 })
+				}
+
+				if (!accountId) {
+					return Response.json({ ok: false, error: "Missing account_id" }, { status: 400 })
+				}
+
+				consola.info("[lens-templates] Generate and create from description:", description.substring(0, 100))
+
+				try {
+					// Step 1: Generate template from description
+					const generated = await b.GenerateLensTemplate(description, null)
+
+					// Step 2: Get existing keys for unique slug
+					const { data: existing } = await userDb
+						.from("conversation_lens_templates")
+						.select("template_key")
+						.eq("account_id", accountId)
+
+					const existingKeys = (existing || []).map((t) => t.template_key)
+					const templateKey = generateTemplateKey(generated.template_name, existingKeys)
+
+					// Step 3: Insert template
+					const templateDefinition = {
+						sections: generated.sections,
+						entities: generated.entities,
+						recommendations_enabled: generated.recommendations_enabled,
+					}
+
+					const { data: template, error } = await userDb
+						.from("conversation_lens_templates")
+						.insert({
+							template_key: templateKey,
+							template_name: generated.template_name,
+							summary: generated.summary,
+							primary_objective: generated.primary_objective,
+							category: "custom",
+							template_definition: templateDefinition as any,
+							is_active: true,
+							display_order: 1000,
+							account_id: accountId,
+							created_by: userId,
+							is_system: false,
+							is_public: isPublic,
+							nlp_source: description,
+						})
+						.select()
+						.single()
+
+					if (error) {
+						consola.error("[lens-templates] Create error:", error)
+						return Response.json({ ok: false, error: error.message }, { status: 500 })
+					}
+
+					consola.info("[lens-templates] Created custom template:", template.template_key)
+
+					return Response.json({
+						ok: true,
+						template,
+						message: "Template generated and created successfully",
+					})
+				} catch (err) {
+					consola.error("[lens-templates] Generate and create failed:", err)
+					return Response.json(
+						{ ok: false, error: "Failed to generate template. Please try a different description." },
+						{ status: 500 }
+					)
+				}
+			}
+
 			default:
 				return Response.json({ ok: false, error: "Unknown intent" }, { status: 400 })
 		}

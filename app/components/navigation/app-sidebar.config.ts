@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, Briefcase, Building2, CheckSquare, Compass, File, Sparkles, Users } from "lucide-react"
+import { BookOpen, Briefcase, Building2, CheckSquare, Compass, File, Glasses, Sparkles, Users } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface AppSidebarNavItem {
@@ -31,7 +31,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				title: "Dashboard",
 				description: "Project overview",
 				icon: Compass,
-				to: (routes) => routes.projects.dashboard(),
+				to: (routes) => routes.dashboard(),
 			},
 			{
 				key: "tasks",
@@ -45,7 +45,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				title: "Insights",
 				description: "Themes & patterns",
 				icon: Sparkles,
-				to: (routes) => routes.themes.index(),
+				to: (routes) => routes.insights.table(),
 			},
 			{
 				key: "opportunities",
@@ -74,6 +74,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				description: "Calls, notes, uploads",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
+			},
+			{
+				key: "lenses",
+				title: "Lenses",
+				description: "Analysis templates",
+				icon: Glasses,
+				to: (routes) => routes.lenses.library(),
 			},
 		],
 	},

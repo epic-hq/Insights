@@ -8,6 +8,7 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { RelatedThemes } from "~/features/insights/components/RelatedThemes"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Insight } from "~/types"
 
@@ -42,7 +43,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 							</Badge>
 						)}
 						{(insight as any).emotional_response && (
-							<EmotionBadge emotion={(insight as any).emotional_response} size="sm" />
+							<EmotionBadge emotion_string={(insight as any).emotional_response} />
 						)}
 					</div>
 
@@ -84,7 +85,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 								<div className="flex flex-wrap gap-2">
 									{(selected as any).category && <Badge variant="secondary">{(selected as any).category}</Badge>}
 									{(selected as any).emotional_response && (
-										<EmotionBadge emotion={(selected as any).emotional_response} />
+										<EmotionBadge emotion_string={(selected as any).emotional_response} />
 									)}
 									{(selected as any).evidence_count > 0 && (
 										<Badge variant="outline" className="gap-1.5">
@@ -151,9 +152,20 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 								</div>
 							)}
 
+							{/* Semantic Related Themes */}
+							{selected.project_id && projectPath && (
+								<RelatedThemes
+									themeId={selected.id}
+									projectId={selected.project_id}
+									projectPath={projectPath}
+									limit={5}
+								/>
+							)}
+
+							{/* Manually linked themes (legacy) */}
 							{selected.linked_themes && selected.linked_themes.length > 0 && (
 								<div className="space-y-3">
-									<h4 className="font-medium text-gray-700 text-sm">Related Themes</h4>
+									<h4 className="font-medium text-gray-700 text-sm">Linked Themes</h4>
 									<div className="flex flex-wrap gap-2">
 										{selected.linked_themes.map((theme: any) => (
 											<Link key={theme.id} to={routes.themes.detail(theme.id)}>

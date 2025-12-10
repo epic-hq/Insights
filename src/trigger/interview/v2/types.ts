@@ -62,13 +62,14 @@ export interface ExtractEvidencePayload {
 
 export interface ExtractEvidenceResult {
 	evidenceIds: string[]
-	evidenceUnits: EvidenceUnit[]
+	evidenceUnits: EvidenceTurn[]
 	personId: string | null
 }
 
 export interface GenerateInsightsPayload {
 	interviewId: string
-	evidenceUnits: EvidenceUnit[]
+	evidenceUnits: EvidenceTurn[]
+	evidenceIds: string[] // Database IDs of the evidence rows
 	userCustomInstructions?: string
 	analysisJobId?: string
 	metadata?: InterviewMetadata
@@ -82,7 +83,7 @@ export interface AssignPersonasPayload {
 	interviewId: string
 	projectId: string
 	personId: string | null
-	evidenceUnits: EvidenceUnit[]
+	evidenceUnits: EvidenceTurn[]
 	analysisJobId?: string
 }
 

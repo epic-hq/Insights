@@ -96,7 +96,13 @@ export function InsightsSection({ insights, projectPath, maxVisible = 3, classNa
 
 	return (
 		<section className={cn("space-y-4", className)}>
-			<SectionHeader title="Insights" icon={Lightbulb} count={insights.length} viewAllHref={routes.themes.index()} />
+			<SectionHeader
+				title="Insights"
+				icon={Lightbulb}
+				tooltip="AI-discovered patterns, themes, and key findings from across your conversations."
+				count={insights.length}
+				viewAllHref={routes.themes.index()}
+			/>
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				{topInsights.map((insight) => (

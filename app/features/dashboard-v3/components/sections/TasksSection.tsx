@@ -101,11 +101,17 @@ export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: 
 
 	return (
 		<section className={cn("space-y-4", className)}>
-			<SectionHeader title="Tasks" icon={CheckSquare} count={activeTasks.length} viewAllHref={routes.priorities()} />
+			<SectionHeader
+				title="Tasks"
+				icon={CheckSquare}
+				tooltip="Action items and next steps extracted from your conversations. Prioritize and track progress here."
+				count={activeTasks.length}
+				viewAllHref={routes.priorities()}
+			/>
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				{topTasks.map((task) => (
-					<TaskPreviewCard key={task.id} task={task} prioritiesHref={routes.priorities()} />
+					<TaskPreviewCard key={task.id} task={task} prioritiesHref={routes.tasks.detail(task.id)} />
 				))}
 			</div>
 		</section>

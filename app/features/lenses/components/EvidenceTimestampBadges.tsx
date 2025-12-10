@@ -1,19 +1,22 @@
 /**
  * EvidenceTimestampBadges - Reusable component for rendering clickable evidence timestamp badges
  *
- * Displays evidence references as clickable badges that link to the evidence detail page
- * with timestamp query parameters for media playback.
+ * Displays evidence references as clickable badges that either:
+ * - Open a modal to view evidence (default, useModal=true)
+ * - Link to the evidence detail page (useModal=false)
  *
  * Can accept either:
  * 1. Pre-loaded evidence data with timestamps (preferred)
  * 2. Just evidence IDs (will show count without timestamps)
  */
 
+import { useState } from "react"
 import { Link } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { EvidenceModal } from "./EvidenceModal"
 
-type EvidenceRef = {
+export type EvidenceRef = {
 	evidenceId: string
 	startMs?: number | null
 	transcriptSnippet?: string | null
@@ -28,6 +31,8 @@ type Props = {
 	className?: string
 	/** Maximum number of badges to show before truncating */
 	maxVisible?: number
+	/** Whether to open evidence in a modal (default: true) or navigate to detail page */
+	useModal?: boolean
 }
 
 /**
@@ -40,9 +45,14 @@ function formatTimestamp(ms: number): string {
 	return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`
 }
 
-export function EvidenceTimestampBadges({ evidenceRefs, evidenceIds, className, maxVisible = 5 }: Props) {
+export function EvidenceTimestampBadges({ evidenceRefs, evidenceIds, className, maxVisible = 5, useModal = true }: Props) {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
+	const [modalState, setModalState] = useState<{ open: boolean; evidenceId: string; startTime: number }>({
+		open: false,
+		evidenceId: "",
+		startTime: 0,
+	})
 
 	// Use evidenceRefs if provided, otherwise fall back to evidenceIds
 	const refs: EvidenceRef[] = evidenceRefs || (evidenceIds?.map((id) => ({ evidenceId: id })) ?? [])
@@ -54,26 +64,60 @@ export function EvidenceTimestampBadges({ evidenceRefs, evidenceIds, className, 
 	const visibleRefs = refs.slice(0, maxVisible)
 	const hiddenCount = refs.length - maxVisible
 
-	return (
-		<div className={className || "mt-2 flex flex-wrap gap-1"}>
-			{visibleRefs.map((ref, idx) => {
-				const timestamp = Math.floor((ref.startMs ?? 0) / 1000)
-				const url = `${routes.evidence.detail(ref.evidenceId)}?t=${timestamp}`
+	const handleBadgeClick = (e: React.MouseEvent, ref: EvidenceRef) => {
+		e.preventDefault()
+		e.stopPropagation()
+		const startTime = Math.floor((ref.startMs ?? 0) / 1000)
+		setModalState({ open: true, evidenceId: ref.evidenceId, startTime })
+	}
 
-				return (
-					<Link
-						key={ref.evidenceId || idx}
-						to={url}
-						className="rounded border bg-background px-2 py-1 font-mono text-xs transition-colors hover:bg-accent/50"
-						title={ref.transcriptSnippet || "Jump to timestamp"}
-						onClick={(e) => e.stopPropagation()}
-					>
-						{formatTimestamp(ref.startMs ?? 0)}
-					</Link>
-				)
-			})}
-			{hiddenCount > 0 && <span className="px-2 py-1 text-muted-foreground text-xs">+{hiddenCount} more</span>}
-		</div>
+	return (
+		<>
+			<div className={className || "mt-2 flex flex-wrap gap-1"}>
+				{visibleRefs.map((ref, idx) => {
+					const timestamp = Math.floor((ref.startMs ?? 0) / 1000)
+
+					if (useModal) {
+						return (
+							<button
+								type="button"
+								key={ref.evidenceId || idx}
+								onClick={(e) => handleBadgeClick(e, ref)}
+								className="rounded border bg-background px-2 py-1 font-mono text-xs transition-colors hover:bg-accent/50"
+								title={ref.transcriptSnippet || "View evidence"}
+							>
+								{formatTimestamp(ref.startMs ?? 0)}
+							</button>
+						)
+					}
+
+					const url = `${routes.evidence.detail(ref.evidenceId)}?t=${timestamp}`
+					return (
+						<Link
+							key={ref.evidenceId || idx}
+							to={url}
+							className="rounded border bg-background px-2 py-1 font-mono text-xs transition-colors hover:bg-accent/50"
+							title={ref.transcriptSnippet || "Jump to timestamp"}
+							onClick={(e) => e.stopPropagation()}
+						>
+							{formatTimestamp(ref.startMs ?? 0)}
+						</Link>
+					)
+				})}
+				{hiddenCount > 0 && <span className="px-2 py-1 text-muted-foreground text-xs">+{hiddenCount} more</span>}
+			</div>
+
+			{/* Evidence Modal */}
+			{useModal && (
+				<EvidenceModal
+					open={modalState.open}
+					onOpenChange={(open) => setModalState((prev) => ({ ...prev, open }))}
+					evidenceId={modalState.evidenceId}
+					startTime={modalState.startTime}
+					projectPath={projectPath}
+				/>
+			)}
+		</>
 	)
 }
 

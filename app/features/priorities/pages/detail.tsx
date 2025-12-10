@@ -763,11 +763,11 @@ function TagManager({ taskId, tags }: { taskId: string; tags: string[] }) {
 			{tags.length > 0 && (
 				<div className="flex flex-wrap gap-1">
 					{tags.map((tag: string) => (
-						<Badge key={tag} variant="secondary" className="group gap-1 pr-1 text-xs">
-							{tag}
+						<Badge key={tag} variant="secondary" className="group max-w-full gap-1 pr-1 text-xs">
+							<span className="truncate">{tag}</span>
 							<button
 								onClick={() => handleRemoveTag(tag)}
-								className="ml-0.5 rounded-full p-0.5 opacity-50 hover:bg-destructive/20 hover:text-destructive hover:opacity-100"
+								className="ml-0.5 flex-shrink-0 rounded-full p-0.5 opacity-50 hover:bg-destructive/20 hover:text-destructive hover:opacity-100"
 							>
 								<X className="h-3 w-3" />
 							</button>

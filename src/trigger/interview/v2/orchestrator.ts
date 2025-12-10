@@ -228,45 +228,46 @@ export const processInterviewOrchestratorV2 = task({
 			}
 
 
-		// Step 3: Enrich Person (generate descriptions, link organizations)
-		if (
-			shouldExecuteStep("enrich-person", startFrom, state) &&
-			!skipSteps.includes("enrich-person")
-		) {
-			consola.info("[Orchestrator] Executing: Enrich Person")
+			// Step 3: Enrich Person (generate descriptions, link organizations)
+			if (
+				shouldExecuteStep("enrich-person", startFrom, state) &&
+				!skipSteps.includes("enrich-person")
+			) {
+				consola.info("[Orchestrator] Executing: Enrich Person")
 
-			const result = await enrichPersonTaskV2.triggerAndWait({
-				interviewId: state.interviewId,
-				projectId: metadata.projectId,
-				accountId: metadata.accountId,
-				personId: state.personId || null,
-				analysisJobId,
-			})
+				const result = await enrichPersonTaskV2.triggerAndWait({
+					interviewId: state.interviewId,
+					projectId: metadata.projectId,
+					accountId: metadata.accountId,
+					personId: state.personId || null,
+					analysisJobId,
+				})
 
-			if (!result.ok) {
-				throw new Error(`Enrich person failed: ${result.error}`)
+				if (!result.ok) {
+					throw new Error(`Enrich person failed: ${result.error}`)
+				}
+
+				// Update state
+				state.completedSteps = [...new Set([...state.completedSteps, "enrich-person"])]
+				state.currentStep = "enrich-person"
+
+				await saveWorkflowState(client, analysisJobId, state)
+				consola.success("[Orchestrator] ✓ Enrich Person complete")
+			} else {
+				consola.info("[Orchestrator] Skipping: Enrich Person")
 			}
 
-			// Update state
-			state.completedSteps = [...new Set([...state.completedSteps, "enrich-person"])]
-			state.currentStep = "enrich-person"
-
-			await saveWorkflowState(client, analysisJobId, state)
-			consola.success("[Orchestrator] ✓ Enrich Person complete")
-		} else {
-			consola.info("[Orchestrator] Skipping: Enrich Person")
-		}
-
-		// Step 4: Generate Insights (themes)
-		if (
-			shouldExecuteStep("insights", startFrom, state) &&
-			!skipSteps.includes("insights")
-		) {
+			// Step 4: Generate Insights (themes)
+			if (
+				shouldExecuteStep("insights", startFrom, state) &&
+				!skipSteps.includes("insights")
+			) {
 				consola.info("[Orchestrator] Executing: Generate Insights")
 
 				const result = await generateInsightsTaskV2.triggerAndWait({
 					interviewId: state.interviewId,
 					evidenceUnits: state.evidenceUnits!,
+					evidenceIds: state.evidenceIds || [],
 					userCustomInstructions,
 					analysisJobId,
 					metadata,

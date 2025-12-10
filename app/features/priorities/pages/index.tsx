@@ -14,11 +14,12 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import consola from "consola"
-import { Bot, ChevronDown, ChevronRight, Filter, LayoutGrid, List } from "lucide-react"
+import { Bot, Calendar as CalendarIcon, ChevronDown, ChevronRight, Filter, LayoutGrid, List, X } from "lucide-react"
 import * as React from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, redirect, useFetcher, useLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
+import { Calendar } from "~/components/ui/calendar"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
@@ -168,6 +169,8 @@ export async function action({ context, request }: ActionFunctionArgs) {
 				parsedValue = Number.parseInt(value, 10)
 			} else if (field === "status") {
 				parsedValue = value as TaskStatus
+			} else if (field === "due_date") {
+				parsedValue = value === "" ? null : value
 			}
 
 			await updateTask({
@@ -572,6 +575,90 @@ function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }
 	)
 }
 
+function EditableDueDateCell({ taskId, value }: { taskId: string; value: string | null }) {
+	const fetcher = useFetcher()
+	const [open, setOpen] = React.useState(false)
+	const [optimisticValue, setOptimisticValue] = React.useState<string | null>(value)
+
+	// Sync optimistic value when prop changes (after server response)
+	React.useEffect(() => {
+		setOptimisticValue(value)
+	}, [value])
+
+	const handleSelect = (date: Date | undefined) => {
+		const newValue = date ? date.toISOString().split("T")[0] : null
+		setOptimisticValue(newValue)
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", "due_date")
+		formData.append("value", newValue || "")
+
+		fetcher.submit(formData, { method: "POST" })
+		if (date) setOpen(false)
+	}
+
+	const handleClear = () => {
+		setOptimisticValue(null)
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", "due_date")
+		formData.append("value", "")
+
+		fetcher.submit(formData, { method: "POST" })
+		setOpen(false)
+	}
+
+	const selectedDate = optimisticValue ? new Date(optimisticValue) : undefined
+	const now = new Date()
+	const isOverdue = selectedDate && selectedDate < now && selectedDate.toDateString() !== now.toDateString()
+	const isToday = selectedDate && selectedDate.toDateString() === now.toDateString()
+
+	const formatted = selectedDate
+		? selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+		: null
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${
+						isOverdue
+							? "text-red-600 dark:text-red-400"
+							: isToday
+								? "text-amber-600 dark:text-amber-400"
+								: "text-muted-foreground"
+					}`}
+				>
+					{formatted ? (
+						<>
+							<CalendarIcon className="h-3 w-3" />
+							{formatted}
+						</>
+					) : (
+						<span className="text-muted-foreground/50">—</span>
+					)}
+				</button>
+			</PopoverTrigger>
+			<PopoverContent className="w-auto p-0" align="start">
+				<Calendar mode="single" selected={selectedDate} onSelect={handleSelect} initialFocus />
+				{optimisticValue && (
+					<div className="border-t p-2">
+						<Button variant="ghost" size="sm" onClick={handleClear} className="w-full">
+							<X className="mr-2 h-4 w-4" />
+							Clear date
+						</Button>
+					</div>
+				)}
+			</PopoverContent>
+		</Popover>
+	)
+}
+
 // ============================================================================
 // Column Header Components
 // ============================================================================
@@ -865,22 +952,7 @@ const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: stri
 		header: () => {
 			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
 		},
-		cell: ({ row }) => {
-			const dueDate = row.original.due_date
-			if (!dueDate) {
-				return <span className="text-muted-foreground text-xs">—</span>
-			}
-			const date = new Date(dueDate)
-			const now = new Date()
-			const isOverdue = date < now && date.toDateString() !== now.toDateString()
-			const isToday = date.toDateString() === now.toDateString()
-			const formatted = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-			return (
-				<span className={`text-xs ${isOverdue ? "text-red-600 dark:text-red-400" : isToday ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
-					{formatted}
-				</span>
-			)
-		},
+		cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
 	},
 	{
 		accessorKey: "status",
@@ -1045,6 +1117,7 @@ export default function FeaturePrioritizationPage() {
 		onColumnFiltersChange: setColumnFilters,
 		onGroupingChange: setGrouping,
 		onExpandedChange: setExpanded,
+		autoResetExpanded: false, // Preserve expanded state when data changes
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
@@ -1066,7 +1139,7 @@ export default function FeaturePrioritizationPage() {
 	return (
 		<div className="container mx-auto p-6">
 			<div className="mb-6 flex items-center justify-between">
-				<h1 className="font-bold text-2xl">Tasks</h1>
+				<h1 className="font-bold text-3xl tracking-tight">Tasks</h1>
 				<span className="text-muted-foreground text-sm">
 					{filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
 				</span>

@@ -18,7 +18,7 @@ import { getTasks } from "~/features/tasks/db"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
 
-export const meta: MetaFunction = () => [{ title: "Dashboard | Insights" }]
+export const meta: MetaFunction = () => [{ title: "Dashboard | UpSight Customer Intelligence" }]
 
 /** Hide the ProjectStatusAgent panel on this route - we have our own ContextPanel */
 export const handle = {
@@ -206,15 +206,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const researchGoalSection = projectSections.find((s) => s.kind === "research_goal")
 	const researchGoal = researchGoalSection?.content_md || undefined
 
-	// Build processing items for display
-	const processingItems = interviews
-		.filter((i) => ["uploading", "processing", "transcribing"].includes(i.status || ""))
-		.map((i) => ({
-			id: i.id,
-			name: i.participant_pseudonym || "Processing...",
-			status: i.status === "transcribing" || i.status === "processing" ? ("processing" as const) : ("queued" as const),
-		}))
-
 	// Build activity feed items from recent lens analyses
 	const activityFeedItems: LensActivityItem[] = recentLensActivity.map((analysis) => {
 		const template = templateMap.get(analysis.template_key)
@@ -277,7 +268,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		project,
 		conversationCount,
 		processingCount,
-		processingItems,
 		activeLensCount: enabledLenses.length,
 		lensSummaries,
 		recentActivity: activityFeedItems,
@@ -294,7 +284,6 @@ export default function DashboardV3Page() {
 		project,
 		conversationCount,
 		processingCount,
-		processingItems,
 		activeLensCount,
 		lensSummaries,
 		recentActivity,
@@ -314,7 +303,6 @@ export default function DashboardV3Page() {
 				projectPath={projectPath || ""}
 				conversationCount={conversationCount}
 				processingCount={processingCount}
-				processingItems={processingItems}
 				activeLensCount={activeLensCount}
 				hasGoals={hasGoals}
 				hasLenses={hasLenses}

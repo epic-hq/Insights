@@ -189,6 +189,7 @@ export function LensFeed({
 					<SectionHeader
 						title="Recent Activity"
 						icon={Activity}
+						tooltip="A live feed of new conversations, notes, and insights as they happen."
 						viewAllHref={routes.interviews.index()}
 						viewAllText="All Conversations"
 					/>
@@ -208,6 +209,7 @@ export function LensFeed({
 					<SectionHeader
 						title="Lens Library"
 						icon={Glasses}
+						tooltip="Quickly see just the facts you're looking for with custom analysis templates tailored for specific use cases."
 						viewAllHref={routes.lenses.library()}
 						viewAllText="All Lenses"
 					/>

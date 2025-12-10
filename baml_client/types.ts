@@ -317,6 +317,11 @@ export interface AuthorityInfo {
   
 }
 
+export interface AutoGroupThemesResponse {
+  themes: ProposedTheme[]
+  
+}
+
 export interface AutoInsightsResponse {
   executive_summary: string
   top_opportunities: OpportunityRecommendation[]
@@ -1398,6 +1403,17 @@ export interface ProjectTemplateOut {
   
 }
 
+export interface ProposedTheme {
+  name: string
+  statement?: string | null
+  inclusion_criteria?: string | null
+  exclusion_criteria?: string | null
+  synonyms: string[]
+  anti_examples: string[]
+  links: ThemeLink[]
+  
+}
+
 export interface Question {
   id: string
   text: string
@@ -1696,6 +1712,13 @@ export interface TargetFitAssessment {
   reasoning: string
   signals: string[]
   evidence_ids: string[]
+  
+}
+
+export interface ThemeLink {
+  evidence_id: string
+  rationale: string
+  confidence: number
   
 }
 
