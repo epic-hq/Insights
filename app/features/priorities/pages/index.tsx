@@ -102,7 +102,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Fetch ALL tasks for this project (no filters applied server-side)
 	// We'll filter on the client to ensure counts are accurate
-	let tasks = await getTasks({
+	const tasks = await getTasks({
 		supabase: ctx.supabase,
 		accountId,
 		projectId,
@@ -116,24 +116,24 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	})
 
 	// If no tasks exist, seed with initial data
-	if (!tasks || tasks.length === 0) {
-		const seedResult = await seedTasks({
-			supabase: ctx.supabase,
-			accountId,
-			projectId,
-			userId,
-		})
+	// if (!tasks || tasks.length === 0) {
+	// 	const seedResult = await seedTasks({
+	// 		supabase: ctx.supabase,
+	// 		accountId,
+	// 		projectId,
+	// 		userId,
+	// 	})
 
-		if (seedResult.success) {
-			// Fetch again after seeding
-			tasks = await getTasks({
-				supabase: ctx.supabase,
-				accountId,
-				projectId,
-				options: {},
-			})
-		}
-	}
+	// 	if (seedResult.success) {
+	// 		// Fetch again after seeding
+	// 		tasks = await getTasks({
+	// 			supabase: ctx.supabase,
+	// 			accountId,
+	// 			projectId,
+	// 			options: {},
+	// 		})
+	// 	}
+	// }
 
 	const projectPath = `/a/${accountId}/${projectId}`
 	return { tasks, accountId, projectId, statusFilter, priorityFilter, projectPath }
@@ -261,10 +261,7 @@ function TaskTitleCell({ taskId, value, detailHref }: { taskId: string; value: s
 
 	return (
 		<div className="flex items-center gap-2">
-			<Link
-				to={detailHref}
-				className="text-sm font-medium text-foreground hover:text-primary hover:underline flex-1"
-			>
+			<Link to={detailHref} className="flex-1 font-medium text-foreground text-sm hover:text-primary hover:underline">
 				{value}
 			</Link>
 		</div>
@@ -295,14 +292,7 @@ function EditableStatusCell({ taskId, value }: { taskId: string; value: TaskStat
 		fetcher.submit(formData, { method: "POST" })
 	}
 
-	return (
-		<StatusDropdown
-			currentStatus={displayValue}
-			taskId={taskId}
-			onStatusChange={handleStatusChange}
-			size="sm"
-		/>
-	)
+	return <StatusDropdown currentStatus={displayValue} taskId={taskId} onStatusChange={handleStatusChange} size="sm" />
 }
 
 function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priority }) {
@@ -465,22 +455,19 @@ function EditableDueDateCell({ taskId, value }: { taskId: string; value: string 
 	const isOverdue = selectedDate && selectedDate < now && selectedDate.toDateString() !== now.toDateString()
 	const isToday = selectedDate && selectedDate.toDateString() === now.toDateString()
 
-	const formatted = selectedDate
-		? selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-		: null
+	const formatted = selectedDate ? selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${
-						isOverdue
+					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${isOverdue
 							? "text-red-600 dark:text-red-400"
 							: isToday
 								? "text-amber-600 dark:text-amber-400"
 								: "text-muted-foreground"
-					}`}
+						}`}
 				>
 					{formatted ? (
 						<>
@@ -611,9 +598,8 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -677,9 +663,8 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}
@@ -700,116 +685,121 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 // Table Columns
 // ============================================================================
 
-const createColumns = (tasks: Task[], statusFilter: string, priorityFilter: string, projectPath: string): ColumnDef<FeatureRow>[] => [
-	{
-		accessorKey: "cluster",
-		header: "Cluster",
-		// Hidden column - used for grouping and filtering only
-		cell: ({ row }) => <span>{row.original.cluster}</span>,
-	},
-	{
-		accessorKey: "feature",
-		header: ({ column }) => {
-			return (
-				<SortableColumnHeader
-					title="Tasks"
-					tooltip="The task, feature, or initiative to be implemented"
-					column={column}
+const createColumns = (
+	tasks: Task[],
+	statusFilter: string,
+	priorityFilter: string,
+	projectPath: string
+): ColumnDef<FeatureRow>[] => [
+		{
+			accessorKey: "cluster",
+			header: "Cluster",
+			// Hidden column - used for grouping and filtering only
+			cell: ({ row }) => <span>{row.original.cluster}</span>,
+		},
+		{
+			accessorKey: "feature",
+			header: ({ column }) => {
+				return (
+					<SortableColumnHeader
+						title="Tasks"
+						tooltip="The task, feature, or initiative to be implemented"
+						column={column}
+					/>
+				)
+			},
+			cell: ({ row }) => (
+				<TaskTitleCell
+					taskId={row.original.id}
+					value={row.original.feature}
+					detailHref={`${projectPath}/priorities/${row.original.id}`}
 				/>
-			)
+			),
 		},
-		cell: ({ row }) => (
-			<TaskTitleCell
-				taskId={row.original.id}
-				value={row.original.feature}
-				detailHref={`${projectPath}/priorities/${row.original.id}`}
-			/>
-		),
-	},
-	{
-		accessorKey: "benefit",
-		header: () => {
-			return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
+		{
+			accessorKey: "benefit",
+			header: () => {
+				return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
-	},
-	{
-		accessorKey: "segments",
-		header: () => {
-			return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
+		{
+			accessorKey: "segments",
+			header: () => {
+				return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
-	},
-	{
-		accessorKey: "impact",
-		header: ({ column }) => {
-			return (
-				<SortableColumnHeader
-					title="Impact"
-					tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
-					column={column}
-				/>
-			)
+		{
+			accessorKey: "impact",
+			header: ({ column }) => {
+				return (
+					<SortableColumnHeader
+						title="Impact"
+						tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
+						column={column}
+					/>
+				)
+			},
+			cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
 		},
-		cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
-	},
-	{
-		accessorKey: "stage",
-		header: () => {
-			return (
-				<ColumnHeader
-					title="Stage"
-					tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
-				/>
-			)
+		{
+			accessorKey: "stage",
+			header: () => {
+				return (
+					<ColumnHeader
+						title="Stage"
+						tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
+					/>
+				)
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
-	},
-	{
-		accessorKey: "priority",
-		header: () => {
-			return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
+		{
+			accessorKey: "priority",
+			header: () => {
+				return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
+			},
+			cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
 		},
-		cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
-	},
-	{
-		accessorKey: "due_date",
-		header: () => {
-			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
+		{
+			accessorKey: "due_date",
+			header: () => {
+				return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
+			},
+			cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
 		},
-		cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
-	},
-	{
-		accessorKey: "status",
-		header: () => {
-			return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
+		{
+			accessorKey: "status",
+			header: () => {
+				return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
+			},
+			cell: ({ row }) => {
+				// Get status from the original task data
+				const task = tasks.find((t) => t.id === row.original.id)
+				const status = task?.status || "backlog"
+				return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
+			},
 		},
-		cell: ({ row }) => {
-			// Get status from the original task data
-			const task = tasks.find((t) => t.id === row.original.id)
-			const status = task?.status || "backlog"
-			return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
+		{
+			accessorKey: "reason",
+			header: () => {
+				return (
+					<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
+				)
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
 		},
-	},
-	{
-		accessorKey: "reason",
-		header: () => {
-			return (
-				<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
-			)
+		{
+			id: "actions",
+			header: () => {
+				return (
+					<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
+				)
+			},
+			cell: ({ row }) => <AskUppyCell row={row.original} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
-	},
-	{
-		id: "actions",
-		header: () => {
-			return (
-				<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
-			)
-		},
-		cell: ({ row }) => <AskUppyCell row={row.original} />,
-	},
-]
+	]
 
 function AskUppyCell({ row }: { row: FeatureRow }) {
 	const { insertText } = useProjectStatusAgent()
@@ -1061,12 +1051,12 @@ export default function FeaturePrioritizationPage() {
 								if (row.getIsGrouped()) {
 									// Group row (cluster header)
 									return (
-										<tr key={row.id} className="border-b bg-slate-200 dark:bg-slate-800 font-semibold">
+										<tr key={row.id} className="border-b bg-slate-200 font-semibold dark:bg-slate-800">
 											<td colSpan={columns.length} className="px-4 py-2.5">
 												<button
 													type="button"
 													onClick={row.getToggleExpandedHandler()}
-													className="flex items-center gap-2 text-slate-700 dark:text-slate-200 hover:text-primary"
+													className="flex items-center gap-2 text-slate-700 hover:text-primary dark:text-slate-200"
 												>
 													{row.getIsExpanded() ? (
 														<ChevronDown className="h-4 w-4" />
