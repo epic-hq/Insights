@@ -115,9 +115,9 @@ export function TasksSection({
 				<EmptyStateBox
 					icon={CheckSquare}
 					title="Tasks"
-					message="Upload a conversation to see AI-generated action items here"
-					ctaText="Add Conversation"
-					ctaHref={routes.interviews.upload()}
+					message="AI will automatically detect and add tasks from conversations. Or add your own."
+					ctaText="Add Task"
+					ctaHref={routes.tasks.new()}
 				/>
 			</section>
 		)

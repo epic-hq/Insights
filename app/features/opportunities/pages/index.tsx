@@ -132,9 +132,7 @@ export default function OpportunitiesIndexPage() {
 						<Briefcase className="h-8 w-8 text-primary" />
 						<h1 className="text-balance font-bold text-4xl tracking-tight">Opportunities</h1>
 					</div>
-					<p className="text-lg text-muted-foreground">
-						Mix interviews, discovery signals, and deal hygiene to keep the pipeline accountable.
-					</p>
+
 				</div>
 				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 					<ToggleGroup

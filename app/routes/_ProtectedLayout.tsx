@@ -48,8 +48,8 @@ export const middleware: Route.MiddlewareFunction[] = [
 				throw redirect("/login")
 			}
 
-			// DEBUG: Log all accounts this user belongs to
-			consola.info("🔍 [AUTH MIDDLEWARE] User accounts:", {
+			// DEBUG: Log all accounts this user belongs to (use debug level to reduce noise)
+			consola.debug("[AUTH MIDDLEWARE] User accounts:", {
 				userId: user.sub,
 				email: user.email,
 				accountCount: accounts?.length || 0,

@@ -108,6 +108,7 @@ export interface RouteDefinitions {
 	priorities: () => string
 	tasks: {
 		index: () => string
+		new: () => string // Opens modal via ?new=true query param
 		detail: (id: string) => string
 	}
 
@@ -289,6 +290,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		priorities: () => `${base}/priorities`,
 		tasks: {
 			index: () => `${base}/priorities`,
+			new: () => `${base}/priorities/new`,
 			detail: (id: string) => `${base}/priorities/${id}`,
 		},
 

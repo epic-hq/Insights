@@ -94,7 +94,7 @@ function useAnnotations({
 		}
 	}, [fetcher.state, fetcher.data])
 
-	const addComment = (content: string, parentId?: string) => {
+	const addComment = (content: string, contentJsonb?: Record<string, unknown>, parentId?: string) => {
 		if (!content.trim()) return
 
 		// Submit to server without optimistic update
@@ -104,6 +104,7 @@ function useAnnotations({
 				entityType,
 				entityId,
 				content: content.trim(),
+				...(contentJsonb && { contentJsonb: JSON.stringify(contentJsonb) }),
 				...(parentId && { parentId }),
 			},
 			{ method: "POST", action: routes.api.annotations() }
@@ -445,7 +446,9 @@ export function useEntityAnnotations({
 	return {
 		// Annotations data
 		annotations: includeComments ? annotationsHook.annotations : [],
-		submitAnnotation: includeComments ? annotationsHook.addComment : () => {},
+		submitAnnotation: includeComments
+			? (content: string, contentJsonb?: Record<string, unknown>) => annotationsHook.addComment(content, contentJsonb)
+			: () => {},
 		refetchAnnotations: includeComments ? annotationsHook.refetch : () => {},
 
 		// Voting data

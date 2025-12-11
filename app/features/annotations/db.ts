@@ -151,6 +151,7 @@ export async function createAnnotation({
 	entityId,
 	annotationType,
 	content,
+	contentJsonb,
 	metadata,
 	parentAnnotationId,
 	threadRootId,
@@ -165,6 +166,7 @@ export async function createAnnotation({
 	entityId: string
 	annotationType: AnnotationType
 	content?: string
+	contentJsonb?: Record<string, unknown>
 	metadata?: AnnotationMetadata
 	parentAnnotationId?: string
 	threadRootId?: string
@@ -180,6 +182,7 @@ export async function createAnnotation({
 			entity_id: entityId,
 			annotation_type: annotationType,
 			content,
+			content_jsonb: contentJsonb ?? null,
 			metadata: metadata ?? null,
 			parent_annotation_id: parentAnnotationId,
 			thread_root_id: threadRootId,

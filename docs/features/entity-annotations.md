@@ -27,6 +27,7 @@ The `annotations` table supports polymorphic associations via `entity_type` and 
 - `persona` - User personas
 - `insight` - Research insights
 - `project` - Projects themselves
+- `task` - Tasks and priorities
 
 ## Annotation Types
 
@@ -302,9 +303,102 @@ await agent.tools.manageAnnotations({
    - Link related annotations with `parent_annotation_id`
    - Track conversation roots with `thread_root_id`
 
-## UI Integration (Future)
+## UI Integration
 
-Potential UI components:
+### EntityInteractionPanel Component
+
+The `EntityInteractionPanel` component (`app/components/EntityInteractionPanel.tsx`) provides a complete UI for annotations:
+
+```tsx
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
+
+<EntityInteractionPanel
+  entityType="insight"
+  entityId={insight.id}
+  className="mt-4"
+/>
+```
+
+**Features:**
+- Upvote/downvote buttons with vote counts
+- Comments section with auto-expand when comments exist
+- Archive/hide dropdown menu with status badges
+- @mentions in comments with searchable popover
+- Commenter names and avatars
+
+### @Mentions in Comments
+
+Comments support @mentioning both team members and project people:
+
+**How it works:**
+1. Type `@` in a comment to trigger the mention popover
+2. Search/filter by name or email
+3. Select a user with keyboard (↑↓ Enter) or click
+4. Mentions are stored in `content_jsonb.mentions` array
+
+**MentionInput Component:**
+
+```tsx
+import { MentionInput, renderTextWithMentions, type Mention } from "~/components/ui/mention-input"
+
+<MentionInput
+  value={comment}
+  onChange={setComment}
+  onMentionsChange={setMentions}
+  mentionableUsers={users}
+  placeholder="Add a note... Type @ to mention"
+/>
+
+// Render text with mention badges
+{renderTextWithMentions(comment.content, comment.content_jsonb?.mentions)}
+```
+
+**Mention Data Structure:**
+
+```typescript
+interface Mention {
+  id: string       // User ID or Person ID
+  name: string     // Display name
+  type: "user" | "person"  // Team member vs project person
+  startIndex: number
+  endIndex: number
+}
+
+// Stored in annotation content_jsonb:
+{
+  mentions: [
+    { id: "uuid", name: "John Doe", type: "user", startIndex: 5, endIndex: 14 }
+  ]
+}
+```
+
+**Mentionable Users API:**
+
+The `/a/:accountId/:projectId/api/mentionable-users` endpoint returns:
+- Team members (from `account_user` + `user_settings`)
+- Project people (from `people` table)
+
+### User Profile Display
+
+Use the `useUserProfiles` hook to fetch and cache user profiles:
+
+```tsx
+import { useUserProfiles } from "~/hooks/useUserProfiles"
+
+const { profiles, fetchProfiles, isLoading } = useUserProfiles()
+
+// Fetch profiles for comment authors
+useEffect(() => {
+  const userIds = comments.map(c => c.created_by_user_id).filter(Boolean)
+  if (userIds.length > 0) fetchProfiles(userIds)
+}, [comments])
+
+// Display user info
+{profiles[comment.created_by_user_id]?.name || "User"}
+```
+
+### Additional UI Components (Planned)
+
 - Annotation sidebar showing notes/comments for current entity
 - Todo list widget showing all unresolved todos
 - Activity feed showing recent annotations
@@ -363,5 +457,17 @@ await supabaseAdmin
 
 - [Dynamic Documents System](./dynamic-documents.md) - Project-level strategic documents
 - [Document Vocabulary Reference](../quick-reference/document-vocabulary.md) - Natural language mapping for documents
-- Annotations schema: `supabase/schemas/40_annotations.sql`
-- Tool implementation: `app/mastra/tools/manage-annotations.ts`
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `supabase/schemas/40_annotations.sql` | Database schema for annotations, votes, flags |
+| `app/mastra/tools/manage-annotations.ts` | AI agent tool for annotations |
+| `app/features/annotations/db.ts` | Database operations (CRUD, votes, flags) |
+| `app/features/annotations/hooks.ts` | React hooks for annotations UI |
+| `app/features/annotations/api/` | API route handlers |
+| `app/components/EntityInteractionPanel.tsx` | Main annotation UI component |
+| `app/components/ui/mention-input.tsx` | @mention input component |
+| `app/hooks/useUserProfiles.ts` | User profile fetching hook |
+| `app/routes/api/mentionable-users.ts` | Mentionable users API endpoint |

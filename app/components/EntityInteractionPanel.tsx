@@ -1,14 +1,18 @@
 import { Archive, EyeOff, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Textarea } from "~/components/ui/textarea"
+import { type Mention, MentionInput, renderTextWithMentions } from "~/components/ui/mention-input"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import type { EntityType } from "~/features/annotations/db"
 import { useEntityAnnotations } from "~/features/annotations/hooks"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useUserProfiles } from "~/hooks/useUserProfiles"
 import { cn } from "~/lib/utils"
+import type { MentionableUser } from "~/routes/api/mentionable-users"
 import type { Annotation, AnnotationComment, UserFlag } from "~/types"
+import { formatRelativeDate } from "~/utils/relative-date"
 
 interface EntityInteractionPanelProps {
 	entityType: EntityType
@@ -20,8 +24,14 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 	const [showComments, setShowComments] = useState(false)
 	const [hasAutoExpanded, setHasAutoExpanded] = useState(false)
 	const [newComment, setNewComment] = useState("")
+	const [currentMentions, setCurrentMentions] = useState<Mention[]>([])
 	const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+	const [mentionableUsers, setMentionableUsers] = useState<MentionableUser[]>([])
 	const { profiles: userProfiles, fetchProfiles } = useUserProfiles()
+
+	// Get project context for fetching mentionable users
+	const { accountId, projectId, projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath)
 
 	const {
 		annotations,
@@ -37,6 +47,26 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 		entityType,
 		entityId,
 	})
+
+	// Fetch mentionable users when component mounts (need them ready for @ mentions)
+	useEffect(() => {
+		if (accountId && projectId && mentionableUsers.length === 0) {
+			fetch(`/a/${accountId}/${projectId}/api/mentionable-users`)
+				.then((res) => {
+					if (!res.ok) {
+						console.error("[MentionableUsers] API returned error:", res.status)
+						return null
+					}
+					return res.json()
+				})
+				.then((data) => {
+					if (data?.users) {
+						setMentionableUsers(data.users)
+					}
+				})
+				.catch((err) => console.error("[MentionableUsers] Fetch error:", err))
+		}
+	}, [accountId, projectId, mentionableUsers.length])
 
 	// Fetch user profiles for all unique user IDs in comments
 	useEffect(() => {
@@ -64,11 +94,18 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 	const handleAddComment = async () => {
 		if (!newComment.trim()) return
 		setIsSubmittingComment(true)
-		submitAnnotation(newComment)
+		// Include mentions in content_jsonb if any
+		const contentJsonb = currentMentions.length > 0 ? { mentions: currentMentions } : undefined
+		submitAnnotation(newComment, contentJsonb)
 		setNewComment("")
+		setCurrentMentions([])
 		await refetchAnnotations()
 		setIsSubmittingComment(false)
 	}
+
+	const handleMentionsChange = useCallback((mentions: Mention[]) => {
+		setCurrentMentions(mentions)
+	}, [])
 
 	const handleArchive = () => {
 		submitFlag({
@@ -205,20 +242,29 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 											)}
 										</span>
 										<span className="text-foreground/60 text-xs">
-											{new Date(comment.created_at as string).toLocaleDateString()}
+											{formatRelativeDate(comment.created_at as string)}
 										</span>
 									</div>
-									<p className="text-foreground/60 text-sm">{comment.content}</p>
+									<p className="text-foreground/60 text-sm">
+										{renderTextWithMentions(
+											comment.content || "",
+											(comment.content_jsonb as { mentions?: Mention[] })?.mentions
+										)}
+									</p>
 								</div>
 							))}
 						</div>
 					) : null}
 					<div className="flex gap-2">
-						<Textarea
-							placeholder={comments.length > 0 ? "Add a note..." : "Be the first to comment."}
+						<MentionInput
 							value={newComment}
-							onChange={(e) => setNewComment(e.target.value)}
-							className="min-h-[60px] flex-1"
+							onChange={setNewComment}
+							onMentionsChange={handleMentionsChange}
+							mentionableUsers={mentionableUsers}
+							placeholder={
+								comments.length > 0 ? "Add a note... Type @ to mention" : "Be the first to comment. Type @ to mention"
+							}
+							className="flex-1"
 							disabled={isSubmittingComment}
 						/>
 						<Button

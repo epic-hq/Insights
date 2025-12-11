@@ -101,6 +101,8 @@ const routes = [
 
 				// Contextual suggestions API (needs project context)
 				route("api/contextual-suggestions", "./routes/api.contextual-suggestions.tsx"),
+				// Mentionable users API for @mentions (needs project context)
+				route("api/mentionable-users", "./routes/api/mentionable-users.ts"),
 
 				// Realtime interviews APIs (project-scoped)
 				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),

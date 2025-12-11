@@ -80,10 +80,21 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 				const entityType = formData.get("entityType") as EntityType
 				const entityId = formData.get("entityId") as string
 				const content = formData.get("content") as string
+				const contentJsonbStr = formData.get("contentJsonb") as string | undefined
 				const parentId = formData.get("parentId") as string | undefined
 
 				if (!entityType || !entityId || !content?.trim()) {
 					return Response.json({ error: { message: "Missing required fields" } }, { status: 400 })
+				}
+
+				// Parse contentJsonb if provided (for mentions, etc.)
+				let contentJsonb: Record<string, unknown> | undefined
+				if (contentJsonbStr) {
+					try {
+						contentJsonb = JSON.parse(contentJsonbStr)
+					} catch (_e) {
+						consola.warn("Invalid contentJsonb JSON:", contentJsonbStr)
+					}
 				}
 
 				const { data: annotation, error } = await createAnnotation({
@@ -94,6 +105,7 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 					entityId,
 					annotationType: "comment",
 					content: content.trim(),
+					contentJsonb,
 					parentAnnotationId: parentId,
 					threadRootId: parentId, // For now, use parent as thread root
 					createdByUserId: userId,

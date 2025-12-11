@@ -18,7 +18,7 @@ export interface WelcomeHeaderProps {
 
 export function WelcomeHeader({
 	projectName,
-	subtitle = "Let's get your research project set up",
+	subtitle = "",
 	className,
 }: WelcomeHeaderProps) {
 	return (

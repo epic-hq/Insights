@@ -17,7 +17,7 @@ import consola from "consola"
 import { Bot, Calendar as CalendarIcon, ChevronDown, ChevronRight, Filter, LayoutGrid, List, X } from "lucide-react"
 import * as React from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { Link, redirect, useFetcher, useLoaderData } from "react-router"
+import { Link, redirect, useFetcher, useLoaderData, useSearchParams } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Calendar } from "~/components/ui/calendar"
 import InlineEdit from "~/components/ui/inline-edit"
@@ -26,8 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/u
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
+import { TaskCreateModal } from "~/features/tasks/components/TaskCreateModal"
 import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
-import { getTasks, updateTask } from "~/features/tasks/db"
+import { createTask, getTasks, updateTask } from "~/features/tasks/db"
 import { seedTasks } from "~/features/tasks/seed"
 import type { Task, TaskStatus } from "~/features/tasks/types"
 import { userContext } from "~/server/user-context"
@@ -205,6 +206,49 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		} catch (error) {
 			consola.error("Error updating task:", error)
 			throw new Response("Failed to update task", { status: 500 })
+		}
+	}
+
+	// Handle task creation from modal
+	const intent = formData.get("intent") as string
+	if (intent === "create") {
+		const title = formData.get("title") as string
+		const description = formData.get("description") as string
+		const cluster = formData.get("cluster") as string
+		const priority = Number.parseInt(formData.get("priority") as string, 10) || 3
+
+		if (!title) {
+			return { success: false, error: "Title is required" }
+		}
+
+		// Get accountId and projectId from the URL
+		const url = new URL(request.url)
+		const pathParts = url.pathname.split("/")
+		const accountId = pathParts[2] // /a/:accountId/:projectId/priorities
+		const projectId = pathParts[3]
+
+		if (!accountId || !projectId) {
+			throw new Response("Missing account or project ID", { status: 400 })
+		}
+
+		try {
+			await createTask({
+				supabase: ctx.supabase,
+				accountId,
+				projectId,
+				userId,
+				data: {
+					title,
+					description: description || null,
+					cluster: cluster || "Core product – capture & workflow",
+					priority: priority as 1 | 2 | 3,
+				},
+			})
+
+			return { success: true }
+		} catch (error) {
+			consola.error("Error creating task:", error)
+			return { success: false, error: "Failed to create task" }
 		}
 	}
 
@@ -873,7 +917,19 @@ Context:
 
 export default function FeaturePrioritizationPage() {
 	const { tasks, statusFilter, priorityFilter, projectPath } = useLoaderData<typeof loader>()
+	const [searchParams, setSearchParams] = useSearchParams()
 	const [compactView, setCompactView] = React.useState(true)
+
+	// Handle ?new=true query param to open create modal
+	const showCreateModal = searchParams.get("new") === "true"
+	const handleCreateModalChange = (open: boolean) => {
+		if (!open) {
+			// Remove ?new param when closing
+			const newParams = new URLSearchParams(searchParams)
+			newParams.delete("new")
+			setSearchParams(newParams, { replace: true })
+		}
+	}
 
 	// Apply client-side filtering
 	const filteredTasks = React.useMemo(() => {
@@ -970,11 +1026,19 @@ export default function FeaturePrioritizationPage() {
 
 	return (
 		<div className="container mx-auto p-6">
+			{/* Task Create Modal - controlled by ?new=true query param */}
+			<TaskCreateModal open={showCreateModal} onOpenChange={handleCreateModalChange} />
+
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="font-bold text-3xl tracking-tight">Tasks</h1>
-				<span className="text-muted-foreground text-sm">
-					{filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
-				</span>
+				<div className="flex items-center gap-3">
+					<span className="text-muted-foreground text-sm">
+						{filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
+					</span>
+					<Button size="sm" onClick={() => setSearchParams({ new: "true" })}>
+						Add Task
+					</Button>
+				</div>
 			</div>
 
 			<div className="space-y-3">

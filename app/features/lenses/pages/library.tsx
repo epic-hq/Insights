@@ -769,7 +769,7 @@ export default function LensLibrary() {
 					</div>
 				</div>
 				<p className="text-lg text-muted-foreground">
-					Toggle lenses to automatically analyze new conversations in this project
+					Lenses automatically extract structured insights from your conversations. Enable lenses to populate feeds, power dashboards, and generate on-demand analysis.
 				</p>
 			</div>
 
