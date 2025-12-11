@@ -2,6 +2,8 @@ import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
 
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+
 /**
  * Parse CSV/TSV content into structured data and markdown table format.
  * Supports both raw text input and common delimiter detection.
@@ -186,6 +188,8 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			.default(20)
 			.describe("Maximum rows to show in the markdown table (default: 20)"),
 		includeStats: z.boolean().optional().default(true).describe("Include summary statistics for numeric columns"),
+		saveToAssets: z.boolean().optional().default(true).describe("Save the parsed table to project_assets for future reference"),
+		title: z.string().optional().describe("Optional title for the saved asset. Auto-generated if not provided."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -196,11 +200,25 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		columnCount: z.number().describe("Number of columns"),
 		stats: z.record(z.string(), z.any()).optional().describe("Summary statistics for numeric columns"),
 		sampleRows: z.array(z.record(z.string(), z.any())).optional().describe("First few rows as structured data"),
+		assetId: z.string().uuid().optional().describe("ID of the saved project_asset, if saved"),
+		assetSaved: z.boolean().optional().describe("Whether the asset was saved to project_assets"),
+		looksLikeContacts: z.boolean().optional().describe("Whether the data appears to be contact/people data"),
+		contactColumns: z.array(z.string()).optional().describe("Detected contact-related column names"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context }) => {
+	execute: async ({ context, runtimeContext, writer }) => {
 		try {
-			const { content, delimiter, maxDisplayRows, includeStats } = context
+			const { content, delimiter, maxDisplayRows, includeStats, saveToAssets, title } = context
+
+			// Get accountId and projectId from runtime context
+			const accountId = runtimeContext?.get?.("account_id") as string | undefined
+			const projectId = runtimeContext?.get?.("project_id") as string | undefined
+
+			// Stream progress update - starting
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: { tool: "parseSpreadsheet", status: "parsing", message: "Parsing spreadsheet data...", progress: 10 },
+			})
 
 			if (!content || content.trim().length === 0) {
 				return {
@@ -242,15 +260,89 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				rows: rows.length,
 			})
 
+			// Stream progress update - parsed
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: { tool: "parseSpreadsheet", status: "analyzing", message: `Parsed ${rows.length} rows, analyzing data...`, progress: 50 },
+			})
+
+			// Detect if this looks like contact data
+			const contactKeywords = ["name", "email", "phone", "company", "organization", "title", "role", "linkedin", "contact"]
+			const contactColumns = headers.filter((h) =>
+				contactKeywords.some((kw) => h.toLowerCase().includes(kw))
+			)
+			const looksLikeContacts = contactColumns.length >= 2
+
+			// Save to project_assets if requested and we have the required IDs
+			let assetId: string | undefined
+			let assetSaved = false
+
+			if (saveToAssets && accountId && projectId) {
+				try {
+					const supabaseAdmin = createSupabaseAdminClient()
+
+					// Generate a title if not provided
+					const assetTitle = title || `Table: ${headers.slice(0, 3).join(", ")}${headers.length > 3 ? "..." : ""}`
+
+					// Stream progress update - saving
+					await writer?.custom?.({
+						type: "data-tool-progress",
+						data: { tool: "parseSpreadsheet", status: "saving", message: `Saving ${rows.length} rows to project assets...`, progress: 70 },
+					})
+
+					// Store up to 1000 rows in table_data (display limit is separate)
+					const storageRows = rows.slice(0, 1000)
+
+					const { data: asset, error: insertError } = await supabaseAdmin
+						.from("project_assets")
+						.insert({
+							account_id: accountId,
+							project_id: projectId,
+							asset_type: "table",
+							title: assetTitle,
+							content_md: markdownTable,
+							content_raw: content, // Store original for re-parsing
+							table_data: { headers, rows: storageRows },
+							row_count: rows.length,
+							column_count: headers.length,
+							source_type: "paste",
+							status: "ready",
+						})
+						.select("id")
+						.single()
+
+					if (insertError) {
+						consola.error("[parse-spreadsheet] Failed to save asset:", insertError)
+					} else if (asset) {
+						assetId = asset.id
+						assetSaved = true
+						consola.info("[parse-spreadsheet] Saved to project_assets:", assetId)
+					}
+				} catch (saveError) {
+					consola.error("[parse-spreadsheet] Error saving asset:", saveError)
+				}
+			} else if (saveToAssets && (!accountId || !projectId)) {
+				consola.warn("[parse-spreadsheet] Cannot save: missing accountId or projectId")
+			}
+
+			const savedMessage = assetSaved ? " Saved to project assets." : ""
+			const contactMessage = looksLikeContacts
+				? ` This looks like contact data (detected: ${contactColumns.join(", ")}). Would you like me to import these as People?`
+				: ""
+
 			return {
 				success: true,
-				message: `Parsed ${rows.length} rows with ${headers.length} columns.`,
+				message: `Parsed ${rows.length} rows with ${headers.length} columns.${savedMessage}${contactMessage}`,
 				markdownTable,
 				headers,
 				rowCount: rows.length,
 				columnCount: headers.length,
 				stats,
 				sampleRows: rows.slice(0, 5), // Include first 5 rows as structured data for LLM reasoning
+				assetId,
+				assetSaved,
+				looksLikeContacts,
+				contactColumns: looksLikeContacts ? contactColumns : undefined,
 			}
 		} catch (error) {
 			consola.error("[parse-spreadsheet] Error:", error)

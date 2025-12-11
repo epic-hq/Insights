@@ -64,6 +64,63 @@ The complete, required declarative loop:
 
 **NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
 
+## Schema File Numbering Convention
+
+Schema files in `supabase/schemas/` are loaded in **alphabetical (string) order**, not numeric order. This means:
+
+```
+25_project_assets.sql
+300_lens_summaries.sql   ← WRONG! "3" < "4" alphabetically
+30_insights.sql
+46_conversation_lenses.sql
+47_lens_summaries.sql    ← CORRECT! "47" > "46"
+```
+
+**Use consistent digit counts** (2-digit prefixes like `01`, `46`, `47`) to ensure proper ordering:
+
+```
+01_accounts_setup.sql    ← Runs first
+02_accounts.sql
+...
+20_interviews.sql
+25_project_assets.sql
+32_evidence.sql          ← evidence table defined here
+33_themes.sql
+35_asset_evidence.sql    ← references evidence, must be > 32
+46_conversation_lenses.sql
+47_lens_summaries.sql    ← references conversation_lens_templates from 46
+```
+
+### Dependency Rules
+
+1. **Foreign key references must point to tables defined in earlier-numbered files**
+   - ✅ `35_asset_evidence.sql` references `evidence(id)` from `32_evidence.sql`
+   - ❌ `25_project_assets.sql` cannot reference `evidence(id)` (32 > 25)
+
+2. **Junction tables that span multiple entities should go in higher-numbered files**
+   - Core tables: `10-30` range
+   - Junction tables: `35+` range
+   - Views/functions: `40+` range
+
+3. **When adding a new table that references another**:
+   - Check the target table's file number
+   - Your new file must have a **higher** number
+   - If you need to add a junction table to an existing file, consider splitting it out
+
+4. **Migration files vs Schema files** (IMPORTANT):
+   - **Schema files** (`supabase/schemas/`) are loaded **alphabetically** during `db reset` - use numeric prefixes
+   - **Migration files** (`supabase/migrations/`) use **timestamps** and are applied in timestamp order
+   - **NEVER rename a migration file** that has already been applied to remote - this breaks sync
+   - If you need to fix migration order, use `supabase migration repair` commands
+
+### Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Junction table in same file as one of its targets | Split to separate file with higher number |
+| View references column added in later migration | Rename migration to run earlier, or use `SELECT *` |
+| Foreign key to table in higher-numbered file | Move your table to a higher-numbered file |
+
 7. Wire the types in code
 
 ```ts

@@ -763,16 +763,14 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-											}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-											}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
 										>
 											{step.title}
 										</span>
@@ -789,24 +787,23 @@ export default function ProjectGoalsScreen({
 				{/* Header */}
 				<div className="mb-8">
 					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="font-semibold text-2xl text-foreground">{project?.name}</h1>
-							{/*
+
+						{/*
 							-- hiding for now. future use --
 							{templateKey === "understand_customer_needs" && (
 								<StatusPill variant="neutral" className="mt-2">
 									Intent: Understand Customer Needs
 								</StatusPill>
 							)} */}
-						</div>
+
 						<div className="flex items-center gap-2 text-right">
-							{accountId && currentProjectId && isSetupChatEnabled && !isFeatureFlagLoading ? (
+							{/* {accountId && currentProjectId && isSetupChatEnabled && !isFeatureFlagLoading ? (
 								<Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
 									<Button variant="outline" size="sm">
 										Use Chat Setup
 									</Button>
 								</Link>
-							) : null}
+							) : null} */}
 							{isSaving ? (
 								<StatusPill variant="active">
 									Saving <ProgressDots className="ml-1" />

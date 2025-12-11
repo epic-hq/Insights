@@ -96,6 +96,7 @@ The agent automatically translates natural language to the right annotation type
 | `persona` | User personas |
 | `insight` | Research insights |
 | `project` | Projects |
+| `task` | Tasks and priorities |
 
 ## Annotation Types
 
@@ -252,9 +253,56 @@ await manageAnnotations({
 { operation: "delete", annotationId }
 ```
 
+## @Mentions in Comments
+
+Comments support @mentioning team members and project people:
+
+```tsx
+import { MentionInput } from "~/components/ui/mention-input"
+
+<MentionInput
+  value={comment}
+  onChange={setComment}
+  onMentionsChange={setMentions}
+  mentionableUsers={users}
+  placeholder="Type @ to mention..."
+/>
+```
+
+**Keyboard shortcuts:**
+- `↑` / `↓` - Navigate suggestions
+- `Enter` / `Tab` - Select mention
+- `Escape` - Close popup
+
+**Mentions stored in `content_jsonb`:**
+```json
+{
+  "mentions": [
+    { "id": "uuid", "name": "John Doe", "type": "user", "startIndex": 5, "endIndex": 14 }
+  ]
+}
+```
+
+## UI Component
+
+Use `EntityInteractionPanel` for complete annotation UI:
+
+```tsx
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
+
+<EntityInteractionPanel
+  entityType="insight"
+  entityId={insight.id}
+/>
+```
+
+Includes: votes, comments, @mentions, archive/hide.
+
 ## Related Docs
 
 - [Full Entity Annotations Documentation](../features/entity-annotations.md)
 - [Dynamic Documents System](../features/dynamic-documents.md)
 - Schema: `supabase/schemas/40_annotations.sql`
 - Tool: `app/mastra/tools/manage-annotations.ts`
+- UI: `app/components/EntityInteractionPanel.tsx`
+- Mentions: `app/components/ui/mention-input.tsx`

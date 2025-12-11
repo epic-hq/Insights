@@ -339,7 +339,7 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 	}
 
 	return (
-		<Card className="flex h-[600px] flex-col overflow-hidden border-0 bg-background/80 shadow-sm ring-1 ring-border/60 backdrop-blur">
+		<Card className="flex h-[85vh] flex-col overflow-hidden border-0 bg-background/80 shadow-sm ring-1 ring-border/60 backdrop-blur">
 			<CardContent className="flex min-h-0 flex-1 flex-col p-6">
 				{/* Messages area with auto-scroll */}
 				<Conversation className="min-h-0 flex-1">
@@ -347,13 +347,14 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 						{displayableMessages.length === 0 ? (
 							<div className="flex h-full flex-col items-center justify-center text-center">
 								<WizardIcon className="mb-4" />
-								<h2 className="mb-2 font-semibold text-lg">Let's set up your project</h2>
-								<p className="max-w-md text-muted-foreground text-sm">
-									Tell me about your business and what you're trying to learn. I'll help you define your research goals,
-									target customers, and key questions.
+								<h2 className="mb-2 font-semibold text-lg">Project Context</h2>
+								<p className="max-w-md text-balance text-muted-foreground text-sm leading-relaxed">
+									I'm here to assist with your customer strategy. Share your goals and vision, and together we'll define
+									clear goals, identify and nurture your ideal customers, and uncover the questions that matter most.
 								</p>
-								<p className="mt-4 text-muted-foreground/70 text-xs">
-									Just start typing or say something like "We're building a B2B SaaS for HR teams"
+								<p className="mt-4 text-balance text-muted-foreground/70 text-xs">
+									Just start with something like "We're building a B2B SaaS for HR teams" or "I need to understand my
+									customers better"
 								</p>
 							</div>
 						) : (

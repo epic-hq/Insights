@@ -159,12 +159,12 @@ export default function ProjectSetupPage() {
 				<div className="mb-6 flex items-center justify-between">
 					<div>
 						<h1 className="font-semibold text-2xl text-foreground">
-							{project?.name ? `Set up ${project.name}` : "Project Setup"}
+							{project?.name ? `Project Context: ${project.name}` : "Project Context"}
 						</h1>
 						<p className="mt-1 text-muted-foreground text-sm">
 							{mode === "chat"
-								? "Tell me about your project and I'll help you set it up"
-								: "Fill out the form to configure your project"}
+								? "Chat or blab away, I got you."
+								: "Structured input, always in sync with chat."}
 						</p>
 					</div>
 					<div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-1">

@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { ChevronRight, Mic, Send, Square } from "lucide-react"
+import { ChevronRight, Mic, Plus, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
@@ -50,7 +50,14 @@ function WizardIcon({ className }: { className?: string }) {
 	)
 }
 
-function ThinkingWave() {
+interface ToolProgressData {
+	tool: string
+	status: string
+	message: string
+	progress?: number
+}
+
+function ThinkingWave({ progressMessage }: { progressMessage?: string }) {
 	const gradientId = useId()
 	const bars = [
 		{ delay: 0, x: 0 },
@@ -61,7 +68,7 @@ function ThinkingWave() {
 
 	return (
 		<span className="flex items-center gap-2 font-medium text-[11px] text-foreground/70 italic" aria-live="polite">
-			<span>Thinking</span>
+			<span>{progressMessage || "Thinking"}</span>
 			<svg
 				className="h-4 w-10 text-foreground/50"
 				viewBox="0 0 48 16"
@@ -84,6 +91,16 @@ function ThinkingWave() {
 			</svg>
 		</span>
 	)
+}
+
+function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
+	if (!message.parts) return null
+	for (const part of message.parts) {
+		if (part.type === "data-tool-progress" && "data" in part) {
+			return part.data as ToolProgressData
+		}
+	}
+	return null
 }
 
 interface ProjectStatusAgentChatProps {
@@ -546,20 +563,46 @@ export function ProjectStatusAgentChat({
 							</div>
 						)}
 						{!isCollapsed && (
-							<div
-								onClick={() => setIsCollapsed(!isCollapsed)}
-								className="flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
-								aria-label="Collapse chat"
-								role="button"
-								tabIndex={0}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault()
-										setIsCollapsed(!isCollapsed)
-									}
-								}}
-							>
-								<ChevronRight className="h-4 w-4" />
+							<div className="flex items-center gap-1">
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div
+												onClick={() => setMessages([])}
+												className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
+												aria-label="New chat"
+												role="button"
+												tabIndex={0}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault()
+														setMessages([])
+													}
+												}}
+											>
+												<Plus className="h-4 w-4" />
+											</div>
+										</TooltipTrigger>
+										<TooltipContent side="bottom">
+											<p>New chat</p>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+								<div
+									onClick={() => setIsCollapsed(!isCollapsed)}
+									className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
+									aria-label="Collapse chat"
+									role="button"
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault()
+											setIsCollapsed(!isCollapsed)
+										}
+									}}
+								>
+									<ChevronRight className="h-4 w-4" />
+								</div>
 							</div>
 						)}
 					</div>
@@ -597,7 +640,7 @@ export function ProjectStatusAgentChat({
 																<AiResponse key={key}>{messageText}</AiResponse>
 															)
 														) : !isUser ? (
-															<ThinkingWave />
+															<ThinkingWave progressMessage={extractToolProgress(message)?.message} />
 														) : (
 															<span className="text-foreground/70">(No text response)</span>
 														)}

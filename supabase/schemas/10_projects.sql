@@ -143,7 +143,7 @@ create table if not exists public.project_sections (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   kind text not null, -- Dynamic field - any document type allowed
-  content_md text not null,
+  content_md text, -- Nullable: structured data can be stored in meta instead
   meta jsonb,
   position int,
   content_tsv tsvector generated always as (

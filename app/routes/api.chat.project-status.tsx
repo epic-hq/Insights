@@ -108,7 +108,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const agent = mastra.getAgent("projectStatusAgent")
 	const result = await agent.stream(runtimeMessages, {
-		format: "aisdk",
+		format: "aisdk", // Required for toUIMessageStreamResponse() - deprecation warning is expected until we migrate to @mastra/ai-sdk chatRoute
 		maxSteps: 10, // Prevent infinite tool loops (default is 5)
 		memory: {
 			thread: threadId,

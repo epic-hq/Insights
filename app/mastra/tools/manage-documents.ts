@@ -64,8 +64,8 @@ Operations:
 			.describe(
 				"Document type identifier (e.g., 'positioning_statement', 'seo_strategy'). Required for create/update/upsert/read."
 			),
-		content: z.string().optional().describe("Markdown content of the document. Required for create/update/upsert."),
-		metadata: z.record(z.any()).optional().describe("Optional metadata to store with the document (JSON object)"),
+		content: z.any().optional().describe("Markdown content of the document (string or object that will be JSON stringified). Required for create/update/upsert."),
+		metadata: z.any().optional().nullable().describe("Optional metadata to store with the document (JSON object)"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -102,8 +102,11 @@ Operations:
 		const projectId = toolContext.projectId ?? runtimeProjectId ?? null
 		const operation = toolContext.operation
 		const kind = toolContext.kind
-		const content = toolContext.content
-		const metadata = toolContext.metadata
+		const rawContent = toolContext.content
+		// If content is an object, store it in meta; if string, store in content_md
+		const isObjectContent = typeof rawContent === "object" && rawContent !== null
+		const content = isObjectContent ? null : rawContent
+		const metadata = isObjectContent ? rawContent : toolContext.metadata
 
 		consola.debug("manage-documents: execute start", {
 			projectId,
@@ -189,8 +192,8 @@ Operations:
 				}
 			}
 
-			// CREATE/UPDATE/UPSERT operations require content
-			if (!content) {
+			// CREATE/UPDATE/UPSERT operations require content (string or object)
+			if (!content && !metadata) {
 				return {
 					success: false,
 					message: `The '${operation}' operation requires 'content' parameter`,

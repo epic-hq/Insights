@@ -69,9 +69,9 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.people.index(),
 			},
 			{
-				key: "conversations",
-				title: "Conversations",
-				description: "Calls, notes, uploads",
+				key: "content",
+				title: "Content",
+				description: "Conversations, notes, files",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
 			},

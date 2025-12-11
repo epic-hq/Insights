@@ -55,7 +55,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const agent = mastra.getAgent("interviewStatusAgent")
 	const result = await agent.stream(messages, {
-		format: "aisdk",
+		format: "aisdk", // Required for toUIMessageStreamResponse() - deprecation warning is expected until we migrate to @mastra/ai-sdk chatRoute
 		memory: {
 			thread: threadId,
 			resource: resourceId,
@@ -63,11 +63,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		runtimeContext,
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("interview-status onFinish", data)

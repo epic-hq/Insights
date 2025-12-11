@@ -43,11 +43,11 @@ CREATE INDEX IF NOT EXISTS idx_lens_summaries_project ON public.conversation_len
 CREATE INDEX IF NOT EXISTS idx_lens_summaries_template ON public.conversation_lens_summaries(template_key);
 CREATE INDEX IF NOT EXISTS idx_lens_summaries_status ON public.conversation_lens_summaries(status);
 
--- Auto-update updated_at timestamp
-CREATE OR REPLACE TRIGGER update_lens_summaries_updated_at
-  BEFORE UPDATE ON public.conversation_lens_summaries
+-- Auto-update timestamps using the standard accounts trigger
+CREATE TRIGGER set_conversation_lens_summaries_timestamp
+  BEFORE INSERT OR UPDATE ON public.conversation_lens_summaries
   FOR EACH ROW
-  EXECUTE FUNCTION extensions.moddatetime(updated_at);
+  EXECUTE PROCEDURE accounts.trigger_set_timestamps();
 
 -- RLS Policies
 ALTER TABLE public.conversation_lens_summaries ENABLE ROW LEVEL SECURITY;

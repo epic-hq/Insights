@@ -96,7 +96,8 @@ export function OnboardingDashboard({
 			</section>
 
 			{/* What You'll See - Placeholder Grid */}
-			<section className="mx-auto max-w-4xl">
+			{/* TODO: move these benfits to marketing page */}
+			{/* <section className="mx-auto max-w-4xl">
 				<h2 className="mb-6 text-center font-medium text-muted-foreground text-sm uppercase tracking-wider">
 					What You'll Unlock
 				</h2>
@@ -147,7 +148,7 @@ export function OnboardingDashboard({
 						variant="subtle"
 					/>
 				</div>
-			</section>
+			</section> */}
 		</div>
 	)
 }

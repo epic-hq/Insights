@@ -84,6 +84,8 @@ This project has extensive documentation organized by purpose. AI agents should 
 | **Settings** | - | [Architecture](/docs/features/settings-architecture.md) |
 | **Project Chat** | [PRD](/docs/features/project-chat.md) | - |
 | **Signup Chat** | [PRD](/docs/features/signup-chat.md) | - |
+| **Annotations** | [Technical](/docs/features/entity-annotations.md) | @mentions, votes, flags |
+| **Notifications** | [PRD](/docs/features/mention-notifications-prd.md) | @mention notifications system |
 
 ### Implementation Guides
 | Document | Purpose |

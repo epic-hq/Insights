@@ -147,38 +147,8 @@ END;
 $function$
 ;
 
-create or replace view "public"."conversations" as  SELECT id,
-    account_id,
-    project_id,
-    title,
-    interview_date,
-    interviewer_id,
-    key_takeaways,
-    participant_pseudonym,
-    segment,
-    media_url,
-    media_type,
-    transcript,
-    transcript_formatted,
-    conversation_analysis,
-    high_impact_themes,
-    relevant_answers,
-    open_questions_and_next_steps,
-    observations_and_notes,
-    source_type,
-    interview_type,
-    lens_visibility,
-    file_extension,
-    original_filename,
-    person_id,
-    duration_sec,
-    status,
-    processing_metadata,
-    created_at,
-    updated_at,
-    created_by,
-    updated_by
-   FROM public.interviews;
+create or replace view "public"."conversations" as
+  SELECT * FROM public.interviews;
 
 
 create or replace view "public"."persona_distribution" as  WITH persona_interview_counts AS (

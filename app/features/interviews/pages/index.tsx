@@ -1,7 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { FileText, Grid, List, MessageSquare, MessageSquareText, MessagesSquare, Upload } from "lucide-react"
+import { FileSpreadsheet, FileText, Grid, List, MessageSquare, MessageSquareText, MessagesSquare, Table, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router"
@@ -21,7 +21,7 @@ import { userContext } from "~/server/user-context"
 import type { Interview } from "~/types"
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
+	return [{ title: "Content | Insights" }, { name: "description", content: "Conversations, notes, and files" }]
 }
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -36,16 +36,28 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
-	const { data: rows, error }: { data: Interview[] | null; error: PostgrestError | null } = await getInterviews({
-		supabase,
-		accountId,
-		projectId,
-	})
+	const [interviewsResult, assetsResult] = await Promise.all([
+		getInterviews({ supabase, accountId, projectId }),
+		supabase
+			.from("project_assets")
+			.select("id, title, asset_type, row_count, column_count, status, source_type, created_at, updated_at")
+			.eq("project_id", projectId)
+			.order("created_at", { ascending: false }),
+	])
+
+	const { data: rows, error } = interviewsResult as { data: Interview[] | null; error: PostgrestError | null }
+	const { data: assets, error: assetsError } = assetsResult
 
 	if (error) {
 		consola.error("Interviews query error:", error)
 		throw new Response(`Error fetching interviews: ${error.message}`, { status: 500 })
 	}
+
+	if (assetsError) {
+		consola.warn("Assets query error:", assetsError)
+	}
+
+	consola.info("Content loader:", { projectId, assetsCount: assets?.length ?? 0, interviewsCount: rows?.length ?? 0 })
 
 	// consola.log(`Found ${rows?.length || 0} interviews`)
 
@@ -81,11 +93,24 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	})
 
-	return { interviews, segmentData }
+	// Transform assets for unified display
+	const projectAssets = (assets || []).map((asset) => ({
+		id: asset.id,
+		title: asset.title || "Untitled",
+		asset_type: asset.asset_type,
+		row_count: asset.row_count,
+		column_count: asset.column_count,
+		status: asset.status,
+		source_type: asset.source_type,
+		created_at: asset.created_at,
+		updated_at: asset.updated_at,
+	}))
+
+	return { interviews, segmentData, projectAssets }
 }
 
 export default function InterviewsIndex({ showPie = false }: { showPie?: boolean }) {
-	const { interviews, segmentData } = useLoaderData<typeof loader>()
+	const { interviews, segmentData, projectAssets } = useLoaderData<typeof loader>()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
@@ -101,8 +126,9 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		return dateB - dateA
 	})
 
-	// Filter items by source type category
+	// Filter items by source type category (for interviews/notes)
 	const filteredInterviews = allItems.filter((item) => {
+		if (sourceFilter === "files") return false // Files come from projectAssets
 		if (sourceFilter === "all") return true
 
 		// Notes filter - includes both quick notes and voice memos
@@ -121,17 +147,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 			)
 		}
 
-		// Files: documents (PDFs, spreadsheets, etc.)
-		if (sourceFilter === "files") {
-			return (
-				item.source_type !== "note" &&
-				item.media_type !== "voice_memo" &&
-				(item.source_type === "document" || item.media_type === "document")
-			)
-		}
-
 		return true
 	})
+
+	// Get display count based on filter
+	const displayCount = sourceFilter === "files" ? projectAssets.length : filteredInterviews.length
 
 	const handleSaveNote = async (note: {
 		title: string
@@ -182,11 +202,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							<div className="space-y-3">
 								<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
 									<MessagesSquare />
-									Recordings
+									Content
 								</h1>
 								<p className="text-muted-foreground">
-									Conversations, recordings, and documents
-									<span className="ml-2 text-sm">({filteredInterviews.length})</span>
+									Conversations, notes, and files
+									<span className="ml-2 text-sm">({displayCount})</span>
 								</p>
 							</div>
 
@@ -268,7 +288,65 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 			{/* Main Content */}
 			<PageContainer size="lg" padded={false} className="max-w-6xl px-6 py-12">
-				{filteredInterviews.length === 0 ? (
+				{/* Files Tab - Show project_assets */}
+				{sourceFilter === "files" ? (
+					projectAssets.length === 0 ? (
+						<div className="py-16 text-center">
+							<div className="mx-auto max-w-md">
+								<div className="mb-6 flex justify-center">
+									<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
+										<FileSpreadsheet className="h-12 w-12 text-gray-400 dark:text-gray-500" />
+									</div>
+								</div>
+								<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No files yet</h3>
+								<p className="mb-8 text-gray-600 dark:text-gray-400">
+									Paste spreadsheet data into the chat or upload files to see them here.
+								</p>
+							</div>
+						</div>
+					) : (
+						<div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+							{projectAssets.map((asset) => (
+								<div
+									key={asset.id}
+									className="flex items-start gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+								>
+									<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+										{asset.asset_type === "table" ? (
+											<Table className="h-5 w-5 text-primary" />
+										) : (
+											<FileText className="h-5 w-5 text-primary" />
+										)}
+									</div>
+									<div className="min-w-0 flex-1">
+										<h3 className="truncate font-medium text-foreground">{asset.title}</h3>
+										<div className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+											<span className="capitalize">{asset.asset_type}</span>
+											{asset.row_count && asset.column_count && (
+												<>
+													<span>•</span>
+													<span>{asset.row_count} rows × {asset.column_count} cols</span>
+												</>
+											)}
+											<span>•</span>
+											<span>{formatDistance(new Date(asset.created_at), new Date(), { addSuffix: true })}</span>
+										</div>
+										{asset.status && (
+											<span
+												className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${asset.status === "ready"
+													? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+													: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+													}`}
+											>
+												{asset.status}
+											</span>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					)
+				) : filteredInterviews.length === 0 ? (
 					<div className="py-16 text-center">
 						<div className="mx-auto max-w-md">
 							<div className="mb-6 flex justify-center">
@@ -276,7 +354,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									<Upload className="h-12 w-12 text-gray-400 dark:text-gray-500" />
 								</div>
 							</div>
-							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No interviews yet</h3>
+							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No content yet</h3>
 							<p className="mb-8 text-gray-600 dark:text-gray-400">
 								Upload your first interview recording or transcript to start gathering insights from your research.
 							</p>

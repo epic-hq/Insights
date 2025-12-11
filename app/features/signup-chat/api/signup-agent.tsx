@@ -56,7 +56,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	consola.log("System prompt from frontend: ", system)
 	const last_message = convertToModelMessages(messages)?.[-1]
 	const result = await agent.stream(last_message, {
-		format: "aisdk",
+		format: "aisdk", // Required for toUIMessageStreamResponse() - deprecation warning is expected until we migrate to @mastra/ai-sdk chatRoute
 		memory: {
 			thread: threadId,
 			resource: `signupAgent-${user.sub}`,
@@ -68,11 +68,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		// NOTE: Not sure that this is working. Agent does not seem to be picking it up.
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("onFinish", data)
