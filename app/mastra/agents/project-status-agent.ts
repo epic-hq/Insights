@@ -28,6 +28,7 @@ import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } 
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
+import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
 import { suggestionTool } from "../tools/suggestion-tool"
@@ -115,6 +116,14 @@ Call "getCurrentDate" first for any date/time questions.
 - Results are saved as notes AND indexed as evidence for semantic search
 - KEEP RESPONSES BRIEF: Just report the TLDR + link to the full note
 
+**Tabular Data** (parseSpreadsheet):
+- Use when user pastes CSV, TSV, or spreadsheet data
+- Auto-detects delimiter (comma, tab, semicolon, pipe)
+- Returns structured data + markdown table for display
+- Computes basic stats for numeric columns
+- **ALWAYS display the markdownTable in your response** so users see their data formatted nicely
+- You can reason about the sampleRows and stats to provide analysis
+
 ## Linking & Navigation
 Use "generateProjectRoutes" to get URLs, format as **[Name](route)**. Call "navigateToPage" to proactively open relevant screens.
 
@@ -176,6 +185,7 @@ Please try:
 		suggestNextSteps: suggestionTool,
 		webResearch: webResearchTool,
 		findSimilarPages: findSimilarPagesTool,
+		parseSpreadsheet: parseSpreadsheetTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

@@ -48,6 +48,19 @@ export const middleware: Route.MiddlewareFunction[] = [
 				throw redirect("/login")
 			}
 
+			// DEBUG: Log all accounts this user belongs to
+			consola.info("🔍 [AUTH MIDDLEWARE] User accounts:", {
+				userId: user.sub,
+				email: user.email,
+				accountCount: accounts?.length || 0,
+				accounts: accounts?.map((acc: any) => ({
+					accountId: acc.account_id,
+					name: acc.name,
+					personal: acc.personal_account,
+					role: acc.account_role,
+				})),
+			})
+
 			// Determine current account: use last_used_account_id from user_settings, validate it's available
 			let currentAccount = null
 			if (user_settings?.last_used_account_id && Array.isArray(accounts)) {

@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Textarea } from "~/components/ui/textarea"
 import type { EntityType } from "~/features/annotations/db"
 import { useEntityAnnotations } from "~/features/annotations/hooks"
+import { useUserProfiles } from "~/hooks/useUserProfiles"
 import { cn } from "~/lib/utils"
 import type { Annotation, AnnotationComment, UserFlag } from "~/types"
 
@@ -17,11 +18,10 @@ interface EntityInteractionPanelProps {
 
 export function EntityInteractionPanel({ entityType, entityId, className }: EntityInteractionPanelProps) {
 	const [showComments, setShowComments] = useState(false)
+	const [hasAutoExpanded, setHasAutoExpanded] = useState(false)
 	const [newComment, setNewComment] = useState("")
 	const [isSubmittingComment, setIsSubmittingComment] = useState(false)
-	const [userProfiles, setUserProfiles] = useState<{ [userId: string]: { name: string; avatar_url: string | null } }>(
-		{}
-	)
+	const { profiles: userProfiles, fetchProfiles } = useUserProfiles()
 
 	const {
 		annotations,
@@ -40,35 +40,15 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 
 	// Fetch user profiles for all unique user IDs in comments
 	useEffect(() => {
-		const uniqueUserIds = Array.from(
-			new Set(
-				(annotations || [])
-					.filter((a: Annotation) => a.annotation_type === "comment" && a.created_by_user_id && !a.created_by_ai)
-					.map((a: Annotation) => a.created_by_user_id)
-			)
-		).filter((id) => id && !userProfiles[id])
+		const uniqueUserIds = (annotations || [])
+			.filter((a: Annotation) => a.annotation_type === "comment" && a.created_by_user_id && !a.created_by_ai)
+			.map((a: Annotation) => a.created_by_user_id)
+			.filter((id): id is string => Boolean(id))
 
-		if (uniqueUserIds.length === 0) return
-
-		Promise.all(
-			uniqueUserIds.map((userId) =>
-				fetch(`/api/user-profile?userId=${userId}`)
-					.then((res) => (res.ok ? res.json() : null))
-					.then((data) => (data && !data.error ? { userId, ...data } : null))
-			)
-		).then((results) => {
-			const newProfiles: { [userId: string]: { name: string; avatar_url: string | null } } = {}
-			for (const result of results) {
-				if (result?.userId) {
-					newProfiles[result.userId] = { name: result.name, avatar_url: result.avatar_url }
-				}
-			}
-			if (Object.keys(newProfiles).length > 0) {
-				setUserProfiles((prev) => ({ ...prev, ...newProfiles }))
-			}
-		})
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [annotations, userProfiles])
+		if (uniqueUserIds.length > 0) {
+			fetchProfiles(uniqueUserIds)
+		}
+	}, [annotations, fetchProfiles])
 
 	const toggleComments = () => setShowComments((prev) => !prev)
 
@@ -112,6 +92,14 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 		) as AnnotationComment[]) || []
 	const isArchived = userFlags?.some((f: UserFlag) => f.flag_type === "archived" && !!f.flag_value) || false
 	const isHidden = userFlags?.some((f: UserFlag) => f.flag_type === "hidden" && !!f.flag_value) || false
+
+	// Auto-show comments if there are existing comments on initial load
+	useEffect(() => {
+		if (!hasAutoExpanded && comments.length > 0) {
+			setShowComments(true)
+			setHasAutoExpanded(true)
+		}
+	}, [comments.length, hasAutoExpanded])
 
 	return (
 		<div

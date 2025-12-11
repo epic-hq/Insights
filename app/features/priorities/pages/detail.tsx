@@ -33,6 +33,7 @@ import { useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, redirect, useFetcher, useLoaderData } from "react-router"
 import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Calendar } from "~/components/ui/calendar"
@@ -492,6 +493,15 @@ const effortConfig = {
 
 const agentTypes: AgentType[] = ["code-generation", "research", "testing", "documentation"]
 
+const categoryOptions = [
+	"Core product – capture & workflow",
+	"Core product – intelligence",
+	"Foundation – reliability & UX",
+	"Monetization & pricing",
+	"Engagement & analytics",
+	"Acquisition & marketing",
+] as const
+
 // ============================================================================
 // Field Components
 // ============================================================================
@@ -501,11 +511,15 @@ function EditableField({
 	field,
 	value,
 	multiline = false,
+	textClassName = "text-sm",
+	inputClassName = "text-sm",
 }: {
 	taskId: string
 	field: string
 	value: string
 	multiline?: boolean
+	textClassName?: string
+	inputClassName?: string
 }) {
 	const fetcher = useFetcher()
 
@@ -524,8 +538,8 @@ function EditableField({
 		<InlineEdit
 			value={value}
 			onSubmit={handleSubmit}
-			textClassName="text-sm"
-			inputClassName="text-sm"
+			textClassName={textClassName}
+			inputClassName={inputClassName}
 			multiline={multiline}
 			autoSize={true}
 			placeholder={`Add ${field}...`}
@@ -604,6 +618,39 @@ function PrioritySelectField({ taskId, value }: { taskId: string; value: 1 | 2 |
 				</div>
 			</PopoverContent>
 		</Popover>
+	)
+}
+
+function CategorySelectField({ taskId, value }: { taskId: string; value: string | null }) {
+	const fetcher = useFetcher()
+
+	const handleChange = (newValue: string) => {
+		if (newValue === value) return
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("field", "cluster") // DB field is 'cluster'
+		formData.append("value", newValue)
+
+		fetcher.submit(formData, { method: "POST" })
+	}
+
+	// Find matching category or use empty string for uncontrolled behavior with placeholder
+	const currentValue = value && categoryOptions.includes(value as (typeof categoryOptions)[number]) ? value : ""
+
+	return (
+		<Select value={currentValue} onValueChange={handleChange}>
+			<SelectTrigger className="h-8 w-auto min-w-[140px] max-w-[200px] text-xs">
+				<SelectValue placeholder="Set category..." />
+			</SelectTrigger>
+			<SelectContent>
+				{categoryOptions.map((cat) => (
+					<SelectItem key={cat} value={cat} className="text-xs">
+						{cat}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
 	)
 }
 
@@ -1234,7 +1281,7 @@ function TaskLinksCard({ taskLinks, projectPath }: { taskLinks: EnrichedTaskLink
 	const nonEmptyGroups = Object.entries(groupedLinks).filter(([_, links]) => links.length > 0)
 
 	if (taskLinks.length === 0) {
-		return <div className="py-4 text-center text-muted-foreground text-sm">No linked entities</div>
+		return null
 	}
 
 	return (
@@ -1455,15 +1502,17 @@ export default function TaskDetailPage() {
 
 				<div className="flex items-start justify-between gap-4">
 					<div className="min-w-0 flex-1">
-						<EditableField taskId={task.id} field="title" value={task.title} />
+						<EditableField
+							taskId={task.id}
+							field="title"
+							value={task.title}
+							textClassName="text-3xl font-bold text-foreground"
+							inputClassName="text-3xl font-bold"
+						/>
 						<div className="mt-3 flex items-center gap-3">
 							<StatusSelectField taskId={task.id} value={task.status} />
 							<PrioritySelectField taskId={task.id} value={task.priority} />
-							{task.cluster && (
-								<Badge variant="outline" className="text-xs">
-									{task.cluster}
-								</Badge>
-							)}
+							<CategorySelectField taskId={task.id} value={task.cluster} />
 						</div>
 					</div>
 				</div>
@@ -1484,33 +1533,41 @@ export default function TaskDetailPage() {
 
 					{/* Context Fields */}
 					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-base">Context</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div>
-								<label className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
-									<Target className="h-3 w-3" /> Benefit
-								</label>
-								<EditableField taskId={task.id} field="benefit" value={task.benefit || ""} multiline />
-							</div>
-							<div>
-								<label className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
-									<Users className="h-3 w-3" /> Segments
-								</label>
-								<EditableField taskId={task.id} field="segments" value={task.segments || ""} />
-							</div>
-							<div>
-								<label className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
-									<Flag className="h-3 w-3" /> Stage
-								</label>
-								<EditableField taskId={task.id} field="stage" value={task.stage || ""} />
-							</div>
-							<div>
-								<label className="mb-1 block font-medium text-muted-foreground text-xs">Reason / Rationale</label>
-								<EditableField taskId={task.id} field="reason" value={task.reason || ""} multiline />
-							</div>
-						</CardContent>
+						<Accordion type="single" collapsible>
+							<AccordionItem value="context" className="border-none">
+								<CardHeader className="pb-0">
+									<AccordionTrigger className="py-0 hover:no-underline">
+										<CardTitle className="text-base">Context</CardTitle>
+									</AccordionTrigger>
+								</CardHeader>
+								<AccordionContent>
+									<CardContent className="space-y-4 pt-3">
+										<div>
+											<label className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
+												<Target className="h-3 w-3" /> Benefit
+											</label>
+											<EditableField taskId={task.id} field="benefit" value={task.benefit || ""} multiline />
+										</div>
+										<div>
+											<label className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
+												<Users className="h-3 w-3" /> Segments
+											</label>
+											<EditableField taskId={task.id} field="segments" value={task.segments || ""} />
+										</div>
+										<div>
+											<label className="mb-1 flex items-center gap-1 font-medium text-muted-foreground text-xs">
+												<Flag className="h-3 w-3" /> Stage
+											</label>
+											<EditableField taskId={task.id} field="stage" value={task.stage || ""} />
+										</div>
+										<div>
+											<label className="mb-1 block font-medium text-muted-foreground text-xs">Reason / Rationale</label>
+											<EditableField taskId={task.id} field="reason" value={task.reason || ""} multiline />
+										</div>
+									</CardContent>
+								</AccordionContent>
+							</AccordionItem>
+						</Accordion>
 					</Card>
 
 					{/* Commentary / Annotations */}
@@ -1581,19 +1638,6 @@ export default function TaskDetailPage() {
 						</CardContent>
 					</Card>
 
-					{/* Tags */}
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-base">
-								<Tag className="h-4 w-4" />
-								Tags
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<TagManager taskId={task.id} tags={task.tags || []} />
-						</CardContent>
-					</Card>
-
 					{/* Linked Entities */}
 					<Card>
 						<CardHeader className="pb-3">
@@ -1605,6 +1649,19 @@ export default function TaskDetailPage() {
 						<CardContent className="space-y-4">
 							<TaskLinksCard taskLinks={taskLinks} projectPath={projectPath} />
 							<EntityLinkAdder linkableEntities={linkableEntities} existingLinkIds={existingLinkIds} />
+						</CardContent>
+					</Card>
+
+					{/* Tags */}
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="flex items-center gap-2 text-base">
+								<Tag className="h-4 w-4" />
+								Tags
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<TagManager taskId={task.id} tags={task.tags || []} />
 						</CardContent>
 					</Card>
 

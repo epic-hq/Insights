@@ -412,8 +412,8 @@ export default function AccountSettingsPage() {
 				/>
 
 				<EditableList
-					title="Priority clusters"
-					description="Use consistent categories for prioritization and roadmaps."
+					title="Task categories"
+					description="Use consistent categories for tasks, prioritization, and roadmaps."
 					items={priorityClusters}
 					defaultItems={DEFAULT_PRIORITY_CLUSTERS}
 					onChange={handlePriorityChange}

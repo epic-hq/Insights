@@ -35,7 +35,7 @@ import { userContext } from "~/server/user-context"
 type Stage = "activation" | "onboarding" | "retention"
 type Impact = 1 | 2 | 3
 type Priority = 1 | 2 | 3
-type Cluster =
+type Category =
 	| "Core product – capture & workflow"
 	| "Core product – intelligence"
 	| "Foundation – reliability & UX"
@@ -52,7 +52,7 @@ export type FeatureRow = {
 	stage: Stage
 	priority: Priority
 	reason: string
-	cluster: Cluster
+	category: Category
 	due_date: string | null
 }
 
@@ -70,13 +70,20 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const accountId = params.accountId
 	const projectId = params.projectId
 
-	consola.info("Priorities loader - params:", { accountId, projectId })
-	consola.info("Priorities loader - user email:", ctx.claims?.email)
-	consola.info("Priorities loader - user id:", ctx.claims?.sub)
+	// DEBUG: Detailed logging to track down task access issues
+	consola.info("🔍 [PRIORITIES DEBUG] Loader started")
+	consola.info("🔍 [PRIORITIES DEBUG] URL params:", { accountId, projectId })
+	consola.info("🔍 [PRIORITIES DEBUG] User:", { email: ctx.claims?.email, userId: ctx.claims?.sub })
 	consola.info(
-		"Priorities loader - user accounts:",
-		ctx.accounts?.map((a) => ({ id: a.account_id, name: a.name, personal: a.personal_account }))
+		"🔍 [PRIORITIES DEBUG] User's accounts:",
+		ctx.accounts?.map((a) => ({
+			accountId: a.account_id,
+			name: a.name,
+			personal: a.personal_account,
+			role: a.account_role,
+		}))
 	)
+	consola.info("🔍 [PRIORITIES DEBUG] Requesting accountId from URL:", accountId)
 
 	if (!accountId || !projectId) {
 		throw new Response("Missing account or project ID", { status: 400 })
@@ -85,7 +92,13 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// Verify user has access to this account
 	const userAccounts = ctx.accounts || []
 	const hasAccess = userAccounts.some((acc) => acc.account_id === accountId)
+	consola.info("🔍 [PRIORITIES DEBUG] Access check:", {
+		hasAccess,
+		urlAccountId: accountId,
+		userAccountIds: userAccounts.map((a) => a.account_id),
+	})
 	if (!hasAccess) {
+		consola.warn("🚫 [PRIORITIES DEBUG] User denied access to account:", accountId)
 		throw new Response("Unauthorized: You don't have access to this account", { status: 403 })
 	}
 
@@ -109,10 +122,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		options: {},
 	})
 
-	consola.info("Priorities loader - fetched tasks:", {
+	consola.info("🔍 [PRIORITIES DEBUG] Fetched tasks:", {
 		count: tasks.length,
-		accountIds: [...new Set(tasks.map((t) => t.account_id))],
-		projectIds: [...new Set(tasks.map((t) => t.project_id))],
+		requestedAccountId: accountId,
+		requestedProjectId: projectId,
+		uniqueAccountIdsInResults: [...new Set(tasks.map((t) => t.account_id))],
+		uniqueProjectIdsInResults: [...new Set(tasks.map((t) => t.project_id))],
+		// Show first 3 task titles for debugging
+		sampleTasks: tasks.slice(0, 3).map((t) => ({ id: t.id, title: t.title, account_id: t.account_id })),
 	})
 
 	// If no tasks exist, seed with initial data
@@ -208,7 +225,7 @@ function taskToFeatureRow(task: Task): FeatureRow {
 		stage: (task.stage || "activation") as Stage,
 		priority: task.priority as Priority,
 		reason: task.reason || "",
-		cluster: task.cluster as Cluster,
+		category: task.cluster as Category, // DB field is 'cluster', UI shows 'category'
 		due_date: task.due_date,
 	}
 }
@@ -692,10 +709,10 @@ const createColumns = (
 	projectPath: string
 ): ColumnDef<FeatureRow>[] => [
 		{
-			accessorKey: "cluster",
-			header: "Cluster",
+			accessorKey: "category",
+			header: "Category",
 			// Hidden column - used for grouping and filtering only
-			cell: ({ row }) => <span>{row.original.cluster}</span>,
+			cell: ({ row }) => <span>{row.original.category}</span>,
 		},
 		{
 			accessorKey: "feature",
@@ -815,7 +832,7 @@ Context:
 - Stage: ${row.stage}
 - Priority: ${row.priority}/3 (${row.priority === 1 ? "Now" : row.priority === 2 ? "Next" : "Later"})
 - Reason: ${row.reason}
-- Cluster: ${row.cluster}
+- Category: ${row.category}
 
 `
 
@@ -896,7 +913,7 @@ export default function FeaturePrioritizationPage() {
 		{ id: "impact", desc: true },
 	])
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-	const [grouping, setGrouping] = React.useState<GroupingState>(["cluster"])
+	const [grouping, setGrouping] = React.useState<GroupingState>(["category"])
 	// User controls expansion state - preserve across updates
 	// Start with all groups expanded
 	const [expanded, setExpanded] = React.useState<ExpandedState>(true)
@@ -915,7 +932,7 @@ export default function FeaturePrioritizationPage() {
 			grouping,
 			expanded,
 			columnVisibility: {
-				cluster: false, // Hide cluster column from display
+				category: false, // Hide category column from display
 				benefit: !compactView,
 				segments: !compactView,
 				impact: !compactView, // Hide impact in compact view
@@ -942,7 +959,7 @@ export default function FeaturePrioritizationPage() {
 	})
 
 	const stageOptions: Stage[] = ["activation", "onboarding", "retention"]
-	const clusterOptions: Cluster[] = [
+	const categoryOptions: Category[] = [
 		"Core product – capture & workflow",
 		"Core product – intelligence",
 		"Foundation – reliability & UX",
@@ -972,13 +989,13 @@ export default function FeaturePrioritizationPage() {
 
 					<select
 						onChange={(e) => {
-							const col = table.getColumn("cluster")
+							const col = table.getColumn("category")
 							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value)
 						}}
 						className="rounded-md border px-3 py-2 text-sm"
 					>
-						<option value="all">All clusters</option>
-						{clusterOptions.map((c) => (
+						<option value="all">All categories</option>
+						{categoryOptions.map((c) => (
 							<option key={c} value={c}>
 								{c}
 							</option>
@@ -1049,7 +1066,7 @@ export default function FeaturePrioritizationPage() {
 						<tbody>
 							{table.getRowModel().rows.map((row) => {
 								if (row.getIsGrouped()) {
-									// Group row (cluster header)
+									// Group row (category header)
 									return (
 										<tr key={row.id} className="border-b bg-slate-200 font-semibold dark:bg-slate-800">
 											<td colSpan={columns.length} className="px-4 py-2.5">
@@ -1076,8 +1093,8 @@ export default function FeaturePrioritizationPage() {
 								return (
 									<tr key={row.id} className="border-b hover:bg-muted/30">
 										{row.getVisibleCells().map((cell) => {
-											// Skip cluster column in detail rows
-											if (cell.column.id === "cluster") return null
+											// Skip category column in detail rows
+											if (cell.column.id === "category") return null
 											return (
 												<td key={cell.id} className="px-4 py-3">
 													{flexRender(cell.column.columnDef.cell, cell.getContext())}
