@@ -28,6 +28,7 @@ import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } 
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
+import { importVideoFromUrlTool } from "../tools/import-video-from-url"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
 import { upsertPersonTool } from "../tools/upsert-person"
@@ -137,15 +138,16 @@ I recommend checking your project settings or trying a simpler query to help dia
 		updateInterviewPrompt: updateInterviewPromptTool,
 		deleteInterviewPrompt: deleteInterviewPromptTool,
 		fetchTasks: fetchTasksTool,
-		createTask: createTaskTool,
-		updateTask: updateTaskTool,
-		deleteTask: deleteTaskTool,
-		navigateToPage: navigateToPageTool,
-		upsertPersonFacets: upsertPersonFacetsTool,
-		managePersonOrganizations: managePersonOrganizationsTool,
-		upsertPerson: upsertPersonTool,
-		manageDocuments: manageDocumentsTool,
-		manageAnnotations: manageAnnotationsTool,
+                createTask: createTaskTool,
+                updateTask: updateTaskTool,
+                deleteTask: deleteTaskTool,
+                navigateToPage: navigateToPageTool,
+                importVideoFromUrl: importVideoFromUrlTool,
+                upsertPersonFacets: upsertPersonFacetsTool,
+                managePersonOrganizations: managePersonOrganizationsTool,
+                upsertPerson: upsertPersonTool,
+                manageDocuments: manageDocumentsTool,
+                manageAnnotations: manageAnnotationsTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
