@@ -136,12 +136,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			.order("created_at", { ascending: false })
 			.limit(5)
 
-		// 6. Check for orphaned theme_evidence (links to non-existent themes/evidence)
-		const { data: orphanedLinks } = await userDb
+		// 6. Check theme_evidence links with theme names
+		const { data: themeEvidenceLinks } = await userDb
 			.from("theme_evidence")
-			.select("id, theme_id, evidence_id")
+			.select(`
+				id,
+				theme_id,
+				evidence_id,
+				project_id,
+				themes:theme_id (name)
+			`)
 			.eq("project_id", projectId)
 			.limit(100)
+
+		consola.log("[diagnose-themes] theme_evidence sample:", themeEvidenceLinks?.slice(0, 3))
 
 		// 7. Get interviews count
 		const { count: interviewCount } = await userDb
@@ -158,6 +166,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				themes: themeCount ?? 0,
 				themeEvidenceLinks: linkCount ?? 0,
 			},
+			// Show actual theme_evidence records
+			themeEvidenceSample: (themeEvidenceLinks ?? []).slice(0, 5).map((te: any) => ({
+				theme_id: te.theme_id,
+				theme_name: te.themes?.name,
+				evidence_id: te.evidence_id,
+				project_id: te.project_id,
+			})),
 			ratios: {
 				evidencePerInterview: interviewCount ? ((evidenceCount ?? 0) / interviewCount).toFixed(1) : "N/A",
 				linksPerTheme: themeCount ? ((linkCount ?? 0) / themeCount).toFixed(1) : "N/A",

@@ -1424,12 +1424,10 @@ export interface ProjectTemplateOut {
 
 export interface ProposedTheme {
   name: string
-  statement?: string | null
-  inclusion_criteria?: string | null
+  statement: string
+  inclusion_criteria: string
   exclusion_criteria?: string | null
   synonyms: string[]
-  anti_examples: string[]
-  links: ThemeLink[]
   
 }
 
@@ -1710,6 +1708,32 @@ export interface Spectrum {
   
 }
 
+export interface SpreadsheetAnalysis {
+  column_mapping: SpreadsheetColumnMapping
+  confidence: number
+  unmapped_columns: string[]
+  suggested_facets: SuggestedFacet[]
+  warnings: string[]
+  
+}
+
+export interface SpreadsheetColumnMapping {
+  name?: string | null
+  firstname?: string | null
+  lastname?: string | null
+  email?: string | null
+  phone?: string | null
+  linkedin?: string | null
+  title?: string | null
+  company?: string | null
+  role?: string | null
+  industry?: string | null
+  location?: string | null
+  segment?: string | null
+  lifecycle_stage?: string | null
+  
+}
+
 export interface StakeholderRole {
   person_name: string
   person_role?: string | null
@@ -1719,6 +1743,13 @@ export interface StakeholderRole {
   key_concerns: string[]
   key_motivations: string[]
   evidence_ids: string[]
+  
+}
+
+export interface SuggestedFacet {
+  column: string
+  facet_kind: string
+  reason: string
   
 }
 
@@ -1754,13 +1785,6 @@ export interface TargetFitAssessment {
   reasoning: string
   signals: string[]
   evidence_ids: string[]
-  
-}
-
-export interface ThemeLink {
-  evidence_id: string
-  rationale: string
-  confidence: number
   
 }
 

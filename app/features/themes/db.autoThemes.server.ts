@@ -2,6 +2,63 @@ import consola from "consola"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types"
 
+/**
+ * Generate embedding for text using OpenAI
+ */
+async function generateEmbedding(text: string): Promise<number[]> {
+	const apiKey = process.env.OPENAI_API_KEY
+	if (!apiKey) {
+		throw new Error("OPENAI_API_KEY not configured")
+	}
+
+	const response = await fetch("https://api.openai.com/v1/embeddings", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify({
+			model: "text-embedding-3-small",
+			input: text,
+		}),
+	})
+
+	if (!response.ok) {
+		const error = await response.text()
+		throw new Error(`OpenAI embedding failed: ${error}`)
+	}
+
+	const data = await response.json()
+	return data.data[0].embedding
+}
+
+/**
+ * Find evidence semantically similar to a theme using vector search
+ */
+async function findSimilarEvidenceForTheme(
+	supabase: SupabaseClient,
+	projectId: string,
+	themeText: string,
+	matchThreshold = 0.5,
+	matchCount = 50
+): Promise<Array<{ id: string; verbatim: string; similarity: number }>> {
+	const embedding = await generateEmbedding(themeText)
+
+	const { data, error } = await supabase.rpc("find_similar_evidence", {
+		query_embedding: embedding as any,
+		project_id_param: projectId,
+		match_threshold: matchThreshold,
+		match_count: matchCount,
+	})
+
+	if (error) {
+		consola.error("[findSimilarEvidenceForTheme] Error:", error)
+		return []
+	}
+
+	return (data ?? []) as Array<{ id: string; verbatim: string; similarity: number }>
+}
+
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
 interface EvidenceForTheme {
 	id: string
@@ -37,8 +94,10 @@ async function loadEvidence(
 	limit = 200
 ): Promise<EvidenceForTheme[]> {
 	if (!project_id) {
-		return
+		consola.warn("[loadEvidence] No project_id provided, returning empty")
+		return []
 	}
+
 	let query = supabase
 		.from("evidence")
 		.select("id, verbatim, personas, segments, journey_stage, support, is_question")
@@ -57,11 +116,21 @@ async function loadEvidence(
 	}
 
 	const evidenceIds = evidenceRows.map((row) => row.id)
-	const { data: facetRows, error: facetError } = await supabase
-		.from("evidence_facet")
-		.select("evidence_id, kind_slug, label")
-		.in("evidence_id", evidenceIds)
-	if (facetError) throw facetError
+
+	// Chunk the IDs to avoid overly large IN clauses that can cause fetch failures
+	const CHUNK_SIZE = 100
+	const allFacetRows: any[] = []
+
+	for (let i = 0; i < evidenceIds.length; i += CHUNK_SIZE) {
+		const chunk = evidenceIds.slice(i, i + CHUNK_SIZE)
+		const { data: facetRows, error: facetError } = await supabase
+			.from("evidence_facet")
+			.select("evidence_id, kind_slug, label")
+			.in("evidence_id", chunk)
+		if (facetError) throw facetError
+		if (facetRows) allFacetRows.push(...facetRows)
+	}
+	const facetRows = allFacetRows
 
 	const kindTagsByEvidence = new Map<string, string[]>()
 	for (const facet of facetRows ?? []) {
@@ -183,6 +252,20 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 
 	consola.log("[autoGroupThemesAndApply] Starting with options:", { account_id, project_id, limit })
 
+	// Check how many evidence items have embeddings
+	if (project_id) {
+		const { count: totalCount } = await supabase
+			.from("evidence")
+			.select("*", { count: "exact", head: true })
+			.eq("project_id", project_id)
+		const { count: embeddingCount } = await supabase
+			.from("evidence")
+			.select("*", { count: "exact", head: true })
+			.eq("project_id", project_id)
+			.not("embedding", "is", null)
+		consola.log(`[autoGroupThemesAndApply] Evidence embedding status: ${embeddingCount}/${totalCount} have embeddings`)
+	}
+
 	// 1) Load evidence
 	const evidence = await loadEvidence(supabase, account_id, project_id, evidence_ids, limit)
 	consola.log("[autoGroupThemesAndApply] Loaded evidence count:", evidence.length)
@@ -198,6 +281,7 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	try {
 		const evidence_json = JSON.stringify(evidence)
 		consola.log("[autoGroupThemesAndApply] Calling BAML with evidence length:", evidence_json.length)
+		consola.log("[autoGroupThemesAndApply] Sample evidence (first 2):", evidence.slice(0, 2).map(e => ({ id: e.id, verbatim: e.verbatim?.slice(0, 50) })))
 		const { result } = await runBamlWithTracing({
 			functionName: "AutoGroupThemes",
 			traceName: "baml.auto-group-themes",
@@ -231,6 +315,12 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 		return { created_theme_ids, link_count, themes }
 	}
 
+	consola.log(`[autoGroupThemesAndApply] BAML returned ${themesFromBaml.length} themes`)
+	for (const t of themesFromBaml) {
+		consola.log(`  - "${t.name}"`)
+	}
+
+	// 4) Create themes and link evidence via semantic similarity
 	for (const t of themesFromBaml) {
 		let theme: Theme
 		try {
@@ -242,7 +332,7 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 				inclusion_criteria: t.inclusion_criteria ?? null,
 				exclusion_criteria: t.exclusion_criteria ?? null,
 				synonyms: t.synonyms ?? [],
-				anti_examples: t.anti_examples ?? [],
+				anti_examples: [],
 			})
 		} catch (themeErr) {
 			consola.warn("[autoGroupThemesAndApply] Failed to upsert theme", {
@@ -254,25 +344,41 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 		themes.push(theme)
 		created_theme_ids.push(theme.id)
 
-		const links = Array.isArray(t.links) ? t.links : []
-		for (const link of links) {
-			if (!link?.evidence_id) continue
+		// Use semantic search to find evidence matching this theme
+		if (project_id) {
+			// Build search query from theme's statement and inclusion criteria
+			const searchQuery = [t.statement, t.inclusion_criteria, t.name].filter(Boolean).join(". ")
+			consola.log(`[autoGroupThemesAndApply] Searching evidence for theme "${t.name}"...`)
+
 			try {
-				await upsertThemeEvidence(supabase, {
-					account_id,
+				const similarEvidence = await findSimilarEvidenceForTheme(
+					supabase,
 					project_id,
-					theme_id: theme.id,
-					evidence_id: link.evidence_id,
-					rationale: link.rationale,
-					confidence: link.confidence,
-				})
-				link_count += 1
-			} catch (linkErr) {
-				consola.warn("[autoGroupThemesAndApply] Failed to link evidence", {
-					themeId: theme.id,
-					evidenceId: link?.evidence_id,
-					error: linkErr instanceof Error ? linkErr.message : linkErr,
-				})
+					searchQuery,
+					0.40, // threshold - balance between coverage and relevance
+					50 // max matches per theme
+				)
+
+				consola.log(`[autoGroupThemesAndApply] Found ${similarEvidence.length} similar evidence for "${t.name}"`)
+
+				// Create theme_evidence links for each match
+				for (const match of similarEvidence) {
+					try {
+						await upsertThemeEvidence(supabase, {
+							account_id,
+							project_id,
+							theme_id: theme.id,
+							evidence_id: match.id,
+							rationale: `Semantic match (${Math.round(match.similarity * 100)}%)`,
+							confidence: match.similarity,
+						})
+						link_count += 1
+					} catch (linkErr) {
+						// Silently skip - likely duplicate or FK error
+					}
+				}
+			} catch (searchErr) {
+				consola.warn(`[autoGroupThemesAndApply] Semantic search failed for theme "${t.name}":`, searchErr)
 			}
 		}
 	}

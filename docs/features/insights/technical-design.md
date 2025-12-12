@@ -11,13 +11,14 @@ The Insights system extracts, groups, and enriches thematic patterns from interv
 ```sql
 -- Core tables
 themes                  -- Project-level thematic groupings
-evidence                -- Verbatim quotes from interviews with timestamps
+evidence                -- Verbatim quotes from interviews with embeddings
 theme_evidence          -- Junction table linking themes to evidence
 
 -- Key relationships
 themes.project_id       → projects.id
 evidence.interview_id   → interviews.id
 evidence.project_id     → projects.id
+evidence.embedding      → vector(1536)  -- For semantic search
 theme_evidence.theme_id → themes.id
 theme_evidence.evidence_id → evidence.id
 ```
@@ -30,11 +31,10 @@ theme_evidence.evidence_id → evidence.id
 | `account_id` | uuid | Account scope (required) |
 | `project_id` | uuid | Project scope |
 | `name` | text | Theme name (actionable insight) |
-| `statement` | text | 1-2 sentence description |
-| `inclusion_criteria` | text | What evidence belongs |
+| `statement` | text | 1-2 sentence description (used for semantic matching) |
+| `inclusion_criteria` | text | What evidence belongs (used for semantic matching) |
 | `exclusion_criteria` | text | What evidence doesn't belong |
 | `synonyms` | text[] | Alternative phrasings |
-| `anti_examples` | text[] | Similar but excluded examples |
 | `category` | text | Classification (e.g., "Productivity") |
 | `jtbd` | text | Jobs To Be Done |
 | `pain` | text | Pain point description |
@@ -50,8 +50,8 @@ theme_evidence.evidence_id → evidence.id
 | `evidence_id` | uuid | FK to evidence |
 | `account_id` | uuid | Account scope |
 | `project_id` | uuid | Project scope |
-| `rationale` | text | Why this evidence supports the theme |
-| `confidence` | numeric | 0.0-1.0 confidence score |
+| `rationale` | text | How this evidence was linked (e.g., "Semantic match (78%)") |
+| `confidence` | numeric | 0.0-1.0 similarity score from vector search |
 
 **Unique constraint**: `(theme_id, evidence_id, account_id)`
 
@@ -59,107 +59,167 @@ theme_evidence.evidence_id → evidence.id
 
 ## Data Flow
 
-### Path 1: Per-Interview Theme Generation
+### Two-Phase Theme Consolidation (Primary Flow)
 
-```
-Interview Upload
-       ↓
-┌──────────────────────────────────────────────────────────────┐
-│  V2 Orchestrator (interview.v2.orchestrator)                 │
-├──────────────────────────────────────────────────────────────┤
-│  1. uploadAndTranscribe → transcript                         │
-│  2. extractEvidence → evidence rows + evidenceIds            │
-│  3. enrichPerson → person metadata                           │
-│  4. generateInsights → themes + theme_evidence links         │
-│  5. assignPersonas → persona assignments                     │
-│  6. attributeAnswers → research question answers             │
-│  7. finalizeInterview → status = "completed"                 │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**Key Task: `generateInsightsTaskV2`** (`src/trigger/interview/v2/generateInsights.ts`)
-
-1. Receives `evidenceUnits` and `evidenceIds` from orchestrator
-2. Calls BAML `ExtractInsights` to generate insights from evidence
-3. Inserts themes into `themes` table
-4. Creates `theme_evidence` links for ALL evidence from that interview
-
-**⚠️ ISSUE IDENTIFIED**: Current implementation links EVERY theme to EVERY evidence from the interview:
-
-```typescript
-// Lines 127-138 in generateInsights.ts
-for (const theme of createdThemes) {
-  for (const evidenceId of evidenceIds) {
-    themeEvidenceRows.push({
-      theme_id: theme.id,
-      evidence_id: evidenceId,
-      rationale: "Generated from interview evidence",
-      confidence: 0.8,
-    })
-  }
-}
-```
-
-This creates N×M links where N = themes and M = evidence, which is **over-linking**. The BAML function should return specific evidence IDs per theme.
-
-### Path 2: Project-Wide Consolidation
+The system uses a **two-phase approach** that separates theme creation from evidence linking:
 
 ```
 User clicks "Consolidate Themes"
        ↓
 ┌──────────────────────────────────────────────────────────────┐
-│  API Route: /api/consolidate-themes                          │
+│  Phase 1: Theme Creation (LLM)                               │
 ├──────────────────────────────────────────────────────────────┤
-│  autoGroupThemesAndApply()                                   │
-│  1. Load evidence from project (limit 200)                   │
-│  2. Call BAML AutoGroupThemes with evidence JSON             │
-│  3. Upsert themes (merge by name)                            │
-│  4. Create theme_evidence links with rationale + confidence  │
+│  1. Load all evidence from project (up to 600 items)         │
+│  2. Pass evidence JSON to BAML AutoGroupThemes               │
+│  3. LLM analyzes patterns and returns theme definitions      │
+│  4. Themes created with: name, statement, inclusion_criteria │
 └──────────────────────────────────────────────────────────────┘
-```
-
-**Key Function: `autoGroupThemesAndApply`** (`app/features/themes/db.autoThemes.server.ts`)
-
-This function:
-1. Loads evidence with facets from `evidence` and `evidence_facet` tables
-2. Calls BAML `AutoGroupThemes` which returns themes WITH specific evidence links
-3. Upserts themes (finds existing by name or creates new)
-4. Creates `theme_evidence` links with AI-generated rationale and confidence
-
-**BAML Contract** (`baml_src/auto_group_themes.baml`):
-
-```baml
-class ThemeLink {
-  evidence_id string
-  rationale string
-  confidence float  // 0.0-1.0
-}
-
-class ProposedTheme {
-  name string
-  statement string | null
-  links ThemeLink[]  // Specific evidence links
-}
-```
-
-### Path 3: Theme Enrichment
-
-```
-User clicks "Enrich Themes"
        ↓
 ┌──────────────────────────────────────────────────────────────┐
-│  API Route: /api/enrich-themes                               │
+│  Phase 2: Evidence Linking (Vector Search)                   │
 ├──────────────────────────────────────────────────────────────┤
-│  Trigger Task: enrich-themes-batch                           │
-│  1. Find themes missing metadata (pain, jtbd, category)      │
-│  2. For each theme, trigger enrich-theme task                │
-│  3. Load linked evidence via theme_evidence                  │
-│  4. Call assess-cluster Edge Function                        │
-│  5. Update theme with enriched metadata                      │
+│  For each theme:                                             │
+│  1. Build search query from statement + inclusion_criteria   │
+│  2. Generate embedding via OpenAI text-embedding-3-small     │
+│  3. Query pgvector: find_similar_evidence(embedding, project)│
+│  4. Create theme_evidence links with similarity as confidence│
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Dependency**: Enrichment REQUIRES `theme_evidence` links to exist. If themes have no linked evidence, enrichment will skip them.
+**Why Two Phases?**
+
+LLMs are unreliable at copying UUIDs. When asked to return `evidence_id` values, they hallucinate non-existent IDs. By separating theme creation from linking:
+
+- LLM focuses on pattern recognition (its strength)
+- Vector search handles ID matching (reliable, from database)
+- No hallucinated IDs, no foreign key errors
+
+### Key Function: `autoGroupThemesAndApply`
+
+Location: `app/features/themes/db.autoThemes.server.ts`
+
+```typescript
+export async function autoGroupThemesAndApply(opts) {
+  // Phase 1: Load evidence and create themes via LLM
+  const evidence = await loadEvidence(supabase, account_id, project_id, limit)
+  const { themes } = await baml.AutoGroupThemes(JSON.stringify(evidence), guidance)
+
+  // Phase 2: Link evidence via semantic similarity
+  for (const theme of themes) {
+    const searchQuery = [theme.statement, theme.inclusion_criteria].join(". ")
+    const matches = await findSimilarEvidenceForTheme(supabase, project_id, searchQuery)
+
+    for (const match of matches) {
+      await upsertThemeEvidence({
+        theme_id: theme.id,
+        evidence_id: match.id,  // Real ID from database
+        confidence: match.similarity,
+        rationale: `Semantic match (${Math.round(match.similarity * 100)}%)`
+      })
+    }
+  }
+}
+```
+
+### Semantic Search Function
+
+```typescript
+async function findSimilarEvidenceForTheme(
+  supabase, projectId, themeText, threshold = 0.45, limit = 100
+) {
+  // Generate embedding for theme description
+  const embedding = await generateEmbedding(themeText)
+
+  // Find similar evidence via pgvector
+  const { data } = await supabase.rpc("find_similar_evidence", {
+    query_embedding: embedding,
+    project_id_param: projectId,
+    match_threshold: threshold,
+    match_count: limit
+  })
+
+  return data  // [{ id, verbatim, similarity }]
+}
+```
+
+### BAML Contract
+
+Location: `baml_src/auto_group_themes.baml`
+
+```baml
+class ProposedTheme {
+  name string                    // "Users struggle with complex onboarding"
+  statement string               // Used for semantic matching
+  inclusion_criteria string      // What quotes belong to this theme
+  exclusion_criteria string?     // What should NOT be included
+  synonyms string[]              // Alternative phrasings
+}
+
+function AutoGroupThemes(evidence_json, guidance) -> { themes: ProposedTheme[] }
+```
+
+**Note**: The BAML contract does NOT include evidence links. Evidence linking is handled entirely by vector search.
+
+---
+
+## Per-Interview Theme Generation
+
+Location: `src/trigger/interview/v2/generateInsights.ts`
+
+When an interview is processed, themes are created but **not linked to evidence**:
+
+```typescript
+// Create themes from BAML output
+const themeRows = insights.map(i => ({
+  name: i.name,
+  statement: i.details,
+  inclusion_criteria: i.evidence,
+  // NO theme_evidence links created here
+}))
+
+await client.from("themes").insert(themeRows)
+
+// Evidence linking deferred to consolidation
+consola.info("Themes created. Evidence linking deferred to consolidation.")
+```
+
+**Rationale**: Per-interview linking previously created N×M relationships (every theme to every evidence). This was over-linking. Now themes are created empty and linked during consolidation.
+
+---
+
+## Theme Enrichment
+
+Location: `src/trigger/enrich-themes.ts`
+
+After themes have evidence links, enrichment adds metadata:
+
+```
+1. Find themes missing metadata (pain, jtbd, category)
+2. For each theme, load linked evidence via theme_evidence
+3. Call assess-cluster to generate metadata from evidence
+4. Update theme with enriched fields
+```
+
+**Dependency**: Enrichment requires `theme_evidence` links. Run consolidation first.
+
+---
+
+## Database Functions
+
+### find_similar_evidence
+
+Location: `supabase/schemas/34_embeddings.sql`
+
+```sql
+create function find_similar_evidence(
+  query_embedding vector(1536),
+  project_id_param uuid,
+  match_threshold float default 0.7,
+  match_count int default 10
+) returns table (id uuid, verbatim text, similarity float)
+```
+
+Uses pgvector cosine similarity to find evidence matching a theme description.
 
 ---
 
@@ -167,129 +227,20 @@ User clicks "Enrich Themes"
 
 ### Pages
 
-| Route | Component | Data Source |
-|-------|-----------|-------------|
-| `/insights` | `_layout.tsx` | Layout with Enrich/Consolidate buttons |
-| `/insights/quick` | `quick.tsx` | Card view via `getInsights()` |
-| `/insights/table` | `table.tsx` | Table view via `getInsights()` |
-| `/themes` | `index.tsx` | Alternative view with persona matrix |
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/insights` | `_layout.tsx` | Layout with Consolidate/Enrich buttons |
+| `/insights/quick` | `quick.tsx` | Card view |
+| `/insights/table` | `table.tsx` | Table view |
+| `/insights/:id` | `insight-detail.tsx` | Detail with evidence |
 
-### Data Fetching: `getInsights()`
+### Insight Detail Page
 
-Location: `app/features/insights/db.ts`
-
-```typescript
-const baseQuery = supabase
-  .from("themes")
-  .select(`
-    id, name, statement, inclusion_criteria, exclusion_criteria,
-    synonyms, anti_examples, category, jtbd, pain, desired_outcome,
-    journey_stage, emotional_response, motivation, updated_at,
-    project_id, created_at,
-    theme_evidence(count)  // Evidence count
-  `)
-  .eq("project_id", projectId)
-```
-
-Also fetches:
-- `insight_tags` for tag associations
-- `persona_insights` for persona associations
-- `interviews` for linked interview titles
-- `insights_with_priority` for priority scores
-- `votes` for vote counts
-
----
-
-## Discrepancies & Issues
-
-### 1. Over-Linking in Per-Interview Generation
-
-**Problem**: `generateInsightsTaskV2` links every theme to every evidence from the interview.
-
-**Impact**:
-- Themes appear to have more evidence than they actually support
-- Evidence counts are inflated
-- Enrichment may use irrelevant evidence
-
-**Fix Required**: Update BAML `ExtractInsights` to return specific evidence IDs per insight, then use those IDs when creating `theme_evidence` links.
-
-### 2. Duplicate Themes Across Interviews
-
-**Problem**: Each interview generates its own themes. Similar themes from different interviews are not merged.
-
-**Impact**:
-- "Need for AI Tools" might exist 5 times with slight variations
-- Users see fragmented insights
-
-**Mitigation**: "Consolidate Themes" button runs `AutoGroupThemes` which merges by name. But this is manual.
-
-**Recommendation**: Consider auto-consolidation after each interview, or batch consolidation on a schedule.
-
-### 3. Enrichment Dependency on Links
-
-**Problem**: `enrich-theme` task skips themes with no `theme_evidence` links.
-
-```typescript
-// Lines 153-156 in enrich-themes.ts
-if (!evidenceLinks || evidenceLinks.length === 0) {
-  return { enriched: false, reason: "No evidence" }
-}
-```
-
-**Impact**: If per-interview linking fails, themes can never be enriched.
-
-### 4. Two Separate UI Pages
-
-**Problem**: `/insights` and `/themes` show the same data with different views.
-
-**Current State**:
-- `/insights` has Enrich + Consolidate buttons
-- `/themes` has Enrich button + persona matrix
-
-**Recommendation**: Consolidate to single page or clearly differentiate purposes.
-
-### 5. Missing Evidence Count in Some Views
-
-**Problem**: `InsightCardV3` casts `evidence_count` as `(insight as any).evidence_count` suggesting type mismatch.
-
-**Impact**: TypeScript doesn't validate this field exists.
-
----
-
-## BAML Contracts
-
-### ExtractInsights (Per-Interview)
-
-Location: `baml_src/extract_insights.baml`
-
-Used by `generateInterviewInsightsFromEvidenceCore()` during interview processing.
-
-### AutoGroupThemes (Consolidation)
-
-Location: `baml_src/auto_group_themes.baml`
-
-```baml
-function AutoGroupThemes(evidence_json: string, guidance: string) -> AutoGroupThemesResponse {
-  // Returns themes with specific evidence links
-}
-```
-
-Rules enforced:
-- 5-15 themes maximum
-- Each theme should have evidence from 2+ sources
-- Theme names should be actionable insights
-- Link each evidence to at most 1-2 themes
-- Confidence scoring: 0.9+ = direct quote, 0.7-0.9 = strong implied, etc.
-
----
-
-## Trigger.dev Tasks
-
-| Task ID | File | Purpose |
-|---------|------|---------|
-| `interview.v2.generate-insights` | `generateInsights.ts` | Per-interview theme generation |
-| `enrich-themes-batch` | `enrich-themes.ts` | Batch enrichment coordinator |
-| `enrich-theme` | `enrich-themes.ts` | Single theme enrichment |
+Shows:
+- Theme name, statement, metadata
+- Supporting evidence grouped by interview
+- Semantic similarity section (related but unlinked evidence)
+- Annotations panel for votes/comments
 
 ---
 
@@ -297,27 +248,48 @@ Rules enforced:
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/consolidate-themes` | POST | Trigger project-wide theme consolidation |
+| `/api/consolidate-themes` | POST | Trigger theme consolidation with semantic linking |
 | `/api/enrich-themes` | POST | Trigger batch theme enrichment |
+| `/api/diagnose-themes` | GET | Debug theme/evidence state |
+| `/api/similar-evidence-for-insight` | GET | Find semantically related evidence |
 
 ---
 
-## Recommendations
+## Configuration
 
-### Short-Term Fixes
+### Semantic Search Thresholds
 
-1. **Fix over-linking**: Update `generateInsightsTaskV2` to use BAML-returned evidence IDs
-2. **Add evidence_count to types**: Update `Insight` type to include `evidence_count`
-3. **Unify UI**: Decide on single insights page or clear differentiation
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `match_threshold` | 0.45 | Minimum similarity (0-1) to create link |
+| `match_count` | 100 | Max evidence per theme |
 
-### Medium-Term Improvements
+Lower threshold = more links (potentially noisy)
+Higher threshold = fewer links (potentially missing relevant evidence)
 
-1. **Auto-consolidation**: Run `AutoGroupThemes` after each interview finishes
-2. **Incremental enrichment**: Enrich new themes automatically
-3. **Better linking UI**: Show which evidence supports which theme
+### Embedding Model
 
-### Long-Term Vision
+- Model: `text-embedding-3-small`
+- Dimensions: 1536
+- Provider: OpenAI
 
-1. **Theme hierarchy**: Parent/child theme relationships
-2. **Cross-project themes**: Account-level theme library
-3. **Theme suggestions**: AI suggests merging similar themes
+---
+
+## Troubleshooting
+
+### No evidence linked to themes
+
+1. Check evidence has embeddings: `SELECT count(*) FROM evidence WHERE embedding IS NOT NULL`
+2. Check threshold isn't too high (default 0.45)
+3. Run consolidation: `/api/diagnose-themes?action=reset`
+
+### Themes have too many evidence links
+
+1. Increase threshold (e.g., 0.6)
+2. Check theme statements are specific enough
+
+### Consolidation fails
+
+1. Check OPENAI_API_KEY is set
+2. Check Supabase connection
+3. Review logs for specific errors

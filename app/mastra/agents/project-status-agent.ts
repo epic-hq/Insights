@@ -132,10 +132,14 @@ Call "getCurrentDate" first for any date/time questions.
 **CRM Import** (importPeopleFromTable):
 - Use after parseSpreadsheet when looksLikeContacts is true and user confirms import
 - Requires the assetId from parseSpreadsheet result
-- Auto-detects column mappings (name, email, phone, company, title, etc.)
+- **CRITICAL**: Pass the columnMapping from parseSpreadsheet result directly to importPeopleFromTable
+  - parseSpreadsheet uses AI to analyze the actual data values and determine correct mappings
+  - This prevents errors like putting full names in firstname/lastname fields
+  - The AI looks at sample data to distinguish "John Smith" (full name) from "John" (first name only)
 - Creates People records and Organizations from company column
-- Skips duplicates based on email
+- Skips duplicates based on email (in "create" mode) or updates existing (in "upsert" mode)
 - Links people to organizations automatically
+- Supports facetColumns for importing custom fields as facets (e.g., event attendance, survey responses)
 
 **Opportunity Import** (importOpportunitiesFromTable):
 - Use after parseSpreadsheet when looksLikeOpportunities is true and user confirms import
@@ -170,7 +174,7 @@ Please try:
 2. Contacting support if the issue persists`
 		}
 	},
-	model: openai("gpt-5-mini"),
+	model: openai("gpt-4.1"),
 	tools: {
 		getCurrentDate: getCurrentDateTool,
 		fetchProjectStatusContext: fetchProjectStatusContextTool,

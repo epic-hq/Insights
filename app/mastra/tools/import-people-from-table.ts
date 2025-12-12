@@ -1,7 +1,20 @@
 import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
+import { persistFacetObservations } from "~/lib/database/facets.server"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+
+/**
+ * Facet observation type for imported data
+ * Matches the structure expected by persistFacetObservations
+ */
+interface FacetObservation {
+	kind_slug: string
+	value: string
+	source: string
+	confidence: number
+}
+
 
 /**
  * Column mapping schema - maps spreadsheet columns to people/organization fields
@@ -47,7 +60,10 @@ interface ImportResult {
  * Normalize column name for matching (lowercase, trim, remove special chars)
  */
 function normalizeColumnName(name: string): string {
-	return name.toLowerCase().trim().replace(/[^a-z0-9]/g, "")
+	return name
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]/g, "")
 }
 
 /**
@@ -109,6 +125,50 @@ function parseName(fullName: string): { firstname: string; lastname: string } {
 	}
 }
 
+/**
+ * Detect if a value looks like a full name (contains space, multiple words)
+ * This is a safety check to catch LLM mapping errors
+ */
+function looksLikeFullName(value: string | null): boolean {
+	if (!value) return false
+	const trimmed = value.trim()
+	// Contains space and has multiple words = likely full name
+	return trimmed.includes(" ") && trimmed.split(/\s+/).length >= 2
+}
+
+/**
+ * Validate and fix name fields - catches LLM mapping errors
+ * Returns corrected firstname/lastname
+ */
+function validateAndFixNames(
+	firstname: string | null,
+	lastname: string | null,
+	fullName: string | null
+): { firstname: string; lastname: string } {
+	// Case 1: We have a fullName field - parse it
+	if (fullName && !firstname) {
+		return parseName(fullName)
+	}
+
+	// Case 2: firstname looks like a full name (LLM error) - parse it
+	if (firstname && looksLikeFullName(firstname)) {
+		consola.warn(`[import-people] Detected full name in firstname field: "${firstname}" - auto-parsing`)
+		return parseName(firstname)
+	}
+
+	// Case 3: firstname and lastname are identical (LLM error) - parse firstname
+	if (firstname && lastname && firstname === lastname) {
+		consola.warn(`[import-people] Detected identical firstname/lastname: "${firstname}" - auto-parsing`)
+		return parseName(firstname)
+	}
+
+	// Case 4: Normal case - use as-is
+	return {
+		firstname: firstname || "",
+		lastname: lastname || "",
+	}
+}
+
 export const importPeopleFromTableTool = createTool({
 	id: "importPeopleFromTable",
 	description: `Import people and organizations from a parsed spreadsheet table into the CRM.
@@ -126,31 +186,65 @@ The tool will:
 5. Return summary of imported records`,
 	inputSchema: z.object({
 		assetId: z.string().uuid().describe("ID of the project_asset containing the table data"),
-		columnMapping: columnMappingSchema.optional().describe("Optional explicit column mappings. Auto-detected if not provided."),
-		skipDuplicates: z.boolean().optional().default(true).describe("Skip rows where email already exists in the project"),
-		createOrganizations: z.boolean().optional().default(true).describe("Create organization records from company column"),
+		columnMapping: columnMappingSchema
+			.optional()
+			.describe("Optional explicit column mappings. Auto-detected if not provided."),
+		mode: z
+			.enum(["create", "upsert"])
+			.optional()
+			.default("create")
+			.describe("'create' = skip existing people, 'upsert' = match by email and append facets to existing people"),
+		skipDuplicates: z
+			.boolean()
+			.optional()
+			.default(true)
+			.describe("Skip rows where email already exists (only applies in 'create' mode)"),
+		createOrganizations: z
+			.boolean()
+			.optional()
+			.default(true)
+			.describe("Create organization records from company column"),
+		facetColumns: z
+			.array(z.object({
+				column: z.string().describe("Column name in the spreadsheet"),
+				facetKind: z.string().describe("Facet kind slug (e.g., 'event', 'survey_response', 'persona')"),
+			}))
+			.optional()
+			.describe("Additional columns to import as facets (beyond the standard segment/role/industry/location)"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		message: z.string(),
 		imported: z.object({
 			people: z.number().describe("Number of people records created"),
+			updated: z.number().describe("Number of existing people records updated (upsert mode)"),
 			organizations: z.number().describe("Number of organization records created"),
+			facets: z.number().describe("Number of facet observations created"),
 			skipped: z.number().describe("Number of rows skipped (duplicates or invalid)"),
 		}),
-		details: z.array(z.object({
-			personId: z.string(),
-			name: z.string(),
-			organizationId: z.string().optional(),
-			organizationName: z.string().optional(),
-			rowIndex: z.number(),
-		})).optional().describe("Details of imported records"),
+		details: z
+			.array(
+				z.object({
+					personId: z.string(),
+					name: z.string(),
+					organizationId: z.string().optional(),
+					organizationName: z.string().optional(),
+					rowIndex: z.number(),
+				})
+			)
+			.optional()
+			.describe("Details of imported records"),
 		detectedMapping: z.record(z.string(), z.string()).optional().describe("Auto-detected column mappings used"),
+		skipReasons: z.array(z.object({
+			rowIndex: z.number(),
+			reason: z.string(),
+			data: z.record(z.string(), z.unknown()).optional(),
+		})).optional().describe("First 10 skip reasons for debugging"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async ({ context, runtimeContext, writer }) => {
 		try {
-			const { assetId, columnMapping, skipDuplicates = true, createOrganizations = true } = context
+			const { assetId, columnMapping, mode = "create", skipDuplicates = true, createOrganizations = true, facetColumns = [] } = context
 
 			// Get accountId and projectId from runtime context
 			const accountId = runtimeContext?.get?.("account_id") as string | undefined
@@ -160,7 +254,7 @@ The tool will:
 				return {
 					success: false,
 					message: "Missing account or project context",
-					imported: { people: 0, organizations: 0, skipped: 0 },
+					imported: { people: 0, updated: 0, organizations: 0, facets: 0, skipped: 0 },
 					error: "Cannot import without account_id and project_id",
 				}
 			}
@@ -178,7 +272,7 @@ The tool will:
 				return {
 					success: false,
 					message: "Asset not found",
-					imported: { people: 0, organizations: 0, skipped: 0 },
+					imported: { people: 0, updated: 0, organizations: 0, facets: 0, skipped: 0 },
 					error: assetError?.message || "Asset not found",
 				}
 			}
@@ -188,7 +282,7 @@ The tool will:
 				return {
 					success: false,
 					message: "Asset does not contain valid table data",
-					imported: { people: 0, organizations: 0, skipped: 0 },
+					imported: { people: 0, updated: 0, organizations: 0, facets: 0, skipped: 0 },
 					error: "No table_data found in asset",
 				}
 			}
@@ -204,7 +298,7 @@ The tool will:
 				return {
 					success: false,
 					message: "Cannot detect name column. Please provide column mapping.",
-					imported: { people: 0, organizations: 0, skipped: 0 },
+					imported: { people: 0, updated: 0, organizations: 0, facets: 0, skipped: 0 },
 					detectedMapping: mapping as Record<string, string>,
 					error: "No name, firstname, or lastname column detected",
 				}
@@ -232,34 +326,62 @@ The tool will:
 			const orgCache = new Map<string, string>() // company name -> org id
 			let orgsCreated = 0
 			let peopleCreated = 0
+			let peopleUpdated = 0
 			let skipped = 0
 			const importedDetails: ImportResult[] = []
+			const skipReasons: { rowIndex: number; reason: string; data?: Record<string, unknown> }[] = []
+			const facetObservationsByPerson: Array<{ personId: string; facets: FacetObservation[] }> = []
+
+			consola.info(`[import-people] Starting import from asset ${assetId}`)
+			consola.info("[import-people] Detected mapping:", mapping)
+			consola.info("[import-people] Headers:", headers)
+			consola.info(`[import-people] Total rows: ${rows.length}`)
 
 			// Process each row
 			for (let i = 0; i < rows.length; i++) {
 				const row = rows[i]
 
-				// Get name
-				let firstname = getValue(row, mapping.firstname)
-				let lastname = getValue(row, mapping.lastname)
+				// Get name - with defensive validation to catch LLM mapping errors
+				const rawFirstname = getValue(row, mapping.firstname)
+				const rawLastname = getValue(row, mapping.lastname)
 				const fullName = getValue(row, mapping.name)
 
-				if (fullName && !firstname) {
-					const parsed = parseName(fullName)
-					firstname = parsed.firstname
-					lastname = parsed.lastname
-				}
+				// Validate and fix names - catches cases where:
+				// - Full name was incorrectly mapped to firstname/lastname
+				// - firstname and lastname contain identical values
+				// - firstname contains "John Smith" instead of just "John"
+				const { firstname, lastname } = validateAndFixNames(rawFirstname, rawLastname, fullName)
 
 				if (!firstname && !fullName) {
-					consola.debug(`[import-people] Row ${i}: Skipping - no name`)
+					const reason = `No name found (firstname col: ${mapping.firstname}, lastname col: ${mapping.lastname}, name col: ${mapping.name})`
+					consola.warn(`[import-people] Row ${i}: Skipping - ${reason}`)
+					consola.warn(`[import-people] Row ${i} data:`, JSON.stringify(row))
+					skipReasons.push({ rowIndex: i, reason, data: row as Record<string, unknown> })
 					skipped++
 					continue
 				}
 
-				// Check for duplicate email
+				// Check for duplicate email or find existing person for upsert
 				const email = getValue(row, mapping.email)
-				if (skipDuplicates && email && existingEmails.has(email.toLowerCase())) {
-					consola.debug(`[import-people] Row ${i}: Skipping duplicate email ${email}`)
+				let existingPersonId: string | undefined
+
+				if (mode === "upsert" && email) {
+					// In upsert mode, find existing person by email
+					const { data: existingPerson } = await supabase
+						.from("people")
+						.select("id")
+						.eq("project_id", projectId)
+						.ilike("primary_email", email)
+						.maybeSingle()
+
+					if (existingPerson) {
+						existingPersonId = existingPerson.id
+					}
+				} else if (skipDuplicates && email && existingEmails.has(email.toLowerCase())) {
+					// In create mode, skip duplicates
+					const reason = `Duplicate email: ${email}`
+					consola.warn(`[import-people] Row ${i}: Skipping - ${reason}`)
+					skipReasons.push({ rowIndex: i, reason })
 					skipped++
 					continue
 				}
@@ -310,53 +432,113 @@ The tool will:
 					}
 				}
 
-				// Create person - note: 'name' is a generated column from firstname + lastname
+				// Create or update person - note: 'name' is a generated column from firstname + lastname
 				const displayName = fullName || `${firstname || ""} ${lastname || ""}`.trim()
-				const { data: newPerson, error: personError } = await supabase
-					.from("people")
-					.insert({
-						account_id: accountId,
-						project_id: projectId,
-						firstname: firstname,
-						lastname: lastname,
-						primary_email: email,
-						primary_phone: getValue(row, mapping.phone),
-						linkedin_url: getValue(row, mapping.linkedin),
-						title: getValue(row, mapping.title),
-						company: companyName,
-						role: getValue(row, mapping.role),
-						industry: getValue(row, mapping.industry),
-						location: getValue(row, mapping.location),
-						segment: getValue(row, mapping.segment),
-						lifecycle_stage: getValue(row, mapping.lifecycle_stage),
-						default_organization_id: organizationId,
-					})
-					.select("id")
-					.single()
+				let personId: string
 
-				if (personError) {
-					consola.error(`[import-people] Failed to create person ${displayName}:`, personError)
-					skipped++
-					continue
-				}
+				if (existingPersonId) {
+					// Upsert mode: update existing person
+					personId = existingPersonId
+					peopleUpdated++
+					consola.info(`[import-people] Row ${i}: Updating existing person ${displayName} (${existingPersonId})`)
+				} else {
+					// Create new person
+					const { data: newPerson, error: personError } = await supabase
+						.from("people")
+						.insert({
+							account_id: accountId,
+							project_id: projectId,
+							firstname: firstname,
+							lastname: lastname,
+							primary_email: email,
+							primary_phone: getValue(row, mapping.phone),
+							linkedin_url: getValue(row, mapping.linkedin),
+							title: getValue(row, mapping.title),
+							company: companyName,
+							role: getValue(row, mapping.role),
+							industry: getValue(row, mapping.industry),
+							location: getValue(row, mapping.location),
+							segment: getValue(row, mapping.segment),
+							lifecycle_stage: getValue(row, mapping.lifecycle_stage),
+							default_organization_id: organizationId,
+						})
+						.select("id")
+						.single()
 
-				// Link person to organization
-				if (organizationId && newPerson) {
-					await supabase.from("people_organizations").insert({
-						person_id: newPerson.id,
-						organization_id: organizationId,
-						role: getValue(row, mapping.title) || getValue(row, mapping.role),
-						is_primary: true,
-					})
-				}
+					if (personError) {
+						const reason = `DB insert failed: ${personError.message} (code: ${personError.code})`
+						consola.error(`[import-people] Row ${i}: Failed to create person ${displayName}:`, personError)
+						skipReasons.push({ rowIndex: i, reason, data: { displayName, firstname, lastname, email } })
+						skipped++
+						continue
+					}
 
-				if (newPerson) {
+					personId = (newPerson as { id: string }).id
 					peopleCreated++
+
+					// Link person to organization (only for new people)
+					if (organizationId) {
+						await supabase.from("people_organizations").insert({
+							person_id: personId,
+							organization_id: organizationId,
+							role: getValue(row, mapping.title) || getValue(row, mapping.role),
+							is_primary: true,
+						})
+					}
+				}
+
+				if (personId) {
 					if (email) {
 						existingEmails.add(email.toLowerCase())
 					}
+
+					// Collect facet observations for this person
+					const facetObservations: FacetObservation[] = []
+
+					// Map spreadsheet fields to facets
+					const facetFields: Array<{ field: keyof ColumnMapping; kindSlug: string }> = [
+						{ field: "segment", kindSlug: "persona" },
+						{ field: "lifecycle_stage", kindSlug: "persona" },
+						{ field: "role", kindSlug: "role" },
+						{ field: "industry", kindSlug: "industry" },
+						{ field: "location", kindSlug: "location" },
+					]
+
+					for (const { field, kindSlug } of facetFields) {
+						const value = getValue(row, mapping[field])
+						if (value) {
+							facetObservations.push({
+								kind_slug: kindSlug,
+								value: value,
+								source: "document", // Imported from spreadsheet
+								confidence: 0.9, // High confidence since it's explicit data
+							})
+						}
+					}
+
+					// Add custom facet columns
+					for (const { column, facetKind } of facetColumns) {
+						const value = getValue(row, column)
+						if (value) {
+							facetObservations.push({
+								kind_slug: facetKind,
+								value: value,
+								source: "document",
+								confidence: 0.9,
+							})
+						}
+					}
+
+					// Store facet observations for batch processing
+					if (facetObservations.length > 0) {
+						facetObservationsByPerson.push({
+							personId: personId,
+							facets: facetObservations,
+						})
+					}
+
 					importedDetails.push({
-						personId: newPerson.id,
+						personId: personId,
 						name: displayName,
 						organizationId,
 						organizationName,
@@ -365,27 +547,57 @@ The tool will:
 				}
 			}
 
-			const message = `Imported ${peopleCreated} people and ${orgsCreated} organizations from "${asset.title}". ${skipped > 0 ? `Skipped ${skipped} rows.` : ""}`
+			// Persist facet observations for all imported people
+			let facetsCreated = 0
+			if (facetObservationsByPerson.length > 0 && projectId) {
+				try {
+					await persistFacetObservations({
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						db: supabase as any,
+						accountId,
+						projectId,
+						observations: facetObservationsByPerson.map((o) => ({
+							personId: o.personId,
+							facets: o.facets,
+							scales: [],
+						})),
+						evidenceIds: [], // No evidence IDs for imported data
+					})
+					facetsCreated = facetObservationsByPerson.reduce((sum, o) => sum + o.facets.length, 0)
+					consola.info(`[import-people] Created ${facetsCreated} facet observations for ${facetObservationsByPerson.length} people`)
+				} catch (facetError) {
+					consola.warn("[import-people] Failed to persist facet observations:", facetError)
+				}
+			}
+
+			const assetTitle = (asset as { title?: string }).title || "spreadsheet"
+			const message = `Imported ${peopleCreated} people${peopleUpdated > 0 ? `, updated ${peopleUpdated}` : ""} and ${orgsCreated} organizations from "${assetTitle}".${facetsCreated > 0 ? ` Created ${facetsCreated} facets.` : ""} ${skipped > 0 ? `Skipped ${skipped} rows.` : ""}`
 
 			consola.info(`[import-people] ${message}`)
+			if (skipReasons.length > 0) {
+				consola.warn("[import-people] Skip reasons:", skipReasons.slice(0, 5))
+			}
 
 			return {
 				success: true,
 				message,
 				imported: {
 					people: peopleCreated,
+					updated: peopleUpdated,
 					organizations: orgsCreated,
+					facets: facetsCreated,
 					skipped,
 				},
 				details: importedDetails.slice(0, 20), // Limit details to first 20
 				detectedMapping: mapping as Record<string, string>,
+				skipReasons: skipReasons.slice(0, 10), // Include first 10 skip reasons for debugging
 			}
 		} catch (error) {
 			consola.error("[import-people] Error:", error)
 			return {
 				success: false,
 				message: "Failed to import people",
-				imported: { people: 0, organizations: 0, skipped: 0 },
+				imported: { people: 0, updated: 0, organizations: 0, facets: 0, skipped: 0 },
 				error: error instanceof Error ? error.message : "Unknown error",
 			}
 		}

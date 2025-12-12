@@ -1,20 +1,12 @@
 // Auto-group themes from evidence
 // Used by db.autoThemes.server.ts to consolidate evidence into themes
 
-class ThemeLink {
-  evidence_id string @description("UUID of the evidence to link to this theme")
-  rationale string @description("Why this evidence belongs to this theme (1-2 sentences)")
-  confidence float @description("Confidence score 0.0-1.0 that this evidence belongs to this theme")
-}
-
 class ProposedTheme {
   name string @description("Theme name - concise (3-7 words), actionable insight")
-  statement string | null @description("Clear statement of the theme/insight (1-2 sentences)")
-  inclusion_criteria string | null @description("What evidence should be included in this theme")
-  exclusion_criteria string | null @description("What evidence should NOT be included")
-  synonyms string[] @description("Alternative phrasings or related terms")
-  anti_examples string[] @description("Examples that seem related but don't belong")
-  links ThemeLink[] @description("Evidence IDs that belong to this theme with rationale")
+  statement string @description("Clear statement of the theme/insight (1-2 sentences). This will be used for semantic matching.")
+  inclusion_criteria string @description("What types of quotes/evidence belong to this theme")
+  exclusion_criteria string | null @description("What should NOT be included")
+  synonyms string[] @description("Alternative phrasings (3-5 terms)")
 }
 
 class AutoGroupThemesResponse {
@@ -24,32 +16,24 @@ class AutoGroupThemesResponse {
 function AutoGroupThemes(evidence_json: string, guidance: string) -> AutoGroupThemesResponse {
   client "CustomGPT4o"
   prompt #"
-    You are a user research analyst consolidating evidence into actionable themes/insights.
+    You are a user research analyst consolidating evidence into actionable themes.
 
-    ## Your Task
-    Analyze the evidence and group it into **consolidated themes**. Each theme should represent a distinct pattern observed across multiple pieces of evidence.
-
-    ## Evidence Data
+    ## Evidence Data (verbatim quotes from user interviews)
     {{ evidence_json }}
 
-    ## Additional Guidance
+    ## Guidance
     {{ guidance }}
 
-    ## Rules
-    1. Create **5-15 themes maximum** - consolidate aggressively
-    2. Each theme should have evidence from **2+ different sources** when possible
-    3. Theme names should be **actionable insights**, not just topics
-       - Good: "Users abandon onboarding when asked for payment info"
-       - Bad: "Payment issues"
-    4. Link each piece of evidence to **at most 1-2 themes** (avoid over-linking)
-    5. Include `evidence_id` from the input data in your links
-    6. Set confidence based on how well the evidence supports the theme:
-       - 0.9+ = Direct quote or clear behavior supporting the theme
-       - 0.7-0.9 = Strong implied support
-       - 0.5-0.7 = Moderate support, some interpretation needed
-       - <0.5 = Weak support, don't include
+    ## Instructions
+    1. Analyze the evidence and identify 5-12 distinct themes/patterns
+    2. Each theme needs a clear `statement` that captures its essence (used for semantic matching)
+    3. Include `inclusion_criteria` describing what quotes belong
+    4. Theme names should be actionable insights, not just topics
+       - Good: "Users struggle with complex onboarding flows"
+       - Bad: "Onboarding issues"
 
-    ## Output Format
+    Note: Evidence linking happens automatically via semantic similarity - just focus on creating clear, well-defined themes.
+
     {{ ctx.output_format }}
   "#
 }

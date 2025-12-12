@@ -59,6 +59,7 @@ add column if not exists embedding_model text,
 add column if not exists embedding_generated_at timestamptz;
 
 -- Helper function to find similar evidence by embedding
+-- Excludes interviewer questions (is_question = true)
 create or replace function public.find_similar_evidence(
   query_embedding vector(1536),
   project_id_param uuid,
@@ -79,6 +80,7 @@ begin
     from public.evidence
     where evidence.project_id = project_id_param
       and evidence.embedding is not null
+      and (evidence.is_question is null or evidence.is_question = false)
       and 1 - (evidence.embedding <=> query_embedding) > match_threshold
     order by evidence.embedding <=> query_embedding
     limit match_count;

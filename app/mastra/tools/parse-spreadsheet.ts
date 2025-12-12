@@ -2,6 +2,7 @@ import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
 
+import { b } from "~/../baml_client"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 
 /**
@@ -207,6 +208,29 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		contactColumns: z.array(z.string()).optional().describe("Detected contact-related column names"),
 		looksLikeOpportunities: z.boolean().optional().describe("Whether the data appears to be opportunity/deal data"),
 		opportunityColumns: z.array(z.string()).optional().describe("Detected opportunity-related column names"),
+		// LLM-analyzed column mapping for accurate imports
+		columnMapping: z.object({
+			name: z.string().nullable().optional().describe("Column with full name"),
+			firstname: z.string().nullable().optional().describe("Column with first name only"),
+			lastname: z.string().nullable().optional().describe("Column with last name only"),
+			email: z.string().nullable().optional().describe("Column with email"),
+			phone: z.string().nullable().optional().describe("Column with phone"),
+			linkedin: z.string().nullable().optional().describe("Column with LinkedIn"),
+			title: z.string().nullable().optional().describe("Column with job title"),
+			company: z.string().nullable().optional().describe("Column with company name"),
+			role: z.string().nullable().optional().describe("Column with role/function"),
+			industry: z.string().nullable().optional().describe("Column with industry"),
+			location: z.string().nullable().optional().describe("Column with location"),
+			segment: z.string().nullable().optional().describe("Column with segment"),
+			lifecycle_stage: z.string().nullable().optional().describe("Column with lifecycle stage"),
+		}).optional().describe("LLM-analyzed column mapping for CRM import - USE THIS for importPeopleFromTable"),
+		suggestedFacets: z.array(z.object({
+			column: z.string(),
+			facetKind: z.string(),
+			reason: z.string(),
+		})).optional().describe("Suggested facet mappings for unmapped columns"),
+		mappingConfidence: z.number().optional().describe("Confidence score 0-1 for the column mapping"),
+		mappingWarnings: z.array(z.string()).optional().describe("Warnings about the data or mapping"),
 		error: z.string().optional(),
 	}),
 	execute: async ({ context, runtimeContext, writer }) => {
@@ -275,6 +299,62 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				contactKeywords.some((kw) => h.toLowerCase().includes(kw))
 			)
 			const looksLikeContacts = contactColumns.length >= 2
+
+			// Use LLM to analyze column mapping for contact data
+			let columnMapping: Record<string, string | null> | undefined
+			let suggestedFacets: Array<{ column: string; facetKind: string; reason: string }> | undefined
+			let mappingConfidence: number | undefined
+			let mappingWarnings: string[] | undefined
+
+			if (looksLikeContacts) {
+				try {
+					await writer?.custom?.({
+						type: "data-tool-progress",
+						data: { tool: "parseSpreadsheet", status: "analyzing", message: "Analyzing columns with AI for accurate mapping...", progress: 55 },
+					})
+
+					// Prepare sample rows as string arrays for the LLM
+					const sampleRowsForLLM = rows.slice(0, 5).map((row) =>
+						headers.map((h) => row[h] || "")
+					)
+
+					const analysis = await b.MapSpreadsheetColumns(
+						headers,
+						sampleRowsForLLM,
+						null // No additional context
+					)
+
+					// Convert the mapping to the expected format
+					columnMapping = {
+						name: analysis.column_mapping.name || null,
+						firstname: analysis.column_mapping.firstname || null,
+						lastname: analysis.column_mapping.lastname || null,
+						email: analysis.column_mapping.email || null,
+						phone: analysis.column_mapping.phone || null,
+						linkedin: analysis.column_mapping.linkedin || null,
+						title: analysis.column_mapping.title || null,
+						company: analysis.column_mapping.company || null,
+						role: analysis.column_mapping.role || null,
+						industry: analysis.column_mapping.industry || null,
+						location: analysis.column_mapping.location || null,
+						segment: analysis.column_mapping.segment || null,
+						lifecycle_stage: analysis.column_mapping.lifecycle_stage || null,
+					}
+					suggestedFacets = analysis.suggested_facets.map((f) => ({
+						column: f.column,
+						facetKind: f.facet_kind,
+						reason: f.reason,
+					}))
+					mappingConfidence = analysis.confidence
+					mappingWarnings = analysis.warnings
+
+					consola.info("[parse-spreadsheet] LLM column mapping:", columnMapping)
+					consola.info("[parse-spreadsheet] Mapping confidence:", mappingConfidence)
+				} catch (llmError) {
+					consola.error("[parse-spreadsheet] LLM mapping failed, falling back to pattern matching:", llmError)
+					// Fall back to basic pattern matching (existing behavior)
+				}
+			}
 
 			// Detect if this looks like opportunity/deal data
 			const opportunityKeywords = ["deal", "opportunity", "amount", "value", "revenue", "stage", "pipeline", "close", "forecast", "probability", "confidence", "account", "prospect"]
@@ -354,9 +434,14 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				? ` This looks like opportunity/deal data (detected: ${opportunityColumns.join(", ")}). Would you like me to import these as Opportunities?`
 				: ""
 
+			// Add mapping info to message if available
+			const mappingMessage = columnMapping && mappingConfidence
+				? ` AI analyzed columns with ${Math.round(mappingConfidence * 100)}% confidence.`
+				: ""
+
 			return {
 				success: true,
-				message: `Parsed ${rows.length} rows with ${headers.length} columns.${savedMessage}${contactMessage}${opportunityMessage}`,
+				message: `Parsed ${rows.length} rows with ${headers.length} columns.${savedMessage}${mappingMessage}${contactMessage}${opportunityMessage}`,
 				markdownTable,
 				headers,
 				rowCount: rows.length,
@@ -369,6 +454,11 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				contactColumns: looksLikeContacts ? contactColumns : undefined,
 				looksLikeOpportunities,
 				opportunityColumns: looksLikeOpportunities ? opportunityColumns : undefined,
+				// LLM-analyzed column mapping - USE THIS for importPeopleFromTable
+				columnMapping,
+				suggestedFacets,
+				mappingConfidence,
+				mappingWarnings,
 			}
 		} catch (error) {
 			consola.error("[parse-spreadsheet] Error:", error)

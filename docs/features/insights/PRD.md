@@ -30,38 +30,39 @@ Insights are the core output of the discovery process. They represent validated 
 
 **Acceptance Criteria**:
 
-- [ ] Insights page shows all themes for the current project
-- [ ] Card view displays: name, statement, category, emotional response, evidence count
-- [ ] Table view displays: name, category, evidence count, votes
-- [ ] Clicking an insight opens a detail modal with full information
-- [ ] Evidence count reflects actual `theme_evidence` links
+- [x] Insights page shows all themes for the current project
+- [x] Card view displays: name, statement, category, emotional response, evidence count
+- [x] Table view displays: name, category, evidence count, votes
+- [x] Clicking an insight opens a detail view with full information
+- [x] Evidence count reflects actual `theme_evidence` links
 
 ### FR2: Generate Insights from Interviews
 
-**Description**: When an interview is processed, insights are automatically generated from the evidence.
+**Description**: When an interview is processed, themes are created from the evidence.
 
 **Acceptance Criteria**:
 
-- [ ] After interview finalization, themes are created in `themes` table
-- [ ] Each theme is linked to its supporting evidence via `theme_evidence`
-- [ ] Themes include: name, statement, inclusion_criteria
-- [ ] Evidence links include: rationale, confidence score
+- [x] After interview finalization, themes are created in `themes` table
+- [x] Themes include: name, statement, inclusion_criteria
+- [ ] Evidence linking deferred to consolidation (see FR3)
 
-**Current Status**: ⚠️ Partially implemented. Themes are created but ALL evidence is linked to ALL themes (over-linking bug).
+**Note**: Per-interview theme generation creates themes but does NOT link evidence. This avoids over-linking issues. Evidence is linked during consolidation via semantic similarity.
 
 ### FR3: Consolidate Themes
 
-**Description**: Users can merge similar themes across interviews into consolidated insights.
+**Description**: Users can consolidate themes across interviews with automatic evidence linking.
 
 **Acceptance Criteria**:
 
-- [ ] "Consolidate Themes" button triggers project-wide theme analysis
-- [ ] AI identifies similar themes and merges them
-- [ ] Merged themes retain all evidence links from source themes
-- [ ] Duplicate themes are either merged or marked for review
-- [ ] User receives feedback on consolidation results
+- [x] "Consolidate Themes" button triggers project-wide theme analysis
+- [x] AI identifies patterns and creates consolidated themes
+- [x] Evidence is linked via semantic similarity (vector search)
+- [x] Each link includes confidence score based on similarity
+- [x] User receives feedback on consolidation results
 
-**Current Status**: ✅ Implemented via `/api/consolidate-themes` and `AutoGroupThemes` BAML.
+**Implementation**: Uses two-phase approach:
+1. LLM analyzes evidence and creates theme definitions
+2. Vector search matches evidence to themes by semantic similarity
 
 ### FR4: Enrich Themes
 
@@ -69,13 +70,10 @@ Insights are the core output of the discovery process. They represent validated 
 
 **Acceptance Criteria**:
 
-- [ ] "Enrich Themes" button triggers batch enrichment
-- [ ] Only themes missing metadata are processed
-- [ ] Enrichment uses linked evidence to generate metadata
-- [ ] Updated fields: pain, jtbd, category, desired_outcome, emotional_response
-- [ ] User receives feedback on enrichment results
-
-**Current Status**: ✅ Implemented via `/api/enrich-themes` and `assess-cluster` Edge Function.
+- [x] "Enrich Themes" button triggers batch enrichment
+- [x] Only themes missing metadata are processed
+- [x] Enrichment uses linked evidence to generate metadata
+- [x] Updated fields: pain, jtbd, category, desired_outcome, emotional_response
 
 ### FR5: View Supporting Evidence
 
@@ -83,12 +81,11 @@ Insights are the core output of the discovery process. They represent validated 
 
 **Acceptance Criteria**:
 
-- [ ] Insight detail shows list of linked evidence
-- [ ] Each evidence item shows: verbatim quote, interview source, timestamp
-- [ ] Clicking evidence navigates to the interview at that timestamp
-- [ ] Evidence count badge is accurate
-
-**Current Status**: ⚠️ Partially implemented. Evidence count is shown but detail view may not list all evidence.
+- [x] Insight detail shows list of linked evidence
+- [x] Each evidence item shows: verbatim quote, interview source, attribution
+- [x] Evidence grouped by interview/company
+- [x] Semantic similarity section shows related but unlinked evidence
+- [x] Clicking evidence navigates to the interview
 
 ### FR6: Vote on Insights
 
@@ -96,12 +93,9 @@ Insights are the core output of the discovery process. They represent validated 
 
 **Acceptance Criteria**:
 
-- [ ] Vote buttons on insight cards and detail view
-- [ ] Vote count displayed on cards
-- [ ] Votes are project-scoped
-- [ ] High-vote insights can be filtered/sorted
-
-**Current Status**: ✅ Implemented via annotations system.
+- [x] Vote buttons on insight cards and detail view
+- [x] Vote count displayed on cards
+- [x] Votes are project-scoped
 
 ---
 
@@ -110,18 +104,18 @@ Insights are the core output of the discovery process. They represent validated 
 ### NFR1: Performance
 
 - Insights page should load in < 2 seconds for projects with < 500 themes
-- Consolidation should complete in < 30 seconds for projects with < 200 evidence items
+- Consolidation should complete in < 60 seconds for projects with < 600 evidence items
 
 ### NFR2: Data Integrity
 
-- Theme-evidence links must be accurate (no over-linking)
-- Deleted evidence should cascade to remove theme_evidence links
-- Deleted themes should cascade to remove theme_evidence links
+- Theme-evidence links are created via semantic similarity (no over-linking)
+- Deleted evidence cascades to remove theme_evidence links
+- Deleted themes cascade to remove theme_evidence links
 
 ### NFR3: Idempotency
 
-- Re-running consolidation should not create duplicate themes
-- Re-running enrichment should not overwrite user-edited fields
+- Re-running consolidation updates existing themes (matched by name)
+- Re-running enrichment does not overwrite user-edited fields
 
 ---
 
@@ -134,19 +128,19 @@ Insights are the core output of the discovery process. They represent validated 
 2. System displays insights in card view (default)
 3. User can toggle to table view
 4. User clicks an insight card
-5. Modal opens with full insight details
-6. User can see linked evidence, personas, and metadata
+5. Detail page shows full insight with evidence grouped by interview
+6. Semantic similarity section shows related evidence not yet linked
 ```
 
 ### Flow 2: Consolidate Themes
 
 ```text
 1. User clicks "Consolidate Themes" button
-2. Button shows loading spinner
-3. System calls /api/consolidate-themes
-4. AutoGroupThemes BAML analyzes all evidence
-5. Similar themes are merged
-6. Toast notification shows results
+2. System loads all evidence from project
+3. LLM analyzes evidence and creates theme definitions
+4. For each theme, vector search finds semantically similar evidence
+5. Theme-evidence links created with confidence scores
+6. Toast notification shows results (X themes, Y links)
 7. Page reloads with consolidated themes
 ```
 
@@ -154,50 +148,30 @@ Insights are the core output of the discovery process. They represent validated 
 
 ```text
 1. User clicks "Enrich Themes" button
-2. Button shows loading spinner
-3. System calls /api/enrich-themes
-4. Trigger.dev task processes themes in batch
-5. Each theme is enriched with metadata
+2. System finds themes missing metadata
+3. For each theme, loads linked evidence
+4. AI generates metadata from evidence
+5. Theme updated with pain, jtbd, category, etc.
 6. Toast notification shows results
-7. Page reloads with enriched themes
 ```
-
----
-
-## Open Questions
-
-1. **Should consolidation run automatically after each interview?**
-   - Pro: Users always see consolidated view
-   - Con: May merge themes user wants separate
-
-2. **How should we handle conflicting theme names?**
-   - Current: Merge by exact name match
-   - Alternative: Semantic similarity matching
-
-3. **Should users be able to manually link/unlink evidence from themes?**
-   - Current: No UI for this
-   - Needed: For correcting AI mistakes
-
-4. **What's the relationship between /insights and /themes pages?**
-   - Current: Both show same data, different views
-   - Recommendation: Consolidate or clearly differentiate
 
 ---
 
 ## Success Metrics
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Insights per interview | 3-8 | Unknown |
-| Evidence links per theme | 2-10 | Over-linked |
-| Enrichment success rate | > 80% | Unknown |
-| User engagement (votes) | > 50% of insights voted | Unknown |
+| Metric | Target |
+|--------|--------|
+| Themes per project | 5-15 consolidated |
+| Evidence links per theme | 10-100 (via semantic matching) |
+| Semantic match accuracy | > 70% relevant |
+| Enrichment success rate | > 80% |
 
 ---
 
 ## Dependencies
 
-- **BAML**: `ExtractInsights`, `AutoGroupThemes` functions
+- **BAML**: `AutoGroupThemes` for theme creation
+- **OpenAI**: `text-embedding-3-small` for semantic matching
+- **pgvector**: `find_similar_evidence` RPC for vector search
 - **Trigger.dev**: `generateInsightsTaskV2`, `enrich-themes-batch`
-- **Edge Functions**: `assess-cluster` for enrichment
 - **Database**: `themes`, `evidence`, `theme_evidence` tables

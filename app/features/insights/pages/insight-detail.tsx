@@ -100,11 +100,12 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		}
 
 		const evidenceIds = themeEvidence?.map((te) => te.evidence_id).filter(Boolean) ?? []
+		consola.log(`[insight-detail] evidenceIds to fetch:`, evidenceIds.length)
 
 		let evidence: InsightEvidence[] = []
 		if (evidenceIds.length > 0) {
-			// Fetch evidence with full details including interview and person
-			const { data: evidenceData } = await supabase
+			// Fetch evidence with full details including interview
+			const { data: evidenceData, error: evidenceError } = await supabase
 				.from("evidence")
 				.select(
 					`
@@ -122,18 +123,17 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					interview:interview_id (
 						id,
 						title,
-						thumbnail_url,
-						person:person_id (
-							id,
-							name,
-							organizations:organization_id (
-								name
-							)
-						)
+						thumbnail_url
 					)
 				`
 				)
 				.in("id", evidenceIds)
+
+			consola.log(`[insight-detail] evidence query result:`, {
+				fetched: evidenceData?.length ?? 0,
+				error: evidenceError?.message,
+				sampleId: evidenceIds[0],
+			})
 
 			// Fetch people linked directly to evidence (evidence_people table)
 			const { data: evidencePeople } = await supabase
@@ -143,10 +143,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					evidence_id,
 					people:person_id (
 						id,
-						name,
-						organizations:organization_id (
-							name
-						)
+						name
 					)
 				`
 				)
@@ -159,7 +156,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				if (ep.evidence_id && ep.people && !personByEvidence.has(ep.evidence_id)) {
 					personByEvidence.set(ep.evidence_id, {
 						name: ep.people.name,
-						org_name: ep.people.organizations?.name ?? null,
+						org_name: null, // Skip org for now - fix schema later
 					})
 				}
 			}
@@ -175,10 +172,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 						`
 						interview_id,
 						people:person_id (
-							name,
-							organizations:organization_id (
-								name
-							)
+							name
 						)
 					`
 					)
@@ -188,7 +182,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					if (ip.interview_id && ip.people && !personByInterview.has(ip.interview_id)) {
 						personByInterview.set(ip.interview_id, {
 							name: ip.people.name,
-							org_name: ip.people.organizations?.name ?? null,
+							org_name: null, // Skip org for now
 						})
 					}
 				}
@@ -205,15 +199,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					attribution = evPerson.org_name ? `${evPerson.name}, ${evPerson.org_name}` : evPerson.name
 					organization = evPerson.org_name
 				}
-				// Try 2: Person linked to interview
-				else if (ev.interview?.person?.name) {
-					const intPerson = ev.interview.person
-					attribution = intPerson.organizations?.name
-						? `${intPerson.name}, ${intPerson.organizations.name}`
-						: intPerson.name
-					organization = intPerson.organizations?.name ?? null
-				}
-				// Try 3: interview_people
+				// Try 2: interview_people
 				else if (ev.interview_id) {
 					const intPersonFromJoin = personByInterview.get(ev.interview_id)
 					if (intPersonFromJoin?.name) {
@@ -253,6 +239,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				}
 			}) as InsightEvidence[]
 		}
+
+		consola.log(`[insight-detail] returning evidence:`, evidence.length)
 
 		return {
 			insight,
