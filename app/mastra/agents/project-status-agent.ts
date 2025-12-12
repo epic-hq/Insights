@@ -31,6 +31,7 @@ import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } 
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
+import { importVideoFromUrlTool } from "../tools/import-video-from-url"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
@@ -188,17 +189,17 @@ Please try:
 		fetchEvidence: fetchEvidenceTool,
 		semanticSearchEvidence: semanticSearchEvidenceTool,
 		semanticSearchPeople: semanticSearchPeopleTool,
-                fetchProjectGoals: fetchProjectGoalsTool,
-                fetchThemes: fetchThemesTool,
-                fetchPainMatrixCache: fetchPainMatrixCacheTool,
-                fetchSegments: fetchSegmentsTool,
-                fetchConversationLenses: fetchConversationLensesTool,
-                importInterviewFromUrl: importInterviewFromUrlTool,
-                generateProjectRoutes: generateProjectRoutesTool,
-                fetchOpportunities: fetchOpportunitiesTool,
-                createOpportunity: createOpportunityTool,
-                updateOpportunity: updateOpportunityTool,
-                fetchInterviewPrompts: fetchInterviewPromptsTool,
+		fetchProjectGoals: fetchProjectGoalsTool,
+		fetchThemes: fetchThemesTool,
+		fetchPainMatrixCache: fetchPainMatrixCacheTool,
+		fetchSegments: fetchSegmentsTool,
+		fetchConversationLenses: fetchConversationLensesTool,
+		importInterviewFromUrl: importInterviewFromUrlTool,
+		generateProjectRoutes: generateProjectRoutesTool,
+		fetchOpportunities: fetchOpportunitiesTool,
+		createOpportunity: createOpportunityTool,
+		updateOpportunity: updateOpportunityTool,
+		fetchInterviewPrompts: fetchInterviewPromptsTool,
 		createInterviewPrompt: createInterviewPromptTool,
 		updateInterviewPrompt: updateInterviewPromptTool,
 		deleteInterviewPrompt: deleteInterviewPromptTool,
@@ -207,6 +208,7 @@ Please try:
 		updateTask: updateTaskTool,
 		deleteTask: deleteTaskTool,
 		navigateToPage: navigateToPageTool,
+		importVideoFromUrl: importVideoFromUrlTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
 		upsertPerson: upsertPersonTool,

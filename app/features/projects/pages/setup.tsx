@@ -163,8 +163,8 @@ export default function ProjectSetupPage() {
 						</h1>
 						<p className="mt-1 text-muted-foreground text-sm">
 							{mode === "chat"
-								? "Chat or blab away, I got you."
-								: "Structured input, always in sync with chat."}
+								? "Chat with me to set up your project context."
+								: "The Form syncs with chat."}
 						</p>
 					</div>
 					<div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-1">

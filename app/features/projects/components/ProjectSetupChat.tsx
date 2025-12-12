@@ -348,14 +348,16 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 							<div className="flex h-full flex-col items-center justify-center text-center">
 								<WizardIcon className="mb-4" />
 								<h2 className="mb-2 font-semibold text-lg">Project Context</h2>
-								<p className="max-w-md text-balance text-muted-foreground text-sm leading-relaxed">
+								{/* <p className="max-w-md text-balance text-muted-foreground text-sm leading-relaxed">
 									I'm here to assist with your customer strategy. Share your goals and vision, and together we'll define
 									clear goals, identify and nurture your ideal customers, and uncover the questions that matter most.
-								</p>
-								<p className="mt-4 text-balance text-muted-foreground/70 text-xs">
-									Just start with something like "We're building a B2B SaaS for HR teams" or "I need to understand my
-									customers better"
-								</p>
+								</p> */}
+								{displayableMessages.length === 0 && (
+									<p className="mt-4 text-balance text-muted-foreground/70 text-ms">
+										Just start with something like "We're building a B2B SaaS for HR teams" or "I need to understand my
+										customers better"
+									</p>
+								)}
 							</div>
 						) : (
 							displayableMessages.map((message, index) => {
