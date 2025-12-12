@@ -1,4 +1,6 @@
+import { toAISdkFormat } from "@mastra/ai-sdk"
 import { RuntimeContext } from "@mastra/core/di"
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
@@ -62,12 +64,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	// Only pass NEW messages to the agent - Mastra's memory handles historical context.
 	// This prevents duplicate messages when both client history and memory are present.
 	// We look for messages that came after any assistant response (new conversation turn).
-	const lastAssistantIndex = sanitizedMessages.findLastIndex(
-		(m: { role?: string }) => m?.role === "assistant"
-	)
-	const runtimeMessages = lastAssistantIndex >= 0
-		? sanitizedMessages.slice(lastAssistantIndex + 1)
-		: sanitizedMessages
+	const lastAssistantIndex = sanitizedMessages.findLastIndex((m: { role?: string }) => m?.role === "assistant")
+	const runtimeMessages = lastAssistantIndex >= 0 ? sanitizedMessages.slice(lastAssistantIndex + 1) : sanitizedMessages
 
 	consola.info("project-status action: sending messages to agent", {
 		totalReceived: sanitizedMessages.length,
@@ -107,8 +105,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	const agent = mastra.getAgent("projectStatusAgent")
-	const result = await agent.stream(runtimeMessages, {
-		format: "aisdk", // Required for toUIMessageStreamResponse() - deprecation warning is expected until we migrate to @mastra/ai-sdk chatRoute
+	const stream = await agent.stream(runtimeMessages, {
 		maxSteps: 10, // Prevent infinite tool loops (default is 5)
 		memory: {
 			thread: threadId,
@@ -136,5 +133,17 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		},
 	})
 
-	return result.toUIMessageStreamResponse()
+	// Transform Mastra stream to AI SDK format with custom data parts support
+	const uiMessageStream = createUIMessageStream({
+		execute: async ({ writer }) => {
+			const transformedStream = toAISdkFormat(stream, { from: "agent" })
+			if (transformedStream) {
+				for await (const part of transformedStream) {
+					writer.write(part)
+				}
+			}
+		},
+	})
+
+	return createUIMessageStreamResponse({ stream: uiMessageStream })
 }

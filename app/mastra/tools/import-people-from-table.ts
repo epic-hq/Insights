@@ -15,7 +15,6 @@ interface FacetObservation {
 	confidence: number
 }
 
-
 /**
  * Column mapping schema - maps spreadsheet columns to people/organization fields
  */
@@ -205,10 +204,12 @@ The tool will:
 			.default(true)
 			.describe("Create organization records from company column"),
 		facetColumns: z
-			.array(z.object({
-				column: z.string().describe("Column name in the spreadsheet"),
-				facetKind: z.string().describe("Facet kind slug (e.g., 'event', 'survey_response', 'persona')"),
-			}))
+			.array(
+				z.object({
+					column: z.string().describe("Column name in the spreadsheet"),
+					facetKind: z.string().describe("Facet kind slug (e.g., 'event', 'survey_response', 'persona')"),
+				})
+			)
 			.optional()
 			.describe("Additional columns to import as facets (beyond the standard segment/role/industry/location)"),
 	}),
@@ -235,16 +236,28 @@ The tool will:
 			.optional()
 			.describe("Details of imported records"),
 		detectedMapping: z.record(z.string(), z.string()).optional().describe("Auto-detected column mappings used"),
-		skipReasons: z.array(z.object({
-			rowIndex: z.number(),
-			reason: z.string(),
-			data: z.record(z.string(), z.unknown()).optional(),
-		})).optional().describe("First 10 skip reasons for debugging"),
+		skipReasons: z
+			.array(
+				z.object({
+					rowIndex: z.number(),
+					reason: z.string(),
+					data: z.record(z.string(), z.unknown()).optional(),
+				})
+			)
+			.optional()
+			.describe("First 10 skip reasons for debugging"),
 		error: z.string().optional(),
 	}),
 	execute: async ({ context, runtimeContext, writer }) => {
 		try {
-			const { assetId, columnMapping, mode = "create", skipDuplicates = true, createOrganizations = true, facetColumns = [] } = context
+			const {
+				assetId,
+				columnMapping,
+				mode = "create",
+				skipDuplicates = true,
+				createOrganizations = true,
+				facetColumns = [],
+			} = context
 
 			// Get accountId and projectId from runtime context
 			const accountId = runtimeContext?.get?.("account_id") as string | undefined
@@ -337,8 +350,32 @@ The tool will:
 			consola.info("[import-people] Headers:", headers)
 			consola.info(`[import-people] Total rows: ${rows.length}`)
 
+			// Stream progress - starting
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: {
+					tool: "importPeopleFromTable",
+					status: "starting",
+					message: `Importing ${rows.length} contacts...`,
+					progress: 10,
+				},
+			})
+
 			// Process each row
 			for (let i = 0; i < rows.length; i++) {
+				// Stream progress every 10 rows or on first/last row
+				if (i === 0 || i === rows.length - 1 || i % 10 === 0) {
+					const progress = Math.round(10 + (i / rows.length) * 70) // 10-80%
+					await writer?.custom?.({
+						type: "data-tool-progress",
+						data: {
+							tool: "importPeopleFromTable",
+							status: "importing",
+							message: `Processing row ${i + 1} of ${rows.length}...`,
+							progress,
+						},
+					})
+				}
 				const row = rows[i]
 
 				// Get name - with defensive validation to catch LLM mapping errors
@@ -516,8 +553,26 @@ The tool will:
 						}
 					}
 
-					// Add custom facet columns
-					for (const { column, facetKind } of facetColumns) {
+					// Add custom facet columns (with defensive handling for malformed input)
+					for (const facetCol of facetColumns) {
+						// Handle both object format and string format (in case LLM passes wrong format)
+						let column: string | undefined
+						let facetKind: string | undefined
+
+						if (typeof facetCol === "object" && facetCol !== null) {
+							column = facetCol.column
+							facetKind = facetCol.facetKind
+						} else if (typeof facetCol === "string") {
+							// LLM passed a string instead of object - skip with warning
+							consola.warn(`[import-people] Skipping malformed facetColumn (expected object, got string): ${facetCol}`)
+							continue
+						}
+
+						if (!column || !facetKind) {
+							consola.warn("[import-people] Skipping facetColumn with missing column or facetKind:", facetCol)
+							continue
+						}
+
 						const value = getValue(row, column)
 						if (value) {
 							facetObservations.push({
@@ -547,6 +602,17 @@ The tool will:
 				}
 			}
 
+			// Stream progress - saving facets
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: {
+					tool: "importPeopleFromTable",
+					status: "saving",
+					message: "Saving facet observations...",
+					progress: 85,
+				},
+			})
+
 			// Persist facet observations for all imported people
 			let facetsCreated = 0
 			if (facetObservationsByPerson.length > 0 && projectId) {
@@ -564,11 +630,19 @@ The tool will:
 						evidenceIds: [], // No evidence IDs for imported data
 					})
 					facetsCreated = facetObservationsByPerson.reduce((sum, o) => sum + o.facets.length, 0)
-					consola.info(`[import-people] Created ${facetsCreated} facet observations for ${facetObservationsByPerson.length} people`)
+					consola.info(
+						`[import-people] Created ${facetsCreated} facet observations for ${facetObservationsByPerson.length} people`
+					)
 				} catch (facetError) {
 					consola.warn("[import-people] Failed to persist facet observations:", facetError)
 				}
 			}
+
+			// Stream progress - complete
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: { tool: "importPeopleFromTable", status: "complete", message: "Import complete!", progress: 100 },
+			})
 
 			const assetTitle = (asset as { title?: string }).title || "spreadsheet"
 			const message = `Imported ${peopleCreated} people${peopleUpdated > 0 ? `, updated ${peopleUpdated}` : ""} and ${orgsCreated} organizations from "${assetTitle}".${facetsCreated > 0 ? ` Created ${facetsCreated} facets.` : ""} ${skipped > 0 ? `Skipped ${skipped} rows.` : ""}`

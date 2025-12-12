@@ -96,8 +96,23 @@ function ThinkingWave({ progressMessage }: { progressMessage?: string }) {
 function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
 	if (!message.parts) return null
 	for (const part of message.parts) {
-		if (part.type === "data-tool-progress" && "data" in part) {
-			return part.data as ToolProgressData
+		// Cast to any to handle dynamic part types from Mastra streaming
+		const anyPart = part as { type: string; data?: unknown }
+		// Check for data-tool-progress type with data property
+		if (anyPart.type === "data-tool-progress" && anyPart.data) {
+			return anyPart.data as ToolProgressData
+		}
+		// Also check for custom data parts that might be wrapped differently by Mastra
+		// Mastra's writer.custom() might serialize as { type: "data", data: { type: "data-tool-progress", ... } }
+		if (anyPart.type === "data" && anyPart.data) {
+			const data = anyPart.data as Record<string, unknown>
+			if (data?.type === "data-tool-progress" && data?.data) {
+				return data.data as ToolProgressData
+			}
+			// Direct data format: { type: "data", data: { tool, status, message, progress } }
+			if (data?.tool && data?.message) {
+				return data as unknown as ToolProgressData
+			}
 		}
 	}
 	return null

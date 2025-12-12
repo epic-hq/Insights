@@ -3,6 +3,7 @@
  *
  * Clusters related quotes from the same conversation together,
  * with collapsible sections per interview source.
+ * Uses the existing EvidenceCard component for consistent media playback.
  */
 
 import { Building2, ChevronDown, ChevronRight, FileText, Users } from "lucide-react"
@@ -10,9 +11,9 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
+import EvidenceCard from "~/features/evidence/components/EvidenceCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { InsightEvidence } from "../pages/insight-detail"
-import { FullEvidenceCard } from "./FullEvidenceCard"
 
 interface EvidenceGroupProps {
 	evidence: InsightEvidence[]
@@ -156,11 +157,33 @@ export function EvidenceGroupedByInterview({ evidence, projectPath }: EvidenceGr
 								<CollapsibleContent>
 									<div className="space-y-3 border-t px-4 py-4">
 										{group.items.map((ev) => (
-											<FullEvidenceCard
+											<EvidenceCard
 												key={ev.id}
-												evidence={ev}
+												evidence={{
+													id: ev.id,
+													verbatim: ev.verbatim,
+													gist: ev.gist,
+													chunk: ev.chunk,
+													anchors: ev.anchors,
+													interview_id: ev.interview_id,
+													context_summary: ev.context_summary,
+													// Fields not in InsightEvidence but expected by EvidenceCard
+													topic: null,
+													support: null,
+													confidence: ev.confidence ? String(ev.confidence) : null,
+													created_at: "",
+													journey_stage: null,
+													method: null,
+													source_type: "primary",
+												}}
+												interview={ev.interview ? {
+													id: ev.interview.id,
+													title: ev.interview.title,
+													media_url: ev.interview.media_url,
+													thumbnail_url: ev.interview.thumbnail_url,
+												} : null}
+												variant="expanded"
 												projectPath={projectPath}
-												defaultExpanded={group.items.length === 1}
 											/>
 										))}
 

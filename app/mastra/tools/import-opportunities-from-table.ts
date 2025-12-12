@@ -195,7 +195,7 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 		})).optional().describe("Details of imported opportunities"),
 		errors: z.array(z.string()).optional().describe("Any errors encountered"),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async ({ context, runtimeContext, writer }) => {
 		const errors: string[] = []
 		const results: ImportResult[] = []
 		let skipped = 0
@@ -254,6 +254,17 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 			const { headers, rows } = tableData
 			consola.info(`[import-opportunities] Processing ${rows.length} rows from asset ${assetId}`)
 
+			// Stream progress - starting
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: {
+					tool: "importOpportunitiesFromTable",
+					status: "starting",
+					message: `Importing ${rows.length} opportunities...`,
+					progress: 10,
+				},
+			})
+
 			// Auto-detect or use provided mappings
 			const mapping = columnMapping || autoDetectMappings(headers)
 			consola.debug("[import-opportunities] Column mapping:", mapping)
@@ -295,6 +306,20 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 			// Process each row
 			for (let i = 0; i < rows.length; i++) {
 				const row = rows[i]
+
+				// Stream progress every 10 rows or on first/last row
+				if (i === 0 || i === rows.length - 1 || i % 10 === 0) {
+					const progress = Math.round(10 + (i / rows.length) * 70) // 10-80%
+					await writer?.custom?.({
+						type: "data-tool-progress",
+						data: {
+							tool: "importOpportunitiesFromTable",
+							status: "importing",
+							message: `Processing opportunity ${i + 1} of ${rows.length}...`,
+							progress,
+						},
+					})
+				}
 
 				try {
 					const title = getValue(row, titleColumn)
@@ -419,6 +444,17 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 
 			const imported = results.length
 			consola.info(`[import-opportunities] Imported ${imported} opportunities, skipped ${skipped}, created ${organizationsCreated} organizations`)
+
+			// Stream progress - complete
+			await writer?.custom?.({
+				type: "data-tool-progress",
+				data: {
+					tool: "importOpportunitiesFromTable",
+					status: "complete",
+					message: `Imported ${imported} opportunities${organizationsCreated > 0 ? `, created ${organizationsCreated} organizations` : ""}`,
+					progress: 100,
+				},
+			})
 
 			return {
 				success: true,

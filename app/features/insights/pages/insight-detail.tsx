@@ -16,7 +16,7 @@ export type InsightEvidence = {
 	verbatim: string | null
 	chunk: string | null
 	context_summary: string | null
-	anchors: Array<{ type: string; target: string; start?: number; end?: number }> | null
+	anchors: Array<{ type: string; target: string; start?: number; end?: number; start_ms?: number; start_seconds?: number; media_key?: string }> | null
 	pains: string[] | null
 	gains: string[] | null
 	thinks: string[] | null
@@ -26,6 +26,7 @@ export type InsightEvidence = {
 		id: string
 		title: string | null
 		thumbnail_url: string | null
+		media_url: string | null
 	} | null
 	/** Attribution line - person name, org, or interview title */
 	attribution: string
@@ -104,7 +105,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 		let evidence: InsightEvidence[] = []
 		if (evidenceIds.length > 0) {
-			// Fetch evidence with full details including interview
+			// Fetch evidence with full details including interview media for playback
 			const { data: evidenceData, error: evidenceError } = await supabase
 				.from("evidence")
 				.select(
@@ -123,7 +124,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					interview:interview_id (
 						id,
 						title,
-						thumbnail_url
+						thumbnail_url,
+						media_url
 					)
 				`
 				)
@@ -230,7 +232,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					feels: ev.feels,
 					interview_id: ev.interview_id,
 					interview: ev.interview
-						? { id: ev.interview.id, title: ev.interview.title, thumbnail_url: ev.interview.thumbnail_url }
+						? { id: ev.interview.id, title: ev.interview.title, thumbnail_url: ev.interview.thumbnail_url, media_url: ev.interview.media_url }
 						: null,
 					attribution: attribution || "Interview",
 					organization,
