@@ -1,24 +1,42 @@
 /**
  * Import Interview from URL Task
  *
- * Fetches media from external URLs (Vento.so, Apollo.io, etc.),
- * uploads to R2, and triggers the interview processing workflow.
+ * Fetches media from external URLs, uploads to R2, and triggers the interview
+ * processing workflow. This is the single source of truth for all URL imports.
  *
- * Supported providers:
+ * Supported URL types:
+ * - Direct media files (mp4, mp3, m4a, webm, mov, etc.)
+ * - HLS streaming manifests (.m3u8) - converted to MP4 via ffmpeg
+ * - DASH streaming manifests (.mpd) - converted to MP4 via ffmpeg
+ * - Webpages with embedded media (auto-extracted via HTML parsing + LLM)
+ *
+ * Supported providers with API integration:
  * - Vento.so: Screen recordings with HLS streams
- * - Apollo.io: Sales call recordings (requires API integration)
+ * - Apollo.io: Sales call recordings (requires authentication)
+ *
+ * Used by:
+ * - /api/upload-from-url API endpoint
+ * - Mastra importVideoFromUrl tool (for chat agent)
  */
 
 import { schemaTask, task } from "@trigger.dev/sdk"
 import consola from "consola"
+import { format } from "date-fns"
 import { spawn } from "node:child_process"
-import { createReadStream, promises as fs, statSync } from "node:fs"
+import { promises as fs, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { z } from "zod"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 import { uploadToR2 } from "~/utils/r2.server"
-import { processInterviewOrchestratorV2 } from "./v2/orchestrator"
+import {
+	isDirectMediaUrl,
+	isStreamingUrl,
+	extractBestMediaUrl,
+	type MediaUrlType,
+	detectMediaUrlType,
+} from "~/utils/extractMediaUrl.server"
 
 // =============================================================================
 // Types & Schemas
@@ -34,7 +52,7 @@ const ImportFromUrlPayloadSchema = z.object({
 	urls: z.array(UrlImportItemSchema).min(1),
 	projectId: z.string().uuid(),
 	accountId: z.string().uuid(),
-	userId: z.string(),
+	userId: z.string().uuid().nullable(),
 })
 
 export type ImportFromUrlPayload = z.infer<typeof ImportFromUrlPayloadSchema>
@@ -270,7 +288,7 @@ export const importFromUrlTask = schemaTask({
 			url: string
 			success: boolean
 			interviewId?: string
-			analysisJobId?: string
+			triggerRunId?: string
 			error?: string
 		}> = []
 
@@ -280,26 +298,36 @@ export const importFromUrlTask = schemaTask({
 			try {
 				consola.info(`\n📥 Processing URL: ${url}`)
 
-				// 1. Detect provider and extract ID
+				// 1. Resolve URL to media URL
+				// Supports: direct media URLs, HLS/DASH streams, and webpages with embedded media
+				let mediaUrl: string
+				let mediaType: MediaUrlType
+				let mediaTitle = userTitle || `Import from URL`
 				const provider = detectProvider(url)
-				let mediaInfo: MediaInfo | null = null
 
+				// Check if it's a known provider (vento, apollo) with API endpoints
 				if (provider === "vento") {
 					const ventoId = extractVentoId(url)
 					if (!ventoId) {
 						results.push({ url, success: false, error: "Could not extract Vento recording ID" })
 						continue
 					}
-					mediaInfo = await fetchVentoMedia(ventoId)
+					const mediaInfo = await fetchVentoMedia(ventoId)
+					if (!mediaInfo || !mediaInfo.videoUrl) {
+						results.push({ url, success: false, error: "Could not fetch Vento media info" })
+						continue
+					}
+					mediaUrl = mediaInfo.videoUrl
+					mediaType = mediaInfo.isHls ? "hls" : "progressive"
+					mediaTitle = userTitle || mediaInfo.title || `Vento Recording`
 				} else if (provider === "apollo") {
 					const apolloId = extractApolloId(url)
 					if (!apolloId) {
 						results.push({ url, success: false, error: "Could not extract Apollo share ID" })
 						continue
 					}
-					mediaInfo = await fetchApolloMedia(apolloId)
-
-					if (!mediaInfo) {
+					const mediaInfo = await fetchApolloMedia(apolloId)
+					if (!mediaInfo || (!mediaInfo.videoUrl && !mediaInfo.audioUrl)) {
 						results.push({
 							url,
 							success: false,
@@ -307,32 +335,48 @@ export const importFromUrlTask = schemaTask({
 						})
 						continue
 					}
+					mediaUrl = mediaInfo.videoUrl || mediaInfo.audioUrl!
+					mediaType = mediaInfo.isHls ? "hls" : "progressive"
+					mediaTitle = userTitle || mediaInfo.title || `Apollo Recording`
+				} else if (isDirectMediaUrl(url)) {
+					// Direct media file URL (mp4, mp3, etc.)
+					consola.info(`[importFromUrl] Direct media URL detected: ${url}`)
+					mediaUrl = url
+					mediaType = detectMediaUrlType(url)
+				} else if (isStreamingUrl(url)) {
+					// HLS or DASH streaming URL
+					consola.info(`[importFromUrl] Streaming URL detected: ${url}`)
+					mediaUrl = url
+					mediaType = detectMediaUrlType(url)
 				} else {
-					results.push({ url, success: false, error: `Unsupported URL provider: ${provider}` })
-					continue
-				}
-
-				if (!mediaInfo || (!mediaInfo.videoUrl && !mediaInfo.audioUrl)) {
-					results.push({ url, success: false, error: "Could not extract media URL from provider" })
-					continue
+					// Unknown provider - try to extract media URL from webpage
+					consola.info(`[importFromUrl] Scanning webpage for media: ${url}`)
+					const extracted = await extractBestMediaUrl(url)
+					if (!extracted) {
+						results.push({
+							url,
+							success: false,
+							error: "Could not find video/audio content on this page. Please provide a direct link to the media file.",
+						})
+						continue
+					}
+					mediaUrl = extracted
+					mediaType = detectMediaUrlType(extracted)
+					consola.info(`[importFromUrl] Extracted media URL: ${mediaUrl} (type: ${mediaType})`)
 				}
 
 				// 2. Download media to temp file
 				const tempDir = tmpdir()
 				const timestamp = Date.now()
-				const tempFile = join(tempDir, `import-${timestamp}.mp4`)
+				const isAudio = mediaUrl.match(/\.(mp3|m4a|wav|ogg|flac|aac)($|\?)/i)
+				const tempFile = join(tempDir, `import-${timestamp}${isAudio ? ".mp3" : ".mp4"}`)
 
 				let downloadResult: DownloadResult
 
-				if (mediaInfo.isHls && mediaInfo.videoUrl) {
-					downloadResult = await downloadHlsStream(mediaInfo.videoUrl, tempFile)
-				} else if (mediaInfo.videoUrl) {
-					downloadResult = await downloadDirectMedia(mediaInfo.videoUrl, tempFile)
-				} else if (mediaInfo.audioUrl) {
-					downloadResult = await downloadDirectMedia(mediaInfo.audioUrl, tempFile.replace(".mp4", ".mp3"))
+				if (mediaType === "hls" || mediaType === "dash") {
+					downloadResult = await downloadHlsStream(mediaUrl, tempFile)
 				} else {
-					results.push({ url, success: false, error: "No downloadable media URL found" })
-					continue
+					downloadResult = await downloadDirectMedia(mediaUrl, tempFile)
 				}
 
 				if (!downloadResult.success || !downloadResult.filePath) {
@@ -343,7 +387,8 @@ export const importFromUrlTask = schemaTask({
 				// 3. Upload to R2
 				const fileStats = statSync(downloadResult.filePath)
 				const fileBuffer = await fs.readFile(downloadResult.filePath)
-				const r2Key = `interviews/${projectId}/import-${timestamp}.mp4`
+				const r2Ext = isAudio ? "mp3" : "mp4"
+				const r2Key = `interviews/${projectId}/import-${timestamp}.${r2Ext}`
 
 				consola.info(`Uploading to R2: ${r2Key} (${(fileStats.size / 1024 / 1024).toFixed(2)} MB)`)
 
@@ -354,68 +399,62 @@ export const importFromUrlTask = schemaTask({
 				})
 
 				// Clean up temp file
-				await fs.unlink(downloadResult.filePath).catch(() => {})
+				await fs.unlink(downloadResult.filePath).catch(() => { })
 
 				if (!uploadResult.success) {
 					results.push({ url, success: false, error: "Failed to upload to R2" })
 					continue
 				}
 
-				// 4. Create analysis job
-				const { data: analysisJob, error: jobError } = await client
-					.from("analysis_jobs")
+				// 4. Create interview record
+				const defaultTitle = mediaTitle || `Imported interview - ${format(new Date(), "yyyy-MM-dd")}`
+
+				consola.info(`Creating interview record: ${defaultTitle}`)
+
+				// Derive source type and filename from media type
+				const sourceType = isAudio ? "audio_url" : "video_url"
+				const fileExt = isAudio ? "mp3" : "mp4"
+
+				const { data: interview, error: insertError } = await client
+					.from("interviews")
 					.insert({
-						project_id: projectId,
 						account_id: accountId,
-						status: "pending",
-						source_url: url,
-						created_by: userId,
+						project_id: projectId,
+						title: defaultTitle,
+						participant_pseudonym: speakerNames?.[0] || "Unknown participant",
+						status: "uploading",
+						source_type: sourceType,
+						media_url: r2Key,
+						original_filename: `url-import-${timestamp}.${fileExt}`,
 					})
 					.select()
 					.single()
 
-				if (jobError || !analysisJob) {
-					results.push({ url, success: false, error: `Failed to create analysis job: ${jobError?.message}` })
+				if (insertError || !interview) {
+					results.push({ url, success: false, error: `Failed to create interview: ${insertError?.message}` })
 					continue
 				}
 
-				// 5. Trigger the interview processing workflow
-				const title = userTitle || mediaInfo.title || `Import from ${provider}`
+				// 5. Trigger the interview processing workflow using createAndProcessAnalysisJob
+				// This uses the same code path as the upload screen and chat agent
+				consola.info(`Triggering interview workflow for: ${defaultTitle}`)
 
-				consola.info(`Triggering interview workflow for: ${title}`)
-
-				const orchestratorResult = await processInterviewOrchestratorV2.triggerAndWait({
-					metadata: {
-						projectId,
-						accountId,
-						userId,
-						interviewTitle: title,
-						fileName: `${provider}-import-${timestamp}.mp4`,
-						// Speaker names will be processed during interview creation
-						// and stored in interview_people records after transcription
-						participantName: speakerNames?.[0] || undefined,
-					},
-					mediaUrl: r2Key,
+				const runInfo = await createAndProcessAnalysisJob({
+					interviewId: interview.id,
 					transcriptData: { needs_transcription: true },
-					analysisJobId: analysisJob.id,
+					customInstructions: "",
+					adminClient: client,
+					mediaUrl: r2Key,
+					initiatingUserId: userId,
 				})
 
-				if (orchestratorResult.ok) {
-					consola.success(`✅ Import complete: ${title}`)
-					results.push({
-						url,
-						success: true,
-						interviewId: orchestratorResult.output.interviewId,
-						analysisJobId: analysisJob.id,
-					})
-				} else {
-					results.push({
-						url,
-						success: false,
-						error: `Orchestrator failed: ${orchestratorResult.error}`,
-						analysisJobId: analysisJob.id,
-					})
-				}
+				consola.success(`✅ Import complete: ${defaultTitle}`)
+				results.push({
+					url,
+					success: true,
+					interviewId: interview.id,
+					triggerRunId: runInfo.runId,
+				})
 			} catch (error) {
 				consola.error(`Error processing ${url}:`, error)
 				results.push({

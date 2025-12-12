@@ -116,7 +116,8 @@ function ExtractEvidenceFromTranscriptV2(
   client "CustomGPT5"
   prompt #"
 You are an expert UX researcher.
-Your task is to produce an exhaustive, chronological Event Stream from an interview transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
+Your task is to produce an exhaustive, chronological Event Stream from an conversation transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
+Note this could be a monologue in which case be sure to create evidenceTurns for each separate topic.
 
 ## Steps
 1. Identify every human speaker. Populate the `people` array once with:

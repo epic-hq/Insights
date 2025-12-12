@@ -8,17 +8,18 @@ import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
-import { importInterviewFromUrlTool } from "../tools/import-interview-from-url"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
 import { fetchPersonasTool } from "../tools/fetch-personas"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
 import { fetchSegmentsTool } from "../tools/fetch-segments"
 import { fetchThemesTool } from "../tools/fetch-themes"
+import { fetchWebContentTool } from "../tools/fetch-web-content"
 import { generateProjectRoutesTool } from "../tools/generate-project-routes"
 import { getCurrentDateTool } from "../tools/get-current-date"
 import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table"
 import { importPeopleFromTableTool } from "../tools/import-people-from-table"
+import { importVideoFromUrlTool } from "../tools/import-video-from-url"
 import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { manageDocumentsTool } from "../tools/manage-documents"
 import {
@@ -31,7 +32,6 @@ import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } 
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
-import { importVideoFromUrlTool } from "../tools/import-video-from-url"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
@@ -54,7 +54,7 @@ export const projectStatusAgent = new Agent({
 			const projectId = runtimeContext.get("project_id")
 			const accountId = runtimeContext.get("account_id")
 			return `
-You are Uppy, a senior research strategist and project copilot. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
+You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}
 
@@ -114,6 +114,13 @@ Call "getCurrentDate" first for any date/time questions.
 - Tasks: "fetchTasks", "createTask", "updateTask", "deleteTask"
 - **Tabular data**: ALWAYS use "parseSpreadsheet" - it saves to project_assets and shows in Files tab
 - Interview prompts: use interview prompt tools only
+
+**URL Pasted into chat**
+- When user provides a URL, it could be content to fetch and process, or a video/audio URL to import as a conversation/interview
+- Try to determine user's intent and associate content with any people, organizations, opportunities mentioned.
+- If it's a video/audio URL, call "importVideoFromUrl". The tool accepts both direct media URLs and webpage URLs (it will scan for embedded video)
+- If it's a webpage or PDF URL, call "fetchWebContent" with the URL and process it based on content.
+- If we have access to Gemini, we can use it to extract the key insights from the content.
 
 **Web Research** (webResearch, findSimilarPages):
 - Use ONLY after internal search returns nothing OR user explicitly asks for web/external research
@@ -194,7 +201,6 @@ Please try:
 		fetchPainMatrixCache: fetchPainMatrixCacheTool,
 		fetchSegments: fetchSegmentsTool,
 		fetchConversationLenses: fetchConversationLensesTool,
-		importInterviewFromUrl: importInterviewFromUrlTool,
 		generateProjectRoutes: generateProjectRoutesTool,
 		fetchOpportunities: fetchOpportunitiesTool,
 		createOpportunity: createOpportunityTool,
@@ -209,6 +215,7 @@ Please try:
 		deleteTask: deleteTaskTool,
 		navigateToPage: navigateToPageTool,
 		importVideoFromUrl: importVideoFromUrlTool,
+		fetchWebContent: fetchWebContentTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
 		upsertPerson: upsertPersonTool,
