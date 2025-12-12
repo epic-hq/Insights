@@ -435,7 +435,9 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
 											Voice Memo
 										</h4>
-										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">Updates, Notes, Todos, etc.</p>
+										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">
+											Updates, Notes, Todos, etc.
+										</p>
 									</div>
 								</div>
 							</button>
@@ -463,7 +465,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
 											Live Conversation
 										</h4>
-										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">Calls, meetings, interviews</p>
+										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">Calls, meetings, interviews</p>
 									</div>
 								</div>
 							</button>
@@ -487,7 +489,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
 											Quick Note
 										</h4>
-										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">
+										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">
 											Capture ideas, observations, or follow-ups
 										</p>
 									</div>
@@ -516,7 +518,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
 											Insert URL
 										</h4>
-										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">
+										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">
 											Paste a link to audio or video
 										</p>
 									</div>
@@ -570,7 +572,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 								</div>
 								<div className="flex-1 text-center sm:text-left">
 									<h3 className="mb-1 font-semibold text-lg text-slate-900 sm:text-xl dark:text-white">Upload File</h3>
-									<p className="text-slate-600 text-sm dark:text-slate-400">
+									<p className="hidden sm:block text-foreground text-xs dark:text-foreground">
 										Audio, video, transcript, document, or virtually any material. Drag & drop.
 									</p>
 								</div>

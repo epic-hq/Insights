@@ -10,9 +10,9 @@ class ConversationEvidence {
 }
 
 class ConversationTakeaways {
-  value_synopsis string @description("1-2 sentences: How valuable was this conversation overall? What made it uniquely powerful or inline supportive?")
-  critical_next_step string @description("1 sentence: The single most important next step or caution based on all perspectives")
-  future_improvement string @description("1 sentence: What could be improved on future calls")
+  value_synopsis string @description("2-3 bullet-style fragments on conversation value. Lead with specifics; zero corporate fluff.")
+  critical_next_step string @description("1 punchy bullet with the single most important next step or caution; concrete owner/time/cue when possible.")
+  future_improvement string @description("1 punchy bullet on what to do (differently) in future; tactical, not generic.")
   supporting_evidence_ids string[] @description("IDs of evidence items that most strongly support these takeaways")
 }
 
@@ -67,12 +67,17 @@ function ExtractConversationTakeaways(
     You MUST still return valid JSON with the required fields below, but adapt the content, tone, language, and focus according to the custom instructions above.
     {% endif %}
 
-    Provide a practical business assessment. Return JSON with these fields:
+    Provide a practical business assessment with sharp, scannable phrasing. Style rules:
+    - No corporate filler or soft adjectives; use plain, tactical language.
+    - Use dash bullets and bold-ish prefixes inside the strings (e.g., "- Value: ...", "- Next: ...", "- Improve: ...").
+    - Keep each fragment under ~20 words and call out concrete topics, decisions, or blockers.
+
+    Return JSON with these fields:
 
     {
-      "value_synopsis": "1-2 sentences: What made this conversation valuable? Mention specific topics discussed (e.g., 'discussed budget constraints', 'identified key pain point with X') rather than evidence numbers.",
-      "critical_next_step": "1 sentence: Most important next action based on what was discussed. Be specific.",
-      "future_improvement": "1 sentence: One concrete improvement for future calls.",
+      "value_synopsis": "- Value: <2-3 terse bullets/lines on what mattered, named topics and decisions, no fluff>",
+      "critical_next_step": "- Next: <single decisive action with owner or timing if known>",
+      "future_improvement": "- Improve: <single change to make the next call stronger>",
       "supporting_evidence_ids": ["id1", "id2", "id3"]
     }
 

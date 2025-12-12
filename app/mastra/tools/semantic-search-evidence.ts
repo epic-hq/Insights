@@ -22,7 +22,7 @@ export const semanticSearchEvidenceTool = createTool({
 			.string()
 			.optional()
 			.describe("Project ID to search within. Defaults to the current project in context."),
-		interviewId: z.string().optional().describe("Optional: Limit search to a specific interview."),
+		interviewId: z.string().nullish().describe("Optional: Limit search to a specific interview."),
 		matchThreshold: z
 			.number()
 			.min(0)
@@ -134,7 +134,7 @@ export const semanticSearchEvidenceTool = createTool({
 			// If interview-specific, use that function
 			if (interviewId) {
 				const { data: evidenceData, error: evidenceError } = await supabase.rpc("find_similar_evidence_by_interview", {
-					query_embedding: queryEmbedding,
+					query_embedding: queryEmbedding as unknown as string, // pgvector expects array, types are wrong
 					interview_id_param: interviewId,
 					match_threshold: matchThreshold,
 					match_count: matchCount,
@@ -186,19 +186,19 @@ export const semanticSearchEvidenceTool = createTool({
 
 			// Search evidence verbatim
 			const evidencePromise = supabase.rpc("find_similar_evidence", {
-				query_embedding: queryEmbedding,
-				project_id_param: projectId,
+				query_embedding: queryEmbedding as unknown as string, // pgvector expects array, types are wrong
+				project_id_param: projectId as string,
 				match_threshold: matchThreshold,
 				match_count: matchCount,
 			})
 
 			// Search evidence facets (pains, gains, thinks, feels, etc.)
 			const facetsPromise = supabase.rpc("find_similar_evidence_facets", {
-				query_embedding: queryEmbedding,
-				project_id_param: projectId,
+				query_embedding: queryEmbedding as unknown as string, // pgvector expects array, types are wrong
+				project_id_param: projectId as string,
 				match_threshold: matchThreshold,
 				match_count: matchCount,
-				kind_slug_filter: null, // Search all facet types
+				kind_slug_filter: undefined, // Search all facet types
 			})
 
 			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] =
@@ -260,18 +260,18 @@ export const semanticSearchEvidenceTool = createTool({
 				const { count: totalEvidenceCount } = await supabase
 					.from("evidence")
 					.select("*", { count: "exact", head: true })
-					.eq("project_id", projectId)
+					.eq("project_id", projectId as string)
 
 				const { count: evidenceWithEmbeddings } = await supabase
 					.from("evidence")
 					.select("*", { count: "exact", head: true })
-					.eq("project_id", projectId)
+					.eq("project_id", projectId as string)
 					.not("embedding", "is", null)
 
 				// Check what the top similarity scores actually are (without threshold filter)
 				const { data: topMatches } = await supabase.rpc("find_similar_evidence", {
-					query_embedding: queryEmbedding,
-					project_id_param: projectId,
+					query_embedding: queryEmbedding as unknown as string, // pgvector expects array
+					project_id_param: projectId as string,
 					match_threshold: 0.0, // No threshold to see actual scores
 					match_count: 5,
 				})
@@ -339,7 +339,7 @@ export const semanticSearchEvidenceTool = createTool({
 			const evidenceMap = new Map(fullEvidence?.map((e) => [e.id, e]) || [])
 
 			// Get interview titles
-			const interviewIds = [...new Set(fullEvidence?.map((e) => e.interview_id).filter(Boolean) || [])]
+			const interviewIds = [...new Set(fullEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || [])]
 			const { data: interviewData } = interviewIds.length
 				? await supabase.from("interviews").select("id, title").in("id", interviewIds)
 				: { data: [] }
