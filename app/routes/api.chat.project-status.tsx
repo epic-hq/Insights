@@ -39,13 +39,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	consola.info("project-status action: received userTimezone", { userTimezone })
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message) => {
-			if (!message || typeof message !== "object") return message
-			const cloned = { ...message }
-			if ("id" in cloned) {
-				delete (cloned as Record<string, unknown>).id
-			}
-			return cloned
-		})
+				if (!message || typeof message !== "object") return message
+				const cloned = { ...message }
+				if ("id" in cloned) {
+					delete (cloned as Record<string, unknown>).id
+				}
+				return cloned
+			})
 		: []
 
 	// Validate that we have at least one user message
@@ -120,11 +120,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			runtimeContext,
 			context: system
 				? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+						{
+							role: "system",
+							content: `## Context from the client's UI:\n${system}`,
+						},
+					]
 				: undefined,
 			onFinish: (data) => {
 				// Log summary only, not full data dump

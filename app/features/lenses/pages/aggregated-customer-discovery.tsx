@@ -135,7 +135,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 		const cutoffDate =
 			dateRangeFilter === "all"
 				? null
-				: new Date(now.getTime() - Number.parseInt(dateRangeFilter, 10) * 24 * 60 * 60 * 1000)
+				: new Date(now.getTime() - Number.parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000)
 
 		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
 			if (segmentFilter !== "all" && interview.segment !== segmentFilter) return false

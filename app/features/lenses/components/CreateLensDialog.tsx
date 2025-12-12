@@ -7,7 +7,7 @@
  * 3. User can save or edit description and regenerate
  */
 
-import { Check, Loader2, Pencil, Sparkles, Wand2 } from "lucide-react"
+import { Check, Loader2, RefreshCw, Sparkles, Wand2 } from "lucide-react"
 import { useState } from "react"
 import { useFetcher } from "react-router"
 import { Badge } from "~/components/ui/badge"
