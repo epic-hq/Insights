@@ -290,62 +290,78 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 			<PageContainer size="lg" padded={false} className="max-w-6xl px-6 py-12">
 				{/* Files Tab - Show project_assets */}
 				{sourceFilter === "files" ? (
-					projectAssets.length === 0 ? (
-						<div className="py-16 text-center">
-							<div className="mx-auto max-w-md">
-								<div className="mb-6 flex justify-center">
-									<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
-										<FileSpreadsheet className="h-12 w-12 text-gray-400 dark:text-gray-500" />
-									</div>
-								</div>
-								<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No files yet</h3>
-								<p className="mb-8 text-gray-600 dark:text-gray-400">
-									Paste spreadsheet data into the chat or upload files to see them here.
-								</p>
-							</div>
+					<>
+						{/* Usage instructions header */}
+						<div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/50">
+							<h4 className="mb-2 font-medium text-blue-900 dark:text-blue-100">How to use Files</h4>
+							<p className="mb-3 text-blue-800 text-sm dark:text-blue-200">
+								Files store spreadsheets, tables, and documents you've shared with the AI assistant. You can:
+							</p>
+							<ul className="space-y-1 text-blue-700 text-sm dark:text-blue-300">
+								<li>• <strong>Ask questions</strong> — "What trends do you see in my customer list?"</li>
+								<li>• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM</li>
+								<li>• <strong>Cross-reference</strong> — "Compare this data with our interview findings"</li>
+								<li>• <strong>Edit inline</strong> — Click any file to view and edit the data directly</li>
+							</ul>
 						</div>
-					) : (
-						<div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-							{projectAssets.map((asset) => (
-								<div
-									key={asset.id}
-									className="flex items-start gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
-								>
-									<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-										{asset.asset_type === "table" ? (
-											<Table className="h-5 w-5 text-primary" />
-										) : (
-											<FileText className="h-5 w-5 text-primary" />
-										)}
-									</div>
-									<div className="min-w-0 flex-1">
-										<h3 className="truncate font-medium text-foreground">{asset.title}</h3>
-										<div className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-											<span className="capitalize">{asset.asset_type}</span>
-											{asset.row_count && asset.column_count && (
-												<>
-													<span>•</span>
-													<span>{asset.row_count} rows × {asset.column_count} cols</span>
-												</>
-											)}
-											<span>•</span>
-											<span>{formatDistance(new Date(asset.created_at), new Date(), { addSuffix: true })}</span>
+						{projectAssets.length === 0 ? (
+							<div className="py-16 text-center">
+								<div className="mx-auto max-w-md">
+									<div className="mb-6 flex justify-center">
+										<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
+											<FileSpreadsheet className="h-12 w-12 text-gray-400 dark:text-gray-500" />
 										</div>
-										{asset.status && (
-											<span
-												className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${asset.status === "ready"
-													? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-													: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-													}`}
-											>
-												{asset.status}
-											</span>
-										)}
 									</div>
+									<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No files yet</h3>
+									<p className="mb-8 text-gray-600 dark:text-gray-400">
+										Paste spreadsheet data into the chat or upload files to see them here.
+									</p>
 								</div>
-							))}
-						</div>
-					)
+							</div>
+						) : (
+							<div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+								{projectAssets.map((asset) => (
+									<Link
+										key={asset.id}
+										to={routes.assets.detail(asset.id)}
+										className="flex items-start gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+									>
+										<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+											{asset.asset_type === "table" ? (
+												<Table className="h-5 w-5 text-primary" />
+											) : (
+												<FileText className="h-5 w-5 text-primary" />
+											)}
+										</div>
+										<div className="min-w-0 flex-1">
+											<h3 className="truncate font-medium text-foreground">{asset.title}</h3>
+											<div className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+												<span className="capitalize">{asset.asset_type}</span>
+												{asset.row_count && asset.column_count && (
+													<>
+														<span>•</span>
+														<span>{asset.row_count} rows × {asset.column_count} cols</span>
+													</>
+												)}
+												<span>•</span>
+												<span>{formatDistance(new Date(asset.created_at), new Date(), { addSuffix: true })}</span>
+											</div>
+											{asset.status && (
+												<span
+													className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${asset.status === "ready"
+														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+														: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+														}`}
+												>
+													{asset.status}
+												</span>
+											)}
+										</div>
+									</Link>
+								))}
+							</div>
+						)}
+					</>
 				) : filteredInterviews.length === 0 ? (
 					<div className="py-16 text-center">
 						<div className="mx-auto max-w-md">

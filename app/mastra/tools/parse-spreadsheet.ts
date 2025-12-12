@@ -190,6 +190,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		includeStats: z.boolean().optional().default(true).describe("Include summary statistics for numeric columns"),
 		saveToAssets: z.boolean().optional().default(true).describe("Save the parsed table to project_assets for future reference"),
 		title: z.string().optional().describe("Optional title for the saved asset. Auto-generated if not provided."),
+		description: z.string().optional().describe("Description of the table contents. Auto-generated if not provided."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -204,11 +205,13 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		assetSaved: z.boolean().optional().describe("Whether the asset was saved to project_assets"),
 		looksLikeContacts: z.boolean().optional().describe("Whether the data appears to be contact/people data"),
 		contactColumns: z.array(z.string()).optional().describe("Detected contact-related column names"),
+		looksLikeOpportunities: z.boolean().optional().describe("Whether the data appears to be opportunity/deal data"),
+		opportunityColumns: z.array(z.string()).optional().describe("Detected opportunity-related column names"),
 		error: z.string().optional(),
 	}),
 	execute: async ({ context, runtimeContext, writer }) => {
 		try {
-			const { content, delimiter, maxDisplayRows, includeStats, saveToAssets, title } = context
+			const { content, delimiter, maxDisplayRows, includeStats, saveToAssets, title, description } = context
 
 			// Get accountId and projectId from runtime context
 			const accountId = runtimeContext?.get?.("account_id") as string | undefined
@@ -273,6 +276,20 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			)
 			const looksLikeContacts = contactColumns.length >= 2
 
+			// Detect if this looks like opportunity/deal data
+			const opportunityKeywords = ["deal", "opportunity", "amount", "value", "revenue", "stage", "pipeline", "close", "forecast", "probability", "confidence", "account", "prospect"]
+			const opportunityColumns = headers.filter((h) =>
+				opportunityKeywords.some((kw) => h.toLowerCase().includes(kw))
+			)
+			// Needs at least a deal/opportunity name indicator AND a value/stage indicator
+			const hasOpportunityName = headers.some((h) =>
+				["deal", "opportunity", "account", "prospect", "name", "title"].some((kw) => h.toLowerCase().includes(kw))
+			)
+			const hasOpportunityValue = headers.some((h) =>
+				["amount", "value", "revenue", "stage", "pipeline", "close", "forecast"].some((kw) => h.toLowerCase().includes(kw))
+			)
+			const looksLikeOpportunities = hasOpportunityName && hasOpportunityValue && opportunityColumns.length >= 2
+
 			// Save to project_assets if requested and we have the required IDs
 			let assetId: string | undefined
 			let assetSaved = false
@@ -293,6 +310,9 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 					// Store up to 1000 rows in table_data (display limit is separate)
 					const storageRows = rows.slice(0, 1000)
 
+					// Generate a description if not provided
+					const assetDescription = description || `Imported table with ${rows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 5).join(", ")}${headers.length > 5 ? "..." : ""}`
+
 					const { data: asset, error: insertError } = await supabaseAdmin
 						.from("project_assets")
 						.insert({
@@ -300,6 +320,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 							project_id: projectId,
 							asset_type: "table",
 							title: assetTitle,
+							description: assetDescription,
 							content_md: markdownTable,
 							content_raw: content, // Store original for re-parsing
 							table_data: { headers, rows: storageRows },
@@ -329,10 +350,13 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			const contactMessage = looksLikeContacts
 				? ` This looks like contact data (detected: ${contactColumns.join(", ")}). Would you like me to import these as People?`
 				: ""
+			const opportunityMessage = looksLikeOpportunities && !looksLikeContacts
+				? ` This looks like opportunity/deal data (detected: ${opportunityColumns.join(", ")}). Would you like me to import these as Opportunities?`
+				: ""
 
 			return {
 				success: true,
-				message: `Parsed ${rows.length} rows with ${headers.length} columns.${savedMessage}${contactMessage}`,
+				message: `Parsed ${rows.length} rows with ${headers.length} columns.${savedMessage}${contactMessage}${opportunityMessage}`,
 				markdownTable,
 				headers,
 				rowCount: rows.length,
@@ -343,6 +367,8 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				assetSaved,
 				looksLikeContacts,
 				contactColumns: looksLikeContacts ? contactColumns : undefined,
+				looksLikeOpportunities,
+				opportunityColumns: looksLikeOpportunities ? opportunityColumns : undefined,
 			}
 		} catch (error) {
 			consola.error("[parse-spreadsheet] Error:", error)

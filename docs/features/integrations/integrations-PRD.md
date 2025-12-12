@@ -55,6 +55,105 @@ The "Content" page (`/a/:accountId/:projectId/interviews`) provides a unified vi
 - Loader fetches both `interviews` and `project_assets` in parallel
 - Filter state determines which data source to display
 - Files tab renders `project_assets` with asset cards showing type, dimensions, and status
+- Asset cards link to detail page for viewing/editing
+
+### Asset Detail Page
+
+**Route**: `/a/:accountId/:projectId/assets/:assetId`
+
+**Implementation**: `app/features/assets/pages/detail.tsx`
+
+**Features**:
+- **TanStack Table** with dynamic columns from `table_data.headers`
+- **Inline cell editing** - click any cell to edit, auto-saves on blur
+- **Sorting** - click column headers to sort ascending/descending
+- **Global search** - filter across all columns
+- **Pagination** - 25/50/100/250 rows per page
+- **CSV export** - download current data as CSV
+- **Editable title & description** - inline edit in header section
+
+**Data Flow**:
+1. Agent pastes spreadsheet → `parseSpreadsheet` tool parses and saves to `project_assets`
+2. Tool auto-generates title (from column names) and description (row/column summary)
+3. User clicks asset card in Files tab → navigates to detail page
+4. User edits cells → action handler updates `table_data` in database
+5. User edits title/description → action handler updates metadata fields
+
+**Agent Keywords** (for saving spreadsheets):
+- "save this table"
+- "save the spreadsheet"
+- "import this data"
+- Just paste CSV/TSV data directly
+
+The agent uses `parseSpreadsheet` tool which automatically saves to `project_assets` with `saveToAssets: true`.
+
+### CRM Import Flow
+
+**Tool**: `importPeopleFromTable`
+
+**Trigger**: When `parseSpreadsheet` returns `looksLikeContacts: true`, agent offers to import.
+
+**Features**:
+
+- **Auto-detect column mappings** - name, email, phone, company, title, etc.
+- **Organization creation** - creates `organizations` from company column
+- **Duplicate detection** - skips rows where email already exists
+- **People-Organization linking** - creates `people_organizations` junction records
+
+**Column Detection Patterns**:
+
+| Field | Detected Columns |
+|-------|------------------|
+| name | name, fullname, contactname |
+| email | email, emailaddress, mail |
+| phone | phone, mobile, cell, telephone |
+| company | company, organization, org, employer, account |
+| title | title, jobtitle, position, designation |
+| linkedin | linkedin, linkedinurl |
+
+**Example Flow**:
+
+1. User pastes CSV with contacts
+2. `parseSpreadsheet` parses and saves to `project_assets`
+3. Agent sees `looksLikeContacts: true` and asks "Import these as People?"
+4. User confirms
+5. Agent calls `importPeopleFromTable` with `assetId`
+6. Tool creates People and Organizations, returns summary
+
+### Opportunity Import Flow
+
+**Tool**: `importOpportunitiesFromTable`
+
+**Trigger**: When `parseSpreadsheet` returns `looksLikeOpportunities: true`, agent offers to import.
+
+**Features**:
+
+- **Auto-detect column mappings** - deal name, amount, stage, close date, account, etc.
+- **Organization creation** - creates `organizations` from account column
+- **Duplicate detection** - skips rows where CRM external ID already exists
+- **Opportunity-Organization linking** - links opportunities to organizations
+
+**Column Detection Patterns**:
+
+| Field | Detected Columns |
+|-------|------------------|
+| name/title | deal, opportunity, dealname, opportunityname |
+| amount | amount, value, dealvalue, revenue, price |
+| stage | stage, dealstage, status, phase |
+| close_date | closedate, expectedclose, closingdate |
+| account | account, company, organization, customer |
+| probability | probability, winprobability, confidence |
+| source | source, leadsource, origin, channel |
+| crm_id | crmid, externalid, salesforceid, hubspotid |
+
+**Example Flow**:
+
+1. User pastes CSV with deals/opportunities
+2. `parseSpreadsheet` parses and saves to `project_assets`
+3. Agent sees `looksLikeOpportunities: true` and asks "Import these as Opportunities?"
+4. User confirms
+5. Agent calls `importOpportunitiesFromTable` with `assetId`
+6. Tool creates Opportunities and Organizations, returns summary
 
 ### Schema Overview
 
@@ -130,7 +229,7 @@ project_assets (table/PDF)
 | **P0** | Display markdown tables | Streamdown renders GFM tables in agent responses | 0 hrs | ✅ Done |
 | **P0** | Save to `project_assets` | Persist parsed tables for future reference | 2 hrs | ✅ Done |
 | **P1** | AI-assisted table analysis | Agent reasons about tabular data, suggests insights | 4 hrs | ✅ Done |
-| **P1** | People/Org import prompt | Detect contact data, offer CRM import | 4-6 hrs | 🔜 Next |
+| **P1** | People/Org import prompt | Detect contact data, offer CRM import | 4-6 hrs | ✅ Done |
 
 ### Tier 2: File & Cloud Ingestion
 

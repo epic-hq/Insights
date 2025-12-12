@@ -1,5 +1,6 @@
 import { index, layout, type RouteConfig, route } from "@react-router/dev/routes"
 import annotationsRoutes from "./features/annotations/routes"
+import assetsRoutes from "./features/assets/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import docsRoutes from "./features/docs/routes"
 import evidenceRoutes from "./features/evidence/routes"
@@ -82,6 +83,7 @@ const routes = [
 				...facetsRoutes,
 				...lensesRoutes,
 				...prioritiesRoutes,
+				...assetsRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
@@ -196,6 +198,8 @@ const routes = [
 	route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
 	route("api/enrich-themes", "./routes/api.enrich-themes.tsx"),
 	route("api/consolidate-themes", "./routes/api.consolidate-themes.tsx"),
+	route("api/diagnose-themes", "./routes/api.diagnose-themes.tsx"),
+	route("api/similar-evidence-for-insight", "./routes/api.similar-evidence-for-insight.tsx"),
 	route("api/reprocess-interview", "./routes/api.reprocess-interview.tsx"),
 	route("api/fix-stuck-interview", "./routes/api.fix-stuck-interview.tsx"),
 	route("api.generate-sales-lens", "./routes/api.generate-sales-lens.tsx"),

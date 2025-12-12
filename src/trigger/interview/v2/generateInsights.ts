@@ -110,48 +110,18 @@ export const generateInsightsTaskV2 = task({
 
 			consola.success(`[generateInsights] Created ${createdThemes.length} themes/insights for interview ${interviewId}`)
 
-			// Step 3: Link themes to evidence via theme_evidence junction table
-			// This creates the semantic connection between themes and their supporting evidence
-			if (evidenceIds && evidenceIds.length > 0 && createdThemes.length > 0) {
-				const themeEvidenceRows: Array<{
-					account_id: string
-					project_id: string | null
-					theme_id: string
-					evidence_id: string
-					rationale: string | null
-					confidence: number
-				}> = []
-
-				// For each theme, link it to all evidence from this interview
-				// The theme was generated from this evidence, so they're all related
-				for (const theme of createdThemes) {
-					for (const evidenceId of evidenceIds) {
-						themeEvidenceRows.push({
-							account_id: interview.account_id,
-							project_id: interview.project_id,
-							theme_id: theme.id,
-							evidence_id: evidenceId,
-							rationale: "Generated from interview evidence",
-							confidence: 0.8,
-						})
-					}
-				}
-
-				if (themeEvidenceRows.length > 0) {
-					const { error: linkError } = await client
-						.from("theme_evidence")
-						.upsert(themeEvidenceRows, {
-							onConflict: "theme_id,evidence_id,account_id",
-							ignoreDuplicates: true,
-						})
-
-					if (linkError) {
-						consola.warn(`[generateInsights] Failed to link themes to evidence: ${linkError.message}`)
-					} else {
-						consola.success(`[generateInsights] Linked ${themeEvidenceRows.length} theme-evidence relationships`)
-					}
-				}
-			}
+			// NOTE: We intentionally do NOT create theme_evidence links here.
+			// The previous implementation created N×M links (every theme to every evidence),
+			// which caused over-linking and inflated evidence counts.
+			//
+			// Instead, evidence linking should happen via:
+			// 1. "Consolidate Themes" action which uses AutoGroupThemes BAML to intelligently
+			//    link specific evidence to themes with rationale and confidence scores
+			// 2. Manual linking via the UI
+			//
+			// This keeps per-interview theme generation fast and lets consolidation
+			// handle the semantic matching properly.
+			consola.info(`[generateInsights] Themes created. Evidence linking deferred to consolidation.`)
 
 			// Update workflow state
 			if (analysisJobId) {

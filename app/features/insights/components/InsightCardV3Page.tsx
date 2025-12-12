@@ -1,5 +1,4 @@
-import { Building2, FileText, Flame, Quote, Target, TrendingUp, Users } from "lucide-react"
-import { useState } from "react"
+import { Building2, Flame, Quote, Target, TrendingUp, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { StyledTag } from "~/components/TagDisplay"
@@ -9,8 +8,8 @@ import { EmotionBadge } from "~/components/ui/emotion-badge"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Insight } from "~/types"
 import type { InsightEvidence } from "../pages/insight-detail"
-
-// Card and CardContent still used for Pain/JTBD/Outcome cards within the page
+import { EvidenceGroupedByInterview } from "./EvidenceGroup"
+import { SemanticEvidenceSection } from "./SemanticEvidenceSection"
 
 interface InsightCardV3Props {
 	insight: Insight
@@ -20,8 +19,6 @@ interface InsightCardV3Props {
 }
 
 export function InsightCardV3Page({ insight, evidence = [], projectPath: propProjectPath, extended }: InsightCardV3Props) {
-	const [_selected, _setSelected] = useState<Insight | null>(null)
-	const _projectId = insight.project_id
 	const routes = useProjectRoutes(propProjectPath || "")
 
 	return (
@@ -163,35 +160,18 @@ export function InsightCardV3Page({ insight, evidence = [], projectPath: propPro
 						</div>
 					)}
 
-				{/* Evidence Section - Mini Cards */}
-				{evidence.length > 0 && (
-					<div className="space-y-4">
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<Quote className="h-5 w-5 text-muted-foreground" />
-								<h4 className="font-semibold text-base text-foreground">Supporting Evidence</h4>
-							</div>
-							{(insight as any).evidence_count > evidence.length && (
-								<Link
-									to={`${routes.evidence.index()}?theme_id=${insight.id}`}
-									className="text-primary text-sm hover:underline"
-								>
-									View all {(insight as any).evidence_count} →
-								</Link>
-							)}
-						</div>
-
-						<div className="grid gap-3 sm:grid-cols-2">
-							{evidence.map((ev) => (
-								<MiniEvidenceCard
-									key={ev.id}
-									evidence={ev}
-									projectPath={propProjectPath || ""}
-								/>
-							))}
-						</div>
+				{/* Evidence Section - Grouped by Interview */}
+				<div className="space-y-4">
+					<div className="flex items-center gap-2">
+						<Quote className="h-5 w-5 text-muted-foreground" />
+						<h4 className="font-semibold text-base text-foreground">Supporting Evidence</h4>
 					</div>
-				)}
+
+					<EvidenceGroupedByInterview evidence={evidence} projectPath={propProjectPath || ""} />
+				</div>
+
+				{/* Semantic Related Evidence Section */}
+				<SemanticEvidenceSection insightId={insight.id} projectPath={propProjectPath || ""} />
 
 				{/* Organizations & People Section */}
 				{((insight as any).organizations?.length > 0 || (insight as any).people?.length > 0) && (
@@ -250,49 +230,5 @@ export function InsightCardV3Page({ insight, evidence = [], projectPath: propPro
 				<EntityInteractionPanel entityType="insight" entityId={insight.id} />
 			</div>
 		</div>
-	)
-}
-
-/** Mini evidence card with thumbnail and key statement */
-function MiniEvidenceCard({
-	evidence,
-	projectPath,
-}: {
-	evidence: InsightEvidence
-	projectPath: string
-}) {
-	const thumbnail = evidence.interview?.thumbnail_url
-	const statement = evidence.gist || evidence.verbatim || "No statement"
-
-	return (
-		<Link
-			to={`${projectPath}/evidence/${evidence.id}`}
-			className="group flex gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm"
-		>
-			{/* Thumbnail or placeholder */}
-			<div className="h-16 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-				{thumbnail ? (
-					<img
-						src={thumbnail}
-						alt=""
-						className="h-full w-full object-cover transition-transform group-hover:scale-105"
-					/>
-				) : (
-					<div className="flex h-full w-full items-center justify-center">
-						<FileText className="h-6 w-6 text-muted-foreground/50" />
-					</div>
-				)}
-			</div>
-
-			{/* Content */}
-			<div className="min-w-0 flex-1">
-				<p className="line-clamp-2 text-foreground text-sm leading-snug">
-					"{statement}"
-				</p>
-				<p className="mt-1 truncate text-muted-foreground text-xs">
-					— {evidence.attribution}
-				</p>
-			</div>
-		</Link>
 	)
 }

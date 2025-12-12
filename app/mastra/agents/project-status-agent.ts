@@ -16,6 +16,8 @@ import { fetchSegmentsTool } from "../tools/fetch-segments"
 import { fetchThemesTool } from "../tools/fetch-themes"
 import { generateProjectRoutesTool } from "../tools/generate-project-routes"
 import { getCurrentDateTool } from "../tools/get-current-date"
+import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table"
+import { importPeopleFromTableTool } from "../tools/import-people-from-table"
 import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { manageDocumentsTool } from "../tools/manage-documents"
 import {
@@ -125,7 +127,24 @@ Call "getCurrentDate" first for any date/time questions.
 - **ALWAYS display the markdownTable in your response** so users see their data formatted nicely
 - You can reason about the sampleRows and stats to provide analysis
 - **Persistence**: Tables are automatically saved to project_assets for future reference
-- **Contact Detection**: If looksLikeContacts is true, offer to import as People using the detected contactColumns
+- **Contact Detection**: If looksLikeContacts is true, offer to import as People using "importPeopleFromTable"
+
+**CRM Import** (importPeopleFromTable):
+- Use after parseSpreadsheet when looksLikeContacts is true and user confirms import
+- Requires the assetId from parseSpreadsheet result
+- Auto-detects column mappings (name, email, phone, company, title, etc.)
+- Creates People records and Organizations from company column
+- Skips duplicates based on email
+- Links people to organizations automatically
+
+**Opportunity Import** (importOpportunitiesFromTable):
+- Use after parseSpreadsheet when looksLikeOpportunities is true and user confirms import
+- Requires the assetId from parseSpreadsheet result
+- Auto-detects column mappings (deal name, amount, stage, close date, account, etc.)
+- Creates Opportunity records with amount, stage, confidence, close date
+- Creates Organizations from account column if they don't exist
+- Skips duplicates based on CRM external ID
+- Links opportunities to organizations automatically
 
 ## Linking & Navigation
 Use "generateProjectRoutes" to get URLs, format as **[Name](route)**. Call "navigateToPage" to proactively open relevant screens.
@@ -189,6 +208,8 @@ Please try:
 		webResearch: webResearchTool,
 		findSimilarPages: findSimilarPagesTool,
 		parseSpreadsheet: parseSpreadsheetTool,
+		importPeopleFromTable: importPeopleFromTableTool,
+		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

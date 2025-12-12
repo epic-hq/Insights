@@ -9,11 +9,18 @@ import { userContext } from "~/server/user-context"
 import { InsightCardV3Page } from "../components/InsightCardV3Page"
 import type { Route } from "./+types/insight-detail"
 
-/** Minimal evidence shape for insight detail page */
+/** Evidence shape for insight detail page with theme link metadata */
 export type InsightEvidence = {
 	id: string
 	gist: string | null
 	verbatim: string | null
+	chunk: string | null
+	context_summary: string | null
+	anchors: Array<{ type: string; target: string; start?: number; end?: number }> | null
+	pains: string[] | null
+	gains: string[] | null
+	thinks: string[] | null
+	feels: string[] | null
 	interview_id: string | null
 	interview: {
 		id: string
@@ -22,6 +29,12 @@ export type InsightEvidence = {
 	} | null
 	/** Attribution line - person name, org, or interview title */
 	attribution: string
+	/** Organization name if available */
+	organization: string | null
+	/** Why this evidence supports the theme (from theme_evidence) */
+	rationale: string | null
+	/** Confidence score 0-1 (from theme_evidence) */
+	confidence: number | null
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -61,12 +74,13 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			throw new Response("Insight not found", { status: 404 })
 		}
 
-		// Fetch evidence linked to this insight (theme)
+		// Fetch evidence linked to this insight (theme) with theme_evidence metadata
 		const { data: themeEvidence, error: themeEvidenceError } = await supabase
 			.from("theme_evidence")
-			.select("evidence_id")
+			.select("evidence_id, rationale, confidence")
 			.eq("theme_id", insightId)
 			.eq("project_id", projectId)
+			.order("confidence", { ascending: false, nullsFirst: false })
 
 		consola.log(`[insight-detail] theme_evidence query for theme ${insightId}:`, {
 			count: themeEvidence?.length ?? 0,
@@ -74,11 +88,22 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			evidenceCount: (insight as any).evidence_count,
 		})
 
+		// Build a map of evidence_id -> theme_evidence metadata
+		const themeEvidenceMap = new Map<string, { rationale: string | null; confidence: number | null }>()
+		for (const te of themeEvidence ?? []) {
+			if (te.evidence_id) {
+				themeEvidenceMap.set(te.evidence_id, {
+					rationale: te.rationale,
+					confidence: te.confidence,
+				})
+			}
+		}
+
 		const evidenceIds = themeEvidence?.map((te) => te.evidence_id).filter(Boolean) ?? []
 
 		let evidence: InsightEvidence[] = []
 		if (evidenceIds.length > 0) {
-			// Fetch evidence with interview details including person link
+			// Fetch evidence with full details including interview and person
 			const { data: evidenceData } = await supabase
 				.from("evidence")
 				.select(
@@ -86,6 +111,13 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					id,
 					gist,
 					verbatim,
+					chunk,
+					context_summary,
+					anchors,
+					pains,
+					gains,
+					thinks,
+					feels,
 					interview_id,
 					interview:interview_id (
 						id,
@@ -102,7 +134,6 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				`
 				)
 				.in("id", evidenceIds)
-				.limit(10)
 
 			// Fetch people linked directly to evidence (evidence_people table)
 			const { data: evidencePeople } = await supabase
@@ -163,14 +194,16 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				}
 			}
 
-			// Build attribution with fallbacks: evidence_people -> interview.person -> interview_people -> interview.title
+			// Build attribution and organization with fallbacks
 			evidence = (evidenceData ?? []).map((ev: any) => {
 				let attribution = ""
+				let organization: string | null = null
 
 				// Try 1: Person linked directly to evidence
 				const evPerson = personByEvidence.get(ev.id)
 				if (evPerson?.name) {
 					attribution = evPerson.org_name ? `${evPerson.name}, ${evPerson.org_name}` : evPerson.name
+					organization = evPerson.org_name
 				}
 				// Try 2: Person linked to interview
 				else if (ev.interview?.person?.name) {
@@ -178,6 +211,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					attribution = intPerson.organizations?.name
 						? `${intPerson.name}, ${intPerson.organizations.name}`
 						: intPerson.name
+					organization = intPerson.organizations?.name ?? null
 				}
 				// Try 3: interview_people
 				else if (ev.interview_id) {
@@ -186,6 +220,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 						attribution = intPersonFromJoin.org_name
 							? `${intPersonFromJoin.name}, ${intPersonFromJoin.org_name}`
 							: intPersonFromJoin.name
+						organization = intPersonFromJoin.org_name
 					}
 				}
 				// Fallback: interview title
@@ -193,15 +228,28 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					attribution = ev.interview.title
 				}
 
+				// Get theme_evidence metadata for this evidence
+				const themeLink = themeEvidenceMap.get(ev.id)
+
 				return {
 					id: ev.id,
 					gist: ev.gist,
 					verbatim: ev.verbatim,
+					chunk: ev.chunk,
+					context_summary: ev.context_summary,
+					anchors: ev.anchors,
+					pains: ev.pains,
+					gains: ev.gains,
+					thinks: ev.thinks,
+					feels: ev.feels,
 					interview_id: ev.interview_id,
 					interview: ev.interview
 						? { id: ev.interview.id, title: ev.interview.title, thumbnail_url: ev.interview.thumbnail_url }
 						: null,
 					attribution: attribution || "Interview",
+					organization,
+					rationale: themeLink?.rationale ?? null,
+					confidence: themeLink?.confidence ?? null,
 				}
 			}) as InsightEvidence[]
 		}

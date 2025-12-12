@@ -126,6 +126,11 @@ export interface RouteDefinitions {
 		detail: (id: string) => string
 	}
 
+	// Assets (imported files, tables, etc.)
+	assets: {
+		detail: (id: string) => string
+	}
+
 	// Questions
 	questions: {
 		index: () => string
@@ -305,6 +310,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		segments: {
 			index: () => `${base}/segments`,
 			detail: (id: string) => `${base}/segments/${id}`,
+		},
+
+		// Assets (imported files, tables, etc.)
+		assets: {
+			detail: (id: string) => `${base}/assets/${id}`,
 		},
 
 		// Questions
