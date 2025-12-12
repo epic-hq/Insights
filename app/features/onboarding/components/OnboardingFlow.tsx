@@ -25,6 +25,8 @@ export interface OnboardingData {
 	mediaType?: string
 	interviewId?: string
 	projectId?: string
+	uploadLabel?: string
+	uploadedUrl?: string
 	triggerRunId?: string
 	triggerAccessToken?: string | null
 	error?: string
@@ -129,7 +131,15 @@ export default function OnboardingFlow({
 				sourceType?: string
 			}
 		) => {
-			const updatedData = { ...data, file, mediaType, triggerRunId: undefined, triggerAccessToken: null }
+			const updatedData = {
+				...data,
+				file,
+				mediaType,
+				triggerRunId: undefined,
+				triggerAccessToken: null,
+				uploadLabel: file.name,
+				uploadedUrl: undefined,
+			}
 			setData(updatedData)
 			setCurrentStep("processing")
 
@@ -300,6 +310,68 @@ export default function OnboardingFlow({
 	// Use the most current projectId - either from data (newly created) or props (existing)
 	const currentProjectId = useMemo(() => data.projectId || projectId, [data.projectId, projectId])
 
+	const handleUploadFromUrl = useCallback(
+		async (url: string) => {
+			if (!currentProjectId) {
+				setData((prev) => ({
+					...prev,
+					error: "A project is required to import from a URL.",
+				}))
+				throw new Error("A project is required to import from a URL.")
+			}
+
+			setData((prev) => ({
+				...prev,
+				file: undefined,
+				mediaType: "interview",
+				uploadLabel: url,
+				uploadedUrl: url,
+				triggerRunId: undefined,
+				triggerAccessToken: null,
+				interviewId: undefined,
+				error: undefined,
+			}))
+			setCurrentStep("processing")
+
+			try {
+				const formData = new FormData()
+				formData.append("projectId", currentProjectId)
+				formData.append("url", url)
+
+				const response = await fetch("/api/upload-from-url", {
+					method: "POST",
+					body: formData,
+				})
+
+				if (!response.ok) {
+					const errorData = await response.json().catch(() => ({}))
+					throw new Error(errorData.error || "Upload failed")
+				}
+
+				const result = await response.json()
+
+				setData((prev) => ({
+					...prev,
+					interviewId: result.interviewId ?? prev.interviewId,
+					projectId: prev.projectId || currentProjectId,
+					uploadLabel: url,
+					uploadedUrl: url,
+				}))
+
+				if (result.interviewId && accountId) {
+					const interviewUrl = `/a/${accountId}/${currentProjectId}/interviews/${result.interviewId}`
+					window.location.href = interviewUrl
+				}
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : "Upload failed"
+				setData((prev) => ({ ...prev, error: errorMessage }))
+				setCurrentStep("upload")
+				throw new Error(errorMessage)
+			}
+		},
+		[accountId, currentProjectId]
+	)
+
 	// Render navigation controls for onboarding mode
 	const renderOnboardingHeader = useCallback(() => {
 		if (!isOnboarding) return null
@@ -342,13 +414,19 @@ export default function OnboardingFlow({
 
 			case "upload":
 				return (
-					<UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} error={data.error} />
+					<UploadScreen
+						onNext={handleUploadNext}
+						onUploadFromUrl={handleUploadFromUrl}
+						onBack={handleBack}
+						projectId={currentProjectId}
+						error={data.error}
+					/>
 				)
 
 			case "processing":
 				return (
 					<ProcessingScreen
-						fileName={data.file?.name || "Unknown file"}
+						fileName={data.uploadLabel || data.file?.name || "Unknown file"}
 						onComplete={handleProcessingComplete}
 						interviewId={data.interviewId}
 						triggerRunId={data.triggerRunId}
@@ -381,12 +459,7 @@ export default function OnboardingFlow({
 			{showMobileHeader && (
 				<div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3">
 					<h1 className="font-semibold text-lg">Add Conversation</h1>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-8 w-8"
-						onClick={() => navigate(-1)}
-					>
+					<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
 						<X className="h-5 w-5" />
 						<span className="sr-only">Close</span>
 					</Button>
