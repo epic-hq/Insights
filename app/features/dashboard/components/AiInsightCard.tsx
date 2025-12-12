@@ -64,15 +64,26 @@ export function AiInsightCard({
 							<Button
 								variant="ghost"
 								size="sm"
-								className="-ml-2 mt-3 text-primary hover:text-primary"
-								onClick={(e) => {
+								className="mt-3 -ml-2 text-primary hover:text-primary"
+								asChild={!!href}
+								onClick={!href && onAskFollowUp ? (e) => {
 									e.stopPropagation()
 									onAskFollowUp()
-								}}
+								} : undefined}
 							>
-								<MessageSquare className="mr-1.5 h-4 w-4" />
-								Ask follow-up
-								<ChevronRight className="ml-1 h-4 w-4" />
+								{href ? (
+									<Link to={href}>
+										<MessageSquare className="h-4 w-4 mr-1.5" />
+										Ask follow-up
+										<ChevronRight className="h-4 w-4 ml-1" />
+									</Link>
+								) : (
+									<>
+										<MessageSquare className="h-4 w-4 mr-1.5" />
+										Ask follow-up
+										<ChevronRight className="h-4 w-4 ml-1" />
+									</>
+								)}
 							</Button>
 						)}
 						{/* When href is provided, show a non-interactive hint since entire card is clickable */}

@@ -9,6 +9,7 @@
  */
 
 import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import {
 	AlertTriangle,
 	ArrowRight,
@@ -21,6 +22,7 @@ import {
 	CircleDollarSign,
 	Crosshair,
 	Crown,
+	Filter,
 	ListPlus,
 	Swords,
 	Target,
@@ -160,7 +162,7 @@ export default function AggregatedSalesBantPage() {
 		const cutoffDate =
 			dateRangeFilter === "all"
 				? null
-				: new Date(now.getTime() - Number.parseInt(dateRangeFilter, 10) * 24 * 60 * 60 * 1000)
+				: new Date(now.getTime() - Number.parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000)
 
 		// Filter interviews by date
 		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
@@ -176,7 +178,7 @@ export default function AggregatedSalesBantPage() {
 		const filteredInterviewIds = new Set(filteredInterviews.map((i) => i.interview_id))
 
 		// Filter other data based on filtered interviews
-		const _filterByInterviews = <T extends { interview_id?: string; interviews?: Array<{ id: string }> }>(
+		const filterByInterviews = <T extends { interview_id?: string; interviews?: Array<{ id: string }> }>(
 			items: T[]
 		): T[] => {
 			return items.filter((item) => {
