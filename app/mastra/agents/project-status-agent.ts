@@ -8,6 +8,7 @@ import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
+import { importInterviewFromUrlTool } from "../tools/import-interview-from-url"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
 import { fetchPersonasTool } from "../tools/fetch-personas"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
@@ -187,16 +188,17 @@ Please try:
 		fetchEvidence: fetchEvidenceTool,
 		semanticSearchEvidence: semanticSearchEvidenceTool,
 		semanticSearchPeople: semanticSearchPeopleTool,
-		fetchProjectGoals: fetchProjectGoalsTool,
-		fetchThemes: fetchThemesTool,
-		fetchPainMatrixCache: fetchPainMatrixCacheTool,
-		fetchSegments: fetchSegmentsTool,
-		fetchConversationLenses: fetchConversationLensesTool,
-		generateProjectRoutes: generateProjectRoutesTool,
-		fetchOpportunities: fetchOpportunitiesTool,
-		createOpportunity: createOpportunityTool,
-		updateOpportunity: updateOpportunityTool,
-		fetchInterviewPrompts: fetchInterviewPromptsTool,
+                fetchProjectGoals: fetchProjectGoalsTool,
+                fetchThemes: fetchThemesTool,
+                fetchPainMatrixCache: fetchPainMatrixCacheTool,
+                fetchSegments: fetchSegmentsTool,
+                fetchConversationLenses: fetchConversationLensesTool,
+                importInterviewFromUrl: importInterviewFromUrlTool,
+                generateProjectRoutes: generateProjectRoutesTool,
+                fetchOpportunities: fetchOpportunitiesTool,
+                createOpportunity: createOpportunityTool,
+                updateOpportunity: updateOpportunityTool,
+                fetchInterviewPrompts: fetchInterviewPromptsTool,
 		createInterviewPrompt: createInterviewPromptTool,
 		updateInterviewPrompt: updateInterviewPromptTool,
 		deleteInterviewPrompt: deleteInterviewPromptTool,

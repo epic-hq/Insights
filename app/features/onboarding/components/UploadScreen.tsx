@@ -2,6 +2,7 @@ import {
 	ArrowLeft,
 	CheckCircle,
 	File,
+	Link2,
 	ListTodo,
 	Mic,
 	PenLine,
@@ -34,6 +35,7 @@ interface UploadScreenProps {
 			sourceType?: string
 		}
 	) => void
+	onUploadFromUrl: (url: string) => Promise<void>
 	onBack: () => void
 	projectId?: string
 	error?: string
@@ -41,12 +43,16 @@ interface UploadScreenProps {
 
 type AttachmentStep = "select" | "search-existing" | "create-new"
 
-export default function UploadScreen({ onNext, onBack, projectId, error }: UploadScreenProps) {
+export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectId, error }: UploadScreenProps) {
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [recordMode, setRecordMode] = useState<"voice_memo" | "conversation">("voice_memo")
 	const [isDragOver, setIsDragOver] = useState(false)
 	const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
 	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
+	const [showUrlDialog, setShowUrlDialog] = useState(false)
+	const [urlToUpload, setUrlToUpload] = useState("")
+	const [isSubmittingUrl, setIsSubmittingUrl] = useState(false)
+	const [urlError, setUrlError] = useState<string | null>(null)
 	const [attachmentStep, setAttachmentStep] = useState<AttachmentStep>("select")
 	const [searchQuery, setSearchQuery] = useState("")
 	const [newPersonFirstName, setNewPersonFirstName] = useState("")
@@ -264,6 +270,26 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 		setNewPersonCompany("")
 	}, [])
 
+	const handleSubmitUrl = useCallback(async () => {
+		if (!urlToUpload.trim()) {
+			setUrlError("Please enter a valid URL")
+			return
+		}
+
+		try {
+			setIsSubmittingUrl(true)
+			setUrlError(null)
+			await onUploadFromUrl(urlToUpload.trim())
+			setShowUrlDialog(false)
+			setUrlToUpload("")
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to upload from URL"
+			setUrlError(message)
+		} finally {
+			setIsSubmittingUrl(false)
+		}
+	}, [onUploadFromUrl, urlToUpload])
+
 	// Fetch people and organizations when search dialog opens
 	useEffect(() => {
 		if (attachmentStep === "search-existing" && projectId && !isLoadingSearch && people.length === 0) {
@@ -385,87 +411,119 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 							Quick Links
 						</h3>
 
-						{/* Voice Memo Button */}
-						<button
-							type="button"
-							onClick={() => {
-								setRecordMode("voice_memo")
-								handleRecordNow()
-							}}
-							disabled={isRecording}
-							className={cn(
-								"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl dark:border-slate-800/60 dark:bg-slate-900/80",
-								"cursor-pointer hover:scale-[1.01]",
-								recordMode === "voice_memo" && "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-950",
-								isRecording && recordMode === "voice_memo" && "animate-pulse cursor-not-allowed opacity-50"
-							)}
-						>
-							<div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
-								<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-all duration-300 group-hover:scale-105 group-hover:shadow-red-500/40 group-hover:shadow-xl sm:h-20 sm:w-20">
-									<Mic className="h-8 w-8 text-white sm:h-9 sm:w-9" />
+						<div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-2">
+							{/* Voice Memo Button */}
+							<button
+								type="button"
+								onClick={() => {
+									setRecordMode("voice_memo")
+									handleRecordNow()
+								}}
+								disabled={isRecording}
+								className={cn(
+									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
+									"cursor-pointer hover:scale-[1.01]",
+									recordMode === "voice_memo" && "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-950",
+									isRecording && recordMode === "voice_memo" && "animate-pulse cursor-not-allowed opacity-50"
+								)}
+							>
+								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-all duration-300 group-hover:scale-105 group-hover:shadow-red-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
+										<Mic className="h-6 w-6 text-white sm:h-7 sm:w-7" />
+									</div>
+									<div className="flex-1 text-center sm:text-left">
+										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
+											Voice Memo
+										</h4>
+										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">Updates, Notes, Todos, etc.</p>
+									</div>
 								</div>
-								<div className="flex-1 text-center sm:text-left">
-									<h4 className="mb-1 font-semibold text-lg text-slate-900 dark:text-white">Voice Memo</h4>
-									<p className="text-slate-600 text-sm dark:text-slate-400">Updates, Notes, Todos, etc.</p>
-								</div>
-							</div>
-						</button>
+							</button>
 
-						{/* Live Conversation Button */}
-						<button
-							type="button"
-							onClick={() => {
-								setRecordMode("conversation")
-								handleRecordNow()
-							}}
-							disabled={isRecording}
-							className={cn(
-								"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl dark:border-slate-800/60 dark:bg-slate-900/80",
-								"cursor-pointer hover:scale-[1.01]",
-								recordMode === "conversation" && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-950",
-								isRecording && recordMode === "conversation" && "animate-pulse cursor-not-allowed opacity-50"
-							)}
-						>
-							<div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
-								<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-blue-500/40 group-hover:shadow-xl sm:h-20 sm:w-20">
-									<Users className="h-8 w-8 text-white sm:h-9 sm:w-9" />
+							{/* Live Conversation Button */}
+							<button
+								type="button"
+								onClick={() => {
+									setRecordMode("conversation")
+									handleRecordNow()
+								}}
+								disabled={isRecording}
+								className={cn(
+									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
+									"cursor-pointer hover:scale-[1.01]",
+									recordMode === "conversation" && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-950",
+									isRecording && recordMode === "conversation" && "animate-pulse cursor-not-allowed opacity-50"
+								)}
+							>
+								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-blue-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
+										<Users className="h-6 w-6 text-white sm:h-7 sm:w-7" />
+									</div>
+									<div className="flex-1 text-center sm:text-left">
+										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
+											Live Conversation
+										</h4>
+										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">Calls, meetings, interviews</p>
+									</div>
 								</div>
-								<div className="flex-1 text-center sm:text-left">
-									<h4 className="mb-1 font-semibold text-lg text-slate-900 dark:text-white">Live Conversation</h4>
-									<p className="text-slate-600 text-sm dark:text-slate-400">Calls, meetings, interviews</p>
+							</button>
+
+							{/* Quick Note Button */}
+							<button
+								type="button"
+								onClick={() => setShowQuickNoteDialog(true)}
+								disabled={isRecording}
+								className={cn(
+									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
+									"cursor-pointer hover:scale-[1.01]",
+									isRecording && "cursor-not-allowed opacity-50"
+								)}
+							>
+								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-amber-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
+										<PenLine className="h-6 w-6 text-white sm:h-7 sm:w-7" />
+									</div>
+									<div className="flex-1 text-center sm:text-left">
+										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
+											Quick Note
+										</h4>
+										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">
+											Capture ideas, observations, or follow-ups
+										</p>
+									</div>
 								</div>
-							</div>
-						</button>
-					</div>
+							</button>
 
-					{/* Divider */}
-					{/* <div className="relative flex items-center py-2">
-						<div className="flex-grow border-slate-300 border-t dark:border-slate-700" />
-						<span className="mx-4 flex-shrink font-medium text-slate-500 text-sm dark:text-slate-400">or</span>
-						<div className="flex-grow border-slate-300 border-t dark:border-slate-700" />
-					</div> */}
-
-					{/* Quick Note Button */}
-					<button
-						type="button"
-						onClick={() => setShowQuickNoteDialog(true)}
-						disabled={isRecording}
-						className={cn(
-							"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl dark:border-slate-800/60 dark:bg-slate-900/80",
-							"cursor-pointer hover:scale-[1.01]",
-							isRecording && "cursor-not-allowed opacity-50"
-						)}
-					>
-						<div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
-							<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-amber-500/40 group-hover:shadow-xl sm:h-20 sm:w-20">
-								<PenLine className="h-8 w-8 text-white sm:h-9 sm:w-9" />
-							</div>
-							<div className="flex-1 text-center sm:text-left">
-								<h4 className="mb-1 font-semibold text-lg text-slate-900 dark:text-white">Quick Note</h4>
-								<p className="text-slate-600 text-sm dark:text-slate-400">Capture ideas, observations, or follow-ups</p>
-							</div>
+							{/* URL Upload Button */}
+							<button
+								type="button"
+								onClick={() => {
+									setUrlError(null)
+									setShowUrlDialog(true)
+								}}
+								disabled={isRecording}
+								className={cn(
+									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
+									"cursor-pointer hover:scale-[1.01]",
+									isRecording && "cursor-not-allowed opacity-50"
+								)}
+							>
+								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-emerald-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
+										<Link2 className="h-6 w-6 text-white sm:h-7 sm:w-7" />
+									</div>
+									<div className="flex-1 text-center sm:text-left">
+										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
+											Insert URL
+										</h4>
+										<p className="text-slate-600 text-xs sm:text-sm dark:text-slate-400">
+											Paste a link to audio or video
+										</p>
+									</div>
+								</div>
+							</button>
 						</div>
-					</button>
+					</div>
 
 					{/* Divider */}
 					{/* <div className="relative flex items-center py-2">
@@ -533,6 +591,38 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 					)}
 				</div>
 			</div>
+
+			{/* Upload from URL Dialog */}
+			<Dialog open={showUrlDialog} onOpenChange={setShowUrlDialog}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Insert a link</DialogTitle>
+						<DialogDescription>Paste a URL to an audio or video file to import it.</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4">
+						<Input
+							type="url"
+							placeholder="https://..."
+							value={urlToUpload}
+							onChange={(event) => setUrlToUpload(event.target.value)}
+							autoFocus
+						/>
+						{urlError ? <p className="text-red-500 text-sm">{urlError}</p> : null}
+						<div className="flex justify-end gap-3">
+							<Button variant="outline" onClick={() => setShowUrlDialog(false)} disabled={isSubmittingUrl}>
+								Cancel
+							</Button>
+							<Button
+								onClick={handleSubmitUrl}
+								disabled={isSubmittingUrl || !urlToUpload.trim()}
+								className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700"
+							>
+								{isSubmittingUrl ? "Importing..." : "Import URL"}
+							</Button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
 
 			{/* Attachment Selection Dialog for Voice Memos */}
 			<Dialog open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
