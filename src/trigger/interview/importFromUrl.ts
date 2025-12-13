@@ -4,6 +4,14 @@
  * Fetches media from external URLs, uploads to R2, and triggers the interview
  * processing workflow. This is the single source of truth for all URL imports.
  *
+ * Flow:
+ * 1. Resolve URL → media URL (direct, HLS/DASH, or webpage extraction)
+ * 2. Download media (ffmpeg for streaming, direct fetch for progressive)
+ * 3. Upload to R2
+ * 4. Create interview record
+ * 5. Trigger thumbnail generation (for video files)
+ * 6. Trigger transcription & analysis workflow
+ *
  * Supported URL types:
  * - Direct media files (mp4, mp3, m4a, webm, mov, etc.)
  * - HLS streaming manifests (.m3u8) - converted to MP4 via ffmpeg
@@ -19,7 +27,7 @@
  * - Mastra importVideoFromUrl tool (for chat agent)
  */
 
-import { schemaTask, task } from "@trigger.dev/sdk"
+import { schemaTask, task, tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import { format } from "date-fns"
 import { spawn } from "node:child_process"
@@ -37,6 +45,7 @@ import {
 	type MediaUrlType,
 	detectMediaUrlType,
 } from "~/utils/extractMediaUrl.server"
+import type { generateThumbnail } from "../generate-thumbnail"
 
 // =============================================================================
 // Types & Schemas
@@ -435,7 +444,24 @@ export const importFromUrlTask = schemaTask({
 					continue
 				}
 
-				// 5. Trigger the interview processing workflow using createAndProcessAnalysisJob
+				// 5. Trigger thumbnail generation for video files (non-blocking)
+				// Only for video files, not audio
+				if (!isAudio) {
+					consola.info(`Triggering thumbnail generation for interview ${interview.id}`)
+					try {
+						await tasks.trigger<typeof generateThumbnail>("generate-thumbnail", {
+							mediaKey: r2Key,
+							interviewId: interview.id,
+							accountId,
+							timestampSec: 1, // Capture frame at 1 second
+						})
+					} catch (thumbnailError) {
+						// Don't fail the import if thumbnail generation fails to trigger
+						consola.warn(`Failed to trigger thumbnail generation for ${interview.id}:`, thumbnailError)
+					}
+				}
+
+				// 6. Trigger the interview processing workflow using createAndProcessAnalysisJob
 				// This uses the same code path as the upload screen and chat agent
 				consola.info(`Triggering interview workflow for: ${defaultTitle}`)
 

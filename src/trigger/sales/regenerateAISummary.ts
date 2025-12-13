@@ -149,9 +149,9 @@ export const regenerateAISummaryTask = task({
 		consola.info(`[regenerateAISummary] BAML extraction completed`)
 
 		// Combine into a single string for storage
-		const keyTakeaways = [takeaways.value_synopsis, takeaways.critical_next_step, takeaways.future_improvement].join(
-			" "
-		)
+		const keyTakeaways = [takeaways.value_synopsis, takeaways.critical_next_step, takeaways.future_improvement]
+			.filter(Boolean)
+			.join("\n")
 
 		consola.info(`[regenerateAISummary] Generated takeaways (${keyTakeaways.length} chars):`, {
 			value_synopsis: takeaways.value_synopsis?.substring(0, 100),
