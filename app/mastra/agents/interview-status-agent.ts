@@ -1,7 +1,10 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
+// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
+import { TokenLimiter } from "@mastra/memory/processors"
 import { z } from "zod"
+import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
@@ -48,5 +51,6 @@ Tone:
 			workingMemory: { enabled: true, schema: InterviewMemoryState },
 			threads: { generateTitle: false },
 		},
+		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
 	}),
 });

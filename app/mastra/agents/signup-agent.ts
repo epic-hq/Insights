@@ -1,8 +1,11 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
+// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
+import { TokenLimiter } from "@mastra/memory/processors"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { navigateToPageTool } from "../tools/navigate-to-page"
@@ -75,5 +78,6 @@ ${JSON.stringify(data)}
 				generateTitle: false,
 			},
 		},
+		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
 	}),
 });

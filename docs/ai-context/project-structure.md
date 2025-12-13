@@ -84,6 +84,7 @@ Insights/
 │   │   │   ├── pages/                  # Page components
 │   │   │   ├── components/             # Feature-specific components
 │   │   │   └── api/                    # Feature API utilities
+│   │   ├── assets/                     # Project assets (tables, files, documents)
 │   │   ├── interviews/                 # Interview management
 │   │   ├── evidence/                   # Evidence extraction & display
 │   │   ├── insights/                   # AI-generated insights
@@ -125,6 +126,7 @@ Insights/
 │
 ├── src/                                # Background processing (Trigger.dev)
 │   └── trigger/                        # Trigger.dev tasks
+│       ├── asset/                      # Asset indexing/embedding tasks
 │       ├── interview/                  # Interview processing tasks
 │       │   └── v2/                     # V2 interview pipeline
 │       ├── lens/                       # Lens application tasks

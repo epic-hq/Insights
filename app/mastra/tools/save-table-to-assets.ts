@@ -49,32 +49,39 @@ export const saveTableToAssetsTool = createTool({
 	description: `CREATE a NEW table in project_assets. ONLY use when user explicitly asks to create a new table.
 
 ⚠️ DO NOT use this to modify existing tables - use "updateTableAsset" instead!
-- If user says "add a row" to an existing table → use updateTableAsset
-- If user says "create a competitive matrix" → use this tool
 
-REQUIRED PARAMETERS:
-- title: string (e.g., "Competitive Matrix")
-- headers: string[] (column names)
-- rows: array of objects with keys matching headers (THE DATA - REQUIRED!)
+**CRITICAL: You MUST provide the "rows" parameter with actual data!**
 
-EXAMPLE CALL:
+REQUIRED PARAMETERS (all 3 are mandatory):
+1. title: string
+2. headers: string[] (column names)
+3. rows: array of objects ← THIS IS THE DATA, DO NOT OMIT!
+
+CORRECT EXAMPLE:
 {
   "title": "Competitive Matrix",
-  "headers": ["Feature", "Us", "Competitor A"],
+  "headers": ["Tool", "Use Case", "Price"],
   "rows": [
-    {"Feature": "Pricing", "Us": "$10/mo", "Competitor A": "$15/mo"},
-    {"Feature": "API Access", "Us": "Yes", "Competitor A": "No"},
-    {"Feature": "Support", "Us": "24/7", "Competitor A": "Business hours"}
+    {"Tool": "Notion", "Use Case": "Notes", "Price": "$10/mo"},
+    {"Tool": "Confluence", "Use Case": "Docs", "Price": "$5/user"},
+    {"Tool": "Coda", "Use Case": "Hybrid", "Price": "$12/mo"}
   ]
 }
 
-The saved asset appears in "Files" tab with inline cell editing, sorting, search, and CSV export.`,
+WRONG (missing rows - WILL FAIL):
+{
+  "title": "Competitive Matrix",
+  "headers": ["Tool", "Use Case", "Price"]
+}`,
 	inputSchema: z.object({
 		title: z.string().describe("Title for the table/asset"),
-		description: z.string().optional().describe("Description of the table contents"),
-		headers: z.array(z.string()).describe("Column headers - e.g., ['Feature', 'Us', 'Competitor A']"),
-		rows: z.array(z.record(z.string(), z.string())).describe("REQUIRED: Array of row objects. Each row is an object with keys matching headers. Example: [{Feature: 'Pricing', Us: '$10', 'Competitor A': '$15'}]"),
-		kind: z.string().optional().describe("Category (e.g., 'competitive_matrix', 'feature_comparison')"),
+		headers: z.array(z.string()).min(1).describe("Column headers array - e.g., ['Tool', 'Use Case', 'Price']"),
+		rows: z
+			.array(z.record(z.string(), z.string()))
+			.min(1)
+			.describe("THE DATA ROWS (REQUIRED!) - Array of objects where each object has keys matching headers. Example: [{'Tool': 'Notion', 'Use Case': 'Notes', 'Price': '$10'}]"),
+		description: z.string().optional().describe("Optional description of the table contents"),
+		kind: z.string().optional().describe("Optional category (e.g., 'competitive_matrix')"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

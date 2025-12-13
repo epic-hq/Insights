@@ -2,9 +2,12 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { Memory } from "@mastra/memory"
+// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
+import { TokenLimiter } from "@mastra/memory/processors"
 import { z } from "zod"
 import { PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { generateResearchStructureTool } from "../tools/generate-research-structure"
@@ -110,5 +113,6 @@ ${JSON.stringify(existing)}
 			workingMemory: { enabled: false, schema: ProjectSetupState },
 			threads: { generateTitle: false },
 		},
+		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
 	}),
 });
