@@ -46,7 +46,7 @@ export const mastra = new Mastra({
 	storage: getSharedPostgresStore(),
 	logger: new PinoLogger({
 		name: "mastra",
-		level: "info",
+		level: "warn", // Reduce noise - only show warnings and errors
 	}),
 	server: {
 		cors: {
