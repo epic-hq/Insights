@@ -47,6 +47,11 @@ For unique documents, create descriptive snake_case names:
 
 Document types are completely flexible - any snake_case name works!
 
+Data storage:
+- Put human-readable Markdown in content.
+- Put structured tables/JSON in metadata.structured (automatically done when content is an object).
+- Do NOT create project_assets here; those are reserved for uploaded files.
+
 Operations:
 - create: Create a new document (fails if kind already exists)
 - update: Update existing document content
@@ -65,7 +70,7 @@ Operations:
 				"Document type identifier (e.g., 'positioning_statement', 'seo_strategy'). Required for create/update/upsert/read."
 			),
 		content: z.any().optional().describe("Markdown content of the document (string or object that will be JSON stringified). Required for create/update/upsert."),
-		metadata: z.any().optional().nullable().describe("Optional metadata to store with the document (JSON object)"),
+		metadata: z.any().optional().nullable().describe("Optional metadata to store with the document (JSON object). If content is an object, it will be stored in metadata.structured."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -103,10 +108,12 @@ Operations:
 		const operation = toolContext.operation
 		const kind = toolContext.kind
 		const rawContent = toolContext.content
-		// If content is an object, store it in meta; if string, store in content_md
+		// If content is an object, store it under meta.structured; if string, store in content_md
 		const isObjectContent = typeof rawContent === "object" && rawContent !== null
 		const content = isObjectContent ? null : rawContent
-		const metadata = isObjectContent ? rawContent : toolContext.metadata
+		const metadata = isObjectContent
+			? { structured: rawContent, ...(toolContext.metadata ?? {}) }
+			: toolContext.metadata
 
 		consola.debug("manage-documents: execute start", {
 			projectId,

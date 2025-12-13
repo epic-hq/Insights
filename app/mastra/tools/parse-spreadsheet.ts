@@ -1,9 +1,11 @@
 import { createTool } from "@mastra/core/tools"
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import { z } from "zod"
 
 import { b } from "~/../baml_client"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import type { indexAssetTask } from "src/trigger/asset/indexAsset"
 
 /**
  * Parse CSV/TSV content into structured data and markdown table format.
@@ -418,6 +420,14 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 						assetId = asset.id
 						assetSaved = true
 						consola.info("[parse-spreadsheet] Saved to project_assets:", assetId)
+
+						// Trigger embedding generation in background
+						try {
+							await tasks.trigger<typeof indexAssetTask>("asset.index", { assetId: asset.id })
+							consola.info("[parse-spreadsheet] Triggered embedding generation for", asset.id)
+						} catch (triggerError) {
+							consola.warn("[parse-spreadsheet] Failed to trigger indexing:", triggerError)
+						}
 					}
 				} catch (saveError) {
 					consola.error("[parse-spreadsheet] Error saving asset:", saveError)

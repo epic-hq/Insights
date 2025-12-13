@@ -1,15 +1,18 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { FileSpreadsheet, FileText, Grid, List, MessageSquare, MessageSquareText, MessagesSquare, Table, Upload } from "lucide-react"
-import { useState } from "react"
+import { FileSpreadsheet, FileText, Grid, HelpCircle, List, MessageSquare, MessageSquareText, MessagesSquare, Search, Table, Upload } from "lucide-react"
+import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData } from "react-router"
+import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
@@ -113,10 +116,23 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const { interviews, segmentData, projectAssets } = useLoaderData<typeof loader>()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
+	const [searchParams, setSearchParams] = useSearchParams()
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("all")
+	const [fileSearchQuery, setFileSearchQuery] = useState("")
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const _fetcher = useFetcher()
+
+	// Read tab from URL on mount (for redirects from asset delete, etc.)
+	useEffect(() => {
+		const tab = searchParams.get("tab")
+		if (tab === "files" || tab === "conversations" || tab === "notes") {
+			setSourceFilter(tab)
+			// Clear the param after reading
+			searchParams.delete("tab")
+			setSearchParams(searchParams, { replace: true })
+		}
+	}, [])
 
 	// Sort interviews chronologically (includes notes now)
 	const allItems = [...interviews].sort((a, b) => {
@@ -125,6 +141,25 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		const dateB = new Date(b.created_at).getTime()
 		return dateB - dateA
 	})
+
+	// Calculate counts for each tab
+	const conversationsCount = allItems.filter(
+		(item) =>
+			item.source_type !== "note" &&
+			item.media_type === "interview" &&
+			item.source_type !== "document" &&
+			item.media_type !== "document" &&
+			item.media_type !== "voice_memo"
+	).length
+	const notesCount = allItems.filter((item) => item.source_type === "note" || item.media_type === "voice_memo").length
+	const filesCount = projectAssets.length
+
+	// Filter assets by search query (client-side filtering using title)
+	const filteredAssets = fileSearchQuery
+		? projectAssets.filter((asset) =>
+			asset.title.toLowerCase().includes(fileSearchQuery.toLowerCase())
+		)
+		: projectAssets
 
 	// Filter items by source type category (for interviews/notes)
 	const filteredInterviews = allItems.filter((item) => {
@@ -149,9 +184,6 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 		return true
 	})
-
-	// Get display count based on filter
-	const displayCount = sourceFilter === "files" ? projectAssets.length : filteredInterviews.length
 
 	const handleSaveNote = async (note: {
 		title: string
@@ -199,15 +231,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				<PageContainer size="lg" padded={false} className="max-w-6xl">
 					<div className="flex flex-col gap-6">
 						<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-							<div className="space-y-3">
+							<div className="space-y-1">
 								<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
 									<MessagesSquare />
 									Content
 								</h1>
-								<p className="text-muted-foreground">
-									Conversations, notes, and files
-									<span className="ml-2 text-sm">({displayCount})</span>
-								</p>
 							</div>
 
 							{/* Actions */}
@@ -257,17 +285,32 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								<ToggleGroupItem value="all" className="flex-1 sm:flex-initial">
 									All
 								</ToggleGroupItem>
-								<ToggleGroupItem value="conversations" className="flex-1 sm:flex-initial">
-									<MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+								<ToggleGroupItem value="conversations" className="flex-1 gap-1.5 sm:flex-initial">
+									<MessageSquare className="h-3.5 w-3.5" />
 									Conversations
+									{conversationsCount > 0 && (
+										<span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
+											{conversationsCount}
+										</span>
+									)}
 								</ToggleGroupItem>
-								<ToggleGroupItem value="notes" className="flex-1 sm:flex-initial">
-									<FileText className="mr-1.5 h-3.5 w-3.5" />
+								<ToggleGroupItem value="notes" className="flex-1 gap-1.5 sm:flex-initial">
+									<FileText className="h-3.5 w-3.5" />
 									Notes
+									{notesCount > 0 && (
+										<span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
+											{notesCount}
+										</span>
+									)}
 								</ToggleGroupItem>
-								<ToggleGroupItem value="files" className="flex-1 sm:flex-initial">
-									<Upload className="mr-1.5 h-3.5 w-3.5" />
+								<ToggleGroupItem value="files" className="flex-1 gap-1.5 sm:flex-initial">
+									<Upload className="h-3.5 w-3.5" />
 									Files
+									{filesCount > 0 && (
+										<span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
+											{filesCount}
+										</span>
+									)}
 								</ToggleGroupItem>
 							</ToggleGroup>
 						</div>
@@ -291,19 +334,44 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				{/* Files Tab - Show project_assets */}
 				{sourceFilter === "files" ? (
 					<>
-						{/* Usage instructions header */}
-						<div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/50">
-							<h4 className="mb-2 font-medium text-blue-900 dark:text-blue-100">How to use Files</h4>
-							<p className="mb-3 text-blue-800 text-sm dark:text-blue-200">
-								Files store spreadsheets, tables, and documents you've shared with the AI assistant. You can:
-							</p>
-							<ul className="space-y-1 text-blue-700 text-sm dark:text-blue-300">
-								<li>• <strong>Ask questions</strong> — "What trends do you see in my customer list?"</li>
-								<li>• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM</li>
-								<li>• <strong>Cross-reference</strong> — "Compare this data with our interview findings"</li>
-								<li>• <strong>Edit inline</strong> — Click any file to view and edit the data directly</li>
-							</ul>
-						</div>
+						{/* Search bar for files */}
+						{projectAssets.length > 0 && (
+							<div className="mb-6 flex items-center justify-between gap-4">
+								<div className="relative max-w-sm flex-1">
+									<Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+									<Input
+										placeholder="Search files..."
+										value={fileSearchQuery}
+										onChange={(e) => setFileSearchQuery(e.target.value)}
+										className="pl-9"
+									/>
+								</div>
+								{/* Usage instructions header */}
+								<Popover>
+									<PopoverTrigger asChild>
+										<div className="flex items-center gap-2 ml-auto cursor-help">
+											<span className="font-medium text-foreground">How to use Files</span>
+											<HelpCircle className="h-4 w-4 text-muted-foreground" />
+										</div>
+									</PopoverTrigger>
+									<PopoverContent className="w-120 bg-accent text-foreground" align="end" sideOffset={8}>
+										<p className="mb-3">
+											Files store spreadsheets, tables, and documents you've shared with the AI assistant. You can:
+										</p>
+										<ul className="space-y-1">
+											<li>• <strong>Ask questions</strong> — "What trends do you see in my customer list?"</li>
+											<li>• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM</li>
+											<li>• <strong>Cross-reference</strong> — "Compare this data with our interview findings"</li>
+											<li>• <strong>Edit inline</strong> — Click any file to view and edit the data directly</li>
+										</ul>
+									</PopoverContent>
+								</Popover>
+
+								<span className="text-muted-foreground text-sm">
+									{filteredAssets.length} of {projectAssets.length} files
+								</span>
+							</div>
+						)}
 						{projectAssets.length === 0 ? (
 							<div className="py-16 text-center">
 								<div className="mx-auto max-w-md">
@@ -318,9 +386,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									</p>
 								</div>
 							</div>
+						) : filteredAssets.length === 0 ? (
+							<div className="py-8 text-center">
+								<p className="text-muted-foreground">No files match "{fileSearchQuery}"</p>
+							</div>
 						) : (
 							<div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-								{projectAssets.map((asset) => (
+								{filteredAssets.map((asset) => (
 									<Link
 										key={asset.id}
 										to={routes.assets.detail(asset.id)}
@@ -346,12 +418,9 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												<span>•</span>
 												<span>{formatDistance(new Date(asset.created_at), new Date(), { addSuffix: true })}</span>
 											</div>
-											{asset.status && (
+											{asset.status && asset.status !== "ready" && (
 												<span
-													className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${asset.status === "ready"
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-														: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-														}`}
+													className="mt-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 font-medium text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
 												>
 													{asset.status}
 												</span>
@@ -496,6 +565,6 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				availableOrgs={[]}
 				availableOpportunities={[]}
 			/>
-		</div>
+		</div >
 	)
 }
