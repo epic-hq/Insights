@@ -1,8 +1,11 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
+// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
+import { TokenLimiter } from "@mastra/memory/processors"
 import consola from "consola"
 import { z } from "zod"
+import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
@@ -274,5 +277,9 @@ Please try:
 			workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
 			threads: { generateTitle: false },
 		},
+		// Processors run in order - ToolCallPairProcessor must come BEFORE TokenLimiter
+		// to ensure tool call/result pairs are identified before any trimming occurs.
+		// This prevents "No tool call found for function call output" errors.
+		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
 	}),
 })

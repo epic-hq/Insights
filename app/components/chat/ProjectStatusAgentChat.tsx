@@ -202,6 +202,7 @@ export function ProjectStatusAgentChat({
 	// historical context server-side, so we don't send history to avoid duplicates.
 	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
 	const historyLoadedRef = useRef(false)
+	const historyAppliedRef = useRef(false)
 
 	// Handle pendingInput from context (inserted by other components like priorities table)
 	useEffect(() => {
@@ -321,8 +322,11 @@ export function ProjectStatusAgentChat({
 	}, [accountId, projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Update messages when history loads (setMessages comes from useChat)
+	// Only apply history once to prevent re-applying on navigation
 	useEffect(() => {
+		if (historyAppliedRef.current) return
 		if (historyFetcher.data?.messages && historyFetcher.data.messages.length > 0) {
+			historyAppliedRef.current = true
 			consola.info("Chat history loaded, updating messages:", historyFetcher.data.messages.length, "messages")
 			setMessages(historyFetcher.data.messages)
 		}
@@ -337,6 +341,13 @@ export function ProjectStatusAgentChat({
 		},
 		[sendMessage]
 	)
+
+	// Clear chat and allow history to be re-applied if user navigates back
+	const handleClearChat = useCallback(() => {
+		setMessages([])
+		// Don't reset historyAppliedRef - we don't want to reload history
+		// after user intentionally clears chat
+	}, [setMessages])
 
 	const {
 		startRecording: startVoiceRecording,
@@ -524,7 +535,8 @@ export function ProjectStatusAgentChat({
 		}
 
 		event.preventDefault()
-		navigate(normalizedPath)
+		// Use { preventScrollReset: true } to avoid scroll jumps and unnecessary re-renders
+		navigate(normalizedPath, { preventScrollReset: true })
 	}
 
 	return (
@@ -583,7 +595,7 @@ export function ProjectStatusAgentChat({
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<div
-												onClick={() => setMessages([])}
+												onClick={handleClearChat}
 												className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
 												aria-label="New chat"
 												role="button"
@@ -591,7 +603,7 @@ export function ProjectStatusAgentChat({
 												onKeyDown={(e) => {
 													if (e.key === "Enter" || e.key === " ") {
 														e.preventDefault()
-														setMessages([])
+														handleClearChat()
 													}
 												}}
 											>
