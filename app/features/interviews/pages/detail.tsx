@@ -1469,8 +1469,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	return (
 		<>
-		<div className="relative mx-auto mt-6 w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-			{/* <InterviewCopilotDrawer
+			<div className="relative mx-auto mt-6 w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+				{/* <InterviewCopilotDrawer
 				open={isChatOpen}
 				onOpenChange={setIsChatOpen}
 				accountId={accountId}
@@ -1480,322 +1480,339 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				systemContext={interviewSystemContext}
 				initialPrompt={initialInterviewPrompt}
 			/> */}
-			{/* Loading Overlay */}
-			{showBlockingOverlay && (
-				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-					<div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 shadow-lg">
-						<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						<p className="font-medium text-sm">{overlayLabel}</p>
-					</div>
-				</div>
-			)}
-
-			<div className="w-full space-y-6">
-				{/* Streamlined Header */}
-				<div className="mb-6 space-y-3">
-					<BackButton />
-					<div className="flex items-start justify-between gap-4">
-						<h1 className="font-semibold text-2xl">{interviewTitle}</h1>
-						<div className="flex items-center gap-2">
-							{/* Status indicator - compact, right side */}
-							{isProcessing && (
-								<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
-									<Loader2 className="h-5 w-5 animate-spin text-primary" />
-									<p className="font-medium text-primary text-sm">{getStatusLabel(interview.status)}</p>
-								</div>
-							)}
-							{hasError && (
-								<div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1.5">
-									<XCircle className="h-3 w-3 text-destructive" />
-									<p className="text-destructive text-xs">Failed</p>
-								</div>
-							)}
-							{/* Actions Dropdown */}
-							{(interview.hasTranscript ||
-								interview.hasFormattedTranscript ||
-								interview.status === "error" ||
-								interview.status === "uploading" ||
-								interview.status === "transcribing" ||
-								interview.status === "processing" ||
-								interview.status === "uploaded") && (
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<button
-												disabled={fetcher.state !== "idle"}
-												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-												title="Actions"
-											>
-												<MoreVertical className="h-4 w-4" />
-												Actions
-											</button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											{(interview.status === "uploading" ||
-												interview.status === "transcribing" ||
-												interview.status === "processing" ||
-												interview.status === "uploaded") && (
-													<DropdownMenuItem
-														onClick={async () => {
-															try {
-																const response = await fetch("/api/fix-stuck-interview", {
-																	method: "POST",
-																	headers: { "Content-Type": "application/json" },
-																	body: JSON.stringify({ interviewId: interview.id }),
-																})
-																const result = await response.json()
-																if (result.success) {
-																	consola.success("Interview status fixed")
-																	revalidator.revalidate()
-																} else {
-																	consola.error("Failed to fix interview:", result.error)
-																}
-															} catch (e) {
-																consola.error("Fix stuck interview failed", e)
-															}
-														}}
-														disabled={fetcher.state !== "idle"}
-														className="text-orange-600 focus:text-orange-600"
-													>
-														Fix Stuck Interview Status
-													</DropdownMenuItem>
-												)}
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.analysis-retry" }
-														)
-													} catch (e) {
-														consola.error("Retry analysis submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Transcription
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reprocess-evidence" }
-														)
-													} catch (e) {
-														consola.error("Reprocess evidence submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Evidence Collection
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reanalyze-themes" }
-														)
-													} catch (e) {
-														consola.error("Re-analyze themes submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Re-analyze Themes
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.generate-sales-lens" }
-														)
-													} catch (e) {
-														consola.error("Generate sales lens submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-												className="text-blue-600 focus:text-blue-600"
-											>
-												🔍 Apply Lenses
-											</DropdownMenuItem>
-											{linkedOpportunity ? (
-												<DropdownMenuItem asChild>
-													<Link
-														to={routes.opportunities.detail(linkedOpportunity.id)}
-														className="flex items-center gap-2 text-emerald-700"
-													>
-														<Briefcase className="h-4 w-4" />
-														View Opportunity: {linkedOpportunity.title}
-													</Link>
-												</DropdownMenuItem>
-											) : (
-												<DropdownMenuItem asChild>
-													<Link
-														to={routes.opportunities.new()}
-														state={{ interviewId: interview.id, interviewTitle: interview.title }}
-														className="flex items-center gap-2 text-blue-700"
-													>
-														<Briefcase className="h-4 w-4" />
-														Create Opportunity
-													</Link>
-												</DropdownMenuItem>
-											)}
-										</DropdownMenuContent>
-									</DropdownMenu>
-								)}
-							{/* Edit Button */}
-							<Link
-								to={routes.interviews.edit(interview.id)}
-								className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"
-							>
-								<Edit2 className="h-4 w-4" />
-								Edit
-							</Link>
+				{/* Loading Overlay */}
+				{showBlockingOverlay && (
+					<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+						<div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 shadow-lg">
+							<Loader2 className="h-8 w-8 animate-spin text-primary" />
+							<p className="font-medium text-sm">{overlayLabel}</p>
 						</div>
 					</div>
+				)}
 
-					{/* Participant info - with edit capability */}
-					{(() => {
-						// Check if participants need attention (no linked person, or placeholder names)
-						const hasUnlinkedParticipants = participants.some((p) => !p.people?.id)
-						const hasPlaceholderNames = participants.some((p) => {
-							const name = p.people?.name || p.display_name || ""
-							return !name || /^(Participant|Interviewer)\s*\d*$/i.test(name)
-						})
-						const needsAttention = participants.length > 0 && (hasUnlinkedParticipants || hasPlaceholderNames)
-
-						// Get linked participants with real names for display
-						const linkedParticipants = participants.filter((p) => {
-							const person = p.people as { id?: string; name?: string | null } | null
-							return person?.id && person?.name && !/^(Participant|Interviewer)\s*\d*$/i.test(person.name)
-						})
-
-						return (
-							<div className="flex flex-wrap items-center gap-3 text-sm">
-								{linkedParticipants.length > 0 ? (
-									<>
-										<span className="text-muted-foreground">
-											{linkedParticipants.length === 1 ? "Participant:" : "Participants:"}
-										</span>
-										{linkedParticipants.map((participant) => {
-											const person = participant.people as {
-												id: string
-												name: string
-												segment?: string | null
-												company?: string | null
-											}
-											return (
-												<div key={participant.id} className="flex items-center gap-1.5">
-													<Link
-														to={routes.people.detail(person.id)}
-														className="font-medium text-foreground hover:underline"
-													>
-														{person.name}
-													</Link>
-													{person.company && (
-														<span className="text-muted-foreground">({person.company})</span>
-													)}
-													{person.segment && person.segment !== "Unknown" && (
-														<Badge variant="outline" className="text-xs">
-															{person.segment}
-														</Badge>
-													)}
-												</div>
-											)
-										})}
-									</>
-								) : interview.participant_pseudonym &&
-								  interview.participant_pseudonym !== "Anonymous" &&
-								  interview.participant_pseudonym !== "Participant 1" ? (
-									<>
-										<span className="text-muted-foreground">Participant:</span>
-										<span className="font-medium text-foreground">{interview.participant_pseudonym}</span>
-									</>
-								) : null}
-
-								{/* Edit button - always show if there are participants, with warning if needs attention */}
-								{participants.length > 0 && (
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => setParticipantsDialogOpen(true)}
-										className={cn(
-											"h-7 gap-1.5 px-2",
-											needsAttention && "text-amber-600 hover:text-amber-700"
-										)}
-									>
-										{needsAttention && <AlertTriangle className="h-3.5 w-3.5" />}
-										<Users className="h-3.5 w-3.5" />
-										<span className="text-xs">
-											{needsAttention ? "Link speakers" : "Edit"}
-										</span>
-									</Button>
+				<div className="w-full space-y-6">
+					{/* Streamlined Header */}
+					<div className="mb-6 space-y-3">
+						<BackButton />
+						<div className="flex items-start justify-between gap-4">
+							<h1 className="font-semibold text-2xl">{interviewTitle}</h1>
+							<div className="flex items-center gap-2">
+								{/* Status indicator - compact, right side */}
+								{isProcessing && (
+									<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
+										<Loader2 className="h-5 w-5 animate-spin text-primary" />
+										<p className="font-medium text-primary text-sm">{getStatusLabel(interview.status)}</p>
+									</div>
 								)}
+								{hasError && (
+									<div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1.5">
+										<XCircle className="h-3 w-3 text-destructive" />
+										<p className="text-destructive text-xs">Failed</p>
+									</div>
+								)}
+								{/* Actions Dropdown */}
+								{(interview.hasTranscript ||
+									interview.hasFormattedTranscript ||
+									interview.status === "error" ||
+									interview.status === "uploading" ||
+									interview.status === "transcribing" ||
+									interview.status === "processing" ||
+									interview.status === "uploaded") && (
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<button
+													disabled={fetcher.state !== "idle"}
+													className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+													title="Actions"
+												>
+													<MoreVertical className="h-4 w-4" />
+													Actions
+												</button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												{(interview.status === "uploading" ||
+													interview.status === "transcribing" ||
+													interview.status === "processing" ||
+													interview.status === "uploaded") && (
+														<DropdownMenuItem
+															onClick={async () => {
+																try {
+																	const response = await fetch("/api/fix-stuck-interview", {
+																		method: "POST",
+																		headers: { "Content-Type": "application/json" },
+																		body: JSON.stringify({ interviewId: interview.id }),
+																	})
+																	const result = await response.json()
+																	if (result.success) {
+																		consola.success("Interview status fixed")
+																		revalidator.revalidate()
+																	} else {
+																		consola.error("Failed to fix interview:", result.error)
+																	}
+																} catch (e) {
+																	consola.error("Fix stuck interview failed", e)
+																}
+															}}
+															disabled={fetcher.state !== "idle"}
+															className="text-orange-600 focus:text-orange-600"
+														>
+															Fix Stuck Interview Status
+														</DropdownMenuItem>
+													)}
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.analysis-retry" }
+															)
+														} catch (e) {
+															consola.error("Retry analysis submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+												>
+													Rerun Transcription
+												</DropdownMenuItem>
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.reprocess-evidence" }
+															)
+														} catch (e) {
+															consola.error("Reprocess evidence submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+												>
+													Rerun Evidence Collection
+												</DropdownMenuItem>
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.reanalyze-themes" }
+															)
+														} catch (e) {
+															consola.error("Re-analyze themes submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+												>
+													Re-analyze Themes
+												</DropdownMenuItem>
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.generate-sales-lens" }
+															)
+														} catch (e) {
+															consola.error("Generate sales lens submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+													className="text-blue-600 focus:text-blue-600"
+												>
+													🔍 Apply Lenses
+												</DropdownMenuItem>
+												{linkedOpportunity ? (
+													<DropdownMenuItem asChild>
+														<Link
+															to={routes.opportunities.detail(linkedOpportunity.id)}
+															className="flex items-center gap-2 text-emerald-700"
+														>
+															<Briefcase className="h-4 w-4" />
+															View Opportunity: {linkedOpportunity.title}
+														</Link>
+													</DropdownMenuItem>
+												) : (
+													<DropdownMenuItem asChild>
+														<Link
+															to={routes.opportunities.new()}
+															state={{ interviewId: interview.id, interviewTitle: interview.title }}
+															className="flex items-center gap-2 text-blue-700"
+														>
+															<Briefcase className="h-4 w-4" />
+															Create Opportunity
+														</Link>
+													</DropdownMenuItem>
+												)}
+											</DropdownMenuContent>
+										</DropdownMenu>
+									)}
+								{/* Edit Button */}
+								<Link
+									to={routes.interviews.edit(interview.id)}
+									className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"
+								>
+									<Edit2 className="h-4 w-4" />
+									Edit
+								</Link>
 							</div>
-						)
-					})()}
+						</div>
 
-					{/* Metadata - single line */}
-					<div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
-						<span>{formatReadable(interview.created_at)}</span>
-						<span>•</span>
-						<span>By {creatorName}</span>
-						{interview.duration_sec && (
-							<>
-								<span>•</span>
-								<span>
-									{Math.floor(interview.duration_sec / 60)}m {interview.duration_sec % 60}s
-								</span>
-							</>
-						)}
-						{evidence.length > 0 && (
-							<>
-								<span>•</span>
-								<span>{evidence.length} evidence points</span>
-							</>
-						)}
-					</div>
-				</div>
+						{/* Participant info - with edit capability */}
+						{(() => {
+							// Check if participants need attention (no linked person, or placeholder names)
+							const hasUnlinkedParticipants = participants.some((p) => !p.people?.id)
+							const hasPlaceholderNames = participants.some((p) => {
+								const name = p.people?.name || p.display_name || ""
+								return !name || /^(Participant|Interviewer)\s*\d*$/i.test(name)
+							})
+							const needsAttention = participants.length > 0 && (hasUnlinkedParticipants || hasPlaceholderNames)
 
-				{/* Key Takeaways Section */}
-				<div className="space-y-4">
-					<div>
-						{aiKeyTakeaways.length > 0 && (
-							<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
-								<label className="mb-2 block flex flex-row gap-2 font-semibold text-foreground text-lg">
-									Key Takeaways
-								</label>
-								<div className="flex items-center justify-between gap-4">
-									<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
-									{conversationUpdatedLabel && (
-										<span className="text-muted-foreground text-xs">Updated {conversationUpdatedLabel}</span>
+							// Get linked participants with real names for display
+							const linkedParticipants = participants.filter((p) => {
+								const person = p.people as { id?: string; name?: string | null } | null
+								return person?.id && person?.name && !/^(Participant|Interviewer)\s*\d*$/i.test(person.name)
+							})
+
+							return (
+								<div className="flex flex-wrap items-center gap-3 text-sm">
+									{linkedParticipants.length > 0 ? (
+										<>
+											<span className="text-muted-foreground">
+												{linkedParticipants.length === 1 ? "Participant:" : "Participants:"}
+											</span>
+											{linkedParticipants.map((participant) => {
+												const person = participant.people as {
+													id: string
+													name: string
+													segment?: string | null
+													company?: string | null
+												}
+												return (
+													<div key={participant.id} className="flex items-center gap-1.5">
+														<Link
+															to={routes.people.detail(person.id)}
+															className="font-medium text-foreground hover:underline"
+														>
+															{person.name}
+														</Link>
+														{person.company && (
+															<span className="text-muted-foreground">({person.company})</span>
+														)}
+														{person.segment && person.segment !== "Unknown" && (
+															<Badge variant="outline" className="text-xs">
+																{person.segment}
+															</Badge>
+														)}
+													</div>
+												)
+											})}
+										</>
+									) : interview.participant_pseudonym &&
+										interview.participant_pseudonym !== "Anonymous" &&
+										interview.participant_pseudonym !== "Participant 1" ? (
+										<>
+											<span className="text-muted-foreground">Participant:</span>
+											<span className="font-medium text-foreground">{interview.participant_pseudonym}</span>
+										</>
+									) : null}
+
+									{/* Edit button - always show if there are participants, with warning if needs attention */}
+									{participants.length > 0 && (
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => setParticipantsDialogOpen(true)}
+											className={cn(
+												"h-7 gap-1.5 px-2",
+												needsAttention && "text-amber-600 hover:text-amber-700"
+											)}
+										>
+											{needsAttention && <AlertTriangle className="h-3.5 w-3.5" />}
+											<Users className="h-3.5 w-3.5" />
+											<span className="text-xs">
+												{needsAttention ? "Link speakers" : "Edit"}
+											</span>
+										</Button>
 									)}
 								</div>
-								<ul className="space-y-3">
-									{aiKeyTakeaways.map((takeaway, index) => {
-										const badgeStyles = badgeStylesForPriority(takeaway.priority)
-										return (
-											<li key={`${takeaway.summary}-${index}`} className="flex gap-3">
-												<Badge variant={badgeStyles.variant} color={badgeStyles.color} className="mt-0.5 uppercase">
-													{takeaway.priority}
-												</Badge>
-												<div className="space-y-1">
-													<p className="font-medium text-foreground leading-snug">{takeaway.summary}</p>
-													{takeaway.evidenceSnippets.length > 0 && (
-														<p className="text-muted-foreground text-sm">
-															&ldquo;{takeaway.evidenceSnippets[0]}&rdquo;
-														</p>
-													)}
-												</div>
-											</li>
-										)
-									})}
-								</ul>
+							)
+						})()}
+
+						{/* Metadata - single line */}
+						<div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
+							<span>{formatReadable(interview.created_at)}</span>
+							<span>•</span>
+							<span>By {creatorName}</span>
+							{interview.duration_sec && (
+								<>
+									<span>•</span>
+									<span>
+										{Math.floor(interview.duration_sec / 60)}m {interview.duration_sec % 60}s
+									</span>
+								</>
+							)}
+							{evidence.length > 0 && (
+								<>
+									<span>•</span>
+									<span>{evidence.length} evidence points</span>
+								</>
+							)}
+						</div>
+
+						{/* Recording - surfaced near top for quick access */}
+						{interview.media_url && (
+							<div className="mt-4">
+								{/* <h3 className="font-semibold text-foreground text-lg">Recording</h3> */}
+								<div className="mt-2">
+									<MediaPlayer
+										mediaUrl={interview.media_url}
+										thumbnailUrl={interview.thumbnail_url}
+										// title="Play Recording"
+										className="max-w-xl"
+									/>
+								</div>
 							</div>
 						)}
-						{/* <InlineEdit
+					</div>
+
+					{/* Key Takeaways Section */}
+					<div className="space-y-4">
+						<div>
+							{aiKeyTakeaways.length > 0 && (
+								<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
+									<label className="mb-2 block flex flex-row gap-2 font-semibold text-foreground text-lg">
+										Key Takeaways
+									</label>
+									<div className="flex items-center justify-between gap-4">
+										<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
+										{conversationUpdatedLabel && (
+											<span className="text-muted-foreground text-xs">Updated {conversationUpdatedLabel}</span>
+										)}
+									</div>
+									<ul className="space-y-3">
+										{aiKeyTakeaways.map((takeaway, index) => {
+											const badgeStyles = badgeStylesForPriority(takeaway.priority)
+											return (
+												<li key={`${takeaway.summary}-${index}`} className="flex gap-3">
+													<Badge variant={badgeStyles.variant} color={badgeStyles.color} className="mt-0.5 uppercase">
+														{takeaway.priority}
+													</Badge>
+													<div className="space-y-1">
+														<Streamdown className="prose prose-sm max-w-none text-foreground leading-snug [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+															{takeaway.summary}
+														</Streamdown>
+														{takeaway.evidenceSnippets.length > 0 && (
+															<p className="text-muted-foreground text-sm">
+																&ldquo;{takeaway.evidenceSnippets[0]}&rdquo;
+															</p>
+														)}
+													</div>
+												</li>
+											)
+										})}
+									</ul>
+								</div>
+							)}
+							{/* <InlineEdit
 							textClassName="text-foreground"
 							value={normalizeMultilineText(interview.high_impact_themes)}
 							multiline
@@ -1819,125 +1836,125 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								}
 							}}
 						/> */}
-					</div>
-
-					{/* AI Takeaways */}
-					{interview.key_takeaways && (
-						<div className="mb-6">
-							<label className="mb-2 flex items-center justify-between">
-								<span className="flex items-center gap-2 font-semibold text-foreground text-lg">
-									<Sparkles className="h-5 w-5 text-amber-500" />
-									AI Takeaways
-								</span>
-								<Popover>
-									<PopoverTrigger asChild>
-										<Button variant="ghost" size="sm">
-											<MoreVertical className="h-4 w-4" />
-										</Button>
-									</PopoverTrigger>
-									<PopoverContent className="w-96 p-4">
-										<div className="space-y-4">
-											<div>
-												<h4 className="mb-2 font-medium text-sm">Regenerate AI Summary</h4>
-												<p className="mb-3 text-muted-foreground text-xs">
-													Optionally provide custom instructions to guide the AI's analysis
-												</p>
-											</div>
-											<Textarea
-												placeholder="e.g., Focus on technical requirements and integration concerns"
-												className="min-h-[80px] text-sm"
-												id="ai-summary-instructions"
-											/>
-											<div className="flex gap-2">
-												<Button
-													size="sm"
-													variant="outline"
-													onClick={() => {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api/regenerate-ai-summary" }
-														)
-													}}
-												>
-													Regenerate
-												</Button>
-												<Button
-													size="sm"
-													onClick={() => {
-														const textarea = document.getElementById("ai-summary-instructions") as HTMLTextAreaElement
-														const instructions = textarea?.value || ""
-														fetcher.submit(
-															{
-																interview_id: interview.id,
-																custom_instructions: instructions,
-															},
-															{ method: "post", action: "/api/regenerate-ai-summary" }
-														)
-													}}
-												>
-													Regenerate with Instructions
-												</Button>
-											</div>
-										</div>
-									</PopoverContent>
-								</Popover>
-							</label>
-							<div className="rounded-lg border bg-muted/30 p-4 text-foreground text-sm leading-relaxed">
-								{interview.key_takeaways}
-							</div>
 						</div>
-					)}
 
-					{/* Human Notes */}
-					<div>
-						<label className="mb-2 flex items-center gap-2 font-semibold text-foreground text-lg">
-							<User className="h-5 w-5" />
-							User Notes
-						</label>
-						<InlineEdit
-							textClassName="text-foreground"
-							value={normalizeMultilineText(interview.observations_and_notes)}
-							multiline
-							markdown
-							// placeholder="Your observations and analysis notes"
-							onSubmit={(value) => {
-								try {
-									fetcher.submit(
-										{
-											entity: "interview",
-											entityId: interview.id,
-											accountId,
-											projectId,
-											fieldName: "observations_and_notes",
-											fieldValue: value,
-										},
-										{ method: "post", action: "/api/update-field" }
-									)
-								} catch (error) {
-									consola.error("❌ Failed to update observations_and_notes:", error)
-								}
-							}}
-						/>
+						{/* AI Takeaways */}
+						{interview.key_takeaways && (
+							<div className="mb-6">
+								<label className="mb-2 flex items-center justify-between">
+									<span className="flex items-center gap-2 font-semibold text-foreground text-lg">
+										<Sparkles className="h-5 w-5 text-amber-500" />
+										AI Takeaways
+									</span>
+									<Popover>
+										<PopoverTrigger asChild>
+											<Button variant="ghost" size="sm">
+												<MoreVertical className="h-4 w-4" />
+											</Button>
+										</PopoverTrigger>
+										<PopoverContent className="w-96 p-4">
+											<div className="space-y-4">
+												<div>
+													<h4 className="mb-2 font-medium text-sm">Regenerate AI Summary</h4>
+													<p className="mb-3 text-muted-foreground text-xs">
+														Optionally provide custom instructions to guide the AI's analysis
+													</p>
+												</div>
+												<Textarea
+													placeholder="e.g., Focus on technical requirements and integration concerns"
+													className="min-h-[80px] text-sm"
+													id="ai-summary-instructions"
+												/>
+												<div className="flex gap-2">
+													<Button
+														size="sm"
+														variant="outline"
+														onClick={() => {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api/regenerate-ai-summary" }
+															)
+														}}
+													>
+														Regenerate
+													</Button>
+													<Button
+														size="sm"
+														onClick={() => {
+															const textarea = document.getElementById("ai-summary-instructions") as HTMLTextAreaElement
+															const instructions = textarea?.value || ""
+															fetcher.submit(
+																{
+																	interview_id: interview.id,
+																	custom_instructions: instructions,
+																},
+																{ method: "post", action: "/api/regenerate-ai-summary" }
+															)
+														}}
+													>
+														Regenerate with Instructions
+													</Button>
+												</div>
+											</div>
+										</PopoverContent>
+									</Popover>
+								</label>
+								<Streamdown className="prose prose-sm max-w-none rounded-lg border bg-muted/30 p-4 text-foreground leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+									{interview.key_takeaways}
+								</Streamdown>
+							</div>
+						)}
+
+						{/* Human Notes */}
+						<div>
+							<label className="mb-2 flex items-center gap-2 font-semibold text-foreground text-lg">
+								<User className="h-5 w-5" />
+								User Notes
+							</label>
+							<InlineEdit
+								textClassName="text-foreground"
+								value={normalizeMultilineText(interview.observations_and_notes)}
+								multiline
+								markdown
+								// placeholder="Your observations and analysis notes"
+								onSubmit={(value) => {
+									try {
+										fetcher.submit(
+											{
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "observations_and_notes",
+												fieldValue: value,
+											},
+											{ method: "post", action: "/api/update-field" }
+										)
+									} catch (error) {
+										consola.error("❌ Failed to update observations_and_notes:", error)
+									}
+								}}
+							/>
+						</div>
 					</div>
-				</div>
 
-				{/* Conversation Lenses Section */}
-				<div className="mb-8 space-y-8">
-					<h3 className="font-semibold text-foreground text-lg">Conversation Lenses</h3>
+					{/* Conversation Lenses Section */}
+					<div className="mb-8 space-y-8">
+						<h3 className="font-semibold text-foreground text-lg">Conversation Lenses</h3>
 
-					{/* Generic Lens System - Accordion view */}
-					{lensTemplates.length > 0 && (
-						<LensAccordion
-							interviewId={interview.id}
-							templates={lensTemplates}
-							analyses={lensAnalyses}
-							editable
-							evidenceMap={evidenceMap}
-							onLensApplied={() => revalidator.revalidate()}
-						/>
-					)}
+						{/* Generic Lens System - Accordion view */}
+						{lensTemplates.length > 0 && (
+							<LensAccordion
+								interviewId={interview.id}
+								templates={lensTemplates}
+								analyses={lensAnalyses}
+								editable
+								evidenceMap={evidenceMap}
+								onLensApplied={() => revalidator.revalidate()}
+							/>
+						)}
 
-					{/* Legacy Sales Lens - commented out during migration
+						{/* Legacy Sales Lens - commented out during migration
 					{salesCrmEnabled && salesLens && (
 						<div className="mt-8 border-t pt-8">
 							<h4 className="mb-4 font-medium text-muted-foreground text-sm">Legacy Sales Lens (migrating)</h4>
@@ -1955,76 +1972,65 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					)}
 					*/}
 
-					{/* Fallback when no lenses available */}
-					{lensTemplates.length === 0 && (
-						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center dark:bg-muted/10">
-							<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
-							<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
-						</div>
-					)}
-				</div>
+						{/* Fallback when no lenses available */}
+						{lensTemplates.length === 0 && (
+							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center dark:bg-muted/10">
+								<p className="text-muted-foreground text-sm">Conversation Lenses not available</p>
+								<p className="mt-1 text-muted-foreground text-xs">Lenses will appear once analysis is complete</p>
+							</div>
+						)}
+					</div>
 
-				{/* Conversation Timeline */}
-				{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-8" />}
+					{/* Conversation Timeline */}
+					{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-8" />}
 
-				{/* Transcript Section - Collapsed by default */}
-				<h3 className="font-semibold text-foreground text-lg">Recording</h3>
+					{/* Transcript Section - Collapsed by default */}
+					<h3 className="font-semibold text-foreground text-lg">Transcript</h3>
 
-				{interview.media_url && (
-					<div className="mb-4">
-						<MediaPlayer
-							mediaUrl={interview.media_url}
-							thumbnailUrl={interview.thumbnail_url}
-							title="Play Recording"
-							className="max-w-md"
+					<div className="mt-4">
+						<LazyTranscriptResults
+							interviewId={interview.id}
+							hasTranscript={interview.hasTranscript}
+							hasFormattedTranscript={interview.hasFormattedTranscript}
+							participants={participants}
 						/>
 					</div>
-				)}
 
-				<div className="mt-4">
-					<LazyTranscriptResults
-						interviewId={interview.id}
-						hasTranscript={interview.hasTranscript}
-						hasFormattedTranscript={interview.hasFormattedTranscript}
-						participants={participants}
-					/>
+					{/* Questions Asked Section */}
+					<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
 				</div>
-
-				{/* Questions Asked Section */}
-				<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
 			</div>
-		</div>
 
-		{/* Participants Management Dialog */}
-		<Dialog open={participantsDialogOpen} onOpenChange={setParticipantsDialogOpen}>
-			<DialogContent className="max-w-lg">
-				<DialogHeader>
-					<DialogTitle>Manage Participants</DialogTitle>
-				</DialogHeader>
-				<p className="text-muted-foreground text-sm mb-4">
-					Link speakers from the transcript to people in your project. This helps track insights across conversations.
-				</p>
-				<ManagePeopleAssociations
-					interviewId={interview.id}
-					participants={participants.map((p) => ({
-						id: String(p.id),
-						role: p.role,
-						transcript_key: p.transcript_key,
-						display_name: p.display_name,
-						people: p.people
-							? { id: (p.people as any).id, name: (p.people as any).name }
-							: null,
-					}))}
-					availablePeople={peopleOptions.map((p) => ({
-						id: p.id,
-						name: p.name,
-					}))}
-					onUpdate={() => {
-						revalidator.revalidate()
-					}}
-				/>
-			</DialogContent>
-		</Dialog>
+			{/* Participants Management Dialog */}
+			<Dialog open={participantsDialogOpen} onOpenChange={setParticipantsDialogOpen}>
+				<DialogContent className="max-w-lg">
+					<DialogHeader>
+						<DialogTitle>Manage Participants</DialogTitle>
+					</DialogHeader>
+					<p className="text-muted-foreground text-sm mb-4">
+						Link speakers from the transcript to people in your project. This helps track insights across conversations.
+					</p>
+					<ManagePeopleAssociations
+						interviewId={interview.id}
+						participants={participants.map((p) => ({
+							id: String(p.id),
+							role: p.role,
+							transcript_key: p.transcript_key,
+							display_name: p.display_name,
+							people: p.people
+								? { id: (p.people as any).id, name: (p.people as any).name }
+								: null,
+						}))}
+						availablePeople={peopleOptions.map((p) => ({
+							id: p.id,
+							name: p.name,
+						}))}
+						onUpdate={() => {
+							revalidator.revalidate()
+						}}
+					/>
+				</DialogContent>
+			</Dialog>
 		</>
 	)
 }

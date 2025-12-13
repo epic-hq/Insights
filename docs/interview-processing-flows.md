@@ -83,37 +83,57 @@ https://1bde90f07a6fb51a2c287bf052f90e76.r2.cloudflarestorage.com/upsight-userme
 - **URL Upload**: `api.upload-from-url` route
 - **File Upload**: Onboarding flow via UploadScreen component (triggers webhook flow)
 
-### Flow A: Direct URL Upload (`api.upload-from-url`)
+### Flow A: URL Upload (`api.upload-from-url` / Mastra Tool)
 
 **Files involved:**
-- `app/routes/api.upload-from-url.tsx` - Main endpoint
-- `app/utils/assemblyai.server.ts` - AssemblyAI integration
-- `app/utils/processInterview.server.ts` - Analysis processing
+- `app/routes/api.upload-from-url.tsx` - API endpoint
+- `app/mastra/tools/import-video-from-url.ts` - Chat agent tool
+- `src/trigger/interview/importFromUrl.ts` - Trigger.dev task (single source of truth)
+- `app/utils/extractMediaUrl.server.ts` - Media URL extraction
+
+**Supported URL Types:**
+- Direct media files (mp4, mp3, m4a, webm, mov, etc.)
+- HLS streaming manifests (.m3u8) - converted to MP4 via ffmpeg
+- DASH streaming manifests (.mpd) - converted to MP4 via ffmpeg
+- Webpages containing embedded video (Vento.so, Apollo.io, etc.)
 
 **Process:**
 ```
-1. POST /api.upload-from-url
-   ├── Converts Google Drive URLs to direct download URLs
-   ├── Calls transcribeRemoteFile()
-   │   ├── Fetches remote file as stream
-   │   ├── Uploads stream to AssemblyAI /upload endpoint
-   │   ├── Starts transcription job with enhanced options:
-   │   │   ├── speaker_labels: true
-   │   │   ├── iab_categories: true (topic detection)
-   │   │   ├── format_text: true
-   │   │   ├── punctuate: true
-   │   │   ├── auto_chapters: true
-   │   │   └── sentiment_analysis: false
-   │   └── Polls AssemblyAI status until completion (30min timeout)
-   ├── Creates interview record directly via processInterviewTranscript()
-   ├── Extracts evidence units via BAML
-   ├── Generates insights via BAML + OpenAI GPT-4o
-   └── Returns success + insights count
+1. POST /api.upload-from-url OR Chat agent importVideoFromUrl tool
+   ├── Both delegate to Trigger.dev importFromUrl task
+   └── Returns Trigger.dev run ID + public access token
+
+2. Trigger.dev importFromUrl task:
+   ├── Step 1: Resolve URL → media URL
+   │   ├── Direct media URLs: Use as-is
+   │   ├── HLS/DASH streams: Use as-is (will be converted)
+   │   └── Webpages: Extract media URL via extractAllMediaUrls()
+   │       ├── Scans HTML for og:video, video tags, JSON-LD
+   │       ├── Searches for HLS/DASH manifest URLs
+   │       └── Falls back to LLM extraction if regex fails
+   │
+   ├── Step 2: Download media
+   │   ├── Streaming (HLS/DASH): ffmpeg converts to MP4
+   │   └── Progressive (mp4, mp3): Direct fetch + stream to R2
+   │
+   ├── Step 3: Upload to Cloudflare R2
+   │   └── Stores at: interviews/{projectId}/{interviewId}-{timestamp}.{ext}
+   │
+   ├── Step 4: Create interview record
+   │   └── Stores R2 key in media_url field
+   │
+   ├── Step 5: Trigger thumbnail generation (video files only)
+   │   └── generate-thumbnail task extracts frame at 1 second
+   │
+   └── Step 6: Trigger transcription & analysis workflow
+       └── createAndProcessAnalysisJob() → processInterviewTask
 ```
 
 **Key Data Flow:**
-- AssemblyAI returns: `audio_duration`, `confidence`, `text`, `utterances`, etc.
-- Stored as: `duration_sec: transcriptData.audio_duration` in interviews table
+- Media downloaded/converted and stored in R2
+- Interview record created with R2 key
+- Thumbnail generated asynchronously (video files only)
+- Transcription + analysis via AssemblyAI webhook flow
 
 ### Flow B: File Upload via Webhook (`api.assemblyai-webhook`)
 
@@ -333,11 +353,12 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 3. ✅ Submits presigned URL to AssemblyAI (NOT uploaded to AssemblyAI)
 4. ✅ Uses presigned URL as `media_url` in database
 
-**api.upload-from-url.tsx**:
-1. ✅ Downloads file from URL and stores in Cloudflare R2
-2. ✅ Generates presigned URL (24-hour expiry)
-3. ✅ Submits presigned URL to AssemblyAI
-4. ✅ Uses presigned URL as `media_url` in database
+**api.upload-from-url.tsx** (delegates to Trigger.dev):
+1. ✅ Triggers Trigger.dev `importFromUrl` task
+2. ✅ Task handles media extraction (direct, HLS/DASH, webpage)
+3. ✅ Task downloads/converts and stores in Cloudflare R2
+4. ✅ Task generates thumbnail for video files
+5. ✅ Task triggers transcription + analysis workflow
 
 **Realtime Flow**:
 1. ✅ Records audio locally via MediaRecorder
@@ -356,7 +377,7 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 ## Data Flow Summary
 
 ```
-Upload Flow:
+File Upload Flow:
 File → R2 Multipart Upload → Presigned URL → AssemblyAI Download → Webhook → Trigger.dev
   ↓         ↓                      ↓                ↓                  ↓           ↓
 Browser  10MB chunks         AWS Sig V4      Transcription      Status Update  Task Pipeline
@@ -371,6 +392,19 @@ Browser  10MB chunks         AWS Sig V4      Transcription      Status Update  T
                                                                           └── Persona Facets
                                                                                   ↓
                                                                             Database
+
+URL Import Flow (api.upload-from-url / Chat Agent):
+URL → Trigger.dev importFromUrl → Extract Media → Download/Convert → R2 Upload
+  ↓         ↓                          ↓                ↓                ↓
+Input   Background Task        Webpage/HLS/Direct    ffmpeg (streams)  R2 Key
+                                   ↓                   ↓                 ↓
+                               Media URL          MP4 (if HLS/DASH)   Interview Record
+                                                                          ↓
+                                                                    Thumbnail (video)
+                                                                          ↓
+                                                                    Transcription
+                                                                          ↓
+                                                                    Analysis Pipeline
 
 Realtime Flow:
 Live Audio → WebSocket → Record+Store → Finalize → Trigger.dev → Database
