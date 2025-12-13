@@ -44,7 +44,22 @@ export default function InterviewRealtimePage() {
 	const autostart = searchParams.get("autostart") === "true"
 	const mode = (searchParams.get("mode") as "notes" | "interview") || "interview"
 	const attachType = searchParams.get("attachType")
-	const entityId = searchParams.get("entityId")
+
+	// Support multiple person IDs via comma-separated personIds param or single personId
+	const personIdsParam = searchParams.get("personIds")
+	const personIdParam = searchParams.get("personId")
+	const entityIdParam = searchParams.get("entityId")
+
+	// Parse personIds: prefer personIds (multiple), fallback to personId or entityId (single)
+	const personIds: string[] = personIdsParam
+		? personIdsParam.split(",").filter(Boolean)
+		: personIdParam
+			? [personIdParam]
+			: entityIdParam
+				? [entityIdParam]
+				: []
+
+	const finalAttachType = attachType || (personIds.length > 0 ? "existing" : undefined)
 
 	useEffect(() => {
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -69,8 +84,8 @@ export default function InterviewRealtimePage() {
 				interviewId={interviewId}
 				autostart={autostart}
 				mode={mode}
-				attachType={attachType || undefined}
-				entityId={entityId || undefined}
+				attachType={finalAttachType}
+				personIds={personIds}
 			/>
 		</div>
 	)

@@ -1,7 +1,7 @@
 import { formatDistance } from "date-fns"
 import consola from "consola"
-import { Calendar, Loader2, Search, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Calendar, Check, ChevronDown, Loader2, Plus, Search, Trash2, Users } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { useFetcher, useNavigate, useRevalidator } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import {
@@ -15,9 +15,14 @@ import {
 	AlertDialogTitle,
 } from "~/components/ui/alert-dialog"
 import { BackButton } from "~/components/ui/back-button"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "~/components/ui/command"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { createClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
@@ -28,12 +33,121 @@ interface NoteViewerProps {
 	className?: string
 }
 
+interface LinkedPerson {
+	id: string
+	interviewPersonId: number
+	name: string | null
+}
+
+interface AvailablePerson {
+	id: string
+	name: string | null
+}
+
 export function NoteViewer({ interview, projectId, className }: NoteViewerProps) {
 	const fetcher = useFetcher<{ success?: boolean; redirectTo?: string; error?: string }>()
+	const linkFetcher = useFetcher()
 	const navigate = useNavigate()
 	const revalidator = useRevalidator()
+	const supabase = createClient()
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isIndexing, setIsIndexing] = useState(false)
+
+	// People linking state
+	const [linkedPeople, setLinkedPeople] = useState<LinkedPerson[]>([])
+	const [availablePeople, setAvailablePeople] = useState<AvailablePerson[]>([])
+	const [isLoadingPeople, setIsLoadingPeople] = useState(true)
+	const [showLinkPopover, setShowLinkPopover] = useState(false)
+	const [searchInput, setSearchInput] = useState("")
+
+	// Fetch linked people and available people for this note
+	const fetchPeople = useCallback(async () => {
+		setIsLoadingPeople(true)
+		try {
+			// Fetch linked people
+			const { data: linkedData, error: linkedError } = await supabase
+				.from("interview_people")
+				.select("id, person_id, people(id, name)")
+				.eq("interview_id", interview.id)
+
+			if (linkedError) {
+				consola.warn("Failed to fetch linked people:", linkedError)
+			} else {
+				const linked = (linkedData || []).map((row) => ({
+					id: (row.people as { id: string })?.id || "",
+					interviewPersonId: row.id,
+					name: (row.people as { name: string | null })?.name || null,
+				})).filter(p => p.id)
+				setLinkedPeople(linked)
+			}
+
+			// Fetch all available people in project
+			const { data: allPeople, error: peopleError } = await supabase
+				.from("people")
+				.select("id, name")
+				.eq("project_id", projectId)
+				.order("name", { ascending: true })
+
+			if (peopleError) {
+				consola.warn("Failed to fetch available people:", peopleError)
+			} else {
+				setAvailablePeople(allPeople || [])
+			}
+		} finally {
+			setIsLoadingPeople(false)
+		}
+	}, [interview.id, projectId, supabase])
+
+	useEffect(() => {
+		fetchPeople()
+	}, [fetchPeople])
+
+	// Refresh people when link fetcher completes
+	useEffect(() => {
+		if (linkFetcher.state === "idle" && linkFetcher.data) {
+			fetchPeople()
+		}
+	}, [linkFetcher.state, linkFetcher.data, fetchPeople])
+
+	const handleLinkPerson = (personId: string) => {
+		linkFetcher.submit(
+			{
+				intent: "add-participant",
+				personId,
+			},
+			{ method: "post" }
+		)
+		setShowLinkPopover(false)
+		setSearchInput("")
+	}
+
+	const handleUnlinkPerson = (interviewPersonId: number) => {
+		linkFetcher.submit(
+			{
+				intent: "remove-participant",
+				interviewPersonId: String(interviewPersonId),
+			},
+			{ method: "post" }
+		)
+	}
+
+	const handleCreateAndLinkPerson = (name: string) => {
+		if (!name.trim()) return
+		linkFetcher.submit(
+			{
+				intent: "add-participant",
+				create_person: "true",
+				person_name: name.trim(),
+			},
+			{ method: "post" }
+		)
+		setShowLinkPopover(false)
+		setSearchInput("")
+	}
+
+	// Filter out already linked people from available options
+	const linkedPersonIds = new Set(linkedPeople.map(p => p.id))
+	const unlinkedPeople = availablePeople.filter(p => !linkedPersonIds.has(p.id))
 
 	// Handle delete response - navigate after successful delete
 	useEffect(() => {
@@ -185,6 +299,94 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 							<Calendar className="h-4 w-4" />
 							<span>{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}</span>
 						</div>
+					)}
+				</div>
+
+				{/* Linked People */}
+				<div className="mt-4 flex flex-wrap items-center gap-2">
+					<div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+						<Users className="h-4 w-4" />
+						<span>People:</span>
+					</div>
+					{isLoadingPeople ? (
+						<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+					) : (
+						<>
+							{linkedPeople.map((person) => (
+								<Badge
+									key={person.id}
+									variant="secondary"
+									className="group flex items-center gap-1 pr-1"
+								>
+									{person.name || "Unnamed"}
+									<button
+										onClick={() => handleUnlinkPerson(person.interviewPersonId)}
+										className="ml-1 rounded-full p-0.5 opacity-60 hover:bg-destructive/20 hover:opacity-100"
+										title="Remove link"
+									>
+										<Trash2 className="h-3 w-3" />
+									</button>
+								</Badge>
+							))}
+
+							{/* Add Person Popover */}
+							<Popover open={showLinkPopover} onOpenChange={setShowLinkPopover}>
+								<PopoverTrigger asChild>
+									<Button
+										variant="outline"
+										size="sm"
+										className="h-6 gap-1 px-2 text-xs"
+										disabled={linkFetcher.state !== "idle"}
+									>
+										<Plus className="h-3 w-3" />
+										Add Person
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className="w-[250px] p-0" align="start">
+									<Command>
+										<CommandInput
+											placeholder="Search or create..."
+											value={searchInput}
+											onValueChange={setSearchInput}
+										/>
+										<CommandList>
+											<CommandEmpty>
+												<p className="py-2 text-center text-muted-foreground text-sm">No people found</p>
+											</CommandEmpty>
+											<CommandGroup>
+												{unlinkedPeople.map((person) => (
+													<CommandItem
+														key={person.id}
+														value={person.name || person.id}
+														onSelect={() => handleLinkPerson(person.id)}
+													>
+														<Check className={cn("mr-2 h-4 w-4 opacity-0")} />
+														{person.name || "Unnamed Person"}
+													</CommandItem>
+												))}
+											</CommandGroup>
+											<CommandSeparator />
+											<CommandGroup>
+												<CommandItem
+													value={`create-new-${searchInput}`}
+													onSelect={() => {
+														if (searchInput.trim()) {
+															handleCreateAndLinkPerson(searchInput.trim())
+														}
+													}}
+													className="text-primary"
+												>
+													<Plus className="mr-2 h-4 w-4" />
+													{searchInput.trim()
+														? `Create "${searchInput.trim()}"`
+														: "Create new person..."}
+												</CommandItem>
+											</CommandGroup>
+										</CommandList>
+									</Command>
+								</PopoverContent>
+							</Popover>
+						</>
 					)}
 				</div>
 			</div>

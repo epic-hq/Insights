@@ -311,7 +311,7 @@ export default function OnboardingFlow({
 	const currentProjectId = useMemo(() => data.projectId || projectId, [data.projectId, projectId])
 
 	const handleUploadFromUrl = useCallback(
-		async (url: string) => {
+		async (url: string, personId?: string) => {
 			if (!currentProjectId) {
 				setData((prev) => ({
 					...prev,
@@ -337,6 +337,9 @@ export default function OnboardingFlow({
 				const formData = new FormData()
 				formData.append("projectId", currentProjectId)
 				formData.append("url", url)
+				if (personId) {
+					formData.append("personId", personId)
+				}
 
 				const response = await fetch("/api/upload-from-url", {
 					method: "POST",
@@ -455,10 +458,9 @@ export default function OnboardingFlow({
 
 	return (
 		<div className="min-h-screen bg-background">
-			{/* Mobile action sheet header - for upload from existing project */}
+			{/* Mobile close button - for upload from existing project */}
 			{showMobileHeader && (
-				<div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3">
-					<h1 className="font-semibold text-lg">Add Conversation</h1>
+				<div className="sticky top-0 z-10 flex items-center justify-end border-b bg-background px-4 py-3">
 					<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
 						<X className="h-5 w-5" />
 						<span className="sr-only">Close</span>

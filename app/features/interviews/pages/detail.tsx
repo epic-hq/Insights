@@ -216,25 +216,62 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 			case "add-participant":
 			case "link-person": {
 				// Handle both existing form (add-participant) and LinkPersonDialog (link-person)
-				const personId = (formData.get("personId") || formData.get("person_id"))?.toString()
-				if (!personId) {
-					return Response.json({ ok: false, error: "Select a person to add" }, { status: 400 })
-				}
+				const createPerson = formData.get("create_person")?.toString() === "true"
+				let personId = (formData.get("personId") || formData.get("person_id"))?.toString()
 				const role = formData.get("role")?.toString().trim() || null
 				const transcriptKey = formData.get("transcriptKey")?.toString().trim() || null
 				const displayName = formData.get("displayName")?.toString().trim() || null
 
-				// Guard: ensure selected person belongs to this project
-				const { data: personRow, error: personErr } = await supabase
-					.from("people")
-					.select("id, project_id")
-					.eq("id", personId)
-					.single()
-				if (personErr || !personRow) {
-					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
+				// If creating a new person, do that first
+				if (createPerson) {
+					const personName = formData.get("person_name")?.toString()?.trim()
+					if (!personName) {
+						return Response.json({ ok: false, error: "Person name is required when creating" }, { status: 400 })
+					}
+
+					const { firstname, lastname } = parseFullName(personName)
+					const { data: newPerson, error: createError } = await supabase
+						.from("people")
+						.insert({
+							account_id: accountId,
+							project_id: projectId,
+							firstname,
+							lastname,
+						})
+						.select()
+						.single()
+
+					if (createError || !newPerson) {
+						consola.error("Failed to create person:", createError)
+						return Response.json({ ok: false, error: "Failed to create person" }, { status: 500 })
+					}
+
+					// Link person to project
+					await supabase.from("project_people").insert({
+						project_id: projectId,
+						person_id: newPerson.id,
+					})
+
+					personId = newPerson.id
 				}
-				if (personRow.project_id !== projectId) {
-					return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
+
+				if (!personId) {
+					return Response.json({ ok: false, error: "Select a person to add" }, { status: 400 })
+				}
+
+				// Guard: ensure selected person belongs to this project (skip if we just created it)
+				if (!createPerson) {
+					const { data: personRow, error: personErr } = await supabase
+						.from("people")
+						.select("id, project_id")
+						.eq("id", personId)
+						.single()
+					if (personErr || !personRow) {
+						return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
+					}
+					if (personRow.project_id !== projectId) {
+						return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
+					}
 				}
 
 				const { error } = await supabase.from("interview_people").insert({
@@ -246,7 +283,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					display_name: displayName,
 				})
 				if (error) throw new Error(error.message)
-				return Response.json({ ok: true, created: true })
+				return Response.json({ ok: true, created: true, personId })
 			}
 			case "create-and-link-person": {
 				const name = (formData.get("name") as string | null)?.trim()
@@ -957,6 +994,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	)
 	const [_isChatOpen, _setIsChatOpen] = useState(() => assistantMessages.length > 0)
 	const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false)
+	const [regeneratePopoverOpen, setRegeneratePopoverOpen] = useState(false)
 
 	// Create evidence map for lens timestamp hydration
 	const evidenceMap = useMemo(() => {
@@ -1416,6 +1454,27 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [progressInfo.isComplete, revalidator])
 
+	// Revalidate after background tasks are triggered (e.g., regenerate AI summary)
+	// These tasks return { ok: true, taskId: ... } and we need to poll for updates
+	useEffect(() => {
+		const data = fetcher.data as { ok?: boolean; taskId?: string } | undefined
+		if (fetcher.state === "idle" && data?.ok && data?.taskId) {
+			// Background task triggered, poll for updates every 3 seconds for 30 seconds
+			const intervals = [3000, 6000, 9000, 12000, 15000, 20000, 25000, 30000]
+			const timeouts: ReturnType<typeof setTimeout>[] = []
+
+			for (const delay of intervals) {
+				timeouts.push(setTimeout(() => revalidator.revalidate(), delay))
+			}
+
+			return () => {
+				for (const timeout of timeouts) {
+					clearTimeout(timeout)
+				}
+			}
+		}
+	}, [fetcher.state, fetcher.data, revalidator])
+
 	const _handleCustomLensUpdate = (lensId: string, field: "summary" | "notes", value: string) => {
 		setCustomLensOverrides((prev) => ({
 			...prev,
@@ -1766,6 +1825,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<MediaPlayer
 										mediaUrl={interview.media_url}
 										thumbnailUrl={interview.thumbnail_url}
+										mediaType={interview.media_type as "audio" | "video" | "voice_memo" | "interview" | null}
 										// title="Play Recording"
 										className="max-w-xl"
 									/>
@@ -1846,7 +1906,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										<Sparkles className="h-5 w-5 text-amber-500" />
 										AI Takeaways
 									</span>
-									<Popover>
+									<Popover open={regeneratePopoverOpen} onOpenChange={setRegeneratePopoverOpen}>
 										<PopoverTrigger asChild>
 											<Button variant="ghost" size="sm">
 												<MoreVertical className="h-4 w-4" />
@@ -1874,6 +1934,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 																{ interview_id: interview.id },
 																{ method: "post", action: "/api/regenerate-ai-summary" }
 															)
+															setRegeneratePopoverOpen(false)
 														}}
 													>
 														Regenerate
@@ -1890,6 +1951,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 																},
 																{ method: "post", action: "/api/regenerate-ai-summary" }
 															)
+															setRegeneratePopoverOpen(false)
 														}}
 													>
 														Regenerate with Instructions

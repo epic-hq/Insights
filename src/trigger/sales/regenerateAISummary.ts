@@ -148,9 +148,11 @@ export const regenerateAISummaryTask = task({
 
 		consola.info(`[regenerateAISummary] BAML extraction completed`)
 
-		// Combine into a single string for storage
+		// Combine into a markdown-friendly bullet list to preserve structure in Streamdown
 		const keyTakeaways = [takeaways.value_synopsis, takeaways.critical_next_step, takeaways.future_improvement]
-			.filter(Boolean)
+			.map((line) => (line && line.trim().length ? line.trim() : null))
+			.filter((line): line is string => Boolean(line))
+			.map((line) => (line.startsWith("-") ? line : `- ${line}`))
 			.join("\n")
 
 		consola.info(`[regenerateAISummary] Generated takeaways (${keyTakeaways.length} chars):`, {

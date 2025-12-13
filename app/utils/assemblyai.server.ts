@@ -108,10 +108,12 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 			}
 
 			// Sanitize and format the response
+			// Include words array for word-level timing fallback in evidence extraction
 			const sanitized = safeSanitizeTranscriptPayload({
 				assembly_id: transcript.id,
 				full_transcript: transcript.text || "",
 				speaker_transcripts: transcript.utterances || [],
+				words: transcript.words || [], // Store for word-level timing lookup
 				sentiment_analysis_results: transcript.sentiment_analysis_results || [],
 				topic_detection: transcript.iab_categories_result || {},
 				language_code: transcript.language_code,

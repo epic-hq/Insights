@@ -45,6 +45,13 @@ interface SanitizedChapter {
 	title?: string
 }
 
+interface SanitizedWord {
+	text: string
+	start: number
+	end: number
+	confidence: number | null
+}
+
 interface SanitizeOptions {
 	maxTopicResults?: number
 	maxLabelsPerResult?: number
@@ -66,6 +73,7 @@ interface SanitizedTranscriptPayload {
 	is_processed?: boolean | null
 	processed_at?: string | null
 	speaker_transcripts: SanitizedSpeakerUtterance[]
+	words?: SanitizedWord[]
 	topic_detection?: SanitizedTopicDetection | null
 	sentiment_analysis_results?: SanitizedSentimentResult[]
 	chapters?: SanitizedChapter[]
@@ -95,6 +103,23 @@ const sanitizeSpeakers = (value: unknown): SanitizedSpeakerUtterance[] => {
 			return { speaker, text, start, end, confidence }
 		})
 		.filter((item): item is SanitizedSpeakerUtterance => item !== null)
+}
+
+const sanitizeWords = (value: unknown): SanitizedWord[] => {
+	if (!Array.isArray(value)) return []
+	return value
+		.map((item) => {
+			if (typeof item !== "object" || !item) return null
+			const record = item as Record<string, unknown>
+			const text = typeof record.text === "string" ? record.text : ""
+			if (!text) return null
+			const start = coerceNumber(record.start ?? record.start_time)
+			const end = coerceNumber(record.end ?? record.end_time)
+			if (start === null || end === null) return null
+			const confidence = coerceNumber(record.confidence ?? record.confidence_score)
+			return { text, start, end, confidence }
+		})
+		.filter((item): item is SanitizedWord => item !== null)
 }
 
 /**
@@ -265,6 +290,7 @@ function sanitizeTranscriptPayload(payload: unknown, options: SanitizeOptions = 
 	const processedAt = typeof raw.processed_at === "string" ? raw.processed_at : undefined
 
 	const speakerTranscripts = sanitizeSpeakers(raw.speaker_transcripts ?? raw.utterances)
+	const words = sanitizeWords(raw.words)
 
 	const topicDetection = sanitizeTopicDetection(
 		raw.topic_detection ?? raw.iab_categories_result,
@@ -295,6 +321,7 @@ function sanitizeTranscriptPayload(payload: unknown, options: SanitizeOptions = 
 	return {
 		...sanitized,
 		speaker_transcripts: speakerTranscripts,
+		words: words.length ? words : undefined,
 		topic_detection: topicDetection,
 		sentiment_analysis_results: sentiment,
 	}

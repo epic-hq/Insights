@@ -55,6 +55,7 @@ const UrlImportItemSchema = z.object({
 	url: z.string().url(),
 	title: z.string().optional(),
 	speakerNames: z.array(z.string()).optional(), // e.g., ["Speaker A", "John Smith"]
+	personId: z.string().uuid().optional(), // Link to existing person
 })
 
 const ImportFromUrlPayloadSchema = z.object({
@@ -302,7 +303,7 @@ export const importFromUrlTask = schemaTask({
 		}> = []
 
 		for (const item of urls) {
-			const { url, title: userTitle, speakerNames } = item
+			const { url, title: userTitle, speakerNames, personId } = item
 
 			try {
 				consola.info(`\n📥 Processing URL: ${url}`)
@@ -442,6 +443,19 @@ export const importFromUrlTask = schemaTask({
 				if (insertError || !interview) {
 					results.push({ url, success: false, error: `Failed to create interview: ${insertError?.message}` })
 					continue
+				}
+
+				// 4b. Link person to interview if provided
+				if (personId) {
+					consola.info(`Linking person ${personId} to interview ${interview.id}`)
+					const { error: linkError } = await client.from("interview_people").insert({
+						interview_id: interview.id,
+						person_id: personId,
+						role: "participant",
+					})
+					if (linkError) {
+						consola.warn(`Failed to link person to interview: ${linkError.message}`)
+					}
 				}
 
 				// 5. Trigger thumbnail generation for video files (non-blocking)

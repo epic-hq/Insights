@@ -1,5 +1,5 @@
-import { X } from "lucide-react"
-import { useId, useState } from "react"
+import { CheckCircle, CheckSquare, ChevronLeft, Loader2, Mic, Search, StickyNote, Square, UserPlus, Users, X } from "lucide-react"
+import { useCallback, useEffect, useId, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import {
@@ -12,10 +12,14 @@ import {
 } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
+import { createClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
 
-export type NoteType = "meeting_notes" | "research_notes" | "call_notes" | "observation" | "idea" | "followup"
+export type NoteType = "note" | "task"
+
+type DialogStep = "content" | "associate"
 
 interface NoteAssociations {
 	people?: string[]
@@ -23,64 +27,173 @@ interface NoteAssociations {
 	opportunities?: string[]
 }
 
+interface Person {
+	id: string
+	name: string | null
+	company?: string | null
+}
+
 interface QuickNoteDialogProps {
 	open: boolean
 	onOpenChange: (open: boolean) => void
-	onSave: (note: {
+	onSave: (data: {
 		title: string
 		content: string
 		noteType: NoteType
 		associations: NoteAssociations
 		tags: string[]
 	}) => Promise<void>
+	projectId?: string
 	defaultAssociations?: NoteAssociations
 	availablePeople?: Array<{ id: string; name: string }>
 	availableOrgs?: Array<{ id: string; name: string }>
 	availableOpportunities?: Array<{ id: string; name: string }>
+	defaultType?: NoteType
 }
 
 export function QuickNoteDialog({
 	open,
 	onOpenChange,
 	onSave,
+	projectId,
 	defaultAssociations = {},
 	availablePeople = [],
 	availableOrgs = [],
 	availableOpportunities = [],
+	defaultType = "note",
 }: QuickNoteDialogProps) {
 	const titleId = useId()
-	const noteTypeId = useId()
 	const contentId = useId()
 	const tagsId = useId()
 
+	const [step, setStep] = useState<DialogStep>("content")
 	const [title, setTitle] = useState("")
 	const [content, setContent] = useState("")
-	const [noteType, setNoteType] = useState<NoteType>("meeting_notes")
+	const [noteType, setNoteType] = useState<NoteType>(defaultType)
 	const [associations, setAssociations] = useState<NoteAssociations>(defaultAssociations)
 	const [tags, setTags] = useState<string[]>([])
 	const [tagInput, setTagInput] = useState("")
 	const [isSaving, setIsSaving] = useState(false)
 
-	const handleSave = async () => {
-		if (!content.trim()) return
+	// People fetching for association step
+	const [people, setPeople] = useState<Person[]>([])
+	const [selectedPeople, setSelectedPeople] = useState<Person[]>([])
+	const [isLoadingPeople, setIsLoadingPeople] = useState(false)
+	const [searchQuery, setSearchQuery] = useState("")
+	const [showCreatePerson, setShowCreatePerson] = useState(false)
+	const [newPersonFirstName, setNewPersonFirstName] = useState("")
+	const [newPersonLastName, setNewPersonLastName] = useState("")
+	const [newPersonCompany, setNewPersonCompany] = useState("")
+	const supabase = createClient()
 
+	// Fetch people when entering association step
+	useEffect(() => {
+		if (step === "associate" && projectId && !isLoadingPeople && people.length === 0) {
+			setIsLoadingPeople(true)
+			supabase
+				.from("people")
+				.select("id, name, company")
+				.eq("project_id", projectId)
+				.order("name")
+				.then(({ data }) => {
+					if (data) setPeople(data as Person[])
+				})
+				.finally(() => setIsLoadingPeople(false))
+		}
+	}, [step, projectId, isLoadingPeople, people.length, supabase])
+
+	// Reset state when dialog closes
+	useEffect(() => {
+		if (!open) {
+			setStep("content")
+			setSelectedPeople([])
+			setSearchQuery("")
+			setShowCreatePerson(false)
+			setNewPersonFirstName("")
+			setNewPersonLastName("")
+			setNewPersonCompany("")
+		}
+	}, [open])
+
+	// Speech-to-text for voice input
+	const handleVoiceTranscription = useCallback(
+		(transcript: string) => {
+			const trimmed = transcript.trim()
+			if (trimmed) {
+				setContent((prev) => (prev ? `${prev}\n\n${trimmed}` : trimmed))
+			}
+		},
+		[]
+	)
+
+	const {
+		startRecording,
+		stopRecording,
+		isRecording: isVoiceRecording,
+		isTranscribing,
+		error: voiceError,
+		isSupported: isVoiceSupported,
+	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
+
+	// Proceed to association step
+	const handleNext = () => {
+		// For tasks, title is required; for notes, content is required
+		if (noteType === "task" && !title.trim()) return
+		if (noteType === "note" && !content.trim()) return
+
+		// If projectId provided, go to association step; otherwise save directly
+		if (projectId) {
+			setStep("associate")
+		} else {
+			handleSave()
+		}
+	}
+
+	const handleSave = async () => {
 		setIsSaving(true)
 		try {
+			const defaultTitle = noteType === "task"
+				? `Task - ${new Date().toLocaleDateString()}`
+				: `Note - ${new Date().toLocaleDateString()}`
+
+			// Create new person if needed
+			const personIds: string[] = selectedPeople.map((p) => p.id)
+			if (showCreatePerson && newPersonFirstName.trim() && projectId) {
+				const { data, error } = await supabase
+					.from("people")
+					.insert({
+						name: `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim(),
+						project_id: projectId,
+						company: newPersonCompany.trim() || null,
+					})
+					.select()
+					.single()
+
+				if (!error && data) {
+					personIds.push(data.id)
+				}
+			}
+
 			await onSave({
-				title: title || `${noteType.replace(/_/g, " ")} - ${new Date().toLocaleDateString()}`,
+				title: title || defaultTitle,
 				content,
 				noteType,
-				associations,
+				associations: {
+					...associations,
+					people: personIds.length > 0 ? personIds : associations.people,
+				},
 				tags,
 			})
 
 			// Reset form
 			setTitle("")
 			setContent("")
-			setNoteType("meeting_notes")
+			setNoteType(defaultType)
 			setAssociations({})
 			setTags([])
 			setTagInput("")
+			setStep("content")
+			setSelectedPeople([])
 			onOpenChange(false)
 		} catch (error) {
 			console.error("Failed to save note:", error)
@@ -88,6 +201,15 @@ export function QuickNoteDialog({
 			setIsSaving(false)
 		}
 	}
+
+	// Filter people based on search
+	const filteredPeople = searchQuery.trim()
+		? people.filter(
+				(p) =>
+					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+			)
+		: people.slice(0, 8)
 
 	const addTag = () => {
 		const tag = tagInput.trim().toLowerCase()
@@ -125,59 +247,258 @@ export function QuickNoteDialog({
 		})
 	}
 
+	// Association step UI
+	if (step === "associate") {
+		return (
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent className="max-w-lg">
+					<DialogHeader>
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => setStep("content")}
+								className="text-muted-foreground hover:text-foreground"
+							>
+								<ChevronLeft className="h-5 w-5" />
+							</button>
+							<DialogTitle>Link to People</DialogTitle>
+						</div>
+						<DialogDescription>
+							Associate this {noteType} with people (optional)
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-4 py-4">
+						{!showCreatePerson ? (
+							<>
+								{/* Search */}
+								<div className="relative">
+									<Search className="absolute top-3 left-3 h-4 w-4 text-slate-400" />
+									<Input
+										placeholder="Search people..."
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className="pl-9"
+									/>
+								</div>
+
+								{/* People List */}
+								<div className="max-h-64 space-y-2 overflow-y-auto">
+									{isLoadingPeople ? (
+										<p className="py-4 text-center text-muted-foreground text-sm">Loading...</p>
+									) : filteredPeople.length === 0 ? (
+										<p className="py-4 text-center text-muted-foreground text-sm">
+											{searchQuery ? "No people found" : "No people in this project yet"}
+										</p>
+									) : (
+										filteredPeople.map((person) => {
+											const isSelected = selectedPeople.some((p) => p.id === person.id)
+											return (
+												<button
+													key={person.id}
+													type="button"
+													onClick={() =>
+														setSelectedPeople((prev) =>
+															isSelected ? prev.filter((p) => p.id !== person.id) : [...prev, person]
+														)
+													}
+													className={cn(
+														"flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all",
+														isSelected
+															? "border-blue-500 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
+															: "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+													)}
+												>
+													<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-500 text-white">
+														<Users className="h-5 w-5" />
+													</div>
+													<div className="min-w-0 flex-1">
+														<p className="truncate font-medium text-sm">{person.name}</p>
+														{person.company && (
+															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
+														)}
+													</div>
+													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
+												</button>
+											)
+										})
+									)}
+								</div>
+
+								{/* Create New */}
+								<button
+									type="button"
+									onClick={() => setShowCreatePerson(true)}
+									className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+								>
+									<div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-300 dark:border-slate-600">
+										<UserPlus className="h-5 w-5 text-slate-400" />
+									</div>
+									<span className="font-medium text-muted-foreground text-sm">Add new person</span>
+								</button>
+							</>
+						) : (
+							/* Create Person Form */
+							<div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+								<div className="flex items-center justify-between">
+									<h3 className="font-medium text-sm">New Person</h3>
+									<button
+										type="button"
+										onClick={() => {
+											setShowCreatePerson(false)
+											setNewPersonFirstName("")
+											setNewPersonLastName("")
+											setNewPersonCompany("")
+										}}
+										className="text-muted-foreground text-xs hover:text-foreground"
+									>
+										Cancel
+									</button>
+								</div>
+								<div className="grid grid-cols-2 gap-3">
+									<Input
+										placeholder="First name"
+										value={newPersonFirstName}
+										onChange={(e) => setNewPersonFirstName(e.target.value)}
+										autoFocus
+									/>
+									<Input
+										placeholder="Last name"
+										value={newPersonLastName}
+										onChange={(e) => setNewPersonLastName(e.target.value)}
+									/>
+								</div>
+								<Input
+									placeholder="Company (optional)"
+									value={newPersonCompany}
+									onChange={(e) => setNewPersonCompany(e.target.value)}
+								/>
+							</div>
+						)}
+					</div>
+
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => {
+								setSelectedPeople([])
+								setShowCreatePerson(false)
+								handleSave()
+							}}
+							disabled={isSaving}
+						>
+							Skip
+						</Button>
+						<Button
+							onClick={handleSave}
+							disabled={isSaving || (showCreatePerson && !newPersonFirstName.trim())}
+						>
+							{isSaving ? "Saving..." : selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim())
+								? `Save & Link ${selectedPeople.length + (showCreatePerson && newPersonFirstName.trim() ? 1 : 0)}`
+								: noteType === "task" ? "Create Task" : "Save Note"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		)
+	}
+
+	// Content step UI (default)
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="h-[100vh] max-h-[100vh] max-w-2xl overflow-y-auto sm:h-[75vh] sm:max-h-[75vh]">
 				<DialogHeader>
-					<DialogTitle>Quick Note</DialogTitle>
+					<DialogTitle>{noteType === "task" ? "Quick Task" : "Quick Note"}</DialogTitle>
 					<DialogDescription className="hidden sm:block">
-						Capture notes, observations, or ideas. Associate with people, organizations, or opportunities.
+						{noteType === "task"
+							? "Create a task to track work or follow-ups."
+							: "Capture notes, observations, or ideas."}
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="flex h-full flex-col space-y-4 py-4">
-					{/* Title (optional) */}
+					{/* Type Toggle */}
+					<div className="flex gap-2">
+						<Button
+							type="button"
+							variant={noteType === "note" ? "default" : "outline"}
+							size="sm"
+							onClick={() => setNoteType("note")}
+							className="flex-1 gap-2"
+						>
+							<StickyNote className="h-4 w-4" />
+							Note
+						</Button>
+						<Button
+							type="button"
+							variant={noteType === "task" ? "default" : "outline"}
+							size="sm"
+							onClick={() => setNoteType("task")}
+							className="flex-1 gap-2"
+						>
+							<CheckSquare className="h-4 w-4" />
+							Task
+						</Button>
+					</div>
+
+					{/* Title (optional for notes, required for tasks) */}
 					<div className="space-y-2">
-						<Label htmlFor={titleId}>Title (optional)</Label>
+						<Label htmlFor={titleId}>
+							{noteType === "task" ? "Task Title" : "Title (optional)"}
+						</Label>
 						<Input
 							id={titleId}
-							placeholder="Auto-generated if left blank"
+							placeholder={noteType === "task" ? "What needs to be done?" : "Auto-generated if left blank"}
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 						/>
 					</div>
 
-					{/* Note Type */}
-					<div className="hidden space-y-2 sm:block">
-						<Label htmlFor={noteTypeId}>Note Type</Label>
-						<Select value={noteType} onValueChange={(value) => setNoteType(value as NoteType)}>
-							<SelectTrigger id={noteTypeId}>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="meeting_notes">Meeting Notes</SelectItem>
-								<SelectItem value="call_notes">Call Notes</SelectItem>
-								<SelectItem value="research_notes">Research Notes</SelectItem>
-								<SelectItem value="observation">Observation</SelectItem>
-								<SelectItem value="idea">Idea</SelectItem>
-								<SelectItem value="followup">Follow-up</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-
 					{/* Content */}
 					<div className="flex-1 space-y-2">
-						<Label htmlFor={contentId}>Content (Markdown supported)</Label>
+						<div className="flex items-center justify-between">
+							<Label htmlFor={contentId}>
+								{noteType === "task" ? "Description (optional)" : "Content"}
+							</Label>
+							{isVoiceSupported && (
+								<Button
+									type="button"
+									variant={isVoiceRecording ? "destructive" : "outline"}
+									size="sm"
+									onClick={isVoiceRecording ? stopRecording : startRecording}
+									disabled={isTranscribing}
+									className={cn("gap-2", isVoiceRecording && "animate-pulse")}
+								>
+									{isTranscribing ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin" />
+											Transcribing...
+										</>
+									) : isVoiceRecording ? (
+										<>
+											<Square className="h-3 w-3 fill-current" />
+											Stop
+										</>
+									) : (
+										<>
+											<Mic className="h-4 w-4" />
+											Voice
+										</>
+									)}
+								</Button>
+							)}
+						</div>
+						{voiceError && <p className="text-destructive text-xs">{voiceError}</p>}
 						<Textarea
 							id={contentId}
-							placeholder="Write your note here... You can use markdown formatting."
+							placeholder={noteType === "task" ? "Add details about what needs to be done..." : "Write your note here or use voice input..."}
 							value={content}
 							onChange={(e) => setContent(e.target.value)}
 							className="h-full min-h-[6rem] resize-none font-mono text-sm sm:min-h-[10rem]"
 						/>
 					</div>
 
-					{/* People Associations */}
+					{/* People Associations - only show if availablePeople provided (legacy support) */}
 					{availablePeople.length > 0 && (
 						<div className="space-y-2">
 							<Label>Associated People</Label>
@@ -273,8 +594,11 @@ export function QuickNoteDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
 						Cancel
 					</Button>
-					<Button onClick={handleSave} disabled={!content.trim() || isSaving}>
-						{isSaving ? "Saving..." : "Save Note"}
+					<Button
+						onClick={handleNext}
+						disabled={isSaving || (noteType === "task" ? !title.trim() : !content.trim())}
+					>
+						{isSaving ? "Saving..." : projectId ? "Next" : noteType === "task" ? "Create Task" : "Save Note"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

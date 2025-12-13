@@ -1,27 +1,14 @@
-import {
-	ArrowLeft,
-	CheckCircle,
-	File,
-	Link2,
-	ListTodo,
-	Mic,
-	PenLine,
-	Search,
-	Sparkles,
-	Upload,
-	UserPlus,
-	Users,
-	Video,
-} from "lucide-react"
+import { CheckCircle, File, Link2, Mic, PenLine, Search, Sparkles, Upload, UserPlus, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { Button } from "~/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { useRecordNow } from "~/hooks/useRecordNow"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
-import type { Organization, Person } from "~/types"
+import type { Person } from "~/types"
 
 interface UploadScreenProps {
 	onNext: (
@@ -35,37 +22,78 @@ interface UploadScreenProps {
 			sourceType?: string
 		}
 	) => void
-	onUploadFromUrl: (url: string) => Promise<void>
+	onUploadFromUrl: (url: string, personId?: string) => Promise<void>
 	onBack: () => void
 	projectId?: string
 	error?: string
 }
 
-type AttachmentStep = "select" | "search-existing" | "create-new"
+type UploadStep = "select" | "associate"
+type ActionType = "upload" | "record"
 
 export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectId, error }: UploadScreenProps) {
+	// File/URL state
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const [recordMode, setRecordMode] = useState<"voice_memo" | "conversation">("voice_memo")
-	const [isDragOver, setIsDragOver] = useState(false)
-	const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
-	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
-	const [showUrlDialog, setShowUrlDialog] = useState(false)
 	const [urlToUpload, setUrlToUpload] = useState("")
-	const [isSubmittingUrl, setIsSubmittingUrl] = useState(false)
+	const [uploadTab, setUploadTab] = useState<"file" | "url">("file")
+	const [isDragOver, setIsDragOver] = useState(false)
+
+	// Upload flow state
+	const [uploadStep, setUploadStep] = useState<UploadStep>("select")
+	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [urlError, setUrlError] = useState<string | null>(null)
-	const [attachmentStep, setAttachmentStep] = useState<AttachmentStep>("select")
+
+	// Track which action triggered the association step
+	const [pendingAction, setPendingAction] = useState<ActionType | null>(null)
+
+	// Person association state - supports multiple people
 	const [searchQuery, setSearchQuery] = useState("")
+	const [people, setPeople] = useState<Person[]>([])
+	const [isLoadingPeople, setIsLoadingPeople] = useState(false)
+	const [selectedPeople, setSelectedPeople] = useState<Person[]>([])
+	const [showCreatePerson, setShowCreatePerson] = useState(false)
 	const [newPersonFirstName, setNewPersonFirstName] = useState("")
 	const [newPersonLastName, setNewPersonLastName] = useState("")
 	const [newPersonCompany, setNewPersonCompany] = useState("")
-	const [people, setPeople] = useState<Person[]>([])
-	const [organizations, setOrganizations] = useState<Organization[]>([])
-	const [isLoadingSearch, setIsLoadingSearch] = useState(false)
+
+	// Dialogs
+	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
+	const [showUploadMethodDialog, setShowUploadMethodDialog] = useState(false)
+
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const supabase = createClient()
+	const { recordNow, isRecording } = useRecordNow()
 
+	// Detect file type for setting source_type
+	const getFileType = useCallback((file: File): string => {
+		const extension = file.name.split(".").pop()?.toLowerCase()
+		const mimeType = file.type.toLowerCase()
+
+		if (mimeType.startsWith("text/") || ["txt", "md", "markdown"].includes(extension || "")) {
+			return "transcript"
+		}
+		if (
+			mimeType.includes("pdf") ||
+			mimeType.includes("document") ||
+			mimeType.includes("spreadsheet") ||
+			["pdf", "doc", "docx", "csv", "xlsx"].includes(extension || "")
+		) {
+			return "document"
+		}
+		if (mimeType.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(extension || "")) {
+			return "video_upload"
+		}
+		if (mimeType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(extension || "")) {
+			return "audio_upload"
+		}
+		return "document"
+	}, [])
+
+	// File handlers
 	const handleFileSelect = (file: File) => {
 		setSelectedFile(file)
+		setPendingAction("upload")
+		setUploadStep("associate")
 	}
 
 	const handleDragOver = (e: React.DragEvent) => {
@@ -98,122 +126,142 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 		fileInputRef.current?.click()
 	}
 
-	const { recordNow, isRecording } = useRecordNow()
+	// URL handler
+	const handleUrlContinue = () => {
+		if (!urlToUpload.trim()) {
+			setUrlError("Please enter a valid URL")
+			return
+		}
+		setUrlError(null)
+		setPendingAction("upload")
+		setUploadStep("associate")
+	}
 
-	// Detect file type for setting source_type
-	const getFileType = useCallback((file: File): string => {
-		const extension = file.name.split(".").pop()?.toLowerCase()
-		const mimeType = file.type.toLowerCase()
-
-		// Text/document files
-		if (mimeType.startsWith("text/") || ["txt", "md", "markdown"].includes(extension || "")) {
-			return "transcript"
-		}
-		if (
-			mimeType.includes("pdf") ||
-			mimeType.includes("document") ||
-			mimeType.includes("spreadsheet") ||
-			["pdf", "doc", "docx", "csv", "xlsx"].includes(extension || "")
-		) {
-			return "document"
-		}
-		// Video files
-		if (mimeType.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(extension || "")) {
-			return "video_upload"
-		}
-		// Audio files
-		if (mimeType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(extension || "")) {
-			return "audio_upload"
-		}
-		// Default
-		return "document"
+	// Record handler - show person association first
+	const handleRecordClick = useCallback(() => {
+		setPendingAction("record")
+		setUploadStep("associate")
 	}, [])
 
-	const handleRecordNow = useCallback(() => {
-		// If voice memo mode, show attachment dialog first
-		if (recordMode === "voice_memo") {
-			setShowAttachmentDialog(true)
-			setAttachmentStep("select")
-			setSearchQuery("")
-		} else {
-			// For conversation mode, start recording directly
-			recordNow({ projectId, mode: "interview" })
-		}
-	}, [projectId, recordNow, recordMode])
+	// Start recording with optional people (pass all via comma-separated personIds param)
+	const handleStartRecording = useCallback(
+		(personIds: string[]) => {
+			// Pass all personIds via URL param - realtime.tsx parses comma-separated
+			const urlParams = personIds.length > 0 ? `personIds=${personIds.join(",")}` : ""
+			recordNow({ projectId, mode: "interview", urlParams })
+		},
+		[projectId, recordNow]
+	)
 
-	const handleAttachmentSelect = useCallback(
-		async (attachmentType: "todo" | "existing" | "new" | "general" | "skip", entityId?: string) => {
-			let finalEntityId = entityId
+	// Process action (upload or record) with optional people
+	const handleProcessAction = useCallback(async () => {
+		setIsSubmitting(true)
 
-			// If creating new person, insert into database first
-			if (attachmentType === "new" && newPersonFirstName.trim()) {
-				try {
-					const { data, error } = await supabase
-						.from("people")
-						.insert({
-							name: `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim(),
-							project_id: projectId,
-							company: newPersonCompany.trim() || null,
-						})
-						.select()
-						.single()
+		try {
+			// Collect all person IDs (existing selections + newly created)
+			const personIds: string[] = selectedPeople.map((p) => p.id)
 
-					if (error) throw error
-					if (data) finalEntityId = data.id
-				} catch (error) {
-					console.error("Error creating person:", error)
-					// Continue anyway - we can link later
+			// Create new person if needed
+			if (showCreatePerson && newPersonFirstName.trim()) {
+				const { data, error } = await supabase
+					.from("people")
+					.insert({
+						name: `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim(),
+						project_id: projectId,
+						company: newPersonCompany.trim() || null,
+					})
+					.select()
+					.single()
+
+				if (!error && data) {
+					personIds.push(data.id)
 				}
 			}
 
-			setShowAttachmentDialog(false)
-			setAttachmentStep("select")
-			setSearchQuery("")
-			setNewPersonFirstName("")
-			setNewPersonLastName("")
-			setNewPersonCompany("")
-
-			// If we have a selected file, proceed with file upload
-			if (selectedFile) {
-				// Prepare attachment info for the upload API
-				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || ""
-				const sourceType = getFileType(selectedFile)
-
-				// For file uploads (not voice recording), default to full interview analysis
-				// Users explicitly choose voice memo mode by clicking the "Voice Memo" button and recording
-				// File uploads are assumed to be interviews/conversations that need full analysis
-				const mediaType = "interview"
-
-				// Call onNext with the file and attachment data
-				onNext(selectedFile, mediaType, projectId, {
-					attachType: attachmentType,
-					entityId: finalEntityId,
-					fileExtension,
-					sourceType,
-				})
+			// Handle recording - pass all person IDs
+			if (pendingAction === "record") {
+				handleStartRecording(personIds)
 				return
 			}
 
-			// Otherwise, start voice recording with attachment info via URL params
-			const params = new URLSearchParams()
-			params.set("attachType", attachmentType)
-			if (finalEntityId) params.set("entityId", finalEntityId)
+			// Handle file upload - for now, pass first person (API supports single)
+			const firstPersonId = personIds[0]
+			if (selectedFile) {
+				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || ""
+				const sourceType = getFileType(selectedFile)
 
-			recordNow({ projectId, urlParams: params.toString(), mode: "notes" })
-		},
-		[
-			projectId,
-			recordNow,
-			supabase,
-			newPersonFirstName,
-			newPersonLastName,
-			newPersonCompany,
-			selectedFile,
-			getFileType,
-			onNext,
-		]
-	)
+				onNext(selectedFile, "interview", projectId, {
+					attachType: firstPersonId ? "existing" : "skip",
+					entityId: firstPersonId,
+					fileExtension,
+					sourceType,
+				})
+			} else if (urlToUpload.trim()) {
+				await onUploadFromUrl(urlToUpload.trim(), firstPersonId)
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Failed to process"
+			setUrlError(message)
+		} finally {
+			setIsSubmitting(false)
+		}
+	}, [
+		selectedFile,
+		urlToUpload,
+		selectedPeople,
+		showCreatePerson,
+		newPersonFirstName,
+		newPersonLastName,
+		newPersonCompany,
+		projectId,
+		supabase,
+		getFileType,
+		onNext,
+		onUploadFromUrl,
+		pendingAction,
+		handleStartRecording,
+	])
 
+	// Reset to initial state
+	const handleBack = () => {
+		setUploadStep("select")
+		setSelectedFile(null)
+		setUrlToUpload("")
+		setSelectedPeople([])
+		setShowCreatePerson(false)
+		setSearchQuery("")
+		setNewPersonFirstName("")
+		setNewPersonLastName("")
+		setNewPersonCompany("")
+		setPendingAction(null)
+	}
+
+	// Fetch people when entering association step
+	useEffect(() => {
+		if (uploadStep === "associate" && projectId && !isLoadingPeople && people.length === 0) {
+			setIsLoadingPeople(true)
+			supabase
+				.from("people")
+				.select("*")
+				.eq("project_id", projectId)
+				.order("name")
+				.then(({ data }) => {
+					if (data) setPeople(data as Person[])
+				})
+				.finally(() => setIsLoadingPeople(false))
+		}
+	}, [uploadStep, projectId, isLoadingPeople, people.length, supabase])
+
+	// Filter people based on search
+	const filteredPeople = searchQuery.trim()
+		? people.filter(
+			(p) =>
+				p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+		)
+		: people.slice(0, 8)
+
+	// Quick note handler
 	const handleSaveNote = useCallback(
 		async (note: {
 			title: string
@@ -222,16 +270,11 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 			associations: Record<string, unknown>
 			tags: string[]
 		}) => {
-			if (!projectId) {
-				console.error("No project ID available")
-				throw new Error("Project ID is required")
-			}
+			if (!projectId) throw new Error("Project ID is required")
 
 			const response = await fetch("/api/notes/create", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					projectId,
 					title: note.title,
@@ -244,98 +287,11 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}))
-				console.error("Failed to save note:", errorData)
 				throw new Error(errorData.details || errorData.error || "Failed to save note")
 			}
 		},
 		[projectId]
 	)
-
-	const handleShowSearch = useCallback(() => {
-		setAttachmentStep("search-existing")
-	}, [])
-
-	const handleShowCreateForm = useCallback(() => {
-		setAttachmentStep("create-new")
-		setNewPersonFirstName("")
-		setNewPersonLastName("")
-		setNewPersonCompany("")
-	}, [])
-
-	const handleBackToSelect = useCallback(() => {
-		setAttachmentStep("select")
-		setSearchQuery("")
-		setNewPersonFirstName("")
-		setNewPersonLastName("")
-		setNewPersonCompany("")
-	}, [])
-
-	const handleSubmitUrl = useCallback(async () => {
-		if (!urlToUpload.trim()) {
-			setUrlError("Please enter a valid URL")
-			return
-		}
-
-		try {
-			setIsSubmittingUrl(true)
-			setUrlError(null)
-			await onUploadFromUrl(urlToUpload.trim())
-			setShowUrlDialog(false)
-			setUrlToUpload("")
-		} catch (error) {
-			const message = error instanceof Error ? error.message : "Failed to upload from URL"
-			setUrlError(message)
-		} finally {
-			setIsSubmittingUrl(false)
-		}
-	}, [onUploadFromUrl, urlToUpload])
-
-	// Fetch people and organizations when search dialog opens
-	useEffect(() => {
-		if (attachmentStep === "search-existing" && projectId && !isLoadingSearch && people.length === 0) {
-			setIsLoadingSearch(true)
-			Promise.all([
-				supabase.from("people").select("*").eq("project_id", projectId).order("name"),
-				supabase.from("organizations").select("*").eq("project_id", projectId).order("name"),
-			])
-				.then(([peopleRes, orgsRes]) => {
-					if (peopleRes.data) setPeople(peopleRes.data as Person[])
-					if (orgsRes.data) setOrganizations(orgsRes.data as Organization[])
-				})
-				.finally(() => setIsLoadingSearch(false))
-		}
-	}, [attachmentStep, projectId, isLoadingSearch, people.length, supabase])
-
-	// Filter results based on search query
-	const filteredResults = useCallback(() => {
-		const query = searchQuery.toLowerCase().trim()
-		if (!query) return [...people, ...organizations].slice(0, 10)
-
-		const matches = [
-			...people.filter(
-				(p) =>
-					p.name?.toLowerCase().includes(query) ||
-					p.title?.toLowerCase().includes(query) ||
-					p.company?.toLowerCase().includes(query)
-			),
-			...organizations.filter((o) => o.name?.toLowerCase().includes(query)),
-		]
-		return matches.slice(0, 10)
-	}, [searchQuery, people, organizations])
-
-	const handleNext = useCallback(() => {
-		if (selectedFile) {
-			// Show attachment dialog for file uploads
-			setShowAttachmentDialog(true)
-			setAttachmentStep("select")
-			setSearchQuery("")
-		}
-	}, [selectedFile])
-
-	const _recordModeOptions: { value: "voice_memo" | "conversation"; label: string; helper: string }[] = [
-		{ value: "voice_memo", label: "Voice Memo", helper: "Updates, Notes, Todos, etc." },
-		{ value: "conversation", label: "Live Conversation", helper: "Calls, meetings, interviews" },
-	]
 
 	const formatFileSize = (bytes: number): string => {
 		if (bytes === 0) return "0 Bytes"
@@ -345,21 +301,199 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 		return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 	}
 
-	const getFileIcon = (file: File) => {
-		if (file.type.startsWith("video/")) return <Video className="h-6 w-6" />
-		if (file.type.startsWith("audio/")) return <Mic className="h-6 w-6" />
-		return <File className="h-6 w-6" />
+	// ─────────────────────────────────────────────────────────────
+	// RENDER: Association Step
+	// ─────────────────────────────────────────────────────────────
+	if (uploadStep === "associate") {
+		const contentLabel = selectedFile ? selectedFile.name : urlToUpload
+		const isRecording = pendingAction === "record"
+
+		return (
+			<div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+				<div className="relative mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 py-8">
+					{/* Header */}
+					<div className="mb-6 w-full">
+						<button
+							type="button"
+							onClick={handleBack}
+							className="mb-4 flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
+						>
+							<X className="h-4 w-4" />
+							Cancel
+						</button>
+						<h2 className="font-semibold text-xl text-slate-900 dark:text-white">
+							Who is this conversation with?
+						</h2>
+						{!isRecording && contentLabel && (
+							<p className="mt-1 text-muted-foreground text-sm">
+								{selectedFile ? "Uploading" : "Importing"}: {contentLabel}
+							</p>
+						)}
+					</div>
+
+					{/* Person Selection */}
+					<div className="w-full space-y-4">
+						{!showCreatePerson ? (
+							<>
+								{/* Search */}
+								<div className="relative">
+									<Search className="absolute top-3 left-3 h-4 w-4 text-slate-400" />
+									<Input
+										placeholder="Search people..."
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className="pl-9"
+									/>
+								</div>
+
+								{/* People List */}
+								<div className="max-h-64 space-y-2 overflow-y-auto">
+									{isLoadingPeople ? (
+										<p className="py-4 text-center text-muted-foreground text-sm">Loading...</p>
+									) : filteredPeople.length === 0 ? (
+										<p className="py-4 text-center text-muted-foreground text-sm">
+											{searchQuery ? "No people found" : "No people in this project yet"}
+										</p>
+									) : (
+										filteredPeople.map((person) => {
+											const isSelected = selectedPeople.some((p) => p.id === person.id)
+											return (
+												<button
+													key={person.id}
+													type="button"
+													onClick={() =>
+														setSelectedPeople((prev) =>
+															isSelected ? prev.filter((p) => p.id !== person.id) : [...prev, person]
+														)
+													}
+													className={cn(
+														"flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all",
+														isSelected
+															? "border-blue-500 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
+															: "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+													)}
+												>
+													<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-500 text-white">
+														<Users className="h-5 w-5" />
+													</div>
+													<div className="min-w-0 flex-1">
+														<p className="truncate font-medium text-sm">{person.name}</p>
+														{person.company && (
+															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
+														)}
+													</div>
+													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
+												</button>
+											)
+										})
+									)}
+								</div>
+
+								{/* Create New */}
+								<button
+									type="button"
+									onClick={() => setShowCreatePerson(true)}
+									className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+								>
+									<div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-300 dark:border-slate-600">
+										<UserPlus className="h-5 w-5 text-slate-400" />
+									</div>
+									<span className="font-medium text-muted-foreground text-sm">Add new person</span>
+								</button>
+							</>
+						) : (
+							/* Create Person Form */
+							<div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+								<div className="flex items-center justify-between">
+									<h3 className="font-medium text-sm">New Person</h3>
+									<button
+										type="button"
+										onClick={() => {
+											setShowCreatePerson(false)
+											setNewPersonFirstName("")
+											setNewPersonLastName("")
+											setNewPersonCompany("")
+										}}
+										className="text-muted-foreground text-xs hover:text-foreground"
+									>
+										Cancel
+									</button>
+								</div>
+								<div className="grid grid-cols-2 gap-3">
+									<Input
+										placeholder="First name"
+										value={newPersonFirstName}
+										onChange={(e) => setNewPersonFirstName(e.target.value)}
+										autoFocus
+									/>
+									<Input
+										placeholder="Last name"
+										value={newPersonLastName}
+										onChange={(e) => setNewPersonLastName(e.target.value)}
+									/>
+								</div>
+								<Input
+									placeholder="Company (optional)"
+									value={newPersonCompany}
+									onChange={(e) => setNewPersonCompany(e.target.value)}
+								/>
+							</div>
+						)}
+
+						{/* Error */}
+						{urlError && <p className="text-red-500 text-sm">{urlError}</p>}
+
+						{/* Actions */}
+						<div className="flex gap-3 pt-4">
+							<Button
+								variant="outline"
+								className="flex-1"
+								onClick={() => {
+									setSelectedPeople([])
+									setShowCreatePerson(false)
+									handleProcessAction()
+								}}
+								disabled={isSubmitting}
+							>
+								Skip
+							</Button>
+							<Button
+								className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+								onClick={handleProcessAction}
+								disabled={isSubmitting || (showCreatePerson && !newPersonFirstName.trim())}
+							>
+								{isSubmitting ? (
+									"Processing..."
+								) : (
+									<>
+										<Sparkles className="mr-2 h-4 w-4" />
+										{(() => {
+											const hasPersonSelected =
+												selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim())
+											const personCount =
+												selectedPeople.length + (showCreatePerson && newPersonFirstName.trim() ? 1 : 0)
+											if (isRecording) {
+												if (!hasPersonSelected) return "Start Recording"
+												return personCount > 1 ? `Record & Link ${personCount}` : "Record & Link"
+											}
+											if (!hasPersonSelected) return "Upload"
+											return personCount > 1 ? `Upload & Link ${personCount}` : "Upload & Link"
+										})()}
+									</>
+								)}
+							</Button>
+						</div>
+					</div>
+				</div>
+			</div>
+		)
 	}
 
+	// ─────────────────────────────────────────────────────────────
+	// RENDER: Main Selection Screen
+	// ─────────────────────────────────────────────────────────────
 	return (
 		<div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
-			{/* Subtle animated background gradient */}
-			<div className="pointer-events-none absolute inset-0 opacity-30">
-				<div className="-left-40 absolute top-0 h-96 w-96 animate-blob rounded-full bg-purple-300 opacity-70 mix-blend-multiply blur-3xl filter dark:bg-purple-900/20" />
-				<div className="animation-delay-2000 -right-40 absolute top-0 h-96 w-96 animate-blob rounded-full bg-blue-300 opacity-70 mix-blend-multiply blur-3xl filter dark:bg-blue-900/20" />
-				<div className="animation-delay-4000 -bottom-40 absolute left-1/2 h-96 w-96 animate-blob rounded-full bg-pink-300 opacity-70 mix-blend-multiply blur-3xl filter dark:bg-pink-900/20" />
-			</div>
-
 			{/* Hidden file input */}
 			<input
 				ref={fileInputRef}
@@ -370,488 +504,158 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 			/>
 
 			{/* Main Content */}
-			<div className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-4 sm:px-6 sm:py-12 lg:px-8">
-				{/* Header */}
-				{/* <div className="mb-12 text-center">
-					<h1 className="mb-3 font-bold text-4xl text-slate-900 tracking-tight dark:text-white">
-						Add Conversations and Notes
-					</h1>
-				</div> */}
-
+			<div className="relative mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-4 py-8">
 				{/* Error Alert */}
 				{error && (
-					<div className="fade-in slide-in-from-top-2 mb-8 w-full animate-in duration-300">
-						<div className="rounded-2xl border border-red-200 bg-red-50/80 p-5 backdrop-blur-sm dark:border-red-900/50 dark:bg-red-950/30">
-							<div className="flex gap-4">
-								<div className="flex-shrink-0">
-									<div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-										<svg className="h-5 w-5 text-red-600 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
-											<path
-												fillRule="evenodd"
-												d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-												clipRule="evenodd"
-											/>
-										</svg>
-									</div>
-								</div>
-								<div className="flex-1">
-									<h3 className="font-semibold text-red-900 text-sm dark:text-red-200">Upload Failed</h3>
-									<p className="mt-1 text-red-700 text-sm dark:text-red-300">{error}</p>
-								</div>
-							</div>
-						</div>
+					<div className="mb-6 w-full rounded-xl border border-red-200 bg-red-50/80 p-4 dark:border-red-900/50 dark:bg-red-950/30">
+						<p className="text-red-700 text-sm dark:text-red-300">{error}</p>
 					</div>
 				)}
 
-				{/* Main Options */}
-				<div className="w-full space-y-4">
-					{/* Record Mode Selection - Mobile Friendly */}
-					<div className="space-y-3">
-						<h3 className="text-center font-semibold text-slate-900 text-xl sm:text-2xl dark:text-white">
-							Quick Links
-						</h3>
-
-						<div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-2">
-							{/* Voice Memo Button */}
-							<button
-								type="button"
-								onClick={() => {
-									setRecordMode("voice_memo")
-									handleRecordNow()
-								}}
-								disabled={isRecording}
-								className={cn(
-									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
-									"cursor-pointer hover:scale-[1.01]",
-									recordMode === "voice_memo" && "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-950",
-									isRecording && recordMode === "voice_memo" && "animate-pulse cursor-not-allowed opacity-50"
-								)}
-							>
-								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-all duration-300 group-hover:scale-105 group-hover:shadow-red-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
-										<Mic className="h-6 w-6 text-white sm:h-7 sm:w-7" />
-									</div>
-									<div className="flex-1 text-center sm:text-left">
-										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
-											Voice Memo
-										</h4>
-										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">
-											Updates, Notes, Todos, etc.
-										</p>
-									</div>
-								</div>
-							</button>
-
-							{/* Live Conversation Button */}
-							<button
-								type="button"
-								onClick={() => {
-									setRecordMode("conversation")
-									handleRecordNow()
-								}}
-								disabled={isRecording}
-								className={cn(
-									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
-									"cursor-pointer hover:scale-[1.01]",
-									recordMode === "conversation" && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-950",
-									isRecording && recordMode === "conversation" && "animate-pulse cursor-not-allowed opacity-50"
-								)}
-							>
-								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-blue-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
-										<Users className="h-6 w-6 text-white sm:h-7 sm:w-7" />
-									</div>
-									<div className="flex-1 text-center sm:text-left">
-										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
-											Live Conversation
-										</h4>
-										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">Calls, meetings, interviews</p>
-									</div>
-								</div>
-							</button>
-
-							{/* Quick Note Button */}
-							<button
-								type="button"
-								onClick={() => setShowQuickNoteDialog(true)}
-								disabled={isRecording}
-								className={cn(
-									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
-									"cursor-pointer hover:scale-[1.01]",
-									isRecording && "cursor-not-allowed opacity-50"
-								)}
-							>
-								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-amber-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
-										<PenLine className="h-6 w-6 text-white sm:h-7 sm:w-7" />
-									</div>
-									<div className="flex-1 text-center sm:text-left">
-										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
-											Quick Note
-										</h4>
-										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">
-											Capture ideas, observations, or follow-ups
-										</p>
-									</div>
-								</div>
-							</button>
-
-							{/* URL Upload Button */}
-							<button
-								type="button"
-								onClick={() => {
-									setUrlError(null)
-									setShowUrlDialog(true)
-								}}
-								disabled={isRecording}
-								className={cn(
-									"group w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 hover:shadow-slate-900/10 hover:shadow-xl sm:p-5 dark:border-slate-800/60 dark:bg-slate-900/80",
-									"cursor-pointer hover:scale-[1.01]",
-									isRecording && "cursor-not-allowed opacity-50"
-								)}
-							>
-								<div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-emerald-500/40 group-hover:shadow-xl sm:h-14 sm:w-14">
-										<Link2 className="h-6 w-6 text-white sm:h-7 sm:w-7" />
-									</div>
-									<div className="flex-1 text-center sm:text-left">
-										<h4 className="mb-1 font-semibold text-base text-slate-900 sm:text-lg dark:text-white">
-											Insert URL
-										</h4>
-										<p className="hidden text-foreground text-xs sm:block sm:text-sm dark:text-foreground">
-											Paste a link to audio or video
-										</p>
-									</div>
-								</div>
-							</button>
+				{/* Three Column Layout - Equal Weight */}
+				<div className="grid w-full gap-4 sm:grid-cols-3">
+					{/* Record Card */}
+					<button
+						type="button"
+						onClick={handleRecordClick}
+						disabled={isRecording}
+						className={cn(
+							"group flex flex-col items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg backdrop-blur-sm transition-all duration-200",
+							"hover:scale-[1.02] hover:border-red-300 hover:shadow-xl",
+							"dark:border-slate-800/60 dark:bg-slate-900/80 dark:hover:border-red-700",
+							isRecording && "cursor-not-allowed opacity-50"
+						)}
+					>
+						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-transform group-hover:scale-110">
+							<Mic className="h-7 w-7 text-white" />
 						</div>
-					</div>
-
-					{/* Divider */}
-					{/* <div className="relative flex items-center py-2">
-						<div className="flex-grow border-slate-300 border-t dark:border-slate-700" />
-						<span className="mx-4 flex-shrink font-medium text-slate-500 text-sm dark:text-slate-400">or</span>
-						<div className="flex-grow border-slate-300 border-t dark:border-slate-700" />
-					</div> */}
+						<div className="text-center">
+							<h2 className="font-semibold text-base text-slate-900 dark:text-white">Record</h2>
+							<p className="mt-1 text-muted-foreground text-xs">Live recording</p>
+						</div>
+					</button>
 
 					{/* Upload Card */}
-					<div
-						onClick={selectedFile ? undefined : triggerFileInput}
-						className={cn(
-							"group cursor-pointer rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-sm transition-all duration-300 sm:p-10",
-							"hover:scale-[1.01] hover:shadow-slate-900/10 hover:shadow-xl dark:border-slate-800/60 dark:bg-slate-900/80",
-							isDragOver
-								? "border-blue-400 bg-blue-50/60 shadow-blue-500/20 dark:border-blue-600 dark:bg-blue-950/30"
-								: selectedFile
-									? "border-green-500 bg-green-50/70 dark:border-green-600 dark:bg-green-950/30"
-									: "border-slate-200/80 dark:border-slate-800/60"
-						)}
+					<button
+						type="button"
+						onClick={() => setShowUploadMethodDialog(true)}
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
-					>
-						{selectedFile ? (
-							/* Selected File Display */
-							<div className="fade-in slide-in-from-bottom-2 flex animate-in flex-col items-center gap-4 duration-300 sm:flex-row sm:gap-6">
-								<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-500/30 shadow-lg sm:h-20 sm:w-20">
-									{getFileIcon(selectedFile)}
-								</div>
-								<div className="min-w-0 flex-1 text-center sm:text-left">
-									<h3 className="truncate font-semibold text-lg text-slate-900 sm:text-xl dark:text-white">
-										{selectedFile.name}
-									</h3>
-									<p className="text-slate-600 text-sm dark:text-slate-400">{formatFileSize(selectedFile.size)}</p>
-								</div>
-								<CheckCircle className="h-8 w-8 flex-shrink-0 text-green-500 sm:h-10 sm:w-10" />
-							</div>
-						) : (
-							/* Upload Prompt */
-							<div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-								<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-slate-200 bg-slate-50 transition-all duration-300 group-hover:border-blue-300 group-hover:bg-blue-50 sm:h-20 sm:w-20 dark:border-slate-700 dark:bg-slate-800 dark:group-hover:border-blue-700 dark:group-hover:bg-blue-950/30">
-									<Upload className="h-8 w-8 text-slate-400 transition-colors group-hover:text-blue-600 sm:h-9 sm:w-9 dark:group-hover:text-blue-400" />
-								</div>
-								<div className="flex-1 text-center sm:text-left">
-									<h3 className="mb-1 font-semibold text-lg text-slate-900 sm:text-xl dark:text-white">Upload File</h3>
-									<p className="hidden sm:block text-foreground text-xs dark:text-foreground">
-										Audio, video, transcript, document, or virtually any material. Drag & drop.
-									</p>
-								</div>
-							</div>
+						className={cn(
+							"group flex flex-col items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg backdrop-blur-sm transition-all duration-200",
+							"hover:scale-[1.02] hover:border-blue-300 hover:shadow-xl",
+							"dark:border-slate-800/60 dark:bg-slate-900/80 dark:hover:border-blue-700",
+							isDragOver && "border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
 						)}
-					</div>
+					>
+						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 transition-transform group-hover:scale-110">
+							<Upload className="h-7 w-7 text-white" />
+						</div>
+						<div className="text-center">
+							<h2 className="font-semibold text-base text-slate-900 dark:text-white">Upload</h2>
+							<p className="mt-1 text-muted-foreground text-xs">Media File or URL</p>
+						</div>
+					</button>
 
-					{/* Action Button */}
-					{selectedFile && (
-						<Button
-							onClick={handleNext}
-							size="lg"
-							className="fade-in slide-in-from-bottom-2 h-14 w-full animate-in rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 font-semibold text-base text-white shadow-blue-500/30 shadow-lg transition-all duration-300 duration-300 hover:scale-[1.02] hover:shadow-blue-500/40 hover:shadow-xl"
-						>
-							<Sparkles className="mr-2 h-5 w-5" />
-							Upload & Process
-						</Button>
-					)}
+					{/* Quick Note Card */}
+					<button
+						type="button"
+						onClick={() => setShowQuickNoteDialog(true)}
+						className={cn(
+							"group flex flex-col items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg backdrop-blur-sm transition-all duration-200",
+							"hover:scale-[1.02] hover:border-amber-300 hover:shadow-xl",
+							"dark:border-slate-800/60 dark:bg-slate-900/80 dark:hover:border-amber-700"
+						)}
+					>
+						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30 transition-transform group-hover:scale-110">
+							<PenLine className="h-7 w-7 text-white" />
+						</div>
+						<div className="text-center">
+							<h2 className="font-semibold text-base text-slate-900 dark:text-white">Note</h2>
+							<p className="mt-1 text-muted-foreground text-xs">Quick capture</p>
+						</div>
+					</button>
 				</div>
 			</div>
 
-			{/* Upload from URL Dialog */}
-			<Dialog open={showUrlDialog} onOpenChange={setShowUrlDialog}>
+			{/* Upload Method Dialog */}
+			<Dialog open={showUploadMethodDialog} onOpenChange={setShowUploadMethodDialog}>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>Insert a link</DialogTitle>
-						<DialogDescription>Paste a URL to an audio or video file to import it.</DialogDescription>
+						<DialogTitle>Upload</DialogTitle>
+						<DialogDescription>Choose how to add your content</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4">
-						<Input
-							type="url"
-							placeholder="https://..."
-							value={urlToUpload}
-							onChange={(event) => setUrlToUpload(event.target.value)}
-							autoFocus
-						/>
-						{urlError ? <p className="text-red-500 text-sm">{urlError}</p> : null}
-						<div className="flex justify-end gap-3">
-							<Button variant="outline" onClick={() => setShowUrlDialog(false)} disabled={isSubmittingUrl}>
-								Cancel
-							</Button>
-							<Button
-								onClick={handleSubmitUrl}
-								disabled={isSubmittingUrl || !urlToUpload.trim()}
-								className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700"
+					<Tabs value={uploadTab} onValueChange={(v) => setUploadTab(v as "file" | "url")} className="mt-2">
+						<TabsList className="grid w-full grid-cols-2">
+							<TabsTrigger value="file">
+								<File className="mr-2 h-4 w-4" />
+								File
+							</TabsTrigger>
+							<TabsTrigger value="url">
+								<Link2 className="mr-2 h-4 w-4" />
+								URL
+							</TabsTrigger>
+						</TabsList>
+
+						<TabsContent value="file" className="mt-4">
+							<div
+								onClick={() => {
+									setShowUploadMethodDialog(false)
+									triggerFileInput()
+								}}
+								onDragOver={handleDragOver}
+								onDragLeave={handleDragLeave}
+								onDrop={(e) => {
+									setShowUploadMethodDialog(false)
+									handleDrop(e)
+								}}
+								className={cn(
+									"flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all",
+									isDragOver
+										? "border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
+										: "border-slate-300 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+								)}
 							>
-								{isSubmittingUrl ? "Importing..." : "Import URL"}
-							</Button>
-						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
-
-			{/* Attachment Selection Dialog for Voice Memos */}
-			<Dialog open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
-				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-					{attachmentStep === "select" ? (
-						<>
-							<DialogHeader>
-								<DialogTitle>Attach note to...</DialogTitle>
-								<DialogDescription>Choose who or what this voice memo should be attached to</DialogDescription>
-							</DialogHeader>
-
-							<div className="grid gap-3 py-4">
-								{/* Todo Option */}
-								<button
-									onClick={() => handleAttachmentSelect("todo")}
-									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-blue-500 hover:bg-blue-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500 dark:hover:bg-blue-950"
-								>
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-										<ListTodo className="h-6 w-6" />
-									</div>
-									<div className="flex-1">
-										<h3 className="font-semibold text-slate-900 dark:text-white">Todo</h3>
-										<p className="text-slate-600 text-sm dark:text-slate-400">Create a new task or reminder</p>
-									</div>
-								</button>
-
-								{/* Existing Contact/Org Option */}
-								<button
-									onClick={handleShowSearch}
-									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-green-500 hover:bg-green-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-green-500 dark:hover:bg-green-950"
-								>
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
-										<Users className="h-6 w-6" />
-									</div>
-									<div className="flex-1">
-										<h3 className="font-semibold text-slate-900 dark:text-white">Existing Contact/Org</h3>
-										<p className="text-slate-600 text-sm dark:text-slate-400">
-											Search and attach to someone in your project
-										</p>
-									</div>
-								</button>
-
-								{/* New Contact/Org Option */}
-								<button
-									onClick={handleShowCreateForm}
-									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-purple-500 hover:bg-purple-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-purple-500 dark:hover:bg-purple-950"
-								>
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-										<UserPlus className="h-6 w-6" />
-									</div>
-									<div className="flex-1">
-										<h3 className="font-semibold text-slate-900 dark:text-white">New Contact/Org</h3>
-										<p className="text-slate-600 text-sm dark:text-slate-400">
-											Create and attach to new person or company
-										</p>
-									</div>
-								</button>
-
-								{/* General Note Option */}
-								<button
-									onClick={() => handleAttachmentSelect("general")}
-									className="group flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-center transition-all hover:border-slate-400 hover:bg-slate-50 sm:flex-row sm:gap-4 sm:text-left dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500 dark:hover:bg-slate-800"
-								>
-									<div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-500 to-slate-600 text-white">
-										<File className="h-6 w-6" />
-									</div>
-									<div className="flex-1">
-										<h3 className="font-semibold text-slate-900 dark:text-white">General Note</h3>
-										<p className="text-slate-600 text-sm dark:text-slate-400">
-											Not attached to anyone or anything specific
-										</p>
-									</div>
-								</button>
+								<Upload className="mb-2 h-8 w-8 text-slate-400" />
+								<p className="font-medium text-slate-700 text-sm dark:text-slate-300">
+									Drop file or click to browse
+								</p>
+								<p className="mt-1 text-muted-foreground text-xs">Audio, video, or transcript</p>
 							</div>
+						</TabsContent>
 
-							{/* Skip for now button */}
-							<div className="border-slate-300 border-t pt-3 dark:border-slate-700">
+						<TabsContent value="url" className="mt-4">
+							<div className="space-y-3">
+								<Input
+									type="url"
+									placeholder="https://..."
+									value={urlToUpload}
+									onChange={(e) => {
+										setUrlToUpload(e.target.value)
+										setUrlError(null)
+									}}
+									autoFocus
+								/>
+								{urlError && <p className="text-red-500 text-xs">{urlError}</p>}
 								<Button
-									variant="ghost"
-									className="w-full text-muted-foreground text-sm"
-									onClick={() => handleAttachmentSelect("skip")}
+									onClick={() => {
+										setShowUploadMethodDialog(false)
+										handleUrlContinue()
+									}}
+									disabled={!urlToUpload.trim()}
+									className="w-full"
 								>
-									Skip for now - I'll link it later
+									Continue
 								</Button>
 							</div>
-						</>
-					) : attachmentStep === "search-existing" ? (
-						<>
-							<DialogHeader>
-								<div className="flex items-center gap-2">
-									<Button variant="ghost" size="icon" onClick={handleBackToSelect} className="h-8 w-8">
-										<ArrowLeft className="h-4 w-4" />
-									</Button>
-									<div className="flex-1">
-										<DialogTitle>Search Contact/Organization</DialogTitle>
-										<DialogDescription>Find who to attach this note to</DialogDescription>
-									</div>
-								</div>
-							</DialogHeader>
-
-							<div className="space-y-4 py-4">
-								{/* Search Input */}
-								<div className="relative">
-									<Search className="absolute top-3 left-3 h-4 w-4 text-slate-400" />
-									<Input
-										placeholder="Search people or organizations..."
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
-										className="pl-9"
-										autoFocus
-									/>
-								</div>
-
-								{/* Search Results */}
-								<div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-900/50">
-									{isLoadingSearch ? (
-										<p className="py-8 text-center text-muted-foreground text-sm">Loading...</p>
-									) : filteredResults().length === 0 ? (
-										<p className="py-8 text-center text-muted-foreground text-sm">
-											{searchQuery ? "No results found" : "Start typing to search..."}
-										</p>
-									) : (
-										filteredResults().map((item) => {
-											const isPerson = "title" in item
-											return (
-												<button
-													key={item.id}
-													onClick={() => handleAttachmentSelect("existing", item.id)}
-													className="flex w-full items-center gap-3 rounded-lg border border-transparent p-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:hover:border-slate-600 dark:hover:bg-slate-800"
-												>
-													<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
-														{isPerson ? <Users className="h-5 w-5" /> : <Users className="h-5 w-5" />}
-													</div>
-													<div className="min-w-0 flex-1">
-														<h4 className="truncate font-semibold text-sm">{item.name}</h4>
-														{isPerson && (item as Person).title && (
-															<p className="truncate text-muted-foreground text-xs">
-																{(item as Person).title}
-																{(item as Person).company && ` • ${(item as Person).company}`}
-															</p>
-														)}
-													</div>
-												</button>
-											)
-										})
-									)}
-								</div>
-
-								{/* Create New Button */}
-								<Button variant="outline" className="w-full" onClick={handleShowCreateForm}>
-									<UserPlus className="mr-2 h-4 w-4" />
-									Can't find them? Create new contact/org
-								</Button>
-							</div>
-						</>
-					) : attachmentStep === "create-new" ? (
-						<>
-							<DialogHeader>
-								<div className="flex items-center gap-2">
-									<Button variant="ghost" size="icon" onClick={handleBackToSelect} className="h-8 w-8">
-										<ArrowLeft className="h-4 w-4" />
-									</Button>
-									<div className="flex-1">
-										<DialogTitle>New Contact/Organization</DialogTitle>
-										<DialogDescription>Link to Contact</DialogDescription>
-									</div>
-								</div>
-							</DialogHeader>
-
-							<div className="space-y-4 py-4">
-								{/* First Name */}
-								<div className="space-y-2">
-									<label htmlFor="firstName" className="font-medium text-sm">
-										First Name
-									</label>
-									<Input
-										id="firstName"
-										placeholder="Enter first name"
-										value={newPersonFirstName}
-										onChange={(e) => setNewPersonFirstName(e.target.value)}
-										autoFocus
-									/>
-								</div>
-
-								{/* Last Name */}
-								<div className="space-y-2">
-									<label htmlFor="lastName" className="font-medium text-sm">
-										Last Name
-									</label>
-									<Input
-										id="lastName"
-										placeholder="Enter last name"
-										value={newPersonLastName}
-										onChange={(e) => setNewPersonLastName(e.target.value)}
-									/>
-								</div>
-
-								{/* Company */}
-								<div className="space-y-2">
-									<label htmlFor="company" className="font-medium text-sm">
-										Company
-									</label>
-									<Input
-										id="company"
-										placeholder="Enter company name"
-										value={newPersonCompany}
-										onChange={(e) => setNewPersonCompany(e.target.value)}
-									/>
-								</div>
-
-								{/* Start Recording Button */}
-								<Button
-									className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-									onClick={() => handleAttachmentSelect("new")}
-									disabled={!newPersonFirstName.trim()}
-								>
-									{/* <Mic className="mr-2 h-4 w-4" /> */}
-									Create
-								</Button>
-							</div>
-						</>
-					) : null}
+						</TabsContent>
+					</Tabs>
 				</DialogContent>
 			</Dialog>
 
 			{/* Quick Note Dialog */}
-			<QuickNoteDialog open={showQuickNoteDialog} onOpenChange={setShowQuickNoteDialog} onSave={handleSaveNote} />
+			<QuickNoteDialog open={showQuickNoteDialog} onOpenChange={setShowQuickNoteDialog} onSave={handleSaveNote} projectId={projectId} />
 		</div>
 	)
 }
