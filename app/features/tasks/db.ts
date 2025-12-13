@@ -27,7 +27,7 @@ export async function createTask({
 	supabase: SupabaseClient
 	accountId: string
 	projectId: string
-	userId: string
+	userId: string | null
 	data: TaskInsert
 }): Promise<Task> {
 	const task = {
@@ -53,14 +53,16 @@ export async function createTask({
 		throw error
 	}
 
-	// Log creation activity
-	await logTaskActivity({
-		supabase,
-		taskId: created.id,
-		activityType: "created",
-		userId,
-		content: `Created task: ${created.title}`,
-	})
+	// Log creation activity (only if we have a userId)
+	if (userId) {
+		await logTaskActivity({
+			supabase,
+			taskId: created.id,
+			activityType: "created",
+			userId,
+			content: `Created task: ${created.title}`,
+		})
+	}
 
 	return created as Task
 }

@@ -12,9 +12,11 @@ This directory contains documentation for linking people to interviews and mappi
 
 The people-linking system connects person records to interviews with support for:
 
-1. **Upload-time linking** - Associate a person during media upload
-2. **Speaker label mapping** - Map AssemblyAI speaker labels (Speaker A, B, etc.) to people
-3. **Post-upload linking** - Add or modify participant associations after upload
+1. **Upload-time linking** - Associate one or more people during media upload (multi-select)
+2. **Realtime recording** - Select people before recording, displayed during capture, linked on finalize
+3. **Speaker label mapping** - Map AssemblyAI speaker labels (Speaker A, B, etc.) to people
+4. **Post-upload linking** - Add or modify participant associations via inline UI
+5. **Note linking** - Link people to text notes and voice memos
 
 ## Data Model
 
@@ -40,6 +42,9 @@ app/routes/api.onboarding-start.tsx              # Upload flow person resolution
 app/features/interviews/pages/detail.tsx          # Interview detail with participant display
 app/features/interviews/db.ts                     # Database queries for participants
 app/features/interviews/components/ManagePeopleAssociations.tsx  # Speaker mapping UI
+app/features/interviews/components/NoteViewer.tsx # Note/voice memo people linking
+app/features/realtime/components/InterviewCopilot.tsx  # Realtime recording people display
+app/routes/api.interviews.realtime-finalize.tsx  # Realtime finalize with multi-person linking
 baml_src/extract_evidence.baml                   # AI evidence extraction with Person class
 ```
 

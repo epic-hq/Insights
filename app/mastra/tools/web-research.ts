@@ -193,13 +193,19 @@ export const webResearchTool = createTool({
 			if (projectId && accountId) {
 				try {
 					// Use schema-specific client for public tables
+					// Generate a concise title: 3-5 words derived from the query
+					const conciseTitle = (() => {
+						const words = query.trim().split(/\s+/).filter(Boolean)
+						return words.slice(0, 5).join(" ") || "Web research note"
+					})()
+
 					const { data: note, error: noteError } = await supabaseAdmin
 						.schema("public")
 						.from("interviews")
 						.insert({
 							account_id: accountId,
 							project_id: projectId,
-							title: `Web Research: ${query.slice(0, 50)}${query.length > 50 ? "..." : ""}`,
+							title: `Web Research: ${conciseTitle}`,
 							observations_and_notes: markdownContent,
 							source_type: "note",
 							media_type: "web_research",

@@ -40,58 +40,55 @@ CREATE TABLE people (
 
 **File:** `app/routes/api.onboarding-start.tsx`
 
-When uploading media, person linking happens in two ways:
+When uploading media, person linking supports multiple people:
 
-### 1. Existing Person Selection (`personId` URL param)
+### 1. Multiple Person Selection (`personIds` URL param)
 
 ```typescript
-// User selects existing person from dropdown
-const personId = url.searchParams.get("personId")
+// User selects one or more people from multi-select dropdown
+// Passed as comma-separated IDs
+const personIdsParam = url.searchParams.get("personIds")
+const personIds = personIdsParam ? personIdsParam.split(",").filter(Boolean) : []
 ```
 
-### 2. New Contact Creation (`entityId` form data)
+### 2. Legacy Single Person (backwards compatible)
 
 ```typescript
-// User creates new contact via dialog, entityId is the new person's ID
+// Also supports single personId or entityId for backwards compatibility
+const personId = url.searchParams.get("personId")
 const entityId = formData.get("entityId")?.toString()
 ```
 
 ### Resolution Logic
 
 ```typescript
-// Resolve linked person from either source
-let linkedPerson = null
-const personIdToResolve = personId || entityId
-
-if (personIdToResolve) {
-  const { data: person } = await supabase
-    .from("people")
-    .select("id, name, project_id, company")
-    .eq("id", personIdToResolve)
-    .maybeSingle()
-
-  linkedPerson = person
-}
+// Resolve linked people from URL params
+const personIds: string[] = personIdsParam
+  ? personIdsParam.split(",").filter(Boolean)
+  : personIdParam
+    ? [personIdParam]
+    : entityIdParam
+      ? [entityIdParam]
+      : []
 ```
 
-### Interview Creation with Person Link
+### Interview Creation with Multiple People
 
 ```typescript
 const { data: interview } = await adminDb
   .from("interviews")
   .insert({
     // ... other fields
-    participant_pseudonym: linkedPerson?.name || "Participant 1",
-    person_id: linkedPerson?.id || undefined,  // Direct FK link
+    participant_pseudonym: linkedPeople[0]?.name || "Participant 1",
   })
   .select()
   .single()
 
-// Also create interview_people junction record
-if (linkedPerson?.id) {
-  await adminDb.from("interview_people").insert({
+// Create interview_people junction records for all linked people
+for (const personId of personIds) {
+  await supabase.from("interview_people").insert({
     interview_id: interview.id,
-    person_id: linkedPerson.id,
+    person_id: personId,
     project_id: projectId,
     role: "participant",
   })
@@ -144,27 +141,82 @@ const participant = participants.find(
 Provides UI for:
 - Viewing current speaker-to-person mappings
 - Assigning speakers to existing people
-- Creating new people and linking them
+- Creating new people inline via "Create new person" option (always visible in dropdown)
+- Adding participants who weren't detected as speakers via "Add Participant" button
 - Setting `transcript_key` for speaker mapping
+
+### NoteViewer People Linking
+
+**File:** `app/features/interviews/components/NoteViewer.tsx`
+
+Notes (voice memos, text notes) display linked people with:
+- Badges showing linked people names with remove buttons
+- "Add Person" popover to search and select existing people
+- Inline option to create new people
 
 ### Action Handler
 
 **File:** `app/features/interviews/pages/detail.tsx` (action function)
 
-```typescript
-case "linkParticipant": {
-  const personId = formData.get("personId")?.toString()
-  const transcriptKey = formData.get("transcriptKey")?.toString()
-  const role = formData.get("role")?.toString() || "participant"
+Supports multiple intents:
+- `add-participant` / `link-person` - Link existing or create new person
+- `remove-participant` - Unlink a person from the interview
+- `assign-participant` - Update speaker mapping
 
-  await supabase.from("interview_people").upsert({
+```typescript
+case "add-participant":
+case "link-person": {
+  const createPerson = formData.get("create_person")?.toString() === "true"
+  let personId = formData.get("personId")?.toString()
+
+  // If creating new person, do that first
+  if (createPerson) {
+    const personName = formData.get("person_name")?.toString()?.trim()
+    const { data: newPerson } = await supabase
+      .from("people")
+      .insert({ account_id, project_id, firstname, lastname })
+      .select()
+      .single()
+    personId = newPerson.id
+  }
+
+  await supabase.from("interview_people").insert({
     interview_id: interviewId,
     person_id: personId,
     project_id: projectId,
-    role,
-    transcript_key: transcriptKey,
-  }, {
-    onConflict: "interview_id,person_id"
+    role: "participant",
+  })
+}
+```
+
+## Realtime Recording People Linking
+
+### InterviewCopilot Display
+
+**File:** `app/features/realtime/components/InterviewCopilot.tsx`
+
+During realtime recording, linked people names are displayed:
+- Fetches people details from `personIds` prop on mount
+- Shows "Recording with:" badge list of linked people names
+- People are passed via URL params from UploadScreen
+
+### Realtime Finalize
+
+**File:** `app/routes/api.interviews.realtime-finalize.tsx`
+
+When finalizing a realtime recording:
+- Accepts `personIds` array in request body
+- Creates `interview_people` junction records for each person
+- Triggers batch API re-transcription for proper speaker diarization
+
+```typescript
+const personIdsArray = Array.isArray(personIds) ? personIds : []
+for (const personId of personIdsArray) {
+  await supabase.from("interview_people").insert({
+    interview_id: interviewId,
+    person_id: personId,
+    project_id: projectId,
+    role: "participant",
   })
 }
 ```

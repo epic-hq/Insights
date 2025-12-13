@@ -14,6 +14,8 @@ export interface SimpleMediaPlayerProps {
 	lazyLoad?: boolean // Only fetch signed URL when user clicks play
 	/** R2 key or URL for video thumbnail (displayed before video loads) */
 	thumbnailUrl?: string | null
+	/** Override extension-based media type detection (useful for webm which can be audio or video) */
+	mediaType?: "audio" | "video" | "voice_memo" | "interview" | null
 }
 
 function parseTimeToSeconds(time: string | number | undefined): number {
@@ -87,6 +89,7 @@ export function SimpleMediaPlayer({
 	showDebug = false,
 	lazyLoad = true, // Default to lazy loading
 	thumbnailUrl,
+	mediaType,
 }: SimpleMediaPlayerProps) {
 	const startSeconds = parseTimeToSeconds(startTime)
 	const [isClient, setIsClient] = useState(false)
@@ -266,10 +269,22 @@ export function SimpleMediaPlayer({
 		)
 	}
 
+	// Determine media type - use prop override if provided, otherwise detect from extension
+	const getMediaTypeInfo = () => {
+		// If mediaType prop is provided, use it
+		if (mediaType === "audio" || mediaType === "voice_memo") {
+			return { isAudio: true, isVideo: false }
+		}
+		if (mediaType === "video" || mediaType === "interview") {
+			return { isAudio: false, isVideo: true }
+		}
+		// Fall back to extension-based detection
+		return { isAudio: isAudioFile(mediaUrl), isVideo: isVideoFile(mediaUrl) }
+	}
+
 	// Show play button if lazy loading and not yet loaded
 	if (lazyLoad && !signedUrl && !hasUserInteracted) {
-		const isAudio = isAudioFile(mediaUrl)
-		const isVideo = isVideoFile(mediaUrl)
+		const { isAudio, isVideo } = getMediaTypeInfo()
 
 		return (
 			<div className={cn("relative w-full", className)}>
@@ -325,8 +340,7 @@ export function SimpleMediaPlayer({
 		return null
 	}
 
-	const isAudio = isAudioFile(mediaUrl)
-	const isVideo = isVideoFile(mediaUrl)
+	const { isAudio, isVideo } = getMediaTypeInfo()
 
 	return (
 		<div className={cn("relative w-full space-y-3", className)}>

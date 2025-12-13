@@ -1,5 +1,6 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import { createTask } from "~/features/tasks/db"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -13,8 +14,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		const { projectId, title, content, noteType, associations, tags } = body
 
-		if (!projectId || !content) {
-			return Response.json({ error: "projectId and content are required" }, { status: 400 })
+		if (!projectId) {
+			return Response.json({ error: "projectId is required" }, { status: 400 })
 		}
 
 		// Get account_id from project
@@ -22,6 +23,45 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (!project) {
 			return Response.json({ error: "Project not found" }, { status: 404 })
+		}
+
+		// Handle task creation
+		if (noteType === "task") {
+			if (!title) {
+				return Response.json({ error: "Title is required for tasks" }, { status: 400 })
+			}
+
+			const task = await createTask({
+				supabase,
+				accountId: project.account_id,
+				projectId,
+				userId: user?.id || null,
+				data: {
+					title,
+					description: content || null,
+					tags: tags || [],
+					status: "backlog",
+					cluster: "Core product – capture & workflow", // Default cluster for quick-created tasks
+				},
+			})
+
+			consola.info("Task created successfully", {
+				projectId,
+				taskId: task.id,
+				title,
+			})
+
+			return Response.json({
+				success: true,
+				id: task.id,
+				type: "task",
+				message: "Task created successfully",
+			})
+		}
+
+		// Handle note creation (default behavior)
+		if (!content) {
+			return Response.json({ error: "Content is required for notes" }, { status: 400 })
 		}
 
 		// Build metadata for conversation_analysis field
@@ -37,10 +77,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			.insert({
 				account_id: project.account_id,
 				project_id: projectId,
-				title: title || `${noteType.replace(/_/g, " ")} - ${new Date().toLocaleDateString()}`,
+				title: title || `Note - ${new Date().toLocaleDateString()}`,
 				observations_and_notes: content,
 				source_type: "note",
-				media_type: noteType, // meeting_notes, observation, insight, followup
+				media_type: "note",
 				status: "ready",
 				conversation_analysis: metadata as any,
 				created_by: user?.id,
@@ -55,20 +95,20 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.info("Note created successfully", {
 			projectId,
 			noteId: interview?.id,
-			noteType,
 			hasAssociations: Object.keys(associations || {}).length > 0,
 		})
 
 		return Response.json({
 			success: true,
 			id: interview?.id,
+			type: "note",
 			message: "Note saved successfully",
 		})
 	} catch (error) {
-		consola.error("Failed to create note:", error)
+		consola.error("Failed to create note/task:", error)
 		return Response.json(
 			{
-				error: "Failed to create note",
+				error: "Failed to create note/task",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			{ status: 500 }

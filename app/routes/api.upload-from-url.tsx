@@ -29,8 +29,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const projectId = formData.get("projectId") as UUID
 		const url = formData.get("url") as string
 		const title = formData.get("title") as string | null
+		const personId = formData.get("personId") as string | null
 
-		consola.info("[upload-from-url] Received request", { url, projectId })
+		consola.info("[upload-from-url] Received request", { url, projectId, personId })
 
 		if (!url || !projectId) {
 			return Response.json({ error: "URL and projectId are required" }, { status: 400 })
@@ -65,6 +66,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				{
 					url,
 					title: title || undefined,
+					personId: personId || undefined,
 				},
 			],
 			projectId,

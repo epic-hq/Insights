@@ -38,7 +38,7 @@ interface InterviewCopilotProps {
 	autostart?: boolean
 	mode?: "notes" | "interview"
 	attachType?: string
-	entityId?: string
+	personIds?: string[]
 }
 
 interface AISuggestion {
@@ -55,7 +55,7 @@ export function InterviewCopilot({
 	autostart = false,
 	mode = "interview",
 	attachType,
-	entityId,
+	personIds = [],
 }: InterviewCopilotProps) {
 	const [_selectedQuestions, _setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
 	const [isRecording, setIsRecording] = useState(false)
@@ -115,6 +115,9 @@ export function InterviewCopilot({
 	const [audioSource, setAudioSource] = useState<"microphone" | "system">("microphone")
 	const [micDeviceId, setMicDeviceId] = useState<string | "default">("default")
 	const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+
+	// Linked people names (fetched from personIds prop)
+	const [linkedPeopleNames, setLinkedPeopleNames] = useState<string[]>([])
 
 	const TARGET_SAMPLE_RATE = 16000
 	const CHUNK_MS = 100
@@ -322,6 +325,37 @@ export function InterviewCopilot({
 		return () => navigator.mediaDevices.removeEventListener?.("devicechange", loadDevices)
 	}, [])
 
+	// Fetch linked people names when personIds change
+	useEffect(() => {
+		if (!personIds.length) {
+			setLinkedPeopleNames([])
+			return
+		}
+
+		const fetchPeopleNames = async () => {
+			try {
+				const { data, error } = await supabase
+					.from("people")
+					.select("id, name")
+					.in("id", personIds)
+
+				if (error) {
+					consola.warn("Failed to fetch linked people:", error)
+					return
+				}
+
+				const names = (data || [])
+					.map((p) => p.name)
+					.filter((name): name is string => Boolean(name?.trim()))
+				setLinkedPeopleNames(names)
+			} catch (e) {
+				consola.warn("Error fetching linked people:", e)
+			}
+		}
+
+		fetchPeopleNames()
+	}, [personIds, supabase])
+
 	// Helper to get capture stream based on selected source
 	const getCaptureStream = useCallback(async (): Promise<MediaStream> => {
 		if (audioSource === "system") {
@@ -451,28 +485,28 @@ export function InterviewCopilot({
 							// Only keep final captions; de-dupe by timing window
 							const key = computeTurnKey(t)
 							const isNew = !finalKeysRef.current.includes(key)
-							// Accumulate full transcript before mutating the key set
+
 							if (isNew) {
+								// Accumulate full transcript
 								allFinalTranscriptsRef.current.push(t.transcript)
-							}
-							setCaptions((prev) => {
-								if (!isNew) return prev
-								finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 9)]
-								return [t.transcript, ...prev.slice(0, 9)]
-							})
-							// Track turns with timestamps for replay (fallback if no word timings)
-							if (t.words?.length) {
-								const start = t.words[0]?.start ?? approxTimeRef.current
-								const end = t.words[t.words.length - 1]?.end ?? start
-								approxTimeRef.current = end
-								setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
-							} else {
-								const start = approxTimeRef.current
-								// Roughly estimate 4s per short turn when timings missing
-								const estimated = Math.max(2, Math.min(10, Math.ceil((t.transcript?.length || 20) / 40)))
-								const end = start + estimated
-								approxTimeRef.current = end
-								setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+								// Update key tracking
+								finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 99)]
+								// Update captions for UI
+								setCaptions((prev) => [t.transcript, ...prev.slice(0, 9)])
+								// Track turns with timestamps for replay (fallback if no word timings)
+								if (t.words?.length) {
+									const start = t.words[0]?.start ?? approxTimeRef.current
+									const end = t.words[t.words.length - 1]?.end ?? start
+									approxTimeRef.current = end
+									setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+								} else {
+									const start = approxTimeRef.current
+									// Roughly estimate 4s per short turn when timings missing
+									const estimated = Math.max(2, Math.min(10, Math.ceil((t.transcript?.length || 20) / 40)))
+									const end = start + estimated
+									approxTimeRef.current = end
+									setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+								}
 							}
 							setCurrentCaption("")
 						} else {
@@ -543,16 +577,16 @@ export function InterviewCopilot({
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch {}
+				} catch { }
 			}
-		} catch {}
+		} catch { }
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch {}
+		} catch { }
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -580,7 +614,7 @@ export function InterviewCopilot({
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch {}
+				} catch { }
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -633,18 +667,18 @@ export function InterviewCopilot({
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch {}
+							} catch { }
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch {}
+				} catch { }
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch {}
+			} catch { }
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -657,7 +691,7 @@ export function InterviewCopilot({
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch {}
+			} catch { }
 
 			// finalize or abort recording
 			void (async () => {
@@ -677,13 +711,13 @@ export function InterviewCopilot({
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									;(rec as any).onstop = handler
+									; (rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch {}
+								} catch { }
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -758,9 +792,11 @@ export function InterviewCopilot({
 						try {
 							// Convert turns to speaker_transcripts format for BAML processing
 							// Reverse turns array since it's stored newest-first, but we need chronological order
+							// Note: Realtime recording can't distinguish speakers from a single mic input,
+							// so we use a single speaker "A" for all turns to avoid false multi-speaker detection
 							const chronologicalTurns = [...turns].reverse()
-							const utterances = chronologicalTurns.map((turn, idx) => ({
-								speaker: idx % 2 === 0 ? "A" : "B", // Simple alternating speaker labels (A, B, not "Speaker A")
+							const utterances = chronologicalTurns.map((turn) => ({
+								speaker: "A", // Single speaker - realtime can't distinguish multiple speakers
 								text: turn.transcript,
 								start: turn.start,
 								end: turn.end,
@@ -784,7 +820,7 @@ export function InterviewCopilot({
 									audioDuration,
 									mode, // Pass mode to determine if voice_memo or interview
 									attachType,
-									entityId,
+									personIds, // Pass array of person IDs to link
 								}),
 							})
 						} catch (e) {
@@ -809,7 +845,7 @@ export function InterviewCopilot({
 			getAudioDuration,
 			projectPath,
 			attachType,
-			entityId,
+			personIds,
 			mode,
 			turns,
 		]
@@ -1066,18 +1102,6 @@ export function InterviewCopilot({
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
 			<PageContainer size="lg" className="max-w-5xl py-8">
-				{/* Header */}
-				<div className="mb-8 text-center">
-					<h1 className="mb-2 font-bold text-3xl text-slate-900 dark:text-white">
-						{mode === "notes" ? "Voice Memo" : "Live Interview"}
-					</h1>
-					<p className="text-muted-foreground text-sm">
-						{mode === "notes"
-							? "Capture your thoughts and insights"
-							: "Record and transcribe your interview in real-time"}
-					</p>
-				</div>
-
 				{/* Processing Notification */}
 				{isFinishing && (
 					<div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 backdrop-blur-sm dark:border-blue-800 dark:bg-blue-950/30">
@@ -1135,69 +1159,83 @@ export function InterviewCopilot({
 						</div>
 					</div>
 
-					{/* Audio Source Selector */}
-					<div className="mb-6">
-						<label className="mb-2 block font-medium text-slate-900 text-sm dark:text-white">Audio Source</label>
-						<Select
-							value={audioSource === "system" ? "system" : `mic:${micDeviceId}`}
-							onValueChange={(val) => {
-								if (val === "system") {
-									setAudioSource("system")
-								} else if (val.startsWith("mic:")) {
-									const id = val.slice(4) || "default"
-									setAudioSource("microphone")
-									setMicDeviceId((id as any) || "default")
-								}
-							}}
-							disabled={isRecording || streamStatus === "paused" || streamStatus === "streaming"}
-						>
-							<SelectTrigger className="h-11">
-								<SelectValue placeholder="Select audio source" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="mic:default">Microphone (default)</SelectItem>
-								{audioDevices.map((d, idx) => (
-									<SelectItem key={d.deviceId || idx} value={`mic:${d.deviceId}`}>
-										{d.label || `Microphone ${idx + 1}`}
-									</SelectItem>
+					{/* Linked People Display */}
+					{linkedPeopleNames.length > 0 && (
+						<div className="mb-4 flex items-center justify-center gap-2 text-sm">
+							<span className="text-muted-foreground">Recording with:</span>
+							<div className="flex flex-wrap items-center gap-1.5">
+								{linkedPeopleNames.map((name, idx) => (
+									<Badge key={idx} variant="secondary" className="font-normal">
+										{name}
+									</Badge>
 								))}
-								<SelectItem value="system">Share tab/system audio…</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
+							</div>
+						</div>
+					)}
 
 					{/* Recording Controls */}
-					<div className="flex gap-3">
+					<div className="flex items-center justify-center gap-2">
+						{/* Cancel - subtle, always visible */}
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={handleCancel}
+							className="h-10 px-3 text-muted-foreground"
+						>
+							Cancel
+						</Button>
+
+						{/* Main recording button */}
 						<Button
 							onClick={toggleRecording}
 							size="lg"
-							className={cn(
-								"h-14 flex-1 font-semibold text-base",
-								streamStatus === "streaming" && isRecording
-									? "bg-amber-500 hover:bg-amber-600"
-									: "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-							)}
+							variant={streamStatus === "streaming" && isRecording ? "secondary" : "destructive"}
+							className="h-12 min-w-[100px] px-6"
 							disabled={streamStatus === "connecting" || isFinishing}
 						>
 							{streamStatus === "streaming" && isRecording ? (
 								<>
-									<Pause className="mr-2 h-5 w-5" /> Pause
+									<Pause className="mr-2 h-4 w-4" /> Pause
 								</>
 							) : streamStatus === "connecting" ? (
 								<>
-									<Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connecting…
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" /> ...
 								</>
 							) : (
 								<>
-									<Play className="mr-2 h-5 w-5" />
-									{streamStatus === "paused" ? "Resume" : "Start Recording"}
+									<Play className="mr-2 h-4 w-4" />
+									{streamStatus === "paused" ? "Resume" : "Record"}
 								</>
 							)}
 						</Button>
 
+						{/* Replay - icon only */}
 						{(isRecording || streamStatus === "paused") && (
-							<Button onClick={replayLast30s} variant="outline" size="lg" className="h-14 px-6">
-								<RotateCcw className="h-5 w-5" />
+							<Button
+								onClick={replayLast30s}
+								variant="outline"
+								size="lg"
+								className="h-12 w-12 p-0"
+								title="Replay last 15s"
+							>
+								<RotateCcw className="h-4 w-4" />
+							</Button>
+						)}
+
+						{/* Finish */}
+						{(isRecording || streamStatus === "paused") && (
+							<Button
+								onClick={handleFinish}
+								disabled={isFinishing}
+								variant="default"
+								size="lg"
+								className="h-12 min-w-[90px] px-6"
+							>
+								{isFinishing ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									"Finish"
+								)}
 							</Button>
 						)}
 					</div>
@@ -1211,7 +1249,6 @@ export function InterviewCopilot({
 					{/* Questions - Only show in interview mode */}
 					{mode === "interview" && (
 						<div className="rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80">
-							<h2 className="mb-4 font-semibold text-slate-900 text-xl dark:text-white">Interview Guide</h2>
 							<div className="max-h-96 overflow-y-auto">
 								<MinimalQuestionView projectId={projectId} interviewId={interviewId} />
 							</div>
@@ -1235,26 +1272,6 @@ export function InterviewCopilot({
 					</div>
 				</div>
 
-				{/* Action Buttons */}
-				<div className="mt-8 flex justify-center gap-4">
-					<Button variant="outline" size="lg" onClick={handleCancel} className="px-8">
-						Cancel
-					</Button>
-					<Button
-						size="lg"
-						onClick={handleFinish}
-						disabled={isFinishing || (!isRecording && streamStatus !== "paused")}
-						className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 hover:from-blue-600 hover:to-blue-700"
-					>
-						{isFinishing ? (
-							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing...
-							</>
-						) : (
-							"Finish & Save"
-						)}
-					</Button>
-				</div>
 			</PageContainer>
 
 			<AlertDialog
@@ -1329,7 +1346,7 @@ export function InterviewCopilot({
 						{completedInterviewId && !isFinishing && (
 							<div className="text-center text-sm">
 								<Button onClick={handleViewInterview} variant="default" className="h-auto w-full p-3 text-base md:p-4">
-									View Interview Now
+									View Recording
 								</Button>
 								<p className="mt-2 text-muted-foreground text-xs">
 									Or wait {redirectCountdown} second{redirectCountdown !== 1 ? "s" : ""} for auto-redirect
