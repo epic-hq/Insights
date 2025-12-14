@@ -38,9 +38,9 @@ const opportunityOutputSchema = z.object({
 	editRoute: z.string().nullable().optional(),
 })
 
-function ensureContext(runtimeContext?: Map<string, unknown>) {
-	const accountId = runtimeContext?.get?.("account_id") as string | undefined
-	const projectId = runtimeContext?.get?.("project_id") as string | undefined
+function ensureContext(context?: Map<string, unknown>) {
+	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 	if (!accountId || !projectId) {
 		throw new Error("Missing accountId or projectId in runtime context")
 	}
@@ -89,14 +89,14 @@ export const fetchOpportunitiesTool = createTool({
 		total: z.number().optional(),
 		opportunities: z.array(opportunityOutputSchema).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId } = ensureContext(runtimeContext)
+			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
-			const sanitizedSearch = context?.search?.trim()
-			const limit = context?.limit ?? 25
-			const opportunityIds = context?.opportunityIds ?? []
+			const sanitizedSearch = input?.search?.trim()
+			const limit = input?.limit ?? 25
+			const opportunityIds = input?.opportunityIds ?? []
 
 			let query = supabase
 				.from("opportunities")
@@ -106,12 +106,12 @@ export const fetchOpportunitiesTool = createTool({
 				.order("created_at", { ascending: false })
 				.limit(limit)
 
-			if (context?.kanbanStatus) {
-				query = query.eq("kanban_status", context.kanbanStatus)
+			if (input?.kanbanStatus) {
+				query = query.eq("kanban_status", input.kanbanStatus)
 			}
 
-			if (context?.stage) {
-				query = query.eq("stage", context.stage)
+			if (input?.stage) {
+				query = query.eq("stage", input.stage)
 			}
 
 			if (opportunityIds.length > 0) {
@@ -171,12 +171,12 @@ export const createOpportunityTool = createTool({
 		message: z.string(),
 		opportunity: opportunityOutputSchema.nullable(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId } = ensureContext(runtimeContext)
+			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
-			const title = context?.title?.trim()
+			const title = input?.title?.trim()
 			if (!title) {
 				return { success: false, message: "Title is required", opportunity: null }
 			}
@@ -185,20 +185,20 @@ export const createOpportunityTool = createTool({
 				title,
 				account_id: accountId,
 				project_id: projectId,
-				kanban_status: context?.kanbanStatus || "Explore",
+				kanban_status: input?.kanbanStatus || "Explore",
 			}
 
-			if (context?.description) insertData.description = context.description.trim()
-			if (context?.stage) insertData.stage = context.stage.trim()
-			if (context?.status) insertData.status = context.status.trim()
-			if (typeof context?.amount === "number") insertData.amount = context.amount
-			if (context?.closeDate) insertData.close_date = context.closeDate
-			if (context?.ownerId) insertData.owner_id = context.ownerId
-			if (context?.relatedInsightIds?.length) insertData.related_insight_ids = context.relatedInsightIds
+			if (input?.description) insertData.description = input.description.trim()
+			if (input?.stage) insertData.stage = input.stage.trim()
+			if (input?.status) insertData.status = input.status.trim()
+			if (typeof input?.amount === "number") insertData.amount = input.amount
+			if (input?.closeDate) insertData.close_date = input.closeDate
+			if (input?.ownerId) insertData.owner_id = input.ownerId
+			if (input?.relatedInsightIds?.length) insertData.related_insight_ids = input.relatedInsightIds
 
-			const metadata: Record<string, unknown> = { ...(context?.metadata ?? {}) }
-			if (context?.linkedInterviewId) {
-				metadata.linked_interview_id = context.linkedInterviewId
+			const metadata: Record<string, unknown> = { ...(input?.metadata ?? {}) }
+			if (input?.linkedInterviewId) {
+				metadata.linked_interview_id = input.linkedInterviewId
 			}
 			if (Object.keys(metadata).length > 0) {
 				insertData.metadata = metadata
@@ -237,31 +237,31 @@ export const updateOpportunityTool = createTool({
 		message: z.string(),
 		opportunity: opportunityOutputSchema.nullable(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId } = ensureContext(runtimeContext)
+			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
-			const opportunityId = context?.opportunityId
+			const opportunityId = input?.opportunityId
 			if (!opportunityId) {
 				return { success: false, message: "opportunityId is required", opportunity: null }
 			}
 
 			const updateData: Record<string, unknown> = {}
-			if (typeof context?.title === "string") updateData.title = context.title.trim()
-			if (typeof context?.description === "string") updateData.description = context.description.trim()
-			if (typeof context?.kanbanStatus === "string") updateData.kanban_status = context.kanbanStatus
-			if (typeof context?.stage === "string") updateData.stage = context.stage
-			if (typeof context?.status === "string") updateData.status = context.status
-			if (typeof context?.amount === "number") updateData.amount = context.amount
-			if (typeof context?.closeDate === "string") updateData.close_date = context.closeDate
-			if (typeof context?.ownerId === "string") updateData.owner_id = context.ownerId
-			if (Array.isArray(context?.relatedInsightIds)) updateData.related_insight_ids = context.relatedInsightIds
+			if (typeof input?.title === "string") updateData.title = input.title.trim()
+			if (typeof input?.description === "string") updateData.description = input.description.trim()
+			if (typeof input?.kanbanStatus === "string") updateData.kanban_status = input.kanbanStatus
+			if (typeof input?.stage === "string") updateData.stage = input.stage
+			if (typeof input?.status === "string") updateData.status = input.status
+			if (typeof input?.amount === "number") updateData.amount = input.amount
+			if (typeof input?.closeDate === "string") updateData.close_date = input.closeDate
+			if (typeof input?.ownerId === "string") updateData.owner_id = input.ownerId
+			if (Array.isArray(input?.relatedInsightIds)) updateData.related_insight_ids = input.relatedInsightIds
 
-			if (context?.metadata || context?.linkedInterviewId !== undefined) {
-				const metadata: Record<string, unknown> = { ...(context?.metadata ?? {}) }
-				if (context?.linkedInterviewId) {
-					metadata.linked_interview_id = context.linkedInterviewId
+			if (input?.metadata || input?.linkedInterviewId !== undefined) {
+				const metadata: Record<string, unknown> = { ...(input?.metadata ?? {}) }
+				if (input?.linkedInterviewId) {
+					metadata.linked_interview_id = input.linkedInterviewId
 				}
 				updateData.metadata = metadata
 			}

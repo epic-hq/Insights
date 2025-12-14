@@ -328,23 +328,19 @@ export const fetchInterviewContextTool = createTool({
 			})
 			.optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeInterviewId = runtimeContext?.get?.("interview_id")
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const interviewId = ((context as any)?.interviewId || runtimeInterviewId || "").toString().trim()
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const runtimeInterviewId = context?.requestContext?.get?.("interview_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const interviewId = (input.interviewId || runtimeInterviewId || "").toString().trim()
 		const projectId = (runtimeProjectId || "").toString().trim()
 		const accountId = runtimeAccountId
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const includeEvidence = (context as any)?.includeEvidence !== false
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const evidenceLimit = (context as any)?.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
+		const includeEvidence = input.includeEvidence !== false
+		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
 
 		consola.debug("fetch-interview-context: execute start", {
-			requestedInterviewId: context?.interviewId,
+			requestedInterviewId: input.interviewId,
 			resolvedInterviewId: interviewId,
 			projectId,
 			includeEvidence,
@@ -353,7 +349,7 @@ export const fetchInterviewContextTool = createTool({
 
 		if (!interviewId) {
 			consola.warn("fetch-interview-context: missing interviewId", {
-				requestedInterviewId: context?.interviewId,
+				requestedInterviewId: input.interviewId,
 				runtimeInterviewId,
 			})
 			return {

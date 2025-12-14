@@ -91,13 +91,13 @@ WRONG (missing rows - WILL FAIL):
 		markdownTable: z.string().optional().describe("Markdown preview of the table (first 20 rows)"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
-			const { title, description, headers, rows, kind } = context
+			const { title, description, headers, rows, kind } = input
 
 			// Get accountId and projectId from runtime context
-			const accountId = runtimeContext?.get?.("account_id") as string | undefined
-			const projectId = runtimeContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 
 			if (!accountId || !projectId) {
 				return {

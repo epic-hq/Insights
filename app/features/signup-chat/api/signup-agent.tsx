@@ -1,9 +1,10 @@
-import { RuntimeContext } from "@mastra/core/di"
-import { convertToModelMessages } from "ai"
+import { toAISdkStream } from "@mastra/ai-sdk"
+import { RequestContext } from "@mastra/core/di"
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { mastra } from "~/mastra"
 import { memory } from "~/mastra/memory"
 
@@ -16,14 +17,13 @@ export async function action({ request }: ActionFunctionArgs) {
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
-	const { client: supabase } = getServerClient(request)
 
-	const { messages, tools, system } = await request.json()
-	// Basic usage with default parameters
-	const threads = await memory.getThreadsByResourceIdPaginated({
-		resourceId: `signupAgent-${user.sub}`,
-		orderBy: "createdAt",
-		sortDirection: "DESC",
+	const { messages, system } = await request.json()
+	const resourceId = `signupAgent-${user.sub}`
+
+	// Get threads using v1 API
+	const threads = await memory.listThreadsByResourceId({
+		resourceId,
 		page: 0,
 		perPage: 100,
 	})
@@ -33,7 +33,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	if (!(threads?.total > 0)) {
 		const newThread = await memory.createThread({
-			resourceId: `signupAgent-${user.sub}`,
+			resourceId,
 			title: "Signup Chat",
 			metadata: {
 				user_id: user.sub,
@@ -45,27 +45,35 @@ export async function action({ request }: ActionFunctionArgs) {
 		threadId = threads.threads[0].id
 	}
 
-	const runtimeContext = new RuntimeContext()
-	runtimeContext.set("user_id", user.sub)
+	const requestContext = new RequestContext()
+	requestContext.set("user_id", user.sub)
 
-	// Get the chefAgent instance from Mastra
+	// Get the signupAgent instance from Mastra
 	const agent = mastra.getAgent("signupAgent")
-	// Stream the response using the agent
-	//  NOTE: ON AI SDK V5
-	//  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
+
+	// Only pass the last user message - Mastra's memory handles historical context
+	const sanitizedMessages = Array.isArray(messages)
+		? messages.map((message: Record<string, unknown>) => {
+			if (!message || typeof message !== "object") return message
+			const cloned = { ...message }
+			if ("id" in cloned) {
+				delete cloned.id
+			}
+			return cloned
+		})
+		: []
+
+	const lastUserIndex = sanitizedMessages.findLastIndex((m: { role?: string }) => m?.role === "user")
+	const runtimeMessages = lastUserIndex >= 0 ? sanitizedMessages.slice(lastUserIndex) : sanitizedMessages
+
 	consola.log("System prompt from frontend: ", system)
-	const last_message = convertToModelMessages(messages)?.[-1]
-	const result = await agent.stream(last_message, {
-		format: "aisdk", // Required for toUIMessageStreamResponse() - deprecation warning is expected until we migrate to @mastra/ai-sdk chatRoute
+
+	const stream = await agent.stream(runtimeMessages, {
 		memory: {
 			thread: threadId,
-			resource: `signupAgent-${user.sub}`,
+			resource: resourceId,
 		},
-		runtimeContext,
-		// @ts-expect-error
-		// clientTools: tools ? frontendTools(tools) : undefined, // assistant-ui serializes tools and sends them body param "tools" // TODO:
-		// assistant-ui sends additional prompt from frontend in the "system" body param when using `useAssistantInstructions`, adding it here as context
-		// NOTE: Not sure that this is working. Agent does not seem to be picking it up.
+		requestContext,
 		context: system
 			? [
 				{
@@ -76,26 +84,30 @@ export async function action({ request }: ActionFunctionArgs) {
 			: undefined,
 		onFinish: (data) => {
 			consola.log("onFinish", data)
-		},
-	})
-
-	const langfuse = getLangfuseClient()
-
-	// Return the result as a data stream response
-	return result.toUIMessageStreamResponse({
-		onFinish: (data) => {
-			consola.log("onFinish", data)
+			const langfuse = getLangfuseClient()
 			const lfTrace = langfuse.trace?.({ name: "api.signup-agent" })
 			const gen = lfTrace?.generation?.({
 				name: "api.signup-agent",
-				input: data?.messages,
-				output: data?.responseMessage,
+				input: messages,
+				output: data,
 			})
 			gen?.end?.()
 		},
-		onError: (err) => {
-			consola.error("onError", err)
-			return "Failed to generate response. Please try again."
+	})
+
+	// Transform Mastra stream to AI SDK format with v1 pattern
+	const toAISdkOptions = { from: "agent" as const, sendReasoning: true, sendSources: true }
+
+	const uiMessageStream = createUIMessageStream({
+		execute: async ({ writer }) => {
+			const transformedStream = toAISdkStream(stream, toAISdkOptions)
+			if (transformedStream) {
+				for await (const part of transformedStream) {
+					writer.write(part)
+				}
+			}
 		},
 	})
+
+	return createUIMessageStreamResponse({ stream: uiMessageStream })
 }

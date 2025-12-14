@@ -1,4 +1,4 @@
-import { RuntimeContext } from "@mastra/core/di"
+import { RequestContext } from "@mastra/core/di"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
@@ -27,16 +27,16 @@ export async function action({ request }: ActionFunctionArgs) {
 		const workflow = mastra.getWorkflow("dailyBriefWorkflow")
 		const run = await workflow.createRunAsync()
 
-		// Create proper RuntimeContext and inject supabase
-		const runtimeContext = new RuntimeContext()
-		runtimeContext.set("supabase", userSupabase)
+		// Create proper RequestContext and inject supabase
+		const requestContext = new RequestContext()
+		requestContext.set("supabase", userSupabase)
 
 		const result = await run.start({
 			inputData: {
 				account_id,
 				project_id,
 			},
-			runtimeContext,
+			requestContext,
 		})
 
 		return Response.json(result)

@@ -7,6 +7,7 @@ import { dailyBriefWorkflow } from "../workflows/daily-brief"
  * This agent can be used in chat interfaces via CopilotKit
  */
 export const insightsAgent = new Agent({
+	id: "insights-agent",
 	name: "insights-agent",
 	description: "Generate insights and daily briefs for user research projects",
 	instructions: `You are an expert user research analyst. You can:

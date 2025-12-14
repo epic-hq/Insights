@@ -97,7 +97,7 @@ export const webResearchTool = createTool({
 		evidenceCount: z.number().optional().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const apiKey = process.env.EXA_API_KEY
 		if (!apiKey) {
 			return {
@@ -108,11 +108,11 @@ export const webResearchTool = createTool({
 		}
 
 		// Get project context for saving the note
-		const projectId = runtimeContext?.get?.("project_id")
-		const accountId = runtimeContext?.get?.("account_id")
+		const projectId = context?.requestContext?.get?.("project_id")
+		const accountId = context?.requestContext?.get?.("account_id")
 
 		try {
-			const { query, numResults, type, useAutoprompt, includeText, category } = context
+			const { query, numResults, type, useAutoprompt, includeText, category } = input
 
 			const requestBody: Record<string, unknown> = {
 				query,
@@ -386,7 +386,7 @@ export const findSimilarPagesTool = createTool({
 		evidenceCount: z.number().optional().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const apiKey = process.env.EXA_API_KEY
 		if (!apiKey) {
 			return {
@@ -396,11 +396,11 @@ export const findSimilarPagesTool = createTool({
 			}
 		}
 
-		const projectId = runtimeContext?.get?.("project_id")
-		const accountId = runtimeContext?.get?.("account_id")
+		const projectId = context?.requestContext?.get?.("project_id")
+		const accountId = context?.requestContext?.get?.("account_id")
 
 		try {
-			const { url, numResults, includeText } = context
+			const { url, numResults, includeText } = input
 
 			consola.info("[find-similar] Finding pages similar to:", url)
 

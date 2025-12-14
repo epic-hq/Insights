@@ -217,7 +217,7 @@ export const managePersonOrganizationsTool = createTool({
 		"Link a person to organizations (employers, affiliations, partnerships). Use this when updating where someone works or their organizational relationships. Parses transcripts to find employer/affiliation info, creates organization entities if needed, and records the relationship details (role, status, primary flag).",
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
 
 		const {
@@ -227,13 +227,13 @@ export const managePersonOrganizationsTool = createTool({
 			transcript,
 			relationships,
 			dryRun,
-		} = context as ToolInput
+		} = input as ToolInput
 
 		const defaultIsPrimary =
-			typeof (context as ToolInput).defaultIsPrimary === "boolean" ? (context as ToolInput).defaultIsPrimary : false
+			typeof (input as ToolInput).defaultIsPrimary === "boolean" ? (input as ToolInput).defaultIsPrimary : false
 
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 
 		if (!personId?.trim()) {
 			return {

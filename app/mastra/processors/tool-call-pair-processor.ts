@@ -13,8 +13,8 @@
  * @see https://github.com/vercel/ai/issues/8216
  */
 
+import type { CoreMessage } from "@mastra/core/llm"
 import { MemoryProcessor, type MemoryProcessorOpts } from "@mastra/core/memory"
-import type { CoreMessage } from "ai"
 import consola from "consola"
 
 type MessageRole = "user" | "assistant" | "system" | "tool"
@@ -37,16 +37,47 @@ interface ToolResultPart {
 type MessageContent = string | Array<{ type: string; [key: string]: unknown }>
 
 /**
+ * Type guard for ToolCallPart
+ */
+function isToolCallPart(part: unknown): part is ToolCallPart {
+	return (
+		part !== null &&
+		typeof part === "object" &&
+		"type" in part &&
+		(part as { type: unknown }).type === "tool-call" &&
+		"toolCallId" in part &&
+		typeof (part as { toolCallId: unknown }).toolCallId === "string"
+	)
+}
+
+/**
+ * Type guard for ToolResultPart
+ */
+function isToolResultPart(part: unknown): part is ToolResultPart {
+	return (
+		part !== null &&
+		typeof part === "object" &&
+		"type" in part &&
+		(part as { type: unknown }).type === "tool-result" &&
+		"toolCallId" in part &&
+		typeof (part as { toolCallId: unknown }).toolCallId === "string"
+	)
+}
+
+/**
  * Extracts tool call IDs from a message's content parts
  */
 function getToolCallIds(message: CoreMessage): string[] {
 	const content = message.content as MessageContent
 	if (!content || typeof content === "string" || !Array.isArray(content)) return []
 
-	return content
-		.filter((part): part is ToolCallPart => part && typeof part === "object" && part.type === "tool-call")
-		.map((part) => part.toolCallId)
-		.filter(Boolean)
+	const ids: string[] = []
+	for (const part of content) {
+		if (isToolCallPart(part) && part.toolCallId) {
+			ids.push(part.toolCallId)
+		}
+	}
+	return ids
 }
 
 /**
@@ -56,10 +87,13 @@ function getToolResultIds(message: CoreMessage): string[] {
 	const content = message.content as MessageContent
 	if (!content || typeof content === "string" || !Array.isArray(content)) return []
 
-	return content
-		.filter((part): part is ToolResultPart => part && typeof part === "object" && part.type === "tool-result")
-		.map((part) => part.toolCallId)
-		.filter(Boolean)
+	const ids: string[] = []
+	for (const part of content) {
+		if (isToolResultPart(part) && part.toolCallId) {
+			ids.push(part.toolCallId)
+		}
+	}
+	return ids
 }
 
 /**
@@ -79,7 +113,7 @@ export class ToolCallPairProcessor extends MemoryProcessor {
 		super({ name: "ToolCallPairProcessor" })
 	}
 
-	process(messages: CoreMessage[], _opts?: MemoryProcessorOpts): CoreMessage[] {
+	process(messages: CoreMessage[], _opts: MemoryProcessorOpts): CoreMessage[] {
 		if (!messages || messages.length === 0) return messages
 
 		// Collect all tool call IDs from assistant messages
@@ -112,46 +146,46 @@ export class ToolCallPairProcessor extends MemoryProcessor {
 		}
 
 		// Filter messages to remove orphaned content
-		const filteredMessages = messages
-			.map((message) => {
-				const role = message.role as MessageRole
-				const content = message.content as MessageContent
+		const filteredMessages: CoreMessage[] = []
 
-				// For tool messages, remove orphaned results
-				if (role === "tool" && Array.isArray(content)) {
-					const filteredContent = content.filter((part) => {
-						if (part && typeof part === "object" && part.type === "tool-result") {
-							const resultPart = part as ToolResultPart
-							return toolCallIds.has(resultPart.toolCallId)
-						}
-						return true
-					})
+		for (const message of messages) {
+			const role = message.role as MessageRole
+			const content = message.content
 
-					// If all content was removed, skip this message entirely
-					if (filteredContent.length === 0) {
-						return null
+			// For tool messages, remove orphaned results
+			if (role === "tool" && Array.isArray(content)) {
+				const filteredContent = content.filter((part) => {
+					if (isToolResultPart(part)) {
+						return toolCallIds.has(part.toolCallId)
 					}
+					return true
+				})
 
-					return { ...message, content: filteredContent } as CoreMessage
+				// If all content was removed, skip this message entirely
+				if (filteredContent.length === 0) {
+					continue
 				}
 
-				// For assistant messages, remove orphaned tool calls
-				if (role === "assistant" && Array.isArray(content)) {
-					const filteredContent = content.filter((part) => {
-						if (part && typeof part === "object" && part.type === "tool-call") {
-							const callPart = part as ToolCallPart
-							return toolResultIds.has(callPart.toolCallId)
-						}
-						return true
-					})
+				filteredMessages.push({ ...message, content: filteredContent } as unknown as CoreMessage)
+				continue
+			}
 
-					// Keep the message even if tool calls were removed (it may have text content)
-					return { ...message, content: filteredContent } as CoreMessage
-				}
+			// For assistant messages, remove orphaned tool calls
+			if (role === "assistant" && Array.isArray(content)) {
+				const filteredContent = content.filter((part) => {
+					if (isToolCallPart(part)) {
+						return toolResultIds.has(part.toolCallId)
+					}
+					return true
+				})
 
-				return message
-			})
-			.filter((message): message is CoreMessage => message !== null)
+				// Keep the message even if tool calls were removed (it may have text content)
+				filteredMessages.push({ ...message, content: filteredContent } as unknown as CoreMessage)
+				continue
+			}
+
+			filteredMessages.push(message)
+		}
 
 		return filteredMessages
 	}

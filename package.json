@@ -41,9 +41,9 @@
 		"build-storybook": "storybook build"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "2.0.41",
-		"@ai-sdk/openai": "2.0.48",
-		"@ai-sdk/react": "2.0.68",
+		"@ai-sdk/anthropic": "2.0.56",
+		"@ai-sdk/openai": "2.0.86",
+		"@ai-sdk/react": "2.0.115",
 		"@aws-sdk/client-s3": "3.946.0",
 		"@aws-sdk/s3-request-presigner": "3.946.0",
 		"@boundaryml/baml": "^0.207.1",
@@ -61,12 +61,13 @@
 		"@livekit/agents-plugin-silero": "latest",
 		"@livekit/components-react": "latest",
 		"@livekit/components-styles": "latest",
-		"@mastra/ai-sdk": "0.3.3",
-		"@mastra/core": "0.24.8",
-		"@mastra/libsql": "0.16.3",
-		"@mastra/loggers": "0.10.19",
-		"@mastra/memory": "0.15.13",
-		"@mastra/pg": "0.17.10",
+		"@mastra/ai-sdk": "1.0.0-beta.8",
+		"@mastra/core": "1.0.0-beta.11",
+		"@mastra/libsql": "1.0.0-beta.7",
+		"@mastra/loggers": "1.0.0-beta.3",
+		"@mastra/mcp": "1.0.0-beta.6",
+		"@mastra/memory": "1.0.0-beta.4",
+		"@mastra/pg": "1.0.0-beta.7",
 		"@paper-design/shaders-react": "0.0.55",
 		"@radix-ui/react-accordion": "1.2.11",
 		"@radix-ui/react-alert-dialog": "1.1.15",
@@ -103,7 +104,7 @@
 		"@types/jsdom": "27.0.0",
 		"@types/three": "0.181.0",
 		"@uiw/react-md-editor": "4.0.8",
-		"ai": "5.0.87",
+		"ai": "5.0.113",
 		"assemblyai": "4.18.5",
 		"class-variance-authority": "0.7.1",
 		"clsx": "2.1.1",
@@ -150,7 +151,7 @@
 		"type-fest": "5.0.1",
 		"use-stick-to-bottom": "1.1.1",
 		"wretch": "2.11.0",
-		"zod": "4.1.11",
+		"zod": "3.25.76",
 		"zustand": "5.0.8"
 	},
 	"devDependencies": {
@@ -176,7 +177,7 @@
 		"happy-dom": "18.0.1",
 		"knip": "5.61.3",
 		"lefthook": "1.11.16",
-		"mastra": "^0.18.6",
+		"mastra": "1.0.0-beta.9",
 		"playwright": "1.53.2",
 		"process": "0.11.10",
 		"prompt": "1.3.0",
@@ -216,7 +217,8 @@
 		"overrides": {
 			"react": "19.2.0",
 			"react-dom": "19.2.0",
-			"@radix-ui/react-collapsible": "1.1.12"
+			"@radix-ui/react-collapsible": "1.1.12",
+			"zod": "3.25.76"
 		}
 	}
 }

@@ -22,12 +22,13 @@ export const semanticSearchEvidenceTool = createTool({
 			.string()
 			.optional()
 			.describe("Project ID to search within. Defaults to the current project in context."),
-		interviewId: z.string().nullish().describe("Optional: Limit search to a specific interview."),
+		interviewId: z.string().optional().nullable().describe("Optional: Limit search to a specific interview."),
 		matchThreshold: z
 			.number()
 			.min(0)
 			.max(1)
 			.optional()
+			.nullable()
 			.describe(
 				"Similarity threshold (0-1). Higher = more strict. Default: 0.5. Recommended: 0.4-0.6 for broad searches, 0.6-0.8 for precise matches."
 			),
@@ -55,15 +56,15 @@ export const semanticSearchEvidenceTool = createTool({
 		totalCount: z.number(),
 		threshold: z.number(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 
-		const projectId = context.projectId ?? runtimeProjectId ?? null
-		const query = context.query?.trim()
-		const interviewId = context.interviewId?.trim() || null
-		const matchThreshold = context.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
-		const matchCount = context.matchCount ?? DEFAULT_MATCH_COUNT
+		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const query = input.query?.trim()
+		const interviewId = input.interviewId?.trim() || null
+		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
+		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT
 
 		consola.debug("semantic-search-evidence: execute start", {
 			projectId,

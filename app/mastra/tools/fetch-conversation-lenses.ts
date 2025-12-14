@@ -105,25 +105,18 @@ export const fetchConversationLensesTool = createTool({
 		totalTemplates: z.number().optional(),
 		totalAnalyses: z.number().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const mode = (context as any).mode ?? "both"
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const interviewId = (context as any).interviewId ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const templateKey = (context as any).templateKey ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const category = (context as any).category ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const status = (context as any).status ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const limit = (context as any).limit ?? 50
+		const mode = input.mode ?? "both"
+		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const interviewId = input.interviewId ?? null
+		const templateKey = input.templateKey ?? null
+		const category = input.category ?? null
+		const status = input.status ?? null
+		const limit = input.limit ?? 50
 
 		consola.debug("fetch-conversation-lenses: execute start", {
 			mode,

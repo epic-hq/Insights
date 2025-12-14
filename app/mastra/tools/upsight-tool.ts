@@ -95,19 +95,19 @@ export const upsightTool = createTool({
 			lastUpdated: z.string(),
 		}),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
-			consola.debug("Upsight tool executing with context:", context)
-			consola.debug("Runtime context:", runtimeContext)
+			consola.debug("Upsight tool executing with input:", input)
+			consola.debug("Context:", context)
 
 			// Get accountId and projectId from runtime context or input
-			const runtimeAccountId = runtimeContext?.get("account_id") || runtimeContext?.get("accountId")
-			const runtimeProjectId = runtimeContext?.get("project_id") || runtimeContext?.get("projectId")
-			const runtimeUserId = runtimeContext?.get("user_id") || runtimeContext?.get("userId")
+			const runtimeAccountId = context?.requestContext?.get?.("account_id") || context?.requestContext?.get?.("accountId")
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") || context?.requestContext?.get?.("projectId")
+			const runtimeUserId = context?.requestContext?.get?.("user_id") || context?.requestContext?.get?.("userId")
 
 			// Use runtime context values if available, otherwise fall back to input parameters
-			const finalAccountId = runtimeAccountId || context.accountId
-			const finalProjectId = runtimeProjectId || context.projectId
+			const finalAccountId = runtimeAccountId || input.accountId
+			const finalProjectId = runtimeProjectId || input.projectId
 
 			consola.debug("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId)
 
@@ -139,7 +139,7 @@ export const upsightTool = createTool({
 				includePeople,
 				includePersonas,
 				limit,
-			} = context
+			} = input
 
 			// Initialize result arrays
 			let projects: any[] = []

@@ -648,6 +648,180 @@ export type Database = {
           },
         ]
       }
+      asset_opportunities: {
+        Row: {
+          account_id: string
+          asset_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          opportunity_id: string
+          project_id: string
+          relationship_type: string | null
+        }
+        Insert: {
+          account_id: string
+          asset_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          opportunity_id: string
+          project_id: string
+          relationship_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          asset_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          opportunity_id?: string
+          project_id?: string
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_opportunities_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_opportunities_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_opportunities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_organizations: {
+        Row: {
+          account_id: string
+          asset_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          project_id: string
+          relationship_type: string | null
+        }
+        Insert: {
+          account_id: string
+          asset_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          project_id: string
+          relationship_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          asset_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          project_id?: string
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_organizations_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_organizations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_organizations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_people: {
+        Row: {
+          account_id: string
+          asset_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          person_id: string
+          project_id: string
+          relationship_type: string | null
+        }
+        Insert: {
+          account_id: string
+          asset_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          person_id: string
+          project_id: string
+          relationship_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          asset_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          person_id?: string
+          project_id?: string
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_people_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_people_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           account_id: string
@@ -1784,6 +1958,136 @@ export type Database = {
           },
         ]
       }
+      interview_opportunities: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          interview_id: string
+          notes: string | null
+          opportunity_id: string
+          project_id: string
+          relationship_type: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interview_id: string
+          notes?: string | null
+          opportunity_id: string
+          project_id: string
+          relationship_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interview_id?: string
+          notes?: string | null
+          opportunity_id?: string
+          project_id?: string
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_opportunities_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_opportunities_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_opportunities_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_opportunities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_organizations: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          interview_id: string
+          notes: string | null
+          organization_id: string
+          project_id: string
+          relationship_type: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interview_id: string
+          notes?: string | null
+          organization_id: string
+          project_id: string
+          relationship_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interview_id?: string
+          notes?: string | null
+          organization_id?: string
+          project_id?: string
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_organizations_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_organizations_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_organizations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_organizations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_people: {
         Row: {
           created_at: string
@@ -2234,6 +2538,69 @@ export type Database = {
           },
         ]
       }
+      mastra_agents: {
+        Row: {
+          agents: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          defaultOptions: Json | null
+          description: string | null
+          id: string
+          inputProcessors: Json | null
+          instructions: string
+          memory: Json | null
+          metadata: Json | null
+          model: Json
+          name: string
+          outputProcessors: Json | null
+          scorers: Json | null
+          tools: Json | null
+          updatedAt: string
+          updatedAtZ: string | null
+          workflows: Json | null
+        }
+        Insert: {
+          agents?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          defaultOptions?: Json | null
+          description?: string | null
+          id: string
+          inputProcessors?: Json | null
+          instructions: string
+          memory?: Json | null
+          metadata?: Json | null
+          model: Json
+          name: string
+          outputProcessors?: Json | null
+          scorers?: Json | null
+          tools?: Json | null
+          updatedAt: string
+          updatedAtZ?: string | null
+          workflows?: Json | null
+        }
+        Update: {
+          agents?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          defaultOptions?: Json | null
+          description?: string | null
+          id?: string
+          inputProcessors?: Json | null
+          instructions?: string
+          memory?: Json | null
+          metadata?: Json | null
+          model?: Json
+          name?: string
+          outputProcessors?: Json | null
+          scorers?: Json | null
+          tools?: Json | null
+          updatedAt?: string
+          updatedAtZ?: string | null
+          workflows?: Json | null
+        }
+        Relationships: []
+      }
       mastra_ai_spans: {
         Row: {
           attributes: Json | null
@@ -2439,6 +2806,7 @@ export type Database = {
           preprocessStepResult: Json | null
           reason: string | null
           reasonPrompt: string | null
+          requestContext: Json | null
           resourceId: string | null
           runId: string
           runtimeContext: Json | null
@@ -2473,6 +2841,7 @@ export type Database = {
           preprocessStepResult?: Json | null
           reason?: string | null
           reasonPrompt?: string | null
+          requestContext?: Json | null
           resourceId?: string | null
           runId: string
           runtimeContext?: Json | null
@@ -2507,6 +2876,7 @@ export type Database = {
           preprocessStepResult?: Json | null
           reason?: string | null
           reasonPrompt?: string | null
+          requestContext?: Json | null
           resourceId?: string | null
           runId?: string
           runtimeContext?: Json | null
@@ -5399,6 +5769,7 @@ export type Database = {
           segment: string | null
           source_type: string | null
           status: Database["public"]["Enums"]["interview_status"] | null
+          thumbnail_url: string | null
           title: string | null
           transcript: string | null
           transcript_formatted: Json | null
@@ -5432,6 +5803,7 @@ export type Database = {
           segment?: string | null
           source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"] | null
+          thumbnail_url?: string | null
           title?: string | null
           transcript?: string | null
           transcript_formatted?: Json | null
@@ -5465,6 +5837,7 @@ export type Database = {
           segment?: string | null
           source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"] | null
+          thumbnail_url?: string | null
           title?: string | null
           transcript?: string | null
           transcript_formatted?: Json | null
@@ -5763,6 +6136,25 @@ export type Database = {
           person_facet_id_1: string
           person_facet_id_2: string
           similarity: number
+        }[]
+      }
+      find_similar_assets: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+          query_embedding: string
+        }
+        Returns: {
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          column_count: number
+          content_md: string
+          description: string
+          id: string
+          row_count: number
+          similarity: number
+          table_data: Json
+          title: string
         }[]
       }
       find_similar_evidence: {

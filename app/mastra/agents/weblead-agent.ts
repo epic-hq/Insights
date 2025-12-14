@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 
 export const webLeadAgent = new Agent({
+	id: "web-lead-agent",
 	name: "Web Lead Agent",
 	description: "An agent that chats with web leads and guides them through the signup process.",
 	instructions: `You are a helpful assistant for UpSight, an expert customer insights platform and services agency.

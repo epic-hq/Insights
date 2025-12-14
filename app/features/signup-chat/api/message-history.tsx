@@ -9,10 +9,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		return new Response("Unauthorized", { status: 401 })
 	}
 
-	const threads = await memory.getThreadsByResourceIdPaginated({
+	const threads = await memory.listThreadsByResourceId({
 		resourceId: `signupAgent-${user.sub}`,
-		orderBy: "createdAt",
-		sortDirection: "DESC",
+		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
 	})

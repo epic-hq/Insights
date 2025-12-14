@@ -1,12 +1,13 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
+import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
-// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
-import { TokenLimiter } from "@mastra/memory/processors"
 import consola from "consola"
 import { z } from "zod"
-import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
+// ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
+// import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
+import { capabilityLookupTool } from "../tools/capability-lookup"
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
@@ -18,15 +19,14 @@ import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-con
 import { fetchSegmentsTool } from "../tools/fetch-segments"
 import { fetchThemesTool } from "../tools/fetch-themes"
 import { fetchWebContentTool } from "../tools/fetch-web-content"
-import { generateProjectRoutesTool } from "../tools/generate-project-routes"
 import { generateDocumentLinkTool } from "../tools/generate-document-link"
+import { generateProjectRoutesTool } from "../tools/generate-project-routes"
 import { getCurrentDateTool } from "../tools/get-current-date"
 import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table"
 import { importPeopleFromTableTool } from "../tools/import-people-from-table"
 import { importVideoFromUrlTool } from "../tools/import-video-from-url"
 import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { manageDocumentsTool } from "../tools/manage-documents"
-import { capabilityLookupTool } from "../tools/capability-lookup"
 import {
 	createInterviewPromptTool,
 	deleteInterviewPromptTool,
@@ -39,12 +39,12 @@ import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
-import { updateTableAssetTool } from "../tools/update-table-asset"
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
 import { suggestionTool } from "../tools/suggestion-tool"
 import { switchAgentTool } from "../tools/switch-agent"
+import { updateTableAssetTool } from "../tools/update-table-asset"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
 import { findSimilarPagesTool, webResearchTool } from "../tools/web-research"
@@ -56,11 +56,12 @@ const ProjectStatusMemoryState = z.object({
 })
 
 export const projectStatusAgent = new Agent({
+	id: "project-status-agent",
 	name: "projectStatusAgent",
-	instructions: async ({ runtimeContext }) => {
+	instructions: async ({ requestContext }) => {
 		try {
-			const projectId = runtimeContext.get("project_id")
-			const accountId = runtimeContext.get("account_id")
+			const projectId = requestContext.get("project_id")
+			const accountId = requestContext.get("account_id")
 			return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
@@ -156,6 +157,7 @@ Call "getCurrentDate" first for any date/time questions.
 - Valid categories: "company", "research paper", "news", "pdf", "github", "tweet", "personal site", "linkedin profile"
 - Results are saved as notes AND indexed as evidence for semantic search
 - KEEP RESPONSES BRIEF: Just report the TLDR + link to the full note
+- **CRITICAL: ALWAYS use the exact "noteUrl" returned in the tool result for linking with https://getupsight.com/ - NEVER construct or guess URLs. The noteUrl is the only valid link to the saved research note.**
 
 **User-Pasted Tabular Data** (parseSpreadsheet):
 - Use when USER PASTES CSV, TSV, or spreadsheet data
@@ -276,11 +278,9 @@ Please try:
 		storage: getSharedPostgresStore(),
 		options: {
 			workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
-			threads: { generateTitle: false },
 		},
-		// Processors run in order - ToolCallPairProcessor must come BEFORE TokenLimiter
-		// to ensure tool call/result pairs are identified before any trimming occurs.
-		// This prevents "No tool call found for function call output" errors.
-		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
 	}),
+	// TokenLimiterProcessor prevents context window overflow
+	// Note: Using number format for Zod v4 compatibility
+	outputProcessors: [new TokenLimiterProcessor(100_000)],
 })

@@ -228,11 +228,11 @@ export const upsertPersonFacetsTool = createTool({
 		"Extracts structured person facets from a transcript or structured facts and upserts them into the person_facet table, creating account facets when needed.",
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
 
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
 		const {
 			personId,
@@ -244,7 +244,7 @@ export const upsertPersonFacetsTool = createTool({
 			projectId: projectIdInput,
 			accountId: accountIdInput,
 			dryRun = false,
-		} = context as ToolInput
+		} = input as ToolInput
 
 		const sourceResolution = resolveSourceLabel(sourceInput)
 		const source = sourceResolution.source

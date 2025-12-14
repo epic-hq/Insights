@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, Trash2, UserCircle } from "lucide-react"
+import { Edit2, FileIcon, FileText, MoreVertical, Paperclip, RefreshCw, StickyNote, Trash2, UserCircle } from "lucide-react"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import {
@@ -71,6 +71,27 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			getOrganizations({ supabase, accountId, projectId }),
 		])
 
+		// Fetch assets linked to this person via junction table
+		const { data: linkedAssets } = await supabase
+			.from("asset_people")
+			.select(`
+				relationship_type,
+				project_assets (
+					id, title, asset_type, created_at, description
+				)
+			`)
+			.eq("person_id", personId)
+			.eq("project_id", projectId)
+			.order("created_at", { ascending: false })
+			.limit(20)
+
+		const relatedAssets = (linkedAssets || [])
+			.filter((link) => link.project_assets)
+			.map((link) => ({
+				...(link.project_assets as { id: string; title: string; asset_type: string; created_at: string; description: string | null }),
+				relationship_type: link.relationship_type,
+			}))
+
 		if (!person) {
 			consola.warn("PersonDetail loader: person not found", { accountId, projectId, personId })
 			throw new Response("Person not found", { status: 404 })
@@ -100,8 +121,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			image_url: imageUrl,
 		}
 
-		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0 })
-		return { person: personWithFacetSummaries, catalog, organizations: organizations.data ?? [] }
+		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0, assetsCount: relatedAssets.length })
+		return { person: personWithFacetSummaries, catalog, organizations: organizations.data ?? [], relatedAssets }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		consola.error("PersonDetail loader error", { accountId, projectId, personId, message, error })
@@ -398,7 +419,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function PersonDetail() {
-	const { person, catalog, organizations } = useLoaderData<typeof loader>()
+	const { person, catalog, organizations, relatedAssets } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const _organizationActionData = actionData?.organization
 	const refreshError = actionData?.refresh?.error
@@ -411,7 +432,14 @@ export default function PersonDetail() {
 	const routesByPath = useProjectRoutes(projectPath || "")
 	const routes = accountId && projectId ? routesByIds : routesByPath
 
-	const interviewLinks = (person.interview_people || []).filter((ip) => ip.interviews?.id)
+	const allInterviewLinks = (person.interview_people || []).filter((ip) => ip.interviews?.id)
+	// Split into conversations (interviews) and notes
+	const interviewLinks = allInterviewLinks.filter(
+		(ip) => ip.interviews?.source_type !== "note" && ip.interviews?.media_type !== "voice_memo"
+	)
+	const noteLinks = allInterviewLinks.filter(
+		(ip) => ip.interviews?.source_type === "note" || ip.interviews?.media_type === "voice_memo"
+	)
 	const peoplePersonas = person.people_personas || []
 	const primaryPersona = peoplePersonas.length > 0 ? peoplePersonas[0] : null
 	const persona = primaryPersona?.personas
@@ -592,7 +620,9 @@ export default function PersonDetail() {
 		person.created_at ? { label: "Added", value: new Date(person.created_at).toLocaleDateString() } : null,
 		person.updated_at ? { label: "Updated", value: new Date(person.updated_at).toLocaleDateString() } : null,
 		peoplePersonas.length ? { label: "Persona Links", value: String(peoplePersonas.length) } : null,
-		{ label: "Interviews", value: String(interviewLinks.length) },
+		{ label: "Conversations", value: String(interviewLinks.length) },
+		{ label: "Notes", value: String(noteLinks.length) },
+		{ label: "Assets", value: String(relatedAssets.length) },
 	].filter((fact): fact is { label: string; value: string } => Boolean(fact?.value))
 	const isRefreshingDescription = refreshFetcher.state === "submitting" || refreshFetcher.state === "loading"
 	const fetcherRefreshError = refreshFetcher.data?.refresh?.error
@@ -722,7 +752,7 @@ export default function PersonDetail() {
 
 						{interviewLinks.length > 0 && (
 							<section className="space-y-3">
-								<h2 className="font-semibold text-foreground text-lg">Interviews</h2>
+								<h2 className="font-semibold text-foreground text-lg">Conversations</h2>
 								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 									{interviewLinks.map((link) => (
 										<Card key={link.id} className="transition-shadow hover:shadow-md">
@@ -733,6 +763,62 @@ export default function PersonDetail() {
 													</h3>
 													<p className="text-muted-foreground text-sm">
 														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</Link>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</section>
+						)}
+
+						{noteLinks.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
+									<StickyNote className="h-5 w-5" />
+									Notes
+								</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{noteLinks.map((link) => (
+										<Card key={link.id} className="transition-shadow hover:shadow-md">
+											<CardContent className="p-4">
+												<Link to={routes.interviews.detail(link.interviews?.id || "")} className="block space-y-2">
+													<h3 className="font-medium text-foreground transition-colors hover:text-primary">
+														{link.interviews?.title || `Note ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
+													</h3>
+													<p className="text-muted-foreground text-sm">
+														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</Link>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</section>
+						)}
+
+						{relatedAssets.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
+									<FileIcon className="h-5 w-5" />
+									Assets
+								</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{relatedAssets.map((asset) => (
+										<Card key={asset.id} className="transition-shadow hover:shadow-md">
+											<CardContent className="p-4">
+												<Link to={routes.assets.detail(asset.id)} className="block space-y-2">
+													<h3 className="font-medium text-foreground transition-colors hover:text-primary">
+														{asset.title}
+													</h3>
+													<div className="flex items-center gap-2 text-muted-foreground text-xs">
+														<span className="rounded bg-muted px-1.5 py-0.5 capitalize">{asset.asset_type}</span>
+														{asset.relationship_type && (
+															<span className="rounded bg-muted px-1.5 py-0.5 capitalize">{asset.relationship_type}</span>
+														)}
+													</div>
+													<p className="text-muted-foreground text-sm">
+														{new Date(asset.created_at).toLocaleDateString()}
 													</p>
 												</Link>
 											</CardContent>

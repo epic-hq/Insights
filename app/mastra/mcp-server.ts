@@ -8,12 +8,14 @@ import { dailyBriefWorkflow } from "./workflows/daily-brief"
  */
 export async function startMCPServer() {
 	const server = new MCPServer({
+		id: "insights-mcp-server",
 		name: "insights-mcp-server",
 		version: "1.0.0",
+		tools: {},
 		workflows: {
 			dailyBriefWorkflow,
 		},
-	});
+	})
 
 	await server.startStdio()
 	consola.log("MCP Server started on stdio")

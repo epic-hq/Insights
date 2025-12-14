@@ -113,10 +113,10 @@ export const saveProjectSectionsDataTool = createTool({
 		saved: z.array(z.string()).optional(),
 		errors: z.array(z.string()).optional(),
 	}),
-	execute: async ({ context: toolContext, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
-			const { project_id, ...sectionData } = toolContext
-			const runtimeProjectId = runtimeContext?.get?.("project_id")
+			const { project_id, ...sectionData } = input
+			const runtimeProjectId = context?.requestContext?.get?.("project_id")
 
 			// Use runtime project_id if tool context has 'current' or missing
 			const actualProjectId = !project_id || project_id === "current" ? runtimeProjectId : project_id

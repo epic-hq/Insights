@@ -379,27 +379,27 @@ export const fetchProjectStatusContextTool = createTool({
 			})
 			.optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		const projectId = (context?.projectId ?? runtimeProjectId ?? "").trim()
+		const projectId = (input.projectId ?? runtimeProjectId ?? "").trim()
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
-		const includeEvidence = context?.includeEvidence !== false
-		const scopes = (context?.scopes && context.scopes.length > 0 ? context.scopes : detailScopes) as DetailScope[]
+		const includeEvidence = input.includeEvidence !== false
+		const scopes = (input.scopes && input.scopes.length > 0 ? input.scopes : detailScopes) as DetailScope[]
 		const scopeSet = new Set<DetailScope>(scopes)
 
-		const insightLimit = context?.insightLimit ?? DEFAULT_INSIGHT_LIMIT
-		const evidenceLimit = context?.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
-		const themeLimit = context?.themeLimit ?? DEFAULT_THEME_LIMIT
-		const peopleLimit = context?.peopleLimit ?? DEFAULT_PERSON_LIMIT
-		const personaLimit = context?.personaLimit ?? DEFAULT_PERSONA_LIMIT
-		const interviewLimit = context?.interviewLimit ?? DEFAULT_INTERVIEW_LIMIT
-		const personSearch = (context?.peopleSearch ?? "").trim()
+		const insightLimit = input.insightLimit ?? DEFAULT_INSIGHT_LIMIT
+		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
+		const themeLimit = input.themeLimit ?? DEFAULT_THEME_LIMIT
+		const peopleLimit = input.peopleLimit ?? DEFAULT_PERSON_LIMIT
+		const personaLimit = input.personaLimit ?? DEFAULT_PERSONA_LIMIT
+		const interviewLimit = input.interviewLimit ?? DEFAULT_INTERVIEW_LIMIT
+		const personSearch = (input.peopleSearch ?? "").trim()
 		const sanitizedPersonSearch = personSearch.replace(/[%*"'()]/g, "").trim()
-		const includePersonEvidence = context?.includePersonEvidence ?? sanitizedPersonSearch.length > 0
-		const personEvidenceLimit = context?.personEvidenceLimit ?? DEFAULT_PERSON_EVIDENCE_LIMIT
+		const includePersonEvidence = input.includePersonEvidence ?? sanitizedPersonSearch.length > 0
+		const personEvidenceLimit = input.personEvidenceLimit ?? DEFAULT_PERSON_EVIDENCE_LIMIT
 
 		consola.debug("fetch-project-status-context: execute start", {
 			projectId,
@@ -419,7 +419,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 		if (!projectId) {
 			consola.warn("fetch-project-status-context: missing projectId", {
-				inputProjectId: context?.projectId,
+				inputProjectId: input.projectId,
 				runtimeProjectId,
 			})
 			return {

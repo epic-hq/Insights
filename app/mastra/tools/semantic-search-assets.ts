@@ -63,14 +63,14 @@ export const semanticSearchAssetsTool = createTool({
 		totalCount: z.number(),
 		threshold: z.number(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const projectId = context.projectId ?? runtimeContext?.get?.("project_id") ?? null
-		const accountId = runtimeContext?.get?.("account_id") ?? null
+		const projectId = input.projectId ?? context?.requestContext?.get?.("project_id") ?? null
+		const accountId = context?.requestContext?.get?.("account_id") ?? null
 
-		const query = context.query?.trim()
-		const matchThreshold = context.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
-		const matchCount = context.matchCount ?? DEFAULT_MATCH_COUNT
+		const query = input.query?.trim()
+		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
+		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT
 
 		consola.debug("semantic-search-assets: execute start", {
 			projectId,
@@ -150,8 +150,8 @@ export const semanticSearchAssetsTool = createTool({
 
 			// Filter by asset type if specified
 			let results = assetsData || []
-			if (context.assetType) {
-				results = results.filter((a: any) => a.asset_type === context.assetType)
+			if (input.assetType) {
+				results = results.filter((a: any) => a.asset_type === input.assetType)
 			}
 
 			const assets = results.map((row: any) => ({

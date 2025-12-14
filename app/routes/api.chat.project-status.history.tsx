@@ -37,10 +37,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// })
 
 		// Get the most recent thread for this project
-		const threads = await memory.getThreadsByResourceIdPaginated({
+		const threads = await memory.listThreadsByResourceId({
 			resourceId,
-			orderBy: "createdAt",
-			sortDirection: "DESC",
+			orderBy: { field: "createdAt", direction: "DESC" },
 			page: 0,
 			perPage: 1,
 		})
@@ -58,21 +57,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const threadId = threads.threads[0].id
 		consola.info("project-status history: using thread", { threadId })
 
-		// Query messages using Memory API
-		const { messagesV2 } = await memory.query({
+		// Query messages using Memory API (v1: query() renamed to recall(), messagesV2 renamed to messages)
+		const { messages } = await memory.recall({
 			threadId,
 			selectBy: { last: 10 },
 		})
 
 		consola.info("project-status history loaded", {
 			threadId,
-			messageCount: messagesV2?.length || 0,
+			messageCount: messages?.length || 0,
 		})
 
 		// Convert messages to UI format
 		let uiMessages: UpsightMessage[] = []
-		if (messagesV2 && messagesV2.length > 0) {
-			uiMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+		if (messages && messages.length > 0) {
+			uiMessages = convertMessages(messages).to("AIV5.UI") as UpsightMessage[]
 		}
 
 		// consola.info("project-status history: converted to UI format", { uiMessageCount: uiMessages.length, })

@@ -30,10 +30,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
 	const { client: supabase } = getServerClient(request)
 	// Basic usage with default parameters
-	const result = await memory.getThreadsByResourceIdPaginated({
+	const result = await memory.listThreadsByResourceId({
 		resourceId: `signupAgent-${user.sub}`,
-		orderBy: "createdAt",
-		sortDirection: "DESC",
+		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
 	})
@@ -56,18 +55,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 	}
 
 	// Get messages in the V2 format (roughly equivalent to AI SDK's UIMessage format)
-	// const messagesV2 = await mastra.getStorage()?.getMessages({ threadId: threadId, resourceId: `signupAgent-${user.sub}`, format: 'v2' });
-	const {
-		messages: messagesV1,
-		uiMessages,
-		messagesV2,
-	} = await memory.query({
+	const { messages } = await memory.recall({
 		threadId: threadId,
 		selectBy: {
 			last: 50,
 		},
 	})
-	const aiv5Messages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+	const aiv5Messages = convertMessages(messages).to("AIV5.UI") as UpsightMessage[]
 
 	// Get existing chat data from user_settings
 	const { data: userSettings } = await supabase

@@ -58,19 +58,15 @@ export const fetchSegmentsTool = createTool({
 		kindSummaries: z.array(segmentKindSummarySchema).optional(),
 		segments: z.array(segmentSummarySchema).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
-		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
-		const summaryOnly = (context as any).summaryOnly ?? false
-		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
-		const kind = (context as any).kind
-		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
-		const minBullseyeScore = (context as any).minBullseyeScore
+		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const summaryOnly = input.summaryOnly ?? false
+		const kind = input.kind
+		const minBullseyeScore = input.minBullseyeScore
 
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null
 

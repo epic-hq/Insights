@@ -1,10 +1,10 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
-// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
-import { TokenLimiter } from "@mastra/memory/processors"
+import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { z } from "zod"
-import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
+// ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
+// import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
@@ -15,10 +15,11 @@ const InterviewMemoryState = z.object({
 })
 
 export const interviewStatusAgent = new Agent({
+	id: "interview-status-agent",
 	name: "interviewStatusAgent",
-	instructions: async ({ runtimeContext }) => {
-		const interviewId = runtimeContext.get("interview_id")
-		const projectId = runtimeContext.get("project_id")
+	instructions: async ({ requestContext }) => {
+		const interviewId = requestContext.get("interview_id")
+		const projectId = requestContext.get("project_id")
 		return `
 You are an interview insight copilot that helps product teams digest a single conversation.
 
@@ -49,8 +50,9 @@ Tone:
 		storage: getSharedPostgresStore(),
 		options: {
 			workingMemory: { enabled: true, schema: InterviewMemoryState },
-			threads: { generateTitle: false },
 		},
-		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
+		generateTitle: false,
 	}),
+	// Note: Using number format for Zod v4 compatibility
+	outputProcessors: [new TokenLimiterProcessor(100_000)],
 });

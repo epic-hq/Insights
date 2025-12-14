@@ -99,21 +99,21 @@ Operations:
 			)
 			.optional(),
 	}),
-	execute: async ({ context: toolContext, runtimeContext }, _options) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 
-		// Extract tool parameters from context
-		const projectId = toolContext.projectId ?? runtimeProjectId ?? null
-		const operation = toolContext.operation
-		const kind = toolContext.kind
-		const rawContent = toolContext.content
+		// Extract tool parameters from input
+		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const operation = input.operation
+		const kind = input.kind
+		const rawContent = input.content
 		// If content is an object, store it under meta.structured; if string, store in content_md
 		const isObjectContent = typeof rawContent === "object" && rawContent !== null
 		const content = isObjectContent ? null : rawContent
 		const metadata = isObjectContent
-			? { structured: rawContent, ...(toolContext.metadata ?? {}) }
-			: toolContext.metadata
+			? { structured: rawContent, ...(input.metadata ?? {}) }
+			: input.metadata
 
 		consola.debug("manage-documents: execute start", {
 			projectId,

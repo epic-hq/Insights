@@ -29,17 +29,14 @@ export const fetchThemesTool = createTool({
 		totalCount: z.number(),
 		searchApplied: z.string().nullable(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const themeSearch = (context as any).themeSearch ?? ""
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
-		const limit = (context as any).limit ?? 50
+		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const themeSearch = input.themeSearch ?? ""
+		const limit = input.limit ?? 50
 
 		const sanitizedThemeSearch = themeSearch.trim().toLowerCase()
 

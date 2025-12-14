@@ -123,26 +123,26 @@ Entity Types Supported:
 			)
 			.optional(),
 	}),
-	execute: async ({ context: toolContext, runtimeContext }, _options) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		// Extract tool parameters from context
-		const projectId = (toolContext.projectId ?? runtimeProjectId ?? null) as string | null
-		const accountId = (toolContext.accountId ?? runtimeAccountId ?? null) as string | null
-		const operation = toolContext.operation
-		const entityType = toolContext.entityType
-		const entityId = toolContext.entityId
-		const annotationType = toolContext.annotationType
-		const content = toolContext.content
-		const contentJsonb = toolContext.contentJsonb
-		const metadata = toolContext.metadata
-		const dueDate = toolContext.dueDate
-		const reactionType = toolContext.reactionType
-		const annotationId = toolContext.annotationId
-		const filterByType = toolContext.filterByType
-		const includeArchived = toolContext.includeArchived ?? false
+		// Extract tool parameters from input
+		const projectId = (input.projectId ?? runtimeProjectId ?? null) as string | null
+		const accountId = (input.accountId ?? runtimeAccountId ?? null) as string | null
+		const operation = input.operation
+		const entityType = input.entityType
+		const entityId = input.entityId
+		const annotationType = input.annotationType
+		const content = input.content
+		const contentJsonb = input.contentJsonb
+		const metadata = input.metadata
+		const dueDate = input.dueDate
+		const reactionType = input.reactionType
+		const annotationId = input.annotationId
+		const filterByType = input.filterByType
+		const includeArchived = input.includeArchived ?? false
 
 		consola.debug("manage-annotations: execute start", {
 			projectId,

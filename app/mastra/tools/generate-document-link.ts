@@ -26,10 +26,10 @@ export const generateDocumentLinkTool = createTool({
 			error: { type: "string", nullable: true },
 		},
 	},
-	execute: async ({ context, runtimeContext }) => {
-		const accountId = runtimeContext?.get?.("account_id") as string
-		const projectId = runtimeContext?.get?.("project_id") as string
-		const { sectionId, kind } = context || {}
+	execute: async (input, context?) => {
+		const accountId = context?.requestContext?.get?.("account_id") as string
+		const projectId = context?.requestContext?.get?.("project_id") as string
+		const { sectionId, kind } = input || {}
 
 		if (!accountId || !projectId) {
 			return { success: false, route: null, absoluteRoute: null, error: "Missing accountId or projectId in context" }

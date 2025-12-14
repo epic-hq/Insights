@@ -61,10 +61,10 @@ export const upsertPersonTool = createTool({
 			})
 			.nullable(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
 		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const {
@@ -84,7 +84,7 @@ export const upsertPersonTool = createTool({
 			timezone,
 			pronouns,
 			lifecycleStage,
-		} = (context as any) || {}
+		} = (input as any) || {}
 
 		const projectId = (runtimeProjectId as string) || null
 		const accountId = (runtimeAccountId as string) || null

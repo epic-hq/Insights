@@ -55,8 +55,8 @@ export const capabilityLookupTool = createTool({
 		),
 		guardrails: z.array(z.string()),
 	}),
-	execute: async ({ context }) => {
-		const { query } = context
+	execute: async (input) => {
+		const { query } = input
 		const normalized = query?.toLowerCase().trim()
 		const capabilities = CAPABILITIES.filter((cap) =>
 			!normalized ? true : cap.name.toLowerCase().includes(normalized) || cap.description.toLowerCase().includes(normalized)

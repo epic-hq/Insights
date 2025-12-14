@@ -1,4 +1,4 @@
-import { RuntimeContext } from "@mastra/core/di"
+import { RequestContext } from "@mastra/core/di"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
@@ -55,10 +55,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	// TODO pass in threadId instead of refetching
 	// TODO abstract into thread primitives lib
 	const resourceId = `projectSetupAgent-${userId}-${projectId}`
-	const threads = await memory.getThreadsByResourceIdPaginated({
+	const threads = await memory.listThreadsByResourceId({
 		resourceId,
-		orderBy: "createdAt",
-		sortDirection: "DESC",
+		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
 	})
@@ -75,10 +74,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		threadId = threads.threads[0].id
 	}
 
-	const runtimeContext = new RuntimeContext()
-	runtimeContext.set("user_id", userId)
-	runtimeContext.set("account_id", accountId)
-	runtimeContext.set("project_id", projectId)
+	const requestContext = new RequestContext()
+	requestContext.set("user_id", userId)
+	requestContext.set("account_id", accountId)
+	requestContext.set("project_id", projectId)
 
 	const agent = mastra.getAgent("projectSetupAgent")
 	const result = await agent.stream(runtimeMessages, {
@@ -87,7 +86,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			thread: threadId,
 			resource: resourceId,
 		},
-		runtimeContext,
+		requestContext,
 		context: system
 			? [
 					{

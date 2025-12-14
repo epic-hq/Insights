@@ -22,11 +22,11 @@ const getInsightsStep = createStep({
 	outputSchema: z.object({
 		value: z.array(z.any()),
 	}),
-	execute: async ({ inputData, runtimeContext }) => {
+	execute: async ({ inputData, requestContext }) => {
 		const { account_id, project_id } = inputData
 
-		// Get supabase from runtime context, fallback to creating one
-		let supabase: SupabaseClient | null = runtimeContext?.get("supabase")
+		// Get supabase from request context, fallback to creating one
+		let supabase: SupabaseClient | null = requestContext?.get("supabase")
 		if (!supabase) {
 			supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 			consola.log("wf-daily: created fallback supabase client")

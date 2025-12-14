@@ -20,16 +20,16 @@ import {
 } from "~/utils/extractMediaUrl.server"
 import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl"
 
-function ensureContext(runtimeContext?: Map<string, unknown> | any) {
+function ensureContext(context?: Map<string, unknown> | any) {
 	consola.info("[importVideoFromUrl] ensureContext called", {
-		hasRuntimeContext: !!runtimeContext,
-		runtimeContextType: typeof runtimeContext,
-		hasGetMethod: typeof runtimeContext?.get === "function",
+		hasContext: !!context,
+		contextType: typeof context,
+		hasGetMethod: typeof context?.get === "function",
 	})
 
-	const accountId = runtimeContext?.get?.("account_id") as string | undefined
-	const projectId = runtimeContext?.get?.("project_id") as string | undefined
-	const userId = runtimeContext?.get?.("user_id") as string | undefined
+	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+	const userId = context?.requestContext?.get?.("user_id") as string | undefined
 
 	consola.info("[importVideoFromUrl] extracted context values", {
 		accountId: accountId || "(empty)",
@@ -65,9 +65,9 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 		participantName: z.string().optional().describe("Optional participant name to associate with the interview."),
 		customInstructions: z.string().optional().describe("Optional custom instructions to guide analysis."),
 	}),
-	execute: async ({ context, runtimeContext }) => {
-		const { videoUrl: inputUrl, title, participantName } = context
-		const { accountId, projectId, userId } = ensureContext(runtimeContext)
+	execute: async (input, context?) => {
+		const { videoUrl: inputUrl, title, participantName } = input
+		const { accountId, projectId, userId } = ensureContext(context)
 
 		// Check if this is a webpage that might have multiple media assets
 		// This provides a better UX by letting the user choose when there are options

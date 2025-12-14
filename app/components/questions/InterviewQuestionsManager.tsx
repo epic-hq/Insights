@@ -121,7 +121,7 @@ const questionCategories = [
 ]
 
 // Safe minutes schema for user-entered allocation values
-const MinutesSchema = z.coerce.number().refine(Number.isFinite).int().min(0).max(240)
+const MinutesSchema = z.coerce.number().int().min(0).max(240).refine(Number.isFinite)
 
 function sanitizeAllocations(input?: Record<string, unknown>): Record<string, number> {
 	const out: Record<string, number> = {}

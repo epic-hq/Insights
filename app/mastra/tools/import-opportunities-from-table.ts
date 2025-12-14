@@ -195,18 +195,18 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 		})).optional().describe("Details of imported opportunities"),
 		errors: z.array(z.string()).optional().describe("Any errors encountered"),
 	}),
-	execute: async ({ context, runtimeContext, writer }) => {
+	execute: async (input, context?) => {
 		const errors: string[] = []
 		const results: ImportResult[] = []
 		let skipped = 0
 		let organizationsCreated = 0
 
 		try {
-			const { assetId, columnMapping, createOrganizations, skipDuplicates, defaultStage, defaultCurrency } = context
+			const { assetId, columnMapping, createOrganizations, skipDuplicates, defaultStage, defaultCurrency } = input
 
 			// Get accountId and projectId from runtime context
-			const accountId = runtimeContext?.get?.("account_id") as string | undefined
-			const projectId = runtimeContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 
 			if (!accountId || !projectId) {
 				return {

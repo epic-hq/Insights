@@ -49,13 +49,13 @@ export const generateResearchStructureTool = createTool({
 			.optional(),
 		validation_gates: z.record(z.string(), z.any()).nullable().optional(),
 	}),
-	execute: async ({ context: toolContext, runtimeContext }, _options) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
 		// Extract projectId from tool parameters or runtime context
-		const projectId = toolContext.projectId ?? runtimeProjectId ?? null
+		const projectId = input.projectId ?? runtimeProjectId ?? null
 
 		consola.debug("generate-research-structure: execute start", {
 			projectId,

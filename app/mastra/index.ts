@@ -1,5 +1,5 @@
 import { chatRoute } from "@mastra/ai-sdk"
-import type { RuntimeContext } from "@mastra/core/di"
+import type { RequestContext } from "@mastra/core/di"
 import { Mastra } from "@mastra/core/mastra"
 import { PinoLogger } from "@mastra/loggers"
 import { createClient } from "@supabase/supabase-js"
@@ -65,16 +65,16 @@ export const mastra = new Mastra({
 				const project_id = c.req.header("x-projectid")
 				const jwt = c.req.header("authorization")?.replace("Bearer ", "") // Extract JWT from Authorization header
 
-				const runtimeContext = c.get("runtimeContext") as RuntimeContext<UserContext>
+				const requestContext = c.get("requestContext") as RequestContext<UserContext>
 				// consola.log("mastra_account_id", account_id)
 				// consola.log("mastra_project_id", project_id)
 				// consola.log("mastra_jwt", jwt ? "present" : "missing")
 
-				runtimeContext.set("user_id", user_id || "FAKE_USER_ID")
-				runtimeContext.set("account_id", account_id || "")
-				runtimeContext.set("project_id", project_id || "")
-				runtimeContext.set("jwt", jwt || "") // Add JWT to runtime context
-				// consola.log("mastra_runtimeContext", runtimeContext.get("user_id"))
+				requestContext.set("user_id", user_id || "FAKE_USER_ID")
+				requestContext.set("account_id", account_id || "")
+				requestContext.set("project_id", project_id || "")
+				requestContext.set("jwt", jwt || "") // Add JWT to requestContext
+				// consola.log("mastra_requestContext", requestContext.get("user_id"))
 				// consola.log("server middleware - user_id", user_id)
 				await next()
 			},

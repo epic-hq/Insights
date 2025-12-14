@@ -35,7 +35,7 @@ export const createTeamAccount = async ({
 }
 
 const updateAccountNameSchema = z.object({
-	account_id: z.uuid(),
+	account_id: z.string().uuid(),
 	name: z.string(),
 })
 type UpdateAccountNameRequest = z.infer<typeof updateAccountNameSchema>
@@ -53,7 +53,7 @@ const _updateAccountName = async ({
 }
 
 const updateAccountSlugSchema = z.object({
-	account_id: z.uuid(),
+	account_id: z.string().uuid(),
 	slug: z.string(),
 })
 type UpdateAccountSlugRequest = z.infer<typeof updateAccountSlugSchema>
@@ -71,7 +71,7 @@ const _updateAccountSlug = async ({
 }
 
 const getAccountSchema = z.object({
-	account_id: z.uuid(),
+	account_id: z.string().uuid(),
 })
 type GetAccountRequest = z.infer<typeof getAccountSchema>
 
@@ -91,7 +91,7 @@ export const getAccount = async ({ supabase, account_id }: { supabase: SupabaseC
 }
 
 const getAccountMembersSchema = z.object({
-	account_id: z.uuid(),
+	account_id: z.string().uuid(),
 })
 type GetAccountMembersRequest = z.infer<typeof getAccountMembersSchema>
 
@@ -111,8 +111,8 @@ export const getAccountMembers = async ({
 }
 
 const updateAccountUserRoleSchema = z.object({
-	account_id: z.uuid(),
-	user_id: z.uuid(),
+	account_id: z.string().uuid(),
+	user_id: z.string().uuid(),
 	role: z.enum(["owner", "member"]),
 })
 type UpdateAccountUserRoleRequest = z.infer<typeof updateAccountUserRoleSchema>

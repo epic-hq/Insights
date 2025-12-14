@@ -54,16 +54,13 @@ export const fetchPainMatrixCacheTool = createTool({
 			})
 			.nullable(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
-		const requestedProjectId = (context as any).projectId ?? runtimeProjectId ?? null
-		// biome-ignore lint/suspicious/noExplicitAny: Mastra tool context typing
-		const computeFreshness =
-			typeof (context as any).computeFreshness === "boolean" ? (context as any).computeFreshness : true
+		const requestedProjectId = input.projectId ?? runtimeProjectId ?? null
+		const computeFreshness = typeof input.computeFreshness === "boolean" ? input.computeFreshness : true
 
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null
 		const projectId = requestedProjectId ? String(requestedProjectId).trim() : null
