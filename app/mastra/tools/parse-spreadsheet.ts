@@ -205,6 +205,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		stats: z.record(z.string(), z.any()).optional().describe("Summary statistics for numeric columns"),
 		sampleRows: z.array(z.record(z.string(), z.any())).optional().describe("First few rows as structured data"),
 		assetId: z.string().uuid().optional().describe("ID of the saved project_asset, if saved"),
+		assetUrl: z.string().optional().describe("Full URL to view/edit the asset (use this for links, not assetId)"),
 		assetSaved: z.boolean().optional().describe("Whether the asset was saved to project_assets"),
 		looksLikeContacts: z.boolean().optional().describe("Whether the data appears to be contact/people data"),
 		contactColumns: z.array(z.string()).optional().describe("Detected contact-related column names"),
@@ -374,6 +375,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 
 			// Save to project_assets if requested and we have the required IDs
 			let assetId: string | undefined
+			let assetUrl: string | undefined
 			let assetSaved = false
 
 			if (saveToAssets && accountId && projectId) {
@@ -418,6 +420,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 						consola.error("[parse-spreadsheet] Failed to save asset:", insertError)
 					} else if (asset) {
 						assetId = asset.id
+						assetUrl = `/a/${accountId}/${projectId}/assets/${asset.id}`
 						assetSaved = true
 						consola.info("[parse-spreadsheet] Saved to project_assets:", assetId)
 
@@ -459,6 +462,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				stats,
 				sampleRows: rows.slice(0, 5), // Include first 5 rows as structured data for LLM reasoning
 				assetId,
+				assetUrl,
 				assetSaved,
 				looksLikeContacts,
 				contactColumns: looksLikeContacts ? contactColumns : undefined,
