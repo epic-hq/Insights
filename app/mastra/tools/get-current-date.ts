@@ -21,17 +21,17 @@ export const getCurrentDateTool = createTool({
 		timestamp: z.string().describe("Full ISO 8601 timestamp"),
 		timezone: z.string().describe("Timezone used"),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		// Debug logging
 		consola.debug("getCurrentDate tool called", {
-			contextTimezone: context.timezone,
-			runtimeContextAvailable: !!runtimeContext,
-			userTimezone: runtimeContext?.get?.("user_timezone"),
+			contextTimezone: input.timezone,
+			runtimeContextAvailable: !!context,
+			userTimezone: context?.requestContext?.get?.("user_timezone"),
 		})
 
 		// Priority: explicit param > runtime context user_timezone > UTC fallback
 		const timezone =
-			context.timezone || runtimeContext?.get?.("user_timezone") || runtimeContext?.get?.("timezone") || "UTC"
+			input.timezone || context?.requestContext?.get?.("user_timezone") || context?.requestContext?.get?.("timezone") || "UTC"
 
 		consola.debug("getCurrentDate using timezone", { timezone })
 

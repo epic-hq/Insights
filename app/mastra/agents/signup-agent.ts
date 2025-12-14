@@ -1,11 +1,11 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
-// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
-import { TokenLimiter } from "@mastra/memory/processors"
+import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
+// ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
+// import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { navigateToPageTool } from "../tools/navigate-to-page"
@@ -25,12 +25,13 @@ export const AgentState = z.object({
 })
 
 export const signupAgent = new Agent({
+	id: "signup-agent",
 	name: "signupAgent",
-	instructions: async ({ runtimeContext }) => {
+	instructions: async ({ requestContext }) => {
 		const { data } = await supabaseAdmin
 			.from("user_settings")
 			.select("signup_data")
-			.eq("user_id", runtimeContext.get("user_id"))
+			.eq("user_id", requestContext.get("user_id"))
 			.single()
 		return `
 You are an onboarding prescreen assistant for the waitlist. Ask short, targeted questions and collect the minimum to judge fit. Format responses with proper markdown for better readability.
@@ -74,10 +75,9 @@ ${JSON.stringify(data)}
 				enabled: false,
 				schema: AgentState,
 			},
-			threads: {
-				generateTitle: false,
-			},
 		},
-		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
+		generateTitle: false,
 	}),
+	// Note: Using number format for Zod v4 compatibility
+	outputProcessors: [new TokenLimiterProcessor(100_000)],
 });

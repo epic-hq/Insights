@@ -54,23 +54,23 @@ export const fetchEvidenceTool = createTool({
 			confidence: z.string().nullable(),
 		}),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		const projectId = context.projectId ?? runtimeProjectId ?? null
+		const projectId = input.projectId ?? runtimeProjectId ?? null
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
-		const interviewId = context.interviewId?.trim()
-		const personId = context.personId?.trim()
-		const evidenceSearch = (context.evidenceSearch ?? "").trim()
+		const interviewId = input.interviewId?.trim()
+		const personId = input.personId?.trim()
+		const evidenceSearch = (input.evidenceSearch ?? "").trim()
 		const sanitizedEvidenceSearch = evidenceSearch.replace(/[%*"'()]/g, "").trim()
-		const evidenceLimit = context.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
-		const includeInterview = context.includeInterview ?? true
-		const includePerson = context.includePerson ?? true
-		const includeInsights = context.includeInsights ?? false
-		const modality = context.modality
-		const confidence = context.confidence
+		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
+		const includeInterview = input.includeInterview ?? true
+		const includePerson = input.includePerson ?? true
+		const includeInsights = input.includeInsights ?? false
+		const modality = input.modality
+		const confidence = input.confidence
 
 		const filtersApplied = {
 			interviewId: interviewId || null,

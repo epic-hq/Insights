@@ -868,20 +868,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		if (userId) {
 			const resourceId = `interviewStatusAgent-${userId}-${interviewId}`
 			try {
-				const threads = await memory.getThreadsByResourceIdPaginated({
+				const threads = await memory.listThreadsByResourceId({
 					resourceId,
-					orderBy: "createdAt",
-					sortDirection: "DESC",
+					orderBy: { field: "createdAt", direction: "DESC" },
 					page: 0,
 					perPage: 1,
 				})
 				const threadId = threads?.threads?.[0]?.id
 				if (threadId) {
-					const { messagesV2 } = await memory.query({
+					const { messages } = await memory.recall({
 						threadId,
 						selectBy: { last: 50 },
 					})
-					assistantMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+					assistantMessages = convertMessages(messages).to("AIV5.UI") as UpsightMessage[]
 				}
 			} catch (error) {
 				consola.warn("Failed to load assistant history", { resourceId, error })

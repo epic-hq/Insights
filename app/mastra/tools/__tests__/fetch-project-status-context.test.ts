@@ -1,8 +1,18 @@
 // @vitest-environment node
 
-import { RuntimeContext } from "@mastra/core/di"
+import { RequestContext } from "@mastra/core/di"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fetchProjectStatusContextTool } from "../fetch-project-status-context"
+
+// Type for expected tool result (excluding ValidationError)
+type ToolResult = {
+	success: boolean
+	message: string
+	scopes: string[]
+	projectId?: string | null
+	projectName?: string | null
+	data?: Record<string, unknown>
+}
 
 const mockSupabase = {
 	from: vi.fn(),
@@ -25,13 +35,10 @@ describe("fetchProjectStatusContextTool", () => {
 	})
 
 	it("returns missing project message when no project context provided", async () => {
-		const runtimeContext = new RuntimeContext()
-		runtimeContext.set("account_id", "account-123")
+		const requestContext = new RequestContext()
+		requestContext.set("account_id", "account-123")
 
-		const result = await fetchProjectStatusContextTool.execute({
-			context: {},
-			runtimeContext,
-		})
+		const result = (await fetchProjectStatusContextTool.execute({}, { requestContext })) as ToolResult
 
 		expect(result.success).toBe(false)
 		expect(result.message).toContain("Missing projectId")
@@ -62,17 +69,17 @@ describe("fetchProjectStatusContextTool", () => {
 
 		getProjectStatusDataMock.mockResolvedValue(null)
 
-		const runtimeContext = new RuntimeContext()
-		runtimeContext.set("account_id", "account-123")
+		const requestContext = new RequestContext()
+		requestContext.set("account_id", "account-123")
 
-		const result = await fetchProjectStatusContextTool.execute({
-			context: { projectId: "project-123", scopes: ["status"] },
-			runtimeContext,
-		})
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["status"] },
+			{ requestContext }
+		)) as ToolResult
 
 		expect(result.success).toBe(true)
 		expect(result.message).toContain("Loaded project status context")
-		expect(result.data?.status).toBeUndefined()
+		expect((result.data as any)?.status).toBeUndefined()
 	})
 
 	it("returns status data when project accessible and status scope requested", async () => {
@@ -126,16 +133,16 @@ describe("fetchProjectStatusContextTool", () => {
 			questionAnswers: [],
 		})
 
-		const runtimeContext = new RuntimeContext()
-		runtimeContext.set("account_id", "account-123")
+		const requestContext = new RequestContext()
+		requestContext.set("account_id", "account-123")
 
-		const result = await fetchProjectStatusContextTool.execute({
-			context: { projectId: "project-123", scopes: ["status"] },
-			runtimeContext,
-		})
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["status"] },
+			{ requestContext }
+		)) as ToolResult
 
 		expect(result.success).toBe(true)
-		expect(result.data?.status?.projectName).toBe("Test Project")
+		expect((result.data as any)?.status?.projectName).toBe("Test Project")
 		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase)
 	})
 
@@ -246,18 +253,18 @@ describe("fetchProjectStatusContextTool", () => {
 			}
 		})
 
-		const runtimeContext = new RuntimeContext()
-		runtimeContext.set("account_id", "account-123")
+		const requestContext = new RequestContext()
+		requestContext.set("account_id", "account-123")
 
-		const result = await fetchProjectStatusContextTool.execute({
-			context: { projectId: "project-123", scopes: ["people"], peopleSearch: "Jane Doe" },
-			runtimeContext,
-		})
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["people"], peopleSearch: "Jane Doe" },
+			{ requestContext }
+		)) as ToolResult
 
 		expect(result.success).toBe(true)
 		expect(recordedOrClause).toContain("person.name.ilike.*Jane Doe*")
 		expect(getProjectStatusDataMock).not.toHaveBeenCalled()
-		const person = result.data?.people?.[0]
+		const person = (result.data as any)?.people?.[0]
 		expect(person?.name).toBe("Jane Doe")
 		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.")
 		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview")

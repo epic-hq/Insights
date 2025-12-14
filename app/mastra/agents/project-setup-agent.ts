@@ -2,12 +2,12 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
 import { Memory } from "@mastra/memory"
-// @ts-expect-error - moduleResolution workaround for @mastra/memory/processors subpath export
-import { TokenLimiter } from "@mastra/memory/processors"
+import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { z } from "zod"
 import { PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
+// ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
+// import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { generateResearchStructureTool } from "../tools/generate-research-structure"
@@ -55,9 +55,10 @@ const navigateToPageTool = createTool({
 })
 
 export const projectSetupAgent = new Agent({
+	id: "project-setup-agent",
 	name: "projectSetupAgent",
-	instructions: async ({ runtimeContext }) => {
-		const projectId = runtimeContext.get("project_id")
+	instructions: async ({ requestContext }) => {
+		const projectId = requestContext.get("project_id")
 		const { data: existing } = await supabaseAdmin
 			.from("project_sections")
 			.select("project_id, kind, meta, content_md")
@@ -111,8 +112,9 @@ ${JSON.stringify(existing)}
 		storage: getSharedPostgresStore(),
 		options: {
 			workingMemory: { enabled: false, schema: ProjectSetupState },
-			threads: { generateTitle: false },
 		},
-		processors: [new ToolCallPairProcessor(), new TokenLimiter(100_000)],
+		generateTitle: false,
 	}),
+	// Note: Using number format for Zod v4 compatibility
+	outputProcessors: [new TokenLimiterProcessor(100_000)],
 });

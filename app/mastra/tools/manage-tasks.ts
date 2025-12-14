@@ -41,10 +41,10 @@ const taskOutputSchema = z.object({
 	detailRoute: z.string().nullable().optional(),
 })
 
-function ensureContext(runtimeContext?: Map<string, unknown> | any) {
-	const accountId = runtimeContext?.get?.("account_id") as string | undefined
-	const projectId = runtimeContext?.get?.("project_id") as string | undefined
-	const userId = runtimeContext?.get?.("user_id") as string | undefined
+function ensureContext(context?: Map<string, unknown> | any) {
+	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+	const userId = context?.requestContext?.get?.("user_id") as string | undefined
 	if (!accountId || !projectId) {
 		throw new Error("Missing accountId or projectId in runtime context")
 	}
@@ -233,10 +233,10 @@ export const fetchTasksTool = createTool({
 		tasks: z.array(taskOutputSchema).optional(),
 		warnings: z.array(z.string()).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId } = ensureContext(runtimeContext)
+			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 			const warnings: string[] = []
 
@@ -246,28 +246,28 @@ export const fetchTasksTool = createTool({
 				projectId,
 				options: {
 					filters: {
-						status: context?.status as TaskStatus[] | undefined,
-						cluster: context?.cluster,
-						priority: context?.priority as 1 | 2 | 3 | undefined,
-						search: context?.search?.trim(),
-						assigned_to: context?.assigneeId,
+						status: input?.status as TaskStatus[] | undefined,
+						cluster: input?.cluster,
+						priority: input?.priority as 1 | 2 | 3 | undefined,
+						search: input?.search?.trim(),
+						assigned_to: input?.assigneeId,
 					},
-					limit: context?.limit ?? 100,
+					limit: input?.limit ?? 100,
 				},
 			})
 
 			let filteredTasks = tasks
 
-			if (context?.taskIds && context.taskIds.length > 0) {
-				filteredTasks = filteredTasks.filter((t) => context.taskIds?.includes(t.id))
+			if (input?.taskIds && input.taskIds.length > 0) {
+				filteredTasks = filteredTasks.filter((t) => input.taskIds?.includes(t.id))
 			}
 
-			if (context?.tags && context.tags.length > 0) {
-				filteredTasks = filteredTasks.filter((t) => t.tags?.some((tag) => context.tags?.includes(tag)))
+			if (input?.tags && input.tags.length > 0) {
+				filteredTasks = filteredTasks.filter((t) => t.tags?.some((tag) => input.tags?.includes(tag)))
 			}
 
-			if (context?.dueAfter) {
-				const after = new Date(context.dueAfter).getTime()
+			if (input?.dueAfter) {
+				const after = new Date(input.dueAfter).getTime()
 				if (!Number.isNaN(after)) {
 					filteredTasks = filteredTasks.filter((t) => (t.due_date ? new Date(t.due_date).getTime() >= after : false))
 				} else {
@@ -275,8 +275,8 @@ export const fetchTasksTool = createTool({
 				}
 			}
 
-			if (context?.dueBefore) {
-				const before = new Date(context.dueBefore).getTime()
+			if (input?.dueBefore) {
+				const before = new Date(input.dueBefore).getTime()
 				if (!Number.isNaN(before)) {
 					filteredTasks = filteredTasks.filter((t) => (t.due_date ? new Date(t.due_date).getTime() <= before : false))
 				} else {
@@ -284,9 +284,9 @@ export const fetchTasksTool = createTool({
 				}
 			}
 
-			if (context?.assigneeName) {
+			if (input?.assigneeName) {
 				const members = await fetchAccountMembers(accountId, supabase)
-				const needle = normalizeName(context.assigneeName)
+				const needle = normalizeName(input.assigneeName)
 				const matchingIds = members
 					.filter((m) => {
 						const full = normalizeName(`${m.first_name || ""} ${m.last_name || ""}`)
@@ -297,7 +297,7 @@ export const fetchTasksTool = createTool({
 					.map((m) => m.user_id)
 
 				if (matchingIds.length === 0) {
-					warnings.push(`No teammate matched "${context.assigneeName}".`)
+					warnings.push(`No teammate matched "${input.assigneeName}".`)
 				} else {
 					filteredTasks = filteredTasks.filter((t) =>
 						(t.assigned_to || []).some(
@@ -372,15 +372,15 @@ export const createTaskTool = createTool({
 		task: taskOutputSchema.optional(),
 		warnings: z.array(z.string()).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId, userId } = ensureContext(runtimeContext)
+			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 			const { resolved: resolvedAssignees, warnings } = await resolveAssignees({
 				accountId,
 				supabase,
-				assignees: context.assignees,
+				assignees: input.assignees,
 			})
 
 			const task = await createTask({
@@ -389,24 +389,24 @@ export const createTaskTool = createTool({
 				projectId,
 				userId,
 				data: {
-					title: context.title,
-					description: context.description ?? null,
-					cluster: context.cluster,
-					parent_task_id: context.parentTaskId ?? null,
-					status: context.status ?? "backlog",
-					priority: (context.priority ?? 3) as 1 | 2 | 3,
-					benefit: context.benefit ?? null,
-					segments: context.segments ?? null,
-					impact: context.impact ? (context.impact as 1 | 2 | 3) : null,
-					stage: context.stage ?? null,
-					reason: context.reason ?? null,
-					tags: context.tags ?? [],
-					due_date: context.dueDate ?? null,
-					estimated_effort: context.estimatedEffort ?? null,
+					title: input.title,
+					description: input.description ?? null,
+					cluster: input.cluster,
+					parent_task_id: input.parentTaskId ?? null,
+					status: input.status ?? "backlog",
+					priority: (input.priority ?? 3) as 1 | 2 | 3,
+					benefit: input.benefit ?? null,
+					segments: input.segments ?? null,
+					impact: input.impact ? (input.impact as 1 | 2 | 3) : null,
+					stage: input.stage ?? null,
+					reason: input.reason ?? null,
+					tags: input.tags ?? [],
+					due_date: input.dueDate ?? null,
+					estimated_effort: input.estimatedEffort ?? null,
 					actual_hours: null,
 					assigned_to: resolvedAssignees,
-					depends_on_task_ids: context.dependsOnTaskIds ?? [],
-					blocks_task_ids: context.blocksTaskIds ?? [],
+					depends_on_task_ids: input.dependsOnTaskIds ?? [],
+					blocks_task_ids: input.blocksTaskIds ?? [],
 				},
 			})
 
@@ -474,41 +474,41 @@ export const updateTaskTool = createTool({
 		task: taskOutputSchema.optional(),
 		warnings: z.array(z.string()).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId, userId } = ensureContext(runtimeContext)
+			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 			const { resolved: resolvedAssignees, warnings } = await resolveAssignees({
 				accountId,
 				supabase,
-				assignees: context.assignees,
+				assignees: input.assignees,
 			})
 
 			// Build updates object with only provided fields
 			const updates: Record<string, unknown> = {}
-			if (context.title !== undefined) updates.title = context.title
-			if (context.description !== undefined) updates.description = context.description
-			if (context.cluster !== undefined) updates.cluster = context.cluster
-			if (context.status !== undefined) updates.status = context.status
-			if (context.priority !== undefined) updates.priority = context.priority
-			if (context.benefit !== undefined) updates.benefit = context.benefit
-			if (context.segments !== undefined) updates.segments = context.segments
-			if (context.impact !== undefined) updates.impact = context.impact
-			if (context.stage !== undefined) updates.stage = context.stage
-			if (context.reason !== undefined) updates.reason = context.reason
-			if (context.tags !== undefined) updates.tags = context.tags
-			if (context.dueDate !== undefined) updates.due_date = context.dueDate
-			if (context.estimatedEffort !== undefined) updates.estimated_effort = context.estimatedEffort
-			if (context.parentTaskId !== undefined) updates.parent_task_id = context.parentTaskId
-			if (context.dependsOnTaskIds !== undefined) updates.depends_on_task_ids = context.dependsOnTaskIds
-			if (context.blocksTaskIds !== undefined) updates.blocks_task_ids = context.blocksTaskIds
-			if (context.actualHours !== undefined) updates.actual_hours = context.actualHours
-			if (context.assignees !== undefined) updates.assigned_to = resolvedAssignees
+			if (input.title !== undefined) updates.title = input.title
+			if (input.description !== undefined) updates.description = input.description
+			if (input.cluster !== undefined) updates.cluster = input.cluster
+			if (input.status !== undefined) updates.status = input.status
+			if (input.priority !== undefined) updates.priority = input.priority
+			if (input.benefit !== undefined) updates.benefit = input.benefit
+			if (input.segments !== undefined) updates.segments = input.segments
+			if (input.impact !== undefined) updates.impact = input.impact
+			if (input.stage !== undefined) updates.stage = input.stage
+			if (input.reason !== undefined) updates.reason = input.reason
+			if (input.tags !== undefined) updates.tags = input.tags
+			if (input.dueDate !== undefined) updates.due_date = input.dueDate
+			if (input.estimatedEffort !== undefined) updates.estimated_effort = input.estimatedEffort
+			if (input.parentTaskId !== undefined) updates.parent_task_id = input.parentTaskId
+			if (input.dependsOnTaskIds !== undefined) updates.depends_on_task_ids = input.dependsOnTaskIds
+			if (input.blocksTaskIds !== undefined) updates.blocks_task_ids = input.blocksTaskIds
+			if (input.actualHours !== undefined) updates.actual_hours = input.actualHours
+			if (input.assignees !== undefined) updates.assigned_to = resolvedAssignees
 
 			const task = await updateTask({
 				supabase,
-				taskId: context.taskId,
+				taskId: input.taskId,
 				userId,
 				updates: updates as any,
 			})
@@ -545,20 +545,20 @@ export const deleteTaskTool = createTool({
 		message: z.string(),
 		warnings: z.array(z.string()).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { userId } = ensureContext(runtimeContext)
+			const { userId } = ensureContext(context)
 
 			await deleteTask({
 				supabase,
-				taskId: context.taskId,
+				taskId: input.taskId,
 				userId,
 			})
 
 			return {
 				success: true,
-				message: `Deleted task ${context.taskId}`,
+				message: `Deleted task ${input.taskId}`,
 			}
 		} catch (error) {
 			consola.error("Error deleting task:", error)

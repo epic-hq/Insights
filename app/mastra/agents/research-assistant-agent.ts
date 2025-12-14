@@ -2,6 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 
 export const researchAssistantAgent = new Agent({
+	id: "research-assistant-agent",
 	name: "Research Assistant",
 	description: "Helpful assistant for user research best practices and getting started",
 	instructions: `

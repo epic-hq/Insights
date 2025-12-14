@@ -169,8 +169,8 @@ export const fetchWebContentTool = createTool({
 			.default(MAX_CONTENT_LENGTH)
 			.describe(`Maximum length of text content to return. Default: ${MAX_CONTENT_LENGTH}`),
 	}),
-	execute: async ({ context }) => {
-		const { url, includeLinks = false, includeMedia = false, maxContentLength = MAX_CONTENT_LENGTH } = context
+	execute: async (input) => {
+		const { url, includeLinks = false, includeMedia = false, maxContentLength = MAX_CONTENT_LENGTH } = input
 
 		try {
 			consola.info(`[fetchWebContent] Fetching: ${url}`)

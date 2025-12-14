@@ -1,5 +1,5 @@
-import { toAISdkFormat } from "@mastra/ai-sdk"
-import { RuntimeContext } from "@mastra/core/di"
+import { toAISdkStream } from "@mastra/ai-sdk"
+import { RequestContext } from "@mastra/core/di"
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
@@ -79,10 +79,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`
 
 	consola.info("project-status action: using resourceId", { resourceId })
-	const threads = await memory.getThreadsByResourceIdPaginated({
+	const threads = await memory.listThreadsByResourceId({
 		resourceId,
-		orderBy: "createdAt",
-		sortDirection: "DESC",
+		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
 	})
@@ -99,12 +98,12 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		threadId = threads.threads[0].id
 	}
 
-	const runtimeContext = new RuntimeContext()
-	runtimeContext.set("user_id", userId)
-	runtimeContext.set("account_id", accountId)
-	runtimeContext.set("project_id", projectId)
+	const requestContext = new RequestContext()
+	requestContext.set("user_id", userId)
+	requestContext.set("account_id", accountId)
+	requestContext.set("project_id", projectId)
 	if (userTimezone) {
-		runtimeContext.set("user_timezone", userTimezone)
+		requestContext.set("user_timezone", userTimezone)
 	}
 
 	const agent = mastra.getAgent("projectStatusAgent")
@@ -117,7 +116,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				thread: useThreadId,
 				resource: resourceId,
 			},
-			runtimeContext,
+			requestContext,
 			context: system
 				? [
 						{
@@ -192,7 +191,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const uiMessageStream = createUIMessageStream({
 		execute: async ({ writer }) => {
 			try {
-				const transformedStream = toAISdkFormat(stream, toAISdkOptions)
+				const transformedStream = toAISdkStream(stream, toAISdkOptions)
 				if (transformedStream) {
 					for await (const part of transformedStream) {
 						writer.write(part)
@@ -205,7 +204,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 					// Delete corrupted thread and retry with fresh one
 					const freshThreadId = await handleCorruptedThread(threadId, errorMessage)
 					const freshStream = await runAgentStream(freshThreadId)
-					const freshTransformed = toAISdkFormat(freshStream, toAISdkOptions)
+					const freshTransformed = toAISdkStream(freshStream, toAISdkOptions)
 					if (freshTransformed) {
 						for await (const part of freshTransformed) {
 							writer.write(part)

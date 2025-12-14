@@ -66,7 +66,7 @@ export const manageOrganizationsTool = createTool({
 		"Create, update, delete, or retrieve organizations. Use this to manage company/organization records in the CRM. Actions: 'create' (new org), 'update' (modify existing), 'delete' (remove org), 'get' (single org by ID), 'list' (all orgs in project).",
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
 
 		const {
@@ -75,10 +75,10 @@ export const manageOrganizationsTool = createTool({
 			accountId: accountOverride,
 			projectId: projectOverride,
 			data,
-		} = context as ToolInput
+		} = input as ToolInput
 
-		const runtimeAccountId = runtimeContext?.get?.("account_id") as string | undefined
-		const runtimeProjectId = runtimeContext?.get?.("project_id") as string | undefined
+		const runtimeAccountId = context?.requestContext?.get?.("account_id") as string | undefined
+		const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
 
 		const resolvedAccountId = accountOverride || runtimeAccountId
 		const resolvedProjectId = projectOverride || runtimeProjectId

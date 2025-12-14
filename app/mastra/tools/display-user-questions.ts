@@ -19,12 +19,12 @@ export const displayUserQuestionsTool = createTool({
 			.nullish()
 			.optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
-			consola.debug("runtimeContext", runtimeContext)
-			consola.debug("runtimeContext user_id", runtimeContext.get("user_id"))
-			const user_id = runtimeContext.get("user_id")
-			const { questions } = context
+			consola.debug("context", context)
+			consola.debug("context user_id", context?.requestContext?.get?.("user_id"))
+			const user_id = context?.requestContext?.get?.("user_id")
+			const { questions } = input
 
 			if (!user_id) {
 				return {

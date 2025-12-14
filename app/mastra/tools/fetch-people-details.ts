@@ -167,19 +167,19 @@ export const fetchPeopleDetailsTool = createTool({
 		totalCount: z.number(),
 		searchApplied: z.string().nullable(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		const projectId = context.projectId
+		const projectId = input.projectId
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
-		const peopleSearch = (context?.peopleSearch ?? "").trim()
+		const peopleSearch = (input.peopleSearch ?? "").trim()
 		const sanitizedPersonSearch = peopleSearch.replace(/[%*"'()]/g, "").trim()
-		const peopleLimit = context?.peopleLimit ?? 20
-		const includeEvidence = context?.includeEvidence ?? true
-		const includePersonas = context?.includePersonas ?? true
-		const includeFacets = context?.includeFacets ?? false
-		const specificPersonIds = context?.specificPersonIds ?? []
+		const peopleLimit = input.peopleLimit ?? 20
+		const includeEvidence = input.includeEvidence ?? true
+		const includePersonas = input.includePersonas ?? true
+		const includeFacets = input.includeFacets ?? false
+		const specificPersonIds = input.specificPersonIds ?? []
 
 		consola.debug("fetch-people-details: execute start", {
 			projectId,

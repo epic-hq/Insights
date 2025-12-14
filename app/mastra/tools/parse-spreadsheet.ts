@@ -236,13 +236,13 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		mappingWarnings: z.array(z.string()).optional().describe("Warnings about the data or mapping"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext, writer }) => {
+	execute: async (input, context?) => {
 		try {
-			const { content, delimiter, maxDisplayRows, includeStats, saveToAssets, title, description } = context
+			const { content, delimiter, maxDisplayRows, includeStats, saveToAssets, title, description } = input
 
 			// Get accountId and projectId from runtime context
-			const accountId = runtimeContext?.get?.("account_id") as string | undefined
-			const projectId = runtimeContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 
 			// Stream progress update - starting
 			await writer?.custom?.({

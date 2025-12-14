@@ -87,10 +87,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
 	const resourceId = `projectSetupAgent-${userId}-${projectId}`
-	const threads = await memory.getThreadsByResourceIdPaginated({
+	const threads = await memory.listThreadsByResourceId({
 		resourceId,
-		orderBy: "createdAt",
-		sortDirection: "DESC",
+		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
 	})
@@ -108,11 +107,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		threadId = threads.threads[0].id
 	}
 
-	const { messagesV2 } = await memory.query({
+	const { messages: memoryMessages } = await memory.recall({
 		threadId,
 		selectBy: { last: 50 },
 	})
-	const aiv5Messages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+	const aiv5Messages = convertMessages(memoryMessages).to("AIV5.UI") as UpsightMessage[]
 
 	const progress: ProjectSetupProgress = { completedCount, totalCount }
 

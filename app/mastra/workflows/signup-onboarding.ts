@@ -47,7 +47,7 @@ const MergeAnswerStep = createStep({
 		message: z.string(),
 		user_id: z.string().optional(),
 	}),
-	execute: async ({ inputData, runtimeContext }) => {
+	execute: async ({ inputData, requestContext }) => {
 		let { message, state, user_id } = inputData
 		const clean = normalizeMessage(message)
 
@@ -66,7 +66,7 @@ const MergeAnswerStep = createStep({
 		if (!hasAnyState && user_id) {
 			try {
 				const supabase =
-					(runtimeContext?.get("supabase") as any) ||
+					(requestContext?.get("supabase") as any) ||
 					createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 				const { data } = await supabase.from("user_settings").select("signup_data").eq("user_id", user_id).maybeSingle()
 				const existing = (data?.signup_data || {}) as any
@@ -199,13 +199,13 @@ const SaveIfCompleteStep = createStep({
 		user_id: z.string().optional(),
 	}),
 	outputSchema: OutputSchema,
-	execute: async ({ inputData, runtimeContext }) => {
+	execute: async ({ inputData, requestContext }) => {
 		const { reply, state, completed, user_id } = inputData
 		if (!completed) return { reply, state, completed }
 
 		try {
 			const supabase =
-				(runtimeContext?.get("supabase") as any) ||
+				(requestContext?.get("supabase") as any) ||
 				createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 			if (!user_id) {
@@ -264,12 +264,12 @@ export const signupOnboardingWorkflow = createWorkflow({
 				message: z.string(),
 				user_id: z.string().optional(),
 			}),
-			execute: async ({ inputData, runtimeContext }) => {
+			execute: async ({ inputData, requestContext }) => {
 				const { state, assigned, assigned_key, message, user_id } = inputData
 				if (assigned && user_id) {
 					try {
 						const supabase =
-							(runtimeContext?.get("supabase") as any) ||
+							(requestContext?.get("supabase") as any) ||
 							createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 						await supabase.rpc("upsert_signup_data", {
 							p_user_id: user_id,

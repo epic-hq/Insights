@@ -30,10 +30,10 @@ const promptOutputSchema = z.object({
 	detailRoute: z.string().nullable(),
 })
 
-function ensureContext(runtimeContext?: Map<string, unknown> | any) {
-	const accountId = runtimeContext?.get?.("account_id") as string | undefined
-	const projectId = runtimeContext?.get?.("project_id") as string | undefined
-	const userId = runtimeContext?.get?.("user_id") as string | undefined
+function ensureContext(context?: Map<string, unknown> | any) {
+	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+	const userId = context?.requestContext?.get?.("user_id") as string | undefined
 	if (!accountId || !projectId) {
 		throw new Error("Missing accountId or projectId in runtime context")
 	}
@@ -93,12 +93,12 @@ export const fetchInterviewPromptsTool = createTool({
 		total: z.number().optional(),
 		prompts: z.array(promptOutputSchema).optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId } = ensureContext(runtimeContext)
+			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
-			const filters = context ?? {}
+			const filters = input ?? {}
 
 			const query = supabase
 				.from("interview_prompts")
@@ -174,38 +174,38 @@ export const createInterviewPromptTool = createTool({
 		scores: z.record(z.string(), z.any()).optional(),
 	}),
 	outputSchema: baseOutput.extend({ prompt: promptOutputSchema.optional() }),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId, userId } = ensureContext(runtimeContext)
+			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 
 			consola.debug("createInterviewPromptTool invoked", {
 				projectId,
 				accountId,
-				hasText: typeof context?.text === "string" && context.text.length > 0,
-				inputPreview: context?.text?.slice(0, 120),
+				hasText: typeof input?.text === "string" && input.text.length > 0,
+				inputPreview: input?.text?.slice(0, 120),
 			})
 
-			if (!context || typeof context.text !== "string") {
+			if (!input || typeof input.text !== "string") {
 				return { success: false, message: "Prompt text is required" }
 			}
 
 			const payload: Database["public"]["Tables"]["interview_prompts"]["Insert"] = {
 				id: randomUUID(),
 				project_id: projectId,
-				text: context.text,
-				category: context.category ?? null,
-				rationale: context.rationale ?? null,
-				status: context.status ?? "proposed",
-				is_must_have: context.isMustHave ?? null,
-				is_selected: context.isSelected ?? null,
-				order_index: context.orderIndex ?? null,
-				selected_order: context.selectedOrder ?? null,
-				estimated_time_minutes: context.estimatedTimeMinutes ?? null,
-				source: context.source ?? "agent",
-				plan_id: context.planId ?? null,
-				scores: context.scores ?? null,
+				text: input.text,
+				category: input.category ?? null,
+				rationale: input.rationale ?? null,
+				status: input.status ?? "proposed",
+				is_must_have: input.isMustHave ?? null,
+				is_selected: input.isSelected ?? null,
+				order_index: input.orderIndex ?? null,
+				selected_order: input.selectedOrder ?? null,
+				estimated_time_minutes: input.estimatedTimeMinutes ?? null,
+				source: input.source ?? "agent",
+				plan_id: input.planId ?? null,
+				scores: input.scores ?? null,
 				created_by: userId,
 				updated_by: userId,
 			}
@@ -270,32 +270,32 @@ export const updateInterviewPromptTool = createTool({
 			.describe("If true, merge new scores with existing scores instead of replacing"),
 	}),
 	outputSchema: baseOutput.extend({ prompt: promptOutputSchema.optional() }),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId, userId } = ensureContext(runtimeContext)
+			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 
 			consola.debug("updateInterviewPromptTool invoked", {
 				projectId,
 				accountId,
-				id: context?.id,
-				hasText: typeof context?.text === "string" && context.text.length > 0,
-				inputPreview: context?.text?.slice(0, 120),
-				mergeScores: context?.mergeScores,
+				id: input?.id,
+				hasText: typeof input?.text === "string" && input.text.length > 0,
+				inputPreview: input?.text?.slice(0, 120),
+				mergeScores: input?.mergeScores,
 			})
 
-			if (!context || !context.id) {
+			if (!input || !input.id) {
 				return { success: false, message: "Prompt id is required" }
 			}
 
 			// If merging scores, fetch existing prompt first
-			let finalScores = context.scores
-			if (context.mergeScores && context.scores) {
+			let finalScores = input.scores
+			if (input.mergeScores && input.scores) {
 				const { data: existing } = await supabase
 					.from("interview_prompts")
 					.select("scores")
-					.eq("id", context.id)
+					.eq("id", input.id)
 					.eq("project_id", projectId)
 					.single()
 
@@ -304,27 +304,27 @@ export const updateInterviewPromptTool = createTool({
 					const existingScores = existing.scores as Record<string, any>
 					finalScores = {
 						...existingScores,
-						...context.scores,
+						...input.scores,
 					}
 					consola.debug("Merged scores", {
 						existing: existingScores,
-						new: context.scores,
+						new: input.scores,
 						merged: finalScores,
 					})
 				}
 			}
 
 			const updates: Database["public"]["Tables"]["interview_prompts"]["Update"] = {
-				text: context.text,
-				category: context.category,
-				rationale: context.rationale,
-				status: context.status,
-				is_must_have: context.isMustHave,
-				is_selected: context.isSelected,
-				order_index: context.orderIndex,
-				selected_order: context.selectedOrder,
-				estimated_time_minutes: context.estimatedTimeMinutes,
-				source: context.source,
+				text: input.text,
+				category: input.category,
+				rationale: input.rationale,
+				status: input.status,
+				is_must_have: input.isMustHave,
+				is_selected: input.isSelected,
+				order_index: input.orderIndex,
+				selected_order: input.selectedOrder,
+				estimated_time_minutes: input.estimatedTimeMinutes,
+				source: input.source,
 				scores: finalScores,
 				updated_by: userId,
 			}
@@ -332,7 +332,7 @@ export const updateInterviewPromptTool = createTool({
 			const { data, error } = await supabase
 				.from("interview_prompts")
 				.update(updates)
-				.eq("id", context.id)
+				.eq("id", input.id)
 				.eq("project_id", projectId)
 				.select("*")
 				.single()
@@ -345,7 +345,7 @@ export const updateInterviewPromptTool = createTool({
 					hint: error?.hint,
 					projectId,
 					updatesShape: {
-						id: context.id,
+						id: input.id,
 						text: updates.text,
 						category: updates.category,
 						status: updates.status,
@@ -378,9 +378,9 @@ export const deleteInterviewPromptTool = createTool({
 		id: z.string(),
 	}),
 	outputSchema: baseOutput,
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const { projectId, userId } = ensureContext(runtimeContext)
+		const { projectId, userId } = ensureContext(context)
 
 		const { error, data } = await supabase
 			.from("interview_prompts")
@@ -389,7 +389,7 @@ export const deleteInterviewPromptTool = createTool({
 				is_selected: false,
 				updated_by: userId,
 			})
-			.eq("id", context.id)
+			.eq("id", input.id)
 			.eq("project_id", projectId)
 			.select("id")
 			.single()

@@ -1,4 +1,4 @@
-import { RuntimeContext } from "@mastra/core/di"
+import { RequestContext } from "@mastra/core/di"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
@@ -17,8 +17,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		const { message, state } = body ?? {}
 
 		const run = await mastra.getWorkflow("signupOnboardingWorkflow")?.createRunAsync()
-		const runtimeContext = new RuntimeContext()
-		runtimeContext.set("supabase", supabase)
+		const requestContext = new RequestContext()
+		requestContext.set("supabase", supabase)
 
 		consola.log("➡️ api.signup-next-turn: running workflow", {
 			hasMessage: !!message,
@@ -31,7 +31,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				user_id: user.sub,
 				state: state ?? {},
 			},
-			runtimeContext,
+			requestContext,
 		})
 
 		if (result?.status === "success") {

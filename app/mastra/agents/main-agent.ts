@@ -29,6 +29,7 @@ export const AgentState = z.object({
 })
 
 export const mainAgent = new Agent({
+	id: "main-agent",
 	name: "Main Agent",
 	description: "Main agent for handling user queries and looking up user research data",
 	instructions: `
@@ -68,6 +69,7 @@ export const mainAgent = new Agent({
 	},
 	memory: new Memory({
 		storage: new LibSQLStore({
+			id: "main-agent-memory",
 			url: ":memory:", // using in-memory storage to avoid file connection issues
 		}),
 		options: {

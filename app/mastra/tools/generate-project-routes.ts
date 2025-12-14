@@ -79,8 +79,8 @@ export const generateProjectRoutesTool = createTool({
 			},
 		},
 	},
-	execute: async ({ context, runtimeContext }) => {
-		const { entityType, entityId, action = "detail" } = context || {}
+	execute: async (input, context?) => {
+		const { entityType, entityId, action = "detail" } = input || {}
 
 		// Validate required parameters
 		if (!entityType || !entityId) {
@@ -94,8 +94,8 @@ export const generateProjectRoutesTool = createTool({
 		}
 
 		// Get accountId and projectId from runtime context
-		const accountId = runtimeContext?.get?.("account_id") as string
-		const projectId = runtimeContext?.get?.("project_id") as string
+		const accountId = context?.requestContext?.get?.("account_id") as string
+		const projectId = context?.requestContext?.get?.("project_id") as string
 
 		if (!accountId || !projectId) {
 			console.warn("generate-project-routes: Missing runtime context", { accountId, projectId })

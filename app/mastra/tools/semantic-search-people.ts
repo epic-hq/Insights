@@ -59,15 +59,15 @@ export const semanticSearchPeopleTool = createTool({
 		totalCount: z.number(),
 		threshold: z.number(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
+		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 
-		const projectId = context.projectId ?? runtimeProjectId ?? null
-		const query = context.query?.trim()
-		const kindSlugFilter = context.kindSlugFilter?.trim() || null
-		const matchThreshold = context.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
-		const matchCount = context.matchCount ?? DEFAULT_MATCH_COUNT
+		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const query = input.query?.trim()
+		const kindSlugFilter = input.kindSlugFilter?.trim() || null
+		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
+		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT
 
 		consola.debug("semantic-search-people: execute start", {
 			projectId,

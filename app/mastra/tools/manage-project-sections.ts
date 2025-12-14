@@ -11,10 +11,10 @@ const baseOutput = z.object({
 	warnings: z.array(z.string()).optional(),
 })
 
-function ensureContext(runtimeContext?: Map<string, unknown> | any) {
-	const accountId = runtimeContext?.get?.("account_id") as string | undefined
-	const projectId = runtimeContext?.get?.("project_id") as string | undefined
-	const userId = runtimeContext?.get?.("user_id") as string | undefined
+function ensureContext(context?: Map<string, unknown> | any) {
+	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+	const userId = context?.requestContext?.get?.("user_id") as string | undefined
 	if (!accountId || !projectId) {
 		throw new Error("Missing accountId or projectId in runtime context")
 	}
@@ -43,16 +43,16 @@ export const fetchProjectSectionTool = createTool({
 	outputSchema: baseOutput.extend({
 		section: sectionOutputSchema.nullable().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { projectId } = ensureContext(runtimeContext)
+			const { projectId } = ensureContext(context)
 
 			const { data, error } = await supabase
 				.from("project_sections")
 				.select("*")
 				.eq("project_id", projectId)
-				.eq("kind", context.kind)
+				.eq("kind", input.kind)
 				.order("updated_at", { ascending: false })
 				.limit(1)
 				.maybeSingle()
@@ -65,7 +65,7 @@ export const fetchProjectSectionTool = createTool({
 			if (!data) {
 				return {
 					success: true,
-					message: `No section found for kind: ${context.kind}`,
+					message: `No section found for kind: ${input.kind}`,
 					section: null,
 				}
 			}
@@ -108,19 +108,19 @@ export const updateProjectSectionMetaTool = createTool({
 	outputSchema: baseOutput.extend({
 		section: sectionOutputSchema.nullable().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { projectId, userId } = ensureContext(runtimeContext)
+			const { projectId, userId } = ensureContext(context)
 
 			// Fetch existing section if merging
-			let finalMeta = context.meta
-			if (context.mergeMeta) {
+			let finalMeta = input.meta
+			if (input.mergeMeta) {
 				const { data: existing } = await supabase
 					.from("project_sections")
 					.select("meta")
 					.eq("project_id", projectId)
-					.eq("kind", context.kind)
+					.eq("kind", input.kind)
 					.order("updated_at", { ascending: false })
 					.limit(1)
 					.maybeSingle()
@@ -130,7 +130,7 @@ export const updateProjectSectionMetaTool = createTool({
 					finalMeta = { ...existingMeta }
 
 					// Merge logic: arrays are concatenated and deduplicated, objects are merged
-					for (const [key, value] of Object.entries(context.meta)) {
+					for (const [key, value] of Object.entries(input.meta)) {
 						if (Array.isArray(value) && Array.isArray(existingMeta[key])) {
 							// Merge arrays and remove duplicates
 							finalMeta[key] = [...new Set([...existingMeta[key], ...value])]
@@ -144,9 +144,9 @@ export const updateProjectSectionMetaTool = createTool({
 					}
 
 					consola.debug("Merged meta", {
-						kind: context.kind,
+						kind: input.kind,
 						existing: existingMeta,
-						new: context.meta,
+						new: input.meta,
 						merged: finalMeta,
 					})
 				}
@@ -158,8 +158,8 @@ export const updateProjectSectionMetaTool = createTool({
 				updated_by: userId,
 			}
 
-			if (context.contentMd) {
-				updates.content_md = context.contentMd
+			if (input.contentMd) {
+				updates.content_md = input.contentMd
 			}
 
 			// Upsert section
@@ -168,8 +168,8 @@ export const updateProjectSectionMetaTool = createTool({
 				.upsert(
 					{
 						project_id: projectId,
-						kind: context.kind,
-						content_md: context.contentMd || "",
+						kind: input.kind,
+						content_md: input.contentMd || "",
 						meta: finalMeta,
 						created_by: userId,
 						updated_by: userId,
@@ -191,7 +191,7 @@ export const updateProjectSectionMetaTool = createTool({
 
 			return {
 				success: true,
-				message: `Section ${context.kind} updated`,
+				message: `Section ${input.kind} updated`,
 				section: {
 					id: data.id,
 					kind: data.kind,
@@ -224,17 +224,17 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 	outputSchema: baseOutput.extend({
 		section: sectionOutputSchema.nullable().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { projectId, userId } = ensureContext(runtimeContext)
+			const { projectId, userId } = ensureContext(context)
 
 			// Fetch existing section
 			const { data: existing, error: fetchError } = await supabase
 				.from("project_sections")
 				.select("*")
 				.eq("project_id", projectId)
-				.eq("kind", context.kind)
+				.eq("kind", input.kind)
 				.order("updated_at", { ascending: false })
 				.limit(1)
 				.maybeSingle()
@@ -246,22 +246,22 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 			if (!existing) {
 				return {
 					success: false,
-					message: `No section found for kind: ${context.kind}`,
+					message: `No section found for kind: ${input.kind}`,
 				}
 			}
 
 			const meta = (existing.meta as Record<string, any>) || {}
 
 			// Delete specific keys
-			if (context.keys && context.keys.length > 0) {
-				for (const key of context.keys) {
+			if (input.keys && input.keys.length > 0) {
+				for (const key of input.keys) {
 					delete meta[key]
 				}
 			}
 
 			// Remove items from arrays
-			if (context.removeFromArrays) {
-				for (const [field, itemsToRemove] of Object.entries(context.removeFromArrays)) {
+			if (input.removeFromArrays) {
+				for (const [field, itemsToRemove] of Object.entries(input.removeFromArrays)) {
 					if (Array.isArray(meta[field])) {
 						meta[field] = meta[field].filter((item: any) => !itemsToRemove.includes(item))
 					}
@@ -289,7 +289,7 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 
 			return {
 				success: true,
-				message: `Deleted keys from section ${context.kind}`,
+				message: `Deleted keys from section ${input.kind}`,
 				section: {
 					id: data.id,
 					kind: data.kind,

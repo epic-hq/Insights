@@ -248,7 +248,7 @@ The tool will:
 			.describe("First 10 skip reasons for debugging"),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext, writer }) => {
+	execute: async (input, context?) => {
 		try {
 			const {
 				assetId,
@@ -257,11 +257,11 @@ The tool will:
 				skipDuplicates = true,
 				createOrganizations = true,
 				facetColumns = [],
-			} = context
+			} = input
 
 			// Get accountId and projectId from runtime context
-			const accountId = runtimeContext?.get?.("account_id") as string | undefined
-			const projectId = runtimeContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 
 			if (!accountId || !projectId) {
 				return {

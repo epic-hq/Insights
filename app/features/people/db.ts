@@ -169,7 +169,9 @@ export const getPersonById = async ({
                                 interviews (
                                         id,
                                         title,
-                                        created_at
+                                        created_at,
+                                        source_type,
+                                        media_type
 				)
 			)
 		`)

@@ -101,12 +101,12 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 		assetUrl: z.string().optional(),
 		error: z.string().optional(),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (input, context?) => {
 		try {
-			const { assetId, operation, newRows, updates, rowIndices, columnName, defaultValue, headers, rows } = context
+			const { assetId, operation, newRows, updates, rowIndices, columnName, defaultValue, headers, rows } = input
 
-			const accountId = runtimeContext?.get?.("account_id") as string | undefined
-			const projectId = runtimeContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 
 			if (!accountId || !projectId) {
 				return {
