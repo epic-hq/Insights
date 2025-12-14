@@ -57,7 +57,7 @@ interface ToolProgressData {
 	progress?: number
 }
 
-function ThinkingWave({ progressMessage }: { progressMessage?: string }) {
+function ThinkingWave({ progressMessage }: { progressMessage?: string | null }) {
 	const gradientId = useId()
 	const bars = [
 		{ delay: 0, x: 0 },
@@ -98,7 +98,7 @@ function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
 	for (const part of message.parts) {
 		// Cast to any to handle dynamic part types from Mastra streaming
 		const anyPart = part as { type: string; data?: unknown }
-		// Check for data-tool-progress type with data property
+		// Check for data-tool-progress type with data property (AI SDK v5 format: type="data-xxx")
 		if (anyPart.type === "data-tool-progress" && anyPart.data) {
 			return anyPart.data as ToolProgressData
 		}
@@ -112,6 +112,59 @@ function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
 			// Direct data format: { type: "data", data: { tool, status, message, progress } }
 			if (data?.tool && data?.message) {
 				return data as unknown as ToolProgressData
+			}
+		}
+	}
+	return null
+}
+
+function extractReasoningText(message: UpsightMessage): string | null {
+	if (!message.parts) return null
+	for (const part of message.parts) {
+		// Cast to handle dynamic part types from Mastra/AI SDK streaming
+		const anyPart = part as { type: string; reasoning?: string; text?: string }
+		// AI SDK v5 reasoning parts have type="reasoning" with reasoning property
+		if (anyPart.type === "reasoning" && anyPart.reasoning) {
+			return anyPart.reasoning
+		}
+	}
+	return null
+}
+
+function extractActiveToolCall(message: UpsightMessage): string | null {
+	if (!message.parts) return null
+
+	// In AI SDK v5, tool invocations are parts with type "tool-invocation"
+	for (const part of message.parts) {
+		const anyPart = part as {
+			type: string
+			toolInvocation?: {
+				toolName: string
+				state: string
+			}
+			toolName?: string
+			state?: string
+		}
+
+		// Check for tool-invocation type parts (AI SDK v5 format)
+		if (anyPart.type === "tool-invocation" || anyPart.toolInvocation) {
+			const toolData = anyPart.toolInvocation || anyPart
+			// Check if tool is still in progress (not completed)
+			if (
+				toolData.state === "input-streaming" ||
+				toolData.state === "input-available" ||
+				toolData.state === "call" ||
+				toolData.state === "partial-call"
+			) {
+				const toolName = toolData.toolName
+				if (toolName) {
+					// Format tool name nicely (e.g., "fetchProjectStatusContext" -> "Fetching project status context")
+					const readable = toolName
+						.replace(/([A-Z])/g, " $1")
+						.replace(/^./, (str: string) => str.toUpperCase())
+						.trim()
+					return readable
+				}
 			}
 		}
 	}
@@ -430,17 +483,26 @@ export function ProjectStatusAgentChat({
 
 		// Find the last assistant message
 		const lastAssistantMsg = [...displayableMessages].reverse().find((m) => m.role === "assistant")
-		if (!lastAssistantMsg) return []
+		if (!lastAssistantMsg || !lastAssistantMsg.parts) return []
 
-		// Check for suggestNextSteps tool invocation
-		const suggestionToolCall = lastAssistantMsg.toolInvocations?.find(
-			(t) => t.toolName === "suggestNextSteps" && "result" in t
-		)
+		// Check for suggestNextSteps tool invocation in parts (AI SDK v5 format)
+		for (const part of lastAssistantMsg.parts) {
+			const anyPart = part as {
+				type: string
+				toolInvocation?: { toolName: string; state: string; args?: Record<string, unknown> }
+				toolName?: string
+				state?: string
+				args?: Record<string, unknown>
+			}
 
-		if (suggestionToolCall && "args" in suggestionToolCall) {
-			const args = suggestionToolCall.args as { suggestions?: string[] }
-			if (args.suggestions && Array.isArray(args.suggestions) && args.suggestions.length > 0) {
-				return args.suggestions
+			if (anyPart.type === "tool-invocation" || anyPart.toolInvocation) {
+				const toolData = anyPart.toolInvocation || anyPart
+				if (toolData.toolName === "suggestNextSteps" && toolData.state === "output-available") {
+					const args = toolData.args as { suggestions?: string[] } | undefined
+					if (args?.suggestions && Array.isArray(args.suggestions) && args.suggestions.length > 0) {
+						return args.suggestions
+					}
+				}
 			}
 		}
 
@@ -667,7 +729,13 @@ export function ProjectStatusAgentChat({
 																<AiResponse key={key}>{messageText}</AiResponse>
 															)
 														) : !isUser ? (
-															<ThinkingWave progressMessage={extractToolProgress(message)?.message} />
+															<ThinkingWave
+																progressMessage={
+																	extractToolProgress(message)?.message ||
+																	extractActiveToolCall(message) ||
+																	extractReasoningText(message)
+																}
+															/>
 														) : (
 															<span className="text-foreground/70">(No text response)</span>
 														)}

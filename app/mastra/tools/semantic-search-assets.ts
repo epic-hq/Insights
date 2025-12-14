@@ -50,6 +50,7 @@ export const semanticSearchAssetsTool = createTool({
 		assets: z.array(
 			z.object({
 				id: z.string(),
+				url: z.string().describe("Full URL to view/edit this asset (use this for links)"),
 				title: z.string(),
 				description: z.string().nullable(),
 				assetType: z.string(),
@@ -65,6 +66,7 @@ export const semanticSearchAssetsTool = createTool({
 	execute: async ({ context, runtimeContext }) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
 		const projectId = context.projectId ?? runtimeContext?.get?.("project_id") ?? null
+		const accountId = runtimeContext?.get?.("account_id") ?? null
 
 		const query = context.query?.trim()
 		const matchThreshold = context.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
@@ -154,6 +156,7 @@ export const semanticSearchAssetsTool = createTool({
 
 			const assets = results.map((row: any) => ({
 				id: row.id,
+				url: `/a/${accountId}/${projectId}/assets/${row.id}`,
 				title: row.title || "Untitled",
 				description: row.description || null,
 				assetType: row.asset_type,

@@ -175,7 +175,8 @@ Call "getCurrentDate" first for any date/time questions.
   - removeRows: rowIndices=[0, 2]
   - addColumn: columnName="New Column", defaultValue=""
   - replaceAll: headers=["col1","col2"], rows=[{col1:"v1",col2:"v2"}]
-- **How to get assetId**: The assetId is in the URL when user is viewing a table (/assets/{assetId}), or from previous saveTableToAssets/parseSpreadsheet results
+- **How to get assetId**: The assetId is in the URL when user is viewing a table, or from previous saveTableToAssets/parseSpreadsheet results
+- **Linking to assets**: ALWAYS use the assetUrl returned by tool results for markdown links. NEVER construct relative paths like "assets/xxx" as this causes broken links.
 - IMPORTANT: When adding rows, you MUST include values for ALL existing columns in each row object
 - When user is VIEWING an asset page, do NOT redraw the table in chat - just confirm the update was made. The UI updates automatically.
 

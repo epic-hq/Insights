@@ -146,6 +146,31 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 	}
 
+	// Helper to handle corrupted thread recovery
+	const handleCorruptedThread = async (corruptedThreadId: string, errorMessage: string) => {
+		consola.warn("project-status: Corrupted thread detected, deleting and creating fresh", {
+			corruptedThreadId,
+			error: errorMessage,
+		})
+
+		// Delete the corrupted thread so it doesn't get picked up again
+		try {
+			await memory.deleteThread(corruptedThreadId)
+			consola.info("project-status: Deleted corrupted thread", { corruptedThreadId })
+		} catch (deleteError) {
+			consola.error("project-status: Failed to delete corrupted thread", { corruptedThreadId, deleteError })
+		}
+
+		// Create a fresh thread
+		const freshThread = await memory.createThread({
+			resourceId,
+			title: `Project Status ${projectId}`,
+			metadata: { user_id: userId, project_id: projectId, account_id: accountId },
+		})
+		consola.info("project-status: Created fresh thread", { newThreadId: freshThread.id })
+		return freshThread.id
+	}
+
 	let stream
 	try {
 		stream = await runAgentStream(threadId)
@@ -153,17 +178,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		// Check if this is the "No tool call found" error from corrupted memory
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		if (errorMessage.includes("No tool call found") || errorMessage.includes("function call output")) {
-			consola.warn("project-status action: Corrupted thread detected, creating fresh thread", { threadId, error: errorMessage })
-
-			// Create a new thread and retry
-			const freshThread = await memory.createThread({
-				resourceId,
-				title: `Project Status ${projectId} (fresh)`,
-				metadata: { user_id: userId, project_id: projectId, account_id: accountId },
-			})
-			threadId = freshThread.id
-			consola.info("project-status action: Created fresh thread", { newThreadId: threadId })
-
+			threadId = await handleCorruptedThread(threadId, errorMessage)
 			stream = await runAgentStream(threadId)
 		} else {
 			throw error
@@ -171,10 +186,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	// Transform Mastra stream to AI SDK format with custom data parts support
+	// Enable sendReasoning to stream LLM thinking/reasoning tokens to frontend
+	const toAISdkOptions = { from: "agent" as const, sendReasoning: true, sendSources: true }
+
 	const uiMessageStream = createUIMessageStream({
 		execute: async ({ writer }) => {
 			try {
-				const transformedStream = toAISdkFormat(stream, { from: "agent" })
+				const transformedStream = toAISdkFormat(stream, toAISdkOptions)
 				if (transformedStream) {
 					for await (const part of transformedStream) {
 						writer.write(part)
@@ -184,19 +202,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				// Check if this is the "No tool call found" error from corrupted memory
 				const errorMessage = streamError instanceof Error ? streamError.message : String(streamError)
 				if (errorMessage.includes("No tool call found") || errorMessage.includes("function call output")) {
-					consola.warn("project-status stream: Corrupted thread detected during streaming, creating fresh thread", { threadId, error: errorMessage })
-
-					// Create a new thread and retry
-					const freshThread = await memory.createThread({
-						resourceId,
-						title: `Project Status ${projectId} (fresh)`,
-						metadata: { user_id: userId, project_id: projectId, account_id: accountId },
-					})
-					consola.info("project-status stream: Created fresh thread, retrying", { newThreadId: freshThread.id })
-
-					// Retry with fresh thread
-					const freshStream = await runAgentStream(freshThread.id)
-					const freshTransformed = toAISdkFormat(freshStream, { from: "agent" })
+					// Delete corrupted thread and retry with fresh one
+					const freshThreadId = await handleCorruptedThread(threadId, errorMessage)
+					const freshStream = await runAgentStream(freshThreadId)
+					const freshTransformed = toAISdkFormat(freshStream, toAISdkOptions)
 					if (freshTransformed) {
 						for await (const part of freshTransformed) {
 							writer.write(part)
