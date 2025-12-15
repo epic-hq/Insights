@@ -96,12 +96,7 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 	)
 }
 
-export function TasksSection({
-	tasks,
-	projectPath,
-	maxVisible = 3,
-	className,
-}: TasksSectionProps) {
+export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: TasksSectionProps) {
 	const routes = useProjectRoutes(projectPath)
 
 	// Filter out completed/archived tasks and sort by priority (high first)
@@ -135,11 +130,7 @@ export function TasksSection({
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				{topTasks.map((task) => (
-					<TaskPreviewCard
-						key={task.id}
-						task={task}
-						detailHref={routes.tasks.detail(task.id)}
-					/>
+					<TaskPreviewCard key={task.id} task={task} detailHref={routes.tasks.detail(task.id)} />
 				))}
 			</div>
 		</section>

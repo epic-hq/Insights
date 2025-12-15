@@ -18,7 +18,12 @@ interface InsightCardV3Props {
 	extended?: boolean
 }
 
-export function InsightCardV3Page({ insight, evidence = [], projectPath: propProjectPath, extended }: InsightCardV3Props) {
+export function InsightCardV3Page({
+	insight,
+	evidence = [],
+	projectPath: propProjectPath,
+	extended,
+}: InsightCardV3Props) {
 	const routes = useProjectRoutes(propProjectPath || "")
 
 	return (
@@ -46,119 +51,119 @@ export function InsightCardV3Page({ insight, evidence = [], projectPath: propPro
 			</div>
 
 			<div className="space-y-8">
-					{/* Pain & Gain - Side by Side */}
-					{(insight.pain || insight.jtbd) && (
-						<div className="grid gap-6 md:grid-cols-2">
-							{insight.pain && (
-								<Card className="border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-950/10">
-									<CardContent className="space-y-3 p-6">
-										<div className="flex items-center gap-2">
-											<div className="rounded-full bg-red-100 p-2 dark:bg-red-900/20">
-												<Flame className="h-4 w-4 text-red-600 dark:text-red-400" />
-											</div>
-											<h3 className="font-semibold text-sm">Pain Point</h3>
+				{/* Pain & Gain - Side by Side */}
+				{(insight.pain || insight.jtbd) && (
+					<div className="grid gap-6 md:grid-cols-2">
+						{insight.pain && (
+							<Card className="border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-950/10">
+								<CardContent className="space-y-3 p-6">
+									<div className="flex items-center gap-2">
+										<div className="rounded-full bg-red-100 p-2 dark:bg-red-900/20">
+											<Flame className="h-4 w-4 text-red-600 dark:text-red-400" />
 										</div>
-										<p className="text-foreground text-sm leading-relaxed">{insight.pain}</p>
-									</CardContent>
-								</Card>
-							)}
-
-							{insight.jtbd && (
-								<Card className="border-green-200 bg-green-50/50 dark:border-green-900/30 dark:bg-green-950/10">
-									<CardContent className="space-y-3 p-6">
-										<div className="flex items-center gap-2">
-											<div className="rounded-full bg-green-100 p-2 dark:bg-green-900/20">
-												<Target className="h-4 w-4 text-green-600 dark:text-green-400" />
-											</div>
-											<h3 className="font-semibold text-sm">Job To Be Done</h3>
-										</div>
-										<p className="text-foreground text-sm leading-relaxed">{insight.jtbd}</p>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-					)}
-
-					{/* Desired Outcome */}
-					{insight.desired_outcome && (
-						<Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/10">
-							<CardContent className="space-y-3 p-6">
-								<div className="flex items-center gap-2">
-									<div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/20">
-										<TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+										<h3 className="font-semibold text-sm">Pain Point</h3>
 									</div>
-									<h3 className="font-semibold text-sm">Desired Outcome</h3>
-								</div>
-								<p className="text-foreground text-sm leading-relaxed">{insight.desired_outcome}</p>
-							</CardContent>
-						</Card>
-					)}
+									<p className="text-foreground text-sm leading-relaxed">{insight.pain}</p>
+								</CardContent>
+							</Card>
+						)}
 
-					{/* Motivation */}
-					{insight.motivation && (
-						<div className="space-y-3">
-							<h4 className="font-semibold text-foreground text-sm">Motivation</h4>
-							<p className="text-muted-foreground text-sm leading-relaxed">{insight.motivation}</p>
-						</div>
-					)}
+						{insight.jtbd && (
+							<Card className="border-green-200 bg-green-50/50 dark:border-green-900/30 dark:bg-green-950/10">
+								<CardContent className="space-y-3 p-6">
+									<div className="flex items-center gap-2">
+										<div className="rounded-full bg-green-100 p-2 dark:bg-green-900/20">
+											<Target className="h-4 w-4 text-green-600 dark:text-green-400" />
+										</div>
+										<h3 className="font-semibold text-sm">Job To Be Done</h3>
+									</div>
+									<p className="text-foreground text-sm leading-relaxed">{insight.jtbd}</p>
+								</CardContent>
+							</Card>
+						)}
+					</div>
+				)}
 
-					{/* Emotional Response */}
-					{insight.emotional_response && (
-						<div className="space-y-3">
-							<h4 className="font-semibold text-foreground text-sm">Emotional Response</h4>
+				{/* Desired Outcome */}
+				{insight.desired_outcome && (
+					<Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/10">
+						<CardContent className="space-y-3 p-6">
 							<div className="flex items-center gap-2">
-								<EmotionBadge emotion_string={insight.emotional_response} />
+								<div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/20">
+									<TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+								</div>
+								<h3 className="font-semibold text-sm">Desired Outcome</h3>
 							</div>
-						</div>
-					)}
+							<p className="text-foreground text-sm leading-relaxed">{insight.desired_outcome}</p>
+						</CardContent>
+					</Card>
+				)}
 
-					{/* Personas */}
-					{insight.persona_insights && insight.persona_insights.length > 0 && (
-						<div className="space-y-3">
-							<h4 className="font-semibold text-foreground text-sm">Personas</h4>
-							<div className="flex flex-wrap gap-2">
-								{insight.persona_insights.map((pi: any, idx: number) => {
-									const personaName = pi?.personas?.name
-									if (!personaName) return null
-									return (
-										<Badge key={idx} variant="default" className="px-3 py-1">
-											{personaName}
-										</Badge>
-									)
-								})}
-							</div>
-						</div>
-					)}
+				{/* Motivation */}
+				{insight.motivation && (
+					<div className="space-y-3">
+						<h4 className="font-semibold text-foreground text-sm">Motivation</h4>
+						<p className="text-muted-foreground text-sm leading-relaxed">{insight.motivation}</p>
+					</div>
+				)}
 
-					{/* Synonyms */}
-					{insight.synonyms && insight.synonyms.length > 0 && (
-						<div className="space-y-3">
-							<h4 className="font-semibold text-muted-foreground text-sm">Synonyms</h4>
-							<div className="flex flex-wrap gap-2">
-								{insight.synonyms.map((synonym: string, idx: number) => (
-									<Badge key={idx} variant="secondary" className="text-xs">
-										{synonym}
+				{/* Emotional Response */}
+				{insight.emotional_response && (
+					<div className="space-y-3">
+						<h4 className="font-semibold text-foreground text-sm">Emotional Response</h4>
+						<div className="flex items-center gap-2">
+							<EmotionBadge emotion_string={insight.emotional_response} />
+						</div>
+					</div>
+				)}
+
+				{/* Personas */}
+				{insight.persona_insights && insight.persona_insights.length > 0 && (
+					<div className="space-y-3">
+						<h4 className="font-semibold text-foreground text-sm">Personas</h4>
+						<div className="flex flex-wrap gap-2">
+							{insight.persona_insights.map((pi: any, idx: number) => {
+								const personaName = pi?.personas?.name
+								if (!personaName) return null
+								return (
+									<Badge key={idx} variant="default" className="px-3 py-1">
+										{personaName}
 									</Badge>
-								))}
-							</div>
+								)
+							})}
 						</div>
-					)}
+					</div>
+				)}
 
-					{/* Tags */}
-					{insight.insight_tags && insight.insight_tags.length > 0 && (
-						<div className="space-y-3">
-							<h4 className="font-semibold text-foreground text-sm">Tags</h4>
-							<div className="flex flex-wrap gap-2">
-								{insight.insight_tags?.map((tag: any, idx: number) => {
-									const tagName = tag?.tags?.tag || tag?.tag || null
-									if (!tagName) return null
-									return (
-										<StyledTag key={`${tagName}-${idx}`} name={tagName} style={tag.style} frequency={tag.frequency} />
-									)
-								})}
-							</div>
+				{/* Synonyms */}
+				{insight.synonyms && insight.synonyms.length > 0 && (
+					<div className="space-y-3">
+						<h4 className="font-semibold text-muted-foreground text-sm">Synonyms</h4>
+						<div className="flex flex-wrap gap-2">
+							{insight.synonyms.map((synonym: string, idx: number) => (
+								<Badge key={idx} variant="secondary" className="text-xs">
+									{synonym}
+								</Badge>
+							))}
 						</div>
-					)}
+					</div>
+				)}
+
+				{/* Tags */}
+				{insight.insight_tags && insight.insight_tags.length > 0 && (
+					<div className="space-y-3">
+						<h4 className="font-semibold text-foreground text-sm">Tags</h4>
+						<div className="flex flex-wrap gap-2">
+							{insight.insight_tags?.map((tag: any, idx: number) => {
+								const tagName = tag?.tags?.tag || tag?.tag || null
+								if (!tagName) return null
+								return (
+									<StyledTag key={`${tagName}-${idx}`} name={tagName} style={tag.style} frequency={tag.frequency} />
+								)
+							})}
+						</div>
+					</div>
+				)}
 
 				{/* Evidence Section - Grouped by Interview */}
 				<div className="space-y-4">
@@ -180,9 +185,7 @@ export function InsightCardV3Page({ insight, evidence = [], projectPath: propPro
 							<div className="space-y-3">
 								<div className="flex items-center gap-2">
 									<Building2 className="h-4 w-4 text-muted-foreground" />
-									<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-										Organizations
-									</div>
+									<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Organizations</div>
 								</div>
 								<div className="flex flex-wrap gap-2">
 									{(insight as any).organizations.map((org: any, idx: number) => (

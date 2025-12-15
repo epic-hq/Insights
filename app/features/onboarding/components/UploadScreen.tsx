@@ -255,10 +255,10 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
 		? people.filter(
-			(p) =>
-				p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				p.company?.toLowerCase().includes(searchQuery.toLowerCase())
-		)
+				(p) =>
+					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+			)
 		: people.slice(0, 8)
 
 	// Quick note handler
@@ -321,9 +321,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 							<X className="h-4 w-4" />
 							Cancel
 						</button>
-						<h2 className="font-semibold text-xl text-slate-900 dark:text-white">
-							Who is this conversation with?
-						</h2>
+						<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Who is this conversation with?</h2>
 						{!isRecording && contentLabel && (
 							<p className="mt-1 text-muted-foreground text-sm">
 								{selectedFile ? "Uploading" : "Importing"}: {contentLabel}
@@ -393,7 +391,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 								<button
 									type="button"
 									onClick={() => setShowCreatePerson(true)}
-									className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+									className="flex w-full items-center gap-3 rounded-lg border border-slate-300 border-dashed p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
 								>
 									<div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-300 dark:border-slate-600">
 										<UserPlus className="h-5 w-5 text-slate-400" />
@@ -549,7 +547,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 							isDragOver && "border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
 						)}
 					>
-						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 transition-transform group-hover:scale-110">
+						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/30 shadow-lg transition-transform group-hover:scale-110">
 							<Upload className="h-7 w-7 text-white" />
 						</div>
 						<div className="text-center">
@@ -568,7 +566,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 							"dark:border-slate-800/60 dark:bg-slate-900/80 dark:hover:border-amber-700"
 						)}
 					>
-						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30 transition-transform group-hover:scale-110">
+						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30 shadow-lg transition-transform group-hover:scale-110">
 							<PenLine className="h-7 w-7 text-white" />
 						</div>
 						<div className="text-center">
@@ -618,9 +616,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 								)}
 							>
 								<Upload className="mb-2 h-8 w-8 text-slate-400" />
-								<p className="font-medium text-slate-700 text-sm dark:text-slate-300">
-									Drop file or click to browse
-								</p>
+								<p className="font-medium text-slate-700 text-sm dark:text-slate-300">Drop file or click to browse</p>
 								<p className="mt-1 text-muted-foreground text-xs">Audio, video, or transcript</p>
 							</div>
 						</TabsContent>
@@ -655,7 +651,12 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 			</Dialog>
 
 			{/* Quick Note Dialog */}
-			<QuickNoteDialog open={showQuickNoteDialog} onOpenChange={setShowQuickNoteDialog} onSave={handleSaveNote} projectId={projectId} />
+			<QuickNoteDialog
+				open={showQuickNoteDialog}
+				onOpenChange={setShowQuickNoteDialog}
+				onSave={handleSaveNote}
+				projectId={projectId}
+			/>
 		</div>
 	)
 }

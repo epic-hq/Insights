@@ -54,13 +54,13 @@ export async function action({ request }: ActionFunctionArgs) {
 	// Only pass the last user message - Mastra's memory handles historical context
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message: Record<string, unknown>) => {
-			if (!message || typeof message !== "object") return message
-			const cloned = { ...message }
-			if ("id" in cloned) {
-				delete cloned.id
-			}
-			return cloned
-		})
+				if (!message || typeof message !== "object") return message
+				const cloned = { ...message }
+				if ("id" in cloned) {
+					delete cloned.id
+				}
+				return cloned
+			})
 		: []
 
 	const lastUserIndex = sanitizedMessages.findLastIndex((m: { role?: string }) => m?.role === "user")
@@ -76,11 +76,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		requestContext,
 		context: system
 			? [
-				{
-					role: "system",
-					content: `## Context from the client's UI:\n${system}`,
-				},
-			]
+					{
+						role: "system",
+						content: `## Context from the client's UI:\n${system}`,
+					},
+				]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("onFinish", data)

@@ -1,7 +1,19 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { FileSpreadsheet, FileText, Grid, HelpCircle, List, MessageSquare, MessageSquareText, MessagesSquare, Search, Table, Upload } from "lucide-react"
+import {
+	FileSpreadsheet,
+	FileText,
+	Grid,
+	HelpCircle,
+	List,
+	MessageSquare,
+	MessageSquareText,
+	MessagesSquare,
+	Search,
+	Table,
+	Upload,
+} from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router"
@@ -67,11 +79,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-		; (rows || []).forEach((interview) => {
-			const primaryParticipant = interview.interview_people?.[0]
-			const segment = primaryParticipant?.people?.segment || "Unknown"
-			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-		})
+	;(rows || []).forEach((interview) => {
+		const primaryParticipant = interview.interview_people?.[0]
+		const segment = primaryParticipant?.people?.segment || "Unknown"
+		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+	})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -156,9 +168,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 	// Filter assets by search query (client-side filtering using title)
 	const filteredAssets = fileSearchQuery
-		? projectAssets.filter((asset) =>
-			asset.title.toLowerCase().includes(fileSearchQuery.toLowerCase())
-		)
+		? projectAssets.filter((asset) => asset.title.toLowerCase().includes(fileSearchQuery.toLowerCase()))
 		: projectAssets
 
 	// Filter items by source type category (for interviews/notes)
@@ -254,7 +264,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 										<List className="h-4 w-4" />
 									</ToggleGroupItem>
 								</ToggleGroup>
-								<Button asChild variant="outline" className="w-full text-sm sm:w-auto" title="Generate & edit effective prompts for your conversations">
+								<Button
+									asChild
+									variant="outline"
+									className="w-full text-sm sm:w-auto"
+									title="Generate & edit effective prompts for your conversations"
+								>
 									<Link to={routes.questions.index()}>
 										<MessageSquareText className="h-4 w-4" />
 										Prompts
@@ -349,7 +364,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								{/* Usage instructions header */}
 								<Popover>
 									<PopoverTrigger asChild>
-										<div className="flex items-center gap-2 ml-auto cursor-help">
+										<div className="ml-auto flex cursor-help items-center gap-2">
 											<span className="font-medium text-foreground">How to use Files</span>
 											<HelpCircle className="h-4 w-4 text-muted-foreground" />
 										</div>
@@ -359,10 +374,18 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											Files store spreadsheets, tables, and documents you've shared with the AI assistant. You can:
 										</p>
 										<ul className="space-y-1">
-											<li>• <strong>Ask questions</strong> — "What trends do you see in my customer list?"</li>
-											<li>• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM</li>
-											<li>• <strong>Cross-reference</strong> — "Compare this data with our interview findings"</li>
-											<li>• <strong>Edit inline</strong> — Click any file to view and edit the data directly</li>
+											<li>
+												• <strong>Ask questions</strong> — "What trends do you see in my customer list?"
+											</li>
+											<li>
+												• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM
+											</li>
+											<li>
+												• <strong>Cross-reference</strong> — "Compare this data with our interview findings"
+											</li>
+											<li>
+												• <strong>Edit inline</strong> — Click any file to view and edit the data directly
+											</li>
 										</ul>
 									</PopoverContent>
 								</Popover>
@@ -412,16 +435,16 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												{asset.row_count && asset.column_count && (
 													<>
 														<span>•</span>
-														<span>{asset.row_count} rows × {asset.column_count} cols</span>
+														<span>
+															{asset.row_count} rows × {asset.column_count} cols
+														</span>
 													</>
 												)}
 												<span>•</span>
 												<span>{formatDistance(new Date(asset.created_at), new Date(), { addSuffix: true })}</span>
 											</div>
 											{asset.status && asset.status !== "ready" && (
-												<span
-													className="mt-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 font-medium text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-												>
+												<span className="mt-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 font-medium text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
 													{asset.status}
 												</span>
 											)}
@@ -533,12 +556,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-														: interview.status === "transcribed"
-															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-															: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-														}`}
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
+														interview.status === "ready"
+															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+															: interview.status === "transcribed"
+																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+													}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>
@@ -565,6 +589,6 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				availableOrgs={[]}
 				availableOpportunities={[]}
 			/>
-		</div >
+		</div>
 	)
 }

@@ -56,9 +56,7 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 				<div className="p-5">
 					{/* Header: Title + Type */}
 					<div className="mb-2 flex items-start justify-between gap-3">
-						<h3 className="line-clamp-2 font-semibold text-foreground text-lg dark:text-foreground">
-							{note.title}
-						</h3>
+						<h3 className="line-clamp-2 font-semibold text-foreground text-lg dark:text-foreground">{note.title}</h3>
 						<MediaTypeIcon
 							mediaType={note.media_type}
 							sourceType={note.source_type}
@@ -70,9 +68,7 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 
 					{/* Content Preview */}
 					{contentPreview && (
-						<p className="mb-3 line-clamp-2 text-gray-600 text-sm dark:text-gray-400">
-							{contentPreview}
-						</p>
+						<p className="mb-3 line-clamp-2 text-gray-600 text-sm dark:text-gray-400">{contentPreview}</p>
 					)}
 
 					{/* Tags */}
@@ -96,13 +92,13 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 						{note.status === "processing" && (
 							<div className="flex items-center gap-1">
 								<Loader2 className="h-3 w-3 animate-spin text-amber-500" />
-								<span className="text-xs text-amber-600">Processing</span>
+								<span className="text-amber-600 text-xs">Processing</span>
 							</div>
 						)}
 						{note.status === "ready" && note.conversation_analysis?.indexed_at && (
 							<div className="flex items-center gap-1">
 								<CheckCircle2 className="h-3 w-3 text-emerald-500" />
-								<span className="text-xs text-emerald-600">
+								<span className="text-emerald-600 text-xs">
 									{note.conversation_analysis.evidence_count || 0} indexed
 								</span>
 							</div>
@@ -110,7 +106,7 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 						{note.status === "ready" && !note.conversation_analysis?.indexed_at && (
 							<div className="flex items-center gap-1">
 								<Clock className="h-3 w-3 text-gray-400" />
-								<span className="text-xs text-gray-500">Not indexed</span>
+								<span className="text-gray-500 text-xs">Not indexed</span>
 							</div>
 						)}
 						{/* Date */}

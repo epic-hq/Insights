@@ -154,7 +154,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.from("project_sections")
 			.select("id, kind, content_md, meta")
 			.eq("project_id", projectId)
-			.in("kind", ["customer_problem", "research_goal", "decision_questions", "target_roles", "target_orgs", "assumptions", "unknowns"]),
+			.in("kind", [
+				"customer_problem",
+				"research_goal",
+				"decision_questions",
+				"target_roles",
+				"target_orgs",
+				"assumptions",
+				"unknowns",
+			]),
 
 		// Get tasks for this project
 		getTasks({

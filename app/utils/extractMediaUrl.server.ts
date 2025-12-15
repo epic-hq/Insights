@@ -170,8 +170,14 @@ export async function extractAllMediaUrls(pageUrl: string): Promise<ExtractionRe
 			{ pattern: /<meta[^>]+property=["']og:video(?::url)?["'][^>]+content=["']([^"']+)["']/gi, source: "og:video" },
 			{ pattern: /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?::url)?["']/gi, source: "og:video" },
 			// Twitter video meta tags
-			{ pattern: /<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/gi, source: "twitter:player" },
-			{ pattern: /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:player:stream["']/gi, source: "twitter:player" },
+			{
+				pattern: /<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/gi,
+				source: "twitter:player",
+			},
+			{
+				pattern: /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:player:stream["']/gi,
+				source: "twitter:player",
+			},
 			// HTML5 video source tags
 			{ pattern: /<source[^>]+src=["']([^"']+)["'][^>]*type=["']video\/[^"']+["']/gi, source: "video-source" },
 			{ pattern: /<video[^>]+src=["']([^"']+)["']/gi, source: "video-tag" },
@@ -279,7 +285,9 @@ export async function extractBestMediaUrl(pageUrl: string): Promise<string | nul
  * - If it's already a direct media URL, returns it as-is
  * - If it's a webpage, extracts the best media URL from it
  */
-export async function resolveToMediaUrl(url: string): Promise<{ mediaUrl: string | null; isStreaming: boolean; mediaType: MediaUrlType }> {
+export async function resolveToMediaUrl(
+	url: string
+): Promise<{ mediaUrl: string | null; isStreaming: boolean; mediaType: MediaUrlType }> {
 	// Check if it's already a direct media URL
 	if (isDirectMediaUrl(url)) {
 		return {

@@ -148,12 +148,7 @@ export default function QuickInsights() {
 					/>
 				</div>
 				<div className="flex items-center gap-2">
-					<ToggleGroup
-						type="single"
-						value={viewMode}
-						onValueChange={(v) => v && setViewMode(v as ViewMode)}
-						size="sm"
-					>
+					<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)} size="sm">
 						<ToggleGroupItem value="grouped" aria-label="Group by category">
 							<List className="mr-1 h-4 w-4" />
 							Grouped

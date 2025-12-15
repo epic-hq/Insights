@@ -16,7 +16,15 @@ export type InsightEvidence = {
 	verbatim: string | null
 	chunk: string | null
 	context_summary: string | null
-	anchors: Array<{ type: string; target: string; start?: number; end?: number; start_ms?: number; start_seconds?: number; media_key?: string }> | null
+	anchors: Array<{
+		type: string
+		target: string
+		start?: number
+		end?: number
+		start_ms?: number
+		start_seconds?: number
+		media_key?: string
+	}> | null
 	pains: string[] | null
 	gains: string[] | null
 	thinks: string[] | null
@@ -101,7 +109,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		}
 
 		const evidenceIds = themeEvidence?.map((te) => te.evidence_id).filter(Boolean) ?? []
-		consola.log(`[insight-detail] evidenceIds to fetch:`, evidenceIds.length)
+		consola.log("[insight-detail] evidenceIds to fetch:", evidenceIds.length)
 
 		let evidence: InsightEvidence[] = []
 		if (evidenceIds.length > 0) {
@@ -131,7 +139,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				)
 				.in("id", evidenceIds)
 
-			consola.log(`[insight-detail] evidence query result:`, {
+			consola.log("[insight-detail] evidence query result:", {
 				fetched: evidenceData?.length ?? 0,
 				error: evidenceError?.message,
 				sampleId: evidenceIds[0],
@@ -232,7 +240,12 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					feels: ev.feels,
 					interview_id: ev.interview_id,
 					interview: ev.interview
-						? { id: ev.interview.id, title: ev.interview.title, thumbnail_url: ev.interview.thumbnail_url, media_url: ev.interview.media_url }
+						? {
+								id: ev.interview.id,
+								title: ev.interview.title,
+								thumbnail_url: ev.interview.thumbnail_url,
+								media_url: ev.interview.media_url,
+							}
 						: null,
 					attribution: attribution || "Interview",
 					organization,
@@ -242,7 +255,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			}) as InsightEvidence[]
 		}
 
-		consola.log(`[insight-detail] returning evidence:`, evidence.length)
+		consola.log("[insight-detail] returning evidence:", evidence.length)
 
 		return {
 			insight,

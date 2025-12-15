@@ -33,11 +33,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 	const merged = projectContext?.merged || {}
 
 	// Check if interview_prompts exist
-	const { data: prompts } = await supabase
-		.from("interview_prompts")
-		.select("id")
-		.eq("project_id", projectId)
-		.limit(1)
+	const { data: prompts } = await supabase.from("interview_prompts").select("id").eq("project_id", projectId).limit(1)
 
 	const hasPrompts = (prompts?.length ?? 0) > 0
 

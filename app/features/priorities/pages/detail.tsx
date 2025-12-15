@@ -46,6 +46,8 @@ import { getInsights } from "~/features/insights/db"
 import { getInterviews } from "~/features/interviews/db"
 import { getOpportunities } from "~/features/opportunities/db"
 import { getPeople } from "~/features/people/db"
+import { PriorityBars, priorityConfig as sharedPriorityConfig } from "~/features/tasks/components/PriorityBars"
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
 import {
 	createTaskLink,
 	deleteTaskLink,
@@ -56,8 +58,6 @@ import {
 	type TaskLinkEntityType,
 	updateTask,
 } from "~/features/tasks/db"
-import { PriorityBars, priorityConfig as sharedPriorityConfig } from "~/features/tasks/components/PriorityBars"
-import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
 import type { AgentType, Assignee, TaskActivity, TaskStatus } from "~/features/tasks/types"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
@@ -561,14 +561,7 @@ function StatusSelectField({ taskId, value }: { taskId: string; value: TaskStatu
 		fetcher.submit(formData, { method: "POST" })
 	}
 
-	return (
-		<StatusDropdown
-			currentStatus={value}
-			taskId={taskId}
-			onStatusChange={handleStatusChange}
-			size="default"
-		/>
-	)
+	return <StatusDropdown currentStatus={value} taskId={taskId} onStatusChange={handleStatusChange} size="default" />
 }
 
 function PrioritySelectField({ taskId, value }: { taskId: string; value: 1 | 2 | 3 }) {
@@ -675,7 +668,9 @@ function ImpactSelect({ taskId, value }: { taskId: string; value: number | null 
 		<Select value={value?.toString() || ""} onValueChange={handleChange}>
 			<SelectTrigger className="w-full">
 				{currentImpact ? (
-					<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentImpact.className}`}>
+					<span
+						className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${currentImpact.className}`}
+					>
 						{currentImpact.label}
 					</span>
 				) : (
@@ -686,7 +681,9 @@ function ImpactSelect({ taskId, value }: { taskId: string; value: number | null 
 				{Object.entries(impactConfig).map(([val, config]) => (
 					<SelectItem key={val} value={val}>
 						<div className="flex flex-col">
-							<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}>
+							<span
+								className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${config.className}`}
+							>
 								{config.label}
 							</span>
 							<span className="mt-0.5 text-muted-foreground text-xs">{config.description}</span>
@@ -1668,29 +1665,29 @@ export default function TaskDetailPage() {
 					{/* Dependencies */}
 					{((task.depends_on_task_ids && task.depends_on_task_ids.length > 0) ||
 						(task.blocks_task_ids && task.blocks_task_ids.length > 0)) && (
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle className="flex items-center gap-2 text-base">
-										<Link2 className="h-4 w-4" />
-										Dependencies
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-3">
-									{task.depends_on_task_ids && task.depends_on_task_ids.length > 0 && (
-										<div>
-											<div className="mb-1 font-medium text-muted-foreground text-xs">Depends on</div>
-											<div className="text-muted-foreground text-sm">{task.depends_on_task_ids.length} task(s)</div>
-										</div>
-									)}
-									{task.blocks_task_ids && task.blocks_task_ids.length > 0 && (
-										<div>
-											<div className="mb-1 font-medium text-muted-foreground text-xs">Blocks</div>
-											<div className="text-muted-foreground text-sm">{task.blocks_task_ids.length} task(s)</div>
-										</div>
-									)}
-								</CardContent>
-							</Card>
-						)}
+						<Card>
+							<CardHeader className="pb-3">
+								<CardTitle className="flex items-center gap-2 text-base">
+									<Link2 className="h-4 w-4" />
+									Dependencies
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-3">
+								{task.depends_on_task_ids && task.depends_on_task_ids.length > 0 && (
+									<div>
+										<div className="mb-1 font-medium text-muted-foreground text-xs">Depends on</div>
+										<div className="text-muted-foreground text-sm">{task.depends_on_task_ids.length} task(s)</div>
+									</div>
+								)}
+								{task.blocks_task_ids && task.blocks_task_ids.length > 0 && (
+									<div>
+										<div className="mb-1 font-medium text-muted-foreground text-xs">Blocks</div>
+										<div className="text-muted-foreground text-sm">{task.blocks_task_ids.length} task(s)</div>
+									</div>
+								)}
+							</CardContent>
+						</Card>
+					)}
 
 					{/* Activity */}
 					<Card>

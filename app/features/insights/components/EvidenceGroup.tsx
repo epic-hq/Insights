@@ -107,22 +107,14 @@ export function EvidenceGroupedByInterview({ evidence, projectPath }: EvidenceGr
 					const isExpanded = expandedGroups.has(group.key)
 
 					return (
-						<Collapsible
-							key={group.key}
-							open={isExpanded}
-							onOpenChange={() => toggleGroup(group.key)}
-						>
+						<Collapsible key={group.key} open={isExpanded} onOpenChange={() => toggleGroup(group.key)}>
 							{/* Group header */}
 							<div className="rounded-lg border bg-card">
 								<CollapsibleTrigger className="flex w-full items-center gap-3 p-4 text-left hover:bg-muted/50">
 									{/* Thumbnail */}
 									<div className="h-12 w-16 shrink-0 overflow-hidden rounded bg-muted">
 										{group.thumbnail ? (
-											<img
-												src={group.thumbnail}
-												alt=""
-												className="h-full w-full object-cover"
-											/>
+											<img src={group.thumbnail} alt="" className="h-full w-full object-cover" />
 										) : (
 											<div className="flex h-full w-full items-center justify-center">
 												<FileText className="h-5 w-5 text-muted-foreground/50" />
@@ -176,12 +168,16 @@ export function EvidenceGroupedByInterview({ evidence, projectPath }: EvidenceGr
 													method: null,
 													source_type: "primary",
 												}}
-												interview={ev.interview ? {
-													id: ev.interview.id,
-													title: ev.interview.title,
-													media_url: ev.interview.media_url,
-													thumbnail_url: ev.interview.thumbnail_url,
-												} : null}
+												interview={
+													ev.interview
+														? {
+																id: ev.interview.id,
+																title: ev.interview.title,
+																media_url: ev.interview.media_url,
+																thumbnail_url: ev.interview.thumbnail_url,
+															}
+														: null
+												}
 												variant="expanded"
 												projectPath={projectPath}
 											/>

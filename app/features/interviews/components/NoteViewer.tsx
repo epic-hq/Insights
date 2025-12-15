@@ -1,5 +1,5 @@
-import { formatDistance } from "date-fns"
 import consola from "consola"
+import { formatDistance } from "date-fns"
 import { Calendar, Check, ChevronDown, Loader2, Plus, Search, Trash2, Users } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useFetcher, useNavigate, useRevalidator } from "react-router"
@@ -17,7 +17,15 @@ import {
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "~/components/ui/command"
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+	CommandSeparator,
+} from "~/components/ui/command"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
@@ -73,11 +81,13 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 			if (linkedError) {
 				consola.warn("Failed to fetch linked people:", linkedError)
 			} else {
-				const linked = (linkedData || []).map((row) => ({
-					id: (row.people as { id: string })?.id || "",
-					interviewPersonId: row.id,
-					name: (row.people as { name: string | null })?.name || null,
-				})).filter(p => p.id)
+				const linked = (linkedData || [])
+					.map((row) => ({
+						id: (row.people as { id: string })?.id || "",
+						interviewPersonId: row.id,
+						name: (row.people as { name: string | null })?.name || null,
+					}))
+					.filter((p) => p.id)
 				setLinkedPeople(linked)
 			}
 
@@ -146,8 +156,8 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 	}
 
 	// Filter out already linked people from available options
-	const linkedPersonIds = new Set(linkedPeople.map(p => p.id))
-	const unlinkedPeople = availablePeople.filter(p => !linkedPersonIds.has(p.id))
+	const linkedPersonIds = new Set(linkedPeople.map((p) => p.id))
+	const unlinkedPeople = availablePeople.filter((p) => !linkedPersonIds.has(p.id))
 
 	// Handle delete response - navigate after successful delete
 	useEffect(() => {
@@ -313,11 +323,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 					) : (
 						<>
 							{linkedPeople.map((person) => (
-								<Badge
-									key={person.id}
-									variant="secondary"
-									className="group flex items-center gap-1 pr-1"
-								>
+								<Badge key={person.id} variant="secondary" className="group flex items-center gap-1 pr-1">
 									{person.name || "Unnamed"}
 									<button
 										onClick={() => handleUnlinkPerson(person.interviewPersonId)}
@@ -377,9 +383,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 													className="text-primary"
 												>
 													<Plus className="mr-2 h-4 w-4" />
-													{searchInput.trim()
-														? `Create "${searchInput.trim()}"`
-														: "Create new person..."}
+													{searchInput.trim() ? `Create "${searchInput.trim()}"` : "Create new person..."}
 												</CommandItem>
 											</CommandGroup>
 										</CommandList>

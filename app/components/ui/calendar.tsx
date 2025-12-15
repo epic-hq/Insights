@@ -24,11 +24,11 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
 				nav: "flex items-center gap-1",
 				button_previous: cn(
 					buttonVariants({ variant: "outline" }),
-					"h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1"
+					"absolute left-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
 				),
 				button_next: cn(
 					buttonVariants({ variant: "outline" }),
-					"h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1"
+					"absolute right-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
 				),
 				month_grid: "w-full border-collapse space-x-1",
 				weekdays: "flex",
@@ -37,10 +37,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
 				day: cn(
 					"relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected].day-range-end)]:rounded-r-md"
 				),
-				day_button: cn(
-					buttonVariants({ variant: "ghost" }),
-					"h-8 w-8 p-0 font-normal aria-selected:opacity-100"
-				),
+				day_button: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal aria-selected:opacity-100"),
 				range_start: "day-range-start rounded-l-md",
 				range_end: "day-range-end rounded-r-md",
 				selected:

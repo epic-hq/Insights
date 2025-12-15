@@ -45,7 +45,13 @@ function formatTimestamp(ms: number): string {
 	return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`
 }
 
-export function EvidenceTimestampBadges({ evidenceRefs, evidenceIds, className, maxVisible = 5, useModal = true }: Props) {
+export function EvidenceTimestampBadges({
+	evidenceRefs,
+	evidenceIds,
+	className,
+	maxVisible = 5,
+	useModal = true,
+}: Props) {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
 	const [modalState, setModalState] = useState<{ open: boolean; evidenceId: string; startTime: number }>({

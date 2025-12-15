@@ -37,12 +37,7 @@ const CLUSTERS: Cluster[] = [
 	"Acquisition & marketing",
 ]
 
-export function TaskCreateModal({
-	open: controlledOpen,
-	onOpenChange,
-	trigger,
-	defaultCluster,
-}: TaskCreateModalProps) {
+export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, defaultCluster }: TaskCreateModalProps) {
 	const id = useId()
 	const [internalOpen, setInternalOpen] = useState(false)
 	const fetcher = useFetcher()
@@ -109,9 +104,7 @@ export function TaskCreateModal({
 				<fetcher.Form onSubmit={handleSubmit}>
 					<DialogHeader>
 						<DialogTitle>Create Task</DialogTitle>
-						<DialogDescription>
-
-						</DialogDescription>
+						<DialogDescription></DialogDescription>
 					</DialogHeader>
 
 					<div className="grid gap-4 py-4">
@@ -157,10 +150,7 @@ export function TaskCreateModal({
 
 							<div className="grid gap-2">
 								<Label htmlFor={priorityId}>Priority</Label>
-								<Select
-									value={String(priority)}
-									onValueChange={(v) => setPriority(Number(v) as TaskPriority)}
-								>
+								<Select value={String(priority)} onValueChange={(v) => setPriority(Number(v) as TaskPriority)}>
 									<SelectTrigger id={priorityId}>
 										<SelectValue />
 									</SelectTrigger>

@@ -130,13 +130,7 @@ function distributeEvidenceToItems(items: string[], evidenceRefs: EvidenceRefFor
 /**
  * Inline evidence link that opens a modal instead of navigating
  */
-function InlineEvidenceLink({
-	evidenceRef,
-	projectPath,
-}: {
-	evidenceRef: EvidenceRefForField
-	projectPath: string
-}) {
+function InlineEvidenceLink({ evidenceRef, projectPath }: { evidenceRef: EvidenceRefForField; projectPath: string }) {
 	const [modalOpen, setModalOpen] = useState(false)
 	const ms = evidenceRef.startMs ?? 0
 	const startTime = Math.floor(ms / 1000)
@@ -201,7 +195,9 @@ function FieldValue({
 			// If we have evidence refs and projectPath, try to match evidence to items by text similarity
 			// Since evidence_ids are at the field level, we distribute them across items
 			const evidencePerItem =
-				evidenceRefs && projectPath && evidenceRefs.length > 0 ? distributeEvidenceToItems(arrayValue, evidenceRefs) : null
+				evidenceRefs && projectPath && evidenceRefs.length > 0
+					? distributeEvidenceToItems(arrayValue, evidenceRefs)
+					: null
 
 			return (
 				<ul className="list-inside list-disc space-y-1">
@@ -214,11 +210,7 @@ function FieldValue({
 								{itemEvidence && itemEvidence.length > 0 && projectPath && (
 									<span className="ml-1 inline-flex gap-1">
 										{itemEvidence.map((ev) => (
-											<InlineEvidenceLink
-												key={ev.evidenceId}
-												evidenceRef={ev}
-												projectPath={projectPath}
-											/>
+											<InlineEvidenceLink key={ev.evidenceId} evidenceRef={ev} projectPath={projectPath} />
 										))}
 									</span>
 								)}

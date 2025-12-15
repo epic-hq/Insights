@@ -50,9 +50,7 @@ export function SemanticEvidenceSection({ insightId, projectPath }: SemanticEvid
 			setError(null)
 
 			try {
-				const response = await fetch(
-					`/api/similar-evidence-for-insight?insightId=${insightId}&projectId=${projectId}`
-				)
+				const response = await fetch(`/api/similar-evidence-for-insight?insightId=${insightId}&projectId=${projectId}`)
 
 				if (!response.ok) {
 					throw new Error("Failed to fetch related evidence")
@@ -96,9 +94,7 @@ export function SemanticEvidenceSection({ insightId, projectPath }: SemanticEvid
 				</Badge>
 			</div>
 
-			<p className="text-muted-foreground text-sm">
-				Other quotes across your interviews that relate to this insight
-			</p>
+			<p className="text-muted-foreground text-sm">Other quotes across your interviews that relate to this insight</p>
 
 			{/* Evidence cards */}
 			<div className="grid gap-3 sm:grid-cols-2">
@@ -110,28 +106,17 @@ export function SemanticEvidenceSection({ insightId, projectPath }: SemanticEvid
 	)
 }
 
-function SemanticEvidenceCard({
-	evidence,
-	projectPath,
-}: {
-	evidence: SemanticEvidence
-	projectPath: string
-}) {
+function SemanticEvidenceCard({ evidence, projectPath }: { evidence: SemanticEvidence; projectPath: string }) {
 	const routes = useProjectRoutes(projectPath)
 	const statement = evidence.gist || evidence.verbatim || "No statement"
 	const similarity = evidence.similarity != null ? Math.round(evidence.similarity * 100) : null
 
 	return (
-		<Link
-			to={evidence.interview_id ? routes.interviews.detail(evidence.interview_id) : "#"}
-			className="group block"
-		>
+		<Link to={evidence.interview_id ? routes.interviews.detail(evidence.interview_id) : "#"} className="group block">
 			<Card className="h-full transition-all hover:border-amber-200 hover:shadow-sm dark:hover:border-amber-800">
 				<CardContent className="p-4">
 					{/* Gist/verbatim */}
-					<p className="mb-2 line-clamp-3 text-foreground text-sm leading-snug">
-						"{statement}"
-					</p>
+					<p className="mb-2 line-clamp-3 text-foreground text-sm leading-snug">"{statement}"</p>
 
 					{/* Footer */}
 					<div className="flex items-center justify-between text-xs">

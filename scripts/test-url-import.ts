@@ -152,7 +152,7 @@ async function testUrl(url: string): Promise<void> {
 }
 
 async function main() {
-	consola.info("=" .repeat(60))
+	consola.info("=".repeat(60))
 	consola.info("URL Import Test Script")
 	consola.info("=".repeat(60))
 

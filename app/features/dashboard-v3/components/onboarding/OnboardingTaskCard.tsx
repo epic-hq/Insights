@@ -108,10 +108,7 @@ export function OnboardingTaskCard({ task, stepNumber, className }: OnboardingTa
 	if (isDisabled) {
 		return (
 			<div
-				className={cn(
-					"block cursor-not-allowed rounded-xl border border-dashed bg-card/50 p-5 opacity-60",
-					className
-				)}
+				className={cn("block cursor-not-allowed rounded-xl border border-dashed bg-card/50 p-5 opacity-60", className)}
 			>
 				{content}
 			</div>

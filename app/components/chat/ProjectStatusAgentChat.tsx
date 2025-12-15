@@ -529,7 +529,11 @@ export function ProjectStatusAgentChat({
 		// Otherwise, generate new ones via API
 		lastProcessedMessageId.current = lastMsg.id
 
-		const lastText = lastMsg.parts?.filter(p => p.type === "text").map(p => p.text).join("\n") || ""
+		const lastText =
+			lastMsg.parts
+				?.filter((p) => p.type === "text")
+				.map((p) => p.text)
+				.join("\n") || ""
 		if (!lastText) return
 
 		fetch("/api/generate-suggestions", {
@@ -537,17 +541,16 @@ export function ProjectStatusAgentChat({
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				lastMessage: lastText,
-				context: `User is viewing: ${currentPageContext}`
+				context: `User is viewing: ${currentPageContext}`,
 			}),
 		})
-			.then(res => res.json())
-			.then(data => {
+			.then((res) => res.json())
+			.then((data) => {
 				if (data.suggestions && Array.isArray(data.suggestions)) {
 					setGeneratedSuggestions(data.suggestions)
 				}
 			})
-			.catch(err => console.error("Failed to generate suggestions:", err))
-
+			.catch((err) => console.error("Failed to generate suggestions:", err))
 	}, [displayableMessages, toolSuggestions, status, accountId, projectId, currentPageContext])
 
 	const suggestions = toolSuggestions.length > 0 ? toolSuggestions : generatedSuggestions

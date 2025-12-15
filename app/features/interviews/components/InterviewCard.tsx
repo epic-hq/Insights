@@ -87,7 +87,13 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 							{interviewTitle}
 						</h3>
 						<div className="flex shrink-0 items-center gap-2">
-							<MediaTypeIcon mediaType={interview.media_type} sourceType={interview.source_type} showLabel={true} iconClassName="h-4 w-4" labelClassName="text-xs font-medium" />
+							<MediaTypeIcon
+								mediaType={interview.media_type}
+								sourceType={interview.source_type}
+								showLabel={true}
+								iconClassName="h-4 w-4"
+								labelClassName="text-xs font-medium"
+							/>
 						</div>
 					</div>
 

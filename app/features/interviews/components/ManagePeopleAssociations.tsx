@@ -11,7 +11,7 @@ import {
 	CommandList,
 	CommandSeparator,
 } from "~/components/ui/command"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "~/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
@@ -231,9 +231,7 @@ export function ManagePeopleAssociations({
 														className="text-primary"
 													>
 														<Plus className="mr-2 h-4 w-4" />
-														{searchInput.trim()
-															? `Create "${searchInput.trim()}"`
-															: "Create new person..."}
+														{searchInput.trim() ? `Create "${searchInput.trim()}"` : "Create new person..."}
 													</CommandItem>
 												</CommandGroup>
 											</CommandList>

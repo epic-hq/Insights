@@ -191,12 +191,7 @@ export function ContextPanel({
 												<span className="h-1.5 w-1.5 rounded-full bg-current" />
 											)}
 										</div>
-										<span
-											className={cn(
-												"text-sm",
-												field.isFilled ? "text-foreground" : "text-muted-foreground"
-											)}
-										>
+										<span className={cn("text-sm", field.isFilled ? "text-foreground" : "text-muted-foreground")}>
 											{field.label}
 										</span>
 									</div>

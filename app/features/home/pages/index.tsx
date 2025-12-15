@@ -1,13 +1,6 @@
 import consola from "consola"
 import { Hash, Plus } from "lucide-react"
-import {
-	Link,
-	type LoaderFunctionArgs,
-	redirect,
-	useLoaderData,
-	useParams,
-	useRouteLoaderData,
-} from "react-router"
+import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useParams, useRouteLoaderData } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
@@ -72,7 +65,6 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		.order("position", { ascending: true, nullsFirst: false })
 		.order("created_at", { ascending: false })
 		.limit(10)
-
 
 	return {
 		projects: projects || [],
@@ -172,8 +164,6 @@ export default function Index() {
 
 	// Call hook once at top level for the first project (we'll use it as a template)
 	// and create routes dynamically as needed
-
-
 
 	return (
 		<div className="min-h-screen bg-background">

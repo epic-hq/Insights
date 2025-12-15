@@ -6,12 +6,7 @@
 
 import { Archive, Check, ChevronDown, Circle, CircleDashed, Clock, Pause, Play } from "lucide-react"
 import { Button } from "~/components/ui/button"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { cn } from "~/lib/utils"
 import type { TaskStatus } from "../types"
 
@@ -60,7 +55,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 	const Icon = config.icon
 
 	return (
-		<span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium", className)}>
+		<span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium text-xs", className)}>
 			<Icon className={cn("h-3.5 w-3.5", config.color)} />
 			<span className={config.color}>{config.label}</span>
 		</span>

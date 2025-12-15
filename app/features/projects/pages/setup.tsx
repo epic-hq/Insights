@@ -86,7 +86,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (extra && extra.trim().length > 0) {
 			signup.custom_instructions = String(extra)
 		}
-	} catch { }
+	} catch {}
 
 	let prefill: TemplatePrefill = fallbackPrefill(template_key, projectResult.data.name || "Project", signup)
 	try {
@@ -162,9 +162,7 @@ export default function ProjectSetupPage() {
 							{project?.name ? `Project Context: ${project.name}` : "Project Context"}
 						</h1>
 						<p className="mt-1 text-muted-foreground text-sm">
-							{mode === "chat"
-								? "Chat with me to set up your project context."
-								: "The Form syncs with chat."}
+							{mode === "chat" ? "Chat with me to set up your project context." : "The Form syncs with chat."}
 						</p>
 					</div>
 					<div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-1">

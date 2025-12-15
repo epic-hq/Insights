@@ -633,19 +633,22 @@ export async function extractEvidenceAndPeopleCore({
 		const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>).speaker_transcripts
 		const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
 			? (speakerTranscriptsRaw as Array<Record<string, unknown>>).map((u) => ({
-				speaker: typeof u.speaker === "string" ? u.speaker : "",
-				text: typeof u.text === "string" ? u.text : "",
-				start: typeof u.start === "number" || typeof u.start === "string" ? u.start : null,
-				end: typeof u.end === "number" || typeof u.end === "string" ? u.end : null,
-			}))
+					speaker: typeof u.speaker === "string" ? u.speaker : "",
+					text: typeof u.text === "string" ? u.text : "",
+					start: typeof u.start === "number" || typeof u.start === "string" ? u.start : null,
+					end: typeof u.end === "number" || typeof u.end === "string" ? u.end : null,
+				}))
 			: []
 
 		// Log speaker transcripts timing data for debugging
 		const utterancesWithTiming = speakerTranscripts.filter((u) => u.start !== null).length
 		const sampleTimings = speakerTranscripts.slice(0, 3).map((u) => ({ start: u.start, end: u.end }))
-		consola.info(`📝 Passing ${speakerTranscripts.length} speaker utterances to AI (${utterancesWithTiming} with timing)`, {
-			sampleTimings,
-		})
+		consola.info(
+			`📝 Passing ${speakerTranscripts.length} speaker utterances to AI (${utterancesWithTiming} with timing)`,
+			{
+				sampleTimings,
+			}
+		)
 
 		evidenceResponse = await batchExtractEvidence(speakerTranscripts, async (batch) => {
 			return await instrumentedClient.ExtractEvidenceFromTranscriptV2(batch, chapters, language, facetCatalog)
@@ -687,7 +690,7 @@ export async function extractEvidenceAndPeopleCore({
 				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
 			})
 		}
-		; (lfTrace as any)?.end?.()
+		;(lfTrace as any)?.end?.()
 	}
 
 	if (!evidenceResponse) {
@@ -809,45 +812,45 @@ export async function extractEvidenceAndPeopleCore({
 		const summary = coerceString((raw as EvidenceParticipant).summary)
 		const segments = Array.isArray((raw as EvidenceParticipant).segments)
 			? ((raw as EvidenceParticipant).segments as unknown[])
-				.map((segment) => coerceString(segment))
-				.filter((segment): segment is string => Boolean(segment))
+					.map((segment) => coerceString(segment))
+					.filter((segment): segment is string => Boolean(segment))
 			: []
 		const personas = Array.isArray((raw as EvidenceParticipant).personas)
 			? ((raw as EvidenceParticipant).personas as unknown[])
-				.map((persona) => coerceString(persona))
-				.filter((persona): persona is string => Boolean(persona))
+					.map((persona) => coerceString(persona))
+					.filter((persona): persona is string => Boolean(persona))
 			: []
 		const facets = Array.isArray((raw as EvidenceParticipant).facets)
 			? ((raw as EvidenceParticipant).facets as unknown[])
-				.map((facet) => {
-					if (!facet || typeof facet !== "object") return null
-					const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
-					const value = coerceString((facet as PersonFacetObservation).value)
-					if (!kind_slug || !value) return null
-					return {
-						...facet,
-						kind_slug,
-						value,
-						source: (facet as PersonFacetObservation).source || "interview",
-					} as PersonFacetObservation
-				})
-				.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+					.map((facet) => {
+						if (!facet || typeof facet !== "object") return null
+						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+						const value = coerceString((facet as PersonFacetObservation).value)
+						if (!kind_slug || !value) return null
+						return {
+							...facet,
+							kind_slug,
+							value,
+							source: (facet as PersonFacetObservation).source || "interview",
+						} as PersonFacetObservation
+					})
+					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
 			: []
 		const scales = Array.isArray((raw as EvidenceParticipant).scales)
 			? ((raw as EvidenceParticipant).scales as unknown[])
-				.map((scale) => {
-					if (!scale || typeof scale !== "object") return null
-					const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
-					const score = (scale as PersonScaleObservation).score
-					if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
-					return {
-						...scale,
-						kind_slug,
-						score,
-						source: (scale as PersonScaleObservation).source || "interview",
-					} as PersonScaleObservation
-				})
-				.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+					.map((scale) => {
+						if (!scale || typeof scale !== "object") return null
+						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+						const score = (scale as PersonScaleObservation).score
+						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+						return {
+							...scale,
+							kind_slug,
+							score,
+							source: (scale as PersonScaleObservation).source || "interview",
+						} as PersonScaleObservation
+					})
+					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
 			: []
 
 		const normalized: NormalizedParticipant = {
@@ -969,7 +972,9 @@ export async function extractEvidenceAndPeopleCore({
 				: null
 	const wordTimeline = buildWordTimeline(transcriptData)
 	const segmentTimeline = buildSegmentTimeline(transcriptData)
-	consola.info(`⏱️ Timing data available: ${wordTimeline.length} words, ${segmentTimeline.length} segments, duration=${durationSeconds}s`)
+	consola.info(
+		`⏱️ Timing data available: ${wordTimeline.length} words, ${segmentTimeline.length} segments, duration=${durationSeconds}s`
+	)
 	for (let idx = 0; idx < evidenceUnits.length; idx++) {
 		const ev = evidenceUnits[idx] as EvidenceTurn
 		const rawPersonKey = coerceString((ev as { person_key?: string }).person_key)
@@ -1068,7 +1073,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		// Get timing from multiple sources - prefer word-level precision when available
 		let anchorSeconds: number | null = null
-		let timingSource: string = "none"
+		let timingSource = "none"
 
 		// First, try word-level text search for precise timing (best for single-speaker content)
 		const snippetForTiming = chunk || gist || verb
@@ -1186,12 +1191,12 @@ export async function extractEvidenceAndPeopleCore({
 		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
 		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
 		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
-			; (row as Record<string, unknown>).says = _says
-			; (row as Record<string, unknown>).does = _does
-			; (row as Record<string, unknown>).thinks = _thinks
-			; (row as Record<string, unknown>).feels = _feels
-			; (row as Record<string, unknown>).pains = _pains
-			; (row as Record<string, unknown>).gains = _gains
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -1214,7 +1219,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
 		if (whyItMatters) {
-			; (row as Record<string, unknown>).context_summary = whyItMatters
+			;(row as Record<string, unknown>).context_summary = whyItMatters
 		}
 
 		// Skip raw mention processing - we'll use Phase 2 persona facets instead
@@ -1465,16 +1470,18 @@ export async function extractEvidenceAndPeopleCore({
 
 		const existingDisplayName = existingLink?.display_name
 		const isExistingDisplayNameGeneric =
-			!existingDisplayName ||
-			/^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingDisplayName)
+			!existingDisplayName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingDisplayName)
 
 		const bamlDisplayName = personKey ? (displayNameByKey.get(personKey) ?? null) : null
 		const isBamlDisplayNameGeneric =
 			!bamlDisplayName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(bamlDisplayName)
 
 		// Preserve existing non-generic display_name, only use BAML value if existing is generic or BAML has a better name
-		const finalDisplayName =
-			!isExistingDisplayNameGeneric ? existingDisplayName : isBamlDisplayNameGeneric ? existingDisplayName : bamlDisplayName
+		const finalDisplayName = !isExistingDisplayNameGeneric
+			? existingDisplayName
+			: isBamlDisplayNameGeneric
+				? existingDisplayName
+				: bamlDisplayName
 
 		const linkPayload: InterviewPeopleInsert = {
 			interview_id: interviewRecord.id,
@@ -1525,7 +1532,9 @@ export async function extractEvidenceAndPeopleCore({
 			}
 		}
 
-		consola.info(`🎙️  Existing transcript_keys in interview_people: ${Array.from(existingTranscriptKeys).join(", ") || "(none)"}`)
+		consola.info(
+			`🎙️  Existing transcript_keys in interview_people: ${Array.from(existingTranscriptKeys).join(", ") || "(none)"}`
+		)
 
 		// Find speakers without interview_people records
 		const missingSpeakers: string[] = []
@@ -1535,7 +1544,8 @@ export async function extractEvidenceAndPeopleCore({
 			const isLinked =
 				existingTranscriptKeys.has(normalizedSpeaker) ||
 				existingTranscriptKeys.has(`SPEAKER ${normalizedSpeaker}`) ||
-				(normalizedSpeaker.startsWith("SPEAKER ") && existingTranscriptKeys.has(normalizedSpeaker.replace("SPEAKER ", "")))
+				(normalizedSpeaker.startsWith("SPEAKER ") &&
+					existingTranscriptKeys.has(normalizedSpeaker.replace("SPEAKER ", "")))
 
 			consola.debug(`🎙️  Speaker "${speaker}" (normalized: "${normalizedSpeaker}") isLinked: ${isLinked}`)
 
@@ -1545,7 +1555,9 @@ export async function extractEvidenceAndPeopleCore({
 		}
 
 		if (missingSpeakers.length > 0) {
-			consola.info(`🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`)
+			consola.info(
+				`🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`
+			)
 
 			for (const speakerLabel of missingSpeakers) {
 				// Create a placeholder person record for this speaker
@@ -1574,7 +1586,9 @@ export async function extractEvidenceAndPeopleCore({
 					person_id: placeholderPerson.id,
 					project_id: metadata.projectId ?? null,
 					role: speakerRole,
-					transcript_key: speakerLabel.toUpperCase().startsWith("SPEAKER ") ? speakerLabel : `SPEAKER ${speakerLabel}`.toUpperCase(),
+					transcript_key: speakerLabel.toUpperCase().startsWith("SPEAKER ")
+						? speakerLabel
+						: `SPEAKER ${speakerLabel}`.toUpperCase(),
 					display_name: placeholderName,
 				}
 
@@ -1584,7 +1598,9 @@ export async function extractEvidenceAndPeopleCore({
 				if (linkErr && !linkErr.message?.includes("duplicate")) {
 					consola.warn(`Failed linking placeholder speaker ${speakerLabel} to interview:`, linkErr.message)
 				} else {
-					consola.info(`  ✅ Created interview_people record for speaker "${speakerLabel}" as ${speakerRole || "unknown role"}`)
+					consola.info(
+						`  ✅ Created interview_people record for speaker "${speakerLabel}" as ${speakerRole || "unknown role"}`
+					)
 				}
 			}
 		}
@@ -1842,8 +1858,10 @@ export async function analyzeThemesAndPersonaCore({
 		.eq("id", personData.id)
 		.single()
 
-	const existingName = existingPerson?.name || `${existingPerson?.firstname || ""} ${existingPerson?.lastname || ""}`.trim()
-	const isExistingNameGeneric = !existingName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingName)
+	const existingName =
+		existingPerson?.name || `${existingPerson?.firstname || ""} ${existingPerson?.lastname || ""}`.trim()
+	const isExistingNameGeneric =
+		!existingName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingName)
 
 	const personName = participant?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
 	const isNewNameGeneric = /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(personName)
@@ -2345,9 +2363,9 @@ export async function uploadMediaAndTranscribeCore({
 			transcriptData && typeof transcriptData === "object" && "speaker_transcripts" in transcriptData,
 		speakerTranscriptsCount:
 			transcriptData &&
-				typeof transcriptData === "object" &&
-				"speaker_transcripts" in transcriptData &&
-				Array.isArray((transcriptData as any).speaker_transcripts)
+			typeof transcriptData === "object" &&
+			"speaker_transcripts" in transcriptData &&
+			Array.isArray((transcriptData as any).speaker_transcripts)
 				? (transcriptData as any).speaker_transcripts.length
 				: 0,
 	})
@@ -2641,8 +2659,8 @@ export async function processInterviewTranscriptWithClient({
 
 		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
 			? (analysisResult.interview.high_impact_themes ?? []).filter(
-				(value): value is string => typeof value === "string" && value.trim().length > 0
-			)
+					(value): value is string => typeof value === "string" && value.trim().length > 0
+				)
 			: []
 
 		let takeawayStrings = existingThemes

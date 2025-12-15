@@ -58,7 +58,7 @@ export const useTableStore = create<TableState>((set, get) => ({
 		set({
 			assetId,
 			headers: data.headers,
-			rows: data.rows.map(row => {
+			rows: data.rows.map((row) => {
 				// Ensure all values are strings
 				const stringRow: Record<string, string> = {}
 				for (const [key, value] of Object.entries(row)) {
@@ -148,7 +148,7 @@ export const useTableStore = create<TableState>((set, get) => ({
 
 		set({
 			headers: [...headers, columnName],
-			rows: rows.map(row => ({
+			rows: rows.map((row) => ({
 				...row,
 				[columnName]: defaultValue,
 			})),
@@ -160,8 +160,8 @@ export const useTableStore = create<TableState>((set, get) => ({
 		const { headers, rows } = get()
 
 		set({
-			headers: headers.filter(h => h !== columnName),
-			rows: rows.map(row => {
+			headers: headers.filter((h) => h !== columnName),
+			rows: rows.map((row) => {
 				const { [columnName]: _, ...rest } = row
 				return rest
 			}),
@@ -176,8 +176,8 @@ export const useTableStore = create<TableState>((set, get) => ({
 		if (headers.includes(newName)) return // New name already exists
 
 		set({
-			headers: headers.map(h => h === oldName ? newName : h),
-			rows: rows.map(row => {
+			headers: headers.map((h) => (h === oldName ? newName : h)),
+			rows: rows.map((row) => {
 				const { [oldName]: value, ...rest } = row
 				return { ...rest, [newName]: value }
 			}),
