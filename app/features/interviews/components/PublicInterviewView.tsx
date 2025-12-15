@@ -1,14 +1,54 @@
 /**
  * Read-only public view of an interview for share links.
- * Excludes user notes, edit controls, and team comments.
+ * Includes transcript with speaker diarization, conversation timeline, and notes.
  * Uses simplified components that don't depend on authenticated context.
  */
-import { Calendar, Clock, FileText, Quote, Sparkles } from "lucide-react";
+import {
+  Calendar,
+  CalendarIcon,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Copy,
+  Download,
+  FileText,
+  Layers,
+  Lock,
+  MessageSquare,
+  Pencil,
+  Sparkles,
+} from "lucide-react";
+import { useState } from "react";
 import { Streamdown } from "streamdown";
 import { LogoBrand } from "~/components/branding";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
+import { Timeline } from "~/components/ui/timeline";
+import { TranscriptResults } from "./TranscriptResults";
+
+// Transcript data structure from loader
+interface TranscriptData {
+  fullTranscript: string | null;
+  speakerTranscripts: Array<{
+    speaker?: string;
+    text?: string;
+    start?: number;
+    end?: number;
+    start_time?: number;
+    end_time?: number;
+    confidence?: number;
+  }>;
+  topicDetection: unknown;
+  chapters?: Array<{
+    start_ms: number;
+    end_ms?: number;
+    summary?: string;
+    title?: string;
+  }>;
+}
 
 interface PublicInterviewViewProps {
   interview: {
@@ -23,14 +63,16 @@ interface PublicInterviewViewProps {
     source_type: string | null;
     created_at: string;
     conversation_analysis: unknown;
+    observations_and_notes: string | null;
   };
+  transcriptData?: TranscriptData;
   evidence: Array<{
     id: string;
     gist: string | null;
-    quote: string | null;
-    anchor_start?: number | null;
-    anchor_end?: number | null;
+    verbatim: string | null;
+    anchors: Array<{ start_ms?: number; end_ms?: number }> | null;
     created_at: string;
+    topic?: string | null;
   }>;
   participants: Array<{
     id: string | number;
@@ -43,6 +85,7 @@ interface PublicInterviewViewProps {
     } | null;
   }>;
   teamName: string | null;
+  shareUrl?: string;
 }
 
 function formatDuration(seconds: number): string {
@@ -116,21 +159,114 @@ function badgeVariantForPriority(
 
 export function PublicInterviewView({
   interview,
+  transcriptData,
   evidence,
   participants,
   teamName,
+  shareUrl,
 }: PublicInterviewViewProps) {
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false);
   const keyTakeaways = parseKeyTakeaways(interview.conversation_analysis);
+
+  // Copy share link to clipboard
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+
+  // Helper to extract anchor start time from anchors JSONB
+  const getAnchorStart = (
+    anchors: Array<{ start_ms?: number; end_ms?: number }> | null,
+  ): number | null => {
+    if (!anchors || !Array.isArray(anchors) || anchors.length === 0)
+      return null;
+    const first = anchors[0];
+    if (typeof first?.start_ms === "number") return first.start_ms / 1000;
+    return null;
+  };
+
+  // Build conversation timeline from evidence topics (like PlayByPlayTimeline)
+  const buildTopicGroups = () => {
+    type TopicGroup = {
+      topic: string;
+      firstEvidence: (typeof evidence)[0];
+      firstSeconds: number | null;
+      count: number;
+    };
+    const byTopic = new Map<string, TopicGroup>();
+
+    for (const item of evidence) {
+      const topic = item.topic;
+      if (!topic || topic.trim().length === 0) continue;
+      const seconds = getAnchorStart(item.anchors);
+      const existing = byTopic.get(topic);
+      if (!existing) {
+        byTopic.set(topic, {
+          topic,
+          firstEvidence: item,
+          firstSeconds: seconds,
+          count: 1,
+        });
+      } else {
+        existing.count += 1;
+        if (
+          (seconds !== null && existing.firstSeconds === null) ||
+          (seconds !== null &&
+            existing.firstSeconds !== null &&
+            seconds < existing.firstSeconds)
+        ) {
+          existing.firstEvidence = item;
+          existing.firstSeconds = seconds;
+        }
+      }
+    }
+
+    return Array.from(byTopic.values()).sort((a, b) => {
+      const aKey =
+        a.firstSeconds ?? new Date(a.firstEvidence.created_at).getTime() / 1000;
+      const bKey =
+        b.firstSeconds ?? new Date(b.firstEvidence.created_at).getTime() / 1000;
+      return aKey - bKey;
+    });
+  };
+
+  const topicGroups = buildTopicGroups();
+  const displayedTopics = timelineExpanded
+    ? topicGroups
+    : topicGroups.slice(0, 5);
+
+  // Convert speaker transcripts to utterances format for TranscriptResults
+  const transcriptUtterances = (transcriptData?.speakerTranscripts || []).map(
+    (item) => ({
+      speaker: item.speaker || "A",
+      text: item.text || "",
+      confidence: item.confidence || 0,
+      start: item.start ?? item.start_time ?? 0,
+      end: item.end ?? item.end_time ?? item.start ?? item.start_time ?? 0,
+    }),
+  );
+
+  const hasTranscript =
+    transcriptUtterances.length > 0 || !!transcriptData?.fullTranscript;
 
   // Get linked participants with names
   const linkedParticipants = participants.filter((p) => p.people?.name);
-
-  // Sort evidence by timestamp
-  const sortedEvidence = [...evidence].sort((a, b) => {
-    const aStart = a.anchor_start ?? Infinity;
-    const bStart = b.anchor_start ?? Infinity;
-    return aStart - bStart;
-  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,13 +275,35 @@ export function PublicInterviewView({
         <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <LogoBrand />
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <span>Shared Content</span>
-              {teamName && (
-                <>
-                  <span>•</span>
-                  <span>by {teamName}</span>
-                </>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <span>Shared Content</span>
+                {teamName && (
+                  <>
+                    <span>•</span>
+                    <span>by {teamName}</span>
+                  </>
+                )}
+              </div>
+              {shareUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyShareLink}
+                  className="flex items-center gap-2"
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy Link
+                    </>
+                  )}
+                </Button>
               )}
             </div>
           </div>
@@ -267,39 +425,208 @@ export function PublicInterviewView({
           </section>
         )}
 
-        {/* Evidence Timeline (Simplified) */}
-        {sortedEvidence.length > 0 && (
+        {/* Conversation Lenses Teaser */}
+        <section className="mb-8">
+          <Card className="overflow-hidden border-dashed">
+            <CardHeader className="bg-muted/20 pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Layers className="h-5 w-5 text-indigo-500" />
+                Conversation Lenses
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-6">
+              <div className="flex flex-col items-center justify-center text-center">
+                <Lock className="mb-3 h-8 w-8 text-muted-foreground/50" />
+                <p className="mb-2 font-medium text-foreground">
+                  Unlock AI-powered analysis frameworks
+                </p>
+                <p className="mb-4 max-w-md text-muted-foreground text-sm">
+                  Apply Sales BANT, Empathy Maps, Customer Journey, and more to
+                  extract structured insights from this conversation.
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/sign-up?ref=share-lenses">
+                    Create Free Account to View
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Conversation Timeline (Topics from Evidence) */}
+        {topicGroups.length > 0 && (
+          <section className="mb-8">
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-muted/30 pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+                  Conversation Timeline
+                  <Badge variant="secondary" className="ml-2">
+                    {topicGroups.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="px-4 py-2">
+                  <Timeline
+                    items={displayedTopics.map(
+                      ({ topic, firstEvidence, firstSeconds, count }) => ({
+                        id: firstEvidence.id,
+                        title: (
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="line-clamp-1 font-medium text-foreground">
+                              {topic}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {firstSeconds !== null && (
+                                <span className="flex shrink-0 rounded bg-background/5 px-1.5 py-0.5 font-medium text-[#FF8A66] text-[10px] uppercase tracking-wide">
+                                  {formatTimestamp(firstSeconds)}
+                                </span>
+                              )}
+                              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70">
+                                {count}
+                              </span>
+                            </div>
+                          </div>
+                        ),
+                        status: "default" as const,
+                      }),
+                    )}
+                    showTimestamps={false}
+                    variant="compact"
+                  />
+                </div>
+                {topicGroups.length > 5 && (
+                  <div className="flex justify-center border-t p-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-1 text-muted-foreground text-sm"
+                      onClick={() => setTimelineExpanded(!timelineExpanded)}
+                    >
+                      {timelineExpanded ? (
+                        <>
+                          <ChevronUp className="h-4 w-4" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4" />
+                          Show {topicGroups.length - 5} more
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* User Notes */}
+        {interview.observations_and_notes && (
           <section className="mb-8">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-lg">
-              <Quote className="h-5 w-5 text-blue-500" />
-              Key Moments
+              <Pencil className="h-5 w-5 text-purple-500" />
+              Notes
             </h2>
-            <div className="space-y-4">
-              {sortedEvidence.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-lg border bg-card p-4 shadow-sm"
-                >
-                  {item.anchor_start != null && (
-                    <div className="mb-2">
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {formatTimestamp(item.anchor_start)}
-                      </Badge>
-                    </div>
-                  )}
-                  {item.gist && (
-                    <p className="mb-2 font-medium text-foreground text-sm">
-                      {item.gist}
-                    </p>
-                  )}
-                  {item.quote && (
-                    <blockquote className="border-l-2 border-muted-foreground/30 pl-3 text-muted-foreground text-sm italic">
-                      &ldquo;{item.quote}&rdquo;
-                    </blockquote>
-                  )}
-                </div>
-              ))}
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-foreground">
+                {interview.observations_and_notes}
+              </div>
             </div>
+          </section>
+        )}
+
+        {/* Transcript - Lazy Loaded */}
+        {hasTranscript && (
+          <section className="mb-8">
+            {!transcriptExpanded ? (
+              <div className="rounded-lg border bg-background/50 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-green-500" />
+                    <div>
+                      <h3 className="font-medium text-foreground">
+                        Interview Transcript
+                      </h3>
+                      <p className="text-muted-foreground text-sm">
+                        {transcriptUtterances.length > 0
+                          ? "Full transcript with speaker breakdown available"
+                          : "Raw transcript available"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setTranscriptExpanded(true)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Load Transcript
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-lg border bg-background/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="h-5 w-5 text-green-500" />
+                      <div>
+                        <h3 className="font-medium text-foreground">
+                          Interview Transcript
+                        </h3>
+                        <p className="text-muted-foreground text-sm">
+                          {transcriptUtterances.length > 0
+                            ? "Full transcript with speaker breakdown"
+                            : "Raw transcript"}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setTranscriptExpanded(false)}
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                      Hide
+                    </Button>
+                  </div>
+                </div>
+                <TranscriptResults
+                  data={{
+                    id: interview.id,
+                    text: transcriptData?.fullTranscript || "",
+                    words: [],
+                    language_code: "en",
+                    confidence: 0,
+                    audio_duration: interview.duration_sec || 0,
+                    utterances: transcriptUtterances,
+                    iab_categories_result:
+                      transcriptData?.topicDetection as any,
+                    sentiment_analysis_results: [],
+                  }}
+                  rawTranscript={transcriptData?.fullTranscript || undefined}
+                  participants={participants.map((p) => ({
+                    id:
+                      typeof p.id === "string" ? parseInt(p.id, 10) || 0 : p.id,
+                    role: p.role,
+                    transcript_key: null,
+                    display_name: p.display_name,
+                    people: p.people
+                      ? {
+                          id: p.people.id,
+                          name: p.people.name,
+                          segment: p.people.segment,
+                        }
+                      : undefined,
+                  }))}
+                />
+              </div>
+            )}
           </section>
         )}
       </main>

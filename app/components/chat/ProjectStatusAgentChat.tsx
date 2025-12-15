@@ -450,19 +450,28 @@ export function ProjectStatusAgentChat({
 
   // Update messages when history loads (setMessages comes from useChat)
   // Only apply history once to prevent re-applying on navigation
+  // Handle errors gracefully to prevent retry loops
   useEffect(() => {
     if (historyAppliedRef.current) return;
-    if (
-      historyFetcher.data?.messages &&
-      historyFetcher.data.messages.length > 0
-    ) {
+
+    // Check for error response (including auth errors that return error JSON)
+    const fetcherData = historyFetcher.data as
+      | { messages?: UpsightMessage[]; error?: string }
+      | undefined;
+    if (fetcherData?.error) {
+      historyAppliedRef.current = true;
+      consola.warn("Chat history load failed, skipping:", fetcherData.error);
+      return;
+    }
+
+    if (fetcherData?.messages && fetcherData.messages.length > 0) {
       historyAppliedRef.current = true;
       consola.info(
         "Chat history loaded, updating messages:",
-        historyFetcher.data.messages.length,
+        fetcherData.messages.length,
         "messages",
       );
-      setMessages(historyFetcher.data.messages);
+      setMessages(fetcherData.messages);
     }
   }, [historyFetcher.data, setMessages]);
 

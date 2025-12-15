@@ -9,6 +9,7 @@ import { useLoaderData } from "react-router";
 import { PublicInterviewView } from "~/features/interviews/components/PublicInterviewView";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data || "error" in data) {
@@ -56,6 +57,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
       share_expires_at,
       conversation_analysis,
       transcript_formatted,
+      observations_and_notes,
       project_id,
       account_id
     `,
@@ -109,11 +111,21 @@ export async function loader({ params }: LoaderFunctionArgs) {
   }
 
   // Fetch evidence for this interview (only fields needed for public view)
-  const { data: evidence } = await supabase
+  const { data: evidence, error: evidenceError } = await supabase
     .from("evidence")
-    .select("id, gist, quote, anchor_start, anchor_end, created_at")
+    .select("id, gist, verbatim, anchors, created_at, topic")
     .eq("interview_id", interview.id)
-    .order("anchor_start", { ascending: true, nullsFirst: false });
+    .order("created_at", { ascending: true });
+
+  // Debug: log evidence query result
+  consola.info("[public-share] Evidence query result", {
+    interviewId: interview.id,
+    accountId: interview.account_id,
+    total: evidence?.length || 0,
+    error: evidenceError?.message || null,
+    errorCode: evidenceError?.code || null,
+    errorDetails: evidenceError?.details || null,
+  });
 
   // Fetch participants (without sensitive info)
   const { data: participants } = await supabase
@@ -139,6 +151,11 @@ export async function loader({ params }: LoaderFunctionArgs) {
     .eq("id", interview.account_id)
     .single();
 
+  // Sanitize transcript data for public display with speaker diarization
+  const sanitizedTranscript = safeSanitizeTranscriptPayload(
+    interview.transcript_formatted,
+  );
+
   consola.info("[public-share] Serving public interview", {
     interviewId: interview.id,
     token,
@@ -148,11 +165,18 @@ export async function loader({ params }: LoaderFunctionArgs) {
     interview: {
       ...interview,
       media_url: freshMediaUrl,
-      // Explicitly exclude sensitive fields by not including them
+    },
+    // Pass sanitized transcript for speaker diarization display
+    transcriptData: {
+      fullTranscript: sanitizedTranscript.full_transcript || null,
+      speakerTranscripts: sanitizedTranscript.speaker_transcripts || [],
+      topicDetection: sanitizedTranscript.topic_detection || null,
+      chapters: sanitizedTranscript.chapters || [],
     },
     evidence: evidence || [],
     participants: participants || [],
     teamName: account?.name || null,
+    shareUrl: `${process.env.HOST || "https://getupsight.com"}/s/${token}`,
   };
 }
 
@@ -163,11 +187,13 @@ export default function PublicSharePage() {
   return (
     <PublicInterviewView
       interview={data.interview as PublicInterviewViewProps["interview"]}
+      transcriptData={data.transcriptData}
       evidence={data.evidence as PublicInterviewViewProps["evidence"]}
       participants={
         data.participants as PublicInterviewViewProps["participants"]
       }
       teamName={data.teamName}
+      shareUrl={data.shareUrl}
     />
   );
 }
