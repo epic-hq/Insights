@@ -123,15 +123,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		options: {},
 	})
 
-	consola.info("🔍 [PRIORITIES DEBUG] Fetched tasks:", {
-		count: tasks.length,
-		requestedAccountId: accountId,
-		requestedProjectId: projectId,
-		uniqueAccountIdsInResults: [...new Set(tasks.map((t) => t.account_id))],
-		uniqueProjectIdsInResults: [...new Set(tasks.map((t) => t.project_id))],
-		// Show first 3 task titles for debugging
-		sampleTasks: tasks.slice(0, 3).map((t) => ({ id: t.id, title: t.title, account_id: t.account_id })),
-	})
+	// consola.info("🔍 [PRIORITIES DEBUG] Fetched tasks:", {
+	// 	count: tasks.length,
+	// 	requestedAccountId: accountId,
+	// 	requestedProjectId: projectId,
+	// 	uniqueAccountIdsInResults: [...new Set(tasks.map((t) => t.account_id))],
+	// 	uniqueProjectIdsInResults: [...new Set(tasks.map((t) => t.project_id))],
+	// 	// Show first 3 task titles for debugging
+	// 	sampleTasks: tasks.slice(0, 3).map((t) => ({ id: t.id, title: t.title, account_id: t.account_id })),
+	// })
 
 	// If no tasks exist, seed with initial data
 	// if (!tasks || tasks.length === 0) {
@@ -523,13 +523,12 @@ function EditableDueDateCell({ taskId, value }: { taskId: string; value: string 
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${
-						isOverdue
-							? "text-red-600 dark:text-red-400"
-							: isToday
-								? "text-amber-600 dark:text-amber-400"
-								: "text-muted-foreground"
-					}`}
+					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${isOverdue
+						? "text-red-600 dark:text-red-400"
+						: isToday
+							? "text-amber-600 dark:text-amber-400"
+							: "text-muted-foreground"
+						}`}
 				>
 					{formatted ? (
 						<>
@@ -660,9 +659,8 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -726,9 +724,8 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
-										currentFilter === option.value ? "bg-muted font-medium" : ""
-									}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
+										}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}
@@ -755,115 +752,115 @@ const createColumns = (
 	priorityFilter: string,
 	projectPath: string
 ): ColumnDef<FeatureRow>[] => [
-	{
-		accessorKey: "category",
-		header: "Category",
-		// Hidden column - used for grouping and filtering only
-		cell: ({ row }) => <span>{row.original.category}</span>,
-	},
-	{
-		accessorKey: "feature",
-		header: ({ column }) => {
-			return (
-				<SortableColumnHeader
-					title="Tasks"
-					tooltip="The task, feature, or initiative to be implemented"
-					column={column}
+		{
+			accessorKey: "category",
+			header: "Category",
+			// Hidden column - used for grouping and filtering only
+			cell: ({ row }) => <span>{row.original.category}</span>,
+		},
+		{
+			accessorKey: "feature",
+			header: ({ column }) => {
+				return (
+					<SortableColumnHeader
+						title="Tasks"
+						tooltip="The task, feature, or initiative to be implemented"
+						column={column}
+					/>
+				)
+			},
+			cell: ({ row }) => (
+				<TaskTitleCell
+					taskId={row.original.id}
+					value={row.original.feature}
+					detailHref={`${projectPath}/priorities/${row.original.id}`}
 				/>
-			)
+			),
 		},
-		cell: ({ row }) => (
-			<TaskTitleCell
-				taskId={row.original.id}
-				value={row.original.feature}
-				detailHref={`${projectPath}/priorities/${row.original.id}`}
-			/>
-		),
-	},
-	{
-		accessorKey: "benefit",
-		header: () => {
-			return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
+		{
+			accessorKey: "benefit",
+			header: () => {
+				return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
-	},
-	{
-		accessorKey: "segments",
-		header: () => {
-			return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
+		{
+			accessorKey: "segments",
+			header: () => {
+				return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
-	},
-	{
-		accessorKey: "impact",
-		header: ({ column }) => {
-			return (
-				<SortableColumnHeader
-					title="Impact"
-					tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
-					column={column}
-				/>
-			)
+		{
+			accessorKey: "impact",
+			header: ({ column }) => {
+				return (
+					<SortableColumnHeader
+						title="Impact"
+						tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
+						column={column}
+					/>
+				)
+			},
+			cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
 		},
-		cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
-	},
-	{
-		accessorKey: "stage",
-		header: () => {
-			return (
-				<ColumnHeader
-					title="Stage"
-					tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
-				/>
-			)
+		{
+			accessorKey: "stage",
+			header: () => {
+				return (
+					<ColumnHeader
+						title="Stage"
+						tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
+					/>
+				)
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
-	},
-	{
-		accessorKey: "priority",
-		header: () => {
-			return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
+		{
+			accessorKey: "priority",
+			header: () => {
+				return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
+			},
+			cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
 		},
-		cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
-	},
-	{
-		accessorKey: "due_date",
-		header: () => {
-			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
+		{
+			accessorKey: "due_date",
+			header: () => {
+				return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
+			},
+			cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
 		},
-		cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
-	},
-	{
-		accessorKey: "status",
-		header: () => {
-			return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
+		{
+			accessorKey: "status",
+			header: () => {
+				return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
+			},
+			cell: ({ row }) => {
+				// Get status from the original task data
+				const task = tasks.find((t) => t.id === row.original.id)
+				const status = task?.status || "backlog"
+				return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
+			},
 		},
-		cell: ({ row }) => {
-			// Get status from the original task data
-			const task = tasks.find((t) => t.id === row.original.id)
-			const status = task?.status || "backlog"
-			return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
+		{
+			accessorKey: "reason",
+			header: () => {
+				return (
+					<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
+				)
+			},
+			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
 		},
-	},
-	{
-		accessorKey: "reason",
-		header: () => {
-			return (
-				<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
-			)
+		{
+			id: "actions",
+			header: () => {
+				return (
+					<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
+				)
+			},
+			cell: ({ row }) => <AskUppyCell row={row.original} />,
 		},
-		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
-	},
-	{
-		id: "actions",
-		header: () => {
-			return (
-				<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
-			)
-		},
-		cell: ({ row }) => <AskUppyCell row={row.original} />,
-	},
-]
+	]
 
 function AskUppyCell({ row }: { row: FeatureRow }) {
 	const { insertText } = useProjectStatusAgent()

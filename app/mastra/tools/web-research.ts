@@ -5,7 +5,8 @@ import { supabaseAdmin } from "~/lib/supabase/client.server"
 
 const EXA_API_URL = "https://api.exa.ai"
 const OPENAI_API_URL = "https://api.openai.com/v1/embeddings"
-const HOST = process.env.HOST || "https://app.upsight.pro"
+
+import { HOST } from "~/paths"
 
 interface ExaSearchResult {
 	title: string
@@ -131,9 +132,9 @@ export const webResearchTool = createTool({
 				useAutoprompt,
 				contents: includeText
 					? {
-							text: { maxCharacters: 1000 },
-							highlights: { numSentences: 3 },
-						}
+						text: { maxCharacters: 1000 },
+						highlights: { numSentences: 3 },
+					}
 					: undefined,
 			}
 
@@ -458,9 +459,9 @@ export const findSimilarPagesTool = createTool({
 						numResults,
 						contents: includeText
 							? {
-									text: { maxCharacters: 1000 },
-									highlights: { numSentences: 3 },
-								}
+								text: { maxCharacters: 1000 },
+								highlights: { numSentences: 3 },
+							}
 							: undefined,
 					}),
 				})

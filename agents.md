@@ -56,6 +56,8 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 
 ## Plan (todos)
 
+[ ] **Public Link Sharing** - Enable unauthenticated access to shared resources via unique tokens. See `docs/features/sharing/public-link-sharing-plan.md` for full plan. Est: 3-4 days (full) / 2 days (MVP interviews-only).
+
 [ ] Persona Facet Summaries - summarize facet group takeaways atop an accordion
 
 [ ] Implement livekit-agent and token generator in backend, and livekit-web agent in front end e.g. projectStatusAgent for when user wants to talk to agent.
