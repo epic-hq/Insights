@@ -1,4 +1,4 @@
-drop trigger if exists "update_lens_summaries_updated_at" on "public"."conversation_lens_summaries";
+-- Removed: drop trigger on conversation_lens_summaries (table doesn't exist)
 
 drop policy if exists "insights_read_only" on "public"."insights";
 
@@ -902,7 +902,5 @@ using ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts
 
 -- project_assets policies already exist, skipping
 
-
-CREATE TRIGGER set_conversation_lens_summaries_timestamp BEFORE INSERT OR UPDATE ON public.conversation_lens_summaries FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
-
+-- Removed: CREATE TRIGGER on conversation_lens_summaries (table doesn't exist)
 

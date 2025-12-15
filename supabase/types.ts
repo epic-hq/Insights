@@ -2444,6 +2444,10 @@ export type Database = {
           project_id: string
           relevant_answers: string[] | null
           segment: string | null
+          share_created_at: string | null
+          share_enabled: boolean | null
+          share_expires_at: string | null
+          share_token: string | null
           source_type: string | null
           status: Database["public"]["Enums"]["interview_status"]
           thumbnail_url: string | null
@@ -2478,6 +2482,10 @@ export type Database = {
           project_id: string
           relevant_answers?: string[] | null
           segment?: string | null
+          share_created_at?: string | null
+          share_enabled?: boolean | null
+          share_expires_at?: string | null
+          share_token?: string | null
           source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
@@ -2512,6 +2520,10 @@ export type Database = {
           project_id?: string
           relevant_answers?: string[] | null
           segment?: string | null
+          share_created_at?: string | null
+          share_enabled?: boolean | null
+          share_expires_at?: string | null
+          share_token?: string | null
           source_type?: string | null
           status?: Database["public"]["Enums"]["interview_status"]
           thumbnail_url?: string | null
