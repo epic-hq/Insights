@@ -4285,6 +4285,9 @@ export type Database = {
           created_by: string | null
           description: string | null
           duration_sec: number | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
           file_extension: string | null
           file_size_bytes: number | null
           id: string
@@ -4316,6 +4319,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_sec?: number | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           file_extension?: string | null
           file_size_bytes?: number | null
           id?: string
@@ -4347,6 +4353,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_sec?: number | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           file_extension?: string | null
           file_size_bytes?: number | null
           id?: string
