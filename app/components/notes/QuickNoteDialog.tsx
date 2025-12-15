@@ -1,4 +1,16 @@
-import { CheckCircle, CheckSquare, ChevronLeft, Loader2, Mic, Search, StickyNote, Square, UserPlus, Users, X } from "lucide-react"
+import {
+	CheckCircle,
+	CheckSquare,
+	ChevronLeft,
+	Loader2,
+	Mic,
+	Search,
+	Square,
+	StickyNote,
+	UserPlus,
+	Users,
+	X,
+} from "lucide-react"
 import { useCallback, useEffect, useId, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -116,15 +128,12 @@ export function QuickNoteDialog({
 	}, [open])
 
 	// Speech-to-text for voice input
-	const handleVoiceTranscription = useCallback(
-		(transcript: string) => {
-			const trimmed = transcript.trim()
-			if (trimmed) {
-				setContent((prev) => (prev ? `${prev}\n\n${trimmed}` : trimmed))
-			}
-		},
-		[]
-	)
+	const handleVoiceTranscription = useCallback((transcript: string) => {
+		const trimmed = transcript.trim()
+		if (trimmed) {
+			setContent((prev) => (prev ? `${prev}\n\n${trimmed}` : trimmed))
+		}
+	}, [])
 
 	const {
 		startRecording,
@@ -152,9 +161,8 @@ export function QuickNoteDialog({
 	const handleSave = async () => {
 		setIsSaving(true)
 		try {
-			const defaultTitle = noteType === "task"
-				? `Task - ${new Date().toLocaleDateString()}`
-				: `Note - ${new Date().toLocaleDateString()}`
+			const defaultTitle =
+				noteType === "task" ? `Task - ${new Date().toLocaleDateString()}` : `Note - ${new Date().toLocaleDateString()}`
 
 			// Create new person if needed
 			const personIds: string[] = selectedPeople.map((p) => p.id)
@@ -263,9 +271,7 @@ export function QuickNoteDialog({
 							</button>
 							<DialogTitle>Link to People</DialogTitle>
 						</div>
-						<DialogDescription>
-							Associate this {noteType} with people (optional)
-						</DialogDescription>
+						<DialogDescription>Associate this {noteType} with people (optional)</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4 py-4">
@@ -329,7 +335,7 @@ export function QuickNoteDialog({
 								<button
 									type="button"
 									onClick={() => setShowCreatePerson(true)}
-									className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
+									className="flex w-full items-center gap-3 rounded-lg border border-slate-300 border-dashed p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"
 								>
 									<div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-300 dark:border-slate-600">
 										<UserPlus className="h-5 w-5 text-slate-400" />
@@ -389,13 +395,14 @@ export function QuickNoteDialog({
 						>
 							Skip
 						</Button>
-						<Button
-							onClick={handleSave}
-							disabled={isSaving || (showCreatePerson && !newPersonFirstName.trim())}
-						>
-							{isSaving ? "Saving..." : selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim())
-								? `Save & Link ${selectedPeople.length + (showCreatePerson && newPersonFirstName.trim() ? 1 : 0)}`
-								: noteType === "task" ? "Create Task" : "Save Note"}
+						<Button onClick={handleSave} disabled={isSaving || (showCreatePerson && !newPersonFirstName.trim())}>
+							{isSaving
+								? "Saving..."
+								: selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim())
+									? `Save & Link ${selectedPeople.length + (showCreatePerson && newPersonFirstName.trim() ? 1 : 0)}`
+									: noteType === "task"
+										? "Create Task"
+										: "Save Note"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -443,9 +450,7 @@ export function QuickNoteDialog({
 
 					{/* Title (optional for notes, required for tasks) */}
 					<div className="space-y-2">
-						<Label htmlFor={titleId}>
-							{noteType === "task" ? "Task Title" : "Title (optional)"}
-						</Label>
+						<Label htmlFor={titleId}>{noteType === "task" ? "Task Title" : "Title (optional)"}</Label>
 						<Input
 							id={titleId}
 							placeholder={noteType === "task" ? "What needs to be done?" : "Auto-generated if left blank"}
@@ -457,9 +462,7 @@ export function QuickNoteDialog({
 					{/* Content */}
 					<div className="flex-1 space-y-2">
 						<div className="flex items-center justify-between">
-							<Label htmlFor={contentId}>
-								{noteType === "task" ? "Description (optional)" : "Content"}
-							</Label>
+							<Label htmlFor={contentId}>{noteType === "task" ? "Description (optional)" : "Content"}</Label>
 							{isVoiceSupported && (
 								<Button
 									type="button"
@@ -491,7 +494,11 @@ export function QuickNoteDialog({
 						{voiceError && <p className="text-destructive text-xs">{voiceError}</p>}
 						<Textarea
 							id={contentId}
-							placeholder={noteType === "task" ? "Add details about what needs to be done..." : "Write your note here or use voice input..."}
+							placeholder={
+								noteType === "task"
+									? "Add details about what needs to be done..."
+									: "Write your note here or use voice input..."
+							}
 							value={content}
 							onChange={(e) => setContent(e.target.value)}
 							className="h-full min-h-[6rem] resize-none font-mono text-sm sm:min-h-[10rem]"
@@ -594,10 +601,7 @@ export function QuickNoteDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
 						Cancel
 					</Button>
-					<Button
-						onClick={handleNext}
-						disabled={isSaving || (noteType === "task" ? !title.trim() : !content.trim())}
-					>
+					<Button onClick={handleNext} disabled={isSaving || (noteType === "task" ? !title.trim() : !content.trim())}>
 						{isSaving ? "Saving..." : projectId ? "Next" : noteType === "task" ? "Create Task" : "Save Note"}
 					</Button>
 				</DialogFooter>

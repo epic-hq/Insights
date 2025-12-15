@@ -35,9 +35,7 @@ export function RelatedThemes({ themeId, projectId, projectPath, limit = 5 }: Re
 			setError(null)
 
 			try {
-				const response = await fetch(
-					`/api/similar-themes?theme_id=${themeId}&project_id=${projectId}&limit=${limit}`
-				)
+				const response = await fetch(`/api/similar-themes?theme_id=${themeId}&project_id=${projectId}&limit=${limit}`)
 				const data = await response.json()
 
 				if (!response.ok) {
@@ -84,9 +82,7 @@ export function RelatedThemes({ themeId, projectId, projectPath, limit = 5 }: Re
 							title={`${Math.round(theme.similarity * 100)}% similar${theme.statement ? `: ${theme.statement}` : ""}`}
 						>
 							{theme.name}
-							<span className="ml-1 text-muted-foreground text-xs">
-								{Math.round(theme.similarity * 100)}%
-							</span>
+							<span className="ml-1 text-muted-foreground text-xs">{Math.round(theme.similarity * 100)}%</span>
 						</Badge>
 					</Link>
 				))}

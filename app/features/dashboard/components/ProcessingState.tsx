@@ -150,12 +150,7 @@ export function ProcessingState({ processingCount, totalCount, items, className,
 									>
 										Cancel
 									</Button>
-									<Button
-										variant="destructive"
-										size="sm"
-										className="h-6 px-2 text-xs"
-										onClick={handleReset}
-									>
+									<Button variant="destructive" size="sm" className="h-6 px-2 text-xs" onClick={handleReset}>
 										Reset All
 									</Button>
 								</div>

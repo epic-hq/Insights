@@ -153,12 +153,18 @@ function EvidenceCard({
 				<div className="flex items-center gap-2">
 					{/* Source type indicator */}
 					{evidence.source_type === "secondary" ? (
-						<span className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs" title="From note or document">
+						<span
+							className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs"
+							title="From note or document"
+						>
 							<FileText className="h-3 w-3" />
 							Note
 						</span>
 					) : evidence.source_type === "primary" ? (
-						<span className="flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 text-xs" title="From interview">
+						<span
+							className="flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 text-xs"
+							title="From interview"
+						>
 							<Mic className="h-3 w-3" />
 							Interview
 						</span>

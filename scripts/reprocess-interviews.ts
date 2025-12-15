@@ -12,7 +12,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { readFileSync } from "fs"
-import { join, dirname } from "path"
+import { dirname, join } from "path"
 import { fileURLToPath } from "url"
 
 // Read .env file manually
@@ -20,11 +20,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const envPath = join(__dirname, "..", ".env")
 const envContent = readFileSync(envPath, "utf-8")
 const envVars = Object.fromEntries(
-	envContent.split("\n")
-		.filter(line => line.includes("=") && !line.startsWith("#"))
-		.map(line => {
+	envContent
+		.split("\n")
+		.filter((line) => line.includes("=") && !line.startsWith("#"))
+		.map((line) => {
 			const [key, ...values] = line.split("=")
-			return [key.trim(), values.join("=").trim().replace(/^["']|["']$/g, "")]
+			return [
+				key.trim(),
+				values
+					.join("=")
+					.trim()
+					.replace(/^["']|["']$/g, ""),
+			]
 		})
 )
 
@@ -89,7 +96,7 @@ async function prepareForReprocessing() {
 			.select("*", { count: "exact", head: true })
 			.eq("project_id", projectId)
 
-		console.log(`\nCurrent data to be cleared:`)
+		console.log("\nCurrent data to be cleared:")
 		console.log(`  - Evidence: ${evidenceCount}`)
 		console.log(`  - Themes: ${themeCount}`)
 		console.log(`  - Theme-Evidence links: ${themeEvidenceCount}`)
@@ -101,46 +108,31 @@ async function prepareForReprocessing() {
 
 		// Delete theme_evidence links first (foreign key constraint)
 		console.log("\nDeleting theme_evidence links...")
-		const { error: teLinkErr } = await supabase
-			.from("theme_evidence")
-			.delete()
-			.eq("project_id", projectId)
+		const { error: teLinkErr } = await supabase.from("theme_evidence").delete().eq("project_id", projectId)
 		if (teLinkErr) console.error("  Error:", teLinkErr.message)
 		else console.log("  Done")
 
 		// Delete themes
 		console.log("Deleting themes...")
-		const { error: themeErr } = await supabase
-			.from("themes")
-			.delete()
-			.eq("project_id", projectId)
+		const { error: themeErr } = await supabase.from("themes").delete().eq("project_id", projectId)
 		if (themeErr) console.error("  Error:", themeErr.message)
 		else console.log("  Done")
 
 		// Delete evidence_people links
 		console.log("Deleting evidence_people links...")
-		const { error: epErr } = await supabase
-			.from("evidence_people")
-			.delete()
-			.eq("project_id", projectId)
+		const { error: epErr } = await supabase.from("evidence_people").delete().eq("project_id", projectId)
 		if (epErr) console.error("  Error:", epErr.message)
 		else console.log("  Done")
 
 		// Delete evidence_facet links
 		console.log("Deleting evidence_facet links...")
-		const { error: efErr } = await supabase
-			.from("evidence_facet")
-			.delete()
-			.eq("project_id", projectId)
+		const { error: efErr } = await supabase.from("evidence_facet").delete().eq("project_id", projectId)
 		if (efErr) console.error("  Error:", efErr.message)
 		else console.log("  Done")
 
 		// Delete evidence
 		console.log("Deleting evidence...")
-		const { error: evErr } = await supabase
-			.from("evidence")
-			.delete()
-			.eq("project_id", projectId)
+		const { error: evErr } = await supabase.from("evidence").delete().eq("project_id", projectId)
 		if (evErr) console.error("  Error:", evErr.message)
 		else console.log("  Done")
 

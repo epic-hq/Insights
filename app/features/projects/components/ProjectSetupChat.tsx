@@ -289,7 +289,11 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 		// Otherwise, generate new ones via API
 		lastProcessedMessageId.current = lastMsg.id
 
-		const lastText = lastMsg.parts?.filter(p => p.type === "text").map(p => p.text).join("\n") || ""
+		const lastText =
+			lastMsg.parts
+				?.filter((p) => p.type === "text")
+				.map((p) => p.text)
+				.join("\n") || ""
 		if (!lastText) return
 
 		fetch("/api/generate-suggestions", {
@@ -297,17 +301,16 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				lastMessage: lastText,
-				context: `Project Setup: ${projectName}`
+				context: `Project Setup: ${projectName}`,
 			}),
 		})
-			.then(res => res.json())
-			.then(data => {
+			.then((res) => res.json())
+			.then((data) => {
 				if (data.suggestions && Array.isArray(data.suggestions)) {
 					setGeneratedSuggestions(data.suggestions)
 				}
 			})
-			.catch(err => console.error("Failed to generate suggestions:", err))
-
+			.catch((err) => console.error("Failed to generate suggestions:", err))
 	}, [displayableMessages, toolSuggestions, status, accountId, projectId, projectName])
 
 	const suggestions = toolSuggestions.length > 0 ? toolSuggestions : generatedSuggestions
@@ -353,7 +356,7 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 									clear goals, identify and nurture your ideal customers, and uncover the questions that matter most.
 								</p> */}
 								{displayableMessages.length === 0 && (
-									<p className="mt-4 text-balance text-muted-foreground/70 text-ms">
+									<p className="mt-4 text-balance text-ms text-muted-foreground/70">
 										Just start with something like "We're building a B2B SaaS for HR teams" or "I need to understand my
 										customers better"
 									</p>

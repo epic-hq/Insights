@@ -132,7 +132,6 @@ export default function OpportunitiesIndexPage() {
 						<Briefcase className="h-8 w-8 text-primary" />
 						<h1 className="text-balance font-bold text-4xl tracking-tight">Opportunities</h1>
 					</div>
-
 				</div>
 				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 					<ToggleGroup

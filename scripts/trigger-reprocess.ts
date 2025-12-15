@@ -9,7 +9,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { tasks } from "@trigger.dev/sdk"
 import { readFileSync } from "fs"
-import { join, dirname } from "path"
+import { dirname, join } from "path"
 import { fileURLToPath } from "url"
 
 // Read .env file manually
@@ -17,11 +17,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const envPath = join(__dirname, "..", ".env")
 const envContent = readFileSync(envPath, "utf-8")
 const envVars = Object.fromEntries(
-	envContent.split("\n")
-		.filter(line => line.includes("=") && !line.startsWith("#"))
-		.map(line => {
+	envContent
+		.split("\n")
+		.filter((line) => line.includes("=") && !line.startsWith("#"))
+		.map((line) => {
 			const [key, ...values] = line.split("=")
-			return [key.trim(), values.join("=").trim().replace(/^["']|["']$/g, "")]
+			return [
+				key.trim(),
+				values
+					.join("=")
+					.trim()
+					.replace(/^["']|["']$/g, ""),
+			]
 		})
 )
 
@@ -85,10 +92,7 @@ async function triggerReprocessing() {
 			}
 
 			// Update status to processing
-			await supabase
-				.from("interviews")
-				.update({ status: "processing" })
-				.eq("id", interview.id)
+			await supabase.from("interviews").update({ status: "processing" }).eq("id", interview.id)
 
 			// Trigger the v2 orchestrator via SDK
 			const handle = await tasks.trigger("interview.v2.orchestrator", {
@@ -118,17 +122,14 @@ async function triggerReprocessing() {
 
 			console.log(`  Triggered run: ${handle.id}`)
 		} catch (err) {
-			console.error(`  Failed:`, err instanceof Error ? err.message : err)
+			console.error("  Failed:", err instanceof Error ? err.message : err)
 
 			// Reset status on error
-			await supabase
-				.from("interviews")
-				.update({ status: "error" })
-				.eq("id", interview.id)
+			await supabase.from("interviews").update({ status: "error" }).eq("id", interview.id)
 		}
 
 		// Wait between triggers
-		await new Promise(resolve => setTimeout(resolve, 2000))
+		await new Promise((resolve) => setTimeout(resolve, 2000))
 	}
 
 	console.log("\n\nDone! Reprocessing has been triggered for all interviews.")

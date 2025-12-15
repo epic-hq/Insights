@@ -99,3 +99,5 @@ storybook-static
 
 backups
 mkcert
+# Cadre devkit (local reference only)
+cadre-devkit-claude/

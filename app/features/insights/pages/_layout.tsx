@@ -191,11 +191,7 @@ export default function InsightsLayout() {
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="sm" disabled={isAnyLoading || !projectId} className="gap-2">
-								{isAnyLoading ? (
-									<Loader2 className="h-4 w-4 animate-spin" />
-								) : (
-									<MoreVertical className="h-4 w-4" />
-								)}
+								{isAnyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
 								Actions
 								{isRefreshing && (
 									<span className="text-muted-foreground text-xs">

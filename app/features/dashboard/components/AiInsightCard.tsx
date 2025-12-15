@@ -64,24 +64,28 @@ export function AiInsightCard({
 							<Button
 								variant="ghost"
 								size="sm"
-								className="mt-3 -ml-2 text-primary hover:text-primary"
+								className="-ml-2 mt-3 text-primary hover:text-primary"
 								asChild={!!href}
-								onClick={!href && onAskFollowUp ? (e) => {
-									e.stopPropagation()
-									onAskFollowUp()
-								} : undefined}
+								onClick={
+									!href && onAskFollowUp
+										? (e) => {
+												e.stopPropagation()
+												onAskFollowUp()
+											}
+										: undefined
+								}
 							>
 								{href ? (
 									<Link to={href}>
-										<MessageSquare className="h-4 w-4 mr-1.5" />
+										<MessageSquare className="mr-1.5 h-4 w-4" />
 										Ask follow-up
-										<ChevronRight className="h-4 w-4 ml-1" />
+										<ChevronRight className="ml-1 h-4 w-4" />
 									</Link>
 								) : (
 									<>
-										<MessageSquare className="h-4 w-4 mr-1.5" />
+										<MessageSquare className="mr-1.5 h-4 w-4" />
 										Ask follow-up
-										<ChevronRight className="h-4 w-4 ml-1" />
+										<ChevronRight className="ml-1 h-4 w-4" />
 									</>
 								)}
 							</Button>

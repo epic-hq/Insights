@@ -159,7 +159,9 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 	// Render a single table for a category group
 	const renderCategoryTable = (insights: Insight[]) => {
 		// Sort insights by evidence_count desc
-		const sortedInsights = [...insights].sort((a, b) => ((b as any).evidence_count ?? 0) - ((a as any).evidence_count ?? 0))
+		const sortedInsights = [...insights].sort(
+			(a, b) => ((b as any).evidence_count ?? 0) - ((a as any).evidence_count ?? 0)
+		)
 
 		return (
 			<Table>

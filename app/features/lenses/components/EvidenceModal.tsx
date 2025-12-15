@@ -85,10 +85,12 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 			const fallbackUrl = evidence?.interview?.media_url ?? null
 
 			// Create an anchor with the start time if provided
-			const anchor: MediaAnchor = anchors?.[0] ?? ({
-				start_ms: (startTime ?? 0) * 1000,
-				start_seconds: startTime ?? 0,
-			} as MediaAnchor)
+			const anchor: MediaAnchor =
+				anchors?.[0] ??
+				({
+					start_ms: (startTime ?? 0) * 1000,
+					start_seconds: startTime ?? 0,
+				} as MediaAnchor)
 
 			const url = await generateMediaUrl(anchor, fallbackUrl)
 			if (!cancelled) {
@@ -104,7 +106,8 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 		}
 	}, [evidence, startTime])
 
-	const effectiveStartTime = startTime ?? (evidence?.anchors?.[0] ? getAnchorStartSeconds(evidence.anchors[0] as MediaAnchor) : 0)
+	const effectiveStartTime =
+		startTime ?? (evidence?.anchors?.[0] ? getAnchorStartSeconds(evidence.anchors[0] as MediaAnchor) : 0)
 	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
 
 	const getStageColor = (stage?: string | null) => {
@@ -142,9 +145,7 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 										{evidence.gist ?? evidence.verbatim ?? "Evidence"}
 									</DialogTitle>
 									{evidence.interview?.title && (
-										<p className="mt-1 text-muted-foreground text-sm">
-											From: {evidence.interview.title}
-										</p>
+										<p className="mt-1 text-muted-foreground text-sm">From: {evidence.interview.title}</p>
 									)}
 								</div>
 							</div>
@@ -154,9 +155,7 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 						{(isLoadingMedia || isValidUrl) && (
 							<div className="border-b bg-black/5 p-4 dark:bg-white/5">
 								{isLoadingMedia ? (
-									<div className="flex items-center justify-center py-8 text-muted-foreground">
-										Loading media...
-									</div>
+									<div className="flex items-center justify-center py-8 text-muted-foreground">Loading media...</div>
 								) : isValidUrl ? (
 									<SimpleMediaPlayer
 										mediaUrl={mediaUrl}
@@ -244,9 +243,7 @@ export function EvidenceModal({ open, onOpenChange, evidenceId, startTime, proje
 						</div>
 					</div>
 				) : (
-					<div className="flex items-center justify-center py-12 text-muted-foreground">
-						Evidence not found
-					</div>
+					<div className="flex items-center justify-center py-12 text-muted-foreground">Evidence not found</div>
 				)}
 			</DialogContent>
 		</Dialog>

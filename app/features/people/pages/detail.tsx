@@ -1,5 +1,15 @@
 import consola from "consola"
-import { Edit2, FileIcon, FileText, MoreVertical, Paperclip, RefreshCw, StickyNote, Trash2, UserCircle } from "lucide-react"
+import {
+	Edit2,
+	FileIcon,
+	FileText,
+	MoreVertical,
+	Paperclip,
+	RefreshCw,
+	StickyNote,
+	Trash2,
+	UserCircle,
+} from "lucide-react"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import {
@@ -88,7 +98,13 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		const relatedAssets = (linkedAssets || [])
 			.filter((link) => link.project_assets)
 			.map((link) => ({
-				...(link.project_assets as { id: string; title: string; asset_type: string; created_at: string; description: string | null }),
+				...(link.project_assets as {
+					id: string
+					title: string
+					asset_type: string
+					created_at: string
+					description: string | null
+				}),
 				relationship_type: link.relationship_type,
 			}))
 
@@ -121,7 +137,11 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			image_url: imageUrl,
 		}
 
-		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0, assetsCount: relatedAssets.length })
+		consola.info("PersonDetail loader success", {
+			personId: person.id,
+			orgCount: organizations.data?.length ?? 0,
+			assetsCount: relatedAssets.length,
+		})
 		return { person: personWithFacetSummaries, catalog, organizations: organizations.data ?? [], relatedAssets }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
@@ -774,7 +794,7 @@ export default function PersonDetail() {
 
 						{noteLinks.length > 0 && (
 							<section className="space-y-3">
-								<h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
+								<h2 className="flex items-center gap-2 font-semibold text-foreground text-lg">
 									<StickyNote className="h-5 w-5" />
 									Notes
 								</h2>
@@ -799,7 +819,7 @@ export default function PersonDetail() {
 
 						{relatedAssets.length > 0 && (
 							<section className="space-y-3">
-								<h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
+								<h2 className="flex items-center gap-2 font-semibold text-foreground text-lg">
 									<FileIcon className="h-5 w-5" />
 									Assets
 								</h2>
@@ -814,7 +834,9 @@ export default function PersonDetail() {
 													<div className="flex items-center gap-2 text-muted-foreground text-xs">
 														<span className="rounded bg-muted px-1.5 py-0.5 capitalize">{asset.asset_type}</span>
 														{asset.relationship_type && (
-															<span className="rounded bg-muted px-1.5 py-0.5 capitalize">{asset.relationship_type}</span>
+															<span className="rounded bg-muted px-1.5 py-0.5 capitalize">
+																{asset.relationship_type}
+															</span>
 														)}
 													</div>
 													<p className="text-muted-foreground text-sm">

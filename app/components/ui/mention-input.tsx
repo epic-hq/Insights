@@ -4,10 +4,10 @@
  */
 import { User, Users } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { MentionableUser } from "~/routes/api/mentionable-users"
-import { cn } from "~/lib/utils"
-import { Popover, PopoverContent, PopoverAnchor } from "~/components/ui/popover"
+import { Popover, PopoverAnchor, PopoverContent } from "~/components/ui/popover"
 import { Textarea } from "~/components/ui/textarea"
+import { cn } from "~/lib/utils"
+import type { MentionableUser } from "~/routes/api/mentionable-users"
 
 export interface Mention {
 	id: string
@@ -44,14 +44,13 @@ export function MentionInput({
 	const [mentions, setMentions] = useState<Mention[]>([])
 
 	// Filter mentionable users based on search
-	const filteredUsers = mentionableUsers.filter((user) => {
-		if (!mentionSearch) return true
-		const searchLower = mentionSearch.toLowerCase()
-		return (
-			user.name.toLowerCase().includes(searchLower) ||
-			user.subtitle?.toLowerCase().includes(searchLower)
-		)
-	}).slice(0, 8) // Limit to 8 results
+	const filteredUsers = mentionableUsers
+		.filter((user) => {
+			if (!mentionSearch) return true
+			const searchLower = mentionSearch.toLowerCase()
+			return user.name.toLowerCase().includes(searchLower) || user.subtitle?.toLowerCase().includes(searchLower)
+		})
+		.slice(0, 8) // Limit to 8 results
 
 	// Handle text change and detect @ mentions
 	const handleChange = useCallback(
@@ -180,9 +179,7 @@ export function MentionInput({
 				>
 					<div className="max-h-48 overflow-y-auto">
 						{filteredUsers.length === 0 ? (
-							<div className="px-2 py-3 text-center text-muted-foreground text-sm">
-								No matches found
-							</div>
+							<div className="px-2 py-3 text-center text-muted-foreground text-sm">No matches found</div>
 						) : (
 							filteredUsers.map((user, index) => (
 								<button
@@ -196,11 +193,7 @@ export function MentionInput({
 									onMouseEnter={() => setSelectedIndex(index)}
 								>
 									{user.avatar_url ? (
-										<img
-											src={user.avatar_url}
-											alt={user.name}
-											className="h-6 w-6 rounded-full object-cover"
-										/>
+										<img src={user.avatar_url} alt={user.name} className="h-6 w-6 rounded-full object-cover" />
 									) : (
 										<div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted">
 											{user.type === "user" ? (
@@ -212,9 +205,7 @@ export function MentionInput({
 									)}
 									<div className="min-w-0 flex-1">
 										<div className="truncate font-medium">{user.name}</div>
-										{user.subtitle && (
-											<div className="truncate text-muted-foreground text-xs">{user.subtitle}</div>
-										)}
+										{user.subtitle && <div className="truncate text-muted-foreground text-xs">{user.subtitle}</div>}
 									</div>
 									<span className="flex-shrink-0 text-muted-foreground text-xs">
 										{user.type === "user" ? "Team" : "Person"}

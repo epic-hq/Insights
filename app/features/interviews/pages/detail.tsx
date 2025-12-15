@@ -2,7 +2,18 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { AlertTriangle, BotMessageSquare, Briefcase, Edit2, Loader2, MoreVertical, Sparkles, User, Users, XCircle } from "lucide-react"
+import {
+	AlertTriangle,
+	BotMessageSquare,
+	Briefcase,
+	Edit2,
+	Loader2,
+	MoreVertical,
+	Sparkles,
+	User,
+	Users,
+	XCircle,
+} from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
@@ -271,7 +282,10 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 						return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
 					}
 					if (personRow.project_id !== projectId) {
-						return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
+						return Response.json(
+							{ ok: false, error: "Selected person belongs to a different project" },
+							{ status: 400 }
+						)
 					}
 				}
 
@@ -524,29 +538,29 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						company: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							company: string | null
+							project_id: string | null
+							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						company: person.company,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							company: person.company,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -1587,133 +1601,133 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									interview.status === "transcribing" ||
 									interview.status === "processing" ||
 									interview.status === "uploaded") && (
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<button
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button
+												disabled={fetcher.state !== "idle"}
+												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+												title="Actions"
+											>
+												<MoreVertical className="h-4 w-4" />
+												Actions
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											{(interview.status === "uploading" ||
+												interview.status === "transcribing" ||
+												interview.status === "processing" ||
+												interview.status === "uploaded") && (
+												<DropdownMenuItem
+													onClick={async () => {
+														try {
+															const response = await fetch("/api/fix-stuck-interview", {
+																method: "POST",
+																headers: { "Content-Type": "application/json" },
+																body: JSON.stringify({ interviewId: interview.id }),
+															})
+															const result = await response.json()
+															if (result.success) {
+																consola.success("Interview status fixed")
+																revalidator.revalidate()
+															} else {
+																consola.error("Failed to fix interview:", result.error)
+															}
+														} catch (e) {
+															consola.error("Fix stuck interview failed", e)
+														}
+													}}
 													disabled={fetcher.state !== "idle"}
-													className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-													title="Actions"
+													className="text-orange-600 focus:text-orange-600"
 												>
-													<MoreVertical className="h-4 w-4" />
-													Actions
-												</button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
-												{(interview.status === "uploading" ||
-													interview.status === "transcribing" ||
-													interview.status === "processing" ||
-													interview.status === "uploaded") && (
-														<DropdownMenuItem
-															onClick={async () => {
-																try {
-																	const response = await fetch("/api/fix-stuck-interview", {
-																		method: "POST",
-																		headers: { "Content-Type": "application/json" },
-																		body: JSON.stringify({ interviewId: interview.id }),
-																	})
-																	const result = await response.json()
-																	if (result.success) {
-																		consola.success("Interview status fixed")
-																		revalidator.revalidate()
-																	} else {
-																		consola.error("Failed to fix interview:", result.error)
-																	}
-																} catch (e) {
-																	consola.error("Fix stuck interview failed", e)
-																}
-															}}
-															disabled={fetcher.state !== "idle"}
-															className="text-orange-600 focus:text-orange-600"
-														>
-															Fix Stuck Interview Status
-														</DropdownMenuItem>
-													)}
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.analysis-retry" }
-															)
-														} catch (e) {
-															consola.error("Retry analysis submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-												>
-													Rerun Transcription
+													Fix Stuck Interview Status
 												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.reprocess-evidence" }
-															)
-														} catch (e) {
-															consola.error("Reprocess evidence submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-												>
-													Rerun Evidence Collection
+											)}
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.analysis-retry" }
+														)
+													} catch (e) {
+														consola.error("Retry analysis submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Transcription
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.reprocess-evidence" }
+														)
+													} catch (e) {
+														consola.error("Reprocess evidence submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Evidence Collection
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.reanalyze-themes" }
+														)
+													} catch (e) {
+														consola.error("Re-analyze themes submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Re-analyze Themes
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.generate-sales-lens" }
+														)
+													} catch (e) {
+														consola.error("Generate sales lens submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="text-blue-600 focus:text-blue-600"
+											>
+												🔍 Apply Lenses
+											</DropdownMenuItem>
+											{linkedOpportunity ? (
+												<DropdownMenuItem asChild>
+													<Link
+														to={routes.opportunities.detail(linkedOpportunity.id)}
+														className="flex items-center gap-2 text-emerald-700"
+													>
+														<Briefcase className="h-4 w-4" />
+														View Opportunity: {linkedOpportunity.title}
+													</Link>
 												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.reanalyze-themes" }
-															)
-														} catch (e) {
-															consola.error("Re-analyze themes submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-												>
-													Re-analyze Themes
+											) : (
+												<DropdownMenuItem asChild>
+													<Link
+														to={routes.opportunities.new()}
+														state={{ interviewId: interview.id, interviewTitle: interview.title }}
+														className="flex items-center gap-2 text-blue-700"
+													>
+														<Briefcase className="h-4 w-4" />
+														Create Opportunity
+													</Link>
 												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.generate-sales-lens" }
-															)
-														} catch (e) {
-															consola.error("Generate sales lens submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-													className="text-blue-600 focus:text-blue-600"
-												>
-													🔍 Apply Lenses
-												</DropdownMenuItem>
-												{linkedOpportunity ? (
-													<DropdownMenuItem asChild>
-														<Link
-															to={routes.opportunities.detail(linkedOpportunity.id)}
-															className="flex items-center gap-2 text-emerald-700"
-														>
-															<Briefcase className="h-4 w-4" />
-															View Opportunity: {linkedOpportunity.title}
-														</Link>
-													</DropdownMenuItem>
-												) : (
-													<DropdownMenuItem asChild>
-														<Link
-															to={routes.opportunities.new()}
-															state={{ interviewId: interview.id, interviewTitle: interview.title }}
-															className="flex items-center gap-2 text-blue-700"
-														>
-															<Briefcase className="h-4 w-4" />
-															Create Opportunity
-														</Link>
-													</DropdownMenuItem>
-												)}
-											</DropdownMenuContent>
-										</DropdownMenu>
-									)}
+											)}
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
 								{/* Edit Button */}
 								<Link
 									to={routes.interviews.edit(interview.id)}
@@ -1763,9 +1777,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 														>
 															{person.name}
 														</Link>
-														{person.company && (
-															<span className="text-muted-foreground">({person.company})</span>
-														)}
+														{person.company && <span className="text-muted-foreground">({person.company})</span>}
 														{person.segment && person.segment !== "Unknown" && (
 															<Badge variant="outline" className="text-xs">
 																{person.segment}
@@ -1790,16 +1802,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											variant="ghost"
 											size="sm"
 											onClick={() => setParticipantsDialogOpen(true)}
-											className={cn(
-												"h-7 gap-1.5 px-2",
-												needsAttention && "text-amber-600 hover:text-amber-700"
-											)}
+											className={cn("h-7 gap-1.5 px-2", needsAttention && "text-amber-600 hover:text-amber-700")}
 										>
 											{needsAttention && <AlertTriangle className="h-3.5 w-3.5" />}
 											<Users className="h-3.5 w-3.5" />
-											<span className="text-xs">
-												{needsAttention ? "Link speakers" : "Edit"}
-											</span>
+											<span className="text-xs">{needsAttention ? "Link speakers" : "Edit"}</span>
 										</Button>
 									)}
 								</div>
@@ -2079,7 +2086,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<DialogHeader>
 						<DialogTitle>Manage Participants</DialogTitle>
 					</DialogHeader>
-					<p className="text-muted-foreground text-sm mb-4">
+					<p className="mb-4 text-muted-foreground text-sm">
 						Link speakers from the transcript to people in your project. This helps track insights across conversations.
 					</p>
 					<ManagePeopleAssociations
@@ -2089,9 +2096,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							role: p.role,
 							transcript_key: p.transcript_key,
 							display_name: p.display_name,
-							people: p.people
-								? { id: (p.people as any).id, name: (p.people as any).name }
-								: null,
+							people: p.people ? { id: (p.people as any).id, name: (p.people as any).name } : null,
 						}))}
 						availablePeople={peopleOptions.map((p) => ({
 							id: p.id,

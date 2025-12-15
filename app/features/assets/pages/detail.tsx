@@ -9,20 +9,24 @@ import {
 } from "@tanstack/react-table"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { ArrowLeft, ArrowUpDown, ChevronLeft, ChevronRight, Download, HelpCircle, MoreHorizontal, Plus, Search, Table, Trash2 } from "lucide-react"
+import {
+	ArrowLeft,
+	ArrowUpDown,
+	ChevronLeft,
+	ChevronRight,
+	Download,
+	HelpCircle,
+	MoreHorizontal,
+	Plus,
+	Search,
+	Table,
+	Trash2,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigate } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Input } from "~/components/ui/input"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
 import {
 	Dialog,
 	DialogContent,
@@ -32,6 +36,9 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "~/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
+import InlineEdit from "~/components/ui/inline-edit"
+import { Input } from "~/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -124,10 +131,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	}
 
 	if (actionType === "delete") {
-		const { error } = await supabase
-			.from("project_assets")
-			.delete()
-			.eq("id", assetId)
+		const { error } = await supabase.from("project_assets").delete().eq("id", assetId)
 
 		if (error) {
 			consola.error("Failed to delete asset:", error)
@@ -378,10 +382,7 @@ export default function AssetDetailPage() {
 	// Add column handler
 	const handleAddColumn = () => {
 		if (!newColumnName.trim()) return
-		addColumnFetcher.submit(
-			{ _action: "add-column", columnName: newColumnName.trim() },
-			{ method: "POST" }
-		)
+		addColumnFetcher.submit({ _action: "add-column", columnName: newColumnName.trim() }, { method: "POST" })
 		setNewColumnName("")
 		setAddColumnDialogOpen(false)
 	}
@@ -515,10 +516,7 @@ export default function AssetDetailPage() {
 									className="text-destructive focus:text-destructive"
 									onClick={() => {
 										if (confirm("Delete this file? This cannot be undone.")) {
-											deleteFetcher.submit(
-												{ _action: "delete" },
-												{ method: "POST" }
-											)
+											deleteFetcher.submit({ _action: "delete" }, { method: "POST" })
 										}
 									}}
 								>
@@ -570,8 +568,8 @@ export default function AssetDetailPage() {
 											descending.
 										</p>
 										<p>
-											<strong className="text-foreground">Export:</strong> Download the table as CSV for use in Excel
-											or Google Sheets.
+											<strong className="text-foreground">Export:</strong> Download the table as CSV for use in Excel or
+											Google Sheets.
 										</p>
 										<p>
 											<strong className="text-foreground">Chat updates:</strong> Ask the AI assistant to add rows,
@@ -581,12 +579,7 @@ export default function AssetDetailPage() {
 								</div>
 							</PopoverContent>
 						</Popover>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={handleAddRow}
-							disabled={addRowFetcher.state !== "idle"}
-						>
+						<Button variant="outline" size="sm" onClick={handleAddRow} disabled={addRowFetcher.state !== "idle"}>
 							<Plus className="mr-2 h-4 w-4" />
 							Add Row
 						</Button>

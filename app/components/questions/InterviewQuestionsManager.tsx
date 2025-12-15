@@ -2484,10 +2484,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																										const updated = questions.map((q) =>
 																											q.id === question.id
 																												? {
-																													...q,
-																													text: editingText,
-																													qualityFlag: quality ?? undefined,
-																												}
+																														...q,
+																														text: editingText,
+																														qualityFlag: quality ?? undefined,
+																													}
 																												: q
 																										)
 																										setQuestions(updated)

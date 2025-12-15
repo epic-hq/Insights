@@ -41,8 +41,7 @@ export function FullEvidenceCard({ evidence, projectPath, defaultExpanded = fals
 	const routes = useProjectRoutes(projectPath)
 
 	const hasVerbatim = evidence.verbatim && evidence.verbatim !== evidence.gist
-	const hasFacets =
-		(evidence.pains && evidence.pains.length > 0) || (evidence.gains && evidence.gains.length > 0)
+	const hasFacets = (evidence.pains && evidence.pains.length > 0) || (evidence.gains && evidence.gains.length > 0)
 
 	// Get first anchor for deep-link
 	const anchor = evidence.anchors?.[0]
@@ -64,9 +63,7 @@ export function FullEvidenceCard({ evidence, projectPath, defaultExpanded = fals
 						{evidence.gist ? (
 							<p className="font-medium text-foreground leading-snug">{evidence.gist}</p>
 						) : (
-							<p className="line-clamp-2 text-foreground text-sm leading-snug">
-								"{evidence.verbatim}"
-							</p>
+							<p className="line-clamp-2 text-foreground text-sm leading-snug">"{evidence.verbatim}"</p>
 						)}
 					</div>
 
@@ -83,9 +80,7 @@ export function FullEvidenceCard({ evidence, projectPath, defaultExpanded = fals
 				</div>
 
 				{/* Context summary if available */}
-				{evidence.context_summary && (
-					<p className="mb-3 text-muted-foreground text-sm">{evidence.context_summary}</p>
-				)}
+				{evidence.context_summary && <p className="mb-3 text-muted-foreground text-sm">{evidence.context_summary}</p>}
 
 				{/* Collapsible verbatim quote */}
 				{hasVerbatim && (

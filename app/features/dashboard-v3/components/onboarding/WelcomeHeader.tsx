@@ -16,11 +16,7 @@ export interface WelcomeHeaderProps {
 	className?: string
 }
 
-export function WelcomeHeader({
-	projectName,
-	subtitle = "",
-	className,
-}: WelcomeHeaderProps) {
+export function WelcomeHeader({ projectName, subtitle = "", className }: WelcomeHeaderProps) {
 	return (
 		<header className={cn("text-center", className)}>
 			<h1 className="mb-2 font-semibold text-2xl text-foreground">Welcome to {projectName}</h1>

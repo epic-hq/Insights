@@ -334,19 +334,14 @@ export function InterviewCopilot({
 
 		const fetchPeopleNames = async () => {
 			try {
-				const { data, error } = await supabase
-					.from("people")
-					.select("id, name")
-					.in("id", personIds)
+				const { data, error } = await supabase.from("people").select("id, name").in("id", personIds)
 
 				if (error) {
 					consola.warn("Failed to fetch linked people:", error)
 					return
 				}
 
-				const names = (data || [])
-					.map((p) => p.name)
-					.filter((name): name is string => Boolean(name?.trim()))
+				const names = (data || []).map((p) => p.name).filter((name): name is string => Boolean(name?.trim()))
 				setLinkedPeopleNames(names)
 			} catch (e) {
 				consola.warn("Error fetching linked people:", e)
@@ -577,16 +572,16 @@ export function InterviewCopilot({
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch { }
+				} catch {}
 			}
-		} catch { }
+		} catch {}
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch { }
+		} catch {}
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -614,7 +609,7 @@ export function InterviewCopilot({
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch { }
+				} catch {}
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -667,18 +662,18 @@ export function InterviewCopilot({
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch { }
+							} catch {}
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch { }
+				} catch {}
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch { }
+			} catch {}
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -691,7 +686,7 @@ export function InterviewCopilot({
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch { }
+			} catch {}
 
 			// finalize or abort recording
 			void (async () => {
@@ -711,13 +706,13 @@ export function InterviewCopilot({
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									; (rec as any).onstop = handler
+									;(rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch { }
+								} catch {}
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -1176,12 +1171,7 @@ export function InterviewCopilot({
 					{/* Recording Controls */}
 					<div className="flex items-center justify-center gap-2">
 						{/* Cancel - subtle, always visible */}
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={handleCancel}
-							className="h-10 px-3 text-muted-foreground"
-						>
+						<Button variant="ghost" size="sm" onClick={handleCancel} className="h-10 px-3 text-muted-foreground">
 							Cancel
 						</Button>
 
@@ -1231,11 +1221,7 @@ export function InterviewCopilot({
 								size="lg"
 								className="h-12 min-w-[90px] px-6"
 							>
-								{isFinishing ? (
-									<Loader2 className="h-4 w-4 animate-spin" />
-								) : (
-									"Finish"
-								)}
+								{isFinishing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Finish"}
 							</Button>
 						)}
 					</div>
@@ -1271,7 +1257,6 @@ export function InterviewCopilot({
 						/>
 					</div>
 				</div>
-
 			</PageContainer>
 
 			<AlertDialog

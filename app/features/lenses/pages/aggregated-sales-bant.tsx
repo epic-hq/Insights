@@ -8,8 +8,7 @@
  * - Drill-down to source interviews
  */
 
-import type { LucideIcon } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon, LucideIcon } from "lucide-react"
 import {
 	AlertTriangle,
 	ArrowRight,
