@@ -77,20 +77,23 @@ export const webResearchTool = createTool({
 	description:
 		"Search the web using Exa.ai semantic search. Use for market research, competitor analysis, industry trends, company information, or any external research needs. IMPORTANT: Use ONE query with multiple results (numResults=10) instead of multiple separate queries to avoid rate limits. Returns relevant web pages with summaries.",
 	inputSchema: z.object({
-		query: z.string().describe("Natural language search query - be specific and descriptive. Combine multiple topics into ONE query when possible."),
-		numResults: z.number().min(1).max(10).default(5).describe("Number of results to return (1-10). Use higher values instead of multiple separate searches."),
+		query: z
+			.string()
+			.describe(
+				"Natural language search query - be specific and descriptive. Combine multiple topics into ONE query when possible."
+			),
+		numResults: z
+			.number()
+			.min(1)
+			.max(10)
+			.default(5)
+			.describe("Number of results to return (1-10). Use higher values instead of multiple separate searches."),
 		type: z
 			.enum(["neural", "keyword", "auto"])
 			.default("auto")
 			.describe("Search type: neural (semantic), keyword (traditional), or auto"),
-		useAutoprompt: z
-			.boolean()
-			.default(true)
-			.describe("Let Exa optimize the query for better results"),
-		includeText: z
-			.boolean()
-			.default(true)
-			.describe("Include text snippets from pages"),
+		useAutoprompt: z.boolean().default(true).describe("Let Exa optimize the query for better results"),
+		includeText: z.boolean().default(true).describe("Include text snippets from pages"),
 		category: z
 			.enum(["company", "research paper", "news", "pdf", "github", "tweet", "personal site", "linkedin profile"])
 			.optional()
@@ -181,7 +184,7 @@ export const webResearchTool = createTool({
 				return {
 					tldr: "Search failed due to rate limiting. Try again in a few seconds or use fewer parallel searches.",
 					resultCount: 0,
-					error: `Exa API rate limit exceeded after retries`,
+					error: "Exa API rate limit exceeded after retries",
 				}
 			}
 
@@ -203,10 +206,7 @@ export const webResearchTool = createTool({
 				url: result.url,
 				publishedDate: result.publishedDate,
 				author: result.author,
-				summary:
-					result.highlights?.join(" ") ||
-					result.text?.slice(0, 500) ||
-					"No summary available",
+				summary: result.highlights?.join(" ") || result.text?.slice(0, 500) || "No summary available",
 				relevanceScore: result.score,
 			}))
 
@@ -486,7 +486,7 @@ export const findSimilarPagesTool = createTool({
 				return {
 					tldr: "Search failed due to rate limiting. Try again in a few seconds.",
 					resultCount: 0,
-					error: `Exa API rate limit exceeded after retries`,
+					error: "Exa API rate limit exceeded after retries",
 				}
 			}
 
@@ -505,10 +505,7 @@ export const findSimilarPagesTool = createTool({
 				url: result.url,
 				publishedDate: result.publishedDate,
 				author: result.author,
-				summary:
-					result.highlights?.join(" ") ||
-					result.text?.slice(0, 500) ||
-					"No summary available",
+				summary: result.highlights?.join(" ") || result.text?.slice(0, 500) || "No summary available",
 				relevanceScore: result.score,
 			}))
 
@@ -656,7 +653,7 @@ function formatSimilarPagesAsMarkdown(
 	}>
 ): string {
 	const lines: string[] = [
-		`# Similar Pages Analysis`,
+		"# Similar Pages Analysis",
 		"",
 		`**Source URL:** [${sourceUrl}](${sourceUrl})`,
 		`**Search Date:** ${new Date().toLocaleDateString()}`,

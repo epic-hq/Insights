@@ -12,13 +12,13 @@ import { createTool } from "@mastra/core/tools"
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import { z } from "zod"
+import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl"
 import {
 	type ExtractionResult,
 	extractAllMediaUrls,
 	isDirectMediaUrl,
 	isStreamingUrl,
 } from "~/utils/extractMediaUrl.server"
-import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl"
 
 function ensureContext(context?: Map<string, unknown> | any) {
 	consola.info("[importVideoFromUrl] ensureContext called", {
@@ -93,19 +93,20 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 				return {
 					success: false,
 					needsUserChoice: true,
-					message: `Found multiple media assets on this page. Please specify which one to import:\n\n` +
+					message:
+						"Found multiple media assets on this page. Please specify which one to import:\n\n" +
 						`- **${streamCount} streaming video(s)** (HLS/DASH - highest quality)\n` +
 						`- **${videoCount} video file(s)** (MP4, WebM, etc.)\n` +
 						`- **${audioCount} audio file(s)** (MP3, M4A, etc.)\n\n` +
 						`I recommend importing the **${extractionResult.recommended?.type}** (${extractionResult.recommended?.format}) for best quality. ` +
-						`Should I proceed with that, or would you prefer a different option?`,
+						"Should I proceed with that, or would you prefer a different option?",
 					availableAssets: options,
 					recommendedAsset: extractionResult.recommended
 						? {
-							type: extractionResult.recommended.type,
-							format: extractionResult.recommended.format,
-							url: extractionResult.recommended.url,
-						}
+								type: extractionResult.recommended.type,
+								format: extractionResult.recommended.format,
+								url: extractionResult.recommended.url,
+							}
 						: null,
 					interviewId: null,
 					triggerRunId: null,
@@ -146,7 +147,8 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 
 			return {
 				success: true,
-				message: "Import queued via Trigger.dev. The media will be downloaded, processed, and transcribed. This may take a few minutes.",
+				message:
+					"Import queued via Trigger.dev. The media will be downloaded, processed, and transcribed. This may take a few minutes.",
 				interviewId: null, // Will be created by the Trigger.dev task
 				triggerRunId: handle.id,
 				publicRunToken: handle.publicAccessToken ?? null,

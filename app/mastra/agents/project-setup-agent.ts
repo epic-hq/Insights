@@ -1,8 +1,8 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
+import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { createTool } from "@mastra/core/tools"
 import { Memory } from "@mastra/memory"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { z } from "zod"
 import { PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
@@ -117,4 +117,4 @@ ${JSON.stringify(existing)}
 	}),
 	// Note: Using number format for Zod v4 compatibility
 	outputProcessors: [new TokenLimiterProcessor(100_000)],
-});
+})

@@ -62,11 +62,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		requestContext,
 		context: system
 			? [
-				{
-					role: "system",
-					content: `## Context from the client's UI:\n${system}`,
-				},
-			]
+					{
+						role: "system",
+						content: `## Context from the client's UI:\n${system}`,
+					},
+				]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("interview-status onFinish", data)

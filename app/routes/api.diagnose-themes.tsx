@@ -64,13 +64,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			consola.info(`[diagnose-themes] Deleted ${themesDeleted} themes`)
 
 			// 3. Run fresh consolidation
-			consola.info(`[diagnose-themes] Running fresh consolidation...`)
+			consola.info("[diagnose-themes] Running fresh consolidation...")
 
 			const result = await autoGroupThemesAndApply({
 				supabase: adminDb,
 				account_id: accountId,
 				project_id: projectId,
-				guidance: "Create consolidated, actionable themes from all evidence. Avoid duplicates. Each theme should have a clear, distinct focus.",
+				guidance:
+					"Create consolidated, actionable themes from all evidence. Avoid duplicates. Each theme should have a clear, distinct focus.",
 				limit: 600, // Get all evidence
 			})
 

@@ -37,4 +37,4 @@ Topics you can help with:
 `,
 	model: openai("gpt-5-mini"),
 	tools: {},
-});
+})

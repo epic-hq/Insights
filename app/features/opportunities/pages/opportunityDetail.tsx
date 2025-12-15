@@ -1,3 +1,4 @@
+import consola from "consola"
 import { format } from "date-fns"
 import {
 	AlertTriangle,
@@ -36,6 +37,7 @@ import {
 	type OpportunityStageConfig,
 	stageLabelForValue,
 } from "~/features/opportunities/stage-config"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
@@ -190,6 +192,7 @@ export default function OpportunityDetail() {
 	const opportunityFetcher = useFetcher()
 	const stageLabel = stageLabelForValue(opportunity.stage || opportunity.kanban_status, stages)
 	const kanbanLabel = stageLabel || opportunity.kanban_status || "Unknown"
+	const shareProjectPath = currentProjectContext?.projectPath || ""
 
 	const handleOpportunityUpdate = (field: string, value: string) => {
 		if (!currentProjectContext?.accountId || !currentProjectContext?.projectId) return
@@ -262,7 +265,17 @@ export default function OpportunityDetail() {
 						</Badge>
 					</div>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex items-center gap-2">
+					{shareProjectPath && currentProjectContext?.accountId ? (
+						<ResourceShareMenu
+							projectPath={shareProjectPath}
+							accountId={currentProjectContext.accountId}
+							resourceId={opportunity.id}
+							resourceName={opportunity.title}
+							resourceType="opportunity"
+							buttonLabel="Invite"
+						/>
+					) : null}
 					<Button asChild variant="outline" size="sm">
 						<Link to={routes.opportunities.edit(opportunity.id)}>Edit</Link>
 					</Button>
@@ -889,7 +902,7 @@ function AIAdvisorSection({
 			: recommendations?.[0]
 
 	// Debug logging
-	console.log("AI Advisor Debug:", {
+	consola.log("AI Advisor Debug:", {
 		fetcherState: advisorFetcher.state,
 		fetcherData: advisorFetcher.data,
 		recommendations,

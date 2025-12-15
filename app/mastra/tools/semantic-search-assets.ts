@@ -34,14 +34,10 @@ export const semanticSearchAssetsTool = createTool({
 			.min(0)
 			.max(1)
 			.optional()
-			.describe("Similarity threshold (0-1). Default: 0.35. DO NOT override unless specifically needed - asset embeddings have lower similarity scores than text."),
-		matchCount: z
-			.number()
-			.int()
-			.min(1)
-			.max(50)
-			.optional()
-			.describe("Maximum number of results to return. Default: 10"),
+			.describe(
+				"Similarity threshold (0-1). Default: 0.35. DO NOT override unless specifically needed - asset embeddings have lower similarity scores than text."
+			),
+		matchCount: z.number().int().min(1).max(50).optional().describe("Maximum number of results to return. Default: 10"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -208,10 +204,11 @@ export const semanticSearchAssetsTool = createTool({
 					totalAssets,
 					assetsWithEmbeddings,
 					topSimilarityScores: topMatches?.map((m: any) => m.similarity) || [],
-					topMatchPreviews: topMatches?.slice(0, 2).map((m: any) => ({
-						similarity: m.similarity,
-						title: m.title,
-					})) || [],
+					topMatchPreviews:
+						topMatches?.slice(0, 2).map((m: any) => ({
+							similarity: m.similarity,
+							title: m.title,
+						})) || [],
 				})
 
 				const highestScore = topMatches?.[0]?.similarity || 0

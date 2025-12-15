@@ -341,7 +341,9 @@ export const semanticSearchEvidenceTool = createTool({
 			const evidenceMap = new Map(fullEvidence?.map((e) => [e.id, e]) || [])
 
 			// Get interview titles
-			const interviewIds = [...new Set(fullEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || [])]
+			const interviewIds = [
+				...new Set(fullEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []),
+			]
 			const { data: interviewData } = interviewIds.length
 				? await supabase.from("interviews").select("id, title").in("id", interviewIds)
 				: { data: [] }

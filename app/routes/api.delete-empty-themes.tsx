@@ -51,10 +51,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	const themeIds = emptyThemesList.map((t) => t.id)
 
 	// Delete the empty themes
-	const { error: deleteError } = await supabase
-		.from("themes")
-		.delete()
-		.in("id", themeIds)
+	const { error: deleteError } = await supabase.from("themes").delete().in("id", themeIds)
 
 	if (deleteError) {
 		console.error("Error deleting empty themes:", deleteError)

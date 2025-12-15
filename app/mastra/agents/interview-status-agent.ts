@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
-import { Memory } from "@mastra/memory"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
+import { Memory } from "@mastra/memory"
 import { z } from "zod"
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
@@ -55,4 +55,4 @@ Tone:
 	}),
 	// Note: Using number format for Zod v4 compatibility
 	outputProcessors: [new TokenLimiterProcessor(100_000)],
-});
+})

@@ -483,7 +483,14 @@ export async function getSubtasks({
 // Task Link Operations
 // ============================================================================
 
-export type TaskLinkEntityType = "evidence" | "person" | "organization" | "opportunity" | "interview" | "insight" | "persona"
+export type TaskLinkEntityType =
+	| "evidence"
+	| "person"
+	| "organization"
+	| "opportunity"
+	| "interview"
+	| "insight"
+	| "persona"
 export type TaskLinkType = "supports" | "blocks" | "related" | "source"
 
 export interface TaskLink {

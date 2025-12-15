@@ -1,6 +1,5 @@
-import { parseWithZod } from "@conform-to/zod/v4"
+import { parseWithZod } from "@conform-to/zod"
 import consola from "consola"
-import posthog from "posthog-js"
 import { useCallback, useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, useLoaderData, useNavigation } from "react-router"
@@ -19,6 +18,7 @@ import {
 } from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 // import { sendEmail } from "~/emails/clients.server"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { PATHS } from "~/paths"
@@ -119,19 +119,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 						const inviterUserId = (lookup?.inviter_user_id as string | undefined) ?? null
 						const role = (lookup?.account_role as "owner" | "member" | "viewer" | undefined) ?? "member"
 
-						posthog.capture("invite_accepted", {
-							account_id: accountId,
-							inviter_user_id: inviterUserId,
-							role,
-						})
-
-						// Update user lifecycle
-						posthog.identify(user.sub, {
-							$set: {
-								team_member: true,
-								last_team_joined_at: new Date().toISOString(),
-							},
-						})
+						const posthogServer = getPostHogServerClient()
+						if (posthogServer) {
+							posthogServer.capture({
+								distinctId: user.sub,
+								event: "invite_accepted",
+								properties: {
+									account_id: accountId,
+									inviter_user_id: inviterUserId,
+									role,
+									$set: {
+										team_member: true,
+										last_team_joined_at: new Date().toISOString(),
+									},
+								},
+							})
+						}
 					} catch (trackingError) {
 						consola.warn("[INVITE] PostHog tracking failed:", trackingError)
 					}
@@ -140,7 +143,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		}
 	}
 
-	const { data: account, error: accountError } = await dbGetAccount({ supabase: client, account_id: accountId })
+	const { data: account, error: accountError } = await dbGetAccount({
+		supabase: client,
+		account_id: accountId,
+	})
 	if (accountError) throw new Response(accountError.message, { status: 500 })
 
 	const normalizedAccount = account
@@ -157,14 +163,17 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	let members: MembersRow[] = []
 	let invitations: GetAccountInvitesResponse = []
-	if (normalizedAccount?.account_role === "owner") {
-		const { data: membersData, error: membersError } = await dbGetAccountMembers({
-			supabase: client,
-			account_id: accountId,
-		})
-		if (membersError) throw new Response(membersError.message, { status: 500 })
-		members = (membersData as MembersRow[] | null) ?? []
 
+	// All team members can see the member list
+	const { data: membersData, error: membersError } = await dbGetAccountMembers({
+		supabase: client,
+		account_id: accountId,
+	})
+	if (membersError) throw new Response(membersError.message, { status: 500 })
+	members = (membersData as MembersRow[] | null) ?? []
+
+	// Only owners can see pending invitations
+	if (normalizedAccount?.account_role === "owner") {
 		const { data: invitationsData, error: invitationsError } = await dbGetAccountInvitations({
 			supabase: client,
 			account_id: accountId,
@@ -246,7 +255,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				// Optionally fetch account name for nicer subject
 				let teamName = "your team"
 				try {
-					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
+					const { data: accountData } = await dbGetAccount({
+						supabase: client,
+						account_id: accountId,
+					})
 					if (
 						accountData &&
 						typeof accountData === "object" &&
@@ -285,12 +297,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 		// Capture invite_sent event
 		try {
-			posthog.capture("invite_sent", {
-				account_id: accountId,
-				invitee_email: email,
-				role: mapPermissionToAccountRoleForRpc(permission),
-				invitation_type: "one_time",
-			})
+			const posthogServer = getPostHogServerClient()
+			if (posthogServer) {
+				posthogServer.capture({
+					distinctId: user.sub,
+					event: "invite_sent",
+					properties: {
+						account_id: accountId,
+						invitee_email: email,
+						role: mapPermissionToAccountRoleForRpc(permission),
+						invitation_type: "one_time",
+					},
+				})
+			}
 		} catch (trackingError) {
 			consola.warn("[INVITE] PostHog tracking failed:", trackingError)
 		}
@@ -405,7 +424,12 @@ export default function ManageTeamMembers() {
 			<div className="mb-6 space-y-2">
 				<h1 className="font-semibold text-2xl">Team Members</h1>
 				<p className="text-muted-foreground text-sm">
-					Manage access and invite collaborators for <span className="font-medium text-foreground">{teamName}</span>.
+					{canManage ? "Manage access and invite collaborators for" : "View team members for"}{" "}
+					<span className="font-medium text-foreground">{teamName}</span>.
+				</p>
+				<p className="text-muted-foreground text-sm">
+					Your role: <span className="font-medium text-foreground capitalize">{account?.account_role || "member"}</span>
+					{!canManage && " (view only)"}
 				</p>
 				{inviteAcceptance.status !== "idle" && inviteAcceptance.message && (
 					<div
@@ -422,7 +446,8 @@ export default function ManageTeamMembers() {
 				)}
 				{localInvitations.length > 0 && (
 					<p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:bg-amber-950/40 dark:text-amber-300">
-						You have {localInvitations.length} pending invitation{localInvitations.length === 1 ? "" : "s"}.
+						You have {localInvitations.length} pending invitation
+						{localInvitations.length === 1 ? "" : "s"}.
 					</p>
 				)}
 			</div>

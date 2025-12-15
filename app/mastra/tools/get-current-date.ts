@@ -31,7 +31,10 @@ export const getCurrentDateTool = createTool({
 
 		// Priority: explicit param > runtime context user_timezone > UTC fallback
 		const timezone =
-			input.timezone || context?.requestContext?.get?.("user_timezone") || context?.requestContext?.get?.("timezone") || "UTC"
+			input.timezone ||
+			context?.requestContext?.get?.("user_timezone") ||
+			context?.requestContext?.get?.("timezone") ||
+			"UTC"
 
 		consola.debug("getCurrentDate using timezone", { timezone })
 

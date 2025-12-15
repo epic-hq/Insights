@@ -69,8 +69,19 @@ Operations:
 			.describe(
 				"Document type identifier (e.g., 'positioning_statement', 'seo_strategy'). Required for create/update/upsert/read."
 			),
-		content: z.any().optional().describe("Markdown content of the document (string or object that will be JSON stringified). Required for create/update/upsert."),
-		metadata: z.any().optional().nullable().describe("Optional metadata to store with the document (JSON object). If content is an object, it will be stored in metadata.structured."),
+		content: z
+			.any()
+			.optional()
+			.describe(
+				"Markdown content of the document (string or object that will be JSON stringified). Required for create/update/upsert."
+			),
+		metadata: z
+			.any()
+			.optional()
+			.nullable()
+			.describe(
+				"Optional metadata to store with the document (JSON object). If content is an object, it will be stored in metadata.structured."
+			),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -111,9 +122,7 @@ Operations:
 		// If content is an object, store it under meta.structured; if string, store in content_md
 		const isObjectContent = typeof rawContent === "object" && rawContent !== null
 		const content = isObjectContent ? null : rawContent
-		const metadata = isObjectContent
-			? { structured: rawContent, ...(input.metadata ?? {}) }
-			: input.metadata
+		const metadata = isObjectContent ? { structured: rawContent, ...(input.metadata ?? {}) } : input.metadata
 
 		consola.debug("manage-documents: execute start", {
 			projectId,

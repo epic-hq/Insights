@@ -104,7 +104,7 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 				<fetcher.Form onSubmit={handleSubmit}>
 					<DialogHeader>
 						<DialogTitle>Create Task</DialogTitle>
-						<DialogDescription></DialogDescription>
+						<DialogDescription />
 					</DialogHeader>
 
 					<div className="grid gap-4 py-4">

@@ -17,7 +17,8 @@ const CAPABILITIES = [
 	},
 	{
 		name: "people & orgs",
-		description: "Look up and update people, personas, organizations, and opportunities; import from tables when needed.",
+		description:
+			"Look up and update people, personas, organizations, and opportunities; import from tables when needed.",
 		examples: ["fetchPeopleDetails", "importPeopleFromTable", "managePersonOrganizations"],
 	},
 	{
@@ -27,7 +28,8 @@ const CAPABILITIES = [
 	},
 	{
 		name: "web content",
-		description: "Fetch content from URLs or run targeted web research when internal data is empty or user requests it explicitly.",
+		description:
+			"Fetch content from URLs or run targeted web research when internal data is empty or user requests it explicitly.",
 		examples: ["fetchWebContent", "webResearch", "importVideoFromUrl"],
 	},
 ]
@@ -41,7 +43,8 @@ const GUARDRAILS = [
 
 export const capabilityLookupTool = createTool({
 	id: "capability-lookup",
-	description: "Return a concise list of this agent's capabilities and guardrails. Use when the user asks 'what can you do' or when clarifying scope.",
+	description:
+		"Return a concise list of this agent's capabilities and guardrails. Use when the user asks 'what can you do' or when clarifying scope.",
 	inputSchema: z.object({
 		query: z.string().optional().describe("Optional filter string to narrow the capability list."),
 	}),
@@ -59,7 +62,9 @@ export const capabilityLookupTool = createTool({
 		const { query } = input
 		const normalized = query?.toLowerCase().trim()
 		const capabilities = CAPABILITIES.filter((cap) =>
-			!normalized ? true : cap.name.toLowerCase().includes(normalized) || cap.description.toLowerCase().includes(normalized)
+			!normalized
+				? true
+				: cap.name.toLowerCase().includes(normalized) || cap.description.toLowerCase().includes(normalized)
 		)
 
 		consola.debug("capability-lookup", { query, resultCount: capabilities.length })

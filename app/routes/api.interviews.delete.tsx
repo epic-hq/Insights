@@ -35,6 +35,6 @@ export async function action({ request }: ActionFunctionArgs) {
 	// Return success with redirect URL for client to handle
 	return Response.json({
 		success: true,
-		redirectTo: `/a/${project.account_id}/${projectId}/interviews`
+		redirectTo: `/a/${project.account_id}/${projectId}/interviews`,
 	})
 }

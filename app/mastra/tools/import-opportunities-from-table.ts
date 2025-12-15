@@ -61,7 +61,10 @@ interface ImportResult {
  * Normalize column name for matching (lowercase, trim, remove special chars)
  */
 function normalizeColumnName(name: string): string {
-	return name.toLowerCase().trim().replace(/[^a-z0-9]/g, "")
+	return name
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]/g, "")
 }
 
 /**
@@ -172,8 +175,14 @@ The tool will:
 Requires the assetId from a previous parseSpreadsheet call.`,
 	inputSchema: z.object({
 		assetId: z.string().uuid().describe("The project_asset ID from parseSpreadsheet result"),
-		columnMapping: columnMappingSchema.optional().describe("Optional explicit column mappings. If not provided, auto-detects."),
-		createOrganizations: z.boolean().optional().default(true).describe("Create organizations from account column if they don't exist"),
+		columnMapping: columnMappingSchema
+			.optional()
+			.describe("Optional explicit column mappings. If not provided, auto-detects."),
+		createOrganizations: z
+			.boolean()
+			.optional()
+			.default(true)
+			.describe("Create organizations from account column if they don't exist"),
 		skipDuplicates: z.boolean().optional().default(true).describe("Skip rows where CRM external ID already exists"),
 		defaultStage: z.string().optional().describe("Default stage for opportunities without a stage column"),
 		defaultCurrency: z.string().optional().default("USD").describe("Default currency if not specified in data"),
@@ -184,15 +193,20 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 		imported: z.number().describe("Number of opportunities imported"),
 		skipped: z.number().describe("Number of rows skipped (duplicates or invalid)"),
 		organizationsCreated: z.number().describe("Number of new organizations created"),
-		results: z.array(z.object({
-			opportunityId: z.string(),
-			title: z.string(),
-			amount: z.number().optional(),
-			stage: z.string().optional(),
-			organizationId: z.string().optional(),
-			organizationName: z.string().optional(),
-			rowIndex: z.number(),
-		})).optional().describe("Details of imported opportunities"),
+		results: z
+			.array(
+				z.object({
+					opportunityId: z.string(),
+					title: z.string(),
+					amount: z.number().optional(),
+					stage: z.string().optional(),
+					organizationId: z.string().optional(),
+					organizationName: z.string().optional(),
+					rowIndex: z.number(),
+				})
+			)
+			.optional()
+			.describe("Details of imported opportunities"),
 		errors: z.array(z.string()).optional().describe("Any errors encountered"),
 	}),
 	execute: async (input, context?) => {
@@ -443,7 +457,9 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 			}
 
 			const imported = results.length
-			consola.info(`[import-opportunities] Imported ${imported} opportunities, skipped ${skipped}, created ${organizationsCreated} organizations`)
+			consola.info(
+				`[import-opportunities] Imported ${imported} opportunities, skipped ${skipped}, created ${organizationsCreated} organizations`
+			)
 
 			// Stream progress - complete
 			await writer?.custom?.({

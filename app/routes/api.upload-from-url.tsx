@@ -2,9 +2,9 @@ import type { UUID } from "node:crypto"
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
-import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl"
 
 /**
  * Upload from URL API
@@ -81,7 +81,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		return Response.json({
 			success: true,
-			message: "Import queued. The video/audio will be downloaded, transcribed, and processed. This may take a few minutes.",
+			message:
+				"Import queued. The video/audio will be downloaded, transcribed, and processed. This may take a few minutes.",
 			triggerRunId: handle.id,
 			publicRunToken: handle.publicAccessToken ?? null,
 		})

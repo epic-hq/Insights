@@ -158,60 +158,62 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 				</CardHeader>
 
 				<CardContent className="flex flex-col gap-6">
-					{/* Share this folder section */}
-					<div className="flex flex-col gap-4">
-						<div className="flex items-center justify-between">
-							<Label className="font-medium">Invite Members</Label>
-						</div>
-						<div className="flex gap-2">
-							<div className="flex-1">
-								<Input
-									type="email"
-									placeholder="Add an email or name"
-									value={inviteEmail}
-									onChange={(e) => setInviteEmail(e.target.value)}
-									className="h-9"
-								/>
+					{/* Invite section - only show if user can invite */}
+					{onInvite && (
+						<div className="flex flex-col gap-4">
+							<div className="flex items-center justify-between">
+								<Label className="font-medium">Invite Members</Label>
 							</div>
-							<div>
-								<Select
-									value={invitePermission}
-									onValueChange={(value) => setInvitePermission(value as PermissionLevel)}
-								>
-									<SelectTrigger className="h-9 text-xs">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{permissionOptions.map((option) => {
-											const IconComponent = option.icon
-											return (
-												<SelectItem key={option.value} value={option.value}>
-													<div className="flex items-center gap-2">
-														<IconComponent size={14} />
-														<span>{option.label}</span>
-													</div>
-												</SelectItem>
-											)
-										})}
-									</SelectContent>
-								</Select>
+							<div className="flex gap-2">
+								<div className="flex-1">
+									<Input
+										type="email"
+										placeholder="Add an email or name"
+										value={inviteEmail}
+										onChange={(e) => setInviteEmail(e.target.value)}
+										className="h-9"
+									/>
+								</div>
+								<div>
+									<Select
+										value={invitePermission}
+										onValueChange={(value) => setInvitePermission(value as PermissionLevel)}
+									>
+										<SelectTrigger className="h-9 text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{permissionOptions.map((option) => {
+												const IconComponent = option.icon
+												return (
+													<SelectItem key={option.value} value={option.value}>
+														<div className="flex items-center gap-2">
+															<IconComponent size={14} />
+															<span>{option.label}</span>
+														</div>
+													</SelectItem>
+												)
+											})}
+										</SelectContent>
+									</Select>
+								</div>
 							</div>
-						</div>
 
-						<div className="ml-auto flex w-fit justify-end gap-2">
-							<Button variant="outline" size={"sm"} onClick={onCancel} className="h-9 flex-1">
-								Cancel
-							</Button>
-							<Button
-								onClick={handleInvite}
-								size={"sm"}
-								disabled={!inviteEmail.trim() || isLoading}
-								className="h-9 flex-1"
-							>
-								Send Invite
-							</Button>
+							<div className="ml-auto flex w-fit justify-end gap-2">
+								<Button variant="outline" size={"sm"} onClick={onCancel} className="h-9 flex-1">
+									Cancel
+								</Button>
+								<Button
+									onClick={handleInvite}
+									size={"sm"}
+									disabled={!inviteEmail.trim() || isLoading}
+									className="h-9 flex-1"
+								>
+									Send Invite
+								</Button>
+							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Access section */}
 					{members.length > 0 && (
@@ -257,7 +259,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 																<Crown size={12} className="mr-1" />
 																Owner
 															</Badge>
-														) : (
+														) : onUpdateMemberPermission ? (
 															<Select
 																value={member.role}
 																onValueChange={(value) => handleUpdatePermission(member.id, value as PermissionLevel)}
@@ -285,6 +287,11 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 																	})}
 																</SelectContent>
 															</Select>
+														) : (
+															<Badge variant="secondary" className="text-xs">
+																<PermissionIcon size={12} className="mr-1" />
+																{getPermissionLabel(member.role)}
+															</Badge>
 														)}
 													</div>
 												</motion.div>

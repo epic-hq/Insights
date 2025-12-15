@@ -95,9 +95,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 		}
 
 		// 5. Filter out already-linked evidence and limit to 8
-		const filtered = (similarEvidence ?? [])
-			.filter((ev: any) => !excludeIds.has(ev.id))
-			.slice(0, 8)
+		const filtered = (similarEvidence ?? []).filter((ev: any) => !excludeIds.has(ev.id)).slice(0, 8)
 
 		if (filtered.length === 0) {
 			return Response.json({ evidence: [] })
@@ -140,9 +138,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 			if (ev.interview?.person?.name) {
 				const person = ev.interview.person
-				attribution = person.organizations?.name
-					? `${person.name}, ${person.organizations.name}`
-					: person.name
+				attribution = person.organizations?.name ? `${person.name}, ${person.organizations.name}` : person.name
 				organization = person.organizations?.name ?? null
 			} else if (ev.interview?.title) {
 				attribution = ev.interview.title

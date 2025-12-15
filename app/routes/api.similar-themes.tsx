@@ -51,9 +51,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 	}
 
 	// Filter out the current theme and return
-	const filtered = (similarThemes || [])
-		.filter((t: { id: string }) => t.id !== theme_id)
-		.slice(0, limit)
+	const filtered = (similarThemes || []).filter((t: { id: string }) => t.id !== theme_id).slice(0, limit)
 
 	return Response.json({ similar_themes: filtered })
 }

@@ -42,6 +42,7 @@ import {
 } from "~/features/lenses/lib/loadLensAnalyses.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -58,7 +59,10 @@ import { ManagePeopleAssociations } from "../components/ManagePeopleAssociations
 import { NoteViewer } from "../components/NoteViewer"
 
 // Helper to parse full name into first and last
-function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
+function parseFullName(fullName: string): {
+	firstname: string
+	lastname: string | null
+} {
 	const trimmed = fullName.trim()
 	if (!trimmed) return { firstname: "", lastname: null }
 	const parts = trimmed.split(/\s+/)
@@ -204,12 +208,23 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
 				}
 				if (personRow.project_id !== projectId) {
-					return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
+					return Response.json(
+						{
+							ok: false,
+							error: "Selected person belongs to a different project",
+						},
+						{ status: 400 }
+					)
 				}
 
 				const { error } = await supabase
 					.from("interview_people")
-					.update({ person_id: personId, role, transcript_key: transcriptKey, display_name: displayName })
+					.update({
+						person_id: personId,
+						role,
+						transcript_key: transcriptKey,
+						display_name: displayName,
+					})
 					.eq("id", interviewPersonId)
 
 				if (error) throw new Error(error.message)
@@ -282,7 +297,10 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					}
 					if (personRow.project_id !== projectId) {
 						return Response.json(
-							{ ok: false, error: "Selected person belongs to a different project" },
+							{
+								ok: false,
+								error: "Selected person belongs to a different project",
+							},
 							{ status: 400 }
 						)
 					}
@@ -357,10 +375,20 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 
 				if (linkError) {
 					consola.error("Failed to link person to interview:", linkError)
-					return Response.json({ ok: false, error: "Person created but failed to link to interview" }, { status: 500 })
+					return Response.json(
+						{
+							ok: false,
+							error: "Person created but failed to link to interview",
+						},
+						{ status: 500 }
+					)
 				}
 
-				return Response.json({ ok: true, created: true, personId: newPerson.id })
+				return Response.json({
+					ok: true,
+					created: true,
+					personId: newPerson.id,
+				})
 			}
 			default:
 				return Response.json({ ok: false, error: "Unknown intent" }, { status: 400 })
@@ -388,7 +416,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// })
 
 	if (!accountId || !projectId || !interviewId) {
-		consola.error("❌ Missing required parameters:", { accountId, projectId, interviewId })
+		consola.error("❌ Missing required parameters:", {
+			accountId,
+			projectId,
+			interviewId,
+		})
 		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
 	}
 
@@ -453,8 +485,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						return { priority, summary, evidenceSnippets }
 					})
 					.filter(
-						(item): item is { priority: "high" | "medium" | "low"; summary: string; evidenceSnippets: string[] } =>
-							item !== null
+						(
+							item
+						): item is {
+							priority: "high" | "medium" | "low"
+							summary: string
+							evidenceSnippets: string[]
+						} => item !== null
 					)
 			}
 
@@ -471,7 +508,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						if (!focusArea && !action && !rationale) return null
 						return { focusArea, action, rationale }
 					})
-					.filter((item): item is { focusArea: string; action: string; rationale: string } => item !== null)
+					.filter(
+						(
+							item
+						): item is {
+							focusArea: string
+							action: string
+							rationale: string
+						} => item !== null
+					)
 			}
 
 			const parseCustomLenses = (): ConversationAnalysisForDisplay["customLenses"] => {
@@ -517,7 +562,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				segment?: string | null
 				company?: string | null
 				project_id?: string | null
-				people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+				people_personas?: Array<{
+					personas?: { id?: string; name?: string | null } | null
+				}>
 			}
 		}> = []
 		let primaryParticipant: {
@@ -537,29 +584,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						company: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							company: string | null
+							project_id: string | null
+							people_personas?: Array<{
+								personas?: { id?: string; name?: string | null } | null
+							}>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						company: person.company,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							company: person.company,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -576,7 +625,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error)
-			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
+			throw new Response(`Error fetching participants: ${msg}`, {
+				status: 500,
+			})
 		}
 
 		const { data: peopleOptions, error: peopleError } = await supabase
@@ -602,7 +653,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		}
 		if (primaryParticipant?.id) {
-			peopleLookup.set(primaryParticipant.id, { name: primaryParticipant.name ?? null })
+			peopleLookup.set(primaryParticipant.id, {
+				name: primaryParticipant.name ?? null,
+			})
 		}
 
 		let salesLens: InterviewLensView | null = null
@@ -651,7 +704,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				}
 			}
 		} catch (error) {
-			consola.warn("Failed to load sales lens for interview", { interviewId, error })
+			consola.warn("Failed to load sales lens for interview", {
+				interviewId,
+				error,
+			})
 		}
 
 		// Check transcript availability without loading the actual content
@@ -736,7 +792,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		if (error) {
 			const msg = error instanceof Error ? error.message : String(error)
-			consola.error("Error fetching insights for interview", { interviewId, error: msg })
+			consola.error("Error fetching insights for interview", {
+				interviewId,
+				error: msg,
+			})
 		}
 
 		const insights = insightsData ?? []
@@ -744,7 +803,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Fetch evidence related to this interview with person associations
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
-			.select(`
+			.select(
+				`
 				*,
 				evidence_people (
 					person_id,
@@ -755,7 +815,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						segment
 					)
 				)
-			`)
+			`
+			)
 			.eq("interview_id", interviewId)
 			.order("created_at", { ascending: false })
 
@@ -793,7 +854,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.says)) {
 					e.says.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
+							empathyMap.says.push({
+								text: item.trim(),
+								evidenceId,
+								anchors: e.anchors,
+								personId,
+								personName,
+							})
 						}
 					})
 				}
@@ -801,7 +868,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.does)) {
 					e.does.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
+							empathyMap.does.push({
+								text: item.trim(),
+								evidenceId,
+								anchors: e.anchors,
+								personId,
+								personName,
+							})
 						}
 					})
 				}
@@ -809,7 +882,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.thinks)) {
 					e.thinks.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
+							empathyMap.thinks.push({
+								text: item.trim(),
+								evidenceId,
+								anchors: e.anchors,
+								personId,
+								personName,
+							})
 						}
 					})
 				}
@@ -817,7 +896,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.feels)) {
 					e.feels.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
+							empathyMap.feels.push({
+								text: item.trim(),
+								evidenceId,
+								anchors: e.anchors,
+								personId,
+								personName,
+							})
 						}
 					})
 				}
@@ -825,7 +910,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.pains)) {
 					e.pains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
+							empathyMap.pains.push({
+								text: item.trim(),
+								evidenceId,
+								anchors: e.anchors,
+								personId,
+								personName,
+							})
 						}
 					})
 				}
@@ -833,7 +924,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.gains)) {
 					e.gains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
+							empathyMap.gains.push({
+								text: item.trim(),
+								evidenceId,
+								anchors: e.anchors,
+								personId,
+								personName,
+							})
 						}
 					})
 				}
@@ -998,9 +1095,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const navigation = useNavigation()
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
+	const shareProjectPath =
+		projectPath || (contextAccountId && contextProjectId ? `/a/${contextAccountId}/${contextProjectId}` : "")
 	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
-	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
+	const [triggerAuth, setTriggerAuth] = useState<{
+		runId: string
+		token: string
+	} | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
 	const [_customLensOverrides, setCustomLensOverrides] = useState<Record<string, { summary?: string; notes?: string }>>(
 		conversationAnalysis?.customLenses ?? {}
@@ -1011,7 +1113,15 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	// Create evidence map for lens timestamp hydration
 	const evidenceMap = useMemo(() => {
-		const map = new Map<string, { id: string; anchors?: unknown; start_ms?: number | null; gist?: string | null }>()
+		const map = new Map<
+			string,
+			{
+				id: string
+				anchors?: unknown
+				start_ms?: number | null
+				gist?: string | null
+			}
+		>()
 		for (const e of evidence || []) {
 			map.set(e.id, {
 				id: e.id,
@@ -1107,7 +1217,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					(participant.people as {
 						name?: string | null
 						segment?: string | null
-						people_personas?: Array<{ personas?: { name?: string | null } | null }>
+						people_personas?: Array<{
+							personas?: { name?: string | null } | null
+						}>
 					} | null) || null
 				const personaNames = Array.from(
 					new Set(
@@ -1337,9 +1449,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			.channel(`analysis-${interview.id}`)
 			.on(
 				"postgres_changes",
-				{ event: "UPDATE", schema: "public", table: "interviews", filter: `id=eq.${interview.id}` },
+				{
+					event: "UPDATE",
+					schema: "public",
+					table: "interviews",
+					filter: `id=eq.${interview.id}`,
+				},
 				(payload) => {
-					const raw = (payload as { new?: Database["public"]["Tables"]["interviews"]["Row"] }).new
+					const raw = (
+						payload as {
+							new?: Database["public"]["Tables"]["interviews"]["Row"]
+						}
+					).new
 					if (!raw) return
 
 					setAnalysisState((prev) => {
@@ -1569,6 +1690,15 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<div className="flex items-start justify-between gap-4">
 							<h1 className="font-semibold text-2xl">{interviewTitle}</h1>
 							<div className="flex items-center gap-2">
+								{shareProjectPath && contextAccountId ? (
+									<ResourceShareMenu
+										projectPath={shareProjectPath}
+										accountId={contextAccountId}
+										resourceId={interview.id}
+										resourceName={interviewTitle}
+										resourceType="interview"
+									/>
+								) : null}
 								{/* Status indicator - compact, right side */}
 								{isProcessing && (
 									<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
@@ -1590,133 +1720,149 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									interview.status === "transcribing" ||
 									interview.status === "processing" ||
 									interview.status === "uploaded") && (
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<button
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button
+												disabled={fetcher.state !== "idle"}
+												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+												title="Actions"
+											>
+												<MoreVertical className="h-4 w-4" />
+												Actions
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											{(interview.status === "uploading" ||
+												interview.status === "transcribing" ||
+												interview.status === "processing" ||
+												interview.status === "uploaded") && (
+												<DropdownMenuItem
+													onClick={async () => {
+														try {
+															const response = await fetch("/api/fix-stuck-interview", {
+																method: "POST",
+																headers: {
+																	"Content-Type": "application/json",
+																},
+																body: JSON.stringify({
+																	interviewId: interview.id,
+																}),
+															})
+															const result = await response.json()
+															if (result.success) {
+																consola.success("Interview status fixed")
+																revalidator.revalidate()
+															} else {
+																consola.error("Failed to fix interview:", result.error)
+															}
+														} catch (e) {
+															consola.error("Fix stuck interview failed", e)
+														}
+													}}
 													disabled={fetcher.state !== "idle"}
-													className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-													title="Actions"
+													className="text-orange-600 focus:text-orange-600"
 												>
-													<MoreVertical className="h-4 w-4" />
-													Actions
-												</button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
-												{(interview.status === "uploading" ||
-													interview.status === "transcribing" ||
-													interview.status === "processing" ||
-													interview.status === "uploaded") && (
-														<DropdownMenuItem
-															onClick={async () => {
-																try {
-																	const response = await fetch("/api/fix-stuck-interview", {
-																		method: "POST",
-																		headers: { "Content-Type": "application/json" },
-																		body: JSON.stringify({ interviewId: interview.id }),
-																	})
-																	const result = await response.json()
-																	if (result.success) {
-																		consola.success("Interview status fixed")
-																		revalidator.revalidate()
-																	} else {
-																		consola.error("Failed to fix interview:", result.error)
-																	}
-																} catch (e) {
-																	consola.error("Fix stuck interview failed", e)
-																}
-															}}
-															disabled={fetcher.state !== "idle"}
-															className="text-orange-600 focus:text-orange-600"
-														>
-															Fix Stuck Interview Status
-														</DropdownMenuItem>
-													)}
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.analysis-retry" }
-															)
-														} catch (e) {
-															consola.error("Retry analysis submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-												>
-													Rerun Transcription
+													Fix Stuck Interview Status
 												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.reprocess-evidence" }
-															)
-														} catch (e) {
-															consola.error("Reprocess evidence submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-												>
-													Rerun Evidence Collection
+											)}
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.analysis-retry" }
+														)
+													} catch (e) {
+														consola.error("Retry analysis submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Transcription
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{
+																method: "post",
+																action: "/api.reprocess-evidence",
+															}
+														)
+													} catch (e) {
+														consola.error("Reprocess evidence submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Evidence Collection
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{
+																method: "post",
+																action: "/api.reanalyze-themes",
+															}
+														)
+													} catch (e) {
+														consola.error("Re-analyze themes submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Re-analyze Themes
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{
+																method: "post",
+																action: "/api.generate-sales-lens",
+															}
+														)
+													} catch (e) {
+														consola.error("Generate sales lens submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="text-blue-600 focus:text-blue-600"
+											>
+												🔍 Apply Lenses
+											</DropdownMenuItem>
+											{linkedOpportunity ? (
+												<DropdownMenuItem asChild>
+													<Link
+														to={routes.opportunities.detail(linkedOpportunity.id)}
+														className="flex items-center gap-2 text-emerald-700"
+													>
+														<Briefcase className="h-4 w-4" />
+														View Opportunity: {linkedOpportunity.title}
+													</Link>
 												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.reanalyze-themes" }
-															)
-														} catch (e) {
-															consola.error("Re-analyze themes submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-												>
-													Re-analyze Themes
+											) : (
+												<DropdownMenuItem asChild>
+													<Link
+														to={routes.opportunities.new()}
+														state={{
+															interviewId: interview.id,
+															interviewTitle: interview.title,
+														}}
+														className="flex items-center gap-2 text-blue-700"
+													>
+														<Briefcase className="h-4 w-4" />
+														Create Opportunity
+													</Link>
 												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={() => {
-														try {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{ method: "post", action: "/api.generate-sales-lens" }
-															)
-														} catch (e) {
-															consola.error("Generate sales lens submit failed", e)
-														}
-													}}
-													disabled={fetcher.state !== "idle" || isProcessing}
-													className="text-blue-600 focus:text-blue-600"
-												>
-													🔍 Apply Lenses
-												</DropdownMenuItem>
-												{linkedOpportunity ? (
-													<DropdownMenuItem asChild>
-														<Link
-															to={routes.opportunities.detail(linkedOpportunity.id)}
-															className="flex items-center gap-2 text-emerald-700"
-														>
-															<Briefcase className="h-4 w-4" />
-															View Opportunity: {linkedOpportunity.title}
-														</Link>
-													</DropdownMenuItem>
-												) : (
-													<DropdownMenuItem asChild>
-														<Link
-															to={routes.opportunities.new()}
-															state={{ interviewId: interview.id, interviewTitle: interview.title }}
-															className="flex items-center gap-2 text-blue-700"
-														>
-															<Briefcase className="h-4 w-4" />
-															Create Opportunity
-														</Link>
-													</DropdownMenuItem>
-												)}
-											</DropdownMenuContent>
-										</DropdownMenu>
-									)}
+											)}
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
 								{/* Edit Button */}
 								<Link
 									to={routes.interviews.edit(interview.id)}
@@ -1740,7 +1886,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 							// Get linked participants with real names for display
 							const linkedParticipants = participants.filter((p) => {
-								const person = p.people as { id?: string; name?: string | null } | null
+								const person = p.people as {
+									id?: string
+									name?: string | null
+								} | null
 								return person?.id && person?.name && !/^(Participant|Interviewer)\s*\d*$/i.test(person.name)
 							})
 
@@ -1938,7 +2087,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 														onClick={() => {
 															fetcher.submit(
 																{ interview_id: interview.id },
-																{ method: "post", action: "/api/regenerate-ai-summary" }
+																{
+																	method: "post",
+																	action: "/api/regenerate-ai-summary",
+																}
 															)
 															setRegeneratePopoverOpen(false)
 														}}
@@ -1955,7 +2107,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 																	interview_id: interview.id,
 																	custom_instructions: instructions,
 																},
-																{ method: "post", action: "/api/regenerate-ai-summary" }
+																{
+																	method: "post",
+																	action: "/api/regenerate-ai-summary",
+																}
 															)
 															setRegeneratePopoverOpen(false)
 														}}

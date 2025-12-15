@@ -140,7 +140,8 @@ BEGIN
                                    'account_role', i.account_role,
                                    'created_at', i.created_at,
                                    'invitation_type', i.invitation_type,
-                                   'invitation_id', i.id
+                                   'invitation_id', i.id,
+                                   'email', i.invitee_email
                                )
                        )
             from accounts.invitations i

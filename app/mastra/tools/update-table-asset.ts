@@ -66,13 +66,20 @@ OPERATIONS:
 
 IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes automatically.`,
 	inputSchema: z.object({
-		assetId: z.string().uuid().describe("ID of the table asset to update - from prior saveTableToAssets or conversation context"),
-		operation: z.enum(["addRows", "updateRows", "removeRows", "addColumn", "replaceAll"]).describe("Type of update operation"),
+		assetId: z
+			.string()
+			.uuid()
+			.describe("ID of the table asset to update - from prior saveTableToAssets or conversation context"),
+		operation: z
+			.enum(["addRows", "updateRows", "removeRows", "addColumn", "replaceAll"])
+			.describe("Type of update operation"),
 		// For addRows
 		newRows: z
 			.array(z.record(z.string(), z.string()))
 			.optional()
-			.describe("For addRows: Array of row objects. MUST include ALL existing column headers as keys. Example: [{\"Feature\": \"X\", \"Us\": \"Y\", \"Competitor\": \"Z\"}]"),
+			.describe(
+				'For addRows: Array of row objects. MUST include ALL existing column headers as keys. Example: [{"Feature": "X", "Us": "Y", "Competitor": "Z"}]'
+			),
 		// For updateRows
 		updates: z
 			.array(
@@ -158,7 +165,11 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 
 				case "updateRows": {
 					if (!updates || updates.length === 0) {
-						return { success: false, message: "No updates provided for updateRows operation", error: "updates required" }
+						return {
+							success: false,
+							message: "No updates provided for updateRows operation",
+							error: "updates required",
+						}
 					}
 					for (const update of updates) {
 						if (update.rowIndex >= 0 && update.rowIndex < updatedRows.length) {
@@ -174,7 +185,11 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 
 				case "removeRows": {
 					if (!rowIndices || rowIndices.length === 0) {
-						return { success: false, message: "No row indices provided for removeRows operation", error: "rowIndices required" }
+						return {
+							success: false,
+							message: "No row indices provided for removeRows operation",
+							error: "rowIndices required",
+						}
 					}
 					// Remove in reverse order to preserve indices
 					const sortedIndices = [...rowIndices].sort((a, b) => b - a)
@@ -189,7 +204,11 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 
 				case "addColumn": {
 					if (!columnName) {
-						return { success: false, message: "No column name provided for addColumn operation", error: "columnName required" }
+						return {
+							success: false,
+							message: "No column name provided for addColumn operation",
+							error: "columnName required",
+						}
 					}
 					updatedHeaders = [...updatedHeaders, columnName]
 					updatedRows = updatedRows.map((row) => ({
@@ -202,7 +221,11 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 
 				case "replaceAll": {
 					if (!headers || !rows) {
-						return { success: false, message: "Headers and rows required for replaceAll operation", error: "headers and rows required" }
+						return {
+							success: false,
+							message: "Headers and rows required for replaceAll operation",
+							error: "headers and rows required",
+						}
 					}
 					updatedHeaders = headers
 					updatedRows = rows

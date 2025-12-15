@@ -5,9 +5,11 @@ import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
-	const token = url.searchParams.get("token") || null
+	const token = url.searchParams.get("invite_token") || url.searchParams.get("token") || null
+	// Optional redirect after accepting (e.g., to a shared resource)
+	const redirectTo = url.searchParams.get("redirect") || null
 
-	consola.log("[ACCEPT INVITE] Received request with token:", token ? "present" : "missing")
+	consola.log("[ACCEPT INVITE] Received request with token:", token ? "present" : "missing", "redirect:", redirectTo)
 
 	const { client: supabase, headers: supabaseHeaders } = getServerClient(request)
 
@@ -18,9 +20,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	// If no user, set a short-lived cookie with the token (if present) and redirect to login with next
 	if (!user) {
-		const next = token ? `/accept-invite?token=${encodeURIComponent(token)}` : "/accept-invite"
+		let next = "/accept-invite"
+		if (token) {
+			next = `/accept-invite?invite_token=${encodeURIComponent(token)}`
+			if (redirectTo) {
+				next += `&redirect=${encodeURIComponent(redirectTo)}`
+			}
+		}
 		consola.log("[ACCEPT INVITE] User not authenticated, redirecting to login with next:", next)
-		return redirect(`/login?next=${encodeURIComponent(next)}`, { headers: supabaseHeaders })
+		return redirect(`/login?next=${encodeURIComponent(next)}`, {
+			headers: supabaseHeaders,
+		})
 	}
 
 	consola.log("[ACCEPT INVITE] User authenticated:", user.email, "proceeding with token:", token)
@@ -54,6 +64,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		lookup_invitation_token: token,
 	})
 
+	// If a redirect was specified (e.g., shared resource), use that as destination
+	// Otherwise fall back to account home or /home
 	let destination = "/home"
 
 	if (acceptError) {
@@ -66,6 +78,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const account_id = accepted?.account_id
 		if (slug) destination = `/a/${slug}`
 		else if (account_id) destination = `/a/${account_id}`
+	}
+
+	// Override with explicit redirect if provided (e.g., to view a shared resource)
+	if (redirectTo && redirectTo.startsWith("/")) {
+		destination = redirectTo
+		consola.log("[ACCEPT INVITE] Using redirect destination:", destination)
 	}
 
 	return redirect(destination, { headers: supabaseHeaders })

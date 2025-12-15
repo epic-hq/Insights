@@ -29,4 +29,4 @@ export const weatherAgent = new Agent({
 			url: ":memory:", // using in-memory storage to avoid file connection issues
 		}),
 	}),
-});
+})

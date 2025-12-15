@@ -1,9 +1,9 @@
 import { createTool } from "@mastra/core/tools"
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
+import type { indexAssetTask } from "src/trigger/asset/indexAsset"
 import { z } from "zod"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import type { indexAssetTask } from "src/trigger/asset/indexAsset"
 
 /**
  * Save agent-generated tabular data to project_assets.
@@ -79,7 +79,9 @@ WRONG (missing rows - WILL FAIL):
 		rows: z
 			.array(z.record(z.string(), z.string()))
 			.min(1)
-			.describe("THE DATA ROWS (REQUIRED!) - Array of objects where each object has keys matching headers. Example: [{'Tool': 'Notion', 'Use Case': 'Notes', 'Price': '$10'}]"),
+			.describe(
+				"THE DATA ROWS (REQUIRED!) - Array of objects where each object has keys matching headers. Example: [{'Tool': 'Notion', 'Use Case': 'Notes', 'Price': '$10'}]"
+			),
 		description: z.string().optional().describe("Optional description of the table contents"),
 		kind: z.string().optional().describe("Optional category (e.g., 'competitive_matrix')"),
 	}),
@@ -121,7 +123,8 @@ WRONG (missing rows - WILL FAIL):
 			const markdownTable = generateMarkdownTable(headers, rows, 20)
 
 			// Generate description if not provided
-			const assetDescription = description ||
+			const assetDescription =
+				description ||
 				`${kind ? `${kind}: ` : ""}Table with ${rows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 5).join(", ")}${headers.length > 5 ? "..." : ""}`
 
 			const supabaseAdmin = createSupabaseAdminClient()
@@ -166,7 +169,7 @@ WRONG (missing rows - WILL FAIL):
 				consola.info(`[save-table-to-assets] Triggered embedding generation for ${asset.id}`)
 			} catch (triggerError) {
 				// Don't fail the save if trigger fails
-				consola.warn(`[save-table-to-assets] Failed to trigger indexing:`, triggerError)
+				consola.warn("[save-table-to-assets] Failed to trigger indexing:", triggerError)
 			}
 
 			return {

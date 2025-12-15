@@ -75,9 +75,6 @@ export async function action({ request }: ActionFunctionArgs) {
 		)
 	} catch (triggerError) {
 		console.error("[api.index-note] Failed to trigger task:", triggerError)
-		return Response.json(
-			{ error: "Failed to start indexing" },
-			{ status: 500, headers }
-		)
+		return Response.json({ error: "Failed to start indexing" }, { status: 500, headers })
 	}
 }

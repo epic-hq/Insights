@@ -37,12 +37,13 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 
 		const userIds = accountUsers?.map((u) => u.user_id) || []
 
-		const { data: userProfiles } = userIds.length > 0
-			? await supabase
-					.from("user_settings")
-					.select("user_id, first_name, last_name, email, image_url")
-					.in("user_id", userIds)
-			: { data: [] }
+		const { data: userProfiles } =
+			userIds.length > 0
+				? await supabase
+						.from("user_settings")
+						.select("user_id, first_name, last_name, email, image_url")
+						.in("user_id", userIds)
+				: { data: [] }
 
 		// Fetch project people
 		const { data: projectPeople } = await supabase

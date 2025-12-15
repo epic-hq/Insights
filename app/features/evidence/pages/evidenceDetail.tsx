@@ -1,8 +1,10 @@
+import consola from "consola"
 import { useEffect } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { BackButton } from "~/components/ui/back-button"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
 
@@ -22,7 +24,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const { evidenceId, accountId, projectId } = params
 
-	console.log("Evidence loader params:", { evidenceId, accountId, projectId })
+	consola.log("Evidence loader params:", { evidenceId, accountId, projectId })
 
 	if (!evidenceId) throw new Response("Missing evidenceId", { status: 400 })
 	if (!isValidUuid(evidenceId)) {
@@ -73,7 +75,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const { data: evidenceData, error: evidenceError, count } = await query
 
-	console.log("Evidence query result:", {
+	consola.log("Evidence query result:", {
 		evidenceId,
 		accountId,
 		projectId,
@@ -86,13 +88,13 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	})
 
 	if (evidenceError) {
-		console.error("Evidence query error:", evidenceError)
+		consola.error("Evidence query error:", evidenceError)
 		throw new Error(`Failed to load evidence: ${evidenceError.message}`)
 	}
 
 	// Supabase .select() without .single() returns an array
 	if (!evidenceData || !Array.isArray(evidenceData) || evidenceData.length === 0) {
-		console.error("Evidence not found - filters may be too restrictive", {
+		consola.error("Evidence not found - filters may be too restrictive", {
 			evidenceId,
 			accountId,
 			projectId,
@@ -107,13 +109,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// Fetch people separately to avoid duplicate rows
 	const { data: peopleData } = await supabase
 		.from("evidence_people")
-		.select(`
+		.select(
+			`
 			role,
 			people:person_id!inner(
 				id,
 				name
 			)
-		`)
+		`
+		)
 		.eq("evidence_id", evidenceId)
 
 	const { data: facetData, error: facetError } = await supabase
@@ -194,20 +198,27 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				// Load people for related evidence
 				const { data: relatedPeople, error: relatedPeopleError } = await supabase
 					.from("evidence_people")
-					.select(`
+					.select(
+						`
 						evidence_id,
 						role,
 						people:person_id!inner(
 							id,
 							name
 						)
-					`)
+					`
+					)
 					.in("evidence_id", relatedIds)
 				if (relatedPeopleError) throw new Error(`Failed to load related evidence people: ${relatedPeopleError.message}`)
 
 				const peopleMap = new Map<
 					string,
-					Array<{ id: string; name: string | null; role: string | null; personas: any[] }>
+					Array<{
+						id: string
+						name: string | null
+						role: string | null
+						personas: any[]
+					}>
 				>()
 				for (const row of relatedPeople ?? []) {
 					if (!row || typeof row !== "object") continue
@@ -234,12 +245,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		relatedEvidence,
 		anchorFromUrl: anchorOverride,
 		projectPath,
+		accountId: accountId || null,
 	}
 }
 
 export default function EvidenceDetail() {
-	const { evidence, relatedEvidence, projectPath, anchorFromUrl } = useLoaderData<typeof loader>()
+	const { evidence, relatedEvidence, projectPath, anchorFromUrl, accountId } = useLoaderData<typeof loader>()
 	const interview = evidence.interview
+	const evidenceName = (evidence as any)?.title || evidence.gist || evidence.chunk || evidence.verbatim || "Evidence"
 
 	// If there's a timestamp anchor from URL, inject it into evidence.anchors
 	const evidenceWithAnchor = anchorFromUrl
@@ -264,8 +277,17 @@ export default function EvidenceDetail() {
 
 			{/* Full Evidence Card - Centered with max width */}
 			<PageContainer size="sm" padded={false} className="max-w-2xl">
-				<div className="mt-4 mb-4">
+				<div className="mt-4 mb-4 flex items-center justify-between gap-3">
 					<BackButton />
+					{projectPath && accountId ? (
+						<ResourceShareMenu
+							projectPath={projectPath}
+							accountId={accountId}
+							resourceId={evidence.id}
+							resourceName={evidenceName}
+							resourceType="evidence"
+						/>
+					) : null}
 				</div>
 				<div className="flex-1">
 					{interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}

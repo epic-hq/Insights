@@ -10,12 +10,7 @@ export const switchAgentTool = createTool({
 	description:
 		"Switch to a different agent for specialized tasks. Use 'project-setup' for onboarding/goal setting, 'project-status' for general queries.",
 	inputSchema: z.object({
-		targetAgent: z
-			.enum(["project-setup", "project-status"])
-			.describe("The agent to switch to"),
-		reason: z
-			.string()
-			.optional()
-			.describe("Brief explanation for why switching agents (shown to user)"),
+		targetAgent: z.enum(["project-setup", "project-status"]).describe("The agent to switch to"),
+		reason: z.string().optional().describe("Brief explanation for why switching agents (shown to user)"),
 	}),
 })

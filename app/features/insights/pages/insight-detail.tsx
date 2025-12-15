@@ -68,7 +68,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	const { insightId } = params
 
 	if (!accountId || !projectId || !insightId) {
-		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Insight ID are required", {
+			status: 400,
+		})
 	}
 
 	try {
@@ -261,6 +263,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			insight,
 			evidence,
 			projectPath,
+			accountId,
 		}
 	} catch (error) {
 		consola.error("Error loading insight:", error)
@@ -299,7 +302,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export default function InsightDetail() {
-	const { insight, evidence, projectPath } = useLoaderData<typeof loader>()
+	const { insight, evidence, projectPath, accountId } = useLoaderData<typeof loader>()
 	if (!insight) {
 		return <div>Insight not found</div>
 	}
@@ -307,7 +310,13 @@ export default function InsightDetail() {
 		<PageContainer size="lg" padded={false} className="max-w-4xl space-y-6">
 			<BackButton />
 			<InsightContentBoundary>
-				<InsightCardV3Page insight={insight} evidence={evidence} projectPath={projectPath} extended={true} />
+				<InsightCardV3Page
+					insight={insight}
+					evidence={evidence}
+					projectPath={projectPath}
+					accountId={accountId}
+					extended={true}
+				/>
 			</InsightContentBoundary>
 		</PageContainer>
 	)

@@ -770,9 +770,9 @@ as
 $$
 BEGIN
 
-    -- only account owners can access this function
-    if (select public.current_user_account_role(get_account_members.account_id) ->> 'account_role' <> 'owner') then
-        raise exception 'Only account owners can access this function';
+    -- any team member can view the member list
+    if (select public.current_user_account_role(get_account_members.account_id) ->> 'account_role' IS NULL) then
+        raise exception 'You must be a member of this account to view members';
     end if;
 
     return (select json_agg(

@@ -1,4 +1,4 @@
-import { parseWithZod } from "@conform-to/zod/v4"
+import { parseWithZod } from "@conform-to/zod"
 import type { ActionFunctionArgs } from "react-router"
 import { data } from "react-router"
 import { z } from "zod"

@@ -281,7 +281,10 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	try {
 		const evidence_json = JSON.stringify(evidence)
 		consola.log("[autoGroupThemesAndApply] Calling BAML with evidence length:", evidence_json.length)
-		consola.log("[autoGroupThemesAndApply] Sample evidence (first 2):", evidence.slice(0, 2).map(e => ({ id: e.id, verbatim: e.verbatim?.slice(0, 50) })))
+		consola.log(
+			"[autoGroupThemesAndApply] Sample evidence (first 2):",
+			evidence.slice(0, 2).map((e) => ({ id: e.id, verbatim: e.verbatim?.slice(0, 50) }))
+		)
 		const { result } = await runBamlWithTracing({
 			functionName: "AutoGroupThemes",
 			traceName: "baml.auto-group-themes",
@@ -355,7 +358,7 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					supabase,
 					project_id,
 					searchQuery,
-					0.40, // threshold - balance between coverage and relevance
+					0.4, // threshold - balance between coverage and relevance
 					50 // max matches per theme
 				)
 

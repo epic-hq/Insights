@@ -332,9 +332,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					// Prefer display_name, then linked person's name
 					const participant = interviewPeople.find((p) => p.role !== "interviewer") || interviewPeople[0]
 					participantName =
-						participant?.display_name ||
-						(participant?.people as { name: string | null } | null)?.name ||
-						undefined
+						participant?.display_name || (participant?.people as { name: string | null } | null)?.name || undefined
 				}
 				// Fallback to participant_pseudonym from interview record
 				if (!participantName && fetchedInterview.data?.participant_pseudonym) {

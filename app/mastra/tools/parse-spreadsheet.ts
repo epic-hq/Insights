@@ -1,11 +1,10 @@
 import { createTool } from "@mastra/core/tools"
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
+import type { indexAssetTask } from "src/trigger/asset/indexAsset"
 import { z } from "zod"
-
 import { b } from "~/../baml_client"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import type { indexAssetTask } from "src/trigger/asset/indexAsset"
 
 /**
  * Parse CSV/TSV content into structured data and markdown table format.
@@ -191,7 +190,11 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			.default(20)
 			.describe("Maximum rows to show in the markdown table (default: 20)"),
 		includeStats: z.boolean().optional().default(true).describe("Include summary statistics for numeric columns"),
-		saveToAssets: z.boolean().optional().default(true).describe("Save the parsed table to project_assets for future reference"),
+		saveToAssets: z
+			.boolean()
+			.optional()
+			.default(true)
+			.describe("Save the parsed table to project_assets for future reference"),
 		title: z.string().optional().describe("Optional title for the saved asset. Auto-generated if not provided."),
 		description: z.string().optional().describe("Description of the table contents. Auto-generated if not provided."),
 	}),
@@ -212,26 +215,34 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		looksLikeOpportunities: z.boolean().optional().describe("Whether the data appears to be opportunity/deal data"),
 		opportunityColumns: z.array(z.string()).optional().describe("Detected opportunity-related column names"),
 		// LLM-analyzed column mapping for accurate imports
-		columnMapping: z.object({
-			name: z.string().nullable().optional().describe("Column with full name"),
-			firstname: z.string().nullable().optional().describe("Column with first name only"),
-			lastname: z.string().nullable().optional().describe("Column with last name only"),
-			email: z.string().nullable().optional().describe("Column with email"),
-			phone: z.string().nullable().optional().describe("Column with phone"),
-			linkedin: z.string().nullable().optional().describe("Column with LinkedIn"),
-			title: z.string().nullable().optional().describe("Column with job title"),
-			company: z.string().nullable().optional().describe("Column with company name"),
-			role: z.string().nullable().optional().describe("Column with role/function"),
-			industry: z.string().nullable().optional().describe("Column with industry"),
-			location: z.string().nullable().optional().describe("Column with location"),
-			segment: z.string().nullable().optional().describe("Column with segment"),
-			lifecycle_stage: z.string().nullable().optional().describe("Column with lifecycle stage"),
-		}).optional().describe("LLM-analyzed column mapping for CRM import - USE THIS for importPeopleFromTable"),
-		suggestedFacets: z.array(z.object({
-			column: z.string(),
-			facetKind: z.string(),
-			reason: z.string(),
-		})).optional().describe("Suggested facet mappings for unmapped columns"),
+		columnMapping: z
+			.object({
+				name: z.string().nullable().optional().describe("Column with full name"),
+				firstname: z.string().nullable().optional().describe("Column with first name only"),
+				lastname: z.string().nullable().optional().describe("Column with last name only"),
+				email: z.string().nullable().optional().describe("Column with email"),
+				phone: z.string().nullable().optional().describe("Column with phone"),
+				linkedin: z.string().nullable().optional().describe("Column with LinkedIn"),
+				title: z.string().nullable().optional().describe("Column with job title"),
+				company: z.string().nullable().optional().describe("Column with company name"),
+				role: z.string().nullable().optional().describe("Column with role/function"),
+				industry: z.string().nullable().optional().describe("Column with industry"),
+				location: z.string().nullable().optional().describe("Column with location"),
+				segment: z.string().nullable().optional().describe("Column with segment"),
+				lifecycle_stage: z.string().nullable().optional().describe("Column with lifecycle stage"),
+			})
+			.optional()
+			.describe("LLM-analyzed column mapping for CRM import - USE THIS for importPeopleFromTable"),
+		suggestedFacets: z
+			.array(
+				z.object({
+					column: z.string(),
+					facetKind: z.string(),
+					reason: z.string(),
+				})
+			)
+			.optional()
+			.describe("Suggested facet mappings for unmapped columns"),
 		mappingConfidence: z.number().optional().describe("Confidence score 0-1 for the column mapping"),
 		mappingWarnings: z.array(z.string()).optional().describe("Warnings about the data or mapping"),
 		error: z.string().optional(),
@@ -293,14 +304,27 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			// Stream progress update - parsed
 			await writer?.custom?.({
 				type: "data-tool-progress",
-				data: { tool: "parseSpreadsheet", status: "analyzing", message: `Parsed ${rows.length} rows, analyzing data...`, progress: 50 },
+				data: {
+					tool: "parseSpreadsheet",
+					status: "analyzing",
+					message: `Parsed ${rows.length} rows, analyzing data...`,
+					progress: 50,
+				},
 			})
 
 			// Detect if this looks like contact data
-			const contactKeywords = ["name", "email", "phone", "company", "organization", "title", "role", "linkedin", "contact"]
-			const contactColumns = headers.filter((h) =>
-				contactKeywords.some((kw) => h.toLowerCase().includes(kw))
-			)
+			const contactKeywords = [
+				"name",
+				"email",
+				"phone",
+				"company",
+				"organization",
+				"title",
+				"role",
+				"linkedin",
+				"contact",
+			]
+			const contactColumns = headers.filter((h) => contactKeywords.some((kw) => h.toLowerCase().includes(kw)))
 			const looksLikeContacts = contactColumns.length >= 2
 
 			// Use LLM to analyze column mapping for contact data
@@ -313,13 +337,16 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				try {
 					await writer?.custom?.({
 						type: "data-tool-progress",
-						data: { tool: "parseSpreadsheet", status: "analyzing", message: "Analyzing columns with AI for accurate mapping...", progress: 55 },
+						data: {
+							tool: "parseSpreadsheet",
+							status: "analyzing",
+							message: "Analyzing columns with AI for accurate mapping...",
+							progress: 55,
+						},
 					})
 
 					// Prepare sample rows as string arrays for the LLM
-					const sampleRowsForLLM = rows.slice(0, 5).map((row) =>
-						headers.map((h) => row[h] || "")
-					)
+					const sampleRowsForLLM = rows.slice(0, 5).map((row) => headers.map((h) => row[h] || ""))
 
 					const analysis = await b.MapSpreadsheetColumns(
 						headers,
@@ -360,16 +387,30 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			}
 
 			// Detect if this looks like opportunity/deal data
-			const opportunityKeywords = ["deal", "opportunity", "amount", "value", "revenue", "stage", "pipeline", "close", "forecast", "probability", "confidence", "account", "prospect"]
-			const opportunityColumns = headers.filter((h) =>
-				opportunityKeywords.some((kw) => h.toLowerCase().includes(kw))
-			)
+			const opportunityKeywords = [
+				"deal",
+				"opportunity",
+				"amount",
+				"value",
+				"revenue",
+				"stage",
+				"pipeline",
+				"close",
+				"forecast",
+				"probability",
+				"confidence",
+				"account",
+				"prospect",
+			]
+			const opportunityColumns = headers.filter((h) => opportunityKeywords.some((kw) => h.toLowerCase().includes(kw)))
 			// Needs at least a deal/opportunity name indicator AND a value/stage indicator
 			const hasOpportunityName = headers.some((h) =>
 				["deal", "opportunity", "account", "prospect", "name", "title"].some((kw) => h.toLowerCase().includes(kw))
 			)
 			const hasOpportunityValue = headers.some((h) =>
-				["amount", "value", "revenue", "stage", "pipeline", "close", "forecast"].some((kw) => h.toLowerCase().includes(kw))
+				["amount", "value", "revenue", "stage", "pipeline", "close", "forecast"].some((kw) =>
+					h.toLowerCase().includes(kw)
+				)
 			)
 			const looksLikeOpportunities = hasOpportunityName && hasOpportunityValue && opportunityColumns.length >= 2
 
@@ -388,14 +429,21 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 					// Stream progress update - saving
 					await writer?.custom?.({
 						type: "data-tool-progress",
-						data: { tool: "parseSpreadsheet", status: "saving", message: `Saving ${rows.length} rows to project assets...`, progress: 70 },
+						data: {
+							tool: "parseSpreadsheet",
+							status: "saving",
+							message: `Saving ${rows.length} rows to project assets...`,
+							progress: 70,
+						},
 					})
 
 					// Store up to 1000 rows in table_data (display limit is separate)
 					const storageRows = rows.slice(0, 1000)
 
 					// Generate a description if not provided
-					const assetDescription = description || `Imported table with ${rows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 5).join(", ")}${headers.length > 5 ? "..." : ""}`
+					const assetDescription =
+						description ||
+						`Imported table with ${rows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 5).join(", ")}${headers.length > 5 ? "..." : ""}`
 
 					const { data: asset, error: insertError } = await supabaseAdmin
 						.from("project_assets")
@@ -443,14 +491,16 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 			const contactMessage = looksLikeContacts
 				? ` This looks like contact data (detected: ${contactColumns.join(", ")}). Would you like me to import these as People?`
 				: ""
-			const opportunityMessage = looksLikeOpportunities && !looksLikeContacts
-				? ` This looks like opportunity/deal data (detected: ${opportunityColumns.join(", ")}). Would you like me to import these as Opportunities?`
-				: ""
+			const opportunityMessage =
+				looksLikeOpportunities && !looksLikeContacts
+					? ` This looks like opportunity/deal data (detected: ${opportunityColumns.join(", ")}). Would you like me to import these as Opportunities?`
+					: ""
 
 			// Add mapping info to message if available
-			const mappingMessage = columnMapping && mappingConfidence
-				? ` AI analyzed columns with ${Math.round(mappingConfidence * 100)}% confidence.`
-				: ""
+			const mappingMessage =
+				columnMapping && mappingConfidence
+					? ` AI analyzed columns with ${Math.round(mappingConfidence * 100)}% confidence.`
+					: ""
 
 			return {
 				success: true,

@@ -38,12 +38,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	// Only pass NEW messages to the agent - Mastra's memory handles historical context.
 	// This prevents duplicate messages when both client history and memory are present.
-	const lastAssistantIndex = sanitizedMessages.findLastIndex(
-		(m: { role?: string }) => m?.role === "assistant"
-	)
-	const runtimeMessages = lastAssistantIndex >= 0
-		? sanitizedMessages.slice(lastAssistantIndex + 1)
-		: sanitizedMessages
+	const lastAssistantIndex = sanitizedMessages.findLastIndex((m: { role?: string }) => m?.role === "assistant")
+	const runtimeMessages = lastAssistantIndex >= 0 ? sanitizedMessages.slice(lastAssistantIndex + 1) : sanitizedMessages
 
 	consola.info("project-setup action: sending messages to agent", {
 		totalReceived: sanitizedMessages.length,

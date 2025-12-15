@@ -34,11 +34,11 @@ export const getProjects = async ({
 		.order("created_at", { ascending: false })
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export const getProjectById = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
-	// consola.log("getProjectById accountId: ", accountId)
-	return await supabase
-		.from("projects")
-		.select(`
+	const isUUID = UUID_REGEX.test(id)
+	const query = supabase.from("projects").select(`
 			*,
 			project_people (
 				people (
@@ -51,8 +51,12 @@ export const getProjectById = async ({ supabase, id }: { supabase: SupabaseClien
 				last_seen_at
 			)
 		`)
-		.eq("id", id)
-		.single()
+
+	// Support both UUID and slug lookup
+	if (isUUID) {
+		return await query.eq("id", id).single()
+	}
+	return await query.eq("slug", id).single()
 }
 
 export const createProject = async ({

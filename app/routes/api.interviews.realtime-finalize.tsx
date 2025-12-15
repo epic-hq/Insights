@@ -78,7 +78,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		// Link people via interview_people junction table (supports multiple people)
 		const personIdsArray = Array.isArray(personIds) ? personIds : []
 		if ((attachType === "existing" || attachType === "new") && personIdsArray.length > 0) {
-			consola.info("Linking people to interview via interview_people", { interviewId, personIds: personIdsArray, attachType })
+			consola.info("Linking people to interview via interview_people", {
+				interviewId,
+				personIds: personIdsArray,
+				attachType,
+			})
 			for (const personId of personIdsArray) {
 				if (typeof personId === "string" && personId) {
 					const { error: linkError } = await supabase.from("interview_people").insert({

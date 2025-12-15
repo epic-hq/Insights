@@ -101,8 +101,10 @@ export const upsightTool = createTool({
 			consola.debug("Context:", context)
 
 			// Get accountId and projectId from runtime context or input
-			const runtimeAccountId = context?.requestContext?.get?.("account_id") || context?.requestContext?.get?.("accountId")
-			const runtimeProjectId = context?.requestContext?.get?.("project_id") || context?.requestContext?.get?.("projectId")
+			const runtimeAccountId =
+				context?.requestContext?.get?.("account_id") || context?.requestContext?.get?.("accountId")
+			const runtimeProjectId =
+				context?.requestContext?.get?.("project_id") || context?.requestContext?.get?.("projectId")
 			const runtimeUserId = context?.requestContext?.get?.("user_id") || context?.requestContext?.get?.("userId")
 
 			// Use runtime context values if available, otherwise fall back to input parameters

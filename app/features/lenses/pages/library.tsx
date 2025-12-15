@@ -111,7 +111,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		interviewCount = count || 0
 	}
 
-	return { templates, enabledLenses, interviewCount, projectId, accountId, userId: ctx.claims?.sub }
+	return {
+		templates,
+		enabledLenses,
+		interviewCount,
+		projectId,
+		accountId,
+		userId: ctx.claims?.sub,
+	}
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -179,7 +186,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const { error } = await supabase
 		.from("projects")
-		.update({ project_settings: newSettings, updated_at: new Date().toISOString() })
+		.update({
+			project_settings: newSettings,
+			updated_at: new Date().toISOString(),
+		})
 		.eq("id", projectId)
 
 	if (error) {

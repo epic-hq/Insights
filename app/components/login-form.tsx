@@ -17,7 +17,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 
 		try {
 			// Get the redirect URL from query params, fallback to /home
-			const redirectUrl = searchParams.get("redirect") || "/home"
+			const redirectUrl = searchParams.get("next") || searchParams.get("redirect") || "/home"
 
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: "google",
