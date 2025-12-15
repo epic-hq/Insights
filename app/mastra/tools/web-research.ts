@@ -61,6 +61,13 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
 }
 
 /**
+ * Simple delay helper for rate limiting
+ */
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
  * Web research tool using Exa.ai semantic search API.
  * Use this when users ask for web research, market research, competitor analysis,
  * or any external information gathering.
@@ -68,10 +75,10 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
 export const webResearchTool = createTool({
 	id: "web-research",
 	description:
-		"Search the web using Exa.ai semantic search. Use for market research, competitor analysis, industry trends, company information, or any external research needs. Returns relevant web pages with summaries.",
+		"Search the web using Exa.ai semantic search. Use for market research, competitor analysis, industry trends, company information, or any external research needs. IMPORTANT: Use ONE query with multiple results (numResults=10) instead of multiple separate queries to avoid rate limits. Returns relevant web pages with summaries.",
 	inputSchema: z.object({
-		query: z.string().describe("Natural language search query - be specific and descriptive"),
-		numResults: z.number().min(1).max(10).default(5).describe("Number of results to return (1-10)"),
+		query: z.string().describe("Natural language search query - be specific and descriptive. Combine multiple topics into ONE query when possible."),
+		numResults: z.number().min(1).max(10).default(5).describe("Number of results to return (1-10). Use higher values instead of multiple separate searches."),
 		type: z
 			.enum(["neural", "keyword", "auto"])
 			.default("auto")
@@ -133,22 +140,48 @@ export const webResearchTool = createTool({
 
 			consola.info("[web-research] Searching Exa:", { query, numResults, type })
 
-			const response = await fetch(`${EXA_API_URL}/search`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"x-api-key": apiKey,
-				},
-				body: JSON.stringify(requestBody),
-			})
+			// Retry logic for rate limits
+			let response: Response | null = null
+			let lastError = ""
+			for (let attempt = 0; attempt < 3; attempt++) {
+				if (attempt > 0) {
+					const waitTime = 1000 * (attempt + 1) // 2s, 3s backoff
+					consola.info(`[web-research] Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}`)
+					await delay(waitTime)
+				}
 
-			if (!response.ok) {
+				response = await fetch(`${EXA_API_URL}/search`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"x-api-key": apiKey,
+					},
+					body: JSON.stringify(requestBody),
+				})
+
+				if (response.ok) break
+
+				if (response.status === 429) {
+					lastError = "Rate limit exceeded"
+					continue // Retry on rate limit
+				}
+
+				// Other errors - don't retry
 				const errorText = await response.text()
 				consola.error("[web-research] Exa API error:", response.status, errorText)
 				return {
 					tldr: "Search failed due to an API error.",
 					resultCount: 0,
 					error: `Exa API error: ${response.status} - ${errorText}`,
+				}
+			}
+
+			if (!response || !response.ok) {
+				consola.error("[web-research] Exa API error after retries:", lastError)
+				return {
+					tldr: "Search failed due to rate limiting. Try again in a few seconds or use fewer parallel searches.",
+					resultCount: 0,
+					error: `Exa API rate limit exceeded after retries`,
 				}
 			}
 
@@ -404,31 +437,56 @@ export const findSimilarPagesTool = createTool({
 
 			consola.info("[find-similar] Finding pages similar to:", url)
 
-			const response = await fetch(`${EXA_API_URL}/findSimilar`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"x-api-key": apiKey,
-				},
-				body: JSON.stringify({
-					url,
-					numResults,
-					contents: includeText
-						? {
-								text: { maxCharacters: 1000 },
-								highlights: { numSentences: 3 },
-							}
-						: undefined,
-				}),
-			})
+			// Retry logic for rate limits
+			let response: Response | null = null
+			let lastError = ""
+			for (let attempt = 0; attempt < 3; attempt++) {
+				if (attempt > 0) {
+					const waitTime = 1000 * (attempt + 1)
+					consola.info(`[find-similar] Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}`)
+					await delay(waitTime)
+				}
 
-			if (!response.ok) {
+				response = await fetch(`${EXA_API_URL}/findSimilar`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"x-api-key": apiKey,
+					},
+					body: JSON.stringify({
+						url,
+						numResults,
+						contents: includeText
+							? {
+									text: { maxCharacters: 1000 },
+									highlights: { numSentences: 3 },
+								}
+							: undefined,
+					}),
+				})
+
+				if (response.ok) break
+
+				if (response.status === 429) {
+					lastError = "Rate limit exceeded"
+					continue
+				}
+
 				const errorText = await response.text()
 				consola.error("[find-similar] Exa API error:", response.status, errorText)
 				return {
 					tldr: "Search failed due to an API error.",
 					resultCount: 0,
 					error: `Exa API error: ${response.status}`,
+				}
+			}
+
+			if (!response || !response.ok) {
+				consola.error("[find-similar] Exa API error after retries:", lastError)
+				return {
+					tldr: "Search failed due to rate limiting. Try again in a few seconds.",
+					resultCount: 0,
+					error: `Exa API rate limit exceeded after retries`,
 				}
 			}
 

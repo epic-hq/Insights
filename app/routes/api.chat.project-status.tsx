@@ -79,15 +79,21 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`
 
 	consola.info("project-status action: using resourceId", { resourceId })
+
+	const threadsStart = Date.now()
 	const threads = await memory.listThreadsByResourceId({
 		resourceId,
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
-		perPage: 100,
+		perPage: 1,
+	})
+	consola.info("project-status action: threads fetched", {
+		durationMs: Date.now() - threadsStart,
+		total: threads?.total,
 	})
 
 	let threadId = ""
-	if (!(threads?.total > 0)) {
+	if (!(threads?.total && threads.total > 0)) {
 		const newThread = await memory.createThread({
 			resourceId,
 			title: `Project Status ${projectId}`,
@@ -170,7 +176,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		return freshThread.id
 	}
 
-	let stream
+	let stream: Awaited<ReturnType<typeof runAgentStream>> | undefined
 	try {
 		stream = await runAgentStream(threadId)
 	} catch (error) {

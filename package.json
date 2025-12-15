@@ -1,45 +1,5 @@
 {
-	"name": "@forge42/base-stack",
-	"version": "0.0.1",
-	"author": "forge-42",
-	"private": true,
-	"sideEffects": false,
-	"license": "MIT",
-	"type": "module",
-	"scripts": {
-		"execute": "tsx",
-		"clean": "git clean -fdX --exclude=\"!.env\"",
-		"script": "tsx scripts/setup.ts",
-		"build": "export NODE_OPTIONS=--max-old-space-size=4096; pnpm run baml-generate && react-router build",
-		"dev:vite": "mkdir -p build/client && PORT=4280 dotenvx run -- react-router dev",
-		"dev": "concurrently -n \"Vite,Mastra\" --c green,cyan \"pnpm run dev:vite\" \"pnpm run dev:mastra\"",
-		"dev:with-agent": "concurrently -n \"Vite,Mastra,Agent\" --c green,cyan,magenta \"pnpm run dev:vite\" \"pnpm run dev:mastra\" \"pnpm run dev:agent\"",
-		"dev:mastra": "dotenvx run -- npx mastra dev --dir app/mastra",
-		"dev:agent": "dotenvx run -- tsx agents/livekit/agent.ts dev",
-		"email": "email dev",
-		"start": "dotenvx run -- node ./build/server/index.js",
-		"test": "vitest run --browser.headless",
-		"test:ui": "vitest",
-		"test:cov": "vitest run --coverage --browser.headless",
-		"test:integration": "dotenvx run -- vitest run --config vitest.integration.config.ts",
-		"test:integration:ui": "dotenvx run -- vitest --config vitest.integration.config.ts",
-		"test:all": "vitest run --browser.headless && vitest run --config vitest.integration.config.ts",
-		"typecheck": "react-router typegen && tsc -p tsconfig.typecheck.json",
-		"validate": "pnpm run check && pnpm run typecheck && pnpm run test && pnpm run check:unused",
-		"check": "biome check .",
-		"check:fix": "biome check --write --unsafe .",
-		"check:fix:chunks": "biome check app/components --write --unsafe && biome check app/features --write --unsafe && biome check app/routes --write --unsafe && biome check scripts --write --unsafe",
-		"check:unused": "knip --max-issues 100 --no-exit-code",
-		"check:unused:fix": "knip --fix",
-		"typegen": "react-router typegen",
-		"db:types": "supabase gen types typescript --linked > supabase/types.ts",
-		"migrate": "supabase migrations up",
-		"postmigrate": "pnpm run db:types",
-		"baml-generate": "baml-cli generate",
-		"prebuild": "pnpm run baml-generate",
-		"storybook": "storybook dev -p 6006",
-		"build-storybook": "storybook build"
-	},
+	"author": "DeepLight.digital",
 	"dependencies": {
 		"@ai-sdk/anthropic": "2.0.56",
 		"@ai-sdk/openai": "2.0.86",
@@ -98,9 +58,9 @@
 		"@supabase/ssr": "0.7.0",
 		"@supabase/supabase-js": "2.75.0",
 		"@tanstack/react-table": "8.21.3",
-		"@trigger.dev/build": "4.2.0",
-		"@trigger.dev/react-hooks": "4.2.0",
-		"@trigger.dev/sdk": "4.2.0",
+		"@trigger.dev/build": "4.3.0",
+		"@trigger.dev/react-hooks": "4.3.0",
+		"@trigger.dev/sdk": "4.3.0",
 		"@types/jsdom": "27.0.0",
 		"@types/three": "0.181.0",
 		"@uiw/react-md-editor": "4.0.8",
@@ -198,14 +158,16 @@
 		"vitest": "4.0.7",
 		"vitest-browser-react": "2.0.2"
 	},
-	"packageManager": "pnpm@10.18.2+sha512.9fb969fa749b3ade6035e0f109f0b8a60b5d08a1a87fdf72e337da90dcc93336e2280ca4e44f2358a649b83c17959e9993e777c2080879f3801e6f0d999ad3dd",
-	"optionalDependencies": {
-		"@rollup/rollup-linux-x64-gnu": "^4.50.1"
-	},
 	"engines": {
 		"node": ">=24.3.0",
 		"pnpm": ">=10.12.4"
 	},
+	"license": "MIT",
+	"name": "@forge42/base-stack",
+	"optionalDependencies": {
+		"@rollup/rollup-linux-x64-gnu": "^4.50.1"
+	},
+	"packageManager": "pnpm@10.18.2+sha512.9fb969fa749b3ade6035e0f109f0b8a60b5d08a1a87fdf72e337da90dcc93336e2280ca4e44f2358a649b83c17959e9993e777c2080879f3801e6f0d999ad3dd",
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
@@ -215,10 +177,47 @@
 			"supabase"
 		],
 		"overrides": {
-			"react": "19.2.0",
-			"react-dom": "19.2.0",
 			"@radix-ui/react-collapsible": "1.1.12",
-			"zod": "3.25.76"
+			"react": "19.2.3",
+			"react-dom": "19.2.3"
 		}
-	}
+	},
+	"private": true,
+	"scripts": {
+		"baml-generate": "baml-cli generate",
+		"build": "export NODE_OPTIONS=--max-old-space-size=4096; pnpm run baml-generate && react-router build",
+		"build-storybook": "storybook build",
+		"check": "biome check .",
+		"check:fix": "biome check --write --unsafe .",
+		"check:fix:chunks": "biome check app/components --write --unsafe && biome check app/features --write --unsafe && biome check app/routes --write --unsafe && biome check scripts --write --unsafe",
+		"check:unused": "knip --max-issues 100 --no-exit-code",
+		"check:unused:fix": "knip --fix",
+		"clean": "git clean -fdX --exclude=\"!.env\"",
+		"db:types": "supabase gen types typescript --linked > supabase/types.ts",
+		"dev": "concurrently -n \"Vite,Mastra\" --c green,cyan \"pnpm run dev:vite\" \"pnpm run dev:mastra\"",
+		"dev:agent": "dotenvx run -- tsx agents/livekit/agent.ts dev",
+		"dev:mastra": "dotenvx run -- npx mastra dev --dir app/mastra",
+		"dev:vite": "mkdir -p build/client && PORT=4280 dotenvx run -- react-router dev",
+		"dev:with-agent": "concurrently -n \"Vite,Mastra,Agent\" --c green,cyan,magenta \"pnpm run dev:vite\" \"pnpm run dev:mastra\" \"pnpm run dev:agent\"",
+		"email": "email dev",
+		"execute": "tsx",
+		"migrate": "supabase migrations up",
+		"postmigrate": "pnpm run db:types",
+		"prebuild": "pnpm run baml-generate",
+		"script": "tsx scripts/setup.ts",
+		"start": "dotenvx run -- node ./build/server/index.js",
+		"storybook": "storybook dev -p 6006",
+		"test": "vitest run --browser.headless",
+		"test:all": "vitest run --browser.headless && vitest run --config vitest.integration.config.ts",
+		"test:cov": "vitest run --coverage --browser.headless",
+		"test:integration": "dotenvx run -- vitest run --config vitest.integration.config.ts",
+		"test:integration:ui": "dotenvx run -- vitest --config vitest.integration.config.ts",
+		"test:ui": "vitest",
+		"typecheck": "react-router typegen && tsc -p tsconfig.typecheck.json",
+		"typegen": "react-router typegen",
+		"validate": "pnpm run check && pnpm run typecheck && pnpm run test && pnpm run check:unused"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"version": "0.0.1"
 }
