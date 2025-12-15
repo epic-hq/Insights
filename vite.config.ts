@@ -172,5 +172,12 @@ export default defineConfig({
 			"127.0.0.1",
 			"0.0.0.0",
 		],
+		// Increase header size limit to prevent 431 errors with large streaming responses
+		// Default is 8KB, increased to 256KB for agent chat with tool calls
+		hmr: {
+			server: {
+				maxHeaderSize: 262144, // 256KB
+			},
+		},
 	},
 })
