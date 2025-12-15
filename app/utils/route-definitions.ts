@@ -181,7 +181,7 @@ export interface RouteDefinitions {
 		annotations: () => string
 		votes: () => string
 		entityFlags: () => string
-		chat: () => {
+		chat: {
 			projectStatus: () => string
 			interview: (interviewId: string) => string
 		}
@@ -341,7 +341,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			// Deprecated old edit path; point to project-scoped settings
 			edit: (_id: string) => `${projectPath}/settings`,
-			dashboard: () => `${base}/dashboard`,
+			dashboard: () => base || "/",
 		},
 
 		// Sales

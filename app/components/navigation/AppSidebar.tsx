@@ -229,6 +229,7 @@ export function AppSidebar() {
 		| "personas"
 		| "themes"
 		| "insights"
+		| "content"
 		| "people"
 		| "organizations"
 		| "accounts"
@@ -239,6 +240,7 @@ export function AppSidebar() {
 		// Main navigation
 		conversations: "encounters", // Conversations = encounters/interviews count
 		insights: "themes", // Insights = themes count (renamed from Topics)
+		content: "content", // Content = conversations + notes + files
 
 		// Directory
 		people: "people",

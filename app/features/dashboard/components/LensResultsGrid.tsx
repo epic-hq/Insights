@@ -67,7 +67,7 @@ export function LensResultsGrid({ lenses, lensLibraryHref, maxVisible = 4 }: Len
 				<Button asChild variant="ghost" size="sm" className="text-muted-foreground">
 					<Link to={lensLibraryHref}>
 						<Glasses className="mr-1.5 h-4 w-4" />
-						All Lenses
+						Available Lenses
 					</Link>
 				</Button>
 			</div>

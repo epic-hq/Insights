@@ -115,7 +115,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Get interviews with status
 		supabase
 			.from("interviews")
-			.select("id, status, participant_pseudonym")
+			.select("id, status, participant_pseudonym, source_type, interview_type, media_type")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
 
@@ -189,16 +189,20 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const tasks = tasksResult || []
 	const insights = insightsResult.data || []
 
+	const conversations = interviews.filter(
+		(i) => !(i.source_type === "note" || i.interview_type === "note" || i.media_type === "note")
+	)
+
 	// Create a map of template_key -> template info for quick lookup
 	const templateMap = new Map(
 		lensTemplates.map((t) => [t.template_key, { name: t.template_name, category: t.category || "general" }])
 	)
 
 	// Calculate conversation count
-	const conversationCount = interviews.length
+	const conversationCount = conversations.length
 
 	// Calculate processing count
-	const processingCount = interviews.filter((i) =>
+	const processingCount = conversations.filter((i) =>
 		["uploading", "processing", "transcribing"].includes(i.status || "")
 	).length
 

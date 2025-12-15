@@ -207,11 +207,11 @@ export function LensFeed({
 				{/* Lens Library - Links to aggregation pages */}
 				<div className="space-y-4">
 					<SectionHeader
-						title="Lens Library"
+						title="Conversation Lens Summaries"
 						icon={Glasses}
-						tooltip="Quickly see just the facts you're looking for with custom analysis templates tailored for specific use cases."
+						tooltip="Below are aggregated lens results across all project conversations. Use these summaries to quickly scan patterns by lens."
 						viewAllHref={routes.lenses.library()}
-						viewAllText="All Lenses"
+						viewAllText="Available Lenses"
 					/>
 					<div className="space-y-2">
 						{visibleLenses.map((lens) => (
