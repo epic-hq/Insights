@@ -538,29 +538,29 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-							id: string
-							name: string | null
-							segment: string | null
-							company: string | null
-							project_id: string | null
-							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-							[key: string]: unknown
-					  }
+						id: string
+						name: string | null
+						segment: string | null
+						company: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-							id: person.id,
-							name: person.name,
-							segment: person.segment,
-							company: person.company,
-							project_id: person.project_id,
-							people_personas: Array.isArray(person.people_personas)
-								? person.people_personas.map((pp) => ({
-										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-									}))
-								: undefined,
-						}
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						company: person.company,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
+							: undefined,
+					}
 					: undefined
 				return {
 					id: row.id,
@@ -1601,133 +1601,133 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									interview.status === "transcribing" ||
 									interview.status === "processing" ||
 									interview.status === "uploaded") && (
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<button
-												disabled={fetcher.state !== "idle"}
-												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
-												title="Actions"
-											>
-												<MoreVertical className="h-4 w-4" />
-												Actions
-											</button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											{(interview.status === "uploading" ||
-												interview.status === "transcribing" ||
-												interview.status === "processing" ||
-												interview.status === "uploaded") && (
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<button
+													disabled={fetcher.state !== "idle"}
+													className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+													title="Actions"
+												>
+													<MoreVertical className="h-4 w-4" />
+													Actions
+												</button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												{(interview.status === "uploading" ||
+													interview.status === "transcribing" ||
+													interview.status === "processing" ||
+													interview.status === "uploaded") && (
+														<DropdownMenuItem
+															onClick={async () => {
+																try {
+																	const response = await fetch("/api/fix-stuck-interview", {
+																		method: "POST",
+																		headers: { "Content-Type": "application/json" },
+																		body: JSON.stringify({ interviewId: interview.id }),
+																	})
+																	const result = await response.json()
+																	if (result.success) {
+																		consola.success("Interview status fixed")
+																		revalidator.revalidate()
+																	} else {
+																		consola.error("Failed to fix interview:", result.error)
+																	}
+																} catch (e) {
+																	consola.error("Fix stuck interview failed", e)
+																}
+															}}
+															disabled={fetcher.state !== "idle"}
+															className="text-orange-600 focus:text-orange-600"
+														>
+															Fix Stuck Interview Status
+														</DropdownMenuItem>
+													)}
 												<DropdownMenuItem
-													onClick={async () => {
+													onClick={() => {
 														try {
-															const response = await fetch("/api/fix-stuck-interview", {
-																method: "POST",
-																headers: { "Content-Type": "application/json" },
-																body: JSON.stringify({ interviewId: interview.id }),
-															})
-															const result = await response.json()
-															if (result.success) {
-																consola.success("Interview status fixed")
-																revalidator.revalidate()
-															} else {
-																consola.error("Failed to fix interview:", result.error)
-															}
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.analysis-retry" }
+															)
 														} catch (e) {
-															consola.error("Fix stuck interview failed", e)
+															consola.error("Retry analysis submit failed", e)
 														}
 													}}
-													disabled={fetcher.state !== "idle"}
-													className="text-orange-600 focus:text-orange-600"
+													disabled={fetcher.state !== "idle" || isProcessing}
 												>
-													Fix Stuck Interview Status
+													Rerun Transcription
 												</DropdownMenuItem>
-											)}
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.analysis-retry" }
-														)
-													} catch (e) {
-														consola.error("Retry analysis submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Transcription
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reprocess-evidence" }
-														)
-													} catch (e) {
-														consola.error("Reprocess evidence submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Evidence Collection
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.reanalyze-themes" }
-														)
-													} catch (e) {
-														consola.error("Re-analyze themes submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Re-analyze Themes
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.generate-sales-lens" }
-														)
-													} catch (e) {
-														consola.error("Generate sales lens submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-												className="text-blue-600 focus:text-blue-600"
-											>
-												🔍 Apply Lenses
-											</DropdownMenuItem>
-											{linkedOpportunity ? (
-												<DropdownMenuItem asChild>
-													<Link
-														to={routes.opportunities.detail(linkedOpportunity.id)}
-														className="flex items-center gap-2 text-emerald-700"
-													>
-														<Briefcase className="h-4 w-4" />
-														View Opportunity: {linkedOpportunity.title}
-													</Link>
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.reprocess-evidence" }
+															)
+														} catch (e) {
+															consola.error("Reprocess evidence submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+												>
+													Rerun Evidence Collection
 												</DropdownMenuItem>
-											) : (
-												<DropdownMenuItem asChild>
-													<Link
-														to={routes.opportunities.new()}
-														state={{ interviewId: interview.id, interviewTitle: interview.title }}
-														className="flex items-center gap-2 text-blue-700"
-													>
-														<Briefcase className="h-4 w-4" />
-														Create Opportunity
-													</Link>
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.reanalyze-themes" }
+															)
+														} catch (e) {
+															consola.error("Re-analyze themes submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+												>
+													Re-analyze Themes
 												</DropdownMenuItem>
-											)}
-										</DropdownMenuContent>
-									</DropdownMenu>
-								)}
+												<DropdownMenuItem
+													onClick={() => {
+														try {
+															fetcher.submit(
+																{ interview_id: interview.id },
+																{ method: "post", action: "/api.generate-sales-lens" }
+															)
+														} catch (e) {
+															consola.error("Generate sales lens submit failed", e)
+														}
+													}}
+													disabled={fetcher.state !== "idle" || isProcessing}
+													className="text-blue-600 focus:text-blue-600"
+												>
+													🔍 Apply Lenses
+												</DropdownMenuItem>
+												{linkedOpportunity ? (
+													<DropdownMenuItem asChild>
+														<Link
+															to={routes.opportunities.detail(linkedOpportunity.id)}
+															className="flex items-center gap-2 text-emerald-700"
+														>
+															<Briefcase className="h-4 w-4" />
+															View Opportunity: {linkedOpportunity.title}
+														</Link>
+													</DropdownMenuItem>
+												) : (
+													<DropdownMenuItem asChild>
+														<Link
+															to={routes.opportunities.new()}
+															state={{ interviewId: interview.id, interviewTitle: interview.title }}
+															className="flex items-center gap-2 text-blue-700"
+														>
+															<Briefcase className="h-4 w-4" />
+															Create Opportunity
+														</Link>
+													</DropdownMenuItem>
+												)}
+											</DropdownMenuContent>
+										</DropdownMenu>
+									)}
 								{/* Edit Button */}
 								<Link
 									to={routes.interviews.edit(interview.id)}

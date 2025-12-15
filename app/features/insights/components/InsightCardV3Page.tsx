@@ -19,12 +19,7 @@ interface InsightCardV3Props {
 	extended?: boolean
 }
 
-export function InsightCardV3Page({
-	insight,
-	evidence = [],
-	projectPath: propProjectPath,
-	extended,
-}: InsightCardV3Props) {
+export function InsightCardV3Page({ insight, evidence = [], projectPath: propProjectPath, extended }: InsightCardV3Props) {
 	const routes = useProjectRoutes(propProjectPath || "")
 	const shareableName = insight.name || insight.statement || "Insight"
 
