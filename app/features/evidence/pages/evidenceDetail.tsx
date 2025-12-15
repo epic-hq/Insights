@@ -1,8 +1,10 @@
+import consola from "consola"
 import { useEffect } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { BackButton } from "~/components/ui/back-button"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
 
@@ -22,7 +24,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const { evidenceId, accountId, projectId } = params
 
-	console.log("Evidence loader params:", { evidenceId, accountId, projectId })
+        consola.log("Evidence loader params:", { evidenceId, accountId, projectId })
 
 	if (!evidenceId) throw new Response("Missing evidenceId", { status: 400 })
 	if (!isValidUuid(evidenceId)) {
@@ -73,33 +75,33 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const { data: evidenceData, error: evidenceError, count } = await query
 
-	console.log("Evidence query result:", {
-		evidenceId,
-		accountId,
-		projectId,
-		count,
-		isArray: Array.isArray(evidenceData),
-		length: Array.isArray(evidenceData) ? evidenceData.length : "not array",
-		hasData: !!evidenceData,
-		dataType: typeof evidenceData,
-		error: evidenceError,
-	})
+        consola.log("Evidence query result:", {
+                evidenceId,
+                accountId,
+                projectId,
+                count,
+                isArray: Array.isArray(evidenceData),
+                length: Array.isArray(evidenceData) ? evidenceData.length : "not array",
+                hasData: !!evidenceData,
+                dataType: typeof evidenceData,
+                error: evidenceError,
+        })
 
-	if (evidenceError) {
-		console.error("Evidence query error:", evidenceError)
-		throw new Error(`Failed to load evidence: ${evidenceError.message}`)
-	}
+        if (evidenceError) {
+                consola.error("Evidence query error:", evidenceError)
+                throw new Error(`Failed to load evidence: ${evidenceError.message}`)
+        }
 
 	// Supabase .select() without .single() returns an array
 	if (!evidenceData || !Array.isArray(evidenceData) || evidenceData.length === 0) {
-		console.error("Evidence not found - filters may be too restrictive", {
-			evidenceId,
-			accountId,
-			projectId,
-			count,
-		})
-		throw new Error(`Evidence not found (ID: ${evidenceId})`)
-	}
+                consola.error("Evidence not found - filters may be too restrictive", {
+                        evidenceId,
+                        accountId,
+                        projectId,
+                        count,
+                })
+                throw new Error(`Evidence not found (ID: ${evidenceId})`)
+        }
 
 	// Get first row
 	const evidence = evidenceData[0]
@@ -238,8 +240,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 }
 
 export default function EvidenceDetail() {
-	const { evidence, relatedEvidence, projectPath, anchorFromUrl } = useLoaderData<typeof loader>()
-	const interview = evidence.interview
+        const { evidence, relatedEvidence, projectPath, anchorFromUrl } = useLoaderData<typeof loader>()
+        const interview = evidence.interview
+        const evidenceName =
+                (evidence as any)?.title || evidence.gist || evidence.chunk || evidence.verbatim || "Evidence"
 
 	// If there's a timestamp anchor from URL, inject it into evidence.anchors
 	const evidenceWithAnchor = anchorFromUrl
@@ -263,13 +267,21 @@ export default function EvidenceDetail() {
 			<div className="flex items-center gap-3" />
 
 			{/* Full Evidence Card - Centered with max width */}
-			<PageContainer size="sm" padded={false} className="max-w-2xl">
-				<div className="mt-4 mb-4">
-					<BackButton />
-				</div>
-				<div className="flex-1">
-					{interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}
-				</div>
+                        <PageContainer size="sm" padded={false} className="max-w-2xl">
+                                <div className="mt-4 mb-4 flex items-center justify-between gap-3">
+                                        <BackButton />
+                                        {projectPath ? (
+                                                <ResourceShareMenu
+                                                        projectPath={projectPath}
+                                                        resourceId={evidence.id}
+                                                        resourceName={evidenceName}
+                                                        resourceType="evidence"
+                                                />
+                                        ) : null}
+                                </div>
+                                <div className="flex-1">
+                                        {interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}
+                                </div>
 				<EvidenceCard
 					evidence={evidenceWithAnchor}
 					people={evidence.people || []}

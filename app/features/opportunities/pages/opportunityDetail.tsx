@@ -1,3 +1,4 @@
+import consola from "consola"
 import { format } from "date-fns"
 import {
 	AlertTriangle,
@@ -31,11 +32,12 @@ import type { OpportunitySalesLensData } from "~/features/opportunities/lib/load
 import { loadOpportunitySalesLens } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
 import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
 import {
-	ensureStageValue,
-	normalizeStageId,
-	type OpportunityStageConfig,
-	stageLabelForValue,
+        ensureStageValue,
+        normalizeStageId,
+        type OpportunityStageConfig,
+        stageLabelForValue,
 } from "~/features/opportunities/stage-config"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
@@ -185,11 +187,12 @@ const getKanbanStatusColor = (kanbanStatus: string | null, stages: OpportunitySt
 
 export default function OpportunityDetail() {
 	const { opportunity, salesLensData, aiRecommendations, stages } = useLoaderData<typeof loader>()
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
-	const opportunityFetcher = useFetcher()
-	const stageLabel = stageLabelForValue(opportunity.stage || opportunity.kanban_status, stages)
-	const kanbanLabel = stageLabel || opportunity.kanban_status || "Unknown"
+        const currentProjectContext = useCurrentProject()
+        const routes = useProjectRoutes(currentProjectContext?.projectPath)
+        const opportunityFetcher = useFetcher()
+        const stageLabel = stageLabelForValue(opportunity.stage || opportunity.kanban_status, stages)
+        const kanbanLabel = stageLabel || opportunity.kanban_status || "Unknown"
+        const shareProjectPath = currentProjectContext?.projectPath || ""
 
 	const handleOpportunityUpdate = (field: string, value: string) => {
 		if (!currentProjectContext?.accountId || !currentProjectContext?.projectId) return
@@ -262,12 +265,21 @@ export default function OpportunityDetail() {
 						</Badge>
 					</div>
 				</div>
-				<div className="flex gap-2">
-					<Button asChild variant="outline" size="sm">
-						<Link to={routes.opportunities.edit(opportunity.id)}>Edit</Link>
-					</Button>
-				</div>
-			</div>
+                                <div className="flex items-center gap-2">
+                                        {shareProjectPath ? (
+                                                <ResourceShareMenu
+                                                        projectPath={shareProjectPath}
+                                                        resourceId={opportunity.id}
+                                                        resourceName={opportunity.title}
+                                                        resourceType="opportunity"
+                                                        buttonLabel="Share / Invite"
+                                                />
+                                        ) : null}
+                                        <Button asChild variant="outline" size="sm">
+                                                <Link to={routes.opportunities.edit(opportunity.id)}>Edit</Link>
+                                        </Button>
+                                </div>
+                        </div>
 
 			{/* Key Metrics */}
 			<div className="mb-8 grid gap-4 md:grid-cols-3">
@@ -889,12 +901,12 @@ function AIAdvisorSection({
 			: recommendations?.[0]
 
 	// Debug logging
-	console.log("AI Advisor Debug:", {
-		fetcherState: advisorFetcher.state,
-		fetcherData: advisorFetcher.data,
-		recommendations,
-		latestRecommendation,
-	})
+        consola.log("AI Advisor Debug:", {
+                fetcherState: advisorFetcher.state,
+                fetcherData: advisorFetcher.data,
+                recommendations,
+                latestRecommendation,
+        })
 
 	// Show error if fetcher failed
 	const hasError = advisorFetcher.data && !advisorFetcher.data.ok

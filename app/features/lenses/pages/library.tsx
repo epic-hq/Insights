@@ -47,6 +47,7 @@ import InlineEdit from "~/components/ui/inline-edit"
 import { Switch } from "~/components/ui/switch"
 import { Textarea } from "~/components/ui/textarea"
 import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { userContext } from "~/server/user-context"
 import { CreateLensDialog } from "../components/CreateLensDialog"
 import { EditLensDialog } from "../components/EditLensDialog"
@@ -356,25 +357,27 @@ function CreateLensCard({ accountId, onCreated }: { accountId: string; onCreated
  * Lens card component - displays lens info with toggle in upper right
  */
 function LensCard({
-	template,
-	isEnabled,
-	onToggle,
-	onDelete,
-	onToggleVisibility,
-	onEdit,
-	onUpdateField,
-	isSubmitting,
-	isOwner,
+        template,
+        isEnabled,
+        onToggle,
+        onDelete,
+        onToggleVisibility,
+        onEdit,
+        onUpdateField,
+        isSubmitting,
+        isOwner,
+        projectPath,
 }: {
-	template: LensTemplate
-	isEnabled: boolean
-	onToggle: (templateKey: string, enabled: boolean) => void
-	onDelete?: (templateKey: string) => void
-	onToggleVisibility?: (templateKey: string, isPublic: boolean) => void
-	onEdit?: (template: LensTemplate) => void
-	onUpdateField?: (templateKey: string, field: "template_name" | "summary", value: string) => void
-	isSubmitting: boolean
-	isOwner: boolean
+        template: LensTemplate
+        isEnabled: boolean
+        onToggle: (templateKey: string, enabled: boolean) => void
+        onDelete?: (templateKey: string) => void
+        onToggleVisibility?: (templateKey: string, isPublic: boolean) => void
+        onEdit?: (template: LensTemplate) => void
+        onUpdateField?: (templateKey: string, field: "template_name" | "summary", value: string) => void
+        isSubmitting: boolean
+        isOwner: boolean
+        projectPath?: string
 }) {
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const colors = getCategoryColors(template.category)
@@ -411,15 +414,24 @@ function LensCard({
 									</div>
 								</div>
 							</button>
-						</DialogTrigger>
+                                                </DialogTrigger>
 
-						{/* Toggle and actions in upper right */}
-						<div className="flex items-center gap-2">
-							{isSubmitting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-							<Switch
-								checked={isEnabled}
-								onCheckedChange={(checked) => onToggle(template.template_key, checked)}
-								disabled={isSubmitting}
+                                                {/* Toggle and actions in upper right */}
+                                                <div className="flex items-center gap-2">
+                                                        {projectPath ? (
+                                                                <ResourceShareMenu
+                                                                        projectPath={projectPath}
+                                                                        resourceId={template.template_key}
+                                                                        resourceName={template.template_name}
+                                                                        resourceType="lens"
+                                                                        buttonLabel="Share"
+                                                                />
+                                                        ) : null}
+                                                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                                        <Switch
+                                                                checked={isEnabled}
+                                                                onCheckedChange={(checked) => onToggle(template.template_key, checked)}
+                                                                disabled={isSubmitting}
 								aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
 							/>
 							{/* Actions menu for custom lenses - show for all custom, but only owner can edit/delete */}
@@ -609,11 +621,12 @@ function sortTemplates(templates: LensTemplate[]): LensTemplate[] {
 }
 
 export default function LensLibrary() {
-	const { templates, enabledLenses, projectId, accountId, userId } = useLoaderData<typeof loader>()
-	const fetcher = useFetcher()
-	const deleteFetcher = useFetcher()
-	const visibilityFetcher = useFetcher()
-	const revalidator = useRevalidator()
+        const { templates, enabledLenses, projectId, accountId, userId } = useLoaderData<typeof loader>()
+        const fetcher = useFetcher()
+        const deleteFetcher = useFetcher()
+        const visibilityFetcher = useFetcher()
+        const revalidator = useRevalidator()
+        const projectPath = projectId && accountId ? `/a/${accountId}/${projectId}` : ""
 
 	// Edit dialog state
 	const [editingTemplate, setEditingTemplate] = useState<LensTemplate | null>(null)
@@ -735,20 +748,21 @@ export default function LensLibrary() {
 	const systemTemplates = sortedTemplates.filter((t) => t.is_system)
 
 	// Helper to render a lens card
-	const renderLensCard = (template: LensTemplate) => (
-		<LensCard
-			key={template.template_key}
-			template={template}
-			isEnabled={currentEnabledLenses.includes(template.template_key)}
-			onToggle={handleToggle}
-			onDelete={handleDelete}
-			onToggleVisibility={handleToggleVisibility}
-			onEdit={handleEdit}
-			onUpdateField={handleUpdateField}
-			isSubmitting={isSubmitting && pendingToggle === template.template_key}
-			isOwner={template.created_by === userId}
-		/>
-	)
+        const renderLensCard = (template: LensTemplate) => (
+                <LensCard
+                        key={template.template_key}
+                        template={template}
+                        isEnabled={currentEnabledLenses.includes(template.template_key)}
+                        onToggle={handleToggle}
+                        onDelete={handleDelete}
+                        onToggleVisibility={handleToggleVisibility}
+                        onEdit={handleEdit}
+                        onUpdateField={handleUpdateField}
+                        isSubmitting={isSubmitting && pendingToggle === template.template_key}
+                        isOwner={template.created_by === userId}
+                        projectPath={projectPath}
+                />
+        )
 
 	return (
 		<div className="container max-w-6xl py-8">

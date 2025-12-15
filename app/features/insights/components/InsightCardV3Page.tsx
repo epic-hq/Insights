@@ -5,6 +5,7 @@ import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Insight } from "~/types"
 import type { InsightEvidence } from "../pages/insight-detail"
@@ -19,22 +20,33 @@ interface InsightCardV3Props {
 }
 
 export function InsightCardV3Page({ insight, evidence = [], projectPath: propProjectPath, extended }: InsightCardV3Props) {
-	const routes = useProjectRoutes(propProjectPath || "")
+        const routes = useProjectRoutes(propProjectPath || "")
+        const shareableName = insight.name || insight.statement || "Insight"
 
-	return (
-		<div className="mx-auto max-w-4xl px-4 py-8 sm:px-0">
-			{/* Header Section */}
-			<div className="mb-8 space-y-4">
-				<div className="space-y-3">
-					<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Insight Theme</div>
-					<h1 className="font-bold text-3xl tracking-tight">{insight.name}</h1>
-					{insight.statement && <p className="text-foreground text-lg leading-relaxed">{insight.statement}</p>}
-				</div>
+        return (
+                <div className="mx-auto max-w-4xl px-4 py-8 sm:px-0">
+                        {/* Header Section */}
+                        <div className="mb-8 space-y-4">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                        <div className="space-y-3">
+                                                <div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Insight Theme</div>
+                                                <h1 className="font-bold text-3xl tracking-tight">{insight.name}</h1>
+                                                {insight.statement && <p className="text-foreground text-lg leading-relaxed">{insight.statement}</p>}
+                                        </div>
+                                        {propProjectPath ? (
+                                                <ResourceShareMenu
+                                                        projectPath={propProjectPath}
+                                                        resourceId={insight.id}
+                                                        resourceName={shareableName}
+                                                        resourceType="insight"
+                                                />
+                                        ) : null}
+                                </div>
 
-				<div className="flex flex-wrap items-center gap-2">
-					{insight.category && (
-						<Badge variant="secondary" className="px-3 py-1">
-							{insight.category}
+                                <div className="flex flex-wrap items-center gap-2">
+                                        {insight.category && (
+                                                <Badge variant="secondary" className="px-3 py-1">
+                                                        {insight.category}
 						</Badge>
 					)}
 					{insight.journey_stage && (

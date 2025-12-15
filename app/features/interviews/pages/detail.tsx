@@ -24,13 +24,14 @@ import { getInterviewById, getInterviewInsights, getInterviewParticipants } from
 import { LensAccordion } from "~/features/lenses/components/LensAccordion"
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import {
-	type LensAnalysisWithTemplate,
-	type LensTemplate,
-	loadLensAnalyses,
-	loadLensTemplates,
+        type LensAnalysisWithTemplate,
+        type LensTemplate,
+        loadLensAnalyses,
+        loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -944,11 +945,13 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
 	const lensFetcher = useFetcher()
-	const slotFetcher = useFetcher()
-	const navigation = useNavigation()
-	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
-	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
+        const slotFetcher = useFetcher()
+        const navigation = useNavigation()
+        const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
+        const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
+        const shareProjectPath =
+                projectPath || (contextAccountId && contextProjectId ? `/a/${contextAccountId}/${contextProjectId}` : "")
+        const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
@@ -1493,14 +1496,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			<div className="w-full space-y-6">
 				{/* Streamlined Header */}
 				<div className="mb-6 space-y-3">
-					<BackButton />
-					<div className="flex items-start justify-between gap-4">
-						<h1 className="font-semibold text-2xl">{interviewTitle}</h1>
-						<div className="flex items-center gap-2">
-							{/* Status indicator - compact, right side */}
-							{isProcessing && (
-								<div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
-									<Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                        <BackButton />
+                                        <div className="flex items-start justify-between gap-4">
+                                                <h1 className="font-semibold text-2xl">{interviewTitle}</h1>
+                                                <div className="flex items-center gap-2">
+                                                        {shareProjectPath ? (
+                                                                <ResourceShareMenu
+                                                                        projectPath={shareProjectPath}
+                                                                        resourceId={interview.id}
+                                                                        resourceName={interviewTitle}
+                                                                        resourceType="interview"
+                                                                />
+                                                        ) : null}
+                                                        {/* Status indicator - compact, right side */}
+                                                        {isProcessing && (
+                                                                <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5">
+                                                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
 									<p className="font-medium text-primary text-sm">{getStatusLabel(interview.status)}</p>
 								</div>
 							)}
