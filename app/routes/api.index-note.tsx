@@ -7,9 +7,10 @@
  */
 
 import { tasks } from "@trigger.dev/sdk/v3"
+import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { z } from "zod"
-import { getServerClient } from "~/lib/supabase/client.server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import type { indexNoteTask } from "../../src/trigger/note/indexNote"
 
 const IndexNoteSchema = z.object({
@@ -24,16 +25,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	// Verify auth
 	const { client: db, headers } = getServerClient(request)
-	const {
-		data: { user },
-	} = await db.auth.getUser()
-
-	if (!user) {
+	const claims = await getAuthenticatedUser(request)
+	if (!claims?.sub) {
 		return Response.json({ error: "Unauthorized" }, { status: 401, headers })
 	}
 
 	// Parse body
-	let body
+	let body: unknown
 	try {
 		body = await request.json()
 	} catch {
@@ -74,7 +72,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			{ headers }
 		)
 	} catch (triggerError) {
-		console.error("[api.index-note] Failed to trigger task:", triggerError)
+		consola.error("[api.index-note] Failed to trigger task:", triggerError)
 		return Response.json({ error: "Failed to start indexing" }, { status: 500, headers })
 	}
 }

@@ -10,15 +10,26 @@ import {
 	Loader2,
 	MoreVertical,
 	Sparkles,
+	Trash2,
 	User,
 	Users,
 	XCircle,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useNavigate, useNavigation, useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -389,6 +400,126 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					created: true,
 					personId: newPerson.id,
 				})
+			}
+			case "link-organization": {
+				const organizationId = formData.get("organizationId")?.toString()
+				if (!organizationId) {
+					return Response.json({ ok: false, error: "Missing organizationId" }, { status: 400 })
+				}
+
+				const { error } = await supabase.from("interview_organizations").upsert(
+					{
+						interview_id: interviewId,
+						organization_id: organizationId,
+						account_id: accountId,
+						project_id: projectId,
+					},
+					{ onConflict: "interview_id,organization_id" }
+				)
+
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true })
+			}
+			case "unlink-organization": {
+				const interviewOrganizationId = formData.get("interviewOrganizationId")?.toString()
+				if (!interviewOrganizationId) {
+					return Response.json({ ok: false, error: "Missing interviewOrganizationId" }, { status: 400 })
+				}
+
+				const { error } = await supabase.from("interview_organizations").delete().eq("id", interviewOrganizationId)
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true, removed: true })
+			}
+			case "create-and-link-organization": {
+				const organizationName = formData.get("organization_name")?.toString()?.trim()
+				if (!organizationName) {
+					return Response.json({ ok: false, error: "Organization name is required" }, { status: 400 })
+				}
+
+				const { data: organization, error: orgErr } = await supabase
+					.from("organizations")
+					.insert({
+						account_id: accountId,
+						project_id: projectId,
+						name: organizationName,
+					})
+					.select("id")
+					.single()
+
+				if (orgErr || !organization) throw new Error(orgErr?.message || "Failed to create organization")
+
+				const { error: linkErr } = await supabase.from("interview_organizations").upsert(
+					{
+						interview_id: interviewId,
+						organization_id: organization.id,
+						account_id: accountId,
+						project_id: projectId,
+					},
+					{ onConflict: "interview_id,organization_id" }
+				)
+
+				if (linkErr) throw new Error(linkErr.message)
+				return Response.json({ ok: true, created: true, organizationId: organization.id })
+			}
+			case "link-opportunity": {
+				const opportunityId = formData.get("opportunityId")?.toString()
+				if (!opportunityId) {
+					return Response.json({ ok: false, error: "Missing opportunityId" }, { status: 400 })
+				}
+
+				const { error } = await supabase.from("interview_opportunities").upsert(
+					{
+						interview_id: interviewId,
+						opportunity_id: opportunityId,
+						account_id: accountId,
+						project_id: projectId,
+					},
+					{ onConflict: "interview_id,opportunity_id" }
+				)
+
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true })
+			}
+			case "unlink-opportunity": {
+				const interviewOpportunityId = formData.get("interviewOpportunityId")?.toString()
+				if (!interviewOpportunityId) {
+					return Response.json({ ok: false, error: "Missing interviewOpportunityId" }, { status: 400 })
+				}
+
+				const { error } = await supabase.from("interview_opportunities").delete().eq("id", interviewOpportunityId)
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true, removed: true })
+			}
+			case "create-and-link-opportunity": {
+				const opportunityTitle = formData.get("opportunity_title")?.toString()?.trim()
+				if (!opportunityTitle) {
+					return Response.json({ ok: false, error: "Opportunity title is required" }, { status: 400 })
+				}
+
+				const { data: opportunity, error: oppErr } = await supabase
+					.from("opportunities")
+					.insert({
+						account_id: accountId,
+						project_id: projectId,
+						title: opportunityTitle,
+					})
+					.select("id")
+					.single()
+
+				if (oppErr || !opportunity) throw new Error(oppErr?.message || "Failed to create opportunity")
+
+				const { error: linkErr } = await supabase.from("interview_opportunities").upsert(
+					{
+						interview_id: interviewId,
+						opportunity_id: opportunity.id,
+						account_id: accountId,
+						project_id: projectId,
+					},
+					{ onConflict: "interview_id,opportunity_id" }
+				)
+
+				if (linkErr) throw new Error(linkErr.message)
+				return Response.json({ ok: true, created: true, opportunityId: opportunity.id })
 			}
 			default:
 				return Response.json({ ok: false, error: "Unknown intent" }, { status: 400 })
@@ -1063,36 +1194,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		lensAnalyses,
 	} = useLoaderData<typeof loader>()
 
-	// Early validation - must happen before any hooks
-	if (!interview || !accountId || !projectId) {
-		return <div>Error: Missing interview data</div>
-	}
-
-	// Check if this is a note - use NoteViewer for editing
-	if (
-		interview.source_type === "note" ||
-		interview.media_type === "note" ||
-		interview.media_type === "meeting_notes" ||
-		interview.media_type === "voice_memo"
-	) {
-		return <NoteViewer interview={interview} projectId={projectId} />
-	}
-
-	// Check if this is a document type (non-full interview)
-	// Use simplified DocumentViewer for these types
-	const isDocumentType =
-		interview.source_type === "document" ||
-		(interview.source_type === "transcript" && interview.media_type !== "interview")
-
-	if (isDocumentType) {
-		return <DocumentViewer interview={interview} />
-	}
+	const is_missing_interview_data = !interview || !accountId || !projectId
+	const is_note_type =
+		interview?.source_type === "note" ||
+		interview?.media_type === "note" ||
+		interview?.media_type === "meeting_notes" ||
+		interview?.media_type === "voice_memo"
+	const is_document_type =
+		interview?.source_type === "document" || (interview?.source_type === "transcript" && interview?.media_type !== "interview")
 
 	const fetcher = useFetcher()
+	const deleteFetcher = useFetcher<{ success?: boolean; redirectTo?: string; error?: string }>()
 	const participantFetcher = useFetcher()
 	const lensFetcher = useFetcher()
 	const slotFetcher = useFetcher()
 	const navigation = useNavigation()
+	const navigate = useNavigate()
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
 	const shareProjectPath =
@@ -1110,6 +1227,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [_isChatOpen, _setIsChatOpen] = useState(() => assistantMessages.length > 0)
 	const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false)
 	const [regeneratePopoverOpen, setRegeneratePopoverOpen] = useState(false)
+	const [regenerateInstructions, setRegenerateInstructions] = useState("")
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
 	// Create evidence map for lens timestamp hydration
 	const evidenceMap = useMemo(() => {
@@ -1145,6 +1264,70 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const revalidator = useRevalidator()
 	const refreshTriggeredRef = useRef(false)
+	const fetcherPrevStateRef = useRef(fetcher.state)
+	const takeawaysPollTaskIdRef = useRef<string | null>(null)
+	const takeawaysPollTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([])
+
+	const submitInterviewFieldUpdate = (field_name: string, field_value: string) => {
+		fetcher.submit(
+			{
+				entity: "interview",
+				entityId: interview.id,
+				accountId,
+				projectId,
+				fieldName: field_name,
+				fieldValue: field_value,
+			},
+			{ method: "post", action: "/api/update-field" }
+		)
+	}
+
+	useEffect(() => {
+		const prevState = fetcherPrevStateRef.current
+		fetcherPrevStateRef.current = fetcher.state
+		if (prevState === "idle" || fetcher.state !== "idle") return
+
+		const data = fetcher.data as unknown
+		if (!data || typeof data !== "object") return
+
+		if ("success" in data && (data as { success?: boolean }).success) {
+			revalidator.revalidate()
+			return
+		}
+
+		if ("ok" in data && (data as { ok?: boolean }).ok && "taskId" in data) {
+			const taskId = (data as { taskId?: string }).taskId
+			if (!taskId) return
+			if (takeawaysPollTaskIdRef.current === taskId) return
+
+			takeawaysPollTaskIdRef.current = taskId
+			for (const timeout of takeawaysPollTimeoutsRef.current) {
+				clearTimeout(timeout)
+			}
+			takeawaysPollTimeoutsRef.current = []
+
+			const intervals = [2000, 5000, 8000, 12000, 16000, 22000, 30000]
+			for (const delay of intervals) {
+				takeawaysPollTimeoutsRef.current.push(setTimeout(() => revalidator.revalidate(), delay))
+			}
+		}
+	}, [fetcher.state, fetcher.data, revalidator])
+
+	useEffect(() => {
+		return () => {
+			for (const timeout of takeawaysPollTimeoutsRef.current) {
+				clearTimeout(timeout)
+			}
+		}
+	}, [])
+
+	useEffect(() => {
+		if (deleteFetcher.state !== "idle") return
+		const redirectTo = deleteFetcher.data?.redirectTo
+		if (redirectTo) {
+			navigate(redirectTo)
+		}
+	}, [deleteFetcher.state, deleteFetcher.data, navigate])
 
 	// Helper function for date formatting
 	function formatReadable(dateString: string) {
@@ -1588,27 +1771,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [progressInfo.isComplete, revalidator])
 
-	// Revalidate after background tasks are triggered (e.g., regenerate AI summary)
-	// These tasks return { ok: true, taskId: ... } and we need to poll for updates
-	useEffect(() => {
-		const data = fetcher.data as { ok?: boolean; taskId?: string } | undefined
-		if (fetcher.state === "idle" && data?.ok && data?.taskId) {
-			// Background task triggered, poll for updates every 3 seconds for 30 seconds
-			const intervals = [3000, 6000, 9000, 12000, 15000, 20000, 25000, 30000]
-			const timeouts: ReturnType<typeof setTimeout>[] = []
-
-			for (const delay of intervals) {
-				timeouts.push(setTimeout(() => revalidator.revalidate(), delay))
-			}
-
-			return () => {
-				for (const timeout of timeouts) {
-					clearTimeout(timeout)
-				}
-			}
-		}
-	}, [fetcher.state, fetcher.data, revalidator])
-
 	const _handleCustomLensUpdate = (lensId: string, field: "summary" | "notes", value: string) => {
 		setCustomLensOverrides((prev) => ({
 			...prev,
@@ -1660,6 +1822,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			? (lensFetcher.formData.get("lensId")?.toString() ?? null)
 			: null
 
+	if (is_missing_interview_data) {
+		return <div>Error: Missing interview data</div>
+	}
+
+	if (is_note_type) {
+		return <NoteViewer interview={interview} projectId={projectId} />
+	}
+
+	if (is_document_type) {
+		return <DocumentViewer interview={interview} />
+	}
+
 	return (
 		<>
 			<div className="relative mx-auto mt-6 w-full max-w-5xl px-4 sm:px-6 lg:px-8">
@@ -1688,7 +1862,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<div className="mb-6 space-y-3">
 						<BackButton />
 						<div className="flex items-start justify-between gap-4">
-							<h1 className="font-semibold text-2xl">{interviewTitle}</h1>
+							<InlineEdit
+								value={interviewTitle}
+								onSubmit={(value) => {
+									try {
+										submitInterviewFieldUpdate("title", value)
+									} catch (error) {
+										consola.error("Failed to update interview title", error)
+									}
+								}}
+								submitOnBlur={true}
+								textClassName="font-semibold text-2xl"
+							/>
 							<div className="flex items-center gap-2">
 								{shareProjectPath && contextAccountId ? (
 									<ResourceShareMenu
@@ -1723,7 +1908,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
 												<button
-													disabled={fetcher.state !== "idle"}
+													disabled={fetcher.state !== "idle" || deleteFetcher.state !== "idle"}
 													className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
 													title="Actions"
 												>
@@ -1860,6 +2045,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 														</Link>
 													</DropdownMenuItem>
 												)}
+												<DropdownMenuItem
+													onClick={() => setDeleteDialogOpen(true)}
+													disabled={deleteFetcher.state !== "idle"}
+													className="text-destructive focus:text-destructive"
+												>
+													<Trash2 className="mr-2 h-4 w-4" />
+													Delete interview...
+												</DropdownMenuItem>
 											</DropdownMenuContent>
 										</DropdownMenu>
 									)}
@@ -2054,79 +2247,76 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 
 						{/* AI Takeaways */}
-						{interview.key_takeaways && (
-							<div className="mb-6">
-								<label className="mb-2 flex items-center justify-between">
-									<span className="flex items-center gap-2 font-semibold text-foreground text-lg">
-										<Sparkles className="h-5 w-5 text-amber-500" />
-										AI Takeaways
-									</span>
-									<Popover open={regeneratePopoverOpen} onOpenChange={setRegeneratePopoverOpen}>
-										<PopoverTrigger asChild>
-											<Button variant="ghost" size="sm">
-												<MoreVertical className="h-4 w-4" />
-											</Button>
-										</PopoverTrigger>
-										<PopoverContent className="w-96 p-4">
-											<div className="space-y-4">
-												<div>
-													<h4 className="mb-2 font-medium text-sm">Regenerate AI Summary</h4>
-													<p className="mb-3 text-muted-foreground text-xs">
-														Optionally provide custom instructions to guide the AI's analysis
-													</p>
-												</div>
-												<Textarea
-													placeholder="e.g., Focus on technical requirements and integration concerns"
-													className="min-h-[80px] text-sm"
-													id="ai-summary-instructions"
-												/>
-												<div className="flex gap-2">
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() => {
-															fetcher.submit(
-																{ interview_id: interview.id },
-																{
-																	method: "post",
-																	action: "/api/regenerate-ai-summary",
-																}
-															)
-															setRegeneratePopoverOpen(false)
-														}}
-													>
-														Regenerate
-													</Button>
-													<Button
-														size="sm"
-														onClick={() => {
-															const textarea = document.getElementById("ai-summary-instructions") as HTMLTextAreaElement
-															const instructions = textarea?.value || ""
-															fetcher.submit(
-																{
-																	interview_id: interview.id,
-																	custom_instructions: instructions,
-																},
-																{
-																	method: "post",
-																	action: "/api/regenerate-ai-summary",
-																}
-															)
-															setRegeneratePopoverOpen(false)
-														}}
-													>
-														Regenerate with Instructions
-													</Button>
-												</div>
+						<div className="mb-6">
+							<label className="mb-2 flex items-center justify-between">
+								<span className="flex items-center gap-2 font-semibold text-foreground text-lg">
+									<Sparkles className="h-5 w-5 text-amber-500" />
+									AI Takeaways
+								</span>
+								<Popover open={regeneratePopoverOpen} onOpenChange={setRegeneratePopoverOpen}>
+									<PopoverTrigger asChild>
+										<Button variant="ghost" size="sm" disabled={fetcher.state !== "idle"}>
+											<MoreVertical className="h-4 w-4" />
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-96 p-4">
+										<div className="space-y-4">
+											<div>
+												<h4 className="mb-2 font-medium text-sm">{interview.key_takeaways ? "Regenerate" : "Generate"} takeaways</h4>
+												<p className="mb-3 text-muted-foreground text-xs">Optional: add a quick hint.</p>
 											</div>
-										</PopoverContent>
-									</Popover>
-								</label>
-								<Streamdown className="prose prose-sm max-w-none rounded-lg border bg-muted/30 p-4 text-foreground leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-									{interview.key_takeaways}
-								</Streamdown>
-							</div>
-						)}
+											<Textarea
+												placeholder="e.g., Focus on objections"
+												className="min-h-[80px] text-sm"
+												value={regenerateInstructions}
+												onChange={(event) => setRegenerateInstructions(event.currentTarget.value)}
+											/>
+											<Button
+												size="sm"
+												onClick={() => {
+													const next_instructions = regenerateInstructions.trim()
+													const payload: Record<string, string> = { interview_id: interview.id }
+													if (next_instructions.length) {
+														payload.custom_instructions = next_instructions
+													}
+													fetcher.submit(payload, {
+														method: "post",
+														action: "/api/regenerate-ai-summary",
+													})
+													setRegeneratePopoverOpen(false)
+												}}
+											>
+												{interview.key_takeaways ? "Regenerate" : "Generate"}
+											</Button>
+										</div>
+									</PopoverContent>
+								</Popover>
+							</label>
+							<InlineEdit
+								textClassName="text-foreground"
+								value={normalizeMultilineText(interview.key_takeaways)}
+								multiline
+								markdown
+								placeholder="No AI takeaways yet. Use Generate in the menu to create one."
+								onSubmit={(value) => {
+									try {
+										fetcher.submit(
+											{
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "key_takeaways",
+												fieldValue: value,
+											},
+											{ method: "post", action: "/api/update-field" }
+										)
+									} catch (error) {
+										consola.error("❌ Failed to update key_takeaways:", error)
+									}
+								}}
+							/>
+						</div>
 
 						{/* Human Notes */}
 						<div>
@@ -2252,6 +2442,32 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					/>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete interview</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will permanently delete the interview and associated data. This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={deleteFetcher.state !== "idle"}>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							disabled={deleteFetcher.state !== "idle"}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={() => {
+								deleteFetcher.submit(
+									{ interviewId: interview.id, projectId },
+									{ method: "post", action: "/api/interviews/delete" }
+								)
+							}}
+						>
+							{deleteFetcher.state !== "idle" ? "Deleting..." : "Delete"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	)
 }

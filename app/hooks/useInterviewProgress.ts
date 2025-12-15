@@ -1,4 +1,5 @@
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
+import consola from "consola"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe"
 import { createClient } from "~/lib/supabase/client"
@@ -49,8 +50,8 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 	const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
 	const lastStatusRef = useRef<string | null>(null)
 
-	// Create supabase client at the component level (hook safe)
-	const supabase = createClient()
+	// Create supabase client once per hook instance to avoid re-subscribing every render
+	const supabase = useMemo(() => createClient(), [])
 
 	const shouldSubscribeToRun = Boolean(runId && accessToken)
 
@@ -77,7 +78,7 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 	// Log realtime errors for debugging
 	useEffect(() => {
 		if (realtimeError) {
-			console.warn("Trigger.dev realtime connection failed:", realtimeError)
+			consola.warn("Trigger.dev realtime connection failed", realtimeError)
 		}
 	}, [realtimeError])
 
@@ -148,7 +149,7 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 					setConversationAnalysis(analysis)
 				}
 			} else {
-				console.error("[useInterviewProgress] Failed to fetch interview:", interviewError)
+				consola.error("[useInterviewProgress] Failed to fetch interview", interviewError)
 			}
 		}
 
@@ -177,12 +178,8 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			)
 			.subscribe()
 
-		// More frequent polling during active processing (1.5 seconds)
-		const pollInterval = setInterval(fetchData, 1500)
-
 		return () => {
 			supabase.removeChannel(channel)
-			clearInterval(pollInterval)
 			cleanupTimers()
 		}
 	}, [interviewId, supabase, cleanupTimers])

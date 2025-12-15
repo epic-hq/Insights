@@ -1,9 +1,10 @@
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { Calendar, Check, ChevronDown, Loader2, Plus, Search, Trash2, Users } from "lucide-react"
+import { Calendar, Loader2, Search, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useFetcher, useNavigate, useRevalidator } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { AddLink } from "~/components/links/AddLink"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,22 +16,10 @@ import {
 	AlertDialogTitle,
 } from "~/components/ui/alert-dialog"
 import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-	CommandSeparator,
-} from "~/components/ui/command"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
@@ -41,15 +30,15 @@ interface NoteViewerProps {
 	className?: string
 }
 
-interface LinkedPerson {
+interface LinkedItem {
 	id: string
-	interviewPersonId: number
-	name: string | null
+	linkId: string
+	label: string
 }
 
-interface AvailablePerson {
+interface AvailableItem {
 	id: string
-	name: string | null
+	label: string
 }
 
 export function NoteViewer({ interview, projectId, className }: NoteViewerProps) {
@@ -61,63 +50,137 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isIndexing, setIsIndexing] = useState(false)
 
-	// People linking state
-	const [linkedPeople, setLinkedPeople] = useState<LinkedPerson[]>([])
-	const [availablePeople, setAvailablePeople] = useState<AvailablePerson[]>([])
-	const [isLoadingPeople, setIsLoadingPeople] = useState(true)
-	const [showLinkPopover, setShowLinkPopover] = useState(false)
-	const [searchInput, setSearchInput] = useState("")
+	// Link state (people, organizations, opportunities)
+	const [linked_people, set_linked_people] = useState<LinkedItem[]>([])
+	const [available_people, set_available_people] = useState<AvailableItem[]>([])
+	const [linked_organizations, set_linked_organizations] = useState<LinkedItem[]>([])
+	const [available_organizations, set_available_organizations] = useState<AvailableItem[]>([])
+	const [linked_opportunities, set_linked_opportunities] = useState<LinkedItem[]>([])
+	const [available_opportunities, set_available_opportunities] = useState<AvailableItem[]>([])
+	const [is_loading_links, set_is_loading_links] = useState(true)
 
-	// Fetch linked people and available people for this note
-	const fetchPeople = useCallback(async () => {
-		setIsLoadingPeople(true)
+	const fetch_links = useCallback(async () => {
+		set_is_loading_links(true)
 		try {
-			// Fetch linked people
-			const { data: linkedData, error: linkedError } = await supabase
-				.from("interview_people")
-				.select("id, person_id, people(id, name)")
-				.eq("interview_id", interview.id)
+			const [{ data: linkedPeopleData, error: linkedPeopleError }, { data: peopleData, error: peopleError }] =
+				await Promise.all([
+					supabase.from("interview_people").select("id, people(id, name)").eq("interview_id", interview.id),
+					supabase.from("people").select("id, name").eq("project_id", projectId).order("name", { ascending: true }),
+				])
 
-			if (linkedError) {
-				consola.warn("Failed to fetch linked people:", linkedError)
+			if (linkedPeopleError) {
+				consola.warn("Failed to fetch linked people:", linkedPeopleError)
 			} else {
-				const linked = (linkedData || [])
-					.map((row) => ({
-						id: (row.people as { id: string })?.id || "",
-						interviewPersonId: row.id,
-						name: (row.people as { name: string | null })?.name || null,
-					}))
-					.filter((p) => p.id)
-				setLinkedPeople(linked)
+				set_linked_people(
+					(linkedPeopleData || [])
+						.map((row) => {
+							const person = row.people as { id: string; name: string | null } | null
+							if (!person?.id) return null
+							return {
+								id: person.id,
+								linkId: String(row.id),
+								label: person.name || "Unnamed",
+							} satisfies LinkedItem
+						})
+						.filter(Boolean) as LinkedItem[]
+				)
 			}
-
-			// Fetch all available people in project
-			const { data: allPeople, error: peopleError } = await supabase
-				.from("people")
-				.select("id, name")
-				.eq("project_id", projectId)
-				.order("name", { ascending: true })
 
 			if (peopleError) {
 				consola.warn("Failed to fetch available people:", peopleError)
 			} else {
-				setAvailablePeople(allPeople || [])
+				set_available_people((peopleData || []).map((p) => ({ id: p.id, label: p.name || "Unnamed" })))
+			}
+
+			const [
+				{ data: linkedOrganizationsData, error: linkedOrganizationsError },
+				{ data: organizationsData, error: organizationsError },
+			] = await Promise.all([
+				supabase.from("interview_organizations").select("id, organizations(id, name)").eq("interview_id", interview.id),
+				supabase
+					.from("organizations")
+					.select("id, name")
+					.eq("project_id", projectId)
+					.order("name", { ascending: true }),
+			])
+
+			if (linkedOrganizationsError) {
+				consola.warn("Failed to fetch linked organizations:", linkedOrganizationsError)
+			} else {
+				set_linked_organizations(
+					(linkedOrganizationsData || [])
+						.map((row) => {
+							const org = row.organizations as { id: string; name: string } | null
+							if (!org?.id) return null
+							return {
+								id: org.id,
+								linkId: String(row.id),
+								label: org.name,
+							} satisfies LinkedItem
+						})
+						.filter(Boolean) as LinkedItem[]
+				)
+			}
+
+			if (organizationsError) {
+				consola.warn("Failed to fetch available organizations:", organizationsError)
+			} else {
+				set_available_organizations((organizationsData || []).map((o) => ({ id: o.id, label: o.name })))
+			}
+
+			const [
+				{ data: linkedOpportunitiesData, error: linkedOpportunitiesError },
+				{ data: opportunitiesData, error: opportunitiesError },
+			] = await Promise.all([
+				supabase
+					.from("interview_opportunities")
+					.select("id, opportunities(id, title)")
+					.eq("interview_id", interview.id),
+				supabase
+					.from("opportunities")
+					.select("id, title")
+					.eq("project_id", projectId)
+					.order("updated_at", { ascending: false }),
+			])
+
+			if (linkedOpportunitiesError) {
+				consola.warn("Failed to fetch linked opportunities:", linkedOpportunitiesError)
+			} else {
+				set_linked_opportunities(
+					(linkedOpportunitiesData || [])
+						.map((row) => {
+							const opp = row.opportunities as { id: string; title: string } | null
+							if (!opp?.id) return null
+							return {
+								id: opp.id,
+								linkId: String(row.id),
+								label: opp.title,
+							} satisfies LinkedItem
+						})
+						.filter(Boolean) as LinkedItem[]
+				)
+			}
+
+			if (opportunitiesError) {
+				consola.warn("Failed to fetch available opportunities:", opportunitiesError)
+			} else {
+				set_available_opportunities((opportunitiesData || []).map((o) => ({ id: o.id, label: o.title })))
 			}
 		} finally {
-			setIsLoadingPeople(false)
+			set_is_loading_links(false)
 		}
 	}, [interview.id, projectId, supabase])
 
 	useEffect(() => {
-		fetchPeople()
-	}, [fetchPeople])
+		fetch_links()
+	}, [fetch_links])
 
 	// Refresh people when link fetcher completes
 	useEffect(() => {
 		if (linkFetcher.state === "idle" && linkFetcher.data) {
-			fetchPeople()
+			fetch_links()
 		}
-	}, [linkFetcher.state, linkFetcher.data, fetchPeople])
+	}, [linkFetcher.state, linkFetcher.data, fetch_links])
 
 	const handleLinkPerson = (personId: string) => {
 		linkFetcher.submit(
@@ -127,15 +190,13 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 			},
 			{ method: "post" }
 		)
-		setShowLinkPopover(false)
-		setSearchInput("")
 	}
 
-	const handleUnlinkPerson = (interviewPersonId: number) => {
+	const handleUnlinkPerson = (interviewPersonId: string) => {
 		linkFetcher.submit(
 			{
 				intent: "remove-participant",
-				interviewPersonId: String(interviewPersonId),
+				interviewPersonId,
 			},
 			{ method: "post" }
 		)
@@ -151,13 +212,71 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 			},
 			{ method: "post" }
 		)
-		setShowLinkPopover(false)
-		setSearchInput("")
 	}
 
-	// Filter out already linked people from available options
-	const linkedPersonIds = new Set(linkedPeople.map((p) => p.id))
-	const unlinkedPeople = availablePeople.filter((p) => !linkedPersonIds.has(p.id))
+	const handleLinkOrganization = (organizationId: string) => {
+		linkFetcher.submit(
+			{
+				intent: "link-organization",
+				organizationId,
+			},
+			{ method: "post" }
+		)
+	}
+
+	type UnlinkOrganizationPayload = { interviewOrganizationId: string }
+	const handleUnlinkOrganization = (payload: UnlinkOrganizationPayload) => {
+		linkFetcher.submit(
+			{
+				intent: "unlink-organization",
+				interviewOrganizationId: payload.interviewOrganizationId,
+			},
+			{ method: "post" }
+		)
+	}
+
+	const handleCreateAndLinkOrganization = (name: string) => {
+		if (!name.trim()) return
+		linkFetcher.submit(
+			{
+				intent: "create-and-link-organization",
+				organization_name: name.trim(),
+			},
+			{ method: "post" }
+		)
+	}
+
+	const handleLinkOpportunity = (opportunityId: string) => {
+		linkFetcher.submit(
+			{
+				intent: "link-opportunity",
+				opportunityId,
+			},
+			{ method: "post" }
+		)
+	}
+
+	type UnlinkOpportunityPayload = { interviewOpportunityId: string }
+	const handleUnlinkOpportunity = (payload: UnlinkOpportunityPayload) => {
+		linkFetcher.submit(
+			{
+				intent: "unlink-opportunity",
+				interviewOpportunityId: payload.interviewOpportunityId,
+			},
+			{ method: "post" }
+		)
+	}
+
+	const handleCreateAndLinkOpportunity = (title: string) => {
+		if (!title.trim()) return
+		linkFetcher.submit(
+			{
+				intent: "create-and-link-opportunity",
+				opportunity_title: title.trim(),
+			},
+			{ method: "post" }
+		)
+	}
 
 	// Handle delete response - navigate after successful delete
 	useEffect(() => {
@@ -312,86 +431,45 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 					)}
 				</div>
 
-				{/* Linked People */}
-				<div className="mt-4 flex flex-wrap items-center gap-2">
-					<div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-						<Users className="h-4 w-4" />
-						<span>People:</span>
-					</div>
-					{isLoadingPeople ? (
-						<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-					) : (
-						<>
-							{linkedPeople.map((person) => (
-								<Badge key={person.id} variant="secondary" className="group flex items-center gap-1 pr-1">
-									{person.name || "Unnamed"}
-									<button
-										onClick={() => handleUnlinkPerson(person.interviewPersonId)}
-										className="ml-1 rounded-full p-0.5 opacity-60 hover:bg-destructive/20 hover:opacity-100"
-										title="Remove link"
-									>
-										<Trash2 className="h-3 w-3" />
-									</button>
-								</Badge>
-							))}
-
-							{/* Add Person Popover */}
-							<Popover open={showLinkPopover} onOpenChange={setShowLinkPopover}>
-								<PopoverTrigger asChild>
-									<Button
-										variant="outline"
-										size="sm"
-										className="h-6 gap-1 px-2 text-xs"
-										disabled={linkFetcher.state !== "idle"}
-									>
-										<Plus className="h-3 w-3" />
-										Add Person
-									</Button>
-								</PopoverTrigger>
-								<PopoverContent className="w-[250px] p-0" align="start">
-									<Command>
-										<CommandInput
-											placeholder="Search or create..."
-											value={searchInput}
-											onValueChange={setSearchInput}
-										/>
-										<CommandList>
-											<CommandEmpty>
-												<p className="py-2 text-center text-muted-foreground text-sm">No people found</p>
-											</CommandEmpty>
-											<CommandGroup>
-												{unlinkedPeople.map((person) => (
-													<CommandItem
-														key={person.id}
-														value={person.name || person.id}
-														onSelect={() => handleLinkPerson(person.id)}
-													>
-														<Check className={cn("mr-2 h-4 w-4 opacity-0")} />
-														{person.name || "Unnamed Person"}
-													</CommandItem>
-												))}
-											</CommandGroup>
-											<CommandSeparator />
-											<CommandGroup>
-												<CommandItem
-													value={`create-new-${searchInput}`}
-													onSelect={() => {
-														if (searchInput.trim()) {
-															handleCreateAndLinkPerson(searchInput.trim())
-														}
-													}}
-													className="text-primary"
-												>
-													<Plus className="mr-2 h-4 w-4" />
-													{searchInput.trim() ? `Create "${searchInput.trim()}"` : "Create new person..."}
-												</CommandItem>
-											</CommandGroup>
-										</CommandList>
-									</Command>
-								</PopoverContent>
-							</Popover>
-						</>
-					)}
+				{/* Linked Entities */}
+				<div className="mt-4">
+					<AddLink
+						default_kind="person"
+						disabled={linkFetcher.state !== "idle"}
+						is_loading={is_loading_links}
+						kinds={[
+							{
+								kind: "person",
+								label_singular: "Person",
+								label_plural: "People",
+								linked_items: linked_people.map((p) => ({ id: p.id, label: p.label, link_id: p.linkId })),
+								available_items: available_people,
+								on_link: handleLinkPerson,
+								on_unlink: (link_id) => handleUnlinkPerson(link_id),
+								on_create_and_link: handleCreateAndLinkPerson,
+							},
+							{
+								kind: "organization",
+								label_singular: "Organization",
+								label_plural: "Organizations",
+								linked_items: linked_organizations.map((o) => ({ id: o.id, label: o.label, link_id: o.linkId })),
+								available_items: available_organizations,
+								on_link: handleLinkOrganization,
+								on_unlink: (link_id) => handleUnlinkOrganization({ interviewOrganizationId: link_id }),
+								on_create_and_link: handleCreateAndLinkOrganization,
+							},
+							{
+								kind: "opportunity",
+								label_singular: "Opportunity",
+								label_plural: "Opportunities",
+								linked_items: linked_opportunities.map((o) => ({ id: o.id, label: o.label, link_id: o.linkId })),
+								available_items: available_opportunities,
+								on_link: handleLinkOpportunity,
+								on_unlink: (link_id) => handleUnlinkOpportunity({ interviewOpportunityId: link_id }),
+								on_create_and_link: handleCreateAndLinkOpportunity,
+							},
+						]}
+					/>
 				</div>
 			</div>
 

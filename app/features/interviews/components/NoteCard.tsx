@@ -1,6 +1,6 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
-import { Calendar, CheckCircle2, Clock, Loader2 } from "lucide-react"
+import { Calendar, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -93,20 +93,6 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 							<div className="flex items-center gap-1">
 								<Loader2 className="h-3 w-3 animate-spin text-amber-500" />
 								<span className="text-amber-600 text-xs">Processing</span>
-							</div>
-						)}
-						{note.status === "ready" && note.conversation_analysis?.indexed_at && (
-							<div className="flex items-center gap-1">
-								<CheckCircle2 className="h-3 w-3 text-emerald-500" />
-								<span className="text-emerald-600 text-xs">
-									{note.conversation_analysis.evidence_count || 0} indexed
-								</span>
-							</div>
-						)}
-						{note.status === "ready" && !note.conversation_analysis?.indexed_at && (
-							<div className="flex items-center gap-1">
-								<Clock className="h-3 w-3 text-gray-400" />
-								<span className="text-gray-500 text-xs">Not indexed</span>
 							</div>
 						)}
 						{/* Date */}

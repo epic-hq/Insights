@@ -34,9 +34,7 @@ function ExtractConversationTakeaways(
     ## Evidence from Conversation
     {% for item in evidence %}
     ---
-    ID: {{ item.id[:8] }}
     {% if item.speaker %}Speaker: {{ item.speaker }}{% endif %}
-    {% if item.timestamp_start %}Time: {{ item.timestamp_start | round }}s{% endif %}
     {% if item.evidence_type %}Type: {{ item.evidence_type }}{% endif %}
 
     Quote: "{{ item.verbatim }}"
@@ -69,20 +67,20 @@ function ExtractConversationTakeaways(
 
     Provide a practical business assessment with sharp, scannable phrasing. Style rules:
     - No corporate filler or soft adjectives; use plain, tactical language.
-    - Use dash bullets and bold-ish prefixes inside the strings (e.g., "- Value: ...", "- Next: ...", "- Improve: ...").
+    - Use dash bullets only ("- ..."). Do NOT add labels like "Value:", "Next:", or "Improve:".
     - Keep each fragment under ~20 words and call out concrete topics, decisions, or blockers.
+    - Do NOT cite, reference, or allude to evidence items by ID, number, hash, code, or timestamp.
+    - Do NOT write "see quote #" / "evidence #" / "ID" / "(ref: ...)" or anything citation-like.
 
     Return JSON with these fields:
 
     {
-      "value_synopsis": "- Value: <2-3 terse bullets/lines on what mattered, named topics and decisions, no fluff>",
-      "critical_next_step": "- Next: <single decisive action with owner or timing if known>",
-      "future_improvement": "- Improve: <single change to make the next call stronger>",
-      "supporting_evidence_ids": ["id1", "id2", "id3"]
+      "value_synopsis": "- <2-3 terse bullets/lines on what mattered (topics/decisions/blockers), no fluff>",
+      "critical_next_step": "- <single decisive action with owner or timing if known>",
+      "future_improvement": "- <single change to make the next call stronger>",
+      "supporting_evidence_ids": []
     }
 
-    For supporting_evidence_ids, include 3-5 evidence IDs from above (8-character prefixes like "156715a5"). Pick the most impactful quotes that support your assessment.
-
-    Write in clear, practical business language. Reference what was discussed, not evidence numbers.
+    Write in clear, practical business language. Reference what was discussed, not evidence identifiers.
   "#
 }
