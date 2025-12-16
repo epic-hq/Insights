@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, Briefcase, Building2, CheckSquare, Compass, File, Glasses, Sparkles, Users } from "lucide-react"
+import { BookOpen, Briefcase, CheckSquare, File, Glasses, Home, Sparkles, Users } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface AppSidebarNavItem {
@@ -28,45 +28,10 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		items: [
 			{
 				key: "dashboard",
-				title: "Dashboard",
+				title: "Home",
 				description: "Project overview",
-				icon: Compass,
+				icon: Home,
 				to: (routes) => routes.dashboard(),
-			},
-			{
-				key: "tasks",
-				title: "Tasks",
-				description: "Priorities & actions",
-				icon: CheckSquare,
-				to: (routes) => routes.priorities(),
-			},
-			{
-				key: "insights",
-				title: "Insights",
-				description: "Themes & patterns",
-				icon: Sparkles,
-				to: (routes) => routes.insights.table(),
-			},
-			{
-				key: "opportunities",
-				title: "Opportunities",
-				description: "Sales pipeline",
-				icon: Briefcase,
-				to: (routes) => routes.opportunities.index(),
-			},
-			{
-				key: "organizations",
-				title: "Organizations",
-				description: "Companies & groups",
-				icon: Building2,
-				to: (routes) => routes.organizations.index(),
-			},
-			{
-				key: "people",
-				title: "People",
-				description: "All individuals",
-				icon: Users,
-				to: (routes) => routes.people.index(),
 			},
 			{
 				key: "content",
@@ -76,11 +41,39 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.interviews.index(),
 			},
 			{
+				key: "insights",
+				title: "Insights",
+				description: "Add content to unlock",
+				icon: Sparkles,
+				to: (routes) => routes.insights.table(),
+			},
+			{
 				key: "lenses",
 				title: "Lenses",
-				description: "Analysis templates",
+				description: "Generate insights first",
 				icon: Glasses,
 				to: (routes) => routes.lenses.library(),
+			},
+			{
+				key: "relationships",
+				title: "Relationships",
+				description: "People & organizations",
+				icon: Users,
+				to: (routes) => routes.people.index(),
+			},
+			{
+				key: "opportunities",
+				title: "Opportunities",
+				description: "Track deals from relationships",
+				icon: Briefcase,
+				to: (routes) => routes.opportunities.index(),
+			},
+			{
+				key: "tasks",
+				title: "Tasks",
+				description: "Priorities & actions",
+				icon: CheckSquare,
+				to: (routes) => routes.priorities(),
 			},
 		],
 	},

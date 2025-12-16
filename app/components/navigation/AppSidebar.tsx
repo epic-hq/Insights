@@ -1,8 +1,9 @@
 // app/components/layout/AppSidebar.tsx
-import { Briefcase, Building2, Handshake, HandshakeIcon, SquareCheckBig, Users } from "lucide-react"
+import { Briefcase, Building2, Handshake, HandshakeIcon, Plus, SquareCheckBig, Users } from "lucide-react"
 import { useMemo } from "react"
 import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge" // ⬅️ for right-aligned counts
+import { Button } from "~/components/ui/button"
 import {
 	Sidebar,
 	SidebarContent,
@@ -194,6 +195,15 @@ export function AppSidebar() {
 		}
 	}, [salesCrmEnabled, salesProject, salesProjectBasePath, salesRoutes])
 
+	const { counts, loading: countsLoading } = useSidebarCounts(accountId, effectiveProjectId, project?.workflow_type)
+
+	const hasContent = hasAnalysisData || (counts.content ?? 0) > 0
+	const hasInsights = (counts.insights ?? counts.themes ?? 0) > 0
+	const insightsLocked = !hasContent
+	const lensesLocked = !hasInsights
+	const isSalesMode = Boolean(project?.workflow_type === "sales" || salesCrmEnabled)
+	const shouldShowOpportunities = (counts.organizations ?? 0) > 0 || isSalesMode
+
 	const sectionsToRender = useMemo(() => {
 		const baseSections = salesSection ? [...visibleSections, salesSection] : visibleSections
 
@@ -214,11 +224,14 @@ export function AppSidebar() {
 					if (item.key === "priorities" && !prioritiesEnabled) {
 						return false
 					}
+					if (item.key === "opportunities") {
+						return shouldShowOpportunities
+					}
 					return true
 				}),
 			}))
 			.filter((section) => section.items.length > 0) // Remove sections with no items
-	}, [visibleSections, salesSection, salesCrmEnabled, icpFeatureEnabled, prioritiesEnabled])
+	}, [visibleSections, salesSection, salesCrmEnabled, icpFeatureEnabled, prioritiesEnabled, shouldShowOpportunities])
 
 	// ────────────────────────────────────────────────────────────────
 	// Counts → show small badges on matching items
@@ -242,6 +255,8 @@ export function AppSidebar() {
 		insights: "themes", // Insights = themes count (renamed from Topics)
 		content: "content", // Content = conversations + notes + files
 
+		relationships: "people",
+
 		// Directory
 		people: "people",
 		organizations: "organizations",
@@ -254,8 +269,6 @@ export function AppSidebar() {
 		deals: "deals",
 		contacts: "contacts",
 	}
-
-	const { counts, loading: countsLoading } = useSidebarCounts(accountId, effectiveProjectId, project?.workflow_type)
 
 	const renderRightBadge = (itemKey: string, isActive: boolean) => {
 		const countKey = COUNT_KEY_BY_ITEM[itemKey]
@@ -280,8 +293,29 @@ export function AppSidebar() {
 		return null
 	}
 	// ────────────────────────────────────────────────────────────────
+	const buildTooltip = (title: string, hint?: string) =>
+		isCollapsed ? [title, hint].filter(Boolean).join(" • ") || undefined : undefined
 
-	const buildTooltip = (title: string) => (isCollapsed ? title : undefined)
+	const resolveItemState = (itemKey: string) => {
+		if (itemKey === "insights") {
+			return { locked: insightsLocked, hint: insightsLocked ? "Add content to unlock" : undefined }
+		}
+		if (itemKey === "lenses") {
+			return { locked: lensesLocked, hint: lensesLocked ? "Generate insights first" : undefined }
+		}
+		if (itemKey === "opportunities") {
+			return { locked: false, hint: "Track deals from relationships" }
+		}
+
+		return { locked: false, hint: undefined }
+	}
+
+	const renderLabel = (title: string, hint?: string) => (
+		<div className="flex flex-col text-left">
+			<span>{title}</span>
+			{hint && !isCollapsed && <span className="text-muted-foreground text-xs">{hint}</span>}
+		</div>
+	)
 
 	return (
 		<Sidebar collapsible="icon" variant="sidebar">
@@ -293,29 +327,59 @@ export function AppSidebar() {
 			</SidebarHeader>
 
 			<SidebarContent>
+				<div className="px-2 pb-2">
+					{(() => {
+						const addContentHref = canNavigate ? routes.interviews.upload() : undefined
+
+						return (
+							<Button
+								asChild={Boolean(addContentHref)}
+								disabled={!addContentHref}
+								className="w-full justify-start gap-2"
+							>
+								{addContentHref ? (
+									<Link to={addContentHref} className="flex w-full items-center gap-2">
+										<Plus className="h-4 w-4" />
+										<span className={isCollapsed ? "sr-only" : ""}>Add content</span>
+									</Link>
+								) : (
+									<span className="flex w-full items-center gap-2">
+										<Plus className="h-4 w-4" />
+										<span className={isCollapsed ? "sr-only" : ""}>Add content</span>
+									</span>
+								)}
+							</Button>
+						)
+					})()}
+				</div>
 				{sectionsToRender.map((section) => (
 					<SidebarGroup key={section.key}>
 						{section.key !== "home" && section.key !== "main" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
 						<SidebarGroupContent>
 							<SidebarMenu>
 								{section.items.map((item) => {
-									const href = canNavigate ? item.to(routes) : undefined
+									const { locked, hint } = resolveItemState(item.key)
+									const href = !locked && canNavigate ? item.to(routes) : undefined
 									const isActive = href ? location.pathname === href : false
 
 									return (
 										<SidebarMenuItem key={item.key} className="py-0.5">
 											{href ? (
-												<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
+												<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title, hint)}>
 													<NavLink to={href} className="flex items-center gap-2">
 														<item.icon />
-														<span>{item.title}</span>
+														{renderLabel(item.title, hint)}
 														{renderRightBadge(item.key, isActive)}
 													</NavLink>
 												</SidebarMenuButton>
 											) : (
-												<SidebarMenuButton disabled tooltip={item.title} className="flex items-center gap-2">
+												<SidebarMenuButton
+													disabled
+													tooltip={buildTooltip(item.title, hint) || item.title}
+													className="flex items-center gap-2"
+												>
 													<item.icon />
-													<span>{item.title}</span>
+													{renderLabel(item.title, hint)}
 													{renderRightBadge(item.key, isActive)}
 												</SidebarMenuButton>
 											)}
