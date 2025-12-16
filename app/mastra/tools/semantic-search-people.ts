@@ -130,44 +130,186 @@ export const semanticSearchPeopleTool = createTool({
 			const queryEmbedding = embeddingData.data[0].embedding as number[]
 
 			// 2. Search for similar person facets using pgvector
-			consola.debug("semantic-search-people: searching for similar person facets", {
-				embeddingLength: queryEmbedding.length,
-				embeddingPreview: queryEmbedding.slice(0, 5),
+			const runSearch = async (threshold: number) => {
+				consola.debug("semantic-search-people: searching for similar person facets", {
+					embeddingLength: queryEmbedding.length,
+					embeddingPreview: queryEmbedding.slice(0, 5),
+					matchThreshold: threshold,
+					matchCount: matchCount * 3, // Fetch extra facets to dedupe by person
+				})
+
+				const { data, error } = await supabase.rpc("find_similar_person_facets", {
+					query_embedding: `[${queryEmbedding.join(",")}]`,
+					project_id_param: projectId,
+					match_threshold: threshold,
+					match_count: matchCount * 3,
+					kind_slug_filter: kindSlugFilter ?? null,
+				})
+
+				consola.debug("semantic-search-people: RPC response", {
+					threshold,
+					hasError: !!error,
+					dataLength: data?.length || 0,
+					error,
+					sampleResults: data?.slice(0, 3).map((f: any) => ({
+						personId: f.person_id,
+						kind: f.kind_slug,
+						label: f.label,
+						similarity: f.similarity,
+					})),
+				})
+
+				if (error) {
+					consola.error("semantic-search-people: database error", error)
+					throw error
+				}
+
+				return data || []
+			}
+
+			// Try the requested threshold first, then progressively relax if nothing matches.
+			const fallbackThresholds = [matchThreshold, 0.4, 0.3].filter((value, index, arr) => {
+				// Only keep thresholds that are <= the requested one, and remove duplicates
+				const isUnique = arr.indexOf(value) === index
+				const isRelaxedEnough = value <= matchThreshold
+				return isUnique && isRelaxedEnough
 			})
 
-			consola.debug("semantic-search-people: calling find_similar_person_facets RPC", {
-				projectId,
-				matchThreshold,
-				matchCount: matchCount * 3, // Get more facets to ensure we have enough unique people
-				kindSlugFilter,
-			})
-
-			const { data: facetsData, error: facetsError } = await supabase.rpc("find_similar_person_facets", {
-				query_embedding: `[${queryEmbedding.join(",")}]`,
-				project_id_param: projectId,
-				match_threshold: matchThreshold,
-				match_count: matchCount * 3, // Get more facets than people requested
-				kind_slug_filter: kindSlugFilter ?? null,
-			})
-
-			consola.debug("semantic-search-people: RPC response", {
-				hasError: !!facetsError,
-				dataLength: facetsData?.length || 0,
-				error: facetsError,
-				sampleResults: facetsData?.slice(0, 3).map((f: any) => ({
-					personId: f.person_id,
-					kind: f.kind_slug,
-					label: f.label,
-					similarity: f.similarity,
-				})),
-			})
-
-			if (facetsError) {
-				consola.error("semantic-search-people: database error", facetsError)
-				throw facetsError
+			let usedThreshold = matchThreshold
+			let facetsData: Awaited<ReturnType<typeof runSearch>> = []
+			for (const threshold of fallbackThresholds) {
+				facetsData = await runSearch(threshold)
+				if (facetsData.length > 0) {
+					usedThreshold = threshold
+					break
+				}
 			}
 
 			if (!facetsData || facetsData.length === 0) {
+				// Fallback: lightweight text/name search so users can still find people without embeddings
+				const normalizedQuery = query.toLowerCase().trim().replace(/[^\w\s]/g, " ")
+				const likePattern = `%${normalizedQuery}%`
+				const tokens = normalizedQuery.split(/\s+/).filter(Boolean)
+
+				consola.info("semantic-search-people: running keyword fallback", {
+					query,
+					projectId,
+					likePattern,
+				})
+
+				// Direct name matches
+				const { data: nameMatches, error: nameError } = await supabase
+					.from("people")
+					.select("id, name")
+					.eq("project_id", projectId as string)
+					.ilike("name", likePattern)
+					.limit(matchCount * 3)
+
+				if (nameError) {
+					consola.error("semantic-search-people: keyword fallback name query error", nameError)
+				}
+
+				// Facet label matches (role/title/org size/etc.)
+				const { data: facetMatches, error: facetTextError } = await supabase
+					.from("person_facet")
+					.select(
+						"person_id, facet_account:facet_account!inner(label, facet_kind:facet_kind_global!inner(slug))"
+					)
+					.eq("project_id", projectId as string)
+					.ilike("facet_account.label", likePattern)
+					.limit(matchCount * 6)
+
+				if (facetTextError) {
+					consola.error("semantic-search-people: keyword fallback facet query error", facetTextError)
+				}
+
+				// Organization name matches (then pull people attached via default_organization_id)
+				const { data: orgMatches, error: orgError } = await supabase
+					.from("organizations")
+					.select("id, name")
+					.eq("project_id", projectId as string)
+					.ilike("name", likePattern)
+					.limit(matchCount * 3)
+
+				if (orgError) {
+					consola.error("semantic-search-people: keyword fallback org query error", orgError)
+				}
+
+				const orgIds = (orgMatches || []).map((o) => o.id)
+				const { data: orgPeople } = orgIds.length
+					? await supabase
+							.from("people")
+							.select("id, name, default_organization_id")
+							.eq("project_id", projectId as string)
+							.in("default_organization_id", orgIds)
+					: { data: [] }
+
+				const fallbackPersonIds = new Set<string>()
+				nameMatches?.forEach((p) => p.id && fallbackPersonIds.add(p.id))
+				facetMatches?.forEach((f) => f.person_id && fallbackPersonIds.add(f.person_id))
+				orgPeople?.forEach((p) => p.id && fallbackPersonIds.add(p.id))
+
+				if (fallbackPersonIds.size > 0) {
+					const ids = Array.from(fallbackPersonIds).slice(0, matchCount * 2)
+					const { data: peopleData } = await supabase
+						.from("people")
+						.select("id, name")
+						.in("id", ids)
+
+					const facetsByPerson = new Map<string, Array<{ kind: string; label: string }>>()
+					facetMatches?.forEach((f) => {
+						if (!f.person_id) return
+						const existing = facetsByPerson.get(f.person_id) || []
+						const label = (f as any)?.facet_account?.label
+						const kind = (f as any)?.facet_account?.facet_kind?.slug
+						if (!label) return
+						existing.push({ kind: kind || "unknown", label })
+						facetsByPerson.set(f.person_id, existing)
+					})
+
+					orgPeople?.forEach((p) => {
+						if (!p.id || !p.default_organization_id) return
+						const org = (orgMatches || []).find((o) => o.id === p.default_organization_id)
+						if (!org?.name) return
+						const existing = facetsByPerson.get(p.id) || []
+						existing.push({ kind: "organization", label: org.name })
+						facetsByPerson.set(p.id, existing)
+					})
+
+					const scoreText = (text: string) =>
+						tokens.reduce((score, token) => (text.includes(token) ? score + 1 : score), 0)
+
+					const people = (peopleData || [])
+						.map((person) => {
+							const facets = facetsByPerson.get(person.id) || []
+							const textBlob = `${person.name || ""} ${facets.map((f) => f.label).join(" ")}`.toLowerCase()
+							const similarity = tokens.length > 0 ? scoreText(textBlob) / tokens.length : 0.1
+
+							return {
+								id: person.id,
+								name: person.name,
+								matchingFacets: facets.map((f) => ({ kind: f.kind, label: f.label, similarity })),
+								highestSimilarity: similarity,
+							}
+						})
+						.sort((a, b) => b.highestSimilarity - a.highestSimilarity)
+						.slice(0, matchCount)
+
+					consola.info("semantic-search-people: returning keyword fallback results", {
+						count: people.length,
+						firstResult: people[0]?.name,
+					})
+
+					return {
+						success: true,
+						message: `Found ${people.length} people via keyword fallback (name/facet match).`,
+						query,
+						people,
+						totalCount: people.length,
+						threshold: usedThreshold,
+					}
+				}
+
 				// Check if there are any person facets at all
 				const { count: totalFacetsCount } = await supabase
 					.from("person_facet")
@@ -210,7 +352,7 @@ export const semanticSearchPeopleTool = createTool({
 					query,
 					people: [],
 					totalCount: 0,
-					threshold: matchThreshold,
+					threshold: usedThreshold,
 				}
 			}
 
@@ -282,7 +424,7 @@ export const semanticSearchPeopleTool = createTool({
 				query,
 				people,
 				totalCount: people.length,
-				threshold: matchThreshold,
+				threshold: usedThreshold,
 			}
 		} catch (error) {
 			consola.error("semantic-search-people: unexpected error", error)

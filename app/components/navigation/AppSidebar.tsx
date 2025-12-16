@@ -304,7 +304,7 @@ export function AppSidebar() {
 			return { locked: lensesLocked, hint: lensesLocked ? "Generate insights first" : undefined }
 		}
 		if (itemKey === "opportunities") {
-			return { locked: false, hint: "Track deals from relationships" }
+			return { locked: false, hint: "from relationships" }
 		}
 
 		return { locked: false, hint: undefined }

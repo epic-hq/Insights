@@ -258,6 +258,136 @@ export const semanticSearchEvidenceTool = createTool({
 			})
 
 			if (evidenceIds.size === 0) {
+				// Nothing from embeddings; try a lightweight keyword/name fallback so users still get hits while embeddings are missing.
+				const normalizeQuery = (raw: string) => raw.replace(/[^\w\s]/g, " ").trim()
+				const normalizedQuery = normalizeQuery(query)
+				const tokens = normalizedQuery.toLowerCase().split(/\s+/).filter(Boolean)
+				const likePattern = `%${normalizedQuery}%`
+				const namePattern = tokens.length > 0 ? `%${tokens[0]}%` : likePattern
+
+				consola.info("semantic-search-evidence: running keyword fallback (no embedding hits)", {
+					query,
+					projectId,
+					matchCount,
+					likePattern,
+					namePattern,
+				})
+
+				// Text search across verbatim/gist/chunk/context
+				const { data: textMatches, error: textError } = await supabase
+					.from("evidence")
+					.select("id, verbatim, gist, chunk, interview_id, pains, gains, thinks, feels, anchors, context_summary")
+					.eq("project_id", projectId as string)
+					.or(
+						[
+							`verbatim.ilike.${likePattern}`,
+							`gist.ilike.${likePattern}`,
+							`chunk.ilike.${likePattern}`,
+							`context_summary.ilike.${likePattern}`,
+						].join(",")
+					)
+					.limit(matchCount * 4)
+
+				if (textError) {
+					consola.error("semantic-search-evidence: keyword fallback text query error", textError)
+				}
+
+				// Name-based search via evidence_people -> people
+				const { data: peopleMatches, error: peopleError } = await supabase
+					.from("evidence_people")
+					.select("evidence_id, people:people!inner(name)")
+					.eq("project_id", projectId as string)
+					.ilike("people.name", namePattern)
+
+				if (peopleError) {
+					consola.error("semantic-search-evidence: keyword fallback people query error", peopleError)
+				}
+
+				const peopleNamesByEvidence = new Map<string, string[]>()
+				peopleMatches?.forEach((row: any) => {
+					if (!row?.evidence_id || !row?.people?.name) return
+					const existing = peopleNamesByEvidence.get(row.evidence_id) || []
+					existing.push(row.people.name)
+					peopleNamesByEvidence.set(row.evidence_id, existing)
+				})
+
+				const fallbackEvidenceIds = new Set<string>()
+				textMatches?.forEach((t) => t.id && fallbackEvidenceIds.add(t.id))
+				peopleMatches?.forEach((p: any) => p?.evidence_id && fallbackEvidenceIds.add(p.evidence_id))
+
+				consola.debug("semantic-search-evidence: keyword fallback candidates", {
+					textMatches: textMatches?.length || 0,
+					peopleMatches: peopleMatches?.length || 0,
+					fallbackEvidenceIds: fallbackEvidenceIds.size,
+				})
+
+				if (fallbackEvidenceIds.size > 0) {
+					const fallbackIdsArray = Array.from(fallbackEvidenceIds)
+					const { data: fallbackEvidence } = await supabase
+						.from("evidence")
+						.select("id, verbatim, gist, chunk, interview_id, pains, gains, thinks, feels, anchors")
+						.in("id", fallbackIdsArray)
+
+					// Get interview titles for fallback results
+					const fallbackInterviewIds = [
+						...new Set(
+							fallbackEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []
+						),
+					]
+					const { data: fallbackInterviewData } = fallbackInterviewIds.length
+						? await supabase.from("interviews").select("id, title").in("id", fallbackInterviewIds)
+						: { data: [] }
+
+					const fallbackInterviewTitles = new Map(fallbackInterviewData?.map((i) => [i.id, i.title]) || [])
+
+					const scoreText = (text: string) =>
+						tokens.reduce((score, token) => (text.includes(token) ? score + 1 : score), 0)
+
+					const fallbackRanked =
+						fallbackEvidence
+							?.map((row) => {
+								const textBlob = [row.verbatim, row.gist, row.chunk].filter(Boolean).join(" ").toLowerCase()
+								const tokenMatches = tokens.length > 0 ? scoreText(textBlob) / tokens.length : 0
+								const nameMatches = peopleNamesByEvidence.has(row.id) ? 0.4 : 0
+								const similarity = Math.min(1, tokenMatches + nameMatches)
+
+								return {
+									id: row.id,
+									verbatim: row.verbatim || null,
+									gist: row.gist || null,
+									similarity,
+									interviewId: row.interview_id || null,
+									interviewTitle: row.interview_id
+										? fallbackInterviewTitles.get(row.interview_id) || null
+										: null,
+									pains: row.pains || null,
+									gains: row.gains || null,
+									thinks: row.thinks || null,
+									feels: row.feels || null,
+									anchors: row.anchors || null,
+								}
+							})
+							.filter((e): e is NonNullable<typeof e> => e !== null)
+							.sort((a, b) => b.similarity - a.similarity)
+							.slice(0, matchCount) || []
+
+					if (fallbackRanked.length > 0) {
+						consola.info("semantic-search-evidence: returning keyword fallback results", {
+							count: fallbackRanked.length,
+							firstResult: fallbackRanked[0]?.verbatim?.substring(0, 120),
+						})
+
+						return {
+							success: true,
+							message: `Found ${fallbackRanked.length} evidence via keyword fallback (embeddings unavailable yet).`,
+							query,
+							evidence: fallbackRanked,
+							totalCount: fallbackRanked.length,
+							threshold: matchThreshold,
+						}
+					}
+				}
+
 				// Check if there's any evidence at all in the project
 				const { count: totalEvidenceCount } = await supabase
 					.from("evidence")

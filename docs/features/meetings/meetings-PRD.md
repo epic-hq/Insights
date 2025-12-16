@@ -12,9 +12,36 @@
 Integrate Recall.ai's Desktop Recording SDK to automatically capture meeting recordings from Zoom, Google Meet, and Microsoft Teams. Recordings will be sent to our backend via webhook, triggering our existing Trigger.dev analysis pipeline to extract insights, evidence, and personas.
 
 ### Key Benefits
+
 - **Zero-friction capture**: Automatic meeting detection and recording
 - **Unified pipeline**: Leverage existing AssemblyAI transcription + BAML analysis
 - **Future-ready**: Foundation for real-time in-meeting coaching
+
+## Priority Recommendation (Dec 2025)
+
+This feature is best positioned as the primary answer to “capture real meetings” (Zoom/Meet/Teams) because our in-browser realtime capture is not reliable enough to capture full meeting audio + metadata.
+
+- **Recommended priority**: **P1** if meetings are a top acquisition/retention lever.
+- **If adoption friction is expected** (e.g., users unwilling to install a desktop app), treat Desktop SDK as P2 and prioritize a bot-based approach instead.
+
+## Platform Constraints & Alternatives
+
+### Desktop Recording SDK Constraints
+
+Per Recall’s Desktop SDK docs, this integration is designed for an **Electron desktop app** and has OS support limitations (notably Apple Silicon Macs + Windows).
+
+### Alternative: Recall.ai Meeting Bot API
+
+If Desktop SDK adoption is blocked (enterprise policies, install friction, unsupported OS), the bot approach becomes the fallback:
+
+- **Pros**: No desktop distribution; centrally managed; can pair well with calendar-driven auto-join.
+- **Cons**: Bot acceptance risk; meeting policies can block bots; “extra attendee” UX cost.
+
+### Mobile
+
+Recall positions a **Mobile Recording SDK** as “coming soon”. Until that is available and validated, the practical mobile v1 is:
+
+- Use our existing upload pipeline for **mobile voice memos** (record audio on phone, upload for transcription + analysis).
 
 ---
 

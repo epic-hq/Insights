@@ -64,6 +64,7 @@ The "Content" page (`/a/:accountId/:projectId/interviews`) provides a unified vi
 **Implementation**: `app/features/assets/pages/detail.tsx`
 
 **Features**:
+
 - **TanStack Table** with dynamic columns from `table_data.headers`
 - **Inline cell editing** - click any cell to edit, auto-saves on blur
 - **Sorting** - click column headers to sort ascending/descending
@@ -73,6 +74,7 @@ The "Content" page (`/a/:accountId/:projectId/interviews`) provides a unified vi
 - **Editable title & description** - inline edit in header section
 
 **Data Flow**:
+
 1. Agent pastes spreadsheet → `parseSpreadsheet` tool parses and saves to `project_assets`
 2. Tool auto-generates title (from column names) and description (row/column summary)
 3. User clicks asset card in Files tab → navigates to detail page
@@ -80,6 +82,7 @@ The "Content" page (`/a/:accountId/:projectId/interviews`) provides a unified vi
 5. User edits title/description → action handler updates metadata fields
 
 **Agent Keywords** (for saving spreadsheets):
+
 - "save this table"
 - "save the spreadsheet"
 - "import this data"
@@ -256,6 +259,46 @@ project_assets (table/PDF)
 | **P3** | Email ingestion | Parse email threads, extract customer signals | 8-12 hrs | Future |
 
 ---
+
+## Ingestion Capability Gap Analysis (Dec 2025)
+
+This section compares the ingestion paths we have today vs what we’ve planned, and highlights where **live meeting capture** needs a different strategy.
+
+### Summary Recommendation
+
+- **Recommendation (capture strategy)**: Treat browser-based realtime recording as **P2 “nice-to-have”** for guided interviews and note-taking, but **not** as the primary path for “capture real meetings”.
+- **Recommendation (live meetings)**: Make **Recall.ai Desktop SDK integration P1** (high leverage) if we want reliable capture from Zoom/Meet/Teams.
+- **Recommendation (mobile)**: Start with **mobile voice memos (P2)** via our existing upload pipeline; evaluate Recall’s Mobile Recording SDK once it’s generally available.
+
+### Capability Matrix
+
+| Capability | Current Status | Primary Entry Point(s) | Best For | Pros | Cons / Gaps | Recommended Priority |
+|---|---|---|---|---|---|---|
+| **Audio/video file upload (interview)** | Implemented | `POST /api/upload-file` (audio/video branch), onboarding upload flow (`/api/onboarding-start`) | High-quality recordings (Zoom export, recorder devices, etc.) | **Reliable**; supports large files via R2 multipart; uses AssemblyAI speaker labels; consistent downstream pipeline | Requires user to obtain file; no “auto-capture”; slower time-to-value than auto-ingest | **P0 (core)** |
+| **Text/markdown upload (interview transcript)** | Implemented | `POST /api/upload-file` (text branch), onboarding flow text ingest | Imported transcripts (notes, sales calls transcripts, etc.) | Fast (no transcription); easy QA; great for backfills | No media playback; no timestamps unless provided; lower trust for provenance unless we preserve source metadata | **P0 (core)** |
+| **Upload/import from URL (media extraction + ffmpeg)** | Implemented | `POST /api/upload-from-url` → Trigger.dev `interview.import-from-url` | Vento/Apollo pages, direct mp4/mp3, HLS/DASH streams | Best “import” story today; async + resilient; supports streams; avoids user download steps | Needs URL discoverability/permissions; some meeting platforms gate downloads; still not truly “live” | **P1** |
+| **Realtime browser recording + streaming transcript (InterviewCopilot)** | Implemented | UI: `InterviewCopilot` → `/api/interviews/realtime-start` + `/api/interviews/realtime-upload` + `/api/interviews/realtime-finalize` | Guided interviews where the user is consciously recording and talking | Great UX for structured interviews; immediate transcript feedback; can re-transcribe after with batch if media saved | **Not sufficient for “live meeting capture”**: typically only captures local mic, not system audio; no true diarization during capture; browser permission fragility; failure modes (tab sleep, device change); requires user to run the page | **P2** (keep, but do not bet live-meetings on it) |
+| **Recall.ai Desktop SDK (auto capture Zoom/Meet/Teams)** | Planned (PRD exists) | Proposed: `/api/recall-webhook`, `/api/recall/create-upload-token` | “Always capture my meetings” for Zoom/Meet/Teams | Zero-friction once installed; gets real meeting artifacts; can provide participant metadata + diarization; unlocks calendar automation | **Platform constraints**: Desktop SDK requires an Electron app and has OS support limitations (per Recall docs); operational complexity (webhooks/idempotency); concurrency limits on transcription providers; compliance/security review needed | **P1** (promote if meetings are strategic) |
+| **Recall.ai Meeting Bot API (join meetings)** | Not explained in our docs yet | Would be new integration (Recall API) | Capture meetings without desktop install; cross-platform capture via bot | No desktop distribution; centrally controlled; can auto-join via calendar integration | Bot acceptance risk (users/guests); meeting policies may block bots; adds “bot attendee” UX cost; enterprise restrictions | **P2** (option if desktop constraints block adoption) |
+| **Mobile native recordings (voice memos from phone)** | Partially supported via upload | Reuse existing audio upload endpoints | Quick capture in field, walk-and-talk interviews | High capture rate; simplest mobile v1; no meeting platform dependencies | Requires building a mobile app or a lightweight web capture UX; mobile backgrounding + interruptions; no “join meeting app and capture both sides” on iOS without deep platform work | **P2** |
+| **Recall.ai Mobile Recording SDK** | External (coming soon per Recall) | Not available in this repo | Phone calls / in-person meetings (per Recall’s marketing) | Could offload mobile capture complexity to Recall; consistent webhook model | **Not available yet**; unclear iOS/Android constraints; still needs product integration and attribution to project/account | **P3** (track, but don’t block roadmap) |
+| **CSV/PDF uploads to project_assets** | Planned | To-be-built tooling/routes in `project_assets` flow | Non-conversation artifacts (docs, spreadsheets) | Unlocks broader “intelligence ingestion” beyond interviews | Not implemented yet; needs extraction/embedding pipeline + evidence provenance UX | **P2** |
+| **Copy/paste CSV/TSV into chat (project_assets table assets)** | Implemented | Agent tool: `parseSpreadsheet` → `project_assets` | Fast CRM-ish ingestion of lists | Very low friction; already in place | Not a meeting capture solution; needs evidence extraction from assets to fully unify | **P1** |
+
+### Key Gaps (Meeting Capture)
+
+- **Gap: capturing “the meeting” vs capturing “my mic”**
+  - Current realtime browser capture is strong for **guided interviews**.
+  - It is structurally weak for **actual meetings** (system audio capture, multi-speaker diarization, meeting metadata).
+
+- **Gap: automated ingestion**
+  - We have strong “manual” and “URL import” paths, but limited “auto record meetings” today.
+
+### Prioritization Notes
+
+- If “meetings” is a top acquisition lever, prioritize **Recall.ai Desktop SDK (P1)**.
+- If we expect heavy enterprise friction around a desktop app, prioritize **Bot API + Calendar integration** (still likely P2 due to adoption risk).
+- Mobile should start as **voice memo capture** (reusing our existing pipeline), not “join meeting app and record everything” until we validate demand.
 
 ## Technical Architecture
 
