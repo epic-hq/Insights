@@ -1,13 +1,15 @@
 import { parseWithZod } from "@conform-to/zod"
 import consola from "consola"
-import { Info, RefreshCw } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { formatDistanceToNow } from "date-fns"
+import { Check, Clock4, Copy, Info, LinkIcon, RefreshCw, ShieldOff } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, useLoaderData, useNavigation } from "react-router"
 import { useSubmit } from "react-router-dom"
 import { z } from "zod"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Alert, AlertDescription } from "~/components/ui/alert"
+import { Badge } from "~/components/ui/badge"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -62,6 +64,25 @@ type LoaderData = {
 	members: MembersRow[]
 	invitations: GetAccountInvitesResponse
 	inviteAcceptance: InvitationAcceptanceState
+	activeShareLinks: ActiveShareLink[]
+}
+
+type ShareLinkRow = {
+	id: string
+	title: string | null
+	share_token: string | null
+	share_expires_at: string | null
+	share_created_at: string | null
+	project_id: string
+}
+
+type ActiveShareLink = {
+	interviewId: string
+	title: string | null
+	shareToken: string
+	shareExpiresAt: string | null
+	shareCreatedAt: string | null
+	projectId: string
 }
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client } = getServerClient(request)
@@ -184,11 +205,38 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		invitations = (invitationsData as GetAccountInvitesResponse | null) ?? []
 	}
 
+	// Active public share links (interviews with enabled, non-expired share tokens)
+	const nowIso = new Date().toISOString()
+	const { data: shareLinksData, error: shareLinksError } = await client
+		.from("interviews")
+		.select("id, title, project_id, share_token, share_expires_at, share_created_at")
+		.eq("account_id", accountId)
+		.eq("share_enabled", true)
+		.not("share_token", "is", null)
+		.or(`share_expires_at.is.null,share_expires_at.gt.${nowIso}`)
+		.order("share_expires_at", { ascending: true, nullsFirst: true })
+
+	if (shareLinksError) {
+		throw new Response(shareLinksError.message, { status: 500 })
+	}
+
+	const activeShareLinks: ActiveShareLink[] = ((shareLinksData as ShareLinkRow[] | null) ?? [])
+		.filter((row) => typeof row.share_token === "string")
+		.map((row) => ({
+			interviewId: row.id,
+			title: row.title,
+			shareToken: row.share_token as string,
+			shareExpiresAt: row.share_expires_at,
+			shareCreatedAt: row.share_created_at,
+			projectId: row.project_id,
+		}))
+
 	const data: LoaderData = {
 		account: normalizedAccount,
 		members,
 		invitations,
 		inviteAcceptance,
+		activeShareLinks,
 	}
 	return data
 }
@@ -215,6 +263,11 @@ const ResendInviteSchema = z.object({
 	intent: z.literal("resendInvite"),
 	email: z.string().email(),
 	role: z.enum(["owner", "member", "viewer"]),
+})
+
+const RevokeShareLinkSchema = z.object({
+	intent: z.literal("revokeShareLink"),
+	interviewId: z.string().uuid(),
 })
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -427,10 +480,33 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return data({ ok: true, resent: true })
 	}
 
+	if (intent === "revokeShareLink") {
+		const submission = parseWithZod(formData, { schema: RevokeShareLinkSchema })
+		if (submission.status !== "success") {
+			return data({ ok: false, errors: submission.error }, { status: 400 })
+		}
+		const { interviewId } = submission.value
+
+		// Disable public sharing for this interview
+		const { error: updateError } = await client
+			.from("interviews")
+			.update({ share_enabled: false })
+			.eq("id", interviewId)
+			.eq("account_id", accountId)
+
+		if (updateError) {
+			consola.error("[MANAGE TEAM] Failed to revoke share link", { interviewId, error: updateError })
+			return data({ ok: false, message: updateError.message }, { status: 500 })
+		}
+
+		consola.info("[MANAGE TEAM] Share link revoked", { interviewId, accountId })
+		return data({ ok: true, revoked: true })
+	}
+
 	return new Response("Bad Request", { status: 400 })
 }
 export default function ManageTeamMembers() {
-	const { account, members, invitations, inviteAcceptance } = useLoaderData() as LoaderData
+	const { account, members, invitations, inviteAcceptance, activeShareLinks } = useLoaderData() as LoaderData
 	const submit = useSubmit()
 	const navigation = useNavigation()
 
@@ -445,10 +521,13 @@ export default function ManageTeamMembers() {
 	)
 
 	const [localInvitations, setLocalInvitations] = useState<GetAccountInvitesResponse>(() => invitations)
+	const [localShareLinks, setLocalShareLinks] = useState<ActiveShareLink[]>(() => activeShareLinks || [])
 
 	const [isRevokeOpen, setIsRevokeOpen] = useState(false)
 	const [selectedInviteId, setSelectedInviteId] = useState<string | null>(null)
 	const [selectedInviteEmail, setSelectedInviteEmail] = useState<string | null>(null)
+	const [shareLinkOrigin, setShareLinkOrigin] = useState("https://getupsight.com")
+	const [copiedShareLinkId, setCopiedShareLinkId] = useState<string | null>(null)
 
 	// Keep local state in sync with loader data after automatic revalidation
 	useEffect(() => {
@@ -466,6 +545,16 @@ export default function ManageTeamMembers() {
 	useEffect(() => {
 		setLocalInvitations(invitations)
 	}, [invitations])
+
+	useEffect(() => {
+		setLocalShareLinks(activeShareLinks || [])
+	}, [activeShareLinks])
+
+	useEffect(() => {
+		if (typeof window !== "undefined" && window.location?.origin) {
+			setShareLinkOrigin(window.location.origin)
+		}
+	}, [])
 
 	const canManage = account?.account_role === "owner"
 	const teamName = getAccountDisplayName(account)
@@ -500,6 +589,45 @@ export default function ManageTeamMembers() {
 	)
 
 	const [resendingEmail, setResendingEmail] = useState<string | null>(null)
+	const [revokingShareLinkId, setRevokingShareLinkId] = useState<string | null>(null)
+	const shareLinksWithUrls = useMemo(
+		() =>
+			(localShareLinks || []).map((link) => ({
+				...link,
+				publicUrl: `${shareLinkOrigin.replace(/\/$/, "")}/s/${link.shareToken}`,
+			})),
+		[localShareLinks, shareLinkOrigin]
+	)
+
+	const formatExpirationLabel = useCallback((expiresAt: string | null) => {
+		if (!expiresAt) return "Never expires"
+		const expiresDate = new Date(expiresAt)
+		if (Number.isNaN(expiresDate.getTime())) return "Expiration unavailable"
+		if (expiresDate.getTime() <= Date.now()) return "Expired"
+		return `Expires ${formatDistanceToNow(expiresDate, { addSuffix: true })}`
+	}, [])
+
+	const handleCopyShareLink = useCallback(async (url: string, linkId: string) => {
+		try {
+			await navigator.clipboard.writeText(url)
+			setCopiedShareLinkId(linkId)
+			setTimeout(() => {
+				setCopiedShareLinkId((prev) => (prev === linkId ? null : prev))
+			}, 1500)
+		} catch (error) {
+			consola.warn("[MANAGE TEAM] Failed to copy share link", { error })
+		}
+	}, [])
+
+	const handleRevokeShareLink = useCallback(
+		async (interviewId: string) => {
+			if (!account?.account_id) return
+			setLocalShareLinks((prev) => prev.filter((link) => link.interviewId !== interviewId))
+			setRevokingShareLinkId(interviewId)
+			submit({ intent: "revokeShareLink", interviewId }, { method: "post", replace: true })
+		},
+		[account?.account_id, submit]
+	)
 
 	const handleResendInvitation = useCallback(
 		async (email: string, role: string) => {
@@ -568,6 +696,90 @@ export default function ManageTeamMembers() {
 				onUpdateMemberPermission={canManage ? handleUpdateMemberPermission : undefined}
 			/>
 
+			{/* Active public share links */}
+			<div className="mt-6 space-y-2">
+				<div className="space-y-1">
+					<h2 className="font-semibold text-lg">Active share links</h2>
+					<p className="text-muted-foreground text-sm">
+						Public interview links that are currently active. Anyone with the link can view the shared interview.
+					</p>
+				</div>
+				{shareLinksWithUrls.length === 0 ? (
+					<p className="rounded-md border border-dashed px-3 py-2 text-muted-foreground text-sm">
+						No active share links.
+					</p>
+				) : (
+					<ul className="space-y-2">
+						{shareLinksWithUrls.map((link) => (
+							<li
+								key={link.shareToken}
+								className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+							>
+								<div className="space-y-1">
+									<div className="flex items-center gap-2">
+										<LinkIcon className="h-4 w-4 text-muted-foreground" />
+										<span className="font-medium text-sm">
+											{link.title && link.title.trim().length > 0 ? link.title : "Untitled interview"}
+										</span>
+										<Badge variant="outline" className="text-xs">
+											Public
+										</Badge>
+									</div>
+									<p className="break-all font-mono text-xs text-muted-foreground">{link.publicUrl}</p>
+									<div className="flex items-center gap-2 text-muted-foreground text-xs">
+										<Clock4 className="h-3 w-3" />
+										<span>{formatExpirationLabel(link.shareExpiresAt)}</span>
+										{link.shareExpiresAt && (
+											<span className="hidden sm:inline">• {new Date(link.shareExpiresAt).toLocaleString()}</span>
+										)}
+									</div>
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => handleCopyShareLink(link.publicUrl, link.shareToken)}
+									>
+										{copiedShareLinkId === link.shareToken ? (
+											<>
+												<Check className="mr-1 h-4 w-4" />
+												Copied
+											</>
+										) : (
+											<>
+												<Copy className="mr-1 h-4 w-4" />
+												Copy link
+											</>
+										)}
+									</Button>
+									{canManage && (
+										<Button
+											variant="outline"
+											size="sm"
+											className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+											onClick={() => handleRevokeShareLink(link.interviewId)}
+											disabled={revokingShareLinkId === link.interviewId}
+										>
+											{revokingShareLinkId === link.interviewId ? (
+												<>
+													<RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+													Revoking...
+												</>
+											) : (
+												<>
+													<ShieldOff className="mr-1 h-3 w-3" />
+													Revoke
+												</>
+											)}
+										</Button>
+									)}
+								</div>
+							</li>
+						))}
+					</ul>
+				)}
+			</div>
+
 			{localInvitations.length > 0 && (
 				<>
 					<div className="mt-6">
@@ -576,7 +788,8 @@ export default function ManageTeamMembers() {
 							{localInvitations.map((inv, idx) => (
 								<li key={inv.invitation_id ?? idx} className="flex items-center justify-between rounded-md border p-3">
 									<span className="text-sm">
-										{inv.email ? <strong>{inv.email}</strong> : "(no email)"} • Role: {inv.account_role}
+										{inv.email ? <strong>{inv.email}</strong> : "(no email)"} • Role:{" "}
+										{formatAccountRoleForDisplay(inv.account_role)}
 									</span>
 									<div className="flex items-center gap-2">
 										<span className="text-muted-foreground text-xs">
@@ -691,6 +904,18 @@ function mapPermissionToAccountRoleForRpc(permission: PermissionLevel): "owner" 
 			return "member"
 		default:
 			return "member" // fallback to member when 'viewer' is not supported in RPC type
+	}
+}
+
+function formatAccountRoleForDisplay(role: "owner" | "member" | "viewer"): string {
+	const permission = mapAccountRoleToPermission(role)
+	switch (permission) {
+		case "admin":
+			return "Admin"
+		case "can-edit":
+			return "Editor"
+		default:
+			return "Viewer"
 	}
 }
 
