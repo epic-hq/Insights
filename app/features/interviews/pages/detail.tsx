@@ -2800,6 +2800,7 @@ export default function InterviewDetail({
               interviewId={interview.id}
               hasTranscript={interview.hasTranscript}
               hasFormattedTranscript={interview.hasFormattedTranscript}
+              durationSec={interview.duration_sec}
               participants={participants}
             />
           </div>

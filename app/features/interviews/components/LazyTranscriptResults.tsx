@@ -2,12 +2,14 @@ import { ChevronDown, ChevronUp, Download, FileText } from "lucide-react"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances"
 import { TranscriptResults } from "./TranscriptResults"
 
 interface LazyTranscriptResultsProps {
 	interviewId: string
 	hasTranscript: boolean
 	hasFormattedTranscript: boolean
+	durationSec?: number | null
 	participants?: Array<{
 		id: number
 		role: string | null
@@ -20,9 +22,11 @@ interface LazyTranscriptResultsProps {
 interface TranscriptApiResponse {
 	transcript: string
 	transcript_formatted: {
+		audio_duration?: number | null
 		speaker_transcripts?: any[]
 		topic_detection?: any
 		sentiment_analysis?: any
+		sentiment_analysis_results?: any
 	}
 }
 
@@ -31,12 +35,14 @@ interface TranscriptData {
 	utterances: any[]
 	iab_categories_result: any
 	sentiment_analysis_results: any
+	audio_duration_sec: number | null
 }
 
 export function LazyTranscriptResults({
 	interviewId,
 	hasTranscript,
 	hasFormattedTranscript,
+	durationSec,
 	participants = [],
 }: LazyTranscriptResultsProps) {
 	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
@@ -68,25 +74,22 @@ export function LazyTranscriptResults({
 
 			const data: TranscriptApiResponse = await response.json()
 
+			const audioDurationRaw = data.transcript_formatted?.audio_duration
+			const audioDurationParsed =
+				typeof audioDurationRaw === "string" ? Number.parseFloat(audioDurationRaw) : audioDurationRaw
+			const audioDurationSec =
+				typeof audioDurationParsed === "number" && Number.isFinite(audioDurationParsed)
+					? audioDurationParsed
+					: durationSec ?? null
+
 			const processedData: TranscriptData = {
 				text: data.transcript || "",
-				utterances: (data.transcript_formatted?.speaker_transcripts || []).map((item: any) => ({
-					speaker: typeof item.speaker === "string" ? item.speaker : "",
-					text: typeof item.text === "string" ? item.text : "",
-					confidence: typeof item.confidence === "number" ? item.confidence : 0,
-					start:
-						typeof item.start === "number" ? item.start : typeof item.start_time === "number" ? item.start_time : 0,
-					end:
-						typeof item.end === "number"
-							? item.end
-							: typeof item.end_time === "number"
-								? item.end_time
-								: typeof item.start === "number"
-									? item.start
-									: 0,
-				})),
+				utterances: normalizeTranscriptUtterances(data.transcript_formatted?.speaker_transcripts || [], {
+					audioDurationSec,
+				}),
 				iab_categories_result: data.transcript_formatted?.topic_detection,
 				sentiment_analysis_results: data.transcript_formatted?.sentiment_analysis_results,
+				audio_duration_sec: audioDurationSec,
 			}
 			setTranscriptData(processedData)
 			setIsLoaded(true)
@@ -197,7 +200,7 @@ export function LazyTranscriptResults({
 						words: [],
 						language_code: "en",
 						confidence: 0,
-						audio_duration: 0,
+						audio_duration: transcriptData.audio_duration_sec ?? 0,
 						utterances: transcriptData.utterances,
 						iab_categories_result: transcriptData.iab_categories_result,
 						sentiment_analysis_results: transcriptData.sentiment_analysis_results,

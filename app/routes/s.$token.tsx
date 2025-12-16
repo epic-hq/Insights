@@ -134,6 +134,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
       `
       id,
       role,
+      transcript_key,
       display_name,
       people (
         id,
@@ -170,6 +171,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     transcriptData: {
       fullTranscript: sanitizedTranscript.full_transcript || null,
       speakerTranscripts: sanitizedTranscript.speaker_transcripts || [],
+      audio_duration: sanitizedTranscript.audio_duration ?? null,
       topicDetection: sanitizedTranscript.topic_detection || null,
       chapters: sanitizedTranscript.chapters || [],
     },

@@ -27,6 +27,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
 import { Timeline } from "~/components/ui/timeline";
+import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances";
 import { TranscriptResults } from "./TranscriptResults";
 
 // Transcript data structure from loader
@@ -41,6 +42,7 @@ interface TranscriptData {
     end_time?: number;
     confidence?: number;
   }>;
+  audio_duration?: number | null;
   topicDetection: unknown;
   chapters?: Array<{
     start_ms: number;
@@ -77,6 +79,7 @@ interface PublicInterviewViewProps {
   participants: Array<{
     id: string | number;
     role: string | null;
+    transcript_key?: string | null;
     display_name: string | null;
     people: {
       id: string;
@@ -252,14 +255,12 @@ export function PublicInterviewView({
     : topicGroups.slice(0, 5);
 
   // Convert speaker transcripts to utterances format for TranscriptResults
-  const transcriptUtterances = (transcriptData?.speakerTranscripts || []).map(
-    (item) => ({
-      speaker: item.speaker || "A",
-      text: item.text || "",
-      confidence: item.confidence || 0,
-      start: item.start ?? item.start_time ?? 0,
-      end: item.end ?? item.end_time ?? item.start ?? item.start_time ?? 0,
-    }),
+  const audioDurationSec =
+    transcriptData?.audio_duration ?? interview.duration_sec ?? null;
+
+  const transcriptUtterances = normalizeTranscriptUtterances(
+    transcriptData?.speakerTranscripts || [],
+    { audioDurationSec },
   );
 
   const hasTranscript =
@@ -603,7 +604,7 @@ export function PublicInterviewView({
                     words: [],
                     language_code: "en",
                     confidence: 0,
-                    audio_duration: interview.duration_sec || 0,
+                    audio_duration: audioDurationSec || 0,
                     utterances: transcriptUtterances,
                     iab_categories_result:
                       transcriptData?.topicDetection as any,
@@ -614,7 +615,7 @@ export function PublicInterviewView({
                     id:
                       typeof p.id === "string" ? parseInt(p.id, 10) || 0 : p.id,
                     role: p.role,
-                    transcript_key: null,
+                    transcript_key: p.transcript_key ?? null,
                     display_name: p.display_name,
                     people: p.people
                       ? {
