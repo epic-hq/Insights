@@ -5,6 +5,8 @@
  * the appropriate dashboard variant. Controls sidebar visibility.
  */
 
+import { Pencil } from "lucide-react"
+import { Link } from "react-router-dom"
 import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
 import { ProcessingBadge } from "~/features/dashboard/components/ProcessingBadge"
 import type { Task } from "~/features/tasks/types"
@@ -115,7 +117,16 @@ export function DashboardShell({
 			{state === "processing" && (
 				<div className="space-y-6">
 					<header className="flex items-center justify-between">
-						<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
+						<div className="flex items-center gap-3">
+							<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
+							<Link
+								to={`${projectPath}/settings`}
+								className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+								title="Edit project settings"
+							>
+								<Pencil className="h-4 w-4" />
+							</Link>
+						</div>
 						<ProcessingBadge processingCount={processingCount} />
 					</header>
 

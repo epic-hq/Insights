@@ -9,7 +9,6 @@ import { useSubmit } from "react-router-dom"
 import { z } from "zod"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Alert, AlertDescription } from "~/components/ui/alert"
-import { Badge } from "~/components/ui/badge"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,6 +19,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "~/components/ui/alert-dialog"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
 import { getPostHogServerClient } from "~/lib/posthog.server"
@@ -643,7 +643,7 @@ export default function ManageTeamMembers() {
 	return (
 		<PageContainer size="sm" padded={false} className="container max-w-3xl py-6">
 			<div className="mb-6 space-y-2">
-				<h1 className="font-semibold text-2xl">Team Members</h1>
+				<h1 className="font-semibold text-2xl">Team Access</h1>
 				<div className="space-y-1 text-muted-foreground text-sm">
 					<p>
 						{canManage ? "Manage access and invite collaborators for" : "Viewing members for"}{" "}
@@ -725,7 +725,7 @@ export default function ManageTeamMembers() {
 											Public
 										</Badge>
 									</div>
-									<p className="break-all font-mono text-xs text-muted-foreground">{link.publicUrl}</p>
+									<p className="break-all font-mono text-muted-foreground text-xs">{link.publicUrl}</p>
 									<div className="flex items-center gap-2 text-muted-foreground text-xs">
 										<Clock4 className="h-3 w-3" />
 										<span>{formatExpirationLabel(link.shareExpiresAt)}</span>

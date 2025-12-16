@@ -5,6 +5,8 @@
  * Shows tasks, insights, lens feed, and project context.
  */
 
+import { Pencil } from "lucide-react"
+import { Link } from "react-router-dom"
 import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
 import type { Task } from "~/features/tasks/types"
 import { cn } from "~/lib/utils"
@@ -60,7 +62,16 @@ export function ActiveDashboard({
 			{/* Page Header */}
 			{!hideHeader && (
 				<header className="mb-8">
-					<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
+					<div className="flex items-center gap-3">
+						<h1 className="font-semibold text-2xl text-foreground">{projectName}</h1>
+						<Link
+							to={`${projectPath}/settings`}
+							className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							title="Edit project settings"
+						>
+							<Pencil className="h-4 w-4" />
+						</Link>
+					</div>
 					<p className="text-muted-foreground text-sm">
 						{conversationCount} conversation{conversationCount !== 1 ? "s" : ""}
 						{activeLensCount > 0 && ` | ${activeLensCount} lens${activeLensCount !== 1 ? "es" : ""} active`}

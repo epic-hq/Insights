@@ -34,7 +34,7 @@ export function OnboardingDashboard({
 	projectName,
 	projectPath,
 	hasGoals,
-	hasLenses,
+	hasLenses: _hasLenses,
 	hasConversations = false,
 	hasAppliedLenses = false,
 	hideHeader,
@@ -83,7 +83,7 @@ export function OnboardingDashboard({
 	return (
 		<div className={className}>
 			{/* Welcome Header */}
-			{!hideHeader && <WelcomeHeader projectName={projectName} className="mb-10" />}
+			{!hideHeader && <WelcomeHeader projectName={projectName} projectPath={projectPath} className="mb-10" />}
 
 			{/* Onboarding Tasks */}
 			<section className="mx-auto mb-12 max-w-2xl">
