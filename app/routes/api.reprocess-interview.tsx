@@ -15,7 +15,8 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const { interviewId } = await request.json();
+    const formData = await request.formData();
+    const interviewId = formData.get("interviewId") as string;
 
     if (!interviewId) {
       return Response.json({ error: "interviewId required" }, { status: 400 });

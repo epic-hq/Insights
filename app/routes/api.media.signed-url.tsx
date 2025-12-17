@@ -14,6 +14,21 @@ interface PresignRequestBody {
 	filename?: string
 }
 
+function normalizeR2Key(rawKey: string): string {
+	const cleaned = rawKey.trim().replace(/^\/+/, "")
+	const parts = cleaned.split("/").filter(Boolean)
+
+	const knownRoots = ["thumbnails", "interviews", "images"]
+	for (const root of knownRoots) {
+		const idx = parts.indexOf(root)
+		if (idx >= 0) {
+			return parts.slice(idx).join("/")
+		}
+	}
+
+	return cleaned
+}
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
@@ -54,6 +69,8 @@ export async function action({ request }: ActionFunctionArgs) {
 			{ status: 400 }
 		)
 	}
+
+	key = normalizeR2Key(key)
 
 	const expiresInSeconds =
 		typeof body.expiresInSeconds === "number" && Number.isFinite(body.expiresInSeconds)

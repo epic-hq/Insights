@@ -275,7 +275,7 @@ export function SimpleMediaPlayer({
 		if (mediaType === "audio" || mediaType === "voice_memo") {
 			return { isAudio: true, isVideo: false }
 		}
-		if (mediaType === "video" || mediaType === "interview") {
+		if (mediaType === "video") {
 			return { isAudio: false, isVideo: true }
 		}
 		// Fall back to extension-based detection
@@ -285,6 +285,7 @@ export function SimpleMediaPlayer({
 	// Show play button if lazy loading and not yet loaded
 	if (lazyLoad && !signedUrl && !hasUserInteracted) {
 		const { isAudio, isVideo } = getMediaTypeInfo()
+		const has_thumbnail = Boolean(isVideo && signedThumbnailUrl)
 
 		return (
 			<div className={cn("relative w-full", className)}>
@@ -296,11 +297,11 @@ export function SimpleMediaPlayer({
 					onClick={handlePlayClick}
 					className={cn(
 						"group relative w-full overflow-hidden rounded-md border bg-muted/30 transition-colors hover:bg-muted/50",
-						isVideo ? "aspect-video" : "h-16"
+						has_thumbnail ? "aspect-video" : "h-16"
 					)}
 				>
 					{/* Thumbnail background for videos */}
-					{isVideo && signedThumbnailUrl && (
+					{has_thumbnail && (
 						<img src={signedThumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
 					)}
 					<div className="absolute inset-0 flex items-center justify-center">
@@ -341,6 +342,7 @@ export function SimpleMediaPlayer({
 	}
 
 	const { isAudio, isVideo } = getMediaTypeInfo()
+	const has_thumbnail = Boolean(isVideo && signedThumbnailUrl)
 
 	return (
 		<div className={cn("relative w-full space-y-3", className)}>
@@ -375,7 +377,10 @@ export function SimpleMediaPlayer({
 						controls
 						autoPlay={autoPlay || hasUserInteracted}
 						poster={signedThumbnailUrl || undefined}
-						className="aspect-video w-full rounded-md border bg-black"
+						className={cn(
+							"w-full rounded-md border bg-black",
+							has_thumbnail ? "aspect-video" : "h-16"
+						)}
 					/>
 				) : (
 					<video
