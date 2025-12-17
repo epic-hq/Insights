@@ -2,7 +2,7 @@
  * V2 Finalize Interview Task
  *
  * Atomic task that:
- * 1. Updates interview status to "completed"
+ * 1. Updates interview status to "ready"
  * 2. Sends analytics events (PostHog)
  * 3. Triggers side effects (e.g., generateSalesLensTask)
  * 4. Marks workflow as complete
@@ -16,6 +16,10 @@ import consola from "consola";
 import { PostHog } from "posthog-node";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { workflowRetryConfig } from "~/utils/processInterview.server";
+import {
+  generateTitleFromContent,
+  isTimestampTitle,
+} from "../../lib/generateTitle";
 import {
   errorMessage,
   saveWorkflowState,
@@ -57,7 +61,7 @@ export const finalizeInterviewTaskV2 = task({
         statusDetail: "Analysis complete",
       });
 
-      // Update interview status to "completed" and set conversation_analysis
+      // Update interview status to "ready" and set conversation_analysis
       const { data: currentInterview } = await client
         .from("interviews")
         .select("conversation_analysis")
@@ -67,10 +71,13 @@ export const finalizeInterviewTaskV2 = task({
       const existingAnalysis =
         (currentInterview?.conversation_analysis as any) || {};
 
+      // Note: interview_status enum is: draft, scheduled, uploading, uploaded,
+      // transcribing, transcribed, processing, ready, tagged, archived, error
+      // "completed" is NOT a valid status - use "ready" for fully processed interviews
       const { error: updateError } = await client
         .from("interviews")
         .update({
-          status: "completed",
+          status: "ready",
           updated_at: new Date().toISOString(),
           conversation_analysis: {
             ...existingAnalysis,
@@ -90,8 +97,62 @@ export const finalizeInterviewTaskV2 = task({
         );
       } else {
         consola.info(
-          `Interview ${interviewId} marked as completed with conversation_analysis`,
+          `Interview ${interviewId} marked as ready with conversation_analysis`,
         );
+      }
+
+      // Generate title if current title is a timestamp pattern
+      try {
+        const { data: interviewForTitle } = await client
+          .from("interviews")
+          .select(
+            "title, transcript, observations_and_notes, transcript_formatted",
+          )
+          .eq("id", interviewId)
+          .single();
+
+        if (interviewForTitle && isTimestampTitle(interviewForTitle.title)) {
+          // Get content from transcript or notes
+          const contentForTitle =
+            fullTranscript ||
+            interviewForTitle.transcript ||
+            interviewForTitle.observations_and_notes ||
+            (
+              interviewForTitle.transcript_formatted as {
+                full_transcript?: string;
+              }
+            )?.full_transcript ||
+            "";
+
+          if (contentForTitle && contentForTitle.length >= 50) {
+            const generatedTitle =
+              await generateTitleFromContent(contentForTitle);
+
+            if (generatedTitle) {
+              const { error: titleError } = await client
+                .from("interviews")
+                .update({ title: generatedTitle })
+                .eq("id", interviewId);
+
+              if (titleError) {
+                consola.warn(
+                  `[finalizeInterview] Failed to update title for ${interviewId}:`,
+                  titleError,
+                );
+              } else {
+                consola.info(
+                  `[finalizeInterview] Updated title for ${interviewId}: "${generatedTitle}"`,
+                );
+              }
+            }
+          }
+        }
+      } catch (titleError) {
+        consola.warn(
+          "[finalizeInterview] Title generation failed:",
+          titleError,
+        );
+        // Don't fail the task if title generation fails
       }
 
       // Trigger side effects

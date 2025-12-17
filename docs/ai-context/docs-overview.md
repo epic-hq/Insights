@@ -57,6 +57,7 @@ This project has extensive documentation organized by purpose. AI agents should 
 |----------|-------------|
 | [Information Architecture](/docs/_information_architecture.md) | System-wide IA and data model |
 | [Lens Architecture v2](/docs/_lens-based-architecture-v2.md) | Conversation lenses design |
+| [Content Types & Processing](/docs/features/content-types-and-processing.md) | Content taxonomy, UI routing, lens visibility |
 | [Interview Processing](/docs/interview-processing-explained.md) | Core transcription/analysis pipeline |
 | [Interview Processing Flows](/docs/interview-processing-flows.md) | Detailed pipeline diagrams |
 | [User Flow](/docs/user-flow.md) | End-to-end user journeys |

@@ -23,11 +23,48 @@ type LoaderData = {
 }
 
 const DEFAULT_JOURNEY_STAGES: OpportunityStageConfig[] = [
-	{ id: "aware", label: "Aware" },
-	{ id: "consider", label: "Consider" },
-	{ id: "trial", label: "Trial" },
-	{ id: "adopt", label: "Adopt" },
-	{ id: "expand", label: "Expand" },
+	{
+		id: "status-quo",
+		label: "Status Quo",
+		description: "User is coping with existing tools or workarounds. No active search yet.",
+		discovery_focus: "Hidden pain, inertia, triggers",
+	},
+	{
+		id: "problem-recognition",
+		label: "Problem Recognition",
+		description: "Pain becomes explicit. Cost, risk, or frustration is acknowledged.",
+		discovery_focus: "Pain intensity, frequency, stakes",
+	},
+	{
+		id: "solution-exploration",
+		label: "Solution Exploration",
+		description: "User explores approaches and alternatives. Mental models form.",
+		discovery_focus: "Expectations, comparisons, buying criteria",
+	},
+	{
+		id: "first-value",
+		label: "First Value",
+		description: "User experiences a concrete win or moment of clarity.",
+		discovery_focus: "Activation moments, time-to-value",
+	},
+	{
+		id: "workflow-adoption",
+		label: "Workflow Adoption",
+		description: "Product fits into real workflows and routines.",
+		discovery_focus: "Friction, habit formation, drop-off causes",
+	},
+	{
+		id: "dependence",
+		label: "Dependence",
+		description: "User trusts and relies on the product. Removal would hurt.",
+		discovery_focus: "Trust, reliability, failure modes",
+	},
+	{
+		id: "expansion",
+		label: "Expansion",
+		description: "Usage broadens across people, use cases, or spend.",
+		discovery_focus: "Secondary jobs, adjacent value, scale limits",
+	},
 ]
 
 const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
@@ -124,7 +161,11 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 				const label = (item.label || item.id || `Item ${idx + 1}`).toString().trim()
 				const id = normalizeStageId(item.id || label)
 				if (!id) return null
-				return { id, label: label || id, description: item.description?.trim() || undefined }
+				const discovery_focus =
+					typeof item.discovery_focus === "string" && item.discovery_focus.trim().length > 0
+						? item.discovery_focus.trim()
+						: undefined
+				return { id, label: label || id, description: item.description?.trim() || undefined, discovery_focus }
 			})
 			.filter(Boolean) as OpportunityStageConfig[]
 	}
@@ -196,6 +237,52 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 
 	const reset = () => onChange(defaultItems)
 
+	const renderTooltipContent = (item: OpportunityStageConfig) => {
+		const description = item.description?.trim()
+		const discoveryFocus = item.discovery_focus?.trim()
+
+		if (!description && !discoveryFocus) return null
+
+		return (
+			<div className="max-w-xs space-y-1 text-xs">
+				{description && <p>{description}</p>}
+				{discoveryFocus && <p className="text-muted-foreground">Discovery focus: {discoveryFocus}</p>}
+			</div>
+		)
+	}
+
+	const renderLabelChip = (item: OpportunityStageConfig) => {
+		const tooltipContent = renderTooltipContent(item)
+		const label = (
+			<span className="rounded-md bg-background px-3 py-1 text-foreground shadow-sm ring-1 ring-border/60">
+				{item.label}
+			</span>
+		)
+
+		if (!tooltipContent) return label
+
+		return (
+			<Tooltip delayDuration={300}>
+				<TooltipTrigger asChild>{label}</TooltipTrigger>
+				<TooltipContent>{tooltipContent}</TooltipContent>
+			</Tooltip>
+		)
+	}
+
+	const renderEditableLabel = (item: OpportunityStageConfig, onLabelChange: (value: string) => void) => {
+		const tooltipContent = renderTooltipContent(item)
+		const input = <Input value={item.label} onChange={(e) => onLabelChange(e.target.value)} />
+
+		if (!tooltipContent) return input
+
+		return (
+			<Tooltip delayDuration={300}>
+				<TooltipTrigger asChild>{input}</TooltipTrigger>
+				<TooltipContent>{tooltipContent}</TooltipContent>
+			</Tooltip>
+		)
+	}
+
 	return (
 		<Card className="border-border/60">
 			<CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -217,12 +304,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 					<div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
 						<div className="flex flex-wrap gap-2">
 							{computed.map((item) => (
-								<span
-									key={item.id}
-									className="rounded-md bg-background px-3 py-1 text-foreground shadow-sm ring-1 ring-border/60"
-								>
-									{item.label}
-								</span>
+								<span key={item.id}>{renderLabelChip(item)}</span>
 							))}
 						</div>
 					</div>
@@ -254,7 +336,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 								>
 									<GripVertical className="h-4 w-4" />
 								</button>
-								<Input value={item.label} onChange={(e) => updateItem(idx, e.target.value)} />
+								{renderEditableLabel(item, (value) => updateItem(idx, value))}
 								<TooltipProvider>
 									<Tooltip delayDuration={150}>
 										<TooltipTrigger asChild>

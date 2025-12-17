@@ -62,6 +62,8 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 
 [ ] Implement livekit-agent and token generator in backend, and livekit-web agent in front end e.g. projectStatusAgent for when user wants to talk to agent.
 
+[ ] Test the upload-image auth/entityId fix in production before rolling out to other endpoints.
+
 ## Recent Implementations
 
 ### Task System (Nov 2024) ✅ **Phase 2 Complete**

@@ -1801,6 +1801,51 @@ export class BamlAsyncClient {
     }
   }
   
+  async GenerateTitleFromContent(
+      content: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<string> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const signal = options.signal;
+      
+      if (signal?.aborted) {
+        throw new BamlAbortError('Operation was aborted', signal.reason);
+      }
+      
+      // Check if onTick is provided - route through streaming if so
+      if (options.onTick) {
+        const stream = this.stream.GenerateTitleFromContent(
+          content,
+          __baml_options__
+        );
+        
+        return await stream.getFinalResponse();
+      }
+      
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "GenerateTitleFromContent",
+        {
+          "content": content
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+        signal,
+      )
+      return raw.parsed(false) as string
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   async LinkEvidenceToResearchStructure(
       evidence: types.EvidenceItem[],questions: types.QuestionContext[],custom_instructions: string,
       __baml_options__?: BamlCallOptions
@@ -4516,6 +4561,69 @@ class BamlStreamClient {
         raw,
         (a): partial_types.ResearchStructure => a,
         (a): types.ResearchStructure => a,
+        this.ctxManager.cloneContext(),
+        options.signal,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  GenerateTitleFromContent(
+      content: string,
+      __baml_options__?: BamlCallOptions
+  ): BamlStream<string, string> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const signal = options.signal;
+      
+      if (signal?.aborted) {
+        throw new BamlAbortError('Operation was aborted', signal.reason);
+      }
+      
+      let collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      
+      let onTickWrapper: (() => void) | undefined;
+      
+      // Create collector and wrap onTick if provided
+      if (options.onTick) {
+        const tickCollector = new Collector("on-tick-collector");
+        collector = [...collector, tickCollector];
+        
+        onTickWrapper = () => {
+          const log = tickCollector.last;
+          if (log) {
+            try {
+              options.onTick!("Unknown", log);
+            } catch (error) {
+              console.error("Error in onTick callback for GenerateTitleFromContent", error);
+            }
+          }
+        };
+      }
+
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "GenerateTitleFromContent",
+        {
+          "content": content
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+        signal,
+        onTickWrapper,
+      )
+      return new BamlStream<string, string>(
+        raw,
+        (a): string => a,
+        (a): string => a,
         this.ctxManager.cloneContext(),
         options.signal,
       )

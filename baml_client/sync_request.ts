@@ -985,6 +985,31 @@ export class HttpRequest {
     }
   }
   
+  GenerateTitleFromContent(
+      content: string,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "GenerateTitleFromContent",
+        {
+          "content": content
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   LinkEvidenceToResearchStructure(
       evidence: types.EvidenceItem[],questions: types.QuestionContext[],custom_instructions: string,
       __baml_options__?: BamlCallOptions
@@ -2104,6 +2129,31 @@ export class HttpStreamRequest {
         "GenerateResearchStructure",
         {
           "inputs": inputs
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  GenerateTitleFromContent(
+      content: string,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "GenerateTitleFromContent",
+        {
+          "content": content
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
