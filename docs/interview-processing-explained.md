@@ -77,9 +77,11 @@ Database: Store everything
 
 4. **Store in Database**:
    - Insert people records → `people` table
-   - Insert evidence → `evidence` table
+   - Insert evidence → `evidence` table (embeddings generated async via queue)
    - Insert facet mentions → `evidence_facet` table (junction)
    - Link evidence to people → `interview_people` table (junction)
+
+   > **Note:** Evidence embeddings are generated asynchronously via DB trigger → pgmq queue → edge function. This happens within ~1 minute of insertion. See `supabase/schemas/50_queues.sql` for the trigger definition.
 
 **Key Data Structure:**
 ```typescript

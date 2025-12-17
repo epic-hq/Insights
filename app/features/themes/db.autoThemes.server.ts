@@ -390,6 +390,8 @@ export async function autoGroupThemesAndApply(
     consola.log(
       `[autoGroupThemesAndApply] Evidence embedding status: ${embeddingCount}/${totalCount} have embeddings`,
     );
+    // Note: Evidence embeddings are generated async via DB trigger → pgmq queue → edge function
+    // If embeddings are missing, they should arrive within ~1 minute via cron job
   }
 
   // 1) Load evidence

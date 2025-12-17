@@ -394,6 +394,34 @@ Great pattern to use to offload long running tasks from the main thread, DB.
 Using for embeddings, and transcriptions (goal).
 Inspired by: [blog](https://supabase.com/docs/guides/ai/automatic-embeddings?queryGroups=database-method&database-method=dashboard)
 
+### Embedding Queue Architecture
+
+All embeddings are generated asynchronously via DB triggers → pgmq → pg_cron → Edge Functions:
+
+| Entity | Trigger | Queue | Edge Function |
+|--------|---------|-------|---------------|
+| `themes` | `trg_enqueue_theme` | `insights_embedding_queue` | `embed` |
+| `insights` | `trg_enqueue_insight` | `insights_embedding_queue` | `embed` |
+| `evidence` | `trg_enqueue_evidence` | `insights_embedding_queue` | `embed` |
+| `evidence_facet` | `trg_enqueue_facet` | `facet_embedding_queue` | `embed-facet` |
+| `person_facet` | `trg_enqueue_person_facet` | `person_facet_embedding_queue` | `embed-person-facet` |
+
+**Flow:**
+1. Row inserted/updated → trigger fires (only if `embedding IS NULL`)
+2. Trigger calls `pgmq.send()` to enqueue a message
+3. pg_cron drains queue every minute via `process_*_queue()` functions
+4. Queue processor calls edge function with row data
+5. Edge function generates embedding via OpenAI and updates the row
+
+**Key files:**
+- Schema: `supabase/schemas/50_queues.sql`
+- Edge functions: `supabase/functions/embed/`, `supabase/functions/embed-facet/`, etc.
+
+**Backfilling:** If existing rows are missing embeddings, run the backfill script:
+```bash
+npx tsx scripts/backfill-evidence-embeddings.ts
+```
+
 ### pgmq
 
 [pgmq](https://github.com/pgmq/pgmq)

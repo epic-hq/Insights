@@ -1,4 +1,4 @@
-import { ChevronsUpDown, LogOut, Settings, User, Users } from "lucide-react"
+import { ChevronsUpDown, CreditCard, LogOut, Settings, User, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -48,6 +48,7 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 	const avatarUrl = user.user_metadata?.avatar_url ?? ""
 	const initials = getInitials(displayName || email || "U")
 	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null
+	const billingPath = accountId ? `/a/${accountId}/billing` : null
 
 	const handleSignOut = async () => {
 		try {
@@ -93,6 +94,9 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 							</div>
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
+						<DropdownMenuLabel className="text-muted-foreground text-xs uppercase tracking-wide">
+							Personal
+						</DropdownMenuLabel>
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild>
 								<Link to={PATHS.PROFILE} className="flex items-center gap-2">
@@ -100,34 +104,46 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 									<span>Profile</span>
 								</Link>
 							</DropdownMenuItem>
+							<DropdownMenuItem className="flex items-center justify-between">
+								<span>Theme</span>
+								<ThemeToggle />
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={handleSignOut}
+								className="flex items-center gap-2 text-destructive focus:text-destructive"
+							>
+								<LogOut className="h-4 w-4" />
+								<span>Sign out</span>
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuLabel className="text-muted-foreground text-xs uppercase tracking-wide">
+							Account
+						</DropdownMenuLabel>
+						<DropdownMenuGroup>
 							<DropdownMenuItem asChild>
 								<Link to={routes.team.members() || PATHS.TEAMS} className="flex items-center gap-2">
 									<Users className="h-4 w-4" />
-									<span>Manage Team</span>
+									<span>Manage access</span>
 								</Link>
 							</DropdownMenuItem>
+							{billingPath && (
+								<DropdownMenuItem asChild>
+									<Link to={billingPath} className="flex items-center gap-2">
+										<CreditCard className="h-4 w-4" />
+										<span>Billing</span>
+									</Link>
+								</DropdownMenuItem>
+							)}
 							{accountSettingsPath && (
 								<DropdownMenuItem asChild>
 									<Link to={accountSettingsPath} className="flex items-center gap-2">
 										<Settings className="h-4 w-4" />
-										<span>Account Settings</span>
+										<span>Account settings</span>
 									</Link>
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem className="flex items-center justify-between">
-							<span>Theme</span>
-							<ThemeToggle />
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={handleSignOut}
-							className="flex items-center gap-2 text-destructive focus:text-destructive"
-						>
-							<LogOut className="h-4 w-4" />
-							<span>Sign out</span>
-						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

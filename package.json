@@ -106,6 +106,7 @@
 		"remix-i18next": "7.2.1",
 		"sonner": "2.0.7",
 		"streamdown": "1.6.10",
+		"supabase": "2.67.2",
 		"tailwind-merge": "3.3.1",
 		"three": "0.181.2",
 		"trigger.dev": "4.1.2",
@@ -168,7 +169,7 @@
 	"optionalDependencies": {
 		"@rollup/rollup-linux-x64-gnu": "^4.50.1"
 	},
-	"packageManager": "pnpm@10.18.2+sha512.9fb969fa749b3ade6035e0f109f0b8a60b5d08a1a87fdf72e337da90dcc93336e2280ca4e44f2358a649b83c17959e9993e777c2080879f3801e6f0d999ad3dd",
+	"packageManager": "pnpm@10.26.0+sha512.3b3f6c725ebe712506c0ab1ad4133cf86b1f4b687effce62a9b38b4d72e3954242e643190fc51fa1642949c735f403debd44f5cb0edd657abe63a8b6a7e1e402",
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",

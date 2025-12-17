@@ -293,8 +293,8 @@ export function AppSidebar() {
 		return null
 	}
 	// ────────────────────────────────────────────────────────────────
-	const buildTooltip = (title: string, hint?: string) =>
-		isCollapsed ? [title, hint].filter(Boolean).join(" • ") || undefined : undefined
+	const buildTooltip = (title: string, description?: string, hint?: string) =>
+		[title, description, hint].filter(Boolean).join(" • ") || undefined
 
 	const resolveItemState = (itemKey: string) => {
 		if (itemKey === "insights") {
@@ -302,9 +302,6 @@ export function AppSidebar() {
 		}
 		if (itemKey === "lenses") {
 			return { locked: lensesLocked, hint: lensesLocked ? "Generate insights first" : undefined }
-		}
-		if (itemKey === "opportunities") {
-			return { locked: false, hint: "from relationships" }
 		}
 
 		return { locked: false, hint: undefined }
@@ -361,11 +358,17 @@ export function AppSidebar() {
 									const { locked, hint } = resolveItemState(item.key)
 									const href = !locked && canNavigate ? item.to(routes) : undefined
 									const isActive = href ? location.pathname === href : false
+									const tooltip = buildTooltip(item.title, item.description, hint)
 
 									return (
 										<SidebarMenuItem key={item.key} className="py-0.5">
 											{href ? (
-												<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title, hint)}>
+												<SidebarMenuButton
+													asChild
+													isActive={isActive}
+													tooltip={tooltip}
+													showTooltipWhenExpanded
+												>
 													<NavLink to={href} className="flex items-center gap-2">
 														<item.icon />
 														{renderLabel(item.title, hint)}
@@ -375,7 +378,8 @@ export function AppSidebar() {
 											) : (
 												<SidebarMenuButton
 													disabled
-													tooltip={buildTooltip(item.title, hint) || item.title}
+													tooltip={tooltip || item.title}
+													showTooltipWhenExpanded
 													className="flex items-center gap-2"
 												>
 													<item.icon />
@@ -401,6 +405,7 @@ export function AppSidebar() {
 									<SidebarMenuButton
 										onClick={() => setShowValidationView(!showValidationView)}
 										tooltip={buildTooltip(showValidationView ? "Dashboard View" : "Validation Status")}
+										showTooltipWhenExpanded
 										className={
 											showValidationView
 												? "bg-emerald-600 text-white hover:bg-emerald-700"
@@ -426,27 +431,33 @@ export function AppSidebar() {
 			<SidebarFooter>
 				{/* Utility Links - closer to user profile */}
 				<SidebarMenu>
-					{/* Invite Team Modal */}
-					<SidebarMenuItem className="py-0.5">
-						<InviteTeamModal collapsed={isCollapsed} accountId={effectiveAccountId} />
-					</SidebarMenuItem>
-
 					{/* Other utility links */}
 					{APP_SIDEBAR_UTILITY_LINKS.map((item) => {
 						const href = item.to ? (canNavigate ? item.to(routes) : undefined) : undefined
 						const isActive = href ? location.pathname === href : false
+						const tooltip = buildTooltip(item.title, item.description)
 
 						return (
 							<SidebarMenuItem key={item.key} className="py-0.5">
 								{href ? (
-									<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
+									<SidebarMenuButton
+										asChild
+										isActive={isActive}
+										tooltip={tooltip}
+										showTooltipWhenExpanded
+									>
 										<NavLink to={href} className="flex items-center gap-2">
 											<item.icon />
 											<span>{item.title}</span>
 										</NavLink>
 									</SidebarMenuButton>
 								) : (
-									<SidebarMenuButton disabled tooltip={item.title} className="flex items-center gap-2">
+									<SidebarMenuButton
+										disabled
+										tooltip={tooltip || item.title}
+										showTooltipWhenExpanded
+										className="flex items-center gap-2"
+									>
 										<item.icon />
 										<span>{item.title}</span>
 									</SidebarMenuButton>
@@ -454,6 +465,11 @@ export function AppSidebar() {
 							</SidebarMenuItem>
 						)
 					})}
+
+					{/* Access */}
+					<SidebarMenuItem className="py-0.5">
+						<InviteTeamModal accountId={effectiveAccountId} />
+					</SidebarMenuItem>
 				</SidebarMenu>
 
 				{/* User Profile at bottom */}

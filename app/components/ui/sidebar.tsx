@@ -488,12 +488,14 @@ function SidebarMenuButton({
 	variant = "default",
 	size = "default",
 	tooltip,
+	showTooltipWhenExpanded = false,
 	className,
 	...props
 }: React.ComponentProps<"button"> & {
 	asChild?: boolean
 	isActive?: boolean
 	tooltip?: string | React.ComponentProps<typeof TooltipContent>
+	showTooltipWhenExpanded?: boolean
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
 	const Comp = asChild ? Slot : "button"
 	const { isMobile, state } = useSidebar()
@@ -522,7 +524,12 @@ function SidebarMenuButton({
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>{button}</TooltipTrigger>
-			<TooltipContent side="right" align="center" hidden={state !== "collapsed" || isMobile} {...tooltip} />
+			<TooltipContent
+				side="right"
+				align="center"
+				hidden={(state !== "collapsed" && !showTooltipWhenExpanded) || isMobile}
+				{...tooltip}
+			/>
 		</Tooltip>
 	)
 }

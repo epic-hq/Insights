@@ -61,6 +61,8 @@ export type Annotation = Tables<"annotations">
 // ------------------------------------
 export type InsightInsert = TablesInsert<"themes">
 export type InterviewInsert = TablesInsert<"interviews">
+export type ThemeInsert = TablesInsert<"themes">
+export type Theme_EvidenceInsert = TablesInsert<"theme_evidence">
 export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
 export type Project_SectionInsert = TablesInsert<"project_sections">
