@@ -19,57 +19,7 @@ import {
   isDirectMediaUrl,
   isStreamingUrl,
 } from "~/utils/extractMediaUrl.server";
-
-async function ensureContext(context?: Map<string, unknown> | any) {
-  consola.info("[importVideoFromUrl] ensureContext called", {
-    hasContext: !!context,
-    contextType: typeof context,
-    hasGetMethod: typeof context?.get === "function",
-  });
-
-  const projectId = context?.requestContext?.get?.("project_id") as
-    | string
-    | undefined;
-  const userId = context?.requestContext?.get?.("user_id") as
-    | string
-    | undefined;
-
-  if (!projectId) {
-    consola.error("[importVideoFromUrl] Missing required projectId in context");
-    throw new Error(`Missing project_id in runtime context`);
-  }
-
-  // IMPORTANT: Always get account_id from the project record, NOT from session context
-  // The session context account_id can differ from the project's actual account
-  // (e.g., user viewing a project in account A while their session is set to account B)
-  const { createSupabaseAdminClient } =
-    await import("~/lib/supabase/client.server");
-  const supabase = createSupabaseAdminClient();
-
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select("account_id")
-    .eq("id", projectId)
-    .single();
-
-  if (error || !project?.account_id) {
-    consola.error("[importVideoFromUrl] Failed to fetch project account_id", {
-      projectId,
-      error,
-    });
-    throw new Error(`Failed to resolve account_id for project ${projectId}`);
-  }
-
-  const accountId = project.account_id;
-
-  consola.info("[importVideoFromUrl] resolved context values", {
-    accountId,
-    projectId,
-    userId: userId || "(empty)",
-  });
-
-  return { accountId, projectId, userId };
-}
+import { resolveProjectContext } from "./context-utils";
 
 export const importVideoFromUrlTool = createTool({
   id: "importVideoFromUrl",
@@ -122,7 +72,10 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
       participantOrganization,
       participantSegment,
     } = input;
-    const { accountId, projectId, userId } = await ensureContext(context);
+    const { accountId, projectId, userId } = await resolveProjectContext(
+      context,
+      "importVideoFromUrl",
+    );
 
     // Check if this is a webpage that might have multiple media assets
     // This provides a better UX by letting the user choose when there are options

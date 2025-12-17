@@ -37,12 +37,16 @@ type Stage = "activation" | "onboarding" | "retention"
 type Impact = 1 | 2 | 3
 type Priority = 1 | 2 | 3
 type Category =
-	| "Core product – capture & workflow"
-	| "Core product – intelligence"
-	| "Foundation – reliability & UX"
-	| "Monetization & pricing"
-	| "Engagement & analytics"
-	| "Acquisition & marketing"
+	| "Product"
+	| "Usability"
+	| "Value"
+	| "Engagement"
+	| "Acquisition"
+	| "Sales"
+	| "Support"
+	| "Trust & Risk"
+	| "Ops & Scale"
+	| "Other"
 
 export type FeatureRow = {
 	id: string
@@ -240,7 +244,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 				data: {
 					title,
 					description: description || null,
-					cluster: cluster || "Core product – capture & workflow",
+					cluster: cluster || "Product",
 					priority: priority as 1 | 2 | 3,
 				},
 			})
@@ -1016,12 +1020,16 @@ export default function FeaturePrioritizationPage() {
 
 	const stageOptions: Stage[] = ["activation", "onboarding", "retention"]
 	const categoryOptions: Category[] = [
-		"Core product – capture & workflow",
-		"Core product – intelligence",
-		"Foundation – reliability & UX",
-		"Monetization & pricing",
-		"Engagement & analytics",
-		"Acquisition & marketing",
+		"Product",
+		"Usability",
+		"Value",
+		"Engagement",
+		"Acquisition",
+		"Sales",
+		"Support",
+		"Trust & Risk",
+		"Ops & Scale",
+		"Other",
 	]
 
 	return (

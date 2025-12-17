@@ -41,7 +41,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					description: content || null,
 					tags: tags || [],
 					status: "backlog",
-					cluster: "Core product – capture & workflow", // Default cluster for quick-created tasks
+					cluster: "Product", // Default cluster for quick-created tasks
 				},
 			})
 

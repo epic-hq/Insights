@@ -29,12 +29,16 @@ interface TaskCreateModalProps {
 }
 
 const CLUSTERS: Cluster[] = [
-	"Core product – capture & workflow",
-	"Core product – intelligence",
-	"Foundation – reliability & UX",
-	"Monetization & pricing",
-	"Engagement & analytics",
-	"Acquisition & marketing",
+	"Product",
+	"Usability",
+	"Value",
+	"Engagement",
+	"Acquisition",
+	"Sales",
+	"Support",
+	"Trust & Risk",
+	"Ops & Scale",
+	"Other",
 ]
 
 export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, defaultCluster }: TaskCreateModalProps) {

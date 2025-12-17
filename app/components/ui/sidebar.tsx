@@ -522,7 +522,7 @@ function SidebarMenuButton({
 	}
 
 	return (
-		<Tooltip>
+		<Tooltip delayDuration={1000}>
 			<TooltipTrigger asChild>{button}</TooltipTrigger>
 			<TooltipContent
 				side="right"

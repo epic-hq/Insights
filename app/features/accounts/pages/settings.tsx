@@ -31,12 +31,56 @@ const DEFAULT_JOURNEY_STAGES: OpportunityStageConfig[] = [
 ]
 
 const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
-	{ id: "product-workflows", label: "Product – Workflows" },
-	{ id: "product-intelligence", label: "Product – Intelligence" },
-	{ id: "ux-reliability", label: "Foundation – UX & Reliability" },
-	{ id: "revenue", label: "Monetization" },
-	{ id: "engagement", label: "Engagement" },
-	{ id: "gtm", label: "Acquisition & GTM" },
+	{
+		id: "product",
+		label: "Product",
+		description: "What should exist. Feature ideas, capabilities, scope decisions, and roadmap inputs driven by customer needs.",
+	},
+	{
+		id: "usability",
+		label: "Usability",
+		description: "How it's experienced. UX friction, onboarding gaps, confusing flows, and accessibility issues.",
+	},
+	{
+		id: "value",
+		label: "Value",
+		description: "Why it matters. Jobs-to-be-done, pain intensity, desired outcomes, ROI, and willingness-to-pay signals.",
+	},
+	{
+		id: "engagement",
+		label: "Engagement",
+		description: "What brings users back. Activation moments, feature adoption, retention drivers, and drop-off causes.",
+	},
+	{
+		id: "acquisition",
+		label: "Acquisition",
+		description: "How users arrive. Messaging, positioning, channels, awareness gaps, and demand signals.",
+	},
+	{
+		id: "sales",
+		label: "Sales",
+		description: "How buying decisions happen. Objections, pricing concerns, stakeholder dynamics, and deal friction.",
+	},
+	{
+		id: "support",
+		label: "Support",
+		description: "What breaks post-launch. Bugs, edge cases, workarounds, and expectation mismatches.",
+	},
+	{
+		id: "trust-risk",
+		label: "Trust & Risk",
+		description: "Where hesitation comes from. Privacy, accuracy, compliance, reliability, and AI-related concerns.",
+	},
+	{
+		id: "ops-scale",
+		label: "Ops & Scale",
+		description: "What fails at growth. Admin pain, permissions, billing ops, data hygiene, and multi-account complexity.",
+	},
+	{
+		id: "other",
+		label: "Other",
+		description: "Catch-all for items that don't fit the current categories.",
+	},
 ]
 
 export async function loader({ context, params }: LoaderFunctionArgs) {

@@ -28,7 +28,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "activation",
 		priority: 1,
 		reason: "Core to product promise; blocker to aha moment.",
-		cluster: "Core product – capture & workflow",
+		cluster: "Product",
 	},
 	{
 		id: "call-workflow",
@@ -39,7 +39,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "activation",
 		priority: 2,
 		reason: "Ties captured calls to outcomes; shows 'close the loop'.",
-		cluster: "Core product – capture & workflow",
+		cluster: "Product",
 	},
 	{
 		id: "import-contacts",
@@ -50,7 +50,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "onboarding",
 		priority: 1,
 		reason: "Lowers setup pain; key to first project populated.",
-		cluster: "Core product – capture & workflow",
+		cluster: "Ops & Scale",
 	},
 	{
 		id: "task-list",
@@ -61,7 +61,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 2,
 		reason: "Connects insights to action; can be simple v1.",
-		cluster: "Core product – capture & workflow",
+		cluster: "Product",
 	},
 	{
 		id: "email-to-annotation",
@@ -72,7 +72,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "activation",
 		priority: 2,
 		reason: "Strong wow moment right after calls; reinforces core value.",
-		cluster: "Core product – capture & workflow",
+		cluster: "Product",
 	},
 	{
 		id: "voice-assistant",
@@ -83,7 +83,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 3,
 		reason: "Nice-to-have; improves depth, not initial value.",
-		cluster: "Core product – intelligence",
+		cluster: "Engagement",
 	},
 	{
 		id: "docs-generator",
@@ -94,7 +94,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 3,
 		reason: "Deeper value layer; build after core workflow is stable.",
-		cluster: "Core product – intelligence",
+		cluster: "Value",
 	},
 	{
 		id: "persona-creation",
@@ -105,7 +105,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 3,
 		reason: "Strategic but not required for first wins.",
-		cluster: "Core product – intelligence",
+		cluster: "Value",
 	},
 	{
 		id: "objection-handling",
@@ -116,7 +116,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 3,
 		reason: "Sales enablement layer; good once core adoption exists.",
-		cluster: "Core product – intelligence",
+		cluster: "Sales",
 	},
 	{
 		id: "icp-finder",
@@ -127,7 +127,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 2,
 		reason: "Big differentiator; builds on existing data.",
-		cluster: "Core product – intelligence",
+		cluster: "Acquisition",
 	},
 	{
 		id: "oauth",
@@ -138,7 +138,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "onboarding",
 		priority: 1,
 		reason: "Table-stakes; breaks everything if flaky.",
-		cluster: "Foundation – reliability & UX",
+		cluster: "Trust & Risk",
 	},
 	{
 		id: "app-flow",
@@ -149,7 +149,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "activation",
 		priority: 1,
 		reason: "Directly impacts aha moment and day-1 success.",
-		cluster: "Foundation – reliability & UX",
+		cluster: "Usability",
 	},
 	{
 		id: "branding",
@@ -160,7 +160,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "onboarding",
 		priority: 2,
 		reason: "Matters for trust; can iterate while fixing flows.",
-		cluster: "Foundation – reliability & UX",
+		cluster: "Acquisition",
 	},
 	{
 		id: "pricing",
@@ -171,7 +171,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "activation",
 		priority: 1,
 		reason: "Needed to charge, test WTP, and control usage.",
-		cluster: "Monetization & pricing",
+		cluster: "Sales",
 	},
 	{
 		id: "email-nudges",
@@ -182,7 +182,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 2,
 		reason: "Needed to keep users coming back and inform roadmap.",
-		cluster: "Engagement & analytics",
+		cluster: "Engagement",
 	},
 	{
 		id: "webpage-messaging",
@@ -193,7 +193,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "onboarding",
 		priority: 1,
 		reason: "You can't test demand or learn without this.",
-		cluster: "Acquisition & marketing",
+		cluster: "Acquisition",
 	},
 	{
 		id: "leadgen-content",
@@ -204,7 +204,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "onboarding",
 		priority: 2,
 		reason: "Fuels top/mid funnel once core app experience is solid.",
-		cluster: "Acquisition & marketing",
+		cluster: "Acquisition",
 	},
 	{
 		id: "paid-ads",
@@ -215,7 +215,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "onboarding",
 		priority: 3,
 		reason: "Dangerous before positioning + activation are dialed in.",
-		cluster: "Acquisition & marketing",
+		cluster: "Acquisition",
 	},
 	{
 		id: "deal-rooms",
@@ -226,7 +226,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		stage: "retention",
 		priority: 3,
 		reason: "Helpful but not core; can use templates for now.",
-		cluster: "Core product – capture & workflow",
+		cluster: "Sales",
 	},
 ]
 

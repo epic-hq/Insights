@@ -16,7 +16,7 @@ import {
 	XCircle,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
+import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigate, useNavigation, useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
@@ -586,7 +586,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			// If interview was deleted (0 rows), redirect to interviews list instead of error
 			if (interviewError.code === "PGRST116") {
 				consola.info("Interview deleted or not found, redirecting to list")
-				throw Response.redirect(`/a/${accountId}/${projectId}/interviews`, 302)
+				throw redirect(`/a/${accountId}/${projectId}/interviews`)
 			}
 			consola.error("❌ Error fetching interview:", interviewError)
 			throw new Response(`Error fetching interview: ${interviewError.message}`, { status: 500 })
@@ -594,7 +594,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		if (!interviewData) {
 			consola.info("Interview not found, redirecting to list")
-			throw Response.redirect(`/a/${accountId}/${projectId}/interviews`, 302)
+			throw redirect(`/a/${accountId}/${projectId}/interviews`)
 		}
 
 		consola.info("✅ Interview data fetched successfully:", {

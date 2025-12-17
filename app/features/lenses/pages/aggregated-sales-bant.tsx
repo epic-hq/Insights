@@ -143,7 +143,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
       data: {
         title,
         description: fullDescription,
-        cluster: "Core product – intelligence",
+        cluster: "Sales",
         priority: priority === "high" ? 1 : priority === "medium" ? 2 : 3,
         tags: ["from-recommendation", "sales-bant"],
       },

@@ -494,12 +494,16 @@ const effortConfig = {
 const agentTypes: AgentType[] = ["code-generation", "research", "testing", "documentation"]
 
 const categoryOptions = [
-	"Core product – capture & workflow",
-	"Core product – intelligence",
-	"Foundation – reliability & UX",
-	"Monetization & pricing",
-	"Engagement & analytics",
-	"Acquisition & marketing",
+	"Product",
+	"Usability",
+	"Value",
+	"Engagement",
+	"Acquisition",
+	"Sales",
+	"Support",
+	"Trust & Risk",
+	"Ops & Scale",
+	"Other",
 ] as const
 
 // ============================================================================

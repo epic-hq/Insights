@@ -333,7 +333,7 @@ export const fetchTasksTool = createTool({
 export const createTaskTool = createTool({
 	id: "create-task",
 	description:
-		"Create a new task in the current project. Use this when the user asks you to create a task, add a feature, or track work. Requires a title and cluster at minimum. The cluster groups related tasks (e.g., 'Core product - capture & workflow', 'Foundation - reliability & UX').",
+		"Create a new task in the current project. Use this when the user asks you to create a task, add a feature, or track work. Requires a title and cluster at minimum. The cluster groups related tasks (e.g., 'Product', 'Usability', 'Sales').",
 	inputSchema: z.object({
 		title: z.string().min(1).describe("Task title (required)"),
 		description: z.string().optional().describe("Detailed description of the task"),
