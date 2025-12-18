@@ -9,6 +9,7 @@ import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 
 // Remix action to handle multipart/form-data file uploads, stream the file to
 // AssemblyAI's /upload endpoint, then run the existing transcript->insights pipeline.
@@ -108,6 +109,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 			if (insertError || !interview) {
 				return Response.json({ error: "Failed to create interview record" }, { status: 500 })
+			}
+
+			if (userId) {
+				await ensureInterviewInterviewerLink({
+					supabase,
+					accountId,
+					projectId,
+					interviewId: interview.id,
+					userId,
+					userSettings: ctx.user_settings || null,
+					userMetadata: ctx.user_metadata || null,
+				})
 			}
 
 			await createPlannedAnswersForInterview(supabase, { projectId, interviewId: interview.id })

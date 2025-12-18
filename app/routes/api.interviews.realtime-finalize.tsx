@@ -1,5 +1,6 @@
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
 import { userContext } from "~/server/user-context";
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
@@ -96,6 +97,29 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const accountId =
+      ctx?.account_id ||
+      (
+        await supabase
+          .from("projects")
+          .select("account_id")
+          .eq("id", projectId)
+          .maybeSingle()
+      )?.data?.account_id ||
+      null;
+
+    if (ctx?.claims?.sub && accountId) {
+      await ensureInterviewInterviewerLink({
+        supabase,
+        accountId,
+        projectId,
+        interviewId,
+        userId: ctx.claims.sub,
+        userSettings: ctx.user_settings || null,
+        userMetadata: ctx.user_metadata || null,
       });
     }
 

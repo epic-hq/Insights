@@ -55,6 +55,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 	const [newPersonFirstName, setNewPersonFirstName] = useState("")
 	const [newPersonLastName, setNewPersonLastName] = useState("")
 	const [newPersonCompany, setNewPersonCompany] = useState("")
+	const [accountId, setAccountId] = useState<string | null>(null)
 
 	// Dialogs
 	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
@@ -238,19 +239,39 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 
 	// Fetch people when entering association step
 	useEffect(() => {
-		if (uploadStep === "associate" && projectId && !isLoadingPeople && people.length === 0) {
+		if (uploadStep !== "associate" || !projectId || isLoadingPeople) return
+
+		const load = async () => {
 			setIsLoadingPeople(true)
-			supabase
-				.from("people")
-				.select("*")
-				.eq("project_id", projectId)
-				.order("name")
-				.then(({ data }) => {
-					if (data) setPeople(data as Person[])
-				})
-				.finally(() => setIsLoadingPeople(false))
+			try {
+				let accId = accountId
+				if (!accId) {
+					const { data: proj } = await supabase
+						.from("projects")
+						.select("account_id")
+						.eq("id", projectId)
+						.maybeSingle()
+					accId = proj?.account_id ?? null
+					if (accId) setAccountId(accId)
+				}
+
+				if (!accId) return
+
+				const { data } = await supabase
+					.from("people")
+					.select("id, name, company, person_type")
+					.eq("account_id", accId)
+					.order("name")
+					.limit(50)
+
+				if (data) setPeople(data as Person[])
+			} finally {
+				setIsLoadingPeople(false)
+			}
 		}
-	}, [uploadStep, projectId, isLoadingPeople, people.length, supabase])
+
+		if (people.length === 0) load()
+	}, [uploadStep, projectId, people.length, supabase, accountId, isLoadingPeople])
 
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
@@ -355,6 +376,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 									) : (
 										filteredPeople.map((person) => {
 											const isSelected = selectedPeople.some((p) => p.id === person.id)
+											const isInternal = (person as any).person_type === "internal"
 											return (
 												<button
 													key={person.id}
@@ -375,7 +397,14 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 														<Users className="h-5 w-5" />
 													</div>
 													<div className="min-w-0 flex-1">
-														<p className="truncate font-medium text-sm">{person.name}</p>
+														<div className="flex items-center gap-2">
+															<p className="truncate font-medium text-sm">{person.name}</p>
+															{isInternal && (
+																<span className="inline-flex items-center rounded-full bg-blue-100 px-2 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+																	Team
+																</span>
+															)}
+														</div>
 														{person.company && (
 															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
 														)}

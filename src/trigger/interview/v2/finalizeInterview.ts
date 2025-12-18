@@ -15,6 +15,7 @@ import { task } from "@trigger.dev/sdk";
 import consola from "consola";
 import { PostHog } from "posthog-node";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
 import { workflowRetryConfig } from "~/utils/processInterview.server";
 import {
   generateTitleFromContent,
@@ -307,101 +308,25 @@ export const finalizeInterviewTaskV2 = task({
           );
 
           if (authUser?.user) {
-            const userEmail = authUser.user.email;
-            const userName =
-              authUser.user.user_metadata?.full_name ||
-              authUser.user.user_metadata?.name ||
-              userEmail?.split("@")[0] ||
-              "Team Member";
+            const linkResult = await ensureInterviewInterviewerLink({
+              supabase: client,
+              accountId: metadata.accountId,
+              projectId: metadata.projectId ?? null,
+              interviewId,
+              userId: metadata.userId,
+              authUser: {
+                email: authUser.user.email ?? null,
+                user_metadata: authUser.user.user_metadata as Record<
+                  string,
+                  unknown
+                >,
+              },
+            });
 
-            let interviewerPersonId: string | null = null;
-
-            // Try to find existing person by email first
-            if (userEmail) {
-              const { data: existingByEmail } = await client
-                .from("people")
-                .select("id")
-                .eq("account_id", metadata.accountId)
-                .eq("primary_email", userEmail)
-                .maybeSingle();
-
-              if (existingByEmail) {
-                interviewerPersonId = existingByEmail.id;
-                consola.info(
-                  `[finalizeInterview] Found existing person by email for interviewer: ${interviewerPersonId}`,
-                );
-              }
-            }
-
-            // If not found by email, try to find by name
-            if (!interviewerPersonId) {
-              const { data: existingByName } = await client
-                .from("people")
-                .select("id")
-                .eq("account_id", metadata.accountId)
-                .eq("name", userName)
-                .eq("segment", "internal") // Only match internal team members
-                .maybeSingle();
-
-              if (existingByName) {
-                interviewerPersonId = existingByName.id;
-                consola.info(
-                  `[finalizeInterview] Found existing person by name for interviewer: ${interviewerPersonId}`,
-                );
-              }
-            }
-
-            // Create new person if not found
-            if (!interviewerPersonId) {
-              const { data: newPerson, error: createError } = await client
-                .from("people")
-                .insert({
-                  account_id: metadata.accountId,
-                  project_id: metadata.projectId ?? null,
-                  name: userName,
-                  primary_email: userEmail ?? null,
-                  segment: "internal", // Mark as internal team member
-                })
-                .select("id")
-                .single();
-
-              if (createError || !newPerson) {
-                consola.warn(
-                  `[finalizeInterview] Failed to create interviewer person: ${createError?.message}`,
-                );
-              } else {
-                interviewerPersonId = newPerson.id;
-                consola.info(
-                  `[finalizeInterview] Created person for interviewer: ${interviewerPersonId}`,
-                );
-              }
-            }
-
-            // Link interviewer to interview (if person exists)
-            if (interviewerPersonId) {
-              const { error: linkError } = await client
-                .from("interview_people")
-                .upsert(
-                  {
-                    interview_id: interviewId,
-                    person_id: interviewerPersonId,
-                    project_id: metadata.projectId ?? null,
-                    role: "interviewer",
-                    transcript_key: "A", // First speaker in conversation (interviewer)
-                    display_name: userName,
-                  },
-                  { onConflict: "interview_id,person_id" },
-                );
-
-              if (linkError) {
-                consola.warn(
-                  `[finalizeInterview] Failed to link interviewer: ${linkError.message}`,
-                );
-              } else {
-                consola.success(
-                  `[finalizeInterview] Linked interviewer ${userName} to interview ${interviewId}`,
-                );
-              }
+            if (linkResult) {
+              consola.success(
+                `[finalizeInterview] Linked interviewer ${linkResult.personName ?? "Team Member"} to interview ${interviewId}`,
+              );
             }
           }
         } catch (interviewerError) {

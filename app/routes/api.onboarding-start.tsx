@@ -12,6 +12,7 @@ import type { InterviewInsert } from "~/types"
 import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 
 // Accept both legacy (icp/role/goal) and new snake_case onboarding payloads
 type LegacyOnboardingData = {
@@ -414,6 +415,18 @@ Please extract insights that specifically address these research questions and h
 				},
 				{ onConflict: "interview_id,person_id" }
 			)
+		}
+
+		if (user?.sub) {
+			await ensureInterviewInterviewerLink({
+				supabase,
+				accountId: teamAccountId,
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				userId: user.sub,
+				userSettings: ctx.user_settings || null,
+				userMetadata: ctx.user_metadata || null,
+			})
 		}
 
 		consola.log("Created interview:", interview.id)

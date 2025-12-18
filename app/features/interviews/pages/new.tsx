@@ -22,6 +22,7 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { createInterview } from "~/features/interviews/db";
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
 import { createPerson, getPeople } from "~/features/people/db";
 import { userContext } from "~/server/user-context";
 
@@ -111,6 +112,18 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
     if (error) {
       return { error: "Failed to create interview" };
+    }
+
+    if (data?.id && ctx.claims?.sub) {
+      await ensureInterviewInterviewerLink({
+        supabase,
+        accountId,
+        projectId,
+        interviewId: data.id,
+        userId: ctx.claims.sub,
+        userSettings: ctx.user_settings || null,
+        userMetadata: ctx.user_metadata || null,
+      });
     }
 
     // Create new people first

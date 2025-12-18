@@ -36,6 +36,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
 import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server";
 import { uploadToR2 } from "~/utils/r2.server";
 import {
@@ -508,6 +509,16 @@ export const importFromUrlTask = schemaTask({
             error: `Failed to create interview: ${insertError?.message}`,
           });
           continue;
+        }
+
+        if (userId) {
+          await ensureInterviewInterviewerLink({
+            supabase: client,
+            accountId,
+            projectId,
+            interviewId: interview.id,
+            userId,
+          });
         }
 
         // 4b. Create/link participant to interview

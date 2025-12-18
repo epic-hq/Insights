@@ -3,6 +3,7 @@ import { data } from "react-router"
 import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import UserSettings from "~/features/users/components/UserSettings"
+import { resolveInternalPerson } from "~/features/people/services/internalPeople.server"
 import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
 
@@ -74,6 +75,26 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	if (error) {
 		consola.error("Failed to update user settings:", error)
 		return data({ error: error.message }, { status: 500 })
+	}
+
+	try {
+		const { data: updatedSettings } = await supabase
+			.from("user_settings")
+			.select("first_name, last_name, title, role, company_name, industry, email, image_url, last_used_project_id")
+			.eq("user_id", user.sub)
+			.maybeSingle()
+
+		await resolveInternalPerson({
+			supabase,
+			accountId: ctx.account_id,
+			projectId: updatedSettings?.last_used_project_id ?? null,
+			userId: user.sub,
+			userSettings: updatedSettings || null,
+			userMetadata: ctx.user_metadata,
+			allowNullUpdates: true,
+		})
+	} catch (personSyncError) {
+		consola.warn("Failed to update internal person from profile settings", personSyncError)
 	}
 
 	consola.log(`Updated user_settings.${field} for user ${user.sub}`)

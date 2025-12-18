@@ -3,6 +3,7 @@
  * Returns list of users and people that can be @mentioned in comments
  */
 import type { LoaderFunctionArgs } from "react-router"
+import consola from "consola"
 import { userContext } from "~/server/user-context"
 
 export interface MentionableUser {
@@ -48,7 +49,7 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 		// Fetch project people
 		const { data: projectPeople } = await supabase
 			.from("people")
-			.select("id, firstname, lastname, name, title, primary_email, image_url")
+			.select("id, firstname, lastname, name, title, primary_email, image_url, person_type, user_id")
 			.eq("project_id", projectId)
 			.limit(100)
 
@@ -68,7 +69,18 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 		}
 
 		// Add project people
-		for (const person of projectPeople || []) {
+		for (const person of (projectPeople || []) as Array<{
+			id: string
+			firstname: string | null
+			lastname: string | null
+			name: string | null
+			title: string | null
+			primary_email: string | null
+			image_url: string | null
+			person_type?: string | null
+			user_id?: string | null
+		}>) {
+			if (person.person_type === "internal" || person.user_id) continue
 			const name = person.name || [person.firstname, person.lastname].filter(Boolean).join(" ") || "Unknown"
 			mentionableUsers.push({
 				id: person.id,
@@ -81,7 +93,7 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 
 		return Response.json({ users: mentionableUsers })
 	} catch (error) {
-		console.error("Error fetching mentionable users:", error)
+		consola.error("Error fetching mentionable users:", error)
 		return Response.json({ error: { message: "Failed to fetch users" } }, { status: 500 })
 	}
 }

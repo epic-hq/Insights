@@ -44,6 +44,8 @@ create table if not exists organizations (
 create table if not exists people (
   id uuid primary key default gen_random_uuid(),
   account_id uuid references accounts.accounts (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete set null,
+  person_type text,
   firstname text,
   lastname text,
   name text generated always as (
@@ -95,6 +97,10 @@ create table if not exists people (
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_people_account_id ON public.people(account_id);
+CREATE INDEX IF NOT EXISTS idx_people_user_id ON public.people(user_id) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_people_account_user
+  ON public.people (account_id, user_id)
+  WHERE user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_people_default_organization
     ON public.people (default_organization_id)
     WHERE default_organization_id IS NOT NULL;
@@ -102,6 +108,9 @@ CREATE INDEX IF NOT EXISTS idx_people_default_organization
 -- Project scoping support
 CREATE INDEX IF NOT EXISTS idx_people_account_project_created
     ON public.people (account_id, project_id, created_at);
+
+COMMENT ON COLUMN public.people.person_type IS 'Type of person: internal, external, partner, unknown';
+COMMENT ON COLUMN public.people.user_id IS 'Auth user ID for internal people';
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_people_timestamp

@@ -31,6 +31,10 @@ import {
   persistFacetObservations,
 } from "~/lib/database/facets.server";
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server";
+import {
+  ensureInterviewInterviewerLink,
+  resolveInternalPerson,
+} from "~/features/people/services/internalPeople.server";
 import { getLangfuseClient } from "~/lib/langfuse.server";
 import { getServerClient } from "~/lib/supabase/client.server";
 import type {
@@ -46,8 +50,14 @@ import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTransc
 
 // Supabase table types
 type Tables = Database["public"]["Tables"];
-type PeopleInsert = Tables["people"]["Insert"];
-type PeopleUpdate = Tables["people"]["Update"];
+type PeopleInsert = Tables["people"]["Insert"] & {
+  person_type?: string | null;
+  user_id?: string | null;
+};
+type PeopleUpdate = Tables["people"]["Update"] & {
+  person_type?: string | null;
+  user_id?: string | null;
+};
 type InterviewPeopleInsert = Tables["interview_people"]["Insert"];
 type EvidenceInsert = Tables["evidence"]["Insert"];
 
@@ -541,6 +551,16 @@ interface ExtractEvidenceResult {
   insertedEvidenceIds: string[];
   evidenceUnits: EvidenceFromBaml["evidence"];
   evidenceFacetKinds: string[][];
+  // LLM-determined interaction context for automatic lens selection
+  interactionContext:
+    | "research"
+    | "sales"
+    | "support"
+    | "internal"
+    | "debrief"
+    | null;
+  contextConfidence: number | null;
+  contextReasoning: string | null;
 }
 
 export async function generateInterviewInsightsFromEvidenceCore({
@@ -845,6 +865,9 @@ export async function extractEvidenceAndPeopleCore({
       insertedEvidenceIds,
       evidenceUnits,
       evidenceFacetKinds,
+      interactionContext: null,
+      contextConfidence: null,
+      contextReasoning: null,
     };
   }
 
@@ -873,6 +896,50 @@ export async function extractEvidenceAndPeopleCore({
   const scenes = Array.isArray(evidenceResponse?.scenes)
     ? evidenceResponse.scenes
     : [];
+
+  // ═══════════════════════════════════════════════════════════════
+  // Extract Interaction Context (LLM-determined content classification)
+  // ═══════════════════════════════════════════════════════════════
+  const rawInteractionContext = (evidenceResponse as any)?.interaction_context;
+  const interactionContext: ExtractEvidenceResult["interactionContext"] =
+    rawInteractionContext &&
+    ["Research", "Sales", "Support", "Internal", "Debrief"].includes(
+      rawInteractionContext,
+    )
+      ? (rawInteractionContext.toLowerCase() as ExtractEvidenceResult["interactionContext"])
+      : null;
+  const contextConfidence: number | null =
+    typeof (evidenceResponse as any)?.context_confidence === "number"
+      ? (evidenceResponse as any).context_confidence
+      : null;
+  const contextReasoning: string | null =
+    typeof (evidenceResponse as any)?.context_reasoning === "string"
+      ? (evidenceResponse as any).context_reasoning
+      : null;
+
+  if (interactionContext) {
+    consola.info(
+      `🏷️  LLM determined interaction_context: ${interactionContext} (confidence: ${contextConfidence?.toFixed(2) ?? "N/A"})`,
+    );
+    consola.debug(`   Reasoning: ${contextReasoning ?? "none provided"}`);
+
+    // Update interview record with interaction context
+    const { error: contextUpdateErr } = await db
+      .from("interviews")
+      .update({
+        interaction_context: interactionContext,
+        context_confidence: contextConfidence,
+        context_reasoning: contextReasoning,
+      })
+      .eq("id", interviewRecord.id);
+
+    if (contextUpdateErr) {
+      consola.warn(
+        `Failed to update interaction_context for interview ${interviewRecord.id}:`,
+        contextUpdateErr.message,
+      );
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // Phase 2: Derive Persona Facets from Evidence
@@ -1565,6 +1632,16 @@ export async function extractEvidenceAndPeopleCore({
   const speakerLabelByPersonId = new Map<string, string>(); // AssemblyAI speaker label (e.g., "SPEAKER A")
   const displayNameByKey = new Map<string, string>();
   const personRoleById = new Map<string, string | null>();
+  const internalPerson = metadata.userId
+    ? await resolveInternalPerson({
+        supabase: db,
+        accountId: metadata.accountId,
+        projectId: metadata.projectId ?? null,
+        userId: metadata.userId,
+      })
+    : null;
+  let internalPersonLinked = false;
+  let internalPersonHasTranscriptKey = false;
 
   if (metadata.projectId) {
     const { data: existingInterviewPeople } = await db
@@ -1582,6 +1659,12 @@ export async function extractEvidenceAndPeopleCore({
         }
         if (row.person_id && row.role) {
           personRoleById.set(row.person_id, row.role);
+        }
+        if (internalPerson?.id && row.person_id === internalPerson.id) {
+          internalPersonLinked = true;
+          if (row.transcript_key) {
+            internalPersonHasTranscriptKey = true;
+          }
         }
       });
     }
@@ -1664,6 +1747,50 @@ export async function extractEvidenceAndPeopleCore({
         `  - Creating person record for "${participantKey}" (role: ${participant.role})`,
       );
       const resolved = resolveName(participant, index);
+      const normalizedRole = participant.role?.toLowerCase() ?? "";
+      const isInterviewer = internalPerson && normalizedRole === "interviewer";
+
+      if (isInterviewer && internalPerson) {
+        personIdByKey.set(participantKey, internalPerson.id);
+        personNameByKey.set(
+          participantKey,
+          internalPerson.name ?? resolved.name,
+        );
+        keyByPersonId.set(internalPerson.id, participantKey);
+        personRoleById.set(
+          internalPerson.id,
+          participant.role ?? "interviewer",
+        );
+        if (participant.speaker_label) {
+          speakerLabelByPersonId.set(
+            internalPerson.id,
+            participant.speaker_label,
+          );
+        }
+        const preferredDisplayName =
+          internalPerson.name ??
+          participant.display_name?.trim() ??
+          resolved.name;
+        if (preferredDisplayName) {
+          displayNameByKey.set(participantKey, preferredDisplayName);
+        }
+
+        if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+          primaryPersonId = internalPerson.id;
+          primaryPersonName = internalPerson.name ?? resolved.name;
+          primaryPersonRole = participant.role ?? null;
+          primaryPersonDescription = participant.summary ?? null;
+          primaryPersonOrganization = participant.organization ?? null;
+          primaryPersonSegments = participant.segments.length
+            ? participant.segments
+            : metadata.segment
+              ? [metadata.segment]
+              : [];
+        }
+
+        internalPersonLinked = true;
+        continue;
+      }
       const segments = participant.segments.length
         ? participant.segments
         : metadata.segment
@@ -1808,6 +1935,9 @@ export async function extractEvidenceAndPeopleCore({
         linkErr.message,
       );
     }
+    if (internalPerson?.id && personId === internalPerson.id && transcriptKey) {
+      internalPersonHasTranscriptKey = true;
+    }
   }
 
   // Ensure ALL transcript speakers have interview_people records, not just BAML-extracted ones
@@ -1887,6 +2017,49 @@ export async function extractEvidenceAndPeopleCore({
       consola.info(
         `🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`,
       );
+
+      if (internalPerson?.id && !internalPersonHasTranscriptKey) {
+        const preferredInternalSpeaker =
+          missingSpeakers.find((speaker) =>
+            speaker.toUpperCase().includes("A"),
+          ) ?? missingSpeakers[0];
+
+        if (preferredInternalSpeaker) {
+          const internalTranscriptKey = preferredInternalSpeaker
+            .toUpperCase()
+            .startsWith("SPEAKER ")
+            ? preferredInternalSpeaker
+            : `SPEAKER ${preferredInternalSpeaker}`.toUpperCase();
+
+          const { error: internalLinkError } = await db
+            .from("interview_people")
+            .upsert(
+              {
+                interview_id: interviewRecord.id,
+                person_id: internalPerson.id,
+                project_id: metadata.projectId ?? null,
+                role: "interviewer",
+                transcript_key: internalTranscriptKey,
+                display_name: internalPerson.name,
+              },
+              { onConflict: "interview_id,person_id" },
+            );
+
+          if (internalLinkError) {
+            consola.warn(
+              `Failed linking internal person to interview ${interviewRecord.id}:`,
+              internalLinkError.message,
+            );
+          } else {
+            internalPersonLinked = true;
+            internalPersonHasTranscriptKey = true;
+            const index = missingSpeakers.indexOf(preferredInternalSpeaker);
+            if (index >= 0) {
+              missingSpeakers.splice(index, 1);
+            }
+          }
+        }
+      }
 
       for (const speakerLabel of missingSpeakers) {
         // Create a placeholder person record for this speaker
@@ -2099,6 +2272,9 @@ export async function extractEvidenceAndPeopleCore({
     insertedEvidenceIds,
     evidenceUnits,
     evidenceFacetKinds,
+    interactionContext,
+    contextConfidence,
+    contextReasoning,
   };
 }
 
@@ -3042,6 +3218,23 @@ export async function uploadMediaAndTranscribeCore({
   }
 
   if (normalizedMetadata.projectId && interviewRecord?.id) {
+    if (normalizedMetadata.userId) {
+      try {
+        await ensureInterviewInterviewerLink({
+          supabase: client,
+          accountId: normalizedMetadata.accountId,
+          projectId: normalizedMetadata.projectId ?? null,
+          interviewId: interviewRecord.id,
+          userId: normalizedMetadata.userId,
+        });
+      } catch (linkError) {
+        consola.warn(
+          "uploadMediaAndTranscribeCore: failed to link internal interviewer",
+          linkError,
+        );
+      }
+    }
+
     await createPlannedAnswersForInterview(client, {
       projectId: normalizedMetadata.projectId,
       interviewId: interviewRecord.id,
