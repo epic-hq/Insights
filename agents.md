@@ -12,6 +12,8 @@ We leverage remix conventions like loaders and actions for apis, and store code 
 
 HTML/CSS we use tailwindcss, shadcnui and themes.
 
+When making Mermaid diagrams, ensure proper formatting and indentation for readability. Each node is on its own line and uses an ID without slashes; labels are inside quotes.
+
 ### Routing Best Practices
 
 **CRITICAL**: Always use `useProjectRoutes` hook for constructing links to project assets (interviews, insights, evidence, themes, people, etc.).
@@ -51,6 +53,11 @@ return <Link to={`/projects/${projectPath}/insights/${evidenceId}`}>View Evidenc
 - do not use console.log, use consola.log instead and `import consola from "consola"`
 - **Null vs Undefined**: Supabase returns `null` for nullable database columns. Utility functions that process database data should accept `string | null` rather than forcing `?? undefined` conversions at call sites. Use `if (!value)` to handle both null and undefined. Example: `function getColor(stage?: string | null)` not `function getColor(stage?: string)`.
 when making database changes, use the supabase declarative schema approach, and edit supabase/schemas/ file instead of creating a migration directly. Follow the process [here](`docs/@supabase/howto/declarative-schemas.md`)
+
+## Mermaid diagrams
+- Each node must be on its own line.
+- Node IDs should avoid slashes and special chars.
+- Labels should be in quotes for safety.
 
 When designing or architecting a new feature, or fixing a bug, consult relevant documents in `docs/` for additional context and best practices relevant to this repo.
 

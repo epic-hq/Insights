@@ -170,7 +170,7 @@ export async function getTopFocusTasks({
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.in("status", ["todo", "in_progress", "blocked", "review"])
-		.order("priority", { ascending: true })
+		.order("priority", { ascending: false })
 		.order("due_date", { ascending: true, nullsFirst: false })
 		.order("created_at", { ascending: false })
 
