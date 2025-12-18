@@ -17,7 +17,7 @@ interface InviteItem {
 
 export async function loader({ request }: { request: Request }) {
   // Require auth
-  const user = await getAuthenticatedUser(request);
+  const { user } = await getAuthenticatedUser(request);
   if (!user) {
     const next = "/invites";
     throw redirect(`/login?next=${encodeURIComponent(next)}`);

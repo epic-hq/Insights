@@ -226,12 +226,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 							<div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
 								<div className="relative aspect-video w-full">
 									{signed_media_preview_url ? (
-										<img
-											src={signed_media_preview_url}
-											alt=""
-											className="h-full w-full object-cover"
-											loading="lazy"
-										/>
+										<img src={signed_media_preview_url} alt="" className="h-full w-full object-cover" loading="lazy" />
 									) : (
 										<div className="h-full w-full bg-muted/40" />
 									)}

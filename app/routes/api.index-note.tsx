@@ -28,17 +28,45 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Verify auth
   const { client: db, headers } = getServerClient(request);
-  const claims = await getAuthenticatedUser(request);
+  const { user: claims } = await getAuthenticatedUser(request);
   if (!claims?.sub) {
     return Response.json({ error: "Unauthorized" }, { status: 401, headers });
   }
 
-  // Parse FormData
-  const formData = await request.formData();
-  const body = {
-    interviewId: formData.get("interviewId"),
-    maxEvidence: formData.get("maxEvidence") || undefined,
-  };
+  // Accept both JSON (fetch) and FormData (fetcher/HTML form)
+  const contentType = request.headers.get("content-type") || "";
+  let body: Record<string, unknown>;
+
+  if (contentType.includes("application/json")) {
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      consola.warn("[api.index-note] Invalid JSON body", parseError);
+      return Response.json(
+        { error: "Invalid JSON body" },
+        { status: 400, headers },
+      );
+    }
+  } else if (
+    contentType.includes("multipart/form-data") ||
+    contentType.includes("application/x-www-form-urlencoded")
+  ) {
+    const formData = await request.formData();
+    body = {
+      interviewId: formData.get("interviewId"),
+      maxEvidence: formData.get("maxEvidence") || undefined,
+    };
+  } else {
+    // Fallback to JSON parsing to avoid formData throwing on unsupported content types
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json(
+        { error: "Unsupported content type" },
+        { status: 415, headers },
+      );
+    }
+  }
 
   const parsed = IndexNoteSchema.safeParse(body);
   if (!parsed.success) {

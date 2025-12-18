@@ -126,9 +126,10 @@ EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
 
 create index if not exists idx_people_account_id on public.people using btree (account_id) tablespace pg_default;
 
--- Unique index for deduplication by normalized name within account
-create unique index if not exists uniq_people_account_namehash
-  on public.people (account_id, name_hash);
+-- Unique index for deduplication by normalized name+company within account
+-- Allows same name at different companies (e.g., John Rubey at Testco vs John Rubey at Saxco)
+create unique index if not exists uniq_people_account_name_company
+  on public.people (account_id, name_hash, COALESCE(lower(company), ''));
 
 -- enable RLS on the table
 ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;

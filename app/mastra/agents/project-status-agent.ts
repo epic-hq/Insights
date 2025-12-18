@@ -35,7 +35,7 @@ import {
 } from "../tools/manage-interview-prompts"
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
-import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
+import { createTaskTool, deleteTaskTool, fetchFocusTasksTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
@@ -255,6 +255,7 @@ Please try:
 		updateInterviewPrompt: updateInterviewPromptTool,
 		deleteInterviewPrompt: deleteInterviewPromptTool,
 		fetchTasks: fetchTasksTool,
+		fetchFocusTasks: fetchFocusTasksTool,
 		createTask: createTaskTool,
 		updateTask: updateTaskTool,
 		deleteTask: deleteTaskTool,

@@ -170,7 +170,7 @@ When in support view:
 // In _ProtectedLayout middleware (simplified)
 export const middleware: Route.MiddlewareFunction[] = [
   async ({ request, context, params }) => {
-    const user = await getAuthenticatedUser(request)
+    const { user } = await getAuthenticatedUser(request)
     if (!user) throw redirect('/login')
 
     // Check for support view cookie

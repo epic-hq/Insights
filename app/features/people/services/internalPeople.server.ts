@@ -1,7 +1,7 @@
-import consola from "consola"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database, UserSettings } from "~/types"
+import consola from "consola"
 import type { UserMetadata } from "~/server/user-context"
+import type { Database, UserSettings } from "~/types"
 
 const INTERNAL_PERSON_TYPE = "internal"
 
@@ -168,7 +168,9 @@ export async function resolveInternalPerson({
 
 	const { data: existingByUser, error: existingByUserError } = await supabase
 		.from("people")
-		.select("id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id")
+		.select(
+			"id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id"
+		)
 		.eq("account_id", accountId)
 		.eq("user_id", userId)
 		.maybeSingle()
@@ -203,7 +205,9 @@ export async function resolveInternalPerson({
 		if (!profile.email) return null
 		const { data } = await supabase
 			.from("people")
-			.select("id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id")
+			.select(
+				"id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id"
+			)
 			.eq("account_id", accountId)
 			.eq("primary_email", profile.email)
 			.maybeSingle()
@@ -214,7 +218,9 @@ export async function resolveInternalPerson({
 		if (!profile.fullName) return null
 		const { data } = await supabase
 			.from("people")
-			.select("id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id")
+			.select(
+				"id, name, firstname, lastname, primary_email, image_url, title, role, company, industry, person_type, user_id"
+			)
 			.eq("account_id", accountId)
 			.eq("name", profile.fullName)
 			.maybeSingle()

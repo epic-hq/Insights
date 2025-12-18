@@ -103,10 +103,7 @@ export default function OrganizationsIndexPage() {
 							<Building2 className="h-7 w-7" />
 							Organizations
 						</h1>
-						<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-							Understand which accounts are active, who you know inside each one, and how those relationships are
-							evolving.
-						</p>
+
 					</div>
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 						<ToggleGroup

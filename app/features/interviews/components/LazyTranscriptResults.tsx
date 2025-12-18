@@ -80,7 +80,7 @@ export function LazyTranscriptResults({
 			const audioDurationSec =
 				typeof audioDurationParsed === "number" && Number.isFinite(audioDurationParsed)
 					? audioDurationParsed
-					: durationSec ?? null
+					: (durationSec ?? null)
 
 			const processedData: TranscriptData = {
 				text: data.transcript || "",

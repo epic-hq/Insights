@@ -22,8 +22,14 @@ import {
 	Wand2,
 } from "lucide-react"
 import { useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
+import {
+	type ActionFunctionArgs,
+	type LoaderFunctionArgs,
+	type MetaFunction,
+	useFetcher,
+	useLoaderData,
+	useRevalidator,
+} from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"

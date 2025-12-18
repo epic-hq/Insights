@@ -99,9 +99,9 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: TasksSectionProps) {
 	const routes = useProjectRoutes(projectPath)
 
-	// Filter out completed/archived tasks and sort by priority (high first)
-	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived")
-	const topTasks = [...activeTasks].sort((a, b) => (b.priority || 1) - (a.priority || 1)).slice(0, maxVisible)
+	// Filter out non-focus tasks (done/archived/backlog). Ordering is handled server-side.
+	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived" && t.status !== "backlog")
+	const topTasks = activeTasks.slice(0, maxVisible)
 
 	// Show empty state if no tasks
 	if (tasks.length === 0) {

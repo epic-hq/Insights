@@ -38,6 +38,8 @@ interface EnhancedPersonCardProps {
 	person: Person
 	className?: string
 	facets?: PersonFacetSummary[]
+	conversationCount?: number
+	evidenceCount?: number
 }
 
 interface PersonFacetSummary {
@@ -48,7 +50,7 @@ interface PersonFacetSummary {
 	confidence: number | null
 }
 
-export default function EnhancedPersonCard({ person, className, facets }: EnhancedPersonCardProps) {
+export default function EnhancedPersonCard({ person, className, facets, conversationCount, evidenceCount }: EnhancedPersonCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
@@ -70,6 +72,8 @@ export default function EnhancedPersonCard({ person, className, facets }: Enhanc
 	const topFacets = facets?.slice(0, 3) ?? []
 	const primaryOrganization = person.people_organizations?.[0]?.organization
 	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined
+	const primaryRole =
+		person.people_organizations?.find((link) => link.is_primary)?.role ?? person.people_organizations?.[0]?.role ?? null
 
 	return (
 		<Link to={routes.people.detail(person.id)} tabIndex={0} aria-label={`View details for ${name}`}>
@@ -137,29 +141,40 @@ export default function EnhancedPersonCard({ person, className, facets }: Enhanc
 						</div>
 					</CardHeader>
 					<CardContent className="pt-0">
-						{primaryOrganization && (
-							<div className="mb-3 flex items-center gap-2 font-medium text-foreground text-sm">
-								<Building2 className="h-4 w-4 text-muted-foreground" />
-								<span>{primaryOrganizationLabel?.replace?.(/^https?:\/\//, "") || "Organization"}</span>
+						{(primaryOrganizationLabel || person.title || primaryRole) && (
+							<div className="mb-3 flex items-center gap-2 text-muted-foreground text-sm">
+								<Building2 className="h-4 w-4 shrink-0" />
+								<span className="line-clamp-1">
+									{[person.title || primaryRole, primaryOrganizationLabel?.replace?.(/^https?:\/\//, "")]
+										.filter(Boolean)
+										.join(" • ")}
+								</span>
 							</div>
 						)}
+						{/* Description, segment, etc. */}
+						<p className="mb-3 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
+							{person.description || "No description yet."}
+						</p>
 						{topFacets.length > 0 && (
 							<div className="mb-3 flex flex-wrap gap-2">
-								{topFacets.map((facet) => (
-									<Badge key={`${person.id}-${facet.facet_account_id}`} variant="secondary" className="capitalize">
-										{facet.label}
+								{topFacets.slice(0, 2).map((facet) => (
+									<Badge key={`${person.id}-${facet.facet_account_id}`} variant="secondary" className="max-w-full capitalize">
+										<span className="line-clamp-1">{facet.label}</span>
 									</Badge>
 								))}
 							</div>
 						)}
-						{/* Description, segment, etc. */}
-						<p className="mb-2 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
-							{person.description || person.segment || "No additional details."}
-						</p>
 						<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
-							{person.segment && <span className="rounded bg-muted px-2 py-0.5">{person.segment}</span>}
-							{person.age && <span>Age: {person.age}</span>}
-							{/* <span>Added {formatDistance(new Date(person.created_at), new Date(), { addSuffix: true })}</span> */}
+							{typeof conversationCount === "number" && (
+								<span className="rounded bg-muted px-2 py-0.5">
+									{conversationCount} conversations
+								</span>
+							)}
+							{typeof evidenceCount === "number" && (
+								<span className="rounded bg-muted px-2 py-0.5">
+									{evidenceCount} evidence
+								</span>
+							)}
 						</div>
 					</CardContent>
 					<CardFooter>

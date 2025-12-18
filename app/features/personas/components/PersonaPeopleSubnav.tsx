@@ -1,4 +1,4 @@
-import { Building2, User, Users } from "lucide-react"
+import { Building2, User, Users, VenetianMask } from "lucide-react"
 import { Link, useLocation } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -22,18 +22,6 @@ export function PersonaPeopleSubnav({ className }: PersonaPeopleSubnavProps) {
 			<div className="mx-auto max-w-6xl px-6">
 				<nav className="flex space-x-8" aria-label="Personas and People navigation">
 					<Link
-						to={routes.personas.index()}
-						className={cn(
-							"flex items-center space-x-2 border-b-2 px-1 py-4 font-medium text-sm transition-colors hover:text-foreground",
-							isPersonasActive
-								? "border-primary text-primary"
-								: "border-transparent text-muted-foreground hover:border-gray-300"
-						)}
-					>
-						<Users className="h-4 w-4" />
-						<span>Personas</span>
-					</Link>
-					<Link
 						to={routes.people.index()}
 						className={cn(
 							"flex items-center space-x-2 border-b-2 px-1 py-4 font-medium text-sm transition-colors hover:text-foreground",
@@ -56,6 +44,18 @@ export function PersonaPeopleSubnav({ className }: PersonaPeopleSubnavProps) {
 					>
 						<Building2 className="h-4 w-4" />
 						<span>Organizations</span>
+					</Link>
+					<Link
+						to={routes.personas.index()}
+						className={cn(
+							"flex items-center space-x-2 border-b-2 px-1 py-4 font-medium text-sm transition-colors hover:text-foreground",
+							isPersonasActive
+								? "border-primary text-primary"
+								: "border-transparent text-muted-foreground hover:border-gray-300"
+						)}
+					>
+						<VenetianMask className="h-4 w-4" />
+						<span>Personas</span>
 					</Link>
 				</nav>
 			</div>

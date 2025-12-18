@@ -363,12 +363,7 @@ export function AppSidebar() {
 									return (
 										<SidebarMenuItem key={item.key} className="py-0.5">
 											{href ? (
-												<SidebarMenuButton
-													asChild
-													isActive={isActive}
-													tooltip={tooltip}
-													showTooltipWhenExpanded
-												>
+												<SidebarMenuButton asChild isActive={isActive} tooltip={tooltip} showTooltipWhenExpanded>
 													<NavLink to={href} className="flex items-center gap-2">
 														<item.icon />
 														{renderLabel(item.title, hint)}
@@ -440,12 +435,7 @@ export function AppSidebar() {
 						return (
 							<SidebarMenuItem key={item.key} className="py-0.5">
 								{href ? (
-									<SidebarMenuButton
-										asChild
-										isActive={isActive}
-										tooltip={tooltip}
-										showTooltipWhenExpanded
-									>
+									<SidebarMenuButton asChild isActive={isActive} tooltip={tooltip} showTooltipWhenExpanded>
 										<NavLink to={href} className="flex items-center gap-2">
 											<item.icon />
 											<span>{item.title}</span>

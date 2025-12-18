@@ -377,10 +377,7 @@ export function SimpleMediaPlayer({
 						controls
 						autoPlay={autoPlay || hasUserInteracted}
 						poster={signedThumbnailUrl || undefined}
-						className={cn(
-							"w-full rounded-md border bg-black",
-							has_thumbnail ? "aspect-video" : "h-16"
-						)}
+						className={cn("w-full rounded-md border bg-black", has_thumbnail ? "aspect-video" : "h-16")}
 					/>
 				) : (
 					<video

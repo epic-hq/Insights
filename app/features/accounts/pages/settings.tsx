@@ -71,7 +71,8 @@ const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
 	{
 		id: "product",
 		label: "Product",
-		description: "What should exist. Feature ideas, capabilities, scope decisions, and roadmap inputs driven by customer needs.",
+		description:
+			"What should exist. Feature ideas, capabilities, scope decisions, and roadmap inputs driven by customer needs.",
 	},
 	{
 		id: "usability",
@@ -81,12 +82,14 @@ const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
 	{
 		id: "value",
 		label: "Value",
-		description: "Why it matters. Jobs-to-be-done, pain intensity, desired outcomes, ROI, and willingness-to-pay signals.",
+		description:
+			"Why it matters. Jobs-to-be-done, pain intensity, desired outcomes, ROI, and willingness-to-pay signals.",
 	},
 	{
 		id: "engagement",
 		label: "Engagement",
-		description: "What brings users back. Activation moments, feature adoption, retention drivers, and drop-off causes.",
+		description:
+			"What brings users back. Activation moments, feature adoption, retention drivers, and drop-off causes.",
 	},
 	{
 		id: "acquisition",
@@ -111,7 +114,8 @@ const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
 	{
 		id: "ops-scale",
 		label: "Ops & Scale",
-		description: "What fails at growth. Admin pain, permissions, billing ops, data hygiene, and multi-account complexity.",
+		description:
+			"What fails at growth. Admin pain, permissions, billing ops, data hygiene, and multi-account complexity.",
 	},
 	{
 		id: "other",

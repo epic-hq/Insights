@@ -10,6 +10,7 @@ import type {
 	TaskActivityType,
 	TaskInsert,
 	TaskListOptions,
+	TaskStatus,
 	TaskUpdate,
 } from "./types"
 
@@ -146,6 +147,41 @@ export async function getTasks({
 
 	if (error) {
 		consola.error("Error fetching tasks:", error)
+		throw error
+	}
+
+	return (data as Task[]) || []
+}
+
+export async function getTopFocusTasks({
+	supabase,
+	accountId,
+	projectId,
+	limit = 10,
+}: {
+	supabase: SupabaseClient
+	accountId: string
+	projectId: string
+	limit?: number
+}): Promise<Task[]> {
+	let query = supabase
+		.from("tasks")
+		.select("*")
+		.eq("account_id", accountId)
+		.eq("project_id", projectId)
+		.in("status", ["todo", "in_progress", "blocked", "review"])
+		.order("priority", { ascending: true })
+		.order("due_date", { ascending: true, nullsFirst: false })
+		.order("created_at", { ascending: false })
+
+	if (limit) {
+		query = query.limit(limit)
+	}
+
+	const { data, error } = await query
+
+	if (error) {
+		consola.error("Error fetching top focus tasks:", error)
 		throw error
 	}
 
@@ -429,14 +465,14 @@ export async function getTasksByStatus({
 	supabase: SupabaseClient
 	accountId: string
 	projectId: string
-	status: string | string[]
+	status: TaskStatus | TaskStatus[]
 }) {
 	return getTasks({
 		supabase,
 		accountId,
 		projectId,
 		options: {
-			filters: { status: status as any },
+			filters: { status },
 		},
 	})
 }

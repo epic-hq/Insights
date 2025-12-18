@@ -2,7 +2,8 @@
  * Apply lenses to an interview based on project settings
  *
  * Triggered after interview finalization to automatically apply enabled lenses.
- * Voice memos and notes are skipped (lens_visibility = 'private').
+ * Voice memos and notes (lens_visibility = 'private') are skipped by default,
+ * but can be processed when forceApply=true (manual "Apply lenses" requests).
  *
  * Lens resolution hierarchy:
  * 1. lensesToApply parameter (backfill, manual override)
@@ -24,11 +25,11 @@ const PLATFORM_DEFAULT_LENS_KEYS = ["customer-discovery"];
 
 /** Context-specific lens mappings based on LLM-determined interaction_context */
 const CONTEXT_LENS_MAPPINGS: Record<string, string[]> = {
-  research: ["customer-discovery", "empathy-map"],
+  research: ["customer-discovery", "empathy-map-jtbd"],
   sales: ["sales-bant", "customer-discovery"],
   support: ["customer-discovery"], // Could add support-specific lens later
   internal: ["customer-discovery"], // Could add internal meeting lens later
-  debrief: ["debrief"], // Voice memos, call recaps, field notes - extracts tasks & people
+  debrief: ["customer-discovery"], // Voice memos, call recaps, field notes
 };
 
 /**
@@ -58,6 +59,8 @@ export type ApplyAllLensesPayload = {
   computedBy?: string | null;
   /** Optional: only apply specific lenses instead of all */
   lensesToApply?: string[];
+  /** Optional: bypass private lens_visibility check (for manual "Apply lenses" requests) */
+  forceApply?: boolean;
 };
 
 export type ApplyAllLensesResult = {
@@ -78,8 +81,14 @@ export const applyAllLensesTask = task({
   run: async (
     payload: ApplyAllLensesPayload,
   ): Promise<ApplyAllLensesResult> => {
-    const { interviewId, accountId, projectId, computedBy, lensesToApply } =
-      payload;
+    const {
+      interviewId,
+      accountId,
+      projectId,
+      computedBy,
+      lensesToApply,
+      forceApply,
+    } = payload;
     const client = createSupabaseAdminClient();
 
     consola.info(`[applyAllLenses] Starting for interview ${interviewId}`);
@@ -121,8 +130,8 @@ export const applyAllLensesTask = task({
       );
     }
 
-    // Skip private interviews (voice memos, notes)
-    if (interview.lens_visibility === "private") {
+    // Skip private interviews (voice memos, notes) unless forceApply is set
+    if (interview.lens_visibility === "private" && !forceApply) {
       consola.info(
         `[applyAllLenses] Skipping private interview ${interviewId}`,
       );
@@ -132,6 +141,12 @@ export const applyAllLensesTask = task({
         reason: "private",
         results: [],
       };
+    }
+
+    if (interview.lens_visibility === "private" && forceApply) {
+      consola.info(
+        `[applyAllLenses] Force-applying lenses to private interview ${interviewId}`,
+      );
     }
 
     // Determine which lenses to apply using hierarchy:

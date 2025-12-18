@@ -1,6 +1,6 @@
-import type { PostgrestError } from "@supabase/supabase-js";
-import consola from "consola";
-import { formatDistance } from "date-fns";
+import type { PostgrestError } from "@supabase/supabase-js"
+import consola from "consola"
+import { formatDistance } from "date-fns"
 import {
 	FileSpreadsheet,
 	FileText,
@@ -13,29 +13,25 @@ import {
 	Search,
 	Table,
 	Upload,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import type { LoaderFunctionArgs, MetaFunction } from "react-router";
-import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router";
-import { PrettySegmentPie } from "~/components/charts/PieSemgents";
-import { PageContainer } from "~/components/layout/PageContainer";
-import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "~/components/ui/popover";
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
-import { useCurrentProject } from "~/contexts/current-project-context";
-import InterviewCard from "~/features/interviews/components/InterviewCard";
-import NoteCard from "~/features/interviews/components/NoteCard";
-import { getInterviews } from "~/features/interviews/db";
-import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { userContext } from "~/server/user-context";
-import type { Interview } from "~/types";
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import type { LoaderFunctionArgs, MetaFunction } from "react-router"
+import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router"
+import { PrettySegmentPie } from "~/components/charts/PieSemgents"
+import { PageContainer } from "~/components/layout/PageContainer"
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
+import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import InterviewCard from "~/features/interviews/components/InterviewCard"
+import NoteCard from "~/features/interviews/components/NoteCard"
+import { getInterviews } from "~/features/interviews/db"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { userContext } from "~/server/user-context"
+import type { Interview } from "~/types"
 
 function TableMediaPreview({
 	media_url,
@@ -54,8 +50,7 @@ function TableMediaPreview({
 	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"]
 
 	const ext = file_extension?.toLowerCase() || ""
-	const is_audio_only =
-		media_type === "voice_memo" || source_type?.includes("audio") || audio_extensions.includes(ext)
+	const is_audio_only = media_type === "voice_memo" || source_type?.includes("audio") || audio_extensions.includes(ext)
 	const is_image = image_extensions.includes(ext)
 
 	const preview_source = thumbnail_url || (is_image ? media_url : null)
@@ -98,17 +93,10 @@ function TableMediaPreview({
 	}, [preview_source])
 
 	if (preview_source) {
-		return (
-			signedUrl ? (
-				<img
-					src={signedUrl}
-					alt=""
-					className="h-9 w-14 shrink-0 rounded-md object-cover"
-					loading="lazy"
-				/>
-			) : (
-				<div className="h-9 w-14 shrink-0 rounded-md bg-muted/40" />
-			)
+		return signedUrl ? (
+			<img src={signedUrl} alt="" className="h-9 w-14 shrink-0 rounded-md object-cover" loading="lazy" />
+		) : (
+			<div className="h-9 w-14 shrink-0 rounded-md bg-muted/40" />
 		)
 	}
 
@@ -130,84 +118,77 @@ function TableMediaPreview({
 }
 
 export const meta: MetaFunction = () => {
-	return [
-		{ title: "Content | Insights" },
-		{ name: "description", content: "Conversations, notes, and files" },
-	];
-};
+	return [{ title: "Content | Insights" }, { name: "description", content: "Conversations, notes, and files" }]
+}
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext);
-	const supabase = ctx.supabase;
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId;
-	const projectId = params.projectId;
+	const accountId = params.accountId
+	const projectId = params.projectId
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", {
 			status: 400,
-		});
+		})
 	}
 
 	const [interviewsResult, assetsResult] = await Promise.all([
 		getInterviews({ supabase, accountId, projectId }),
 		supabase
 			.from("project_assets")
-			.select(
-				"id, title, asset_type, row_count, column_count, status, source_type, created_at, updated_at",
-			)
+			.select("id, title, asset_type, row_count, column_count, status, source_type, created_at, updated_at")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
-	]);
+	])
 
 	const { data: rows, error } = interviewsResult as {
-		data: Interview[] | null;
-		error: PostgrestError | null;
-	};
-	const { data: assets, error: assetsError } = assetsResult;
+		data: Interview[] | null
+		error: PostgrestError | null
+	}
+	const { data: assets, error: assetsError } = assetsResult
 
 	if (error) {
-		consola.error("Interviews query error:", error);
+		consola.error("Interviews query error:", error)
 		throw new Response(`Error fetching interviews: ${error.message}`, {
 			status: 500,
-		});
+		})
 	}
 
 	if (assetsError) {
-		consola.warn("Assets query error:", assetsError);
+		consola.warn("Assets query error:", assetsError)
 	}
 
 	consola.info("Content loader:", {
 		projectId,
 		assetsCount: assets?.length ?? 0,
 		interviewsCount: rows?.length ?? 0,
-	});
+	})
 
 	// consola.log(`Found ${rows?.length || 0} interviews`)
 
 	// Build persona/segment distribution from interview participants
-	const personaCountMap = new Map<string, number>();
+	const personaCountMap = new Map<string, number>()
 
-	(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0];
-		const segment = primaryParticipant?.people?.segment || "Unknown";
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1);
-	});
+	;(rows || []).forEach((interview) => {
+		const primaryParticipant = interview.interview_people?.[0]
+		const segment = primaryParticipant?.people?.segment || "Unknown"
+		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+	})
 
-	const segmentData = Array.from(personaCountMap.entries()).map(
-		([name, value]) => ({
-			name,
-			value,
-			color: "#d1d5db", // TODO: map personas to colors when available
-		}),
-	);
+	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
+		name,
+		value,
+		color: "#d1d5db", // TODO: map personas to colors when available
+	}))
 
 	// Transform interviews for UI (includes notes now)
 	const interviews = (rows || []).map((interview) => {
 		// Get primary participant from interview_people junction
-		const primaryParticipant = interview.interview_people?.[0];
-		const participant = primaryParticipant?.people;
+		const primaryParticipant = interview.interview_people?.[0]
+		const participant = primaryParticipant?.people
 
 		return {
 			...interview,
@@ -215,12 +196,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			role: primaryParticipant?.role || "participant",
 			persona: participant?.segment || "No segment",
 			date: interview.interview_date || interview.created_at || "",
-			duration: interview.duration_sec
-				? `${Math.round((interview.duration_sec / 60) * 10) / 10} min`
-				: "Unknown",
+			duration: interview.duration_sec ? `${Math.round((interview.duration_sec / 60) * 10) / 10} min` : "Unknown",
 			evidenceCount: interview.evidence_count || 0,
-		};
-	});
+		}
+	})
 
 	// Transform assets for unified display
 	const projectAssets = (assets || []).map((asset) => ({
@@ -233,47 +212,40 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		source_type: asset.source_type,
 		created_at: asset.created_at,
 		updated_at: asset.updated_at,
-	}));
+	}))
 
-	return { interviews, segmentData, projectAssets };
+	return { interviews, segmentData, projectAssets }
 }
 
-export default function InterviewsIndex({
-	showPie = false,
-}: {
-	showPie?: boolean;
-}) {
-	const { interviews, segmentData, projectAssets } =
-		useLoaderData<typeof loader>();
-	const { projectPath } = useCurrentProject();
-	const routes = useProjectRoutes(projectPath);
-	const [searchParams, setSearchParams] = useSearchParams();
-	const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
-	const [sourceFilter, setSourceFilter] = useState<
-		"all" | "conversations" | "notes" | "files"
-	>("all");
-	const [fileSearchQuery, setFileSearchQuery] = useState("");
-	const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-	const _fetcher = useFetcher();
+export default function InterviewsIndex({ showPie = false }: { showPie?: boolean }) {
+	const { interviews, segmentData, projectAssets } = useLoaderData<typeof loader>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath)
+	const [searchParams, setSearchParams] = useSearchParams()
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("all")
+	const [fileSearchQuery, setFileSearchQuery] = useState("")
+	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+	const _fetcher = useFetcher()
 
 	// Read tab from URL on mount (for redirects from asset delete, etc.)
 	useEffect(() => {
-		const tab = searchParams.get("tab");
+		const tab = searchParams.get("tab")
 		if (tab === "files" || tab === "conversations" || tab === "notes") {
-			setSourceFilter(tab);
+			setSourceFilter(tab)
 			// Clear the param after reading
-			searchParams.delete("tab");
-			setSearchParams(searchParams, { replace: true });
+			searchParams.delete("tab")
+			setSearchParams(searchParams, { replace: true })
 		}
-	}, []);
+	}, [])
 
 	// Sort interviews chronologically (includes notes now)
 	const allItems = [...interviews].sort((a, b) => {
 		// Sort by created_at descending (most recent first)
-		const dateA = new Date(a.created_at).getTime();
-		const dateB = new Date(b.created_at).getTime();
-		return dateB - dateA;
-	});
+		const dateA = new Date(a.created_at).getTime()
+		const dateB = new Date(b.created_at).getTime()
+		return dateB - dateA
+	})
 
 	// Calculate counts for each tab
 	const conversationsCount = allItems.filter(
@@ -282,28 +254,24 @@ export default function InterviewsIndex({
 			item.media_type === "interview" &&
 			item.source_type !== "document" &&
 			item.media_type !== "document" &&
-			item.media_type !== "voice_memo",
-	).length;
-	const notesCount = allItems.filter(
-		(item) => item.source_type === "note" || item.media_type === "voice_memo",
-	).length;
-	const filesCount = projectAssets.length;
+			item.media_type !== "voice_memo"
+	).length
+	const notesCount = allItems.filter((item) => item.source_type === "note" || item.media_type === "voice_memo").length
+	const filesCount = projectAssets.length
 
 	// Filter assets by search query (client-side filtering using title)
 	const filteredAssets = fileSearchQuery
-		? projectAssets.filter((asset) =>
-			asset.title.toLowerCase().includes(fileSearchQuery.toLowerCase()),
-		)
-		: projectAssets;
+		? projectAssets.filter((asset) => asset.title.toLowerCase().includes(fileSearchQuery.toLowerCase()))
+		: projectAssets
 
 	// Filter items by source type category (for interviews/notes)
 	const filteredInterviews = allItems.filter((item) => {
-		if (sourceFilter === "files") return false; // Files come from projectAssets
-		if (sourceFilter === "all") return true;
+		if (sourceFilter === "files") return false // Files come from projectAssets
+		if (sourceFilter === "all") return true
 
 		// Notes filter - includes both quick notes and voice memos
 		if (sourceFilter === "notes") {
-			return item.source_type === "note" || item.media_type === "voice_memo";
+			return item.source_type === "note" || item.media_type === "voice_memo"
 		}
 
 		// Conversations: all interviews (including generic interview type) but exclude voice memos, notes, and documents
@@ -314,26 +282,26 @@ export default function InterviewsIndex({
 				item.source_type !== "document" &&
 				item.media_type !== "document" &&
 				item.media_type !== "voice_memo"
-			);
+			)
 		}
 
-		return true;
-	});
+		return true
+	})
 
 	const handleSaveNote = async (note: {
-		title: string;
-		content: string;
-		noteType: string;
-		associations: Record<string, unknown>;
-		tags: string[];
+		title: string
+		content: string
+		noteType: string
+		associations: Record<string, unknown>
+		tags: string[]
 	}) => {
 		// Extract project ID from path - format is /a/{accountId}/{projectId}
-		const pathParts = projectPath?.split("/").filter(Boolean) || [];
-		const extractedProjectId = pathParts[2]; // Index 2 is projectId (0: 'a', 1: accountId, 2: projectId)
+		const pathParts = projectPath?.split("/").filter(Boolean) || []
+		const extractedProjectId = pathParts[2] // Index 2 is projectId (0: 'a', 1: accountId, 2: projectId)
 
 		if (!extractedProjectId) {
-			console.error("No project ID found in path:", projectPath);
-			throw new Error("Project ID is required");
+			console.error("No project ID found in path:", projectPath)
+			throw new Error("Project ID is required")
 		}
 
 		// Submit as JSON
@@ -350,16 +318,14 @@ export default function InterviewsIndex({
 				associations: note.associations,
 				tags: note.tags,
 			}),
-		});
+		})
 
 		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			console.error("Failed to save note:", errorData);
-			throw new Error(
-				errorData.details || errorData.error || "Failed to save note",
-			);
+			const errorData = await response.json().catch(() => ({}))
+			console.error("Failed to save note:", errorData)
+			throw new Error(errorData.details || errorData.error || "Failed to save note")
 		}
-	};
+	}
 
 	return (
 		<div className="relative min-h-screen bg-background">
@@ -384,18 +350,10 @@ export default function InterviewsIndex({
 									size="sm"
 									className="justify-end sm:w-auto"
 								>
-									<ToggleGroupItem
-										value="cards"
-										aria-label="Cards"
-										className="sm:px-3"
-									>
+									<ToggleGroupItem value="cards" aria-label="Cards" className="sm:px-3">
 										<Grid className="h-4 w-4" />
 									</ToggleGroupItem>
-									<ToggleGroupItem
-										value="table"
-										aria-label="Table"
-										className="sm:px-3"
-									>
+									<ToggleGroupItem value="table" aria-label="Table" className="sm:px-3">
 										<List className="h-4 w-4" />
 									</ToggleGroupItem>
 								</ToggleGroup>
@@ -435,10 +393,7 @@ export default function InterviewsIndex({
 								<ToggleGroupItem value="all" className="flex-1 sm:flex-initial">
 									All
 								</ToggleGroupItem>
-								<ToggleGroupItem
-									value="conversations"
-									className="flex-1 gap-1.5 sm:flex-initial"
-								>
+								<ToggleGroupItem value="conversations" className="flex-1 gap-1.5 sm:flex-initial">
 									<MessageSquare className="h-3.5 w-3.5" />
 									Conversations
 									{conversationsCount > 0 && (
@@ -447,10 +402,7 @@ export default function InterviewsIndex({
 										</span>
 									)}
 								</ToggleGroupItem>
-								<ToggleGroupItem
-									value="notes"
-									className="flex-1 gap-1.5 sm:flex-initial"
-								>
+								<ToggleGroupItem value="notes" className="flex-1 gap-1.5 sm:flex-initial">
 									<FileText className="h-3.5 w-3.5" />
 									Notes
 									{notesCount > 0 && (
@@ -459,10 +411,7 @@ export default function InterviewsIndex({
 										</span>
 									)}
 								</ToggleGroupItem>
-								<ToggleGroupItem
-									value="files"
-									className="flex-1 gap-1.5 sm:flex-initial"
-								>
+								<ToggleGroupItem value="files" className="flex-1 gap-1.5 sm:flex-initial">
 									<Upload className="h-3.5 w-3.5" />
 									Files
 									{filesCount > 0 && (
@@ -509,37 +458,26 @@ export default function InterviewsIndex({
 								<Popover>
 									<PopoverTrigger asChild>
 										<div className="ml-auto flex cursor-help items-center gap-2">
-											<span className="font-medium text-foreground">
-												How to use Files
-											</span>
+											<span className="font-medium text-foreground">How to use Files</span>
 											<HelpCircle className="h-4 w-4 text-muted-foreground" />
 										</div>
 									</PopoverTrigger>
-									<PopoverContent
-										className="w-120 bg-accent text-foreground"
-										align="end"
-										sideOffset={8}
-									>
+									<PopoverContent className="w-120 bg-accent text-foreground" align="end" sideOffset={8}>
 										<p className="mb-3">
-											Files store spreadsheets, tables, and documents you've
-											shared with the AI assistant. You can:
+											Files store spreadsheets, tables, and documents you've shared with the AI assistant. You can:
 										</p>
 										<ul className="space-y-1">
 											<li>
-												• <strong>Ask questions</strong> — "What trends do you
-												see in my customer list?"
+												• <strong>Ask questions</strong> — "What trends do you see in my customer list?"
 											</li>
 											<li>
-												• <strong>Import contacts</strong> — "Import these as
-												People" to add them to your CRM
+												• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM
 											</li>
 											<li>
-												• <strong>Cross-reference</strong> — "Compare this data
-												with our interview findings"
+												• <strong>Cross-reference</strong> — "Compare this data with our interview findings"
 											</li>
 											<li>
-												• <strong>Edit inline</strong> — Click any file to view
-												and edit the data directly
+												• <strong>Edit inline</strong> — Click any file to view and edit the data directly
 											</li>
 										</ul>
 									</PopoverContent>
@@ -558,20 +496,15 @@ export default function InterviewsIndex({
 											<FileSpreadsheet className="h-12 w-12 text-gray-400 dark:text-gray-500" />
 										</div>
 									</div>
-									<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">
-										No files yet
-									</h3>
+									<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No files yet</h3>
 									<p className="mb-8 text-gray-600 dark:text-gray-400">
-										Paste spreadsheet data into the chat or upload files to see
-										them here.
+										Paste spreadsheet data into the chat or upload files to see them here.
 									</p>
 								</div>
 							</div>
 						) : filteredAssets.length === 0 ? (
 							<div className="py-8 text-center">
-								<p className="text-muted-foreground">
-									No files match "{fileSearchQuery}"
-								</p>
+								<p className="text-muted-foreground">No files match "{fileSearchQuery}"</p>
 							</div>
 						) : (
 							<div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
@@ -589,9 +522,7 @@ export default function InterviewsIndex({
 											)}
 										</div>
 										<div className="min-w-0 flex-1">
-											<h3 className="truncate font-medium text-foreground">
-												{asset.title}
-											</h3>
+											<h3 className="truncate font-medium text-foreground">{asset.title}</h3>
 											<div className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
 												<span className="capitalize">{asset.asset_type}</span>
 												{asset.row_count && asset.column_count && (
@@ -603,13 +534,7 @@ export default function InterviewsIndex({
 													</>
 												)}
 												<span>•</span>
-												<span>
-													{formatDistance(
-														new Date(asset.created_at),
-														new Date(),
-														{ addSuffix: true },
-													)}
-												</span>
+												<span>{formatDistance(new Date(asset.created_at), new Date(), { addSuffix: true })}</span>
 											</div>
 											{asset.status && asset.status !== "ready" && (
 												<span className="mt-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 font-medium text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
@@ -630,12 +555,9 @@ export default function InterviewsIndex({
 									<Upload className="h-12 w-12 text-gray-400 dark:text-gray-500" />
 								</div>
 							</div>
-							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">
-								No content yet
-							</h3>
+							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No content yet</h3>
 							<p className="mb-8 text-gray-600 dark:text-gray-400">
-								Upload your first interview recording or transcript to start
-								gathering insights from your research.
+								Upload your first interview recording or transcript to start gathering insights from your research.
 							</p>
 							<Button asChild className="gap-2">
 								<Link to={routes.interviews.upload()}>
@@ -652,7 +574,7 @@ export default function InterviewsIndex({
 								<NoteCard key={item.id} note={item as any} />
 							) : (
 								<InterviewCard key={item.id} interview={item} />
-							),
+							)
 						)}
 					</div>
 				) : (
@@ -683,15 +605,9 @@ export default function InterviewsIndex({
 								</thead>
 								<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 									{filteredInterviews.map((interview) => (
-										<tr
-											key={interview.id}
-											className="hover:bg-gray-50 dark:hover:bg-gray-800"
-										>
+										<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
 											<td className="px-4 py-3">
-												<Link
-													to={routes.interviews.detail(interview.id)}
-													className="hover:text-blue-600"
-												>
+												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
 													<div className="flex items-center gap-3">
 														<TableMediaPreview
 															media_url={interview.media_url}
@@ -702,12 +618,10 @@ export default function InterviewsIndex({
 														/>
 														<div>
 															<div className="font-medium text-base text-foreground">
-																{interview.interview_people?.[0]?.people?.name ||
-																	interview.participant}
+																{interview.interview_people?.[0]?.people?.name || interview.participant}
 															</div>
 															<div className="text-foreground/60 text-sm">
-																{interview.interview_people?.[0]?.people?.segment ||
-																	"Participant"}
+																{interview.interview_people?.[0]?.people?.segment || "Participant"}
 															</div>
 														</div>
 													</div>
@@ -727,32 +641,26 @@ export default function InterviewsIndex({
 												</Link>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
-												<span className="font-medium text-purple-600">
-													{interview.evidenceCount}
-												</span>
+												<span className="font-medium text-purple-600">{interview.evidenceCount}</span>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3 text-gray-900 text-sm dark:text-white">
 												{interview.duration}
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-														: interview.status === "transcribed"
-															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-															: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-														}`}
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
+														interview.status === "ready"
+															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+															: interview.status === "transcribed"
+																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+													}`}
 												>
-													{interview.status.charAt(0).toUpperCase() +
-														interview.status.slice(1)}
+													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3 text-gray-500 text-sm dark:text-gray-400">
-												{formatDistance(
-													new Date(interview.created_at),
-													new Date(),
-													{ addSuffix: true },
-												)}
+												{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}
 											</td>
 										</tr>
 									))}
@@ -774,5 +682,5 @@ export default function InterviewsIndex({
 				availableOpportunities={[]}
 			/>
 		</div>
-	);
+	)
 }

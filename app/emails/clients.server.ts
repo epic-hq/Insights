@@ -153,8 +153,8 @@ export const sendEmail = async (payload: EmailPayload) => {
 				name: DEFAULT_FROM_NAME || undefined,
 			},
 			to: Array.isArray(payload.to) ? payload.to : [payload.to],
-			track_clicks: payload.track_clicks ?? (send_intent === "marketing"),
-			track_opens: payload.track_opens ?? (send_intent === "marketing"),
+			track_clicks: payload.track_clicks ?? send_intent === "marketing",
+			track_opens: payload.track_opens ?? send_intent === "marketing",
 		}
 
 		// Add optional fields if provided
