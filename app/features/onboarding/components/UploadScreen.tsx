@@ -30,6 +30,16 @@ interface UploadScreenProps {
 
 type UploadStep = "select" | "associate"
 type ActionType = "upload" | "record"
+type SelectablePerson =
+	| (Person & { isMember?: false })
+	| {
+			id: string
+			name: string
+			company?: string | null
+			isMember: true
+			user_id: string
+			email?: string | null
+	  }
 
 export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectId, error }: UploadScreenProps) {
 	// File/URL state
@@ -49,8 +59,9 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 	// Person association state - supports multiple people
 	const [searchQuery, setSearchQuery] = useState("")
 	const [people, setPeople] = useState<Person[]>([])
+	const [members, setMembers] = useState<Array<{ user_id: string; name: string; email: string | null }>>([])
 	const [isLoadingPeople, setIsLoadingPeople] = useState(false)
-	const [selectedPeople, setSelectedPeople] = useState<Person[]>([])
+	const [selectedPeople, setSelectedPeople] = useState<SelectablePerson[]>([])
 	const [showCreatePerson, setShowCreatePerson] = useState(false)
 	const [newPersonFirstName, setNewPersonFirstName] = useState("")
 	const [newPersonLastName, setNewPersonLastName] = useState("")
@@ -160,7 +171,36 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 
 		try {
 			// Collect all person IDs (existing selections + newly created)
-			const personIds: string[] = selectedPeople.map((p) => p.id)
+			const personIds: string[] = []
+
+			// Ensure member selections have a person row
+			if (accountId && projectId && selectedPeople.length > 0) {
+				for (const sel of selectedPeople) {
+					if ((sel as any).isMember) {
+						const memberSel = sel as Extract<SelectablePerson, { isMember: true }>
+						const insertPayload = {
+							account_id: accountId,
+							project_id: projectId,
+							user_id: memberSel.user_id,
+							person_type: "internal" as const,
+							name: memberSel.name,
+							primary_email: memberSel.email ?? null,
+						}
+						const { data, error } = await supabase
+							.from("people")
+							.upsert(insertPayload, { onConflict: "account_id,user_id" })
+							.select("id")
+							.single()
+						if (!error && data?.id) {
+							personIds.push(data.id)
+						}
+					} else {
+						personIds.push(sel.id)
+					}
+				}
+			} else {
+				personIds.push(...selectedPeople.map((p) => p.id))
+			}
 
 			// Create new person if needed
 			if (showCreatePerson && newPersonFirstName.trim()) {
@@ -246,11 +286,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 			try {
 				let accId = accountId
 				if (!accId) {
-					const { data: proj } = await supabase
-						.from("projects")
-						.select("account_id")
-						.eq("id", projectId)
-						.maybeSingle()
+					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle()
 					accId = proj?.account_id ?? null
 					if (accId) setAccountId(accId)
 				}
@@ -265,6 +301,17 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 					.limit(50)
 
 				if (data) setPeople(data as Person[])
+
+				const { data: memberRows } = await supabase.rpc("get_account_members", { account_id: accId })
+				if (Array.isArray(memberRows)) {
+					setMembers(
+						memberRows.map((m: any) => ({
+							user_id: m.user_id,
+							name: m.name || m.email || "Team member",
+							email: m.email ?? null,
+						}))
+					)
+				}
 			} finally {
 				setIsLoadingPeople(false)
 			}
@@ -281,6 +328,14 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 		: people.slice(0, 8)
+	const filteredMembers =
+		searchQuery.trim().length > 0
+			? members.filter(
+					(m) =>
+						m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						(m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
+				)
+			: members.slice(0, 8)
 
 	// Quick note handler
 	const handleSaveNote = useCallback(
@@ -375,7 +430,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 										</p>
 									) : (
 										filteredPeople.map((person) => {
-											const isSelected = selectedPeople.some((p) => p.id === person.id)
+											const isSelected = selectedPeople.some((p) => p.id === person.id && !p.isMember)
 											const isInternal = (person as any).person_type === "internal"
 											return (
 												<button
@@ -400,7 +455,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 														<div className="flex items-center gap-2">
 															<p className="truncate font-medium text-sm">{person.name}</p>
 															{isInternal && (
-																<span className="inline-flex items-center rounded-full bg-blue-100 px-2 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+																<span className="inline-flex items-center rounded-full bg-blue-100 px-2 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
 																	Team
 																</span>
 															)}
@@ -413,6 +468,58 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 												</button>
 											)
 										})
+									)}
+
+									{filteredMembers.length > 0 && (
+										<div className="mt-4 space-y-2">
+											<p className="font-semibold text-muted-foreground text-xs uppercase">Internal teammates</p>
+											{filteredMembers.map((member) => {
+												const key = `member-${member.user_id}`
+												const isSelected = selectedPeople.some((p) => p.isMember && p.user_id === member.user_id)
+												return (
+													<button
+														key={key}
+														type="button"
+														onClick={() =>
+															setSelectedPeople((prev) =>
+																isSelected
+																	? prev.filter((p) => !(p.isMember && p.user_id === member.user_id))
+																	: [
+																			...prev,
+																			{
+																				id: key,
+																				isMember: true,
+																				user_id: member.user_id,
+																				name: member.name,
+																				email: member.email,
+																			},
+																		]
+															)
+														}
+														className={cn(
+															"flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all",
+															isSelected
+																? "border-blue-500 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
+																: "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+														)}
+													>
+														<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
+															<Users className="h-5 w-5" />
+														</div>
+														<div className="min-w-0 flex-1">
+															<div className="flex items-center gap-2">
+																<p className="truncate font-medium text-sm">{member.name}</p>
+																<span className="inline-flex items-center rounded-full bg-blue-100 px-2 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
+																	Team
+																</span>
+															</div>
+															{member.email && <p className="truncate text-muted-foreground text-xs">{member.email}</p>}
+														</div>
+														{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
+													</button>
+												)
+											})}
+										</div>
 									)}
 								</div>
 
