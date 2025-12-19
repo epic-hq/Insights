@@ -13,7 +13,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		return new Response("Method Not Allowed", { status: 405 })
 	}
 	// Auth + DB client for actions
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
@@ -96,7 +96,11 @@ export async function action({ request }: ActionFunctionArgs) {
 	})
 
 	// Transform Mastra stream to AI SDK format with v1 pattern
-	const toAISdkOptions = { from: "agent" as const, sendReasoning: true, sendSources: true }
+	const toAISdkOptions = {
+		from: "agent" as const,
+		sendReasoning: true,
+		sendSources: true,
+	}
 
 	const uiMessageStream = createUIMessageStream({
 		execute: async ({ writer }) => {

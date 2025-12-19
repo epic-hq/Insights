@@ -68,6 +68,9 @@ export interface Task {
 	depends_on_task_ids: string[]
 	blocks_task_ids: string[]
 
+	// Source linking (e.g., from an insight/theme)
+	source_theme_id: string | null
+
 	// Audit Trail
 	account_id: string
 	project_id: string

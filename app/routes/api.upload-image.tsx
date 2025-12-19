@@ -21,7 +21,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	// Authenticate user
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 })
 	}
@@ -29,8 +29,12 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		const url = new URL(request.url)
 		const category = url.searchParams.get("category") || "uploads"
-		const entityId = url.searchParams.get("entityId") || user.sub
+		const rawEntityId = url.searchParams.get("entityId")
+		const entityId = rawEntityId && rawEntityId !== "undefined" && rawEntityId !== "null" ? rawEntityId : user.sub
 		const suffix = url.searchParams.get("suffix") || undefined
+		if (!entityId) {
+			return Response.json({ error: "Missing entityId" }, { status: 400 })
+		}
 
 		// Parse multipart form data
 		const formData = await request.formData()
@@ -69,7 +73,7 @@ export async function action({ request }: ActionFunctionArgs) {
  * Returns a fresh presigned URL for an existing image
  */
 export async function loader({ request }: ActionFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 })
 	}

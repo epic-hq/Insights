@@ -2,19 +2,25 @@
  * LensSelector - UI for selecting and applying conversation lenses to an interview
  *
  * Allows users to manually apply individual lenses or all lenses at once.
+ * Uses Trigger.dev realtime with onComplete callback for reliable completion detection.
  */
 
 import { Check, Loader2, PlayCircle, Sparkles } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import { useFetcher, useRevalidator } from "react-router-dom"
+import { useCallback, useEffect, useState } from "react"
+import { useFetcher, useRevalidator } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Progress } from "~/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { cn } from "~/lib/utils"
 import { useLensProgress } from "../hooks/useLensProgress"
 import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
+
+interface ActiveRun {
+	taskId: string
+	accessToken: string
+	templateKey: string | null // null means "apply all"
+}
 
 type Props = {
 	interviewId: string
@@ -67,54 +73,54 @@ function getStatusInfo(analysis?: LensAnalysisWithTemplate): {
 
 export function LensSelector({ interviewId, templates, analyses, onLensApplied, className }: Props) {
 	const [selectedLens, setSelectedLens] = useState<string>("")
-	const [activeRun, setActiveRun] = useState<{ taskId: string; accessToken: string } | null>(null)
-	const hasRevalidatedRef = useRef(false)
+	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null)
 	const fetcher = useFetcher()
 	const revalidator = useRevalidator()
-	const isApplying = fetcher.state !== "idle"
+	const isSubmitting = fetcher.state !== "idle"
 
-	// Track which lens is being applied
+	// Handle Trigger.dev run completion via onComplete callback
+	const handleRunComplete = useCallback(() => {
+		console.log("[LensSelector] Run complete, revalidating...")
+		revalidator.revalidate()
+		const templateKey = activeRun?.templateKey
+		setActiveRun(null)
+		setSelectedLens("")
+		onLensApplied?.(templateKey || "all")
+	}, [revalidator, activeRun?.templateKey, onLensApplied])
+
+	// Subscribe to active run with onComplete callback
+	const { progressInfo, isSubscribed } = useLensProgress({
+		runId: activeRun?.taskId,
+		accessToken: activeRun?.accessToken,
+		onComplete: handleRunComplete,
+	})
+
+	// When API call succeeds, store the run info for realtime tracking
+	useEffect(() => {
+		if (fetcher.state === "idle" && fetcher.data?.ok && fetcher.data?.taskId && fetcher.data?.publicAccessToken) {
+			console.log("[LensSelector] API success, starting realtime tracking:", {
+				taskId: fetcher.data.taskId,
+				templateKey: fetcher.data.templateKey ?? "all",
+			})
+			setActiveRun({
+				taskId: fetcher.data.taskId,
+				accessToken: fetcher.data.publicAccessToken,
+				templateKey: fetcher.data.templateKey ?? null,
+			})
+		}
+	}, [fetcher.state, fetcher.data])
+
+	// Track which lens is being applied (during submit)
 	const applyingLensKey =
 		fetcher.state !== "idle" && fetcher.formData ? fetcher.formData.get("template_key")?.toString() : null
 
 	const isApplyingAll = fetcher.state !== "idle" && fetcher.formData?.get("apply_all") === "true"
 
-	// Subscribe to realtime progress (no onComplete callback to avoid infinite loops)
-	const { progressInfo, isSubscribed } = useLensProgress({
-		runId: activeRun?.taskId,
-		accessToken: activeRun?.accessToken,
-	})
+	// Count pending/processing lenses from the database
+	const pendingCount = Object.values(analyses).filter((a) => a.status === "pending" || a.status === "processing").length
 
-	// When task completes, revalidate once
-	useEffect(() => {
-		if (progressInfo.isComplete && activeRun && !hasRevalidatedRef.current) {
-			hasRevalidatedRef.current = true
-			setActiveRun(null)
-			// Small delay to ensure database is updated
-			setTimeout(() => {
-				revalidator.revalidate()
-			}, 500)
-		}
-	}, [progressInfo.isComplete, activeRun, revalidator])
-
-	// When fetcher returns, store the taskId and accessToken for realtime tracking
-	useEffect(() => {
-		if (fetcher.data?.ok && fetcher.data?.taskId && fetcher.data?.publicAccessToken) {
-			hasRevalidatedRef.current = false // Reset for new run
-			setActiveRun({
-				taskId: fetcher.data.taskId,
-				accessToken: fetcher.data.publicAccessToken,
-			})
-		}
-	}, [fetcher.data])
-
-	// Notify parent when lens application completes
-	useEffect(() => {
-		if (fetcher.data?.ok && fetcher.data?.templateKey) {
-			onLensApplied?.(fetcher.data.templateKey)
-			setSelectedLens("")
-		}
-	}, [fetcher.data, onLensApplied])
+	// Show processing if submitting, subscribed to a run, or have pending in DB
+	const isProcessing = isSubmitting || isSubscribed || pendingCount > 0
 
 	const handleApplyLens = () => {
 		if (!selectedLens) return
@@ -148,9 +154,6 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 		other: "Other",
 	}
 
-	// Count pending/processing lenses
-	const pendingCount = Object.values(analyses).filter((a) => a.status === "pending" || a.status === "processing").length
-
 	const completedCount = Object.values(analyses).filter((a) => a.status === "completed").length
 
 	// Calculate how many lenses haven't been applied yet
@@ -160,7 +163,7 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 		<div className={cn("flex flex-wrap items-center gap-3", className)}>
 			{/* Lens selector dropdown */}
 			<div className="flex items-center gap-2">
-				<Select value={selectedLens} onValueChange={setSelectedLens} disabled={isApplying}>
+				<Select value={selectedLens} onValueChange={setSelectedLens} disabled={isProcessing}>
 					<SelectTrigger className="w-[220px]">
 						<SelectValue placeholder="Select a lens..." />
 					</SelectTrigger>
@@ -199,7 +202,7 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 					</SelectContent>
 				</Select>
 
-				<Button onClick={handleApplyLens} disabled={!selectedLens || isApplying} size="sm">
+				<Button onClick={handleApplyLens} disabled={!selectedLens || isProcessing} size="sm">
 					{applyingLensKey && !isApplyingAll ? (
 						<Loader2 className="mr-1 h-4 w-4 animate-spin" />
 					) : (
@@ -211,29 +214,21 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 
 			{/* Apply all button */}
 			{unappliedCount > 0 && (
-				<Button variant="outline" size="sm" onClick={handleApplyAll} disabled={isApplying}>
+				<Button variant="outline" size="sm" onClick={handleApplyAll} disabled={isProcessing}>
 					{isApplyingAll ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />}
 					Apply All ({unappliedCount})
 				</Button>
 			)}
 
-			{/* Realtime progress indicator */}
-			{isSubscribed && progressInfo.progress > 0 && !progressInfo.isComplete && (
-				<div className="flex items-center gap-2">
-					<Progress value={progressInfo.progress} className="h-2 w-32" />
-					<span className="text-muted-foreground text-xs">{progressInfo.label}</span>
-				</div>
-			)}
-
-			{/* Status indicator */}
-			{pendingCount > 0 && !isSubscribed && (
+			{/* Status indicator - shows when lenses are processing */}
+			{isProcessing && (
 				<Badge variant="outline" className="bg-blue-50 text-blue-700">
 					<Loader2 className="mr-1 h-3 w-3 animate-spin" />
-					{pendingCount} processing
+					{progressInfo.label || (pendingCount > 0 ? `${pendingCount} processing` : "Processing...")}
 				</Badge>
 			)}
 
-			{completedCount > 0 && unappliedCount === 0 && pendingCount === 0 && (
+			{completedCount > 0 && unappliedCount === 0 && !isProcessing && (
 				<Badge variant="outline" className="bg-green-50 text-green-700">
 					<Check className="mr-1 h-3 w-3" />
 					All {completedCount} lenses applied

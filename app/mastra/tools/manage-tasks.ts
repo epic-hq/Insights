@@ -2,8 +2,8 @@ import { createTool } from "@mastra/core/tools"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
-import { createTask, deleteTask, getTasks, updateTask } from "~/features/tasks/db"
-import type { Assignee, AssigneeType, Task, TaskStatus } from "~/features/tasks/types"
+import { createTask, deleteTask, getTasks, getTopFocusTasks, updateTask } from "~/features/tasks/db"
+import type { AgentType, Assignee, HumanAssignee, Task, TaskStatus, TaskUpdate } from "~/features/tasks/types"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { HOST } from "~/paths"
 import type { Database } from "~/types"
@@ -41,7 +41,13 @@ const taskOutputSchema = z.object({
 	detailRoute: z.string().nullable().optional(),
 })
 
-function ensureContext(context?: Map<string, unknown> | any) {
+type ToolExecutionContext = {
+	requestContext?: {
+		get?: (key: string) => unknown
+	}
+}
+
+function ensureContext(context?: ToolExecutionContext) {
 	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
 	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 	const userId = context?.requestContext?.get?.("user_id") as string | undefined
@@ -62,7 +68,7 @@ type AssigneeInput = {
 	userId?: string
 	email?: string
 	name?: string
-	agentType?: AssigneeType
+	agentType?: AgentType
 }
 
 type AccountMember = {
@@ -301,7 +307,7 @@ export const fetchTasksTool = createTool({
 				} else {
 					filteredTasks = filteredTasks.filter((t) =>
 						(t.assigned_to || []).some(
-							(assignee) => assignee.type === "human" && matchingIds.includes((assignee as any).user_id)
+							(assignee) => assignee.type === "human" && matchingIds.includes((assignee as HumanAssignee).user_id)
 						)
 					)
 				}
@@ -327,45 +333,98 @@ export const fetchTasksTool = createTool({
 })
 
 // ============================================================================
+// Fetch Focus Tasks Tool
+// ============================================================================
+
+export const fetchFocusTasksTool = createTool({
+	id: "fetch-focus-tasks",
+	description:
+		"Return the top N tasks the user should focus on. Excludes status done/archived/backlog and sorts by priority then due date.",
+	inputSchema: z.object({
+		limit: z.number().int().min(1).max(50).optional().describe("Maximum number of focus tasks to return (default 10)"),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		message: z.string(),
+		total: z.number().optional(),
+		tasks: z.array(taskOutputSchema).optional(),
+	}),
+	execute: async (input, context?) => {
+		try {
+			const supabase = supabaseAdmin as SupabaseClient<Database>
+			const { accountId, projectId } = ensureContext(context)
+			const projectPath = buildProjectPath(accountId, projectId)
+
+			const tasks = await getTopFocusTasks({
+				supabase,
+				accountId,
+				projectId,
+				limit: input?.limit ?? 10,
+			})
+
+			const mappedTasks = tasks.map((task) => mapTask(task, projectPath))
+
+			return {
+				success: true,
+				message: `Found ${mappedTasks.length} focus task(s)`,
+				total: mappedTasks.length,
+				tasks: mappedTasks,
+			}
+		} catch (error) {
+			consola.error("Error fetching focus tasks:", error)
+			return {
+				success: false,
+				message: `Failed to fetch focus tasks: ${formatErrorMessage(error)}`,
+			}
+		}
+	},
+})
+
+// ============================================================================
 // Create Task Tool
 // ============================================================================
 
 export const createTaskTool = createTool({
 	id: "create-task",
 	description:
-		"Create a new task in the current project. Use this when the user asks you to create a task, add a feature, or track work. Requires a title and cluster at minimum. The cluster groups related tasks (e.g., 'Product', 'Usability', 'Sales').",
-	inputSchema: z.object({
-		title: z.string().min(1).describe("Task title (required)"),
-		description: z.string().optional().describe("Detailed description of the task"),
-		cluster: z.string().min(1).describe("Cluster/category for grouping (required)"),
-		status: z
-			.enum(["backlog", "todo", "in_progress", "blocked", "review", "done", "archived"])
-			.optional()
-			.describe("Task status (defaults to 'backlog')"),
-		priority: z.number().int().min(1).max(3).optional().describe("Priority: 1=Now, 2=Next, 3=Later (defaults to 3)"),
-		benefit: z.string().optional().describe("Benefit or value proposition"),
-		segments: z.string().optional().describe("Target user segments"),
-		impact: z.number().int().min(1).max(3).optional().describe("Impact level: 1=Low, 2=Medium, 3=High"),
-		stage: z.string().optional().describe("Product stage (e.g., activation, onboarding, retention)"),
-		reason: z.string().optional().describe("Rationale or reasoning for this task"),
-		tags: z.array(z.string()).optional().describe("Tags for categorization"),
-		dueDate: z.string().optional().describe("Due date in ISO format"),
-		estimatedEffort: z.enum(["S", "M", "L", "XL"]).optional().describe("Estimated effort (S/M/L/XL)"),
-		parentTaskId: z.string().optional().describe("Optional parent task ID for subtasks"),
-		dependsOnTaskIds: z.array(z.string()).optional().describe("Other task IDs this task depends on"),
-		blocksTaskIds: z.array(z.string()).optional().describe("Task IDs that this task blocks"),
-		assignees: z
-			.array(
-				z.object({
-					userId: z.string().optional(),
-					email: z.string().email().optional(),
-					name: z.string().optional(),
-					agentType: z.enum(["code-generation", "research", "testing", "documentation"]).optional(),
-				})
-			)
-			.optional()
-			.describe("People or agents to assign"),
-	}),
+		"Create a new task in the current project. Requires a title and either a priority or a due date. Defaults: assign to current user, status backlog, priority 2 (medium), cluster 'General'.",
+	inputSchema: z
+		.object({
+			title: z.string().min(1).describe("Task title (required)"),
+			description: z.string().optional().describe("Detailed description of the task"),
+			cluster: z.string().optional().describe("Cluster/category for grouping (defaults to 'General')"),
+			status: z
+				.enum(["backlog", "todo", "in_progress", "blocked", "review", "done", "archived"])
+				.optional()
+				.describe("Task status (defaults to 'backlog')"),
+			priority: z.number().int().min(1).max(3).optional().describe("Priority: 1=Now, 2=Next, 3=Later (defaults to 2)"),
+			benefit: z.string().optional().describe("Benefit or value proposition"),
+			segments: z.string().optional().describe("Target user segments"),
+			impact: z.number().int().min(1).max(3).optional().describe("Impact level: 1=Low, 2=Medium, 3=High"),
+			stage: z.string().optional().describe("Product stage (e.g., activation, onboarding, retention)"),
+			reason: z.string().optional().describe("Rationale or reasoning for this task"),
+			tags: z.array(z.string()).optional().describe("Tags for categorization"),
+			dueDate: z.string().optional().describe("Due date in ISO format"),
+			estimatedEffort: z.enum(["S", "M", "L", "XL"]).optional().describe("Estimated effort (S/M/L/XL)"),
+			parentTaskId: z.string().optional().describe("Optional parent task ID for subtasks"),
+			dependsOnTaskIds: z.array(z.string()).optional().describe("Other task IDs this task depends on"),
+			blocksTaskIds: z.array(z.string()).optional().describe("Task IDs that this task blocks"),
+			assignees: z
+				.array(
+					z.object({
+						userId: z.string().optional(),
+						email: z.string().email().optional(),
+						name: z.string().optional(),
+						agentType: z.enum(["code-generation", "research", "testing", "documentation"]).optional(),
+					})
+				)
+				.optional()
+				.describe("People or agents to assign (defaults to current user)"),
+		})
+		.refine((v) => v.priority !== undefined || v.dueDate !== undefined, {
+			message: "Provide either priority or dueDate",
+			path: ["priority"],
+		}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		message: z.string(),
@@ -377,10 +436,11 @@ export const createTaskTool = createTool({
 			const supabase = supabaseAdmin as SupabaseClient<Database>
 			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
+			const assigneesInput = input.assignees && input.assignees.length > 0 ? input.assignees : [{ userId }]
 			const { resolved: resolvedAssignees, warnings } = await resolveAssignees({
 				accountId,
 				supabase,
-				assignees: input.assignees,
+				assignees: assigneesInput,
 			})
 
 			const task = await createTask({
@@ -391,10 +451,10 @@ export const createTaskTool = createTool({
 				data: {
 					title: input.title,
 					description: input.description ?? null,
-					cluster: input.cluster,
+					cluster: input.cluster ?? "General",
 					parent_task_id: input.parentTaskId ?? null,
 					status: input.status ?? "backlog",
-					priority: (input.priority ?? 3) as 1 | 2 | 3,
+					priority: (input.priority ?? 2) as 1 | 2 | 3,
 					benefit: input.benefit ?? null,
 					segments: input.segments ?? null,
 					impact: input.impact ? (input.impact as 1 | 2 | 3) : null,
@@ -479,14 +539,20 @@ export const updateTaskTool = createTool({
 			const supabase = supabaseAdmin as SupabaseClient<Database>
 			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
-			const { resolved: resolvedAssignees, warnings } = await resolveAssignees({
-				accountId,
-				supabase,
-				assignees: input.assignees,
-			})
+			const warnings: string[] = []
+			let resolvedAssignees: Assignee[] | undefined
+			if (input.assignees !== undefined) {
+				const resolved = await resolveAssignees({
+					accountId,
+					supabase,
+					assignees: input.assignees,
+				})
+				resolvedAssignees = resolved.resolved
+				warnings.push(...resolved.warnings)
+			}
 
 			// Build updates object with only provided fields
-			const updates: Record<string, unknown> = {}
+			const updates: TaskUpdate = {}
 			if (input.title !== undefined) updates.title = input.title
 			if (input.description !== undefined) updates.description = input.description
 			if (input.cluster !== undefined) updates.cluster = input.cluster
@@ -504,13 +570,13 @@ export const updateTaskTool = createTool({
 			if (input.dependsOnTaskIds !== undefined) updates.depends_on_task_ids = input.dependsOnTaskIds
 			if (input.blocksTaskIds !== undefined) updates.blocks_task_ids = input.blocksTaskIds
 			if (input.actualHours !== undefined) updates.actual_hours = input.actualHours
-			if (input.assignees !== undefined) updates.assigned_to = resolvedAssignees
+			if (resolvedAssignees !== undefined) updates.assigned_to = resolvedAssignees
 
 			const task = await updateTask({
 				supabase,
 				taskId: input.taskId,
 				userId,
-				updates: updates as any,
+				updates,
 			})
 
 			return {

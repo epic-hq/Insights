@@ -28,7 +28,7 @@ import { memory } from "~/mastra/memory"
 type AgentState = z.infer<typeof SignupAgentState>
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
@@ -100,7 +100,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
@@ -121,7 +121,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (error) {
 			// Using throw instead of console.error for better error handling
-			throw new Response(`Error saving chat data: ${error.message}`, { status: 500 })
+			throw new Response(`Error saving chat data: ${error.message}`, {
+				status: 500,
+			})
 		}
 
 		return data({ success: true })

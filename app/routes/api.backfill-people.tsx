@@ -4,13 +4,13 @@
  */
 
 import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/client.server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// User already authenticated by middleware, get from context instead of making API call
-		const user = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request)
 		const _supabase = getServerClient(request)
 
 		if (!user) {

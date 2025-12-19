@@ -12,7 +12,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method Not Allowed" }, { status: 405 })
 	}
 
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user?.sub) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 })
 	}
@@ -29,7 +29,10 @@ export async function action({ request }: ActionFunctionArgs) {
 	let projectId: string | null = null
 	let accountId: string | null = null
 	try {
-		const payload = (await request.json()) as { projectId?: string | null; accountId?: string | null }
+		const payload = (await request.json()) as {
+			projectId?: string | null
+			accountId?: string | null
+		}
 		projectId = payload.projectId ?? null
 		accountId = payload.accountId ?? null
 	} catch {

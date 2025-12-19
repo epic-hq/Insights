@@ -14,7 +14,8 @@ export const getInsights = async ({
 }) => {
 	const baseQuery = supabase
 		.from("themes")
-		.select(`
+		.select(
+			`
 			id,
 			name,
 			statement,
@@ -29,11 +30,14 @@ export const getInsights = async ({
 			journey_stage,
 			emotional_response,
 			motivation,
+			impact,
+			priority,
 			updated_at,
 			project_id,
 			created_at,
 			theme_evidence(count)
-		`)
+		`
+		)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
@@ -70,7 +74,14 @@ export const getInsights = async ({
 			])
 		: [null, null, null, null, null]
 
-	const tagsMap = new Map<string, Array<{ tag?: string | null; term?: string | null; definition?: string | null }>>()
+	const tagsMap = new Map<
+		string,
+		Array<{
+			tag?: string | null
+			term?: string | null
+			definition?: string | null
+		}>
+	>()
 	tagsResult?.data?.forEach((row) => {
 		if (!row.insight_id) return
 		if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, [])
@@ -119,7 +130,8 @@ export const getInsights = async ({
 
 	const transformedData = data?.map((insight: any) => ({
 		...insight,
-		priority: priorityMap.get(insight.id) ?? 0,
+		// Use priority from themes table directly, fall back to view for backwards compat
+		priority: insight.priority ?? priorityMap.get(insight.id) ?? 3,
 		vote_count: voteCountMap.get(insight.id) ?? 0,
 		evidence_count: Array.isArray(insight.theme_evidence) ? (insight.theme_evidence[0]?.count ?? 0) : 0,
 		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
@@ -150,7 +162,8 @@ export const getInsightById = async ({
 }) => {
 	const insightByIdQuery = supabase
 		.from("themes")
-		.select(`
+		.select(
+			`
 			id,
 			name,
 			statement,
@@ -177,7 +190,8 @@ export const getInsightById = async ({
 			project_id,
 			created_at,
 			theme_evidence(count)
-		`)
+		`
+		)
 		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)

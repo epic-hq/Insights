@@ -16,8 +16,18 @@ import {
 	XCircle,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
-import { Link, useFetcher, useLoaderData, useNavigate, useNavigation, useRevalidator } from "react-router-dom"
+import {
+	type ActionFunctionArgs,
+	Link,
+	type LoaderFunctionArgs,
+	type MetaFunction,
+	redirect,
+	useFetcher,
+	useLoaderData,
+	useNavigate,
+	useNavigation,
+	useRevalidator,
+} from "react-router"
 import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
 import {
@@ -271,11 +281,17 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				// If creating a new person, do that first
 				if (createPerson) {
 					const personName = formData.get("person_name")?.toString()?.trim()
-					if (!personName) {
+					const personFirst = formData.get("person_firstname")?.toString()?.trim() || null
+					const personLast = formData.get("person_lastname")?.toString()?.trim() || null
+					const personCompany = formData.get("person_company")?.toString()?.trim() || null
+					const personTitle = formData.get("person_title")?.toString()?.trim() || null
+					if (!personName && !personFirst) {
 						return Response.json({ ok: false, error: "Person name is required when creating" }, { status: 400 })
 					}
 
-					const { firstname, lastname } = parseFullName(personName)
+					const { firstname, lastname } = personFirst
+						? { firstname: personFirst, lastname: personLast }
+						: parseFullName(personName || "")
 					const { data: newPerson, error: createError } = await supabase
 						.from("people")
 						.insert({
@@ -283,6 +299,8 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 							project_id: projectId,
 							firstname,
 							lastname,
+							company: personCompany,
+							title: personTitle,
 						})
 						.select()
 						.single()
@@ -737,6 +755,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						segment: string | null
 						company: string | null
 						project_id: string | null
+						person_type?: string | null
 						people_personas?: Array<{
 							personas?: { id?: string; name?: string | null } | null
 						}>
@@ -751,6 +770,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						segment: person.segment,
 						company: person.company,
 						project_id: person.project_id,
+						person_type: person.person_type ?? null,
 						people_personas: Array.isArray(person.people_personas)
 							? person.people_personas.map((pp) => ({
 								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
@@ -763,7 +783,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					role: row.role ?? null,
 					transcript_key: row.transcript_key ?? null,
 					display_name: row.display_name ?? null,
-					people: valid ? minimal : undefined,
+					people: person ? minimal : undefined,
 					cross_project: !!person && !valid,
 				}
 			})
@@ -780,29 +800,36 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		const { data: peopleOptions, error: peopleError } = await supabase
 			.from("people")
-			.select("id, name, segment")
-			.eq("project_id", projectId)
+			.select("id, name, segment, person_type")
+			.or(`project_id.eq.${projectId},account_id.eq.${accountId}`)
 			.order("name", { ascending: true })
 
 		if (peopleError) {
 			consola.warn("Could not load people options for participant assignment:", peopleError.message)
 		}
 
-		const peopleLookup = new Map<string, { name: string | null }>()
+		const peopleLookup = new Map<string, { name: string | null; person_type?: string | null }>()
 		for (const option of peopleOptions ?? []) {
 			if (option?.id) {
-				peopleLookup.set(option.id, { name: option.name ?? null })
+				peopleLookup.set(option.id, {
+					name: option.name ?? null,
+					person_type: option.person_type ?? null,
+				})
 			}
 		}
 		for (const participant of participants) {
 			const person = participant.people
 			if (person?.id) {
-				peopleLookup.set(person.id, { name: person.name ?? null })
+				peopleLookup.set(person.id, {
+					name: person.name ?? null,
+					person_type: (person as any).person_type ?? null,
+				})
 			}
 		}
 		if (primaryParticipant?.id) {
 			peopleLookup.set(primaryParticipant.id, {
 				name: primaryParticipant.name ?? null,
+				person_type: (primaryParticipant as any).person_type ?? null,
 			})
 		}
 
@@ -1237,6 +1264,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const shareProjectPath =
 		projectPath || (contextAccountId && contextProjectId ? `/a/${contextAccountId}/${contextProjectId}` : "")
 	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
+	// Single source of truth for interview - updated by realtime subscription
+	const [interviewState, setInterviewState] = useState(interview)
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{
 		runId: string
@@ -1277,8 +1306,21 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
 
+	// Pass only minimal data to progress hook (avoids passing large transcript)
+	const interviewProgressData = useMemo(
+		() =>
+			interviewState
+				? {
+					id: interviewState.id,
+					status: interviewState.status,
+					conversation_analysis: interviewState.conversation_analysis,
+				}
+				: null,
+		[interviewState?.id, interviewState?.status, interviewState?.conversation_analysis]
+	)
+
 	const { progressInfo, isRealtime } = useInterviewProgress({
-		interviewId: interview.id,
+		interview: interviewProgressData,
 		runId: activeRunId ?? undefined,
 		accessToken: triggerAccessToken,
 	})
@@ -1626,6 +1668,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		setCustomLensOverrides(conversationAnalysis?.customLenses ?? {})
 	}, [conversationAnalysis?.customLenses])
 
+	// Sync interview state when loader data changes (navigation to different interview)
+	useEffect(() => {
+		setInterviewState(interview)
+	}, [interview])
+
 	useEffect(() => {
 		setAnalysisState(analysisJob)
 		// Reset trigger auth when navigating to a different interview or run
@@ -1668,6 +1715,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					).new
 					if (!raw) return
 
+					// Update interview state (single source of truth)
+					setInterviewState(raw as typeof interview)
+
+					// Also update analysisState for backward compatibility
 					setAnalysisState((prev) => {
 						const nextSummary = extractAnalysisFromInterview(raw)
 						if (!nextSummary) return prev
@@ -2077,7 +2128,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													className="text-destructive focus:text-destructive"
 												>
 													<Trash2 className="mr-2 h-4 w-4" />
-													Delete interview...
+													Delete
 												</DropdownMenuItem>
 											</DropdownMenuContent>
 										</DropdownMenu>
@@ -2117,7 +2168,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									{linkedParticipants.length > 0 ? (
 										<>
 											<span className="text-muted-foreground">
-												{linkedParticipants.length === 1 ? "Participant:" : "Participants:"}
+												{linkedParticipants.length === 1 ? "People:" : "People:"}
 											</span>
 											{linkedParticipants.map((participant) => {
 												const person = participant.people as {
@@ -2453,6 +2504,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					</DialogHeader>
 					<p className="mb-4 text-muted-foreground text-sm">
 						Link speakers from the transcript to people in your project. This helps track insights across conversations.
+
 					</p>
 					<ManagePeopleAssociations
 						interviewId={interview.id}

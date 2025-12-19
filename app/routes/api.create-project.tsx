@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		// Get authenticated user and their team account
-		const user = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request)
 		if (!user) {
 			return Response.json({ error: "User not authenticated" }, { status: 401 })
 		}
@@ -60,7 +60,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		let baseProjectName = projectData.research_goal
 		let projectDescription = ""
 		try {
-			const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
+			const derived = await deriveProjectNameDescription({
+				supabase,
+				userId: user.sub,
+			})
 			baseProjectName = derived.name || baseProjectName
 			projectDescription = derived.description
 		} catch {

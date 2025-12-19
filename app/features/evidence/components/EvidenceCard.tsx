@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { Clock, FileText, Mic, Minus, Play, Plus } from "lucide-react"
+import { Clock, FileText, Minus, Play, Plus } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -148,30 +148,17 @@ function EvidenceCard({
 
 			{/* Header */}
 			<div className="flex items-start justify-between px-4 pt-3">
-				{/* <Badge variant="outline" className="text-muted-foreground">Gist</Badge> */}
 				<h3 className="font-semibold text-base text-foreground text-lg leading-5">{gist}</h3>
-				<div className="flex items-center gap-2">
-					{/* Source type indicator */}
-					{evidence.source_type === "secondary" ? (
-						<span
-							className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs"
-							title="From note or document"
-						>
-							<FileText className="h-3 w-3" />
-							Note
-						</span>
-					) : evidence.source_type === "primary" ? (
-						<span
-							className="flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 text-xs"
-							title="From interview"
-						>
-							<Mic className="h-3 w-3" />
-							Interview
-						</span>
-					) : null}
-					{evidence.support?.toLowerCase() === "supports" && <Plus className="h-4 w-4 text-emerald-600" />}
-					{evidence.support?.toLowerCase() === "opposes" && <Minus className="h-4 w-4 text-destructive" />}
-				</div>
+				{/* Source type indicator - only show Note badge for secondary sources */}
+				{evidence.source_type === "secondary" && (
+					<span
+						className="flex shrink-0 items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs"
+						title="From note or document"
+					>
+						<FileText className="h-3 w-3" />
+						Note
+					</span>
+				)}
 			</div>
 
 			{/* Subheader - People first, then topic */}
@@ -206,14 +193,8 @@ function EvidenceCard({
 					“{chunk}”
 				</blockquote>
 			)}
-			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
-				<span>Key aspects:</span>
-				{(evidence.facets ?? []).map((facet, i) => (
-					<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
-						{facet.label}
-					</Badge>
-				))}
-			</div>
+			{/* Key aspects - only show if there are facets */}
+			<KeyAspectsSection facets={evidence.facets ?? []} />
 			{/* Media anchor - only show the first valid one */}
 			{hasMediaReplay && effectiveMediaAnchors.length > 0 && (
 				<MediaAnchorPlayer
@@ -241,9 +222,22 @@ function EvidenceCard({
 						{p.name}
 					</Badge>
 				))}
-				<div className="ml-auto flex items-center gap-1">
+				<div className="ml-auto flex items-center gap-2">
+					{/* Support indicator */}
+					{evidence.support?.toLowerCase() === "supports" && (
+						<span className="flex items-center gap-1 text-emerald-600">
+							<Plus className="h-3.5 w-3.5" />
+							<span>Supports</span>
+						</span>
+					)}
+					{evidence.support?.toLowerCase() === "opposes" && (
+						<span className="flex items-center gap-1 text-destructive">
+							<Minus className="h-3.5 w-3.5" />
+							<span>Opposes</span>
+						</span>
+					)}
 					{evidence.method && (
-						<span>
+						<span className="flex items-center gap-1">
 							Method:
 							<Badge variant="outline" className="text-xs">
 								{evidence.method}
@@ -300,6 +294,37 @@ function secondsToTimestamp(seconds: number) {
 	return h > 0
 		? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 		: `${m}:${s.toString().padStart(2, "0")}`
+}
+
+/** Key aspects section - shows first 3, then "more..." toggle */
+function KeyAspectsSection({ facets }: { facets: EvidenceFacetChip[] }) {
+	const [showAll, setShowAll] = useState(false)
+
+	if (facets.length === 0) return null
+
+	const visibleFacets = showAll ? facets : facets.slice(0, 3)
+	const hiddenCount = facets.length - 3
+
+	return (
+		<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
+			<span>Key aspects:</span>
+			{visibleFacets.map((facet, i) => (
+				<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
+					{facet.label}
+				</Badge>
+			))}
+			{hiddenCount > 0 && !showAll && (
+				<button type="button" onClick={() => setShowAll(true)} className="text-primary hover:underline">
+					+{hiddenCount} more...
+				</button>
+			)}
+			{showAll && facets.length > 3 && (
+				<button type="button" onClick={() => setShowAll(false)} className="text-primary hover:underline">
+					show less
+				</button>
+			)}
+		</div>
+	)
 }
 
 // Component to handle media anchor playback with fresh signed URLs

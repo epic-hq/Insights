@@ -14,7 +14,7 @@ import type { LensSummary } from "~/features/dashboard/components/LensResultsGri
 import { DashboardShell } from "~/features/dashboard-v3/components/DashboardShell"
 import type { LensActivityItem } from "~/features/dashboard-v3/components/sections/LensFeed"
 import { PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
-import { getTasks, updateTask } from "~/features/tasks/db"
+import { getTopFocusTasks, updateTask } from "~/features/tasks/db"
 import type { TaskStatus } from "~/features/tasks/types"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
@@ -165,11 +165,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			]),
 
 		// Get tasks for this project
-		getTasks({
+		getTopFocusTasks({
 			supabase,
 			accountId,
 			projectId,
-			options: { limit: 10 },
+			limit: 10,
 		}),
 
 		// Get insights (themes) for this project

@@ -39,7 +39,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// Get authenticated user
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -68,12 +68,13 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		if (applyAll) {
-			// Apply all system lenses
+			// Apply all system lenses (forceApply=true since user explicitly requested)
 			const handle = await tasks.trigger<typeof applyAllLensesTask>("lens.apply-all-lenses", {
 				interviewId: interview.id,
 				accountId: interview.account_id,
 				projectId: interview.project_id,
 				computedBy: claims.sub,
+				forceApply: true,
 			})
 
 			// Create public access token for realtime progress

@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { memory } from "~/mastra/memory"
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 
 	if (!user) {
 		return new Response("Unauthorized", { status: 401 })

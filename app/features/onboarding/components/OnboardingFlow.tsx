@@ -246,7 +246,9 @@ export default function OnboardingFlow({
 							})
 
 							if (tokenResponse.ok) {
-								const tokenData = (await tokenResponse.json()) as { token?: string }
+								const tokenData = (await tokenResponse.json()) as {
+									token?: string
+								}
 								if (tokenData.token) {
 									setData((prev) => ({
 										...prev,
@@ -422,6 +424,7 @@ export default function OnboardingFlow({
 						onUploadFromUrl={handleUploadFromUrl}
 						onBack={handleBack}
 						projectId={currentProjectId}
+						accountId={accountId}
 						error={data.error}
 					/>
 				)

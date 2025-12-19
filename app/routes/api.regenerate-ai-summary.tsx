@@ -16,7 +16,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// Get authenticated user
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}

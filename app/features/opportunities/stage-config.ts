@@ -2,6 +2,7 @@ export type OpportunityStageConfig = {
 	id: string
 	label: string
 	description?: string
+	discovery_focus?: string
 }
 
 export type AccountSettingsMetadata = {

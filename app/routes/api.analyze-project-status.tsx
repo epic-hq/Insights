@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		// Get authenticated user
-		const user = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request)
 		if (!user) {
 			return Response.json({ error: "User not authenticated" }, { status: 401 })
 		}
@@ -32,7 +32,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Missing required field: projectId" }, { status: 400 })
 		}
 
-		consola.log("Analyzing project status for:", { projectId, customInstructions, analysisVersion })
+		consola.log("Analyzing project status for:", {
+			projectId,
+			customInstructions,
+			analysisVersion,
+		})
 
 		// Get supabase client with auth
 		const { client: supabase } = getServerClient(request)
@@ -60,18 +64,35 @@ export async function action({ request }: ActionFunctionArgs) {
 		const accountId = project.account_id
 
 		// Fetch interviews and insights using proper database functions
-		const { data: interviews, error: interviewsError } = await getInterviews({ supabase, accountId, projectId })
-		consola.log("Interviews:", { interviews: interviews?.length, error: interviewsError })
+		const { data: interviews, error: interviewsError } = await getInterviews({
+			supabase,
+			accountId,
+			projectId,
+		})
+		consola.log("Interviews:", {
+			interviews: interviews?.length,
+			error: interviewsError,
+		})
 
-		const { data: insights, error: insightsError } = await getInsights({ supabase, accountId, projectId })
-		consola.log("Insights:", { insights: insights?.length, error: insightsError })
+		const { data: insights, error: insightsError } = await getInsights({
+			supabase,
+			accountId,
+			projectId,
+		})
+		consola.log("Insights:", {
+			insights: insights?.length,
+			error: insightsError,
+		})
 
 		const totalInterviews = interviews?.length || 0
 		const totalInsights = insights?.length || 0
 
 		// Allow analysis with just insights if we have enough data
 		if (totalInsights === 0) {
-			consola.warn("Insufficient data for analysis:", { totalInterviews, totalInsights })
+			consola.warn("Insufficient data for analysis:", {
+				totalInterviews,
+				totalInsights,
+			})
 			return Response.json(
 				{
 					error: "Insufficient data for analysis",

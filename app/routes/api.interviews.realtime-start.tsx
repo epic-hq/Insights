@@ -1,6 +1,7 @@
 import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 import { userContext } from "~/server/user-context"
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -40,6 +41,18 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			return new Response(JSON.stringify({ error: error.message }), {
 				status: 500,
 				headers: { "Content-Type": "application/json" },
+			})
+		}
+
+		if (ctx.claims?.sub) {
+			await ensureInterviewInterviewerLink({
+				supabase,
+				accountId,
+				projectId,
+				interviewId: data.id,
+				userId: ctx.claims.sub,
+				userSettings: ctx.user_settings || null,
+				userMetadata: ctx.user_metadata || null,
 			})
 		}
 

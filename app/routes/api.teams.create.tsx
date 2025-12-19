@@ -16,7 +16,7 @@ const createTeamSchema = z.object({
 
 export async function action({ request }: ActionFunctionArgs) {
 	const { client } = getServerClient(request)
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 
 	if (!user) {
 		return data({ ok: false, error: "Unauthorized" }, { status: 401 })

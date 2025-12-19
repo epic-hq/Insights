@@ -64,12 +64,27 @@ class Person {
 	role string? @description("their role in the coversation (participant | interviewer | observer | moderator | customer | Sales Rep")
 }
 
+// === Interaction Context: What kind of conversation is this? ===
+// LLM-determined classification for automatic lens selection
+enum InteractionContext {
+  Research @description("User research, customer discovery, interviews - exploring user needs and behaviors")
+  Sales @description("Sales calls, demos, deal discussions, objection handling - revenue-focused conversations")
+  Support @description("Support conversations, escalations, customer success check-ins - helping existing customers")
+  Internal @description("Team meetings, internal debriefs, planning sessions - no external participants")
+  Debrief @description("Voice memos, call recaps, field notes - quick capture of thoughts, decisions, and action items")
+}
+
 class Extraction {
 	//  people EvidenceParticipant[]
 	 people Person[]
 	 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
 	 facet_mentions FacetMention[] @description("Flattened array of all facet mentions for easier phase-2 processing")
 	 scenes Scene[]
+
+	 // LLM-determined interaction context for automatic lens selection
+	 interaction_context InteractionContext @description("What kind of conversation is this? Used for automatic lens selection.")
+	 context_confidence float @description("0.0-1.0 confidence in the interaction_context classification")
+	 context_reasoning string @description("Brief 1-2 sentence explanation of why this context was chosen")
 }
 
 class SpeakerUtterance {
@@ -181,6 +196,22 @@ ONLY extract turns with business or psychographic relevance.
 - Create a new scene when the topic/goal shifts meaningfully.
 - Each scene has `start_index`, `end_index`, and a short `topic` label.
 
+## Interaction Context Classification
+Determine the `interaction_context` for this conversation. This is used for automatic lens selection.
+- **Research**: User research, customer discovery interviews - exploring user needs, behaviors, pain points. Look for: open-ended questions, exploration of workflows, understanding motivations.
+- **Sales**: Sales calls, demos, deal discussions - revenue-focused. Look for: pricing discussions, feature requirements, objection handling, deal stages, competition mentions.
+- **Support**: Support conversations, escalations, customer success - helping existing customers. Look for: bug reports, how-to questions, account issues, renewal discussions.
+- **Internal**: Team meetings, debriefs, planning - no external participants. Look for: all speakers from same organization, strategy discussions, project planning.
+- **Personal**: Solo voice memos, reflections - single speaker capturing thoughts. Look for: single speaker, stream of consciousness, personal goals/reflections.
+
+Consider:
+- Number of speakers and their roles (single speaker = likely personal)
+- Topics discussed (deals/pricing = sales, bugs/issues = support, user needs = research)
+- Presence of external customers/users vs internal team only
+- Tone and question style (exploratory vs transactional)
+
+Set `context_confidence` between 0.0-1.0 based on how clear the signals are.
+
 ## Guardrails
 - Emit all items in ascending `index` / `parent_index` order.
 - Do not fall back to a generic person — if a turn's `person_key` cannot be matched to `people`, revisit your mapping rather than defaulting to the primary participant.
@@ -189,6 +220,7 @@ ONLY extract turns with business or psychographic relevance.
 - When choosing empathy vs mention: prefer FacetMention as the authoritative signal; only add empathy items if they add non-duplicative skim value.
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
 - Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
+- ALWAYS output `interaction_context`, `context_confidence`, and `context_reasoning` at the top level.
 
 Speaker Transcripts (language={{ language }})
 Each utterance includes speaker label, text, and timing in milliseconds:

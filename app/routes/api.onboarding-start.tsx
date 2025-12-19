@@ -1,15 +1,16 @@
 import type { UUID } from "node:crypto"
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import { format } from "date-fns"
 import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
 import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 import { createProject } from "~/features/projects/db"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import type { InterviewInsert } from "~/types"
-import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -41,7 +42,9 @@ type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
 
 export async function action({ request }: ActionFunctionArgs) {
 	const startTime = Date.now()
-	consola.info("🎬 [ONBOARDING] Request received", { timestamp: new Date().toISOString() })
+	consola.info("🎬 [ONBOARDING] Request received", {
+		timestamp: new Date().toISOString(),
+	})
 
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
@@ -55,7 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		consola.info("🔐 [ONBOARDING] Authenticating user...")
 		// Get authenticated user and their team account
-		const user = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request)
 		if (!user) {
 			return Response.json({ error: "User not authenticated" }, { status: 401 })
 		}
@@ -64,11 +67,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Single admin client for RLS-bypassing operations in this action
 		const supabaseAdmin = createSupabaseAdminClient()
 
-		// Get team account from user context (set by middleware)
-		// For API routes, we should get this from user context or use RPC to get current account
+		// Get team account and user settings from database
+		// Fetch all fields needed for internal person resolution
 		const { data: userSettings } = await supabase
 			.from("user_settings")
-			.select("last_used_account_id")
+			.select("last_used_account_id, first_name, last_name, email, image_url, title, role, company_name, industry")
 			.eq("user_id", user.sub)
 			.single()
 
@@ -134,7 +137,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 		if (!onboardingDataStr) {
 			consola.error("Missing onboardingData")
-			traceEndPayload = { level: "ERROR", statusMessage: "Missing onboardingData" }
+			traceEndPayload = {
+				level: "ERROR",
+				statusMessage: "Missing onboardingData",
+			}
 			return Response.json({ error: "Missing onboardingData" }, { status: 400 })
 		}
 
@@ -180,7 +186,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			let baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
 			let projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
 			try {
-				const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
+				const derived = await deriveProjectNameDescription({
+					supabase,
+					userId: user.sub,
+				})
 				baseProjectName = derived.name || baseProjectName
 				projectDescription = derived.description || projectDescription
 			} catch {}
@@ -242,7 +251,9 @@ export async function action({ request }: ActionFunctionArgs) {
 					content_md: Array.isArray((onboardingData as any).target_orgs)
 						? ((onboardingData as any).target_orgs as string[]).join(", ")
 						: primaryOrg,
-					meta: { target_orgs: (onboardingData as any).target_orgs || (primaryOrg ? [primaryOrg] : []) },
+					meta: {
+						target_orgs: (onboardingData as any).target_orgs || (primaryOrg ? [primaryOrg] : []),
+					},
 				},
 				{
 					project_id: finalProjectId,
@@ -250,13 +261,18 @@ export async function action({ request }: ActionFunctionArgs) {
 					content_md: Array.isArray((onboardingData as any).target_roles)
 						? ((onboardingData as any).target_roles as string[]).join(", ")
 						: primaryRole,
-					meta: { target_roles: (onboardingData as any).target_roles || (primaryRole ? [primaryRole] : []) },
+					meta: {
+						target_roles: (onboardingData as any).target_roles || (primaryRole ? [primaryRole] : []),
+					},
 				},
 				{
 					project_id: finalProjectId,
 					kind: "research_goal",
 					content_md: researchGoal,
-					meta: { research_goal: researchGoal, research_goal_details: researchGoalDetails },
+					meta: {
+						research_goal: researchGoal,
+						research_goal_details: researchGoalDetails,
+					},
 				},
 				{
 					project_id: finalProjectId,
@@ -294,8 +310,12 @@ ${questionsInput.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 Please extract insights that specifically address these research questions and help understand ${primaryRole} at ${primaryOrg} better.`
 
 		// Resolve linked person from personId (URL param) or entityId (form data from new contact dialog)
-		let linkedPerson: { id: string; name: string | null; project_id: string | null; company?: string | null } | null =
-			null
+		let linkedPerson: {
+			id: string
+			name: string | null
+			project_id: string | null
+			company?: string | null
+		} | null = null
 		const personIdToResolve = personId || entityId
 		if (personIdToResolve) {
 			const { data: person, error: personError } = await supabase
@@ -305,15 +325,37 @@ Please extract insights that specifically address these research questions and h
 				.maybeSingle()
 
 			if (personError || !person) {
-				consola.error("Failed to resolve person for recording", { personIdToResolve, personError })
+				consola.error("Failed to resolve person for recording", {
+					personIdToResolve,
+					personError,
+				})
 				// Don't fail - just continue without linking
 				consola.warn("Continuing without person link")
 			} else {
-				if (person.project_id && projectId && person.project_id !== projectId) {
-					consola.warn("Person project mismatch", { personProject: person.project_id, requestedProject: projectId })
+				// Normalize person to the current project when missing/mismatched
+				if (person.project_id !== projectId) {
+					const targetProjectId = projectId ?? person.project_id ?? finalProjectId
+					const { error: updateErr } = await supabase
+						.from("people")
+						.update({ project_id: targetProjectId })
+						.eq("id", person.id)
+					if (updateErr) {
+						consola.warn("Failed to align person.project_id to project", {
+							personId: person.id,
+							from: person.project_id,
+							to: targetProjectId,
+							updateErr,
+						})
+					} else {
+						person.project_id = targetProjectId
+					}
 				}
 				linkedPerson = person
-				consola.info("Resolved linked person:", { id: person.id, name: person.name, company: person.company })
+				consola.info("Resolved linked person:", {
+					id: person.id,
+					name: person.name,
+					company: person.company,
+				})
 			}
 		}
 
@@ -416,6 +458,18 @@ Please extract insights that specifically address these research questions and h
 			)
 		}
 
+		if (user?.sub) {
+			await ensureInterviewInterviewerLink({
+				supabase,
+				accountId: teamAccountId,
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				userId: user.sub,
+				userSettings: userSettings || null,
+				userMetadata: null, // Not available in API routes without middleware
+			})
+		}
+
 		consola.log("Created interview:", interview.id)
 
 		// 3. Determine processing path based on sourceType and mediaType
@@ -461,7 +515,10 @@ Please extract insights that specifically address these research questions and h
 					.eq("id", interview.id)
 			}
 
-			traceEndPayload = { level: "DEFAULT", statusMessage: "Document uploaded successfully" }
+			traceEndPayload = {
+				level: "DEFAULT",
+				statusMessage: "Document uploaded successfully",
+			}
 			return Response.json({
 				success: true,
 				interviewId: interview.id,
@@ -479,7 +536,10 @@ Please extract insights that specifically address these research questions and h
 
 			const textContent = await file.text()
 			if (!textContent || textContent.trim().length === 0) {
-				traceEndPayload = { level: "ERROR", statusMessage: "Text file is empty" }
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: "Text file is empty",
+				}
 				return Response.json({ error: "Text file is empty" }, { status: 400 })
 			}
 
@@ -491,7 +551,10 @@ Please extract insights that specifically address these research questions and h
 				})
 				.eq("id", interview.id)
 
-			traceEndPayload = { level: "DEFAULT", statusMessage: "Voice memo saved successfully" }
+			traceEndPayload = {
+				level: "DEFAULT",
+				statusMessage: "Voice memo saved successfully",
+			}
 			return Response.json({
 				success: true,
 				interviewId: interview.id,
@@ -521,7 +584,10 @@ Please extract insights that specifically address these research questions and h
 					level: "ERROR",
 					statusMessage: "Text file is empty",
 				})
-				traceEndPayload = { level: "ERROR", statusMessage: "Text file is empty" }
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: "Text file is empty",
+				}
 				return Response.json({ error: "Text file is empty" }, { status: 400 })
 			}
 
@@ -535,18 +601,17 @@ Please extract insights that specifically address these research questions and h
 			})
 
 			try {
-				const runInfo = await createAndProcessAnalysisJob({
-					interviewId: interview.id,
+				const handle = await tasks.trigger("interview.v2.orchestrator", {
+					analysisJobId: interview.id,
+					metadata,
 					transcriptData,
-					customInstructions,
-					adminClient: supabaseAdmin,
 					mediaUrl: "",
-					initiatingUserId: user.sub,
-					langfuseParent: textSpan ?? trace,
+					existingInterviewId: interview.id,
+					userCustomInstructions: customInstructions,
+					resumeFrom: "evidence",
+					skipSteps: ["upload"],
 				})
-				if (runInfo && "runId" in runInfo) {
-					triggerRunInfo = runInfo
-				}
+				triggerRunInfo = { runId: handle.id, publicToken: null }
 				textSpan?.end?.({
 					output: {
 						interviewId: interview.id,
@@ -603,7 +668,10 @@ Please extract insights that specifically address these research questions and h
 					level: "ERROR",
 					statusMessage: storageResult.error ?? "Failed to store audio file",
 				})
-				traceEndPayload = { level: "ERROR", statusMessage: `Failed to store audio file: ${storageResult.error}` }
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: `Failed to store audio file: ${storageResult.error}`,
+				}
 				return Response.json({ error: `Failed to store audio file: ${storageResult.error}` }, { status: 500 })
 			}
 
@@ -619,8 +687,14 @@ Please extract insights that specifically address these research questions and h
 			// Submit to AssemblyAI for transcription (no analysis after)
 			const apiKey = process.env.ASSEMBLYAI_API_KEY
 			if (!apiKey) {
-				audioSpan?.end?.({ level: "ERROR", statusMessage: "ASSEMBLYAI_API_KEY not configured" })
-				traceEndPayload = { level: "ERROR", statusMessage: "Transcription service not configured" }
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: "ASSEMBLYAI_API_KEY not configured",
+				})
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: "Transcription service not configured",
+				}
 				return Response.json({ error: "Transcription service not configured" }, { status: 500 })
 			}
 
@@ -652,7 +726,10 @@ Please extract insights that specifically address these research questions and h
 					level: "ERROR",
 					statusMessage: `AssemblyAI failed: ${transcriptResponse.status}`,
 				})
-				traceEndPayload = { level: "ERROR", statusMessage: "Transcription failed" }
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: "Transcription failed",
+				}
 				return Response.json({ error: "Transcription failed" }, { status: 500 })
 			}
 
@@ -669,7 +746,10 @@ Please extract insights that specifically address these research questions and h
 				},
 			})
 
-			traceEndPayload = { level: "DEFAULT", statusMessage: "Voice memo transcription queued" }
+			traceEndPayload = {
+				level: "DEFAULT",
+				statusMessage: "Voice memo transcription queued",
+			}
 			return Response.json({
 				success: true,
 				interviewId: interview.id,
@@ -738,7 +818,10 @@ Please extract insights that specifically address these research questions and h
 					level: "ERROR",
 					statusMessage: storageError ?? "Failed to store audio file",
 				})
-				traceEndPayload = { level: "ERROR", statusMessage: `Failed to store audio file: ${storageError}` }
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: `Failed to store audio file: ${storageError}`,
+				}
 				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
 			}
 

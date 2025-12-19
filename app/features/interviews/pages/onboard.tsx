@@ -73,6 +73,7 @@ export default function InterviewOnboardPage() {
 			onAddMoreInterviews={handleAddMoreInterviews}
 			onViewResults={handleViewResults}
 			projectId={projectId}
+			accountId={accountId}
 			existingProject={{
 				name: project.name,
 				target_orgs: [],

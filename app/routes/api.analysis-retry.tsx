@@ -1,7 +1,7 @@
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
-import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -16,7 +16,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// Get user ID from JWT claims (fast) with DB fallback
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -78,16 +78,26 @@ export async function action({ request }: ActionFunctionArgs) {
 			// ALWAYS re-transcribe from media - ignore any existing transcript data
 			// Pass the RAW R2 key - the upload task will generate presigned URL
 			console.log("Re-transcribing audio file from media_url...")
-			await createAndProcessAnalysisJob({
-				interviewId,
+			await tasks.trigger("interview.v2.orchestrator", {
+				analysisJobId: interviewId,
+				metadata: {
+					accountId: interview.account_id,
+					projectId: interview.project_id || undefined,
+					userId: userId,
+					fileName: interview.original_filename || undefined,
+					interviewTitle: interview.title || undefined,
+					participantName: interview.participant_pseudonym || undefined,
+					segment: interview.segment || undefined,
+				},
 				transcriptData: {
-					needs_transcription: true, // Flag to trigger AssemblyAI transcription
+					needs_transcription: true,
 					file_type: "media",
 				},
-				customInstructions,
-				adminClient: admin,
-				mediaUrl: interview.media_url, // Raw R2 key - upload task will presign
-				initiatingUserId: userId,
+				mediaUrl: interview.media_url,
+				existingInterviewId: interviewId,
+				userCustomInstructions: customInstructions || "",
+				resumeFrom: "upload",
+				skipSteps: [],
 			})
 			console.log("Re-transcription triggered successfully")
 

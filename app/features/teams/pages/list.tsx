@@ -6,7 +6,7 @@ import type { Route } from "./+types/list"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const { client, headers } = getServerClient(request)
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })

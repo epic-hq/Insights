@@ -1,7 +1,7 @@
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 
 /**
  * Reprocess an interview that has transcript but no analysis
@@ -15,7 +15,8 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	try {
-		const { interviewId } = await request.json()
+		const formData = await request.formData()
+		const interviewId = formData.get("interviewId") as string
 
 		if (!interviewId) {
 			return Response.json({ error: "interviewId required" }, { status: 400 })
@@ -98,29 +99,38 @@ export async function action({ request }: ActionFunctionArgs) {
 			throw new Error("No transcript or media available")
 		}
 
-		// 4. Trigger analysis pipeline (will handle transcription if needed)
-		const result = await createAndProcessAnalysisJob({
-			interviewId: interview.id,
+		// 4. Trigger v2 orchestrator (will handle transcription if needed)
+		const handle = await tasks.trigger("interview.v2.orchestrator", {
+			analysisJobId: interview.id,
+			metadata: {
+				accountId: interview.account_id,
+				projectId: interview.project_id || undefined,
+				userId: interview.created_by || undefined,
+				fileName: interview.original_filename || undefined,
+				interviewTitle: interview.title || undefined,
+				participantName: interview.participant_pseudonym || undefined,
+				segment: interview.segment || undefined,
+			},
 			transcriptData,
-			customInstructions: "",
-			adminClient: supabase,
 			mediaUrl: interview.media_url || "",
-			initiatingUserId: interview.created_by,
-			langfuseParent: undefined,
+			existingInterviewId: interview.id,
+			userCustomInstructions: "",
+			resumeFrom: "evidence",
+			skipSteps: ["upload"],
 		})
 
 		const needsTranscription = !interview.transcript && !!interview.media_url
 
 		consola.success("Interview reprocessing started:", {
 			interviewId: interview.id,
-			runId: result.runId,
+			runId: handle.id,
 			needsTranscription,
 		})
 
 		return Response.json({
 			success: true,
 			interviewId: interview.id,
-			runId: result.runId,
+			runId: handle.id,
 			needsTranscription,
 			message: needsTranscription
 				? "Interview transcription and analysis started via Trigger.dev"

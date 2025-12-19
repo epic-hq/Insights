@@ -13,7 +13,7 @@ import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/clien
 export async function loader({ request }: LoaderFunctionArgs) {
 	try {
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -117,13 +117,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		// 4. Get themes with their evidence counts
 		const { data: themesWithCounts, error: themesError } = await userDb
 			.from("themes")
-			.select(`
+			.select(
+				`
 				id,
 				name,
 				statement,
 				created_at,
 				theme_evidence(count)
-			`)
+			`
+			)
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false })
 			.limit(20)
@@ -140,13 +142,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		// 6. Check theme_evidence links with theme names
 		const { data: themeEvidenceLinks } = await userDb
 			.from("theme_evidence")
-			.select(`
+			.select(
+				`
 				id,
 				theme_id,
 				evidence_id,
 				project_id,
 				themes:theme_id (name)
-			`)
+			`
+			)
 			.eq("project_id", projectId)
 			.limit(100)
 

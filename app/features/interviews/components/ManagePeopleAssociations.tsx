@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Plus, UserPlus, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useFetcher } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import {
@@ -25,12 +25,14 @@ export interface InterviewPerson {
 	people: {
 		id: string
 		name: string | null
+		person_type?: string | null
 	} | null
 }
 
 export interface Person {
 	id: string
 	name: string | null
+	person_type?: string | null
 }
 
 interface ManagePeopleAssociationsProps {
@@ -50,7 +52,15 @@ export function ManagePeopleAssociations({
 	const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
 	const [showAddPersonDialog, setShowAddPersonDialog] = useState(false)
 	const [newPersonName, setNewPersonName] = useState("")
+	const [newPersonFirst, setNewPersonFirst] = useState("")
+	const [newPersonLast, setNewPersonLast] = useState("")
+	const [newPersonOrg, setNewPersonOrg] = useState("")
+	const [newPersonTitle, setNewPersonTitle] = useState("")
+	const [voiceStatus, setVoiceStatus] = useState<"idle" | "listening" | "unsupported">("idle")
+	const recognitionRef = useRef<SpeechRecognition | null>(null)
 	const [searchInput, setSearchInput] = useState("")
+	const isSubmitting = fetcher.state !== "idle"
+	const voiceStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data && onUpdate) {
@@ -70,13 +80,16 @@ export function ManagePeopleAssociations({
 	}
 
 	const unlinkPerson = (participantId: string) => {
+		// Remove the participant-person link by deleting the participant row.
+		// We use the page action so RLS/account scoping stays consistent.
 		fetcher.submit(
 			{
-				participant_id: participantId,
-				person_id: "",
+				intent: "remove-participant",
+				interviewPersonId: participantId,
 			},
-			{ method: "post", action: "/api/link-interview-participant" }
+			{ method: "post" }
 		)
+		setOpenPopoverId(null)
 	}
 
 	const createAndLinkPerson = (participantId: string, name: string) => {
@@ -95,35 +108,54 @@ export function ManagePeopleAssociations({
 
 	// Add a brand new participant to the interview (not linking an existing speaker)
 	const addNewParticipant = (name: string) => {
-		if (!name.trim()) return
+		const first = newPersonFirst.trim()
+		const last = newPersonLast.trim()
+		const org = newPersonOrg.trim()
+		const title = newPersonTitle.trim()
+		const fallbackName = name.trim()
+		if (!first && !fallbackName) return
+		const submitName = first && last ? `${first} ${last}` : first || fallbackName
 		fetcher.submit(
 			{
 				intent: "add-participant",
 				personId: "", // Will create new person
 				create_person: "true",
-				person_name: name.trim(),
+				person_name: submitName,
+				person_firstname: first || undefined,
+				person_lastname: last || undefined,
+				person_company: org || undefined,
+				person_title: title || undefined,
 			},
 			{ method: "post" }
 		)
 		setShowAddPersonDialog(false)
 		setNewPersonName("")
-	}
-
-	// Add an existing person as a new participant
-	const addExistingPersonAsParticipant = (personId: string) => {
-		fetcher.submit(
-			{
-				intent: "add-participant",
-				personId,
-			},
-			{ method: "post" }
-		)
+		setNewPersonFirst("")
+		setNewPersonLast("")
+		setNewPersonOrg("")
+		setNewPersonTitle("")
+		setVoiceStatus("idle")
+		stopVoiceFill()
 	}
 
 	// Format transcript key to a clean speaker label
 	// Handles both AssemblyAI format ("A", "SPEAKER A") and BAML format ("participant-1", "interviewer-1")
+	const numberToLetter = (num: number) => {
+		if (Number.isNaN(num) || num < 1) return null
+		if (num <= 26) return String.fromCharCode(64 + num) // 1 -> A, 2 -> B
+		return null
+	}
+	const nextAvailableLetter = (used: Set<string>) => {
+		for (let code = 65; code <= 90; code++) {
+			const letter = String.fromCharCode(code)
+			if (!used.has(letter)) return letter
+		}
+		return null
+	}
 	const formatSpeakerLabel = (transcriptKey: string | null, idx: number): string => {
-		if (!transcriptKey) return `Speaker ${idx + 1}`
+		if (!transcriptKey) {
+			return "Unassigned"
+		}
 
 		// Single letter like "A", "B" -> "Speaker A", "Speaker B"
 		if (/^[A-Z]$/i.test(transcriptKey)) {
@@ -133,45 +165,121 @@ export function ManagePeopleAssociations({
 		if (/^SPEAKER\s+[A-Z]$/i.test(transcriptKey)) {
 			return `Speaker ${transcriptKey.split(/\s+/)[1].toUpperCase()}`
 		}
-		// BAML format: "participant-1" -> "Participant 1", "interviewer-1" -> "Interviewer 1"
+		// "Speaker 1" / "speaker-2" -> "Speaker A/B"
+		const speakerNumberMatch = transcriptKey.match(/^speaker[\s_-]?(\d+)$/i)
+		if (speakerNumberMatch) {
+			const num = Number.parseInt(speakerNumberMatch[1], 10)
+			const letter = numberToLetter(num)
+			return letter ? `Speaker ${letter}` : `Speaker ${num}`
+		}
+		// BAML format: "participant-1" / "interviewer-1" -> Speaker A/B
 		if (/^(participant|interviewer|observer|moderator)-\d+$/i.test(transcriptKey)) {
-			const [role, num] = transcriptKey.split("-")
-			return `${role.charAt(0).toUpperCase()}${role.slice(1)} ${num}`
+			const [, numStr] = transcriptKey.split("-")
+			const num = Number.parseInt(numStr, 10)
+			const letter = numberToLetter(num)
+			return letter ? `Speaker ${letter}` : `Speaker ${num || ""}`.trim()
 		}
 		// Fallback - just use the key
 		return transcriptKey
 	}
+
+	const stopVoiceFill = () => {
+		if (voiceStopTimer.current) {
+			clearTimeout(voiceStopTimer.current)
+			voiceStopTimer.current = null
+		}
+		if (recognitionRef.current) {
+			recognitionRef.current.stop()
+			recognitionRef.current.onresult = null as any
+			recognitionRef.current.onerror = null as any
+			recognitionRef.current.onend = null as any
+			recognitionRef.current = null
+		}
+		setVoiceStatus("idle")
+	}
+
+	const startVoiceFill = () => {
+		if (typeof window === "undefined") {
+			setVoiceStatus("unsupported")
+			return
+		}
+		const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+		if (!SpeechRec) {
+			setVoiceStatus("unsupported")
+			return
+		}
+
+		const rec: SpeechRecognition = new SpeechRec()
+		recognitionRef.current = rec
+		rec.lang = "en-US"
+		rec.interimResults = false
+		rec.maxAlternatives = 1
+		rec.continuous = true
+
+		rec.onstart = () => setVoiceStatus("listening")
+		rec.onerror = () => setVoiceStatus("idle")
+		rec.onend = () => setVoiceStatus("idle")
+		rec.onresult = (event) => {
+			const transcript = event.results[0][0].transcript || ""
+			// Heuristic parsing: "<first> <last> at <org> title <title>"
+			const parts = transcript.trim()
+			const atSplit = parts.split(/\bat\b/i)
+			const nameAndTitle = atSplit[0]?.trim() || ""
+			const org = atSplit[1]?.trim() || ""
+
+			const nameTokens = nameAndTitle.split(/\s+/).filter(Boolean)
+			const first = nameTokens[0] ?? ""
+			const last = nameTokens[1] ?? ""
+			const maybeTitle = nameTokens.slice(2).join(" ")
+
+			setNewPersonFirst(first)
+			setNewPersonLast(last)
+			if (maybeTitle) setNewPersonTitle(maybeTitle)
+			if (org) setNewPersonOrg(org)
+			setNewPersonName(parts)
+		}
+
+		rec.start()
+		voiceStopTimer.current = setTimeout(() => {
+			stopVoiceFill()
+		}, 6000)
+	}
+
+	useEffect(() => {
+		return () => {
+			stopVoiceFill()
+		}
+	}, [])
+
+	// Avoid duplicate speaker labels by shifting to the next unused letter
+	const usedSpeakerLetters = new Set<string>()
 
 	return (
 		<>
 			<div className="space-y-3">
 				<div className="space-y-2">
 					{participants.map((participant, idx) => {
-						const speakerLabel = formatSpeakerLabel(participant.transcript_key, idx)
+						let speakerLabel = formatSpeakerLabel(participant.transcript_key, idx)
+						const letterMatch = speakerLabel.match(/^Speaker\s+([A-Z])$/i)
+						if (letterMatch) {
+							const letter = letterMatch[1].toUpperCase()
+							if (usedSpeakerLetters.has(letter)) {
+								const alt = nextAvailableLetter(usedSpeakerLetters)
+								if (alt) {
+									speakerLabel = `Speaker ${alt}`
+									usedSpeakerLetters.add(alt)
+								}
+							} else {
+								usedSpeakerLetters.add(letter)
+							}
+						}
 						const linkedPerson = participant.people
 
 						return (
 							<div key={participant.id} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
-								<div className="min-w-[80px] font-medium text-sm">{speakerLabel}</div>
+								<div className="min-w-[100px] font-medium text-sm">{speakerLabel}</div>
 
-								{linkedPerson ? (
-									<>
-										<Check className="h-4 w-4 shrink-0 text-green-600" />
-										<span className="text-muted-foreground text-sm">Linked to:</span>
-										<span className="font-medium text-sm">{linkedPerson.name || "Unnamed"}</span>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="ml-auto h-7 w-7"
-											onClick={() => unlinkPerson(participant.id)}
-											disabled={fetcher.state !== "idle"}
-										>
-											<X className="h-3.5 w-3.5" />
-										</Button>
-									</>
-								) : (
-									<span className="text-muted-foreground text-sm">Not linked</span>
-								)}
+								{linkedPerson ? <Check className="h-4 w-4 shrink-0 text-green-600" /> : <div className="h-4 w-4" />}
 
 								<Popover
 									open={openPopoverId === participant.id}
@@ -184,11 +292,28 @@ export function ManagePeopleAssociations({
 										<Button
 											variant="outline"
 											size="sm"
-											className={cn("h-7 text-xs", linkedPerson ? "" : "ml-auto")}
-											disabled={fetcher.state !== "idle"}
+											className={cn(
+												"flex h-8 min-w-[200px] items-center justify-between text-sm",
+												linkedPerson ? "" : "text-muted-foreground"
+											)}
+											disabled={isSubmitting}
 										>
-											{linkedPerson ? "Change Person" : "Link Person"}
-											<ChevronDown className="ml-1 h-3.5 w-3.5" />
+											<div className="flex items-center gap-2 truncate">
+												<span className="text-muted-foreground text-xs">
+													{linkedPerson ? "Linked to" : "Link person"}
+												</span>
+												<div className="flex items-center gap-2 truncate">
+													<span className="truncate font-medium text-foreground">
+														{linkedPerson ? linkedPerson.name || "Unnamed" : "Select person"}
+													</span>
+													{linkedPerson?.person_type === "internal" && (
+														<span className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
+															Team
+														</span>
+													)}
+												</div>
+											</div>
+											<ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0" />
 										</Button>
 									</PopoverTrigger>
 									<PopoverContent className="w-[280px] p-0" align="end">
@@ -215,7 +340,14 @@ export function ManagePeopleAssociations({
 																	linkedPerson?.id === person.id ? "opacity-100" : "opacity-0"
 																)}
 															/>
-															{person.name || "Unnamed Person"}
+															<div className="flex items-center gap-2">
+																<span>{person.name || "Unnamed Person"}</span>
+																{person.person_type === "internal" && (
+																	<span className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
+																		Team
+																	</span>
+																)}
+															</div>
 														</CommandItem>
 													))}
 												</CommandGroup>
@@ -225,8 +357,15 @@ export function ManagePeopleAssociations({
 														value={`create-new-${searchInput}`}
 														onSelect={() => {
 															if (searchInput.trim()) {
-																createAndLinkPerson(participant.id, searchInput.trim())
+																const tokens = searchInput.trim().split(/\s+/)
+																const firstGuess = tokens[0] ?? ""
+																const lastGuess = tokens.length > 1 ? tokens.slice(1).join(" ") : ""
+																setNewPersonFirst(firstGuess)
+																setNewPersonLast(lastGuess)
+																setNewPersonName(searchInput.trim())
+																setShowAddPersonDialog(true)
 															}
+															setOpenPopoverId(null)
 														}}
 														className="text-primary"
 													>
@@ -238,6 +377,19 @@ export function ManagePeopleAssociations({
 										</Command>
 									</PopoverContent>
 								</Popover>
+
+								{linkedPerson ? (
+									<Button
+										variant="ghost"
+										size="icon"
+										className="ml-auto h-7 w-7 text-muted-foreground hover:text-foreground"
+										onClick={() => unlinkPerson(participant.id)}
+										disabled={isSubmitting}
+										aria-label="Remove linked person"
+									>
+										<X className="h-3.5 w-3.5" />
+									</Button>
+								) : null}
 							</div>
 						)
 					})}
@@ -249,7 +401,7 @@ export function ManagePeopleAssociations({
 					size="sm"
 					className="w-full gap-2"
 					onClick={() => setShowAddPersonDialog(true)}
-					disabled={fetcher.state !== "idle"}
+					disabled={isSubmitting}
 				>
 					<UserPlus className="h-4 w-4" />
 					Add Participant
@@ -264,55 +416,59 @@ export function ManagePeopleAssociations({
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<p className="text-muted-foreground text-sm">
-							Add a person who participated in this interview but wasn't detected as a speaker.
+							Add someone who wasn't detected as a speaker. Link them to contacts above after creation.
 						</p>
-						<div className="space-y-2">
-							<Label>Select existing person</Label>
-							<Command className="rounded-lg border">
-								<CommandInput placeholder="Search people..." />
-								<CommandList className="max-h-[150px]">
-									<CommandEmpty>No people found</CommandEmpty>
-									<CommandGroup>
-										{availablePeople.map((person) => (
-											<CommandItem
-												key={person.id}
-												value={person.name || person.id}
-												onSelect={() => {
-													addExistingPersonAsParticipant(person.id)
-													setShowAddPersonDialog(false)
-												}}
-											>
-												{person.name || "Unnamed Person"}
-											</CommandItem>
-										))}
-									</CommandGroup>
-								</CommandList>
-							</Command>
-						</div>
-
-						<div className="relative">
-							<div className="absolute inset-0 flex items-center">
-								<span className="w-full border-t" />
+						<div className="grid grid-cols-2 gap-3">
+							<div className="space-y-2">
+								<Label htmlFor="new-person-first">First name</Label>
+								<Input
+									id="new-person-first"
+									placeholder="First name"
+									value={newPersonFirst}
+									onChange={(e) => setNewPersonFirst(e.target.value)}
+								/>
 							</div>
-							<div className="relative flex justify-center text-xs uppercase">
-								<span className="bg-background px-2 text-muted-foreground">Or create new</span>
+							<div className="space-y-2">
+								<Label htmlFor="new-person-last">Last name</Label>
+								<Input
+									id="new-person-last"
+									placeholder="Last name"
+									value={newPersonLast}
+									onChange={(e) => setNewPersonLast(e.target.value)}
+								/>
 							</div>
 						</div>
-
 						<div className="space-y-2">
-							<Label htmlFor="new-person-name">New person name</Label>
+							<Label htmlFor="new-person-org">Organization</Label>
 							<Input
-								id="new-person-name"
-								placeholder="Enter name..."
-								value={newPersonName}
-								onChange={(e) => setNewPersonName(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && newPersonName.trim()) {
-										e.preventDefault()
-										addNewParticipant(newPersonName)
-									}
-								}}
+								id="new-person-org"
+								placeholder="Organization"
+								value={newPersonOrg}
+								onChange={(e) => setNewPersonOrg(e.target.value)}
 							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="new-person-title">Title (optional)</Label>
+							<Input
+								id="new-person-title"
+								placeholder="e.g., Product Manager"
+								value={newPersonTitle}
+								onChange={(e) => setNewPersonTitle(e.target.value)}
+							/>
+						</div>
+						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={startVoiceFill}
+								disabled={voiceStatus === "listening"}
+							>
+								{voiceStatus === "listening" ? "Listening..." : "Speak it in"}
+							</Button>
+							{voiceStatus === "unsupported" && (
+								<span className="text-muted-foreground text-xs">Voice fill not supported in this browser</span>
+							)}
 						</div>
 					</div>
 					<DialogFooter>
@@ -320,8 +476,8 @@ export function ManagePeopleAssociations({
 							Cancel
 						</Button>
 						<Button
-							onClick={() => addNewParticipant(newPersonName)}
-							disabled={!newPersonName.trim() || fetcher.state !== "idle"}
+							onClick={() => addNewParticipant(newPersonName || `${newPersonFirst} ${newPersonLast}`)}
+							disabled={(!newPersonFirst.trim() && !newPersonName.trim()) || isSubmitting}
 						>
 							Create & Add
 						</Button>

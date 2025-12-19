@@ -42,7 +42,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	try {
 		// Get authenticated user
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -81,7 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// Get authenticated user
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -129,7 +129,10 @@ export async function action({ request }: ActionFunctionArgs) {
 				} catch (err) {
 					consola.error("[lens-templates] AI generation failed:", err)
 					return Response.json(
-						{ ok: false, error: "Failed to generate template. Please try a different description." },
+						{
+							ok: false,
+							error: "Failed to generate template. Please try a different description.",
+						},
 						{ status: 500 }
 					)
 				}
@@ -147,7 +150,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				if (!templateName || !templateDefinition || !accountId) {
 					return Response.json(
-						{ ok: false, error: "Missing required fields (template_name, template_definition, account_id)" },
+						{
+							ok: false,
+							error: "Missing required fields (template_name, template_definition, account_id)",
+						},
 						{ status: 400 }
 					)
 				}
@@ -270,7 +276,10 @@ export async function action({ request }: ActionFunctionArgs) {
 					} catch (err) {
 						consola.error("[lens-templates] Regeneration failed:", err)
 						return Response.json(
-							{ ok: false, error: "Failed to regenerate template. Please try a different description." },
+							{
+								ok: false,
+								error: "Failed to regenerate template. Please try a different description.",
+							},
 							{ status: 500 }
 						)
 					}
@@ -409,7 +418,10 @@ export async function action({ request }: ActionFunctionArgs) {
 				} catch (err) {
 					consola.error("[lens-templates] Generate and create failed:", err)
 					return Response.json(
-						{ ok: false, error: "Failed to generate template. Please try a different description." },
+						{
+							ok: false,
+							error: "Failed to generate template. Please try a different description.",
+						},
 						{ status: 500 }
 					)
 				}

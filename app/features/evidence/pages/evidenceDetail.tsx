@@ -1,11 +1,21 @@
+/**
+ * Evidence Detail Page
+ *
+ * Displays a single piece of evidence with a YouTube-chapters-style layout:
+ * - Main display area showing the currently selected evidence
+ * - Horizontal carousel of related evidence as chapter cards
+ */
 import consola from "consola"
-import { useEffect } from "react"
+import { Clock } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { BackButton } from "~/components/ui/back-button"
 import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
+import { cn } from "~/lib/utils"
 import { userContext } from "~/server/user-context"
+import { getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client"
 import EvidenceCard from "../components/EvidenceCard"
 
 type EvidencePersonRow = {
@@ -14,6 +24,38 @@ type EvidencePersonRow = {
 		id: string
 		name: string | null
 	}
+}
+
+type TransformedEvidence = {
+	id: string
+	verbatim: string | null
+	gist: string | null
+	chunk: string | null
+	topic: string | null
+	support: string | null
+	confidence: string | null
+	created_at: string | null
+	journey_stage: string | null
+	method: string | null
+	anchors: MediaAnchor[] | null
+	interview_id: string | null
+	source_type?: string | null
+	facets: Array<{ kind_slug: string; label: string; facet_account_id: number }>
+	people: Array<{
+		id: string
+		name: string | null
+		role: string | null
+		personas: Array<{ id: string; name: string }>
+	}>
+	interview?: {
+		id: string
+		title?: string | null
+		media_url?: string | null
+		thumbnail_url?: string | null
+		transcript?: any
+		transcript_formatted?: any
+		duration_sec?: number | null
+	} | null
 }
 
 function isValidUuid(value: string): boolean {
@@ -249,18 +291,142 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	}
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Chapter Card Component
+// ────────────────────────────────────────────────────────────────────────────
+
+interface EvidenceChapterCardProps {
+	evidence: TransformedEvidence
+	isSelected: boolean
+	onClick: () => void
+}
+
+function formatTimestamp(seconds: number): string {
+	const total = Math.max(0, Math.floor(seconds))
+	const h = Math.floor(total / 3600)
+	const m = Math.floor((total % 3600) / 60)
+	const s = total % 60
+	return h > 0
+		? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+		: `${m}:${s.toString().padStart(2, "0")}`
+}
+
+function truncateText(text: string, maxLength: number): string {
+	if (text.length <= maxLength) return text
+	return `${text.slice(0, maxLength).trim()}...`
+}
+
+function getJourneyStageColor(stage?: string | null): string {
+	if (!stage) return "bg-blue-500"
+	switch (stage.toLowerCase()) {
+		case "awareness":
+			return "bg-amber-500"
+		case "consideration":
+			return "bg-violet-500"
+		case "decision":
+			return "bg-emerald-500"
+		case "onboarding":
+			return "bg-cyan-500"
+		case "retention":
+			return "bg-indigo-500"
+		default:
+			return "bg-blue-500"
+	}
+}
+
+function EvidenceChapterCard({ evidence, isSelected, onClick }: EvidenceChapterCardProps) {
+	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as MediaAnchor[]) : []
+	const firstAnchor = anchors[0]
+	const seconds = firstAnchor ? getAnchorStartSeconds(firstAnchor) : 0
+	const gist = evidence.gist || evidence.verbatim || "Evidence"
+	const accentColor = getJourneyStageColor(evidence.journey_stage)
+
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={cn(
+				"group relative flex h-20 w-48 shrink-0 flex-col overflow-hidden rounded-lg border bg-background text-left transition-all",
+				"hover:border-primary/50 hover:shadow-sm",
+				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+				isSelected && "border-primary bg-primary/5 ring-1 ring-primary/20"
+			)}
+		>
+			{/* Accent bar */}
+			<div className={cn("h-1 w-full", accentColor)} />
+
+			{/* Content */}
+			<div className="flex flex-1 flex-col justify-between p-2.5">
+				{/* Gist - primary content */}
+				<p
+					className={cn(
+						"line-clamp-2 text-sm leading-tight",
+						isSelected ? "font-medium text-foreground" : "text-muted-foreground"
+					)}
+				>
+					{truncateText(gist, 50)}
+				</p>
+
+				{/* Timestamp - secondary, below text */}
+				<div className="flex items-center gap-1.5 text-muted-foreground/70 text-xs">
+					<Clock className="h-3 w-3" />
+					<span>{seconds > 0 ? formatTimestamp(seconds) : "0:00"}</span>
+				</div>
+			</div>
+
+			{/* Selection indicator */}
+			{isSelected && <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-primary" />}
+		</button>
+	)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Main Component
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function EvidenceDetail() {
 	const { evidence, relatedEvidence, projectPath, anchorFromUrl, accountId } = useLoaderData<typeof loader>()
 	const interview = evidence.interview
-	const evidenceName = (evidence as any)?.title || evidence.gist || evidence.chunk || evidence.verbatim || "Evidence"
+
+	// Combine main evidence with related evidence for the carousel
+	const allEvidence = useMemo(() => {
+		const related = Array.isArray(relatedEvidence) ? relatedEvidence : []
+		const combined = [evidence, ...related] as TransformedEvidence[]
+
+		// Sort by timestamp (from anchors)
+		return combined.sort((a, b) => {
+			const aAnchors = Array.isArray(a.anchors) ? (a.anchors as MediaAnchor[]) : []
+			const bAnchors = Array.isArray(b.anchors) ? (b.anchors as MediaAnchor[]) : []
+			const aTime = aAnchors[0] ? getAnchorStartSeconds(aAnchors[0]) : 0
+			const bTime = bAnchors[0] ? getAnchorStartSeconds(bAnchors[0]) : 0
+			return aTime - bTime
+		})
+	}, [evidence, relatedEvidence])
+
+	// Track which evidence is currently selected
+	const [selectedId, setSelectedId] = useState<string>(evidence.id)
+
+	const selectedEvidence = useMemo(() => {
+		return allEvidence.find((ev) => ev.id === selectedId) || evidence
+	}, [allEvidence, selectedId, evidence])
+
+	const evidenceName =
+		(selectedEvidence as any)?.title ||
+		selectedEvidence.gist ||
+		selectedEvidence.chunk ||
+		selectedEvidence.verbatim ||
+		"Evidence"
 
 	// If there's a timestamp anchor from URL, inject it into evidence.anchors
-	const evidenceWithAnchor = anchorFromUrl
-		? {
-				...evidence,
-				anchors: [anchorFromUrl, ...(Array.isArray(evidence.anchors) ? evidence.anchors : [])],
+	const evidenceWithAnchor = useMemo(() => {
+		if (anchorFromUrl && selectedEvidence.id === evidence.id) {
+			return {
+				...selectedEvidence,
+				anchors: [anchorFromUrl, ...(Array.isArray(selectedEvidence.anchors) ? selectedEvidence.anchors : [])],
 			}
-		: evidence
+		}
+		return selectedEvidence
+	}, [anchorFromUrl, selectedEvidence, evidence.id])
 
 	// Scroll to top when navigating to this page, UNLESS there's a timestamp anchor
 	useEffect(() => {
@@ -270,58 +436,63 @@ export default function EvidenceDetail() {
 		// If anchorFromUrl exists, let the EvidenceCard handle scrolling to the timestamp
 	}, [anchorFromUrl])
 
-	return (
-		<div className="space-y-4 p-4 sm:p-6">
-			{/* Mobile-friendly header */}
-			<div className="flex items-center gap-3" />
+	const hasChapters = allEvidence.length > 1
 
-			{/* Full Evidence Card - Centered with max width */}
+	return (
+		<div className="space-y-6 p-4 sm:p-6">
 			<PageContainer size="sm" padded={false} className="max-w-2xl">
-				<div className="mt-4 mb-4 flex items-center justify-between gap-3">
+				{/* Header */}
+				<div className="mb-6 flex items-center justify-between gap-3">
 					<BackButton />
 					{projectPath && accountId ? (
 						<ResourceShareMenu
 							projectPath={projectPath}
 							accountId={accountId}
-							resourceId={evidence.id}
+							resourceId={selectedEvidence.id}
 							resourceName={evidenceName}
 							resourceType="evidence"
 						/>
 					) : null}
 				</div>
-				<div className="flex-1">
-					{interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}
-				</div>
+
+				{/* Interview context */}
+				{interview && (
+					<p className="mb-4 text-muted-foreground text-sm">
+						From: <span className="font-medium text-foreground">{interview.title}</span>
+					</p>
+				)}
+
+				{/* Main Evidence Display */}
 				<EvidenceCard
-					evidence={evidenceWithAnchor}
-					people={evidence.people || []}
+					evidence={evidenceWithAnchor as any}
+					people={selectedEvidence.people || []}
 					interview={interview}
 					variant="expanded"
 					showInterviewLink={true}
 					projectPath={projectPath || undefined}
 				/>
-			</PageContainer>
 
-			{/* Related evidence in this topic */}
-			{Array.isArray(relatedEvidence) && relatedEvidence.length > 0 && (
-				<PageContainer size="sm" padded={false} className="max-w-2xl">
-					<div className="mt-2 space-y-3">
-						<p className="text-foreground text-lg">Related</p>
-						<div className="space-y-2">
-							{relatedEvidence.map((ev: any) => (
-								<EvidenceCard
-									key={ev.id}
-									evidence={ev}
-									people={ev.people || []}
-									interview={interview}
-									variant="mini"
-									projectPath={projectPath || undefined}
-								/>
-							))}
+				{/* Chapter Carousel */}
+				{hasChapters && (
+					<div className="mt-8">
+						<h3 className="mb-3 font-medium text-muted-foreground text-sm">Related moments ({allEvidence.length})</h3>
+
+						{/* Horizontal scroll container */}
+						<div className="-mx-4 sm:-mx-6 px-4 sm:px-6">
+							<div className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border flex gap-3 overflow-x-auto pb-3">
+								{allEvidence.map((ev) => (
+									<EvidenceChapterCard
+										key={ev.id}
+										evidence={ev}
+										isSelected={ev.id === selectedId}
+										onClick={() => setSelectedId(ev.id)}
+									/>
+								))}
+							</div>
 						</div>
 					</div>
-				</PageContainer>
-			)}
+				)}
+			</PageContainer>
 		</div>
 	)
 }

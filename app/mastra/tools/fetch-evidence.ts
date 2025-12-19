@@ -23,9 +23,10 @@ export const fetchEvidenceTool = createTool({
 		projectId: z
 			.string()
 			.optional()
+			.nullable()
 			.describe("Project ID to fetch evidence from. Defaults to the current project in context."),
-		interviewId: z.string().optional().describe("Filter evidence by specific interview ID."),
-		personId: z.string().optional().describe("Filter evidence by specific person ID."),
+		interviewId: z.string().optional().nullable().describe("Filter evidence by specific interview ID."),
+		personId: z.string().optional().nullable().describe("Filter evidence by specific person ID."),
 		evidenceSearch: z
 			.string()
 			.optional()
@@ -37,8 +38,13 @@ export const fetchEvidenceTool = createTool({
 		modality: z
 			.enum(["qual", "quant"])
 			.optional()
+			.nullable()
 			.describe("Filter by evidence modality (qualitative or quantitative)."),
-		confidence: z.enum(["low", "medium", "high"]).optional().describe("Filter by evidence confidence level."),
+		confidence: z
+			.enum(["low", "medium", "high"])
+			.optional()
+			.nullable()
+			.describe("Filter by evidence confidence level."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -59,7 +65,8 @@ export const fetchEvidenceTool = createTool({
 		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined
+		const projectId = input.projectId ?? runtimeProjectIdStr ?? null
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
 		const interviewId = input.interviewId?.trim()
 		const personId = input.personId?.trim()
@@ -327,6 +334,7 @@ export const fetchEvidenceTool = createTool({
 				personName: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.name ?? null) : null,
 				personRole: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.role ?? null) : null,
 				insightCount: row.interview_id ? (insightsByInterviewId.get(row.interview_id)?.length ?? 0) : 0,
+				url: null,
 			}))
 
 			const message = sanitizedEvidenceSearch

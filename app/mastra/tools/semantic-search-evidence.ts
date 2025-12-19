@@ -21,6 +21,7 @@ export const semanticSearchEvidenceTool = createTool({
 		projectId: z
 			.string()
 			.optional()
+			.nullable()
 			.describe("Project ID to search within. Defaults to the current project in context."),
 		interviewId: z.string().optional().nullable().describe("Optional: Limit search to a specific interview."),
 		matchThreshold: z
@@ -60,7 +61,8 @@ export const semanticSearchEvidenceTool = createTool({
 		const supabase = supabaseAdmin as SupabaseClient<Database>
 		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 
-		const projectId = input.projectId ?? runtimeProjectId ?? null
+		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined
+		const projectId = input.projectId ?? runtimeProjectIdStr ?? null
 		const query = input.query?.trim()
 		const interviewId = input.interviewId?.trim() || null
 		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
@@ -204,12 +206,35 @@ export const semanticSearchEvidenceTool = createTool({
 			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] =
 				await Promise.all([evidencePromise, facetsPromise])
 
+			type EvidenceMatchRow = {
+				id: string
+				similarity: number
+				verbatim: string | null
+				gist: string | null
+				pains: string[] | null
+				gains: string[] | null
+				thinks: string[] | null
+				feels: string[] | null
+				anchors: unknown | null
+			}
+
+			type FacetMatchRow = {
+				id: string
+				evidence_id: string | null
+				kind_slug: string | null
+				label: string | null
+				similarity: number
+			}
+
+			const evidenceMatchRows = (evidenceData as EvidenceMatchRow[] | null) ?? []
+			const facetMatchRows = (facetsData as FacetMatchRow[] | null) ?? []
+
 			consola.info("semantic-search-evidence: RPC responses", {
 				evidence: {
 					hasError: !!evidenceError,
 					errorMsg: evidenceError?.message,
-					dataLength: evidenceData?.length || 0,
-					sampleResults: evidenceData?.slice(0, 3).map((e) => ({
+					dataLength: evidenceMatchRows.length,
+					sampleResults: evidenceMatchRows.slice(0, 3).map((e) => ({
 						id: e.id,
 						similarity: e.similarity,
 						verbatimPreview: e.verbatim?.substring(0, 100),
@@ -218,8 +243,8 @@ export const semanticSearchEvidenceTool = createTool({
 				facets: {
 					hasError: !!facetsError,
 					errorMsg: facetsError?.message,
-					dataLength: facetsData?.length || 0,
-					sampleResults: facetsData?.slice(0, 3).map((f) => ({
+					dataLength: facetMatchRows.length,
+					sampleResults: facetMatchRows.slice(0, 3).map((f) => ({
 						id: f.id,
 						kind: f.kind_slug,
 						label: f.label,
@@ -243,8 +268,10 @@ export const semanticSearchEvidenceTool = createTool({
 			const evidenceIds = new Set<string>()
 			const facetEvidenceIds = new Set<string>()
 
-			evidenceData?.forEach((e) => evidenceIds.add(e.id))
-			facetsData?.forEach((f) => {
+			evidenceMatchRows.forEach((e) => {
+				evidenceIds.add(e.id)
+			})
+			facetMatchRows.forEach((f) => {
 				if (f.evidence_id) {
 					facetEvidenceIds.add(f.evidence_id)
 					evidenceIds.add(f.evidence_id)
@@ -303,17 +330,28 @@ export const semanticSearchEvidenceTool = createTool({
 					consola.error("semantic-search-evidence: keyword fallback people query error", peopleError)
 				}
 
+				type PeopleMatchRow = {
+					evidence_id: string | null
+					people: { name: string | null } | null
+				}
+
+				const peopleMatchRows = (peopleMatches as PeopleMatchRow[] | null) ?? []
+
 				const peopleNamesByEvidence = new Map<string, string[]>()
-				peopleMatches?.forEach((row: any) => {
-					if (!row?.evidence_id || !row?.people?.name) return
+				peopleMatchRows.forEach((row) => {
+					if (!row.evidence_id || !row.people?.name) return
 					const existing = peopleNamesByEvidence.get(row.evidence_id) || []
 					existing.push(row.people.name)
 					peopleNamesByEvidence.set(row.evidence_id, existing)
 				})
 
 				const fallbackEvidenceIds = new Set<string>()
-				textMatches?.forEach((t) => t.id && fallbackEvidenceIds.add(t.id))
-				peopleMatches?.forEach((p: any) => p?.evidence_id && fallbackEvidenceIds.add(p.evidence_id))
+				for (const t of textMatches || []) {
+					if (t.id) fallbackEvidenceIds.add(t.id)
+				}
+				for (const p of peopleMatchRows) {
+					if (p.evidence_id) fallbackEvidenceIds.add(p.evidence_id)
+				}
 
 				consola.debug("semantic-search-evidence: keyword fallback candidates", {
 					textMatches: textMatches?.length || 0,
@@ -330,9 +368,7 @@ export const semanticSearchEvidenceTool = createTool({
 
 					// Get interview titles for fallback results
 					const fallbackInterviewIds = [
-						...new Set(
-							fallbackEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []
-						),
+						...new Set(fallbackEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []),
 					]
 					const { data: fallbackInterviewData } = fallbackInterviewIds.length
 						? await supabase.from("interviews").select("id, title").in("id", fallbackInterviewIds)
@@ -357,9 +393,7 @@ export const semanticSearchEvidenceTool = createTool({
 									gist: row.gist || null,
 									similarity,
 									interviewId: row.interview_id || null,
-									interviewTitle: row.interview_id
-										? fallbackInterviewTitles.get(row.interview_id) || null
-										: null,
+									interviewTitle: row.interview_id ? fallbackInterviewTitles.get(row.interview_id) || null : null,
 									pains: row.pains || null,
 									gains: row.gains || null,
 									thinks: row.thinks || null,
@@ -482,10 +516,10 @@ export const semanticSearchEvidenceTool = createTool({
 
 			// Create similarity map from both sources (use highest similarity for each evidence)
 			const similarityMap = new Map<string, number>()
-			evidenceData?.forEach((e) => {
+			evidenceMatchRows.forEach((e) => {
 				similarityMap.set(e.id, e.similarity)
 			})
-			facetsData?.forEach((f: any) => {
+			facetMatchRows.forEach((f) => {
 				if (f.evidence_id) {
 					const existing = similarityMap.get(f.evidence_id) || 0
 					// Use the higher similarity score
@@ -518,7 +552,7 @@ export const semanticSearchEvidenceTool = createTool({
 				.slice(0, matchCount) // Limit to requested count
 
 			const facetMatchCount = facetEvidenceIds.size
-			const verbatimMatchCount = evidenceData?.length || 0
+			const verbatimMatchCount = evidenceMatchRows.length
 			const message =
 				facetMatchCount > 0 && verbatimMatchCount > 0
 					? `Found ${evidence.length} evidence pieces matching "${query}" (${verbatimMatchCount} from verbatim, ${facetMatchCount} from facets like pains/gains).`

@@ -1,7 +1,8 @@
+import consola from "consola"
 import { Brain, Lightbulb, Shield, TrendingUp, Zap } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "~/components/ui/badge"
-import { useInterviewProgress } from "~/hooks/useInterviewProgress"
+import { useInterviewProgress, useRealtimeInterview } from "~/hooks/useInterviewProgress"
 
 interface EducationalCard {
 	id: string
@@ -76,14 +77,80 @@ export default function ProcessingScreen({
 	triggerAccessToken,
 }: ProcessingScreenProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
+	const [pollingAttempted, setPollingAttempted] = useState(false)
+	const stuckTimerRef = useRef<NodeJS.Timeout | null>(null)
+	const lastStatusRef = useRef<string | null>(null)
 
-	// Use the realtime hook for actual progress tracking
+	// Fetch interview data with realtime subscription (fallback when Trigger.dev unavailable)
+	const interview = useRealtimeInterview(interviewId)
+
+	// Compute progress from interview data + Trigger.dev realtime
 	const { progressInfo, isRealtime } = useInterviewProgress({
-		interviewId: interviewId || null,
+		interview,
 		runId: triggerRunId,
 		accessToken: triggerAccessToken,
 	})
 	const { progress, label: processingStage, isComplete } = progressInfo
+
+	// Polling fallback: if stuck in transcription without Trigger.dev, poll AssemblyAI
+	const checkStuckTranscription = useCallback(async () => {
+		if (!interviewId || pollingAttempted) return
+
+		consola.info("[ProcessingScreen] Checking stuck transcription...")
+		setPollingAttempted(true)
+
+		try {
+			const response = await fetch("/api/interviews/check-transcription", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ interviewId }),
+			})
+
+			const result = await response.json()
+			consola.info("[ProcessingScreen] Check result:", result)
+
+			if (result.runId) {
+				consola.success("[ProcessingScreen] Processing resumed via polling fallback")
+			}
+		} catch (error) {
+			consola.error("[ProcessingScreen] Polling fallback failed:", error)
+		}
+	}, [interviewId, pollingAttempted])
+
+	// Detect stuck transcription: no Trigger.dev run and status hasn't changed
+	useEffect(() => {
+		const currentStatus = interview?.status
+
+		// Clear timer if status changed or we have a Trigger.dev run
+		if (currentStatus !== lastStatusRef.current || isRealtime || isComplete) {
+			if (stuckTimerRef.current) {
+				clearTimeout(stuckTimerRef.current)
+				stuckTimerRef.current = null
+			}
+			lastStatusRef.current = currentStatus ?? null
+		}
+
+		// Start stuck detection if in transcription/processing without Trigger.dev
+		const isStuckCandidate =
+			!isRealtime &&
+			!isComplete &&
+			!pollingAttempted &&
+			(currentStatus === "processing" || currentStatus === "uploaded")
+
+		if (isStuckCandidate && !stuckTimerRef.current) {
+			consola.info("[ProcessingScreen] Starting stuck detection timer (30s)")
+			stuckTimerRef.current = setTimeout(() => {
+				consola.warn("[ProcessingScreen] Interview appears stuck, triggering polling fallback")
+				checkStuckTranscription()
+			}, 30000) // Wait 30 seconds before polling
+		}
+
+		return () => {
+			if (stuckTimerRef.current) {
+				clearTimeout(stuckTimerRef.current)
+			}
+		}
+	}, [interview?.status, isRealtime, isComplete, pollingAttempted, checkStuckTranscription])
 
 	// Auto-complete when processing is done
 	useEffect(() => {

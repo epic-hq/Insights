@@ -5,11 +5,22 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table"
 import { formatDistanceToNow } from "date-fns"
-import { useMemo, useState } from "react"
+import { Columns3 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -18,12 +29,10 @@ export interface PersonTableRow {
 	id: string
 	name: string
 	title?: string | null
-	segment?: string | null
-	persona?: { id: string; name: string } | null
-	personaColor?: string | null
 	organization?: { id: string; name?: string | null } | null
-	interviewCount: number
-	keySignals: string[]
+	conversationCount: number
+	evidenceCount: number
+	stakeholderStatus?: string | null
 	updatedAt?: string | null
 }
 
@@ -35,6 +44,49 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
+	const storageKey = "people_table_columns_v1"
+
+	const defaultColumnVisibility = useMemo<VisibilityState>(
+		() => ({
+			organization: true,
+			title: true,
+			conversationCount: true,
+			evidenceCount: true,
+			stakeholderStatus: true,
+			updatedAt: false,
+		}),
+		[]
+	)
+
+	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+		if (typeof window === "undefined") return defaultColumnVisibility
+		try {
+			const raw = window.localStorage.getItem(storageKey)
+			if (!raw) return defaultColumnVisibility
+			const parsed = JSON.parse(raw) as unknown
+			if (!parsed || typeof parsed !== "object") return defaultColumnVisibility
+			return { ...defaultColumnVisibility, ...(parsed as VisibilityState) }
+		} catch {
+			return defaultColumnVisibility
+		}
+	})
+
+	useEffect(() => {
+		if (typeof window === "undefined") return
+		window.localStorage.setItem(storageKey, JSON.stringify(columnVisibility))
+	}, [columnVisibility])
+
+	const columnLabels = useMemo<Record<string, string>>(
+		() => ({
+			organization: "Organization",
+			title: "Title",
+			conversationCount: "Conversations",
+			evidenceCount: "Evidence",
+			stakeholderStatus: "Stakeholder status",
+			updatedAt: "Last updated",
+		}),
+		[]
+	)
 
 	const columns = useMemo<ColumnDef<PersonTableRow>[]>(
 		() => [
@@ -46,55 +98,16 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 					return (
 						<Link to={routes.people.detail(person.id)} className="flex flex-col gap-1 text-left">
 							<span className="flex items-center gap-2 font-medium text-foreground transition-colors hover:text-primary">
-								{person.personaColor ? (
-									<span
-										className="h-2.5 w-2.5 rounded-full"
-										style={{ backgroundColor: person.personaColor }}
-										aria-hidden="true"
-									/>
-								) : null}
 								{person.name}
 							</span>
-							{(person.title || person.segment) && (
-								<span className="text-muted-foreground text-xs">
-									{[person.title, person.segment].filter(Boolean).join(" • ")}
-								</span>
-							)}
 						</Link>
 					)
 				},
 				enableSorting: true,
 			},
 			{
-				accessorKey: "persona",
-				header: "Primary Persona",
-				cell: ({ row }) => {
-					const persona = row.original.persona
-					if (!persona) return <span className="text-muted-foreground text-xs">Unassigned</span>
-					const color = row.original.personaColor
-					return (
-						<Badge
-							variant="secondary"
-							className="border px-2 py-0.5 font-medium text-xs"
-							style={
-								color
-									? {
-											backgroundColor: `${color}1a`,
-											color,
-											borderColor: color,
-										}
-									: undefined
-							}
-						>
-							{persona.name}
-						</Badge>
-					)
-				},
-				enableSorting: false,
-			},
-			{
 				accessorKey: "organization",
-				header: "Key Organization",
+				header: "Organization",
 				cell: ({ row }) => {
 					const organization = row.original.organization
 					if (!organization) return <span className="text-muted-foreground text-xs">—</span>
@@ -112,30 +125,36 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 				enableSorting: false,
 			},
 			{
-				accessorKey: "keySignals",
-				header: "Signals",
-				cell: ({ row }) => {
-					const signals = row.original.keySignals.slice(0, 3)
-					if (signals.length === 0) {
-						return <span className="text-muted-foreground text-xs">—</span>
-					}
-					return (
-						<div className="flex flex-wrap gap-1">
-							{signals.map((signal) => (
-								<Badge key={`${row.original.id}-${signal}`} variant="secondary">
-									{signal}
-								</Badge>
-							))}
-						</div>
-					)
+				accessorKey: "title",
+				header: "Title",
+				cell: ({ getValue }) => {
+					const title = getValue<string | null | undefined>()
+					if (!title) return <span className="text-muted-foreground text-xs">—</span>
+					return <span className="text-foreground text-sm">{title}</span>
 				},
 				enableSorting: false,
 			},
 			{
-				accessorKey: "interviewCount",
-				header: "Interviews",
+				accessorKey: "conversationCount",
+				header: "Conversations",
 				cell: ({ getValue }) => <span className="font-medium text-sm">{getValue<number>()}</span>,
 				enableSorting: true,
+			},
+			{
+				accessorKey: "evidenceCount",
+				header: "Evidence",
+				cell: ({ getValue }) => <span className="font-medium text-sm">{getValue<number>()}</span>,
+				enableSorting: true,
+			},
+			{
+				accessorKey: "stakeholderStatus",
+				header: "Stakeholder status",
+				cell: ({ getValue }) => {
+					const status = getValue<string | null | undefined>()
+					if (!status) return <span className="text-muted-foreground text-xs">—</span>
+					return <Badge variant="secondary">{status}</Badge>
+				},
+				enableSorting: false,
 			},
 			{
 				accessorKey: "updatedAt",
@@ -164,49 +183,82 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 	const table = useReactTable({
 		data: rows,
 		columns,
-		state: { sorting },
+		state: { sorting, columnVisibility },
 		onSortingChange: setSorting,
+		onColumnVisibilityChange: setColumnVisibility,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 	})
 
 	return (
-		<div className="overflow-hidden rounded-lg border bg-background">
-			<Table>
-				<TableHeader>
-					{table.getHeaderGroups().map((headerGroup) => (
-						<TableRow key={headerGroup.id}>
-							{headerGroup.headers.map((header) => (
-								<TableHead
-									key={header.id}
-									onClick={header.column.getToggleSortingHandler()}
-									className="cursor-pointer select-none"
+		<div className="space-y-3">
+			<div className="flex justify-end">
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="outline" size="sm">
+							<Columns3 className="h-4 w-4" />
+							Columns
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-56">
+						<DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						{Object.keys(columnLabels).map((columnId) => {
+							const column = table.getColumn(columnId)
+							if (!column) return null
+							return (
+								<DropdownMenuCheckboxItem
+									key={columnId}
+									checked={column.getIsVisible()}
+									onCheckedChange={(value) => column.toggleVisibility(Boolean(value))}
 								>
-									{flexRender(header.column.columnDef.header, header.getContext())}
-									{header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
-								</TableHead>
-							))}
-						</TableRow>
-					))}
-				</TableHeader>
-				<TableBody>
-					{table.getRowModel().rows.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-								No people found
-							</TableCell>
-						</TableRow>
-					) : (
-						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id}>
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+									{columnLabels[columnId]}
+								</DropdownMenuCheckboxItem>
+							)
+						})}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+			<div className="overflow-hidden rounded-lg border bg-background">
+				<Table>
+					<TableHeader>
+						{table.getHeaderGroups().map((headerGroup) => (
+							<TableRow key={headerGroup.id}>
+								{headerGroup.headers.map((header) => (
+									<TableHead
+										key={header.id}
+										onClick={header.column.getToggleSortingHandler()}
+										className="cursor-pointer select-none"
+									>
+										{flexRender(header.column.columnDef.header, header.getContext())}
+										{header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
+									</TableHead>
 								))}
 							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+						))}
+					</TableHeader>
+					<TableBody>
+						{table.getRowModel().rows.length === 0 ? (
+							<TableRow>
+								<TableCell
+									colSpan={table.getVisibleLeafColumns().length}
+									className="h-24 text-center text-muted-foreground"
+								>
+									No people found
+								</TableCell>
+							</TableRow>
+						) : (
+							table.getRowModel().rows.map((row) => (
+								<TableRow key={row.id}>
+									{row.getVisibleCells().map((cell) => (
+										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+									))}
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	)
 }

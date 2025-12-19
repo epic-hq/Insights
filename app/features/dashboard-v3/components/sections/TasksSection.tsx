@@ -10,6 +10,7 @@
 import { CheckSquare } from "lucide-react"
 import { useMemo } from "react"
 import { Link, useFetcher } from "react-router"
+import { Streamdown } from "streamdown"
 import { Card, CardContent } from "~/components/ui/card"
 import { PriorityBars } from "~/features/tasks/components/PriorityBars"
 import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
@@ -84,6 +85,12 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 						</div>
 					)}
 
+					{task.description && (
+						<div className="mt-2">
+							<Streamdown className="line-clamp-3 text-muted-foreground text-xs">{task.description}</Streamdown>
+						</div>
+					)}
+
 					{/* Show priority bars alone if no benefit */}
 					{!task.benefit && task.priority && (
 						<div className="flex items-center gap-2">
@@ -99,9 +106,9 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: TasksSectionProps) {
 	const routes = useProjectRoutes(projectPath)
 
-	// Filter out completed/archived tasks and sort by priority (high first)
-	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived")
-	const topTasks = [...activeTasks].sort((a, b) => (b.priority || 1) - (a.priority || 1)).slice(0, maxVisible)
+	// Filter out non-focus tasks (done/archived/backlog). Ordering is handled server-side.
+	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived" && t.status !== "backlog")
+	const topTasks = activeTasks.slice(0, maxVisible)
 
 	// Show empty state if no tasks
 	if (tasks.length === 0) {

@@ -1,9 +1,12 @@
+import consola from "consola"
 import { LayoutGrid, Table as TableIcon, UserCircle } from "lucide-react"
 import { useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useNavigate, useSearchParams } from "react-router"
 import { Link, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
@@ -34,7 +37,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const [{ data: people, error }, catalog] = await Promise.all([
 		getPeople({ supabase, accountId, projectId, scope }),
-		getFacetCatalog({ db: supabase, accountId, projectId }),
+		getFacetCatalog({ db: supabase, accountId }),
 	])
 
 	if (error) {
@@ -49,11 +52,29 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		return person
 	})
 
-	return { people: peopleWithImageUrls, catalog, scope }
+	const evidence_counts: Record<string, number> = {}
+	const person_ids = peopleWithImageUrls.map((person) => person.id)
+	if (person_ids.length) {
+		const { data: evidencePeople, error: evidenceError } = await supabase
+			.from("evidence_people")
+			.select("person_id")
+			.in("person_id", person_ids)
+		if (evidenceError) {
+			consola.warn("Failed to load evidence counts for people index", evidenceError.message)
+		} else {
+			for (const row of evidencePeople ?? []) {
+				const person_id = row.person_id
+				if (!person_id) continue
+				evidence_counts[person_id] = (evidence_counts[person_id] ?? 0) + 1
+			}
+		}
+	}
+
+	return { people: peopleWithImageUrls, catalog, evidence_counts, scope }
 }
 
 export default function PeopleIndexPage() {
-	const { people, catalog, scope } = useLoaderData<typeof loader>()
+	const { people, catalog, evidence_counts, scope } = useLoaderData<typeof loader>()
 	const currentProjectContext = useCurrentProject()
 	const { accountId, projectId } = useParams()
 	const navigate = useNavigate()
@@ -96,37 +117,79 @@ export default function PeopleIndexPage() {
 		})
 	}, [people, facetsById])
 
+	const [searchQuery, setSearchQuery] = useState("")
+	const [organizationFilter, setOrganizationFilter] = useState<string>("all")
+	const [stakeholderFilter, setStakeholderFilter] = useState<string>("all")
+
+	const organizations = useMemo(() => {
+		const seen = new Set<string>()
+		for (const { person } of peopleWithFacets) {
+			const primaryOrgLink =
+				person.people_organizations?.find((link) => link.is_primary) ?? person.people_organizations?.[0]
+			const label = primaryOrgLink?.organization?.name || primaryOrgLink?.organization?.website_url || null
+			if (!label) continue
+			seen.add(label)
+		}
+		return Array.from(seen).sort((a, b) => a.localeCompare(b))
+	}, [peopleWithFacets])
+
+	const stakeholder_statuses = useMemo(() => {
+		const seen = new Set<string>()
+		for (const { person } of peopleWithFacets) {
+			const primaryOrgLink =
+				person.people_organizations?.find((link) => link.is_primary) ?? person.people_organizations?.[0]
+			const status = primaryOrgLink?.relationship_status || person.lifecycle_stage || null
+			if (!status) continue
+			seen.add(status)
+		}
+		return Array.from(seen).sort((a, b) => a.localeCompare(b))
+	}, [peopleWithFacets])
+
+	const filteredPeopleWithFacets = useMemo(() => {
+		const normalized_query = searchQuery.trim().toLowerCase()
+		return peopleWithFacets.filter(({ person }) => {
+			const primaryOrgLink =
+				person.people_organizations?.find((link) => link.is_primary) ?? person.people_organizations?.[0]
+			const organization_label = primaryOrgLink?.organization?.name || primaryOrgLink?.organization?.website_url || null
+			const stakeholder_status = primaryOrgLink?.relationship_status || person.lifecycle_stage || null
+			const job_title = person.title || null
+
+			if (organizationFilter !== "all" && organization_label !== organizationFilter) return false
+			if (stakeholderFilter !== "all" && stakeholder_status !== stakeholderFilter) return false
+			if (!normalized_query) return true
+
+			const haystack = [person.name, job_title, organization_label, person.description]
+				.filter(Boolean)
+				.join(" ")
+				.toLowerCase()
+			return haystack.includes(normalized_query)
+		})
+	}, [organizationFilter, peopleWithFacets, searchQuery, stakeholderFilter])
+
 	const tableRows = useMemo<PersonTableRow[]>(() => {
-		return peopleWithFacets.map(({ person, facets }) => {
-			const persona = person.people_personas?.[0]?.personas
+		return filteredPeopleWithFacets.map(({ person }) => {
 			const primaryOrgLink =
 				person.people_organizations?.find((link) => link.is_primary) ?? person.people_organizations?.[0]
 			const primaryOrganization = primaryOrgLink?.organization ?? null
 			const jobTitle = (person as { title?: string | null }).title ?? null
+			const stakeholderStatus = primaryOrgLink?.relationship_status || person.lifecycle_stage || null
 			return {
 				id: person.id,
 				name: person.name || "Unnamed person",
 				title: jobTitle,
-				segment: person.segment ?? null,
-				persona: persona
-					? {
-							id: persona.id,
-							name: persona.name,
-						}
-					: null,
-				personaColor: persona?.color_hex || null,
 				organization: primaryOrganization
 					? {
 							id: primaryOrganization.id,
 							name: primaryOrganization.name || primaryOrganization.website_url || null,
 						}
 					: null,
-				interviewCount: person.interview_people?.length ?? 0,
-				keySignals: facets.map((facet) => facet.label),
+				conversationCount: person.interview_people?.length ?? 0,
+				evidenceCount: evidence_counts[person.id] ?? 0,
+				stakeholderStatus,
 				updatedAt: person.updated_at ?? null,
 			}
 		})
-	}, [peopleWithFacets])
+	}, [evidence_counts, filteredPeopleWithFacets])
 
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 
@@ -192,6 +255,50 @@ export default function PeopleIndexPage() {
 					</div>
 				</div>
 
+				<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+					<div className="flex flex-1 flex-col gap-3 sm:flex-row">
+						<div className="flex-1">
+							<Input
+								value={searchQuery}
+								onChange={(event) => setSearchQuery(event.target.value)}
+								placeholder="Search people…"
+								aria-label="Search people"
+							/>
+						</div>
+						{/* <div className="w-full sm:w-56">
+							<Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Organization" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All organizations</SelectItem>
+									{organizations.map((org) => (
+										<SelectItem key={org} value={org}>
+											{org}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div> */}
+						{/* <div className="w-full sm:w-56">
+							<Select value={stakeholderFilter} onValueChange={setStakeholderFilter}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Stakeholder status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All statuses</SelectItem>
+									{stakeholder_statuses.map((status) => (
+										<SelectItem key={status} value={status}>
+											{status}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div> */}
+					</div>
+					<div className="text-muted-foreground text-sm">{filteredPeopleWithFacets.length} results</div>
+				</div>
+
 				{people.length === 0 ? (
 					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
 						<div className="mx-auto max-w-md space-y-4">
@@ -206,7 +313,7 @@ export default function PeopleIndexPage() {
 					<PeopleDataTable rows={tableRows} />
 				) : (
 					<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-						{peopleWithFacets.map(({ person, facets }) => (
+						{filteredPeopleWithFacets.map(({ person, facets }) => (
 							<EnhancedPersonCard
 								key={person.id}
 								person={{
@@ -220,6 +327,8 @@ export default function PeopleIndexPage() {
 											: undefined,
 									})),
 								}}
+								conversationCount={person.interview_people?.length ?? 0}
+								evidenceCount={evidence_counts[person.id] ?? 0}
 								facets={facets}
 							/>
 						))}

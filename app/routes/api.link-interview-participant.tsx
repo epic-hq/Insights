@@ -13,7 +13,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// Get authenticated user
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -66,7 +66,13 @@ export async function action({ request }: ActionFunctionArgs) {
 				.single()
 
 			if (createError || !newPerson) {
-				return Response.json({ ok: false, error: `Failed to create person: ${createError?.message}` }, { status: 500 })
+				return Response.json(
+					{
+						ok: false,
+						error: `Failed to create person: ${createError?.message}`,
+					},
+					{ status: 500 }
+				)
 			}
 
 			finalPersonId = newPerson.id
@@ -83,7 +89,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (updateError) {
 			return Response.json(
-				{ ok: false, error: `Failed to update participant: ${updateError.message}` },
+				{
+					ok: false,
+					error: `Failed to update participant: ${updateError.message}`,
+				},
 				{ status: 500 }
 			)
 		}

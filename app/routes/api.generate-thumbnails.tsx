@@ -28,7 +28,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	try {
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -184,7 +184,12 @@ export async function action({ request }: ActionFunctionArgs) {
 			})
 		}
 
-		return Response.json({ error: "Invalid request. Provide interview_id, or action=stats/backfill" }, { status: 400 })
+		return Response.json(
+			{
+				error: "Invalid request. Provide interview_id, or action=stats/backfill",
+			},
+			{ status: 400 }
+		)
 	} catch (error) {
 		consola.error("Generate thumbnails API error:", error)
 		return Response.json({ error: error instanceof Error ? error.message : "Internal error" }, { status: 500 })

@@ -105,7 +105,7 @@ function transformProjectSectionsToSuggestions(
 
 // Loader function to fetch real data
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
@@ -171,7 +171,12 @@ export function MobileInsightsApp() {
 	const loaderData = useLoaderData<{
 		insights: Insight[]
 		projects: Project[]
-		projectSections: Array<{ title?: string; content?: string; id: string; kind?: string }>
+		projectSections: Array<{
+			title?: string
+			content?: string
+			id: string
+			kind?: string
+		}>
 	}>()
 	const [selectedPain, setSelectedPain] = useState<PainPoint | null>(null)
 	const [showCapture, setShowCapture] = useState(false)
@@ -248,11 +253,24 @@ export function MobileInsightsApp() {
 	})
 
 	const _captureQuestions = [
-		{ key: "struggle", question: "What's the biggest struggle you're facing right now?" },
-		{ key: "emotion", question: "How does that make you feel?", type: "emotion" },
+		{
+			key: "struggle",
+			question: "What's the biggest struggle you're facing right now?",
+		},
+		{
+			key: "emotion",
+			question: "How does that make you feel?",
+			type: "emotion",
+		},
 		{ key: "outcome", question: "What outcome would solve this for you?" },
-		{ key: "blocking", question: "What's blocking you from achieving it today?" },
-		{ key: "firstStep", question: "If a guide appeared, what first step would you want from them?" },
+		{
+			key: "blocking",
+			question: "What's blocking you from achieving it today?",
+		},
+		{
+			key: "firstStep",
+			question: "If a guide appeared, what first step would you want from them?",
+		},
 	]
 
 	const _emotions = [
@@ -261,7 +279,11 @@ export function MobileInsightsApp() {
 		{ name: "angry", emoji: "😡", color: "bg-red-200 text-red-900" },
 		{ name: "confused", emoji: "😕", color: "bg-orange-100 text-orange-800" },
 		{ name: "disappointed", emoji: "😞", color: "bg-blue-100 text-blue-800" },
-		{ name: "overwhelmed", emoji: "😵‍💫", color: "bg-purple-100 text-purple-800" },
+		{
+			name: "overwhelmed",
+			emoji: "😵‍💫",
+			color: "bg-purple-100 text-purple-800",
+		},
 		{ name: "betrayed", emoji: "😠", color: "bg-orange-100 text-orange-800" },
 		{ name: "hopeful", emoji: "🤞", color: "bg-green-100 text-green-800" },
 	]
@@ -360,14 +382,22 @@ export function MobileInsightsApp() {
 						{/* Filter Bar */}
 						<div className="mt-3 flex gap-1 rounded-lg bg-gray-100 p-1">
 							{[
-								{ key: "all", label: "All", count: painPointsState.filter((p) => !p.isHidden).length },
+								{
+									key: "all",
+									label: "All",
+									count: painPointsState.filter((p) => !p.isHidden).length,
+								},
 								// Upvoted filter is disabled as upvotes are not in schema
 								// {
 								// 	key: "upvoted",
 								// 	label: "Upvoted",
 								// 	count: painPointsState.filter((p) => p.upvotes > 0 && !p.isHidden).length,
 								// },
-								{ key: "hidden", label: "Hidden", count: painPointsState.filter((p) => p.isHidden).length },
+								{
+									key: "hidden",
+									label: "Hidden",
+									count: painPointsState.filter((p) => p.isHidden).length,
+								},
 							].map(({ key, label, count }) => (
 								<Button
 									key={key}
@@ -536,7 +566,12 @@ export function MobileInsightsApp() {
 								<Label className="font-medium text-sm">Research Goal</Label>
 								<Textarea
 									value={researchConfig.goal}
-									onChange={(e) => setResearchConfig({ ...researchConfig, goal: e.target.value })}
+									onChange={(e) =>
+										setResearchConfig({
+											...researchConfig,
+											goal: e.target.value,
+										})
+									}
 									className="mt-1"
 									rows={2}
 								/>
@@ -562,7 +597,12 @@ export function MobileInsightsApp() {
 								<Label className="font-medium text-sm">Background Knowledge</Label>
 								<Textarea
 									value={researchConfig.backgroundKnowledge}
-									onChange={(e) => setResearchConfig({ ...researchConfig, backgroundKnowledge: e.target.value })}
+									onChange={(e) =>
+										setResearchConfig({
+											...researchConfig,
+											backgroundKnowledge: e.target.value,
+										})
+									}
 									className="mt-1"
 									rows={3}
 								/>

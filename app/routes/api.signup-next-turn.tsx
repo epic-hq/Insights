@@ -7,7 +7,7 @@ import { mastra } from "~/mastra"
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") return { error: "Method Not Allowed" }
 
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) return { error: "Unauthorized" }
 
 	const { client: supabase } = getServerClient(request)

@@ -34,6 +34,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.dashboard(),
 			},
 			{
+				key: "relationships",
+				title: "Contacts",
+				description: "Key people and organizations we serve.",
+				icon: Users,
+				to: (routes) => routes.people.index(),
+			},
+			{
 				key: "content",
 				title: "Content",
 				description: "Add conversations, notes, docs, or recordings.",
@@ -57,16 +64,9 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			{
 				key: "tasks",
 				title: "Tasks",
-				description: "Actions created from insights.",
+				description: "Top focus tasks for the next 7 days.",
 				icon: CheckSquare,
 				to: (routes) => routes.priorities(),
-			},
-			{
-				key: "relationships",
-				title: "Relationships",
-				description: "Key people and organizations we serve.",
-				icon: Users,
-				to: (routes) => routes.people.index(),
 			},
 			{
 				key: "opportunities",

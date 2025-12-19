@@ -8,7 +8,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		return Response.json({ error: "User not authenticated" }, { status: 401 })
 	}
@@ -80,7 +80,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		consola.info(`Successfully cancelled analysis run ${runId}`)
-		return Response.json({ success: true, message: "Analysis cancelled successfully" })
+		return Response.json({
+			success: true,
+			message: "Analysis cancelled successfully",
+		})
 	} catch (error) {
 		consola.error("Failed to cancel analysis run", error)
 		const message = error instanceof Error ? error.message : "Unknown error"

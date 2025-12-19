@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -43,7 +43,12 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		if (!interview.transcript_formatted) {
-			return Response.json({ error: "No transcript available. Please upload or transcribe first." }, { status: 400 })
+			return Response.json(
+				{
+					error: "No transcript available. Please upload or transcribe first.",
+				},
+				{ status: 400 }
+			)
 		}
 
 		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted)
@@ -81,13 +86,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			consola.info("Triggering evidence extraction directly (skipping transcription)")
 
-			// Check if we should use the v2 modular workflow
-			const useV2Workflow = process.env.ENABLE_MODULAR_WORKFLOW === "true"
-
+			// Always use v2 orchestrator with resumeFrom: "evidence"
 			let handle: { id: string }
 
-			if (useV2Workflow) {
-				// Use v2 orchestrator with resumeFrom: "evidence"
+			{
 				consola.info("Using v2 orchestrator with resumeFrom: 'evidence'")
 
 				// Generate fresh presigned URL from R2 key if needed
@@ -112,36 +114,6 @@ export async function action({ request }: ActionFunctionArgs) {
 					existingInterviewId: interviewId,
 					resumeFrom: "evidence", // Skip upload/transcription, start from evidence extraction
 				})
-			} else {
-				// Use v1 task (legacy)
-				consola.info("Using v1 extract-evidence-and-people task")
-
-				// Extract the necessary fields from transcript_formatted
-				const transcriptFormatted = interview.transcript_formatted as any
-				const language = transcriptFormatted?.language || transcriptFormatted?.detected_language || "en"
-
-				// Get speaker transcripts with timing
-				const speakerTranscriptsRaw = (formattedTranscriptData.speaker_transcripts ?? []) as any[]
-				const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
-					? speakerTranscriptsRaw.map((u: any) => ({
-							speaker: u.speaker ?? "",
-							text: u.text ?? "",
-							start: u.start ?? null,
-							end: u.end ?? null,
-						}))
-					: []
-
-				consola.info(` Passing ${speakerTranscripts.length} speaker utterances with timing to AI for reprocessing`)
-
-				handle = await tasks.trigger<typeof extractEvidenceAndPeopleTask>("interview.extract-evidence-and-people", {
-					interview: interview as any,
-					transcriptData: formattedTranscriptData as any,
-					fullTranscript: "", // Legacy field, not used in AI extraction
-					language,
-					metadata,
-					analysisJobId: interviewId, // Use interview ID
-					userCustomInstructions: null,
-				})
 			}
 
 			// Store trigger_run_id in conversation_analysis
@@ -156,7 +128,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				})
 				.eq("id", interviewId)
 
-			consola.info(`Evidence reprocessing triggered: ${handle.id} (using ${useV2Workflow ? "v2" : "v1"} workflow)`)
+			consola.info(`Evidence reprocessing triggered: ${handle.id} (using v2 workflow)`)
 
 			return Response.json({ success: true, runId: handle.id })
 		} catch (e) {

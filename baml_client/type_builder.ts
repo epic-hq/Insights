@@ -99,7 +99,7 @@ export default class TypeBuilder {
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
-    Extraction: ClassViewer<'Extraction', "people" | "evidence" | "facet_mentions" | "scenes">;
+    Extraction: ClassViewer<'Extraction', "people" | "evidence" | "facet_mentions" | "scenes" | "interaction_context" | "context_confidence" | "context_reasoning">;
     
     FacetCatalog: ClassViewer<'FacetCatalog', "kinds" | "facets" | "version">;
     
@@ -348,6 +348,8 @@ export default class TypeBuilder {
     
     Emotions: EnumViewer<'Emotions', "Abandoned" | "Accepted" | "Aggressive" | "Amazed" | "Angry" | "Annoyed" | "Anxious" | "Apathetic" | "Appalled" | "Aroused" | "Ashamed" | "Astonished" | "Awe" | "Awful" | "Bad" | "Betrayed" | "Bitter" | "Bored" | "Busy" | "Cheeky" | "Confident" | "Confused" | "Content" | "Courageous" | "Creative" | "Critical" | "Curious" | "Depressed" | "Despair" | "Detestable" | "Disappointed" | "Disapproving" | "Disgusted" | "Disillusioned" | "Dismayed" | "Dismissive" | "Disrespected" | "Distant" | "Eager" | "Embarrassed" | "Empty" | "Energetic" | "Excited" | "Excluded" | "Exposed" | "Fearful" | "Fragile" | "Free" | "Frightened" | "Frustrated" | "Furious" | "Grief" | "Guilty" | "Happy" | "Helpless" | "Hesitant" | "Hopeful" | "Horrified" | "Hostile" | "Humiliated" | "Hurt" | "Inadequate" | "Indifferent" | "Indignant" | "Inferior" | "Infuriated" | "Inquisitive" | "Insecure" | "Insignificant" | "Inspired" | "Interested" | "Intimate" | "Isolated" | "Jealous" | "Joyful" | "Judgmental" | "Let_down" | "Lonely" | "Loving" | "Mad" | "Nauseated" | "Nervous" | "Numb" | "Optimistic" | "Out_of_control" | "Overwhelmed" | "Peaceful" | "Perplexed" | "Persecuted" | "Playful" | "Powerful" | "Powerless" | "Pressured" | "Proud" | "Provoked" | "Rejected" | "Remorseful" | "Repelled" | "Resentful" | "Respected" | "Revolted" | "Ridiculed" | "Rushed" | "Sad" | "Scared" | "Sensitive" | "Shocked" | "Skeptical" | "Sleepy" | "Startled" | "Stressed" | "Successful" | "Surprised" | "Thankful" | "Threatened" | "Tired" | "Trusting" | "Unfocussed" | "Valued" | "Victimized" | "Violated" | "Vulnerable" | "Weak" | "Withdrawn" | "Worried" | "Worthless">;
     
+    InteractionContext: EnumViewer<'InteractionContext', "Research" | "Sales" | "Support" | "Internal" | "Debrief">;
+    
 
     constructor() {
         this.tb = new _TypeBuilder({
@@ -355,7 +357,7 @@ export default class TypeBuilder {
             "ActionButton","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","SectionSynthesis","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
-            "BBValues","Emotions",
+            "BBValues","Emotions","InteractionContext",
           ]),
           runtime: DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME
         });
@@ -505,7 +507,7 @@ export default class TypeBuilder {
         ]);
         
         this.Extraction = this.tb.classViewer("Extraction", [
-          "people","evidence","facet_mentions","scenes",
+          "people","evidence","facet_mentions","scenes","interaction_context","context_confidence","context_reasoning",
         ]);
         
         this.FacetCatalog = this.tb.classViewer("FacetCatalog", [
@@ -999,6 +1001,10 @@ export default class TypeBuilder {
         
         this.Emotions = this.tb.enumViewer("Emotions", [
           "Abandoned","Accepted","Aggressive","Amazed","Angry","Annoyed","Anxious","Apathetic","Appalled","Aroused","Ashamed","Astonished","Awe","Awful","Bad","Betrayed","Bitter","Bored","Busy","Cheeky","Confident","Confused","Content","Courageous","Creative","Critical","Curious","Depressed","Despair","Detestable","Disappointed","Disapproving","Disgusted","Disillusioned","Dismayed","Dismissive","Disrespected","Distant","Eager","Embarrassed","Empty","Energetic","Excited","Excluded","Exposed","Fearful","Fragile","Free","Frightened","Frustrated","Furious","Grief","Guilty","Happy","Helpless","Hesitant","Hopeful","Horrified","Hostile","Humiliated","Hurt","Inadequate","Indifferent","Indignant","Inferior","Infuriated","Inquisitive","Insecure","Insignificant","Inspired","Interested","Intimate","Isolated","Jealous","Joyful","Judgmental","Let_down","Lonely","Loving","Mad","Nauseated","Nervous","Numb","Optimistic","Out_of_control","Overwhelmed","Peaceful","Perplexed","Persecuted","Playful","Powerful","Powerless","Pressured","Proud","Provoked","Rejected","Remorseful","Repelled","Resentful","Respected","Revolted","Ridiculed","Rushed","Sad","Scared","Sensitive","Shocked","Skeptical","Sleepy","Startled","Stressed","Successful","Surprised","Thankful","Threatened","Tired","Trusting","Unfocussed","Valued","Victimized","Violated","Vulnerable","Weak","Withdrawn","Worried","Worthless",
+        ]);
+        
+        this.InteractionContext = this.tb.enumViewer("InteractionContext", [
+          "Research","Sales","Support","Internal","Debrief",
         ]);
         
     }

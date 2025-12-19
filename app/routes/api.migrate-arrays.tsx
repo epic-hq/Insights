@@ -11,7 +11,7 @@ import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrate
 export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// User already authenticated by middleware, get from context instead of making API call
-		const user = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request)
 		const { client: supabase } = getServerClient(request)
 
 		if (!user) {

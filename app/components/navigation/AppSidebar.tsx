@@ -249,11 +249,13 @@ export function AppSidebar() {
 		| "deals"
 		| "contacts"
 		| "opportunities"
+		| "highPriorityTasks"
 	> = {
 		// Main navigation
 		conversations: "encounters", // Conversations = encounters/interviews count
 		insights: "themes", // Insights = themes count (renamed from Topics)
 		content: "content", // Content = conversations + notes + files
+		tasks: "highPriorityTasks", // Tasks = high priority tasks count
 
 		relationships: "people",
 
@@ -298,10 +300,16 @@ export function AppSidebar() {
 
 	const resolveItemState = (itemKey: string) => {
 		if (itemKey === "insights") {
-			return { locked: insightsLocked, hint: insightsLocked ? "Add content to unlock" : undefined }
+			return {
+				locked: insightsLocked,
+				hint: insightsLocked ? "Add content to unlock" : undefined,
+			}
 		}
 		if (itemKey === "lenses") {
-			return { locked: lensesLocked, hint: lensesLocked ? "Generate insights first" : undefined }
+			return {
+				locked: lensesLocked,
+				hint: lensesLocked ? "Generate insights first" : undefined,
+			}
 		}
 
 		return { locked: false, hint: undefined }
@@ -363,12 +371,7 @@ export function AppSidebar() {
 									return (
 										<SidebarMenuItem key={item.key} className="py-0.5">
 											{href ? (
-												<SidebarMenuButton
-													asChild
-													isActive={isActive}
-													tooltip={tooltip}
-													showTooltipWhenExpanded
-												>
+												<SidebarMenuButton asChild isActive={isActive} tooltip={tooltip} showTooltipWhenExpanded>
 													<NavLink to={href} className="flex items-center gap-2">
 														<item.icon />
 														{renderLabel(item.title, hint)}
@@ -440,12 +443,7 @@ export function AppSidebar() {
 						return (
 							<SidebarMenuItem key={item.key} className="py-0.5">
 								{href ? (
-									<SidebarMenuButton
-										asChild
-										isActive={isActive}
-										tooltip={tooltip}
-										showTooltipWhenExpanded
-									>
+									<SidebarMenuButton asChild isActive={isActive} tooltip={tooltip} showTooltipWhenExpanded>
 										<NavLink to={href} className="flex items-center gap-2">
 											<item.icon />
 											<span>{item.title}</span>

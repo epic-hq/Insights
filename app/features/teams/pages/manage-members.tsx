@@ -86,7 +86,7 @@ type ActiveShareLink = {
 }
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client } = getServerClient(request)
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) throw new Response("Unauthorized", { status: 401 })
 
 	const accountId = params.accountId as string | undefined
@@ -174,14 +174,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const normalizedAccount = account
 		? {
-			account_id: accountId,
-			name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
-			personal_account: Boolean(
-				(account as Record<string, unknown>)?.personal_account ??
-				(account as Record<string, unknown>)?.personalAccount
-			),
-			account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
-		}
+				account_id: accountId,
+				name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
+				personal_account: Boolean(
+					(account as Record<string, unknown>)?.personal_account ??
+						(account as Record<string, unknown>)?.personalAccount
+				),
+				account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
+			}
 		: null
 
 	let members: MembersRow[] = []
@@ -272,7 +272,7 @@ const RevokeShareLinkSchema = z.object({
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	const { client } = getServerClient(request)
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) return new Response("Unauthorized", { status: 401 })
 	const accountId = params.accountId as string | undefined
 	if (!accountId) return new Response("Missing accountId", { status: 400 })
@@ -328,7 +328,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					) {
 						teamName = accountData.name
 					}
-				} catch { }
+				} catch {}
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({
@@ -432,7 +432,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			) {
 				teamName = accountData.name
 			}
-		} catch { }
+		} catch {}
 
 		// Create a new invitation (replaces the old one since invitee_email is unique per account)
 		const result = await dbCreateInvitation({
@@ -481,7 +481,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	}
 
 	if (intent === "revokeShareLink") {
-		const submission = parseWithZod(formData, { schema: RevokeShareLinkSchema })
+		const submission = parseWithZod(formData, {
+			schema: RevokeShareLinkSchema,
+		})
 		if (submission.status !== "success") {
 			return data({ ok: false, errors: submission.error }, { status: 400 })
 		}
@@ -495,11 +497,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			.eq("account_id", accountId)
 
 		if (updateError) {
-			consola.error("[MANAGE TEAM] Failed to revoke share link", { interviewId, error: updateError })
+			consola.error("[MANAGE TEAM] Failed to revoke share link", {
+				interviewId,
+				error: updateError,
+			})
 			return data({ ok: false, message: updateError.message }, { status: 500 })
 		}
 
-		consola.info("[MANAGE TEAM] Share link revoked", { interviewId, accountId })
+		consola.info("[MANAGE TEAM] Share link revoked", {
+			interviewId,
+			accountId,
+		})
 		return data({ ok: true, revoked: true })
 	}
 

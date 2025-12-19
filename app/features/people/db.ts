@@ -7,11 +7,13 @@ export const getPeople = async ({
 	accountId,
 	projectId,
 	scope = "project",
+	includeInternal = false,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
 	projectId: string
 	scope?: "project" | "account"
+	includeInternal?: boolean
 }) => {
 	// Build select string conditionally based on scope
 	const baseSelect = `
@@ -73,6 +75,10 @@ export const getPeople = async ({
 
 	// Build query based on scope
 	let query = supabase.from("people").select(baseSelect).eq("account_id", accountId)
+
+	if (!includeInternal) {
+		query = query.or("person_type.is.null,person_type.neq.internal")
+	}
 
 	// Filter by project using the project_id column directly
 	// NOTE: We use people.project_id instead of project_people junction table
@@ -175,7 +181,7 @@ export const getPersonById = async ({
 				)
 			)
 		`)
-		.eq("project_id", projectId)
+		.eq("account_id", accountId)
 		.eq("id", id)
 		.single()
 
@@ -196,24 +202,6 @@ export const getPersonById = async ({
 			hint: supabaseError?.hint,
 			code: supabaseError?.code,
 		})
-
-		// Debug: try to fetch without project_id filter to see if person exists
-		const { data: debugPerson } = await supabase
-			.from("people")
-			.select("id, project_id, firstname, account_id")
-			.eq("id", id)
-			.maybeSingle()
-
-		if (debugPerson) {
-			consola.error("getPersonById DEBUG - person exists with different project_id:", {
-				personId: id,
-				expectedProjectId: projectId,
-				actualProjectId: debugPerson.project_id,
-				accountId: debugPerson.account_id,
-			})
-		} else {
-			consola.error("getPersonById DEBUG - person does not exist at all:", { id })
-		}
 
 		throw new Response("Failed to load person", { status: 500 })
 	}

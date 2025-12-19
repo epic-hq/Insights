@@ -10,7 +10,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	// Auth + DB client for actions
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
 	}

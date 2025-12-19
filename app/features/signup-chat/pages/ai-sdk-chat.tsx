@@ -23,7 +23,7 @@ import { SignupDataWatcher } from "../components/SignupDataWatcher"
 import type { Route } from "./+types/ai-sdk-chat"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
 	}

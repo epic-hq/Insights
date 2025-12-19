@@ -6,7 +6,7 @@ import { mastra } from "~/mastra"
 export async function loader({ request }: LoaderFunctionArgs) {
 	try {
 		// Get authenticated user
-		const user = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request)
 		if (!user) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}

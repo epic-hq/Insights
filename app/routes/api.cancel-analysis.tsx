@@ -25,7 +25,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const claims = await getAuthenticatedUser(request)
+		const { user: claims } = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
@@ -81,11 +81,16 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		consola.info(`Canceled analysis for interview ${interviewId}`)
 
-		return Response.json({ success: true, message: "Analysis canceled successfully" })
+		return Response.json({
+			success: true,
+			message: "Analysis canceled successfully",
+		})
 	} catch (error) {
 		consola.error("Cancel analysis API error:", error)
 		return Response.json(
-			{ error: error instanceof Error ? error.message : "Failed to cancel analysis" },
+			{
+				error: error instanceof Error ? error.message : "Failed to cancel analysis",
+			},
 			{ status: 500 }
 		)
 	}

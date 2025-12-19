@@ -1,4 +1,4 @@
-import { Archive, EyeOff, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react"
+import { Archive, EyeOff, MessageCircle } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -18,10 +18,17 @@ interface EntityInteractionPanelProps {
 	entityType: EntityType
 	entityId: string
 	className?: string
+	/** Start with comments section expanded */
+	defaultOpen?: boolean
 }
 
-export function EntityInteractionPanel({ entityType, entityId, className }: EntityInteractionPanelProps) {
-	const [showComments, setShowComments] = useState(false)
+export function EntityInteractionPanel({
+	entityType,
+	entityId,
+	className,
+	defaultOpen = false,
+}: EntityInteractionPanelProps) {
+	const [showComments, setShowComments] = useState(defaultOpen)
 	const [hasAutoExpanded, setHasAutoExpanded] = useState(false)
 	const [newComment, setNewComment] = useState("")
 	const [currentMentions, setCurrentMentions] = useState<Mention[]>([])
@@ -33,17 +40,7 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 	const { accountId, projectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
 
-	const {
-		annotations,
-		voteCounts,
-		userVote,
-		userFlags,
-		submitAnnotation,
-		submitVote,
-		submitFlag,
-		isLoading,
-		refetchAnnotations,
-	} = useEntityAnnotations({
+	const { annotations, userFlags, submitAnnotation, submitFlag, refetchAnnotations } = useEntityAnnotations({
 		entityType,
 		entityId,
 	})
@@ -82,15 +79,6 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 
 	const toggleComments = () => setShowComments((prev) => !prev)
 
-	const handleVote = (voteType: "upvote" | "downvote") => {
-		const voteValue = voteType === "upvote" ? 1 : -1
-		if (userVote?.vote_value === voteValue) {
-			submitVote({ _action: "remove" })
-		} else {
-			submitVote({ vote_value: voteValue })
-		}
-	}
-
 	const handleAddComment = async () => {
 		if (!newComment.trim()) return
 		setIsSubmittingComment(true)
@@ -121,8 +109,6 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 		})
 	}
 
-	const upvotes = voteCounts?.upvotes || 0
-	const downvotes = voteCounts?.downvotes || 0
 	const comments: AnnotationComment[] =
 		(annotations?.filter(
 			(a: Annotation): a is AnnotationComment => a.annotation_type === "comment"
@@ -148,32 +134,6 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 			)}
 		>
 			<div className="mb-2 flex items-center gap-2">
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => handleVote("upvote")}
-					className={cn(
-						"flex items-center gap-1 hover:bg-green-50",
-						userVote?.vote_value === 1 ? "bg-green-50 text-green-700" : "text-green-600 hover:text-green-700"
-					)}
-					disabled={isLoading}
-				>
-					<ThumbsUp className="h-4 w-4" />
-					<span className="font-medium text-sm">{upvotes}</span>
-				</Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => handleVote("downvote")}
-					className={cn(
-						"flex items-center gap-1 hover:bg-red-50",
-						userVote?.vote_value === -1 ? "bg-red-50 text-red-700" : "text-red-600 hover:text-red-700"
-					)}
-					disabled={isLoading}
-				>
-					<ThumbsDown className="h-4 w-4" />
-					<span className="font-medium text-sm">{downvotes}</span>
-				</Button>
 				<Button
 					variant="ghost"
 					size="sm"

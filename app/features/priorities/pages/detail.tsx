@@ -515,6 +515,7 @@ function EditableField({
 	field,
 	value,
 	multiline = false,
+	markdown = false,
 	textClassName = "text-sm",
 	inputClassName = "text-sm",
 }: {
@@ -522,6 +523,7 @@ function EditableField({
 	field: string
 	value: string
 	multiline?: boolean
+	markdown?: boolean
 	textClassName?: string
 	inputClassName?: string
 }) {
@@ -545,6 +547,7 @@ function EditableField({
 			textClassName={textClassName}
 			inputClassName={inputClassName}
 			multiline={multiline}
+			markdown={markdown}
 			autoSize={true}
 			placeholder={`Add ${field}...`}
 		/>
@@ -1528,7 +1531,7 @@ export default function TaskDetailPage() {
 							<CardTitle className="text-base">Description</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<EditableField taskId={task.id} field="description" value={task.description || ""} multiline />
+							<EditableField taskId={task.id} field="description" value={task.description || ""} multiline markdown />
 						</CardContent>
 					</Card>
 

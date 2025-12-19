@@ -1,5 +1,6 @@
 import { CheckCircle, File, Link2, Mic, PenLine, Search, Sparkles, Upload, UserPlus, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { Button } from "~/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
@@ -25,13 +26,31 @@ interface UploadScreenProps {
 	onUploadFromUrl: (url: string, personId?: string) => Promise<void>
 	onBack: () => void
 	projectId?: string
+	accountId?: string
 	error?: string
 }
 
 type UploadStep = "select" | "associate"
 type ActionType = "upload" | "record"
+type SelectablePerson =
+	| (Person & { isMember?: false })
+	| {
+			id: string
+			name: string
+			company?: string | null
+			isMember: true
+			user_id: string
+			email?: string | null
+	  }
 
-export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectId, error }: UploadScreenProps) {
+export default function UploadScreen({
+	onNext,
+	onUploadFromUrl,
+	onBack,
+	projectId,
+	accountId,
+	error,
+}: UploadScreenProps) {
 	// File/URL state
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [urlToUpload, setUrlToUpload] = useState("")
@@ -49,12 +68,16 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 	// Person association state - supports multiple people
 	const [searchQuery, setSearchQuery] = useState("")
 	const [people, setPeople] = useState<Person[]>([])
+	const [members, setMembers] = useState<Array<{ user_id: string; name: string; email: string | null }>>([])
 	const [isLoadingPeople, setIsLoadingPeople] = useState(false)
-	const [selectedPeople, setSelectedPeople] = useState<Person[]>([])
+	const [selectedPeople, setSelectedPeople] = useState<SelectablePerson[]>([])
 	const [showCreatePerson, setShowCreatePerson] = useState(false)
 	const [newPersonFirstName, setNewPersonFirstName] = useState("")
 	const [newPersonLastName, setNewPersonLastName] = useState("")
 	const [newPersonCompany, setNewPersonCompany] = useState("")
+	const [matchingPeople, setMatchingPeople] = useState<Person[]>([])
+	const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
+	const [duplicateError, setDuplicateError] = useState<string | null>(null)
 
 	// Dialogs
 	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
@@ -159,23 +182,93 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 
 		try {
 			// Collect all person IDs (existing selections + newly created)
-			const personIds: string[] = selectedPeople.map((p) => p.id)
+			const personIds: string[] = []
 
-			// Create new person if needed
-			if (showCreatePerson && newPersonFirstName.trim()) {
+			// Ensure member selections have a person row
+			if (accountId && projectId && selectedPeople.length > 0) {
+				for (const sel of selectedPeople) {
+					if ((sel as any).isMember) {
+						const memberSel = sel as Extract<SelectablePerson, { isMember: true }>
+						// Ensure a person row exists for this team member: find, otherwise insert
+						const [first, ...rest] = (memberSel.name || "").split(/\s+/).filter(Boolean)
+						const last = rest.length ? rest.join(" ") : null
+
+						const { data: existingPerson, error: lookupErr } = await supabase
+							.from("people")
+							.select("id")
+							.eq("account_id", accountId)
+							.eq("user_id", memberSel.user_id)
+							.maybeSingle()
+
+						if (lookupErr) {
+							console.error("[UploadScreen] Failed to lookup person for team member:", memberSel.name, lookupErr)
+							toast.error(`Could not link ${memberSel.name}`)
+							continue
+						}
+
+						if (existingPerson?.id) {
+							personIds.push(existingPerson.id)
+							continue
+						}
+
+						const insertPayload = {
+							account_id: accountId,
+							project_id: projectId,
+							user_id: memberSel.user_id,
+							person_type: "internal" as const,
+							firstname: first || null,
+							lastname: last,
+							company: memberSel.company ?? null,
+							primary_email: memberSel.email ?? null,
+						}
+						const { data: inserted, error: insertErr } = await supabase
+							.from("people")
+							.insert(insertPayload)
+							.select("id")
+							.single()
+
+						if (insertErr || !inserted?.id) {
+							console.error("[UploadScreen] Failed to insert person for team member:", memberSel.name, insertErr)
+							toast.error(`Could not link ${memberSel.name}`)
+						} else {
+							personIds.push(inserted.id)
+						}
+					} else {
+						personIds.push(sel.id)
+					}
+				}
+			} else {
+				personIds.push(...selectedPeople.map((p) => p.id))
+			}
+
+			// Create new person if needed (immediately, not deferred)
+			if (showCreatePerson && newPersonFirstName.trim() && accountId) {
+				const firstName = newPersonFirstName.trim()
+				const lastName = newPersonLastName.trim() || null
+				const displayName = lastName ? `${firstName} ${lastName}` : firstName
 				const { data, error } = await supabase
 					.from("people")
 					.insert({
-						name: `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim(),
+						firstname: firstName,
+						lastname: lastName,
+						account_id: accountId,
 						project_id: projectId,
 						company: newPersonCompany.trim() || null,
 					})
 					.select()
 					.single()
 
-				if (!error && data) {
+				if (error) {
+					console.error("[UploadScreen] Failed to create person:", error)
+					toast.error("Failed to create person")
+				} else if (data) {
+					console.log("[UploadScreen] Created person:", data.id, displayName)
 					personIds.push(data.id)
+					toast.success(`Created "${displayName}"`)
 				}
+			} else if (showCreatePerson && newPersonFirstName.trim()) {
+				console.error("[UploadScreen] Cannot create person: no accountId available")
+				toast.error("Cannot create person: missing account context")
 			}
 
 			// Handle recording - pass all person IDs
@@ -214,6 +307,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 		newPersonLastName,
 		newPersonCompany,
 		projectId,
+		accountId,
 		supabase,
 		getFileType,
 		onNext,
@@ -238,19 +332,132 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 
 	// Fetch people when entering association step
 	useEffect(() => {
-		if (uploadStep === "associate" && projectId && !isLoadingPeople && people.length === 0) {
+		console.log("[UploadScreen] useEffect triggered:", {
+			uploadStep,
+			isLoadingPeople,
+			accountId,
+			projectId,
+			peopleLength: people.length,
+		})
+		if (uploadStep !== "associate" || isLoadingPeople) return
+		// Need either accountId or projectId to fetch people
+		if (!accountId && !projectId) return
+
+		const load = async () => {
 			setIsLoadingPeople(true)
-			supabase
-				.from("people")
-				.select("*")
-				.eq("project_id", projectId)
-				.order("name")
-				.then(({ data }) => {
-					if (data) setPeople(data as Person[])
+			try {
+				// Use accountId prop, or fetch from project if not available
+				let effectiveAccountId = accountId
+				if (!effectiveAccountId && projectId) {
+					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle()
+					effectiveAccountId = proj?.account_id ?? undefined
+				}
+
+				if (!effectiveAccountId) {
+					console.warn("[UploadScreen] No accountId available for fetching people")
+					return
+				}
+
+				console.log("[UploadScreen] Fetching people for accountId:", effectiveAccountId)
+				const { data, error: fetchError } = await supabase
+					.from("people")
+					.select("id, name, company, person_type")
+					.eq("account_id", effectiveAccountId)
+					.order("name")
+					.limit(50)
+
+				console.log("[UploadScreen] People fetch result:", {
+					count: data?.length ?? 0,
+					error: fetchError,
+					sample: data?.slice(0, 3),
 				})
-				.finally(() => setIsLoadingPeople(false))
+
+				if (data) setPeople(data as Person[])
+
+				const { data: memberRows } = await supabase.rpc("get_account_members", {
+					account_id: effectiveAccountId,
+				})
+				if (Array.isArray(memberRows)) {
+					setMembers(
+						memberRows.map((m: any) => ({
+							user_id: m.user_id,
+							name: m.name || m.email || "Team member",
+							email: m.email ?? null,
+						}))
+					)
+				}
+			} finally {
+				setIsLoadingPeople(false)
+			}
 		}
-	}, [uploadStep, projectId, isLoadingPeople, people.length, supabase])
+
+		if (people.length === 0) {
+			console.log("[UploadScreen] Calling load() because people.length === 0")
+			load()
+		} else {
+			console.log("[UploadScreen] Skipping load() because people.length =", people.length)
+		}
+	}, [uploadStep, people.length, supabase, accountId, projectId, isLoadingPeople])
+
+	// Check for matching people when creating a new person (debounced)
+	useEffect(() => {
+		if (!showCreatePerson || !newPersonFirstName.trim()) {
+			setMatchingPeople([])
+			setDuplicateError(null)
+			return
+		}
+
+		const checkMatches = async () => {
+			setIsCheckingDuplicate(true)
+			setDuplicateError(null)
+
+			try {
+				// Build the name to search for
+				const searchName = `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim().toLowerCase()
+
+				// Get effective accountId
+				let effectiveAccountId = accountId
+				if (!effectiveAccountId && projectId) {
+					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle()
+					effectiveAccountId = proj?.account_id ?? undefined
+				}
+
+				if (!effectiveAccountId) return
+
+				// Search for people with similar names
+				const { data } = await supabase
+					.from("people")
+					.select("id, name, company, person_type")
+					.eq("account_id", effectiveAccountId)
+					.ilike("name", `%${searchName}%`)
+					.limit(5)
+
+				if (data && data.length > 0) {
+					setMatchingPeople(data as Person[])
+
+					// Check for exact duplicate (same name + company)
+					const companyLower = (newPersonCompany.trim() || "").toLowerCase()
+					const exactMatch = data.find(
+						(p) => p.name?.toLowerCase() === searchName && (p.company || "").toLowerCase() === companyLower
+					)
+
+					if (exactMatch) {
+						setDuplicateError(
+							`"${exactMatch.name}"${exactMatch.company ? ` at ${exactMatch.company}` : ""} already exists`
+						)
+					}
+				} else {
+					setMatchingPeople([])
+				}
+			} finally {
+				setIsCheckingDuplicate(false)
+			}
+		}
+
+		// Debounce the check
+		const timer = setTimeout(checkMatches, 300)
+		return () => clearTimeout(timer)
+	}, [showCreatePerson, newPersonFirstName, newPersonLastName, newPersonCompany, accountId, projectId, supabase])
 
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
@@ -260,6 +467,14 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 		: people.slice(0, 8)
+	const filteredMembers =
+		searchQuery.trim().length > 0
+			? members.filter(
+					(m) =>
+						m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						(m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
+				)
+			: members.slice(0, 8)
 
 	// Quick note handler
 	const handleSaveNote = useCallback(
@@ -313,20 +528,22 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 				<div className="relative mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 py-8">
 					{/* Header */}
 					<div className="mb-6 w-full">
-						<button
-							type="button"
-							onClick={handleBack}
-							className="mb-4 flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
-						>
-							<X className="h-4 w-4" />
-							Cancel
-						</button>
-						<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Who is this conversation with?</h2>
-						{!isRecording && contentLabel && (
-							<p className="mt-1 text-muted-foreground text-sm">
-								{selectedFile ? "Uploading" : "Importing"}: {contentLabel}
-							</p>
-						)}
+						<div className="flex flex-row justify-end">
+							<button
+								type="button"
+								onClick={handleBack}
+								className="mb-4 flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
+							>
+								<X className="h-4 w-4" />
+								Cancel
+							</button>
+						</div>
+						<h2 className="font-semibold text-slate-900 text-xl dark:text-white">Link to</h2>
+						{/* {!isRecording && contentLabel && (
+              <p className="mt-1 text-muted-foreground text-sm">
+                {selectedFile ? "Uploading" : "Importing"}: {contentLabel}
+              </p>
+            )} */}
 					</div>
 
 					{/* Person Selection */}
@@ -354,7 +571,8 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 										</p>
 									) : (
 										filteredPeople.map((person) => {
-											const isSelected = selectedPeople.some((p) => p.id === person.id)
+											const isSelected = selectedPeople.some((p) => p.id === person.id && !p.isMember)
+											const isInternal = (person as any).person_type === "internal"
 											return (
 												<button
 													key={person.id}
@@ -375,7 +593,14 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 														<Users className="h-5 w-5" />
 													</div>
 													<div className="min-w-0 flex-1">
-														<p className="truncate font-medium text-sm">{person.name}</p>
+														<div className="flex items-center gap-2">
+															<p className="truncate font-medium text-sm">{person.name}</p>
+															{isInternal && (
+																<span className="inline-flex items-center rounded-full bg-blue-100 px-2 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
+																	Team
+																</span>
+															)}
+														</div>
 														{person.company && (
 															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
 														)}
@@ -384,6 +609,58 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 												</button>
 											)
 										})
+									)}
+
+									{filteredMembers.length > 0 && (
+										<div className="mt-4 space-y-2">
+											<p className="font-semibold text-muted-foreground text-xs uppercase">Internal teammates</p>
+											{filteredMembers.map((member) => {
+												const key = `member-${member.user_id}`
+												const isSelected = selectedPeople.some((p) => p.isMember && p.user_id === member.user_id)
+												return (
+													<button
+														key={key}
+														type="button"
+														onClick={() =>
+															setSelectedPeople((prev) =>
+																isSelected
+																	? prev.filter((p) => !(p.isMember && p.user_id === member.user_id))
+																	: [
+																			...prev,
+																			{
+																				id: key,
+																				isMember: true,
+																				user_id: member.user_id,
+																				name: member.name,
+																				email: member.email,
+																			},
+																		]
+															)
+														}
+														className={cn(
+															"flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all",
+															isSelected
+																? "border-blue-500 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30"
+																: "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+														)}
+													>
+														<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
+															<Users className="h-5 w-5" />
+														</div>
+														<div className="min-w-0 flex-1">
+															<div className="flex items-center gap-2">
+																<p className="truncate font-medium text-sm">{member.name}</p>
+																<span className="inline-flex items-center rounded-full bg-blue-100 px-2 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
+																	Team
+																</span>
+															</div>
+															{member.email && <p className="truncate text-muted-foreground text-xs">{member.email}</p>}
+														</div>
+														{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
+													</button>
+												)
+											})}
+										</div>
 									)}
 								</div>
 
@@ -411,6 +688,8 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 											setNewPersonFirstName("")
 											setNewPersonLastName("")
 											setNewPersonCompany("")
+											setMatchingPeople([])
+											setDuplicateError(null)
 										}}
 										className="text-muted-foreground text-xs hover:text-foreground"
 									>
@@ -435,6 +714,41 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 									value={newPersonCompany}
 									onChange={(e) => setNewPersonCompany(e.target.value)}
 								/>
+
+								{/* Duplicate error */}
+								{duplicateError && <p className="text-red-500 text-sm">{duplicateError}</p>}
+
+								{/* Matching people - user can select instead of creating */}
+								{matchingPeople.length > 0 && !duplicateError && (
+									<div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+										<p className="font-medium text-amber-800 text-xs dark:text-amber-200">
+											Similar people found - select to link instead:
+										</p>
+										{matchingPeople.map((person) => (
+											<button
+												key={person.id}
+												type="button"
+												onClick={() => {
+													setSelectedPeople((prev) => [...prev, person])
+													setShowCreatePerson(false)
+													setNewPersonFirstName("")
+													setNewPersonLastName("")
+													setNewPersonCompany("")
+													setMatchingPeople([])
+												}}
+												className="flex w-full items-center gap-2 rounded border border-amber-300 bg-white p-2 text-left text-sm transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+											>
+												<Users className="h-4 w-4 text-amber-600" />
+												<span>{person.name}</span>
+												{person.company && <span className="text-muted-foreground">at {person.company}</span>}
+											</button>
+										))}
+									</div>
+								)}
+
+								{isCheckingDuplicate && (
+									<p className="text-muted-foreground text-xs">Checking for existing contacts...</p>
+								)}
 							</div>
 						)}
 
@@ -458,7 +772,7 @@ export default function UploadScreen({ onNext, onUploadFromUrl, onBack, projectI
 							<Button
 								className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white"
 								onClick={handleProcessAction}
-								disabled={isSubmitting || (showCreatePerson && !newPersonFirstName.trim())}
+								disabled={isSubmitting || (showCreatePerson && !newPersonFirstName.trim()) || !!duplicateError}
 							>
 								{isSubmitting ? (
 									"Processing..."

@@ -14,12 +14,27 @@ interface PresignRequestBody {
 	filename?: string
 }
 
+function normalizeR2Key(rawKey: string): string {
+	const cleaned = rawKey.trim().replace(/^\/+/, "")
+	const parts = cleaned.split("/").filter(Boolean)
+
+	const knownRoots = ["thumbnails", "interviews", "images"]
+	for (const root of knownRoots) {
+		const idx = parts.indexOf(root)
+		if (idx >= 0) {
+			return parts.slice(idx).join("/")
+		}
+	}
+
+	return cleaned
+}
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
-	const user = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request)
 	if (!user) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 })
 	}
@@ -48,12 +63,19 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	if (!key) {
-		consola.warn("Unable to resolve media key from request", { bodyKey: body.key, bodyMediaUrl: body.mediaUrl })
+		consola.warn("Unable to resolve media key from request", {
+			bodyKey: body.key,
+			bodyMediaUrl: body.mediaUrl,
+		})
 		return Response.json(
-			{ error: "Unable to resolve media key. Provide either 'key' (R2 path) or 'mediaUrl' (full URL or R2 path)" },
+			{
+				error: "Unable to resolve media key. Provide either 'key' (R2 path) or 'mediaUrl' (full URL or R2 path)",
+			},
 			{ status: 400 }
 		)
 	}
+
+	key = normalizeR2Key(key)
 
 	const expiresInSeconds =
 		typeof body.expiresInSeconds === "number" && Number.isFinite(body.expiresInSeconds)

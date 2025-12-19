@@ -14,7 +14,7 @@ import type { Route } from "../+types/root"
 export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
-			const user = await getAuthenticatedUser(request)
+			const { user } = await getAuthenticatedUser(request)
 			if (!user) {
 				throw redirect("/login")
 			}

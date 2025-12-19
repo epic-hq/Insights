@@ -1,143 +1,209 @@
 /**
- * V2 Extract Evidence Task
+ * V2 Extract Evidence Task (inlined)
  *
- * Atomic task that extracts evidence units and people from interview transcript.
- * Fully idempotent - can be safely retried.
+ * Extracts evidence and people from transcript_data, maps BAML person_key to person_id,
+ * normalizes speaker labels, and links interview_people with transcript_key.
  */
 
-import { task } from "@trigger.dev/sdk"
-import consola from "consola"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { extractEvidenceAndPeopleCore, workflowRetryConfig } from "~/utils/processInterview.server"
+import { task } from "@trigger.dev/sdk";
+import consola from "consola";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import {
-	errorMessage,
-	saveWorkflowState,
-	updateAnalysisJobError,
-	updateAnalysisJobProgress,
-} from "./state"
-import type { ExtractEvidencePayload, ExtractEvidenceResult } from "./types"
+  errorMessage,
+  saveWorkflowState,
+  updateAnalysisJobError,
+  updateAnalysisJobProgress,
+} from "./state";
+import type { ExtractEvidencePayload, ExtractEvidenceResult } from "./types";
+import {
+  isPlaceholderPerson,
+  normalizeSpeakerLabel,
+  upsertPersonWithCompanyAwareConflict,
+} from "~/features/interviews/peopleNormalization.server";
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
+import { mapRawPeopleToInterviewLinks } from "./personMapping";
+import { extractEvidenceCore } from "./extractEvidenceCore";
+import type { Database } from "~/../supabase/types";
 
 export const extractEvidenceTaskV2 = task({
-	id: "interview.v2.extract-evidence",
-	retry: workflowRetryConfig,
-	run: async (payload: ExtractEvidencePayload, { ctx }): Promise<ExtractEvidenceResult> => {
-		const { interviewId, fullTranscript, language, analysisJobId } = payload
-		const client = createSupabaseAdminClient()
+  id: "interview.v2.extract-evidence",
+  retry: {
+    maxAttempts: 3,
+    factor: 1.8,
+    minTimeoutInMs: 500,
+    maxTimeoutInMs: 30_000,
+    randomize: false,
+  },
+  maxDuration: 1_800, // allow up to 30 minutes for large transcripts; heartbeats handled by Trigger.dev
+  machine: {
+    preset: "medium-2x", // faster than default for long transcripts
+  },
+  run: async (
+    payload: ExtractEvidencePayload,
+    { ctx },
+  ): Promise<ExtractEvidenceResult> => {
+    const { interviewId, fullTranscript, language, analysisJobId } = payload;
+    const client = createSupabaseAdminClient();
 
-		consola.info("[extractEvidence] Task started with payload:", {
-			interviewId,
-			fullTranscriptLength: fullTranscript?.length ?? 0,
-			language,
-			analysisJobId,
-		})
+    if (!interviewId || interviewId === "undefined") {
+      throw new Error(`Invalid interviewId: ${interviewId}`);
+    }
 
-		// Validate payload
-		if (!interviewId || interviewId === "undefined") {
-			const errorMsg = `Invalid interviewId received: "${interviewId}". ` +
-				`This indicates a bug in the orchestrator or state management. ` +
-				`Full payload: ${JSON.stringify(payload, null, 2)}`
-			consola.error("[extractEvidence]", errorMsg)
-			throw new Error(errorMsg)
-		}
+    try {
+      // Early heartbeat/progress update to keep run active
+      await updateAnalysisJobProgress(client, analysisJobId, {
+        currentStep: "evidence",
+        progress: 40,
+        statusDetail: "Extracting evidence from transcript",
+      });
 
-		try {
-			// Update progress and processing_metadata
-			await updateAnalysisJobProgress(client, analysisJobId, {
-				currentStep: "evidence",
-				progress: 40,
-				statusDetail: "Extracting evidence from transcript",
-			})
+      await client
+        .from("interviews")
+        .update({
+          processing_metadata: {
+            current_step: "evidence",
+            progress: 40,
+            status_detail: "Extracting evidence from transcript",
+            trigger_run_id: ctx.run.id,
+          },
+        })
+        .eq("id", interviewId);
 
-			await client
-				.from("interviews")
-				.update({
-					processing_metadata: {
-						current_step: "evidence",
-						progress: 40,
-						status_detail: "Extracting evidence from transcript",
-						trigger_run_id: ctx.run.id,
-					},
-				})
-				.eq("id", interviewId)
+      const { data: interview, error: interviewError } = await client
+        .from("interviews")
+        .select("*")
+        .eq("id", interviewId)
+        .single();
+      if (interviewError || !interview) {
+        throw new Error(
+          `Interview ${interviewId} not found: ${interviewError?.message}`,
+        );
+      }
 
-			// Load interview data
-			consola.info(`[extractEvidence] Loading interview: ${interviewId}`)
-			const { data: interview, error: interviewError } = await client
-				.from("interviews")
-				.select("*")
-				.eq("id", interviewId)
-				.single()
+      // Clean transcript data
+      const transcriptData = safeSanitizeTranscriptPayload(
+        interview.transcript_formatted as any,
+      );
+      // Call v2 core with people hooks and progress callback for heartbeat safety
+      const extraction = await extractEvidenceCore({
+        db: client as any,
+        metadata: {
+          accountId: interview.account_id,
+          projectId: interview.project_id || undefined,
+        },
+        interviewRecord: interview as any,
+        transcriptData: transcriptData as any,
+        language,
+        fullTranscript,
+        analysisJobId,
+        // Progress callback - keeps task alive during long BAML calls
+        onProgress: async ({ phase, progress, detail }) => {
+          consola.info(
+            `[ExtractEvidence] Progress: ${phase} ${progress}% - ${detail}`,
+          );
+          // Update analysis job progress
+          if (analysisJobId) {
+            await updateAnalysisJobProgress(client, analysisJobId, {
+              currentStep: "evidence",
+              progress: 40 + Math.round(progress * 0.15), // Map 0-100 to 40-55
+              statusDetail: detail,
+            });
+          }
+          // Update interview processing_metadata
+          await client
+            .from("interviews")
+            .update({
+              processing_metadata: {
+                current_step: "evidence",
+                progress: 40 + Math.round(progress * 0.15),
+                status_detail: detail,
+                trigger_run_id: ctx.run.id,
+              },
+            })
+            .eq("id", interviewId);
+        },
+        peopleHooks: {
+          normalizeSpeakerLabel,
+          isPlaceholderPerson,
+          upsertPerson: async (payload) =>
+            upsertPersonWithCompanyAwareConflict(
+              client as any,
+              payload,
+              payload.person_type ?? undefined,
+            ),
+        },
+      });
 
-			if (interviewError || !interview) {
-				throw new Error(`Interview ${interviewId} not found: ${interviewError?.message}`)
-			}
+      // Map raw people to people table and set transcript_key on interview_people
+      const rawPeople = Array.isArray((extraction as any)?.rawPeople)
+        ? ((extraction as any).rawPeople as any[])
+        : [];
+      if (rawPeople.length) {
+        const { speakerLabelByPersonId } = await mapRawPeopleToInterviewLinks({
+          db: client as unknown as SupabaseClient<Database>,
+          rawPeople,
+          accountId: interview.account_id,
+          projectId: interview.project_id,
+        });
 
-			consola.success(`[extractEvidence] Loaded interview: ${interview.id}`)
+        for (const [
+          personId,
+          transcriptKey,
+        ] of speakerLabelByPersonId.entries()) {
+          await client.from("interview_people").upsert(
+            {
+              interview_id: interviewId,
+              person_id: personId,
+              project_id: interview.project_id,
+              transcript_key: transcriptKey,
+            },
+            { onConflict: "interview_id,person_id" },
+          );
+        }
+      }
 
-			// Delete existing evidence for idempotency
-			const { error: deleteError } = await client.from("evidence").delete().eq("interview_id", interviewId)
+      if (analysisJobId) {
+        await saveWorkflowState(client, analysisJobId, {
+          evidenceIds: extraction.insertedEvidenceIds,
+          evidenceUnits: extraction.evidenceUnits,
+          personId: extraction.personData?.id || null,
+          completedSteps: ["upload", "evidence"],
+          currentStep: "evidence",
+          interviewId,
+        });
 
-			if (deleteError) {
-				console.warn(`Failed to delete existing evidence for ${interviewId}:`, deleteError)
-			}
+        await updateAnalysisJobProgress(client, analysisJobId, {
+          progress: 55,
+          statusDetail: `Extracted ${extraction.insertedEvidenceIds.length} evidence units`,
+        });
+      }
 
-			// Extract evidence with timestamps (reuse existing core function)
-			const evidenceResult = await extractEvidenceAndPeopleCore({
-				db: client,
-				metadata: {
-					accountId: interview.account_id,
-					projectId: interview.project_id || undefined,
-				},
-				interviewRecord: interview as any,
-				transcriptData: interview.transcript_formatted as any,
-				language,
-				fullTranscript,
-			})
+      return {
+        evidenceIds: extraction.insertedEvidenceIds,
+        evidenceUnits: extraction.evidenceUnits,
+        personId: extraction.personData?.id || null,
+      };
+    } catch (error) {
+      await client
+        .from("interviews")
+        .update({
+          processing_metadata: {
+            current_step: "evidence",
+            progress: 40,
+            failed_at: new Date().toISOString(),
+            error: errorMessage(error),
+            trigger_run_id: ctx.run.id,
+          },
+        })
+        .eq("id", interviewId);
 
-			// Update workflow state
-			if (analysisJobId) {
-				await saveWorkflowState(client, analysisJobId, {
-					evidenceIds: evidenceResult.insertedEvidenceIds,
-					evidenceUnits: evidenceResult.evidenceUnits,
-					personId: evidenceResult.personData?.id || null,
-					completedSteps: ["upload", "evidence"],
-					currentStep: "evidence",
-					interviewId,
-				})
+      await updateAnalysisJobError(client, analysisJobId, {
+        currentStep: "evidence",
+        error: errorMessage(error),
+      });
 
-				// Update evidence extraction progress
-				await updateAnalysisJobProgress(client, analysisJobId, {
-					progress: 55,
-					statusDetail: `Extracted ${evidenceResult.insertedEvidenceIds.length} evidence units`,
-				})
-			}
-
-			return {
-				evidenceIds: evidenceResult.insertedEvidenceIds,
-				evidenceUnits: evidenceResult.evidenceUnits,
-				personId: evidenceResult.personData?.id || null,
-			}
-		} catch (error) {
-			// Update processing_metadata on error
-			await client
-				.from("interviews")
-				.update({
-					processing_metadata: {
-						current_step: "evidence",
-						progress: 40,
-						failed_at: new Date().toISOString(),
-						error: errorMessage(error),
-						trigger_run_id: ctx.run.id,
-					},
-				})
-				.eq("id", interviewId)
-
-			await updateAnalysisJobError(client, analysisJobId, {
-				currentStep: "evidence",
-				error: errorMessage(error),
-			})
-
-			throw error
-		}
-	},
-})
+      throw error;
+    }
+  },
+});

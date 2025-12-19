@@ -296,6 +296,14 @@ export enum Emotions {
   Worthless = "Worthless",
 }
 
+export enum InteractionContext {
+  Research = "Research",
+  Sales = "Sales",
+  Support = "Support",
+  Internal = "Internal",
+  Debrief = "Debrief",
+}
+
 export interface ActionButton {
   label: string
   action_type: string
@@ -656,6 +664,9 @@ export interface Extraction {
   evidence: EvidenceTurn[]
   facet_mentions: FacetMention[]
   scenes: Scene[]
+  interaction_context: InteractionContext
+  context_confidence: number
+  context_reasoning: string
   
 }
 

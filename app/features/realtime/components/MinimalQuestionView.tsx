@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Eye, Filter, X } from "lucide-react"
+import { ChevronDown, ChevronUp, Eye, Filter, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
@@ -33,6 +33,7 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 	const [loading, setLoading] = useState(true)
 	const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
 	const [mustHavesOnly, setMustHavesOnly] = useState(false)
+	const [isCollapsed, setIsCollapsed] = useState(false)
 
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
@@ -43,7 +44,8 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 				setLoading(true)
 				const { data, error } = await supabase
 					.from("project_answers")
-					.select(`
+					.select(
+						`
 						id, 
 						question_id, 
 						question_text, 
@@ -51,7 +53,8 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 						order_index,
 						prompt_id,
 						interview_prompts(is_must_have)
-					`)
+					`
+					)
 					.eq("project_id", projectId)
 					.eq("interview_id", interviewId)
 					.order("order_index", { ascending: true, nullsFirst: true })
@@ -161,7 +164,10 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 				<div
 					key={q.projectAnswerId}
 					className={`touch-pan-y rounded-md border p-2 ${q.status === "answered" || q.status === "skipped" ? "opacity-60" : ""}`}
-					style={{ transform: "translateX(0px)", transition: "transform 0.2s ease-out" }}
+					style={{
+						transform: "translateX(0px)",
+						transition: "transform 0.2s ease-out",
+					}}
 				>
 					<div className="space-y-1">
 						<div className="flex items-start gap-2">
@@ -229,9 +235,16 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 		<Card className="flex h-full flex-col border-0 px-0 md:border md:px-4">
 			<CardHeader className="flex-shrink-0 px-2 sm:px-2 md:px-2">
 				<CardTitle className="flex items-center justify-between gap-2 pr-2">
-					<span>Prompts</span>
+					<button
+						type="button"
+						onClick={() => setIsCollapsed(!isCollapsed)}
+						className="flex items-center gap-1 hover:text-foreground"
+					>
+						{isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+						<span>Prompts</span>
+					</button>
 					<div className="flex items-center gap-2">
-						{mustHaveCount > 0 && (
+						{!isCollapsed && mustHaveCount > 0 && (
 							<TooltipProvider>
 								<Tooltip>
 									<TooltipTrigger asChild>
@@ -262,15 +275,17 @@ function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProp
 					</div>
 				</CardTitle>
 			</CardHeader>
-			<CardContent className="flex-1 space-y-3 overflow-y-auto px-0 md:px-2">
-				{loading && <div className="text-muted-foreground text-sm">Loading…</div>}
-				{!loading && allQuestions.length === 0 && (
-					<div className="text-muted-foreground text-sm">
-						No questions available yet. <Link to={routes.projects.setup()}>Configure</Link>
-					</div>
-				)}
-				{!loading && allQuestions.length > 0 && renderedQuestions}
-			</CardContent>
+			{!isCollapsed && (
+				<CardContent className="flex-1 space-y-3 overflow-y-auto px-0 md:px-2">
+					{loading && <div className="text-muted-foreground text-sm">Loading…</div>}
+					{!loading && allQuestions.length === 0 && (
+						<div className="text-muted-foreground text-sm">
+							No questions available yet. <Link to={routes.projects.setup()}>Configure</Link>
+						</div>
+					)}
+					{!loading && allQuestions.length > 0 && renderedQuestions}
+				</CardContent>
+			)}
 		</Card>
 	)
 }

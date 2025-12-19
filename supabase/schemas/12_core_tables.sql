@@ -44,6 +44,8 @@ create table if not exists organizations (
 create table if not exists people (
   id uuid primary key default gen_random_uuid(),
   account_id uuid references accounts.accounts (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete set null,
+  person_type text,
   firstname text,
   lastname text,
   name text generated always as (
@@ -68,7 +70,7 @@ create table if not exists people (
   role text,
   title text,
   industry text,
-  company text,
+  company text not null default '',
   segment text,
   image_url text,
   age int,
@@ -95,6 +97,10 @@ create table if not exists people (
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_people_account_id ON public.people(account_id);
+CREATE INDEX IF NOT EXISTS idx_people_user_id ON public.people(user_id) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_people_account_user
+  ON public.people (account_id, user_id)
+  WHERE user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_people_default_organization
     ON public.people (default_organization_id)
     WHERE default_organization_id IS NOT NULL;
@@ -102,6 +108,9 @@ CREATE INDEX IF NOT EXISTS idx_people_default_organization
 -- Project scoping support
 CREATE INDEX IF NOT EXISTS idx_people_account_project_created
     ON public.people (account_id, project_id, created_at);
+
+COMMENT ON COLUMN public.people.person_type IS 'Type of person: internal, external, partner, unknown';
+COMMENT ON COLUMN public.people.user_id IS 'Auth user ID for internal people';
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_people_timestamp
@@ -117,9 +126,16 @@ EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
 
 create index if not exists idx_people_account_id on public.people using btree (account_id) tablespace pg_default;
 
--- Unique index for deduplication by normalized name within account
-create unique index if not exists uniq_people_account_namehash
-  on public.people (account_id, name_hash);
+-- Unique index for deduplication by normalized name+company within account
+-- Allows same name at different companies (e.g., John Rubey at Testco vs John Rubey at Saxco)
+-- Expression index for constraint enforcement (handles null company normalization)
+create unique index if not exists uniq_people_account_name_company
+  on public.people (account_id, name_hash, COALESCE(lower(company), ''));
+
+-- Plain column index required for ON CONFLICT clause (PostgreSQL limitation)
+-- Code must normalize company to lowercase before insert for this to work correctly
+create unique index if not exists uniq_people_account_name_company_plain
+  on public.people (account_id, name_hash, company);
 
 -- enable RLS on the table
 ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;

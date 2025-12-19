@@ -14,7 +14,8 @@ import { task } from "@trigger.dev/sdk"
 import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
-import { uploadMediaAndTranscribeCore, workflowRetryConfig } from "~/utils/processInterview.server"
+import { workflowRetryConfig } from "./config"
+import { uploadMediaAndTranscribeCore } from "./uploadCore"
 import { createR2PresignedUrl } from "~/utils/r2.server"
 import {
 	errorMessage,
