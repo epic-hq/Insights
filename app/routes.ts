@@ -214,6 +214,7 @@ const routes = [
 	route("api/link-interview-participant", "./routes/api.link-interview-participant.tsx"),
 	route("api/generate-thumbnails", "./routes/api.generate-thumbnails.tsx"),
 	route("api/index-note", "./routes/api.index-note.tsx"),
+	route("api/update-analysis-settings", "./routes/api.update-analysis-settings.tsx"),
 	// Lens architecture test routes
 	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
 	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),

@@ -299,6 +299,90 @@ export const finalizeInterviewTaskV2 = task({
         // Don't fail the task if analytics fail
       }
 
+      // 4. Auto-consolidate themes if we've reached the threshold
+      if (metadata?.projectId && metadata?.accountId) {
+        try {
+          // Check if auto-consolidation should run
+          const { count: readyInterviewCount } = await client
+            .from("interviews")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", metadata.projectId)
+            .eq("status", "ready");
+
+          const { count: evidenceCount } = await client
+            .from("evidence")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", metadata.projectId);
+
+          // Check project settings for consolidation state
+          const { data: projectData } = await client
+            .from("projects")
+            .select("project_settings")
+            .eq("id", metadata.projectId)
+            .single();
+
+          const projectSettings =
+            (projectData?.project_settings as Record<string, unknown>) || {};
+          const hasConsolidated = Boolean(
+            projectSettings.insights_consolidated_at,
+          );
+
+          // Auto-consolidate at 3 interviews OR 15 evidence (whichever comes first)
+          // Only run once automatically (user can manually re-run)
+          const shouldAutoConsolidate =
+            !hasConsolidated &&
+            ((readyInterviewCount ?? 0) >= 3 || (evidenceCount ?? 0) >= 15);
+
+          if (shouldAutoConsolidate) {
+            consola.info(
+              `[finalizeInterview] Triggering auto-consolidation for project ${metadata.projectId}`,
+              { readyInterviewCount, evidenceCount },
+            );
+
+            // Get similarity threshold from project settings (default 0.85)
+            const similarityThreshold =
+              ((projectSettings?.analysis as Record<string, unknown>)
+                ?.theme_dedup_threshold as number) ?? 0.85;
+
+            // Import and call the proper consolidation function (merges duplicates)
+            const { consolidateExistingThemes } =
+              await import("~/features/themes/db.consolidate.server");
+            const result = await consolidateExistingThemes({
+              supabase: client,
+              projectId: metadata.projectId,
+              similarityThreshold,
+            });
+
+            // Mark consolidation as done in project settings
+            await client
+              .from("projects")
+              .update({
+                project_settings: {
+                  ...projectSettings,
+                  insights_consolidated_at: new Date().toISOString(),
+                  auto_consolidation_result: {
+                    clusters_found: result.clustersFound,
+                    themes_deleted: result.themesDeleted,
+                    evidence_moved: result.evidenceMoved,
+                    triggered_at_interview_count: readyInterviewCount,
+                  },
+                },
+              })
+              .eq("id", metadata.projectId);
+
+            consola.success(
+              `[finalizeInterview] Auto-consolidated: ${result.clustersFound} clusters, ${result.themesDeleted} themes merged, ${result.evidenceMoved} evidence moved`,
+            );
+          }
+        } catch (consolidateError) {
+          consola.warn(
+            "[finalizeInterview] Auto-consolidation failed:",
+            consolidateError,
+          );
+          // Don't fail the task if consolidation fails
+        }
+      }
+
       // Auto-link uploader as interviewer if userId is provided
       if (metadata?.userId && metadata?.accountId) {
         try {

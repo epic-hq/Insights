@@ -23,6 +23,44 @@ import {
   ensureInterviewInterviewerLink,
   resolveInternalPerson,
 } from "~/features/people/services/internalPeople.server";
+// Extracted modules for cleaner separation of concerns
+import {
+  coerceSeconds,
+  normalizeTokens,
+  normalizeForSearchText,
+  buildWordTimeline,
+  buildSegmentTimeline,
+  findStartSecondsForSnippet,
+  type WordTimelineEntry,
+  type SegmentTimelineEntry,
+} from "./timestampMapping";
+import {
+  normalizeFacetValue,
+  sanitizeFacetLabel,
+  buildFacetLookup,
+  matchFacetFromLookup,
+  resolveFacetCatalog,
+  type FacetLookup,
+  type EvidenceFacetRow,
+  type PersonFacetMention,
+} from "./facetProcessing";
+import {
+  isGenericPersonLabel,
+  parseFullName,
+  generateFallbackPersonName,
+  humanizeKey,
+  sanitizePersonKey,
+  coerceString,
+  resolveName,
+  type NormalizedParticipant,
+  type NameResolutionSource,
+} from "./peopleResolution";
+import {
+  groupPersonaFacetsByPersonKey,
+  type PersonaFacet,
+  type PersonaSynthesisResult,
+  type PersonScaleObservation,
+} from "./personaSynthesis";
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server";
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server";
 import {
@@ -179,293 +217,6 @@ function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
   return stringHash(basis);
 }
 
-type WordTimelineEntry = { text: string; start: number };
-type SegmentTimelineEntry = { text: string; start: number | null };
-
-function coerceSeconds(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value > 500 ? value / 1000 : value;
-  }
-  if (typeof value === "string") {
-    if (value.endsWith("ms")) {
-      const ms = Number.parseFloat(value.replace("ms", ""));
-      return Number.isFinite(ms) ? ms / 1000 : null;
-    }
-    if (value.includes(":")) {
-      const parts = value.split(":").map((part) => Number.parseFloat(part));
-      if (parts.length === 2 && parts.every((part) => Number.isFinite(part))) {
-        return parts[0] * 60 + parts[1];
-      }
-    }
-    const numeric = Number.parseFloat(value);
-    if (Number.isFinite(numeric)) {
-      return numeric > 500 ? numeric / 1000 : numeric;
-    }
-  }
-  return null;
-}
-
-function normalizeTokens(input: string): string[] {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9\s']/gi, " ")
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-function buildWordTimeline(
-  transcriptData: Record<string, unknown>,
-): WordTimelineEntry[] {
-  const wordsRaw = Array.isArray((transcriptData as any).words)
-    ? ((transcriptData as any).words as any[])
-    : [];
-  const timeline: WordTimelineEntry[] = [];
-  for (const word of wordsRaw) {
-    if (!word || typeof word !== "object") continue;
-    const text =
-      typeof word.text === "string" ? word.text.trim().toLowerCase() : "";
-    if (!text) continue;
-    const start = coerceSeconds(
-      (word as any).start ?? (word as any).start_ms ?? (word as any).startTime,
-    );
-    if (start === null) continue;
-    timeline.push({ text, start });
-  }
-  return timeline;
-}
-
-function buildSegmentTimeline(
-  transcriptData: Record<string, unknown>,
-): SegmentTimelineEntry[] {
-  // Include speaker_transcripts since that's where sanitized AssemblyAI utterances are stored
-  const sources = [
-    "utterances",
-    "segments",
-    "sentences",
-    "speaker_transcripts",
-  ] as const;
-  const timeline: SegmentTimelineEntry[] = [];
-  for (const key of sources) {
-    const items = Array.isArray((transcriptData as any)[key])
-      ? ((transcriptData as any)[key] as any[])
-      : [];
-    for (const item of items) {
-      if (!item || typeof item !== "object") continue;
-      const text =
-        typeof item.text === "string"
-          ? item.text
-          : typeof item.gist === "string"
-            ? item.gist
-            : null;
-      if (!text) continue;
-      const start = coerceSeconds(
-        item.start ?? item.start_ms ?? item.startTime,
-      );
-      timeline.push({ text, start });
-    }
-  }
-  return timeline;
-}
-
-function findStartSecondsForSnippet({
-  snippet,
-  wordTimeline,
-  segmentTimeline,
-  fullTranscript,
-  durationSeconds,
-}: {
-  snippet: string;
-  wordTimeline: WordTimelineEntry[];
-  segmentTimeline: SegmentTimelineEntry[];
-  fullTranscript: string;
-  durationSeconds: number | null;
-}): number | null {
-  const normalizedTokens = normalizeTokens(snippet);
-  const searchTokens = normalizedTokens.slice(
-    0,
-    Math.min(4, normalizedTokens.length),
-  );
-
-  if (searchTokens.length && wordTimeline.length) {
-    const window = searchTokens.length;
-    for (let i = 0; i <= wordTimeline.length - window; i++) {
-      let matches = true;
-      for (let j = 0; j < window; j++) {
-        if (wordTimeline[i + j]?.text !== searchTokens[j]) {
-          matches = false;
-          break;
-        }
-      }
-      if (matches) {
-        return wordTimeline[i].start;
-      }
-    }
-  }
-
-  const normalizedSnippet = normalizeForSearchText(snippet);
-  const snippetSample = normalizedSnippet.slice(0, 160);
-  if (snippetSample && segmentTimeline.length) {
-    for (const segment of segmentTimeline) {
-      if (!segment.text) continue;
-      const segmentNormalized = normalizeForSearchText(segment.text);
-      if (segmentNormalized.includes(snippetSample)) {
-        const start = segment.start;
-        if (start !== null) return start;
-      }
-    }
-  }
-
-  if (durationSeconds && fullTranscript) {
-    const transcriptNormalized = normalizeForSearchText(fullTranscript);
-    const index = transcriptNormalized.indexOf(snippetSample);
-    if (index >= 0) {
-      const ratio = transcriptNormalized.length
-        ? index / transcriptNormalized.length
-        : 0;
-      const estimated = durationSeconds * ratio;
-      return Number.isFinite(estimated)
-        ? Math.max(0, Math.min(durationSeconds, estimated))
-        : null;
-    }
-  }
-
-  return null;
-}
-
-function humanizeKey(value?: string | null): string | null {
-  if (!value) return null;
-  const cleaned = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ");
-  const capitalized = cleaned
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
-  if (!capitalized.length) return null;
-  return capitalized;
-}
-
-type FacetLookup = Map<string, Map<string, FacetCatalog["facets"][number]>>;
-
-function normalizeFacetValue(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed.length) return null;
-  return trimmed.replace(/\s+/g, " ");
-}
-
-function buildFacetLookup(catalog: FacetCatalog): FacetLookup {
-  const lookup: FacetLookup = new Map();
-  for (const facet of catalog.facets ?? []) {
-    const rawKind =
-      typeof facet.kind_slug === "string"
-        ? facet.kind_slug.trim().toLowerCase()
-        : "";
-    if (!rawKind || !facet.facet_account_id) continue;
-    const byKind =
-      lookup.get(rawKind) ?? new Map<string, FacetCatalog["facets"][number]>();
-    if (!lookup.has(rawKind)) {
-      lookup.set(rawKind, byKind);
-    }
-    const candidates = new Set<string>();
-    const primary = normalizeFacetValue(facet.alias ?? facet.label);
-    if (primary) candidates.add(primary);
-    const label = normalizeFacetValue(facet.label);
-    if (label) candidates.add(label);
-    for (const synonym of facet.synonyms ?? []) {
-      const normalized = normalizeFacetValue(synonym);
-      if (normalized) candidates.add(normalized);
-    }
-    for (const candidate of candidates) {
-      // Do not overwrite existing entries to preserve the first (usually alias) match
-      if (!byKind.has(candidate)) {
-        byKind.set(candidate, facet);
-      }
-    }
-  }
-  return lookup;
-}
-
-function matchFacetFromLookup(
-  lookup: FacetLookup,
-  kindSlug: string,
-  label: string,
-): FacetCatalog["facets"][number] | null {
-  const normalized = normalizeFacetValue(label);
-  if (!normalized) return null;
-  const canonicalKind = kindSlug.trim().toLowerCase();
-  if (!canonicalKind) return null;
-  const kindMap = lookup.get(canonicalKind);
-  if (!kindMap) return null;
-  return kindMap.get(normalized) ?? null;
-}
-
-function sanitizeFacetLabel(label: string | null | undefined): string | null {
-  if (typeof label !== "string") return null;
-  const trimmed = label.replace(/\s+/g, " ").trim();
-  if (!trimmed.length) return null;
-  return trimmed.length > 240
-    ? `${trimmed.slice(0, 237).trimEnd()}...`
-    : trimmed;
-}
-
-function normalizeForSearchText(value: string | null | undefined): string {
-  if (!value || typeof value !== "string") return "";
-  const replaced = value
-    .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
-    .replace(/[\u201C\u201D\u2033]/g, '"')
-    .replace(/\u00A0/g, " ");
-  return replaced.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-function sanitizePersonKey(value: unknown, fallback: string): string {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed.length) return trimmed;
-  }
-  return fallback;
-}
-
-async function resolveFacetCatalog(
-  db: SupabaseClient<Database>,
-  accountId: string,
-  projectId?: string | null,
-): Promise<FacetCatalog> {
-  if (!projectId) {
-    return {
-      kinds: [],
-      facets: [],
-      version: `account:${accountId}:no-project`,
-    };
-  }
-  try {
-    return await getFacetCatalog({ db, accountId, projectId });
-  } catch (error) {
-    consola.warn("Failed to load facet catalog", error);
-    return {
-      kinds: [],
-      facets: [],
-      version: `account:${accountId}:project:${projectId}:fallback`,
-    };
-  }
-}
-
-function generateFallbackPersonName(metadata: InterviewMetadata): string {
-  if (metadata.fileName) {
-    const nameFromFile = metadata.fileName
-      .replace(/\.[^/.]+$/, "")
-      .replace(/[_-]/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase())
-      .trim();
-
-    if (nameFromFile.length > 0) return nameFromFile;
-  }
-  if (
-    metadata.interviewTitle &&
-    !metadata.interviewTitle.includes("Interview -")
-  )
-    return metadata.interviewTitle;
-  const timestamp = new Date().toISOString().split("T")[0];
-  return timestamp;
-}
-
 type EvidenceFromBaml = Awaited<
   ReturnType<typeof b.ExtractEvidenceFromTranscriptV2>
 >;
@@ -474,65 +225,6 @@ type PersonaSynthesisFromBaml = Awaited<
 >;
 
 type EvidenceTurn = EvidenceFromBaml["evidence"][number];
-
-interface NormalizedParticipant {
-  person_key: string;
-  speaker_label: string | null; // AssemblyAI speaker label (e.g., "SPEAKER A")
-  role: string | null;
-  display_name: string | null;
-  inferred_name: string | null;
-  organization: string | null;
-  summary: string | null;
-  segments: string[];
-  personas: string[];
-  facets: PersonFacetInput[];
-  scales: PersonScaleInput[];
-}
-
-type NameResolutionSource =
-  | "display"
-  | "inferred"
-  | "metadata"
-  | "person_key"
-  | "fallback";
-
-const GENERIC_PERSON_LABEL_PATTERNS: RegExp[] = [
-  /^(participant|person|speaker|customer|interviewee|user|client|respondent|guest|attendee)(?:[\s_-]*(\d+|[a-z]))?$/i,
-  /^(interviewer|moderator|facilitator)(?:[\s_-]*(\d+|[a-z]))?$/i,
-  /^(participant|speaker)\s*(one|two|three|first|second|third)$/i,
-];
-
-function _isGenericPersonLabel(label: string | null | undefined): boolean {
-  if (!label) return false;
-  const normalized = label.trim().toLowerCase();
-  if (!normalized.length) return false;
-  return GENERIC_PERSON_LABEL_PATTERNS.some((pattern) =>
-    pattern.test(normalized),
-  );
-}
-
-/**
- * Parse a full name into firstname and lastname
- * Returns { firstname, lastname } with lastname being null for single-word names
- */
-function parseFullName(fullName: string): {
-  firstname: string;
-  lastname: string | null;
-} {
-  const trimmed = fullName.trim();
-  if (!trimmed) return { firstname: "", lastname: null };
-
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) {
-    return { firstname: parts[0], lastname: null };
-  }
-
-  // firstname is the first part, lastname is everything else joined
-  return {
-    firstname: parts[0],
-    lastname: parts.slice(1).join(" "),
-  };
-}
 
 /** Progress callback for heartbeat-safe long operations */
 export type ExtractProgressCallback = (update: {
@@ -1107,14 +799,6 @@ export async function extractEvidenceAndPeopleCore({
   const participants: NormalizedParticipant[] = [];
   const participantByKey = new Map<string, NormalizedParticipant>();
 
-  const coerceString = (value: unknown): string | null => {
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      return trimmed.length ? trimmed : null;
-    }
-    return null;
-  };
-
   for (let i = 0; i < rawPeople.length; i++) {
     const raw = rawPeople[i] ?? ({} as EvidenceParticipant);
     let person_key = sanitizePersonKey(
@@ -1329,9 +1013,44 @@ export async function extractEvidenceAndPeopleCore({
         : null;
   const wordTimeline = buildWordTimeline(transcriptData);
   const segmentTimeline = buildSegmentTimeline(transcriptData);
+
+  // Debug: log transcript data structure to diagnose timestamp issues
+  const transcriptKeys = Object.keys(transcriptData);
+  const hasWords = Array.isArray((transcriptData as any).words);
+  const hasSpeakerTranscripts = Array.isArray(
+    (transcriptData as any).speaker_transcripts,
+  );
+  const wordsCount = hasWords ? (transcriptData as any).words.length : 0;
+  const speakerTranscriptsCount = hasSpeakerTranscripts
+    ? (transcriptData as any).speaker_transcripts.length
+    : 0;
+  const wordsSample =
+    hasWords && wordsCount > 0
+      ? (transcriptData as any).words.slice(0, 3).map((w: any) => ({
+          text: w?.text?.slice?.(0, 20),
+          start: w?.start,
+          end: w?.end,
+          start_ms: w?.start_ms,
+        }))
+      : [];
+  const segmentSample = segmentTimeline.slice(0, 2).map((s) => ({
+    text: s.text?.slice(0, 30),
+    start: s.start,
+  }));
+
   consola.info(
     `⏱️ Timing data available: ${wordTimeline.length} words, ${segmentTimeline.length} segments, duration=${durationSeconds}s`,
   );
+  consola.info(`📊 Transcript structure debug:`, {
+    hasWords,
+    hasSpeakerTranscripts,
+    rawWordsCount: wordsCount,
+    speakerTranscriptsCount,
+    wordTimelineCount: wordTimeline.length,
+    segmentTimelineCount: segmentTimeline.length,
+    wordsSample,
+    segmentSample,
+  });
   for (let idx = 0; idx < evidenceUnits.length; idx++) {
     const ev = evidenceUnits[idx] as EvidenceTurn;
     const rawPersonKey = coerceString(
@@ -1475,19 +1194,7 @@ export async function extractEvidenceAndPeopleCore({
       }
     }
 
-    // Fall back to AI-provided timing if word-level search failed
-    if (anchorSeconds === null && rawAnchors.length > 0 && rawAnchors[0]) {
-      const firstAnchor = rawAnchors[0];
-      if (typeof firstAnchor.start_ms === "number") {
-        anchorSeconds = firstAnchor.start_ms / 1000;
-        timingSource = "ai-ms";
-      } else if (typeof firstAnchor.start_seconds === "number") {
-        anchorSeconds = firstAnchor.start_seconds;
-        timingSource = "ai-seconds";
-      }
-    }
-
-    // Last resort: segment-level search without word data
+    // Second: try segment-level matching (more reliable than AI anchors)
     if (
       anchorSeconds === null &&
       snippetForTiming?.length &&
@@ -1505,14 +1212,27 @@ export async function extractEvidenceAndPeopleCore({
       }
     }
 
+    // Last resort: AI-provided timing (can be unreliable/hallucinated)
+    if (anchorSeconds === null && rawAnchors.length > 0 && rawAnchors[0]) {
+      const firstAnchor = rawAnchors[0];
+      if (typeof firstAnchor.start_ms === "number") {
+        anchorSeconds = firstAnchor.start_ms / 1000;
+        timingSource = "ai-ms";
+      } else if (typeof firstAnchor.start_seconds === "number") {
+        anchorSeconds = firstAnchor.start_seconds;
+        timingSource = "ai-seconds";
+      }
+    }
+
     if (evidenceIndex < 5) {
+      const snippetPreview = snippetForTiming?.slice(0, 60) || "(no snippet)";
       if (anchorSeconds !== null) {
         consola.info(
-          `Evidence ${evidenceIndex}: timing=${anchorSeconds}s source=${timingSource}`,
+          `Evidence ${evidenceIndex}: timing=${anchorSeconds}s source=${timingSource} snippet="${snippetPreview}"`,
         );
       } else {
         consola.warn(
-          `Evidence ${evidenceIndex}: No timing available from any source`,
+          `Evidence ${evidenceIndex}: No timing available from any source, snippet="${snippetPreview}"`,
         );
       }
     }
@@ -1760,36 +1480,6 @@ export async function extractEvidenceAndPeopleCore({
     }
   }
 
-  const resolveName = (
-    participant: NormalizedParticipant,
-    index: number,
-  ): { name: string; source: NameResolutionSource } => {
-    const candidates: Array<{
-      value: string | null | undefined;
-      source: NameResolutionSource;
-    }> = [
-      { value: participant.display_name, source: "display" },
-      { value: participant.inferred_name, source: "inferred" },
-      {
-        value: participant.person_key
-          ? humanizeKey(participant.person_key)
-          : null,
-        source: "person_key",
-      },
-      { value: metadata.participantName, source: "metadata" },
-      { value: metadata.interviewerName, source: "metadata" },
-    ];
-    for (const candidate of candidates) {
-      if (typeof candidate.value === "string") {
-        const trimmed = candidate.value.trim();
-        if (trimmed.length) {
-          return { name: trimmed, source: candidate.source };
-        }
-      }
-    }
-    return { name: `Participant ${index + 1}`, source: "fallback" };
-  };
-
   const upsertPerson = async (
     fullName: string,
     overrides: Partial<PeopleInsert> = {},
@@ -1852,7 +1542,7 @@ export async function extractEvidenceAndPeopleCore({
       consola.debug(
         `  - Creating person record for "${participantKey}" (role: ${participant.role})`,
       );
-      const resolved = resolveName(participant, index);
+      const resolved = resolveName(participant, index, metadata);
       if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
         consola.info(
           `[extractEvidence] Skipping placeholder person "${resolved.name}"`,
@@ -1967,7 +1657,7 @@ export async function extractEvidenceAndPeopleCore({
       primaryPersonId = fallbackId;
       primaryPersonName =
         personNameByKey.get(fallbackKey) ??
-        resolveName(participants[0], 0).name;
+        resolveName(participants[0], 0, metadata).name;
       primaryPersonRole = participants[0].role ?? null;
       primaryPersonDescription = participants[0].summary ?? null;
       primaryPersonOrganization = participants[0].organization ?? null;

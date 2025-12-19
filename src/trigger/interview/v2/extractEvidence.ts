@@ -82,9 +82,24 @@ export const extractEvidenceTaskV2 = task({
       }
 
       // Clean transcript data
+      const rawTranscriptFormatted = interview.transcript_formatted as any;
       const transcriptData = safeSanitizeTranscriptPayload(
-        interview.transcript_formatted as any,
+        rawTranscriptFormatted,
       );
+
+      // Diagnostic: trace words through the pipeline
+      consola.info("[ExtractEvidence] Words diagnostic", {
+        rawHasWords: Array.isArray(rawTranscriptFormatted?.words),
+        rawWordsCount: rawTranscriptFormatted?.words?.length ?? 0,
+        rawWordsSample: rawTranscriptFormatted?.words?.slice?.(0, 2) ?? null,
+        sanitizedHasWords: Array.isArray(transcriptData.words),
+        sanitizedWordsCount: transcriptData.words?.length ?? 0,
+        sanitizedWordsSample: transcriptData.words?.slice?.(0, 2) ?? null,
+        rawKeys: rawTranscriptFormatted
+          ? Object.keys(rawTranscriptFormatted)
+          : [],
+      });
+
       // Call v2 core with people hooks and progress callback for heartbeat safety
       const extraction = await extractEvidenceCore({
         db: client as any,

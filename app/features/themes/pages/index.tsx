@@ -1,13 +1,16 @@
-import { Grid3X3, List, Search, Sparkles } from "lucide-react"
+import { Grid3X3, List, MoreHorizontal, Search, Settings2, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useFetcher, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { Input } from "~/components/ui/input"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { InsightsDataTable } from "~/features/insights/components/InsightsDataTableTS"
 import { getInsights } from "~/features/insights/db"
+import { InsightsExplainerCard } from "~/features/themes/components/InsightsExplainerCard"
+import { InsightsSettingsModal } from "~/features/themes/components/InsightsSettingsModal"
 import { cn } from "~/lib/utils"
 import { userContext } from "~/server/user-context"
 import type { Insight } from "~/types"
@@ -95,7 +98,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.in("person_id", Array.from(personIdSet))
 		if (ppErr) throw new Error(`Failed to load people_personas: ${ppErr.message}`)
 		personasByPerson = new Map()
-		for (const row of (pp ?? []) as Array<{ person_id: string; persona: { id: string; name: string } | null }>) {
+		for (const row of (pp ?? []) as Array<{
+			person_id: string
+			persona: { id: string; name: string } | null
+		}>) {
 			if (!row.persona) continue
 			const list = personasByPerson.get(row.person_id) ?? []
 			list.push(row.persona)
@@ -130,7 +136,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const insightCount = interviewSet ? interviewSet.size : 0
 		return { ...t, evidence_count: evCount, insights_count: insightCount }
 	}) as Array<
-		Pick<Theme, "id" | "name" | "statement" | "created_at"> & { evidence_count: number; insights_count: number }
+		Pick<Theme, "id" | "name" | "statement" | "created_at"> & {
+			evidence_count: number
+			insights_count: number
+		}
 	>
 
 	// Build persona-theme matrix data
@@ -148,7 +157,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		}
 		const finalPersonas = Array.from(normalizedPersonas)
-		evidenceById.set(ev.id, { personas: finalPersonas, interview_id: ev.interview_id ?? undefined })
+		evidenceById.set(ev.id, {
+			personas: finalPersonas,
+			interview_id: ev.interview_id ?? undefined,
+		})
 		for (const persona of finalPersonas) personaSet.add(persona)
 	}
 
@@ -218,11 +230,50 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Count themes missing metadata
 	const themesNeedingEnrichment = enriched.filter((t: any) => !t.pain || !t.jtbd || !t.category).length
 
-	return { themes: enriched, matrixData, insights, themesNeedingEnrichment }
+	// Fetch additional data for InsightsExplainerCard and InsightsSettingsModal
+
+	// Count total interviews for this project
+	const { count: interviewCount } = await supabase
+		.from("interviews")
+		.select("*", { count: "exact", head: true })
+		.eq("project_id", projectId)
+		.eq("status", "ready")
+
+	// Total evidence count
+	const evidenceCount = allEvidence?.length ?? 0
+
+	// Fetch project settings for analysis thresholds
+	const { data: project } = await supabase.from("projects").select("project_settings").eq("id", projectId).single()
+
+	const analysisSettings = (project?.project_settings as { analysis?: Record<string, number> } | null)?.analysis
+
+	// Check if consolidation has ever been run (heuristic: project has consolidated_at or themes were grouped)
+	const hasConsolidated = Boolean(
+		(project?.project_settings as { insights_consolidated_at?: string } | null)?.insights_consolidated_at
+	)
+
+	return {
+		themes: enriched,
+		matrixData,
+		insights,
+		themesNeedingEnrichment,
+		interviewCount: interviewCount ?? 0,
+		evidenceCount,
+		analysisSettings,
+		hasConsolidated,
+	}
 }
 
 export default function ThemesIndex() {
-	const { themes, matrixData, insights, themesNeedingEnrichment } = useLoaderData<typeof loader>()
+	const {
+		themes,
+		insights,
+		themesNeedingEnrichment,
+		interviewCount,
+		evidenceCount,
+		analysisSettings,
+		hasConsolidated,
+	} = useLoaderData<typeof loader>()
 	const params = useParams()
 	const [viewMode, setViewMode] = useState<"table" | "cards">("table")
 	const [searchQuery, setSearchQuery] = useState("")
@@ -298,8 +349,24 @@ export default function ThemesIndex() {
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
 					</div>
+					{/* Settings dropdown */}
+					<InsightsSettingsModal
+						projectId={params.projectId!}
+						accountId={params.accountId!}
+						currentSettings={analysisSettings}
+					/>
 				</div>
 			</div>
+
+			{/* Explainer card for insights building state */}
+			<InsightsExplainerCard
+				interviewCount={interviewCount}
+				themeCount={themes.length}
+				evidenceCount={evidenceCount}
+				projectId={params.projectId!}
+				accountId={params.accountId!}
+				hasConsolidated={hasConsolidated}
+			/>
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-1.5">
 					<h2 className="font-medium text-foreground text-xl">Insights Filtering</h2>

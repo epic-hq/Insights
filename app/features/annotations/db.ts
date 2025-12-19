@@ -89,6 +89,61 @@ export interface UserFlags {
 	priority: boolean
 }
 
+// Batched variant: fetch user flags for multiple entities in one round-trip
+export async function getUserFlagsForEntities({
+	supabase,
+	projectId,
+	entityType,
+	entityIds,
+	userId,
+}: {
+	supabase: SupabaseClient<Database>
+	projectId: string
+	entityType: EntityType
+	entityIds: string[]
+	userId: string
+}) {
+	try {
+		if (!entityIds.length) return { data: {}, error: null }
+
+		const { data: rows, error } = await supabase
+			.from("entity_flags")
+			.select("entity_id, flag_type, flag_value")
+			.eq("project_id", projectId)
+			.eq("entity_type", entityType)
+			.eq("user_id", userId)
+			.in("entity_id", entityIds)
+
+		if (error) {
+			consola.error("Error fetching batched user flags:", error)
+			return { data: null, error }
+		}
+
+		const byId = new Map<string, UserFlags>()
+		for (const id of entityIds) {
+			byId.set(id, { hidden: false, archived: false, starred: false, priority: false })
+		}
+
+		for (const row of rows || []) {
+			const bucket = byId.get(row.entity_id)
+			if (!bucket) continue
+			const flagType = row.flag_type as keyof UserFlags
+			if (!(flagType in bucket)) continue
+			bucket[flagType] = Boolean(row.flag_value)
+		}
+
+		const result: Record<string, UserFlags> = {}
+		for (const [id, flags] of byId.entries()) {
+			result[id] = flags
+		}
+
+		return { data: result, error: null }
+	} catch (error) {
+		consola.error("Exception in getUserFlagsForEntities:", error)
+		return { data: null, error }
+	}
+}
+
 // =============================================================================
 // ANNOTATION FUNCTIONS
 // =============================================================================

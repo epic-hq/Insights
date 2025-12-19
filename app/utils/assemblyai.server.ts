@@ -90,6 +90,24 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 				sentiment_analysis: false,
 			})
 
+			// Diagnostic: log raw AssemblyAI response for words investigation
+			consola.info("[AssemblyAI] Raw response diagnostic", {
+				status: transcript.status,
+				hasWords: Array.isArray(transcript.words),
+				wordsCount: transcript.words?.length ?? 0,
+				wordsSample:
+					transcript.words?.slice?.(0, 3)?.map((w: any) => ({
+						text: w?.text,
+						start: w?.start,
+						end: w?.end,
+					})) ?? null,
+				hasUtterances: Array.isArray(transcript.utterances),
+				utterancesCount: transcript.utterances?.length ?? 0,
+				textLength: transcript.text?.length ?? 0,
+				audioDuration: transcript.audio_duration,
+				speechModelUsed: (transcript as any).speech_model_used,
+			})
+
 			// Check for errors
 			if (transcript.status === "error") {
 				const message = transcript.error ?? "Unknown AssemblyAI error"

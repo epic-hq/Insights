@@ -238,7 +238,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Insights
 		insights: {
 			index: () => `${base}/insights`,
-			quick: () => `${base}/insights/quick`,
+			// Quick route removed; keep helper as alias to cards to avoid broken callers
+			quick: () => `${base}/insights/cards`,
 			table: () => `${base}/insights/table`,
 			cards: () => `${base}/insights/cards`,
 			map: () => `${base}/insights/map`,

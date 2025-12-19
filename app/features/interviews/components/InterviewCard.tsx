@@ -93,6 +93,17 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 	const participant = primaryParticipant?.people
 	const participantName = participant?.name || "Unknown Participant"
 
+	const participant_names = Array.from(
+		new Set(sortedParticipants.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
+	)
+	const display_participant_names = participant_names.length > 0 ? participant_names : [participantName]
+	const displayed_participant_names = display_participant_names.slice(0, 3)
+	const remaining_participant_count = Math.max(0, display_participant_names.length - displayed_participant_names.length)
+	const participants_label =
+		remaining_participant_count > 0
+			? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
+			: displayed_participant_names.join(", ")
+
 	// Interview title (prefer actual title over participant name)
 	const interviewTitle = interview.title || `Interview with ${participantName}`
 
@@ -262,7 +273,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 						<div className="mb-4 flex items-center gap-2">
 							<Users className="h-4 w-4 shrink-0 text-gray-500" />
 							<div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-								<span className="text-gray-600 text-sm dark:text-gray-400">{participantName}</span>
+								<span className="text-gray-600 text-sm dark:text-gray-400">{participants_label}</span>
 							</div>
 							<Badge className={cn("shrink-0 font-medium text-xs", getStatusColor(interview.status))}>
 								{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}

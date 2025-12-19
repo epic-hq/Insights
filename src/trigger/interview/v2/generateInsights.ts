@@ -298,6 +298,8 @@ export const generateInsightsTaskV2 = task({
       // For each theme, find semantically matching evidence from this interview
       // This replaces the old cross-product approach (every theme × every evidence)
       let linkCount = 0;
+      const themesWithNoLinks: string[] = [];
+
       if (createdThemes.length > 0) {
         consola.info(
           `[generateInsights] Creating semantic theme_evidence links for ${createdThemes.length} themes`,
@@ -318,11 +320,19 @@ export const generateInsightsTaskV2 = task({
               matchCount: 20,
             });
 
-            consola.info(
-              `[generateInsights] Found ${similarEvidence.length} matching evidence for theme "${theme.name}"`,
-            );
+            if (similarEvidence.length === 0) {
+              consola.warn(
+                `[generateInsights] No matching evidence found for theme "${theme.name}" (query: "${searchQuery.substring(0, 100)}...")`,
+              );
+              themesWithNoLinks.push(theme.name);
+            } else {
+              consola.debug(
+                `[generateInsights] Found ${similarEvidence.length} matching evidence for theme "${theme.name}"`,
+              );
+            }
 
             // Create links with semantic confidence scores
+            let linksCreatedForTheme = 0;
             for (const match of similarEvidence) {
               const { error: linkError } = await client
                 .from("theme_evidence")
@@ -343,19 +353,35 @@ export const generateInsightsTaskV2 = task({
 
               if (!linkError) {
                 linkCount++;
+                linksCreatedForTheme++;
               }
+            }
+
+            if (linksCreatedForTheme === 0 && similarEvidence.length > 0) {
+              consola.warn(
+                `[generateInsights] Failed to create links for theme "${theme.name}" despite finding ${similarEvidence.length} matches`,
+              );
+              themesWithNoLinks.push(theme.name);
             }
           } catch (searchErr) {
             consola.warn(
               `[generateInsights] Semantic search failed for theme "${theme.name}":`,
               searchErr,
             );
+            themesWithNoLinks.push(theme.name);
           }
         }
 
         consola.success(
           `[generateInsights] Created ${linkCount} semantic theme_evidence links`,
         );
+
+        // Log warning if any themes got no links
+        if (themesWithNoLinks.length > 0) {
+          consola.warn(
+            `[generateInsights] WARNING: ${themesWithNoLinks.length} themes have 0 evidence links: ${themesWithNoLinks.join(", ")}`,
+          );
+        }
       } else {
         consola.warn(
           `[generateInsights] No themes created, skipping evidence linking`,

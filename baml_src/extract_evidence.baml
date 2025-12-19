@@ -42,7 +42,7 @@ class FacetMention {
   // index int @description("0-based index within the stream for ordering")
   // parent_index int @description("Index of the EvidenceTurn this mention derives from")
   person_key string @description("REQUIRED: Exact match to Person.person_key. Must match the person_key of the parent EvidenceTurn.")
-  kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion")
+  kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion | workflow | feature")
   value string @description("CRITICAL: Human-readable descriptive text (≤12 words), NOT an ID or reference number. Examples: 'Healthcare Professional', 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'. NEVER use formats like 'ID:123' or numeric references. Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful.")
   quote string? @description("Optional ≤15-word supporting quote from the parent turn")
   // confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
@@ -72,6 +72,7 @@ enum InteractionContext {
   Support @description("Support conversations, escalations, customer success check-ins - helping existing customers")
   Internal @description("Team meetings, internal debriefs, planning sessions - no external participants")
   Debrief @description("Voice memos, call recaps, field notes - quick capture of thoughts, decisions, and action items")
+  Personal @description("Personal content, vlogs, non-business recordings - content about personal life or experiences")
 }
 
 class Extraction {
@@ -186,7 +187,7 @@ ONLY extract turns with business or psychographic relevance.
 ## FacetMention (extraction-only, no linking)
 - parent_index: points to the `EvidenceTurn.index` where the signal appeared.
 - **person_key**: REQUIRED. Must match the exact slug from `people` AND match the person_key of the parent EvidenceTurn. CRITICAL: Assign facets to the person who EXPRESSED the trait/behavior, not the person being discussed. If the interviewer asks "What tools do you use?", the participant's answer creates facets for the PARTICIPANT, not the interviewer.
-- kind_slug: one of goal | pain | behavior | tool | value | workflow | preference | demographic | context | artifact | emotion.
+- kind_slug: one of goal | pain | behavior | tool | value | workflow | preference | demographic | context | artifact | emotion | feature.
 - value: concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include frequency/recency when stated (e.g., "daily", "last week"). Include trigger/condition and objective when helpful. For preference/value, compress subject + rationale into one field when possible: e.g., "values integrated planning + calendar (tracks progress)", "prefers explicit topic mapping for workflow", "requires calendar integration to schedule study".
 - quote: include when it strengthens auditability; ≤15 words.
 - confidence: one of 1, 0.75, 0.5, 0.25, 0.

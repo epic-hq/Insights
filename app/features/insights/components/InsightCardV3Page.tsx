@@ -1,25 +1,87 @@
 import { Building2, Flame, MessageSquare, Quote, Target, TrendingUp, Users } from "lucide-react"
-import { useCallback } from "react"
+import type { CSSProperties } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useFetcher } from "react-router-dom"
 import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
 import InlineEdit from "~/components/ui/inline-edit"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
+import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Insight } from "~/types"
+import type { Insight as BaseInsight } from "~/types"
 import type { InsightEvidence } from "../pages/insight-detail"
 import { EvidenceGroupedByInterview } from "./EvidenceGroup"
+import type { InsightForAction } from "./InsightActions"
 import { InsightActions } from "./InsightActions"
 import { SemanticEvidenceSection } from "./SemanticEvidenceSection"
 
+function InsightPrioritySelector({
+	priority,
+	onSelect,
+}: {
+	priority: 1 | 2 | 3
+	onSelect: (priority: 1 | 2 | 3) => void
+}) {
+	const [open, setOpen] = useState(false)
+
+	const handleSelect = (p: 1 | 2 | 3) => {
+		onSelect(p)
+		setOpen(false)
+	}
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button variant="ghost" size="sm" className="h-auto gap-2 px-2 py-1 hover:bg-muted">
+					<PriorityBars priority={priority} size="sm" />
+					<span className="text-muted-foreground text-xs">{priorityConfig[priority]?.label ?? "Low"}</span>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-52" align="end">
+				<div className="space-y-2">
+					<div className="font-medium text-sm">Priority</div>
+					<div className="space-y-1">
+						{([3, 2, 1] as const).map((p) => (
+							<Button
+								key={p}
+								variant={priority === p ? "default" : "ghost"}
+								size="sm"
+								className="w-full justify-start"
+								onClick={() => handleSelect(p)}
+							>
+								<PriorityBars priority={p} size="sm" />
+								<span className="ml-2">{priorityConfig[p].label}</span>
+							</Button>
+						))}
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+	)
+}
+
+type InsightDetail = BaseInsight & {
+	priority?: number | null
+	persona_insights?: Array<{
+		personas?: { id: string; name: string | null } | null
+	}> | null
+	insight_tags?: Array<{
+		tags?: { tag?: string | null } | null
+		tag?: string | null
+		style?: CSSProperties | null
+		frequency?: number | null
+	}> | null
+}
+
 interface InsightCardV3Props {
-	insight: Insight
+	insight: InsightDetail
 	evidence?: InsightEvidence[]
 	projectPath?: string
 	accountId?: string
-	extended?: boolean
 }
 
 export function InsightCardV3Page({
@@ -27,11 +89,16 @@ export function InsightCardV3Page({
 	evidence = [],
 	projectPath: propProjectPath,
 	accountId,
-	extended,
 }: InsightCardV3Props) {
 	const routes = useProjectRoutes(propProjectPath || "")
 	const shareableName = insight.name || insight.statement || "Insight"
 	const updateFetcher = useFetcher()
+	const [commentCount, setCommentCount] = useState(0)
+	const [priority, setPriority] = useState<1 | 2 | 3>((insight.priority ?? 3) as 1 | 2 | 3)
+
+	useEffect(() => {
+		setPriority((insight.priority ?? 3) as 1 | 2 | 3)
+	}, [insight.priority])
 
 	// Handler to update insight fields via API
 	const handleFieldUpdate = useCallback(
@@ -53,6 +120,21 @@ export function InsightCardV3Page({
 		},
 		[propProjectPath, insight.id, updateFetcher]
 	)
+
+	const insight_for_action: InsightForAction = {
+		id: insight.id,
+		name: insight.name,
+		statement: insight.statement,
+		category: insight.category,
+		jtbd: insight.jtbd,
+		pain: insight.pain,
+		desired_outcome: insight.desired_outcome,
+		priority,
+		persona_insights:
+			insight.persona_insights
+				?.map((pi) => (pi?.personas ? { personas: pi.personas } : null))
+				.filter((pi): pi is { personas: { id: string; name: string | null } } => Boolean(pi)) ?? undefined,
+	}
 
 	return (
 		<div className="mx-auto max-w-4xl px-4 py-8 sm:px-0">
@@ -81,7 +163,7 @@ export function InsightCardV3Page({
 					</div>
 					{propProjectPath && accountId ? (
 						<div className="flex shrink-0 items-center gap-2">
-							<InsightActions insight={insight} projectPath={propProjectPath} showLabel={true} />
+							<InsightActions insight={insight_for_action} projectPath={propProjectPath} showLabel={true} />
 							<ResourceShareMenu
 								projectPath={propProjectPath}
 								accountId={accountId}
@@ -104,6 +186,15 @@ export function InsightCardV3Page({
 							{insight.journey_stage}
 						</Badge>
 					)}
+					{propProjectPath ? (
+						<InsightPrioritySelector
+							priority={priority}
+							onSelect={(nextPriority) => {
+								setPriority(nextPriority)
+								handleFieldUpdate("priority", String(nextPriority))
+							}}
+						/>
+					) : null}
 				</div>
 			</div>
 
@@ -164,12 +255,12 @@ export function InsightCardV3Page({
 					<div className="space-y-3">
 						<h4 className="font-semibold text-foreground text-sm">Personas</h4>
 						<div className="flex flex-wrap gap-2">
-							{insight.persona_insights.map((pi: any, idx: number) => {
-								const personaName = pi?.personas?.name
-								if (!personaName) return null
+							{insight.persona_insights.map((pi) => {
+								const persona = pi?.personas
+								if (!persona?.id) return null
 								return (
-									<Badge key={idx} variant="default" className="px-3 py-1">
-										{personaName}
+									<Badge key={persona.id} variant="default" className="px-3 py-1">
+										{persona.name}
 									</Badge>
 								)
 							})}
@@ -182,8 +273,8 @@ export function InsightCardV3Page({
 					<div className="space-y-3">
 						<h4 className="font-semibold text-muted-foreground text-sm">Synonyms</h4>
 						<div className="flex flex-wrap gap-2">
-							{insight.synonyms.map((synonym: string, idx: number) => (
-								<Badge key={idx} variant="secondary" className="text-xs">
+							{insight.synonyms.map((synonym) => (
+								<Badge key={synonym} variant="secondary" className="text-xs">
 									{synonym}
 								</Badge>
 							))}
@@ -196,12 +287,12 @@ export function InsightCardV3Page({
 					<div className="space-y-3">
 						<h4 className="font-semibold text-foreground text-sm">Tags</h4>
 						<div className="flex flex-wrap gap-2">
-							{insight.insight_tags?.map((tag: any, idx: number) => {
+							{insight.insight_tags?.map((tag) => {
 								const tagName = tag?.tags?.tag || tag?.tag || null
 								if (!tagName) return null
-								return (
-									<StyledTag key={`${tagName}-${idx}`} name={tagName} style={tag.style} frequency={tag.frequency} />
-								)
+								const style = (tag.style as CSSProperties | undefined) ?? {}
+								const frequency = typeof tag.frequency === "number" ? tag.frequency : undefined
+								return <StyledTag key={tagName} name={tagName} style={style} frequency={frequency} />
 							})}
 						</div>
 					</div>
@@ -276,8 +367,13 @@ export function InsightCardV3Page({
 				<div className="flex items-center gap-2">
 					<MessageSquare className="h-5 w-5 text-muted-foreground" />
 					<h4 className="font-semibold text-base text-foreground">Comments</h4>
+					{commentCount > 0 ? (
+						<Badge variant="secondary" className="ml-1">
+							{commentCount}
+						</Badge>
+					) : null}
 				</div>
-				<EntityInteractionPanel entityType="insight" entityId={insight.id} defaultOpen={true} />
+				<EntityInteractionPanel entityType="insight" entityId={insight.id} onCommentCountChange={setCommentCount} />
 			</div>
 		</div>
 	)

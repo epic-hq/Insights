@@ -6564,6 +6564,7 @@ export type Database = {
         | "support"
         | "internal"
         | "debrief"
+        | "personal"
       interview_status:
         | "draft"
         | "scheduled"
@@ -6737,6 +6738,7 @@ export const Constants = {
         "support",
         "internal",
         "debrief",
+        "personal",
       ],
       interview_status: [
         "draft",

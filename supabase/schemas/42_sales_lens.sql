@@ -126,9 +126,8 @@ create trigger set_sales_lens_stakeholders_timestamp
   before insert or update on public.sales_lens_stakeholders
   for each row execute procedure accounts.trigger_set_timestamps();
 
-create trigger set_sales_lens_hygiene_events_timestamp
-  before insert or update on public.sales_lens_hygiene_events
-  for each row execute procedure accounts.trigger_set_timestamps();
+-- Note: hygiene_events is an append-only event log, no updated_at needed
+-- Trigger removed: set_sales_lens_hygiene_events_timestamp
 
 alter table public.sales_lens_summaries enable row level security;
 alter table public.sales_lens_slots enable row level security;

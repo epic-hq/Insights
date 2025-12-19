@@ -5,7 +5,7 @@
  * or View Task link if a task has been created from this insight.
  */
 
-import { CheckSquareIcon, LinkIcon, Loader2, Plus } from "lucide-react"
+import { CheckSquareIcon, Loader2, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -38,6 +38,8 @@ interface InsightActionsProps {
 	linkedTaskId?: string | null
 	/** Callback when a task is created */
 	onTaskCreated?: (taskId: string) => void
+	/** If true, will query tasks to detect an existing linked task. Defaults to false to avoid per-card request storms. */
+	enableLinkedTaskLookup?: boolean
 }
 
 export function InsightActions({
@@ -47,14 +49,20 @@ export function InsightActions({
 	showLabel = true,
 	linkedTaskId: initialLinkedTaskId,
 	onTaskCreated,
+	enableLinkedTaskLookup = false,
 }: InsightActionsProps) {
 	const routes = useProjectRoutes(projectPath)
 	const [modalOpen, setModalOpen] = useState(false)
 	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(initialLinkedTaskId ?? null)
-	const [isLoading, setIsLoading] = useState(initialLinkedTaskId === undefined)
+	const [isLoading, setIsLoading] = useState(enableLinkedTaskLookup && initialLinkedTaskId === undefined)
 
 	// Fetch linked task if not provided
 	useEffect(() => {
+		if (!enableLinkedTaskLookup) {
+			setIsLoading(false)
+			return
+		}
+
 		if (initialLinkedTaskId !== undefined) {
 			setLinkedTaskId(initialLinkedTaskId)
 			setIsLoading(false)
@@ -66,10 +74,15 @@ export function InsightActions({
 		async function checkLinkedTask() {
 			try {
 				const supabase = createClient()
-				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insight.id).limit(1).single()
+				const { data } = await supabase
+					.from("tasks")
+					.select("id")
+					.eq("source_theme_id", insight.id)
+					.limit(1)
 
-				if (!cancelled && data) {
-					setLinkedTaskId(data.id)
+				const id = (data as Array<{ id: string }> | null)?.[0]?.id
+				if (!cancelled && id) {
+					setLinkedTaskId(id)
 				}
 			} catch {
 				// No linked task found - that's fine
@@ -85,7 +98,7 @@ export function InsightActions({
 		return () => {
 			cancelled = true
 		}
-	}, [insight.id, initialLinkedTaskId])
+	}, [enableLinkedTaskLookup, insight.id, initialLinkedTaskId])
 
 	// Handle task creation success
 	const handleTaskCreated = (taskId: string) => {

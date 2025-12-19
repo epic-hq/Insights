@@ -1,8 +1,8 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
-import { Calendar, Loader2, MoreVertical, RefreshCw, Trash2 } from "lucide-react"
+import { Calendar, Loader2, MoreVertical, RefreshCw, Trash2, Users } from "lucide-react"
 import { useState } from "react"
-import { Link, useFetcher, useNavigate } from "react-router"
+import { Link, useFetcher } from "react-router"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -31,6 +31,13 @@ interface NoteCardProps {
 		source_type?: string | null
 		tags?: string[]
 		status?: string | null
+		interview_people?: Array<{
+			people?: {
+				name?: string | null
+				segment?: string | null
+			} | null
+			role?: string | null
+		}>
 		conversation_analysis?: {
 			indexed_at?: string
 			evidence_count?: number
@@ -44,7 +51,6 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 	const { projectPath, projectId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
-	const navigate = useNavigate()
 	const deleteFetcher = useFetcher<{
 		success?: boolean
 		redirectTo?: string
@@ -59,6 +65,20 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 	const contentPreview = note.content_md
 		? note.content_md.slice(0, 120) + (note.content_md.length > 120 ? "..." : "")
 		: ""
+
+	const participant_names = Array.from(
+		new Set(
+			(note.interview_people ?? []).map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name))
+		)
+	)
+	const displayed_participant_names = participant_names.slice(0, 3)
+	const remaining_participant_count = Math.max(0, participant_names.length - displayed_participant_names.length)
+	const participants_label =
+		displayed_participant_names.length > 0
+			? remaining_participant_count > 0
+				? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
+				: displayed_participant_names.join(", ")
+			: null
 
 	const handleReprocess = (e: React.MouseEvent) => {
 		e.preventDefault()
@@ -142,12 +162,19 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 							<p className="mb-3 line-clamp-2 text-gray-600 text-sm dark:text-gray-400">{contentPreview}</p>
 						)}
 
+						{participants_label && (
+							<div className="mb-3 flex items-center gap-2 text-muted-foreground">
+								<Users className="h-3.5 w-3.5" />
+								<span className="text-xs">{participants_label}</span>
+							</div>
+						)}
+
 						{/* Tags */}
 						{note.tags && note.tags.length > 0 && (
 							<div className="mb-3 flex flex-wrap gap-1.5">
-								{note.tags.slice(0, 3).map((tag, idx) => (
+								{note.tags.slice(0, 3).map((tag) => (
 									<Badge
-										key={idx}
+										key={tag}
 										variant="outline"
 										className="border-gray-300 text-gray-700 text-xs dark:border-gray-600 dark:text-gray-300"
 									>

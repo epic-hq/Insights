@@ -118,20 +118,35 @@ function truncateText(text: string | null | undefined, maxLength: number): strin
 }
 
 // Small badge to indicate a linked task exists
-function LinkedTaskIndicator({ insightId, projectPath }: { insightId: string; projectPath: string }) {
+function LinkedTaskIndicator({
+	insightId,
+	projectPath,
+	enableLinkedTaskLookup = false,
+}: {
+	insightId: string
+	projectPath: string
+	enableLinkedTaskLookup?: boolean
+}) {
 	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(null)
 	const routes = useProjectRoutes(projectPath)
 
 	useEffect(() => {
+		if (!enableLinkedTaskLookup) return
+
 		let cancelled = false
 
 		async function checkLinkedTask() {
 			try {
 				const supabase = createClient()
-				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insightId).limit(1).single()
+				const { data } = await supabase
+					.from("tasks")
+					.select("id")
+					.eq("source_theme_id", insightId)
+					.limit(1)
 
-				if (!cancelled && data) {
-					setLinkedTaskId(data.id)
+				const id = (data as Array<{ id: string }> | null)?.[0]?.id
+				if (!cancelled && id) {
+					setLinkedTaskId(id)
 				}
 			} catch {
 				// No linked task found
@@ -143,7 +158,7 @@ function LinkedTaskIndicator({ insightId, projectPath }: { insightId: string; pr
 		return () => {
 			cancelled = true
 		}
-	}, [insightId])
+	}, [enableLinkedTaskLookup, insightId])
 
 	if (!linkedTaskId) return null
 
