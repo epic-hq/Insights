@@ -78,7 +78,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// DEBUG: Detailed logging to track down task access issues
 	consola.info("🔍 [PRIORITIES DEBUG] Loader started")
 	consola.info("🔍 [PRIORITIES DEBUG] URL params:", { accountId, projectId })
-	consola.info("🔍 [PRIORITIES DEBUG] User:", { email: ctx.claims?.email, userId: ctx.claims?.sub })
+	consola.info("🔍 [PRIORITIES DEBUG] User:", {
+		email: ctx.claims?.email,
+		userId: ctx.claims?.sub,
+	})
 	consola.info(
 		"🔍 [PRIORITIES DEBUG] User's accounts:",
 		ctx.accounts?.map((a) => ({
@@ -104,7 +107,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	})
 	if (!hasAccess) {
 		consola.warn("🚫 [PRIORITIES DEBUG] User denied access to account:", accountId)
-		throw new Response("Unauthorized: You don't have access to this account", { status: 403 })
+		throw new Response("Unauthorized: You don't have access to this account", {
+			status: 403,
+		})
 	}
 
 	if (!ctx.supabase) {
@@ -158,7 +163,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// }
 
 	const projectPath = `/a/${accountId}/${projectId}`
-	return { tasks, accountId, projectId, statusFilter, priorityFilter, projectPath }
+	return {
+		tasks,
+		accountId,
+		projectId,
+		statusFilter,
+		priorityFilter,
+		projectPath,
+	}
 }
 
 // ============================================================================
@@ -220,6 +232,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		const description = formData.get("description") as string
 		const cluster = formData.get("cluster") as string
 		const priority = Number.parseInt(formData.get("priority") as string, 10) || 3
+		const sourceThemeId = formData.get("source_theme_id") as string | null
 
 		if (!title) {
 			return { success: false, error: "Title is required" }
@@ -236,7 +249,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		}
 
 		try {
-			await createTask({
+			const createdTask = await createTask({
 				supabase: ctx.supabase,
 				accountId,
 				projectId,
@@ -246,10 +259,11 @@ export async function action({ context, request }: ActionFunctionArgs) {
 					description: description || null,
 					cluster: cluster || "Product",
 					priority: priority as 1 | 2 | 3,
+					source_theme_id: sourceThemeId || null,
 				},
 			})
 
-			return { success: true }
+			return { success: true, taskId: createdTask.id }
 		} catch (error) {
 			consola.error("Error creating task:", error)
 			return { success: false, error: "Failed to create task" }
@@ -520,19 +534,25 @@ function EditableDueDateCell({ taskId, value }: { taskId: string; value: string 
 	const isOverdue = selectedDate && selectedDate < now && selectedDate.toDateString() !== now.toDateString()
 	const isToday = selectedDate && selectedDate.toDateString() === now.toDateString()
 
-	const formatted = selectedDate ? selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null
+	const formatted = selectedDate
+		? selectedDate.toLocaleDateString("en-US", {
+				month: "short",
+				day: "numeric",
+			})
+		: null
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${isOverdue
-						? "text-red-600 dark:text-red-400"
-						: isToday
-							? "text-amber-600 dark:text-amber-400"
-							: "text-muted-foreground"
-						}`}
+					className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-muted ${
+						isOverdue
+							? "text-red-600 dark:text-red-400"
+							: isToday
+								? "text-amber-600 dark:text-amber-400"
+								: "text-muted-foreground"
+					}`}
 				>
 					{formatted ? (
 						<>
@@ -630,13 +650,41 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 
 	const filterOptions = [
 		{ value: "all", label: "All", className: "text-foreground" },
-		{ value: "backlog", label: "Backlog", className: "text-slate-700 dark:text-slate-300" },
-		{ value: "todo", label: "To Do", className: "text-blue-700 dark:text-blue-300" },
-		{ value: "in_progress", label: "In Progress", className: "text-purple-700 dark:text-purple-300" },
-		{ value: "blocked", label: "Blocked", className: "text-red-700 dark:text-red-300" },
-		{ value: "review", label: "In Review", className: "text-amber-700 dark:text-amber-300" },
-		{ value: "done", label: "Done", className: "text-green-700 dark:text-green-300" },
-		{ value: "archived", label: "Archived", className: "text-gray-700 dark:text-gray-300" },
+		{
+			value: "backlog",
+			label: "Backlog",
+			className: "text-slate-700 dark:text-slate-300",
+		},
+		{
+			value: "todo",
+			label: "To Do",
+			className: "text-blue-700 dark:text-blue-300",
+		},
+		{
+			value: "in_progress",
+			label: "In Progress",
+			className: "text-purple-700 dark:text-purple-300",
+		},
+		{
+			value: "blocked",
+			label: "Blocked",
+			className: "text-red-700 dark:text-red-300",
+		},
+		{
+			value: "review",
+			label: "In Review",
+			className: "text-amber-700 dark:text-amber-300",
+		},
+		{
+			value: "done",
+			label: "Done",
+			className: "text-green-700 dark:text-green-300",
+		},
+		{
+			value: "archived",
+			label: "Archived",
+			className: "text-gray-700 dark:text-gray-300",
+		},
 	]
 
 	return (
@@ -663,8 +711,9 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 									to={`?status=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
-										}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
 								>
 									<span className={option.className}>{option.label}</span>
 									<span className="text-muted-foreground text-xs">({statusCounts[option.value] || 0})</span>
@@ -699,9 +748,24 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 
 	const filterOptions = [
 		{ value: "all", label: "All", className: "text-foreground" },
-		{ value: "high", label: "High", color: "emerald", className: "text-emerald-700 dark:text-emerald-300" },
-		{ value: "medium", label: "Medium", color: "amber", className: "text-amber-700 dark:text-amber-300" },
-		{ value: "low", label: "Low", color: "slate", className: "text-slate-700 dark:text-slate-300" },
+		{
+			value: "high",
+			label: "High",
+			color: "emerald",
+			className: "text-emerald-700 dark:text-emerald-300",
+		},
+		{
+			value: "medium",
+			label: "Medium",
+			color: "amber",
+			className: "text-amber-700 dark:text-amber-300",
+		},
+		{
+			value: "low",
+			label: "Low",
+			color: "slate",
+			className: "text-slate-700 dark:text-slate-300",
+		},
 	]
 
 	return (
@@ -728,8 +792,9 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 									to={`?priority=${option.value}`}
 									preventScrollReset
 									onClick={() => setOpen(false)}
-									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${currentFilter === option.value ? "bg-muted font-medium" : ""
-										}`}
+									className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+										currentFilter === option.value ? "bg-muted font-medium" : ""
+									}`}
 								>
 									<div className="flex items-center">
 										{option.color && <span className={`mr-2 h-2 w-2 rounded-full bg-${option.color}-600`} />}
@@ -756,115 +821,115 @@ const createColumns = (
 	priorityFilter: string,
 	projectPath: string
 ): ColumnDef<FeatureRow>[] => [
-		{
-			accessorKey: "category",
-			header: "Category",
-			// Hidden column - used for grouping and filtering only
-			cell: ({ row }) => <span>{row.original.category}</span>,
-		},
-		{
-			accessorKey: "feature",
-			header: ({ column }) => {
-				return (
-					<SortableColumnHeader
-						title="Tasks"
-						tooltip="The task, feature, or initiative to be implemented"
-						column={column}
-					/>
-				)
-			},
-			cell: ({ row }) => (
-				<TaskTitleCell
-					taskId={row.original.id}
-					value={row.original.feature}
-					detailHref={`${projectPath}/priorities/${row.original.id}`}
+	{
+		accessorKey: "category",
+		header: "Category",
+		// Hidden column - used for grouping and filtering only
+		cell: ({ row }) => <span>{row.original.category}</span>,
+	},
+	{
+		accessorKey: "feature",
+		header: ({ column }) => {
+			return (
+				<SortableColumnHeader
+					title="Tasks"
+					tooltip="The task, feature, or initiative to be implemented"
+					column={column}
 				/>
-			),
+			)
 		},
-		{
-			accessorKey: "benefit",
-			header: () => {
-				return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
-			},
-			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
+		cell: ({ row }) => (
+			<TaskTitleCell
+				taskId={row.original.id}
+				value={row.original.feature}
+				detailHref={`${projectPath}/priorities/${row.original.id}`}
+			/>
+		),
+	},
+	{
+		accessorKey: "benefit",
+		header: () => {
+			return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
 		},
-		{
-			accessorKey: "segments",
-			header: () => {
-				return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
-			},
-			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
+	},
+	{
+		accessorKey: "segments",
+		header: () => {
+			return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
 		},
-		{
-			accessorKey: "impact",
-			header: ({ column }) => {
-				return (
-					<SortableColumnHeader
-						title="Impact"
-						tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
-						column={column}
-					/>
-				)
-			},
-			cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
+	},
+	{
+		accessorKey: "impact",
+		header: ({ column }) => {
+			return (
+				<SortableColumnHeader
+					title="Impact"
+					tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
+					column={column}
+				/>
+			)
 		},
-		{
-			accessorKey: "stage",
-			header: () => {
-				return (
-					<ColumnHeader
-						title="Stage"
-						tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
-					/>
-				)
-			},
-			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
+		cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
+	},
+	{
+		accessorKey: "stage",
+		header: () => {
+			return (
+				<ColumnHeader
+					title="Stage"
+					tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
+				/>
+			)
 		},
-		{
-			accessorKey: "priority",
-			header: () => {
-				return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
-			},
-			cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
+	},
+	{
+		accessorKey: "priority",
+		header: () => {
+			return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
 		},
-		{
-			accessorKey: "due_date",
-			header: () => {
-				return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
-			},
-			cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
+		cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
+	},
+	{
+		accessorKey: "due_date",
+		header: () => {
+			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
 		},
-		{
-			accessorKey: "status",
-			header: () => {
-				return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
-			},
-			cell: ({ row }) => {
-				// Get status from the original task data
-				const task = tasks.find((t) => t.id === row.original.id)
-				const status = task?.status || "backlog"
-				return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
-			},
+		cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
+	},
+	{
+		accessorKey: "status",
+		header: () => {
+			return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
 		},
-		{
-			accessorKey: "reason",
-			header: () => {
-				return (
-					<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
-				)
-			},
-			cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
+		cell: ({ row }) => {
+			// Get status from the original task data
+			const task = tasks.find((t) => t.id === row.original.id)
+			const status = task?.status || "backlog"
+			return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
 		},
-		{
-			id: "actions",
-			header: () => {
-				return (
-					<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
-				)
-			},
-			cell: ({ row }) => <AskUppyCell row={row.original} />,
+	},
+	{
+		accessorKey: "reason",
+		header: () => {
+			return (
+				<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
+			)
 		},
-	]
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
+	},
+	{
+		id: "actions",
+		header: () => {
+			return (
+				<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
+			)
+		},
+		cell: ({ row }) => <AskUppyCell row={row.original} />,
+	},
+]
 
 function AskUppyCell({ row }: { row: FeatureRow }) {
 	const { insertText } = useProjectStatusAgent()

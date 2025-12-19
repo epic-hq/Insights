@@ -240,7 +240,10 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 					<TableBody>
 						{table.getRowModel().rows.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={table.getVisibleLeafColumns().length} className="h-24 text-center text-muted-foreground">
+								<TableCell
+									colSpan={table.getVisibleLeafColumns().length}
+									className="h-24 text-center text-muted-foreground"
+								>
 									No people found
 								</TableCell>
 							</TableRow>

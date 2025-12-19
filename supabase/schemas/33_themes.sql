@@ -35,6 +35,10 @@ create table if not exists themes (
   related_tags text[] default '{}',
   confidence smallint,
 
+  -- Prioritization (for insight triage)
+  priority integer default 3 check (priority between 1 and 3),
+  -- 1 = High, 2 = Medium, 3 = Low (matches task priority)
+
   -- Legacy compatibility (for migration from insights)
   interview_id uuid references interviews(id) on delete set null,
 

@@ -368,9 +368,7 @@ export const semanticSearchEvidenceTool = createTool({
 
 					// Get interview titles for fallback results
 					const fallbackInterviewIds = [
-						...new Set(
-							fallbackEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []
-						),
+						...new Set(fallbackEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []),
 					]
 					const { data: fallbackInterviewData } = fallbackInterviewIds.length
 						? await supabase.from("interviews").select("id, title").in("id", fallbackInterviewIds)
@@ -395,9 +393,7 @@ export const semanticSearchEvidenceTool = createTool({
 									gist: row.gist || null,
 									similarity,
 									interviewId: row.interview_id || null,
-									interviewTitle: row.interview_id
-										? fallbackInterviewTitles.get(row.interview_id) || null
-										: null,
+									interviewTitle: row.interview_id ? fallbackInterviewTitles.get(row.interview_id) || null : null,
 									pains: row.pains || null,
 									gains: row.gains || null,
 									thinks: row.thinks || null,

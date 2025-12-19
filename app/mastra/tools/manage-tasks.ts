@@ -436,10 +436,7 @@ export const createTaskTool = createTool({
 			const supabase = supabaseAdmin as SupabaseClient<Database>
 			const { accountId, projectId, userId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
-			const assigneesInput =
-				input.assignees && input.assignees.length > 0
-					? input.assignees
-					: [{ userId }]
+			const assigneesInput = input.assignees && input.assignees.length > 0 ? input.assignees : [{ userId }]
 			const { resolved: resolvedAssignees, warnings } = await resolveAssignees({
 				accountId,
 				supabase,

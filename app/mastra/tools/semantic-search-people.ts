@@ -187,7 +187,10 @@ export const semanticSearchPeopleTool = createTool({
 
 			if (!facetsData || facetsData.length === 0) {
 				// Fallback: lightweight text/name search so users can still find people without embeddings
-				const normalizedQuery = query.toLowerCase().trim().replace(/[^\w\s]/g, " ")
+				const normalizedQuery = query
+					.toLowerCase()
+					.trim()
+					.replace(/[^\w\s]/g, " ")
 				const likePattern = `%${normalizedQuery}%`
 				const tokens = normalizedQuery.split(/\s+/).filter(Boolean)
 
@@ -212,9 +215,7 @@ export const semanticSearchPeopleTool = createTool({
 				// Facet label matches (role/title/org size/etc.)
 				const { data: facetMatches, error: facetTextError } = await supabase
 					.from("person_facet")
-					.select(
-						"person_id, facet_account:facet_account!inner(label, facet_kind:facet_kind_global!inner(slug))"
-					)
+					.select("person_id, facet_account:facet_account!inner(label, facet_kind:facet_kind_global!inner(slug))")
 					.eq("project_id", projectId as string)
 					.ilike("facet_account.label", likePattern)
 					.limit(matchCount * 6)
@@ -251,10 +252,7 @@ export const semanticSearchPeopleTool = createTool({
 
 				if (fallbackPersonIds.size > 0) {
 					const ids = Array.from(fallbackPersonIds).slice(0, matchCount * 2)
-					const { data: peopleData } = await supabase
-						.from("people")
-						.select("id, name")
-						.in("id", ids)
+					const { data: peopleData } = await supabase.from("people").select("id, name").in("id", ids)
 
 					const facetsByPerson = new Map<string, Array<{ kind: string; label: string }>>()
 					facetMatches?.forEach((f) => {

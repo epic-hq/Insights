@@ -30,8 +30,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const url = new URL(request.url)
 		const category = url.searchParams.get("category") || "uploads"
 		const rawEntityId = url.searchParams.get("entityId")
-		const entityId =
-			rawEntityId && rawEntityId !== "undefined" && rawEntityId !== "null" ? rawEntityId : user.sub
+		const entityId = rawEntityId && rawEntityId !== "undefined" && rawEntityId !== "null" ? rawEntityId : user.sub
 		const suffix = url.searchParams.get("suffix") || undefined
 		if (!entityId) {
 			return Response.json({ error: "Missing entityId" }, { status: 400 })

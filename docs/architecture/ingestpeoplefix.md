@@ -89,3 +89,40 @@ flowchart LR
 - Consolidate on `person_key` (pipeline ID) and `transcript_key` (speaker label) — deprecate `participant_key`.
 - Skip placeholder speakers (“Participant 1”, “Speaker A”) when upserting people; apply company-aware onConflict.
 - After mapping, persist `transcript_key` on `interview_people` so UI linking stays stable.
+
+## Ingest consolidation (action plan)
+- Default to v2 everywhere: remove ENABLE_MODULAR_WORKFLOW branches and stop invoking legacy/v1 routes (`/api.upload-file`, `/api.process-interview-internal`, v1 trigger ids).
+- Shared helpers: use `normalizeSpeakerLabel`, `isPlaceholderPerson`, and `upsertPersonWithCompanyAwareConflict` (account_id,name_hash,company) across v2 tasks.
+- V2 tasks:
+  - `extractEvidenceTaskV2`: inline/replace legacy core; apply shared helpers; skip placeholders.
+  - `assignPersonasTaskV2`: port persona logic from legacy core.
+  - `enrichPersonTaskV2`: ensure person upserts use company-aware conflict/person_type.
+  - `finalizeInterviewTaskV2`: write `transcript_key` onto `interview_people` after mapping.
+- Identifier cleanup: drop `participant_key`, use `person_key` + `transcript_key` only.
+- Delete legacy after burn-in: `processInterview.server.ts`, v1 trigger IDs, and their route callers once v2 parity is verified.
+
+> Mermaid tip: Each node is on its own line; IDs avoid slashes; labels in quotes; avoid parentheses/linebreaks in labels.
+
+
+## Potential issues?
+
+  1. onConflict alignment
+
+  - DB: `uniq_people_account_name_company` (expression with COALESCE) plus `uniq_people_account_name_company_plain` (plain columns).
+  - Code: `upsertPersonWithCompanyAwareConflict` now normalizes `company` to `""` so `onConflict: "account_id,name_hash,company"` hits the plain index and also satisfies the expression index. **Ensure migration `20251235000000_people_unique_with_company.sql` is applied.**
+
+  2. Missing firstname/lastname Parsing
+
+  Original code in processInterview.server.ts:1716:
+  const { firstname, lastname } = parseFullName(fullName)
+  const payload: PeopleInsert = {
+    firstname: firstname || null,
+    lastname: lastname || null,
+    ...
+  }
+
+  But upsertPersonWithCompanyAwareConflict expects pre-parsed names. The hook call:
+  upsertPerson: async (payload) =>
+    upsertPersonWithCompanyAwareConflict(client, payload, payload.person_type ?? undefined)
+
+  Problem: If caller passes { name: "John Smith" } without firstname/lastname, the upsert will fail or create incomplete records.

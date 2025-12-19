@@ -1,3 +1,4 @@
+import consola from "consola"
 import { LayoutGrid, Loader2, MoreVertical, RefreshCw, Rows, Sparkles, Trash2, Wand2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
@@ -19,16 +20,22 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
-	const { projectId } = context.get(currentProjectContext)
+	const ctx_project = context.get(currentProjectContext)
+	// Use context projectId, fallback to URL params (same pattern as table.tsx)
+	const projectId = ctx_project.projectId || params.projectId || ""
 
 	if (!projectId || !supabase) {
+		consola.warn("[InsightsLayout] Missing projectId or supabase:", {
+			projectId: !!projectId,
+			supabase: !!supabase,
+		})
 		return { insightCount: 0, evidenceCount: 0 }
 	}
 
 	// Get counts for the header
-	const [{ count: insightCount }, { count: evidenceCount }] = await Promise.all([
+	const [themesResult, evidenceResult] = await Promise.all([
 		supabase.from("themes").select("*", { count: "exact", head: true }).eq("project_id", projectId),
 		supabase
 			.from("evidence")
@@ -37,9 +44,17 @@ export async function loader({ context }: LoaderFunctionArgs) {
 			.or("is_question.is.null,is_question.eq.false"),
 	])
 
+	consola.log("[InsightsLayout] Count query results:", {
+		projectId,
+		themesCount: themesResult.count,
+		themesError: themesResult.error?.message,
+		evidenceCount: evidenceResult.count,
+		evidenceError: evidenceResult.error?.message,
+	})
+
 	return {
-		insightCount: insightCount ?? 0,
-		evidenceCount: evidenceCount ?? 0,
+		insightCount: themesResult.count ?? 0,
+		evidenceCount: evidenceResult.count ?? 0,
 	}
 }
 
@@ -65,7 +80,11 @@ export default function InsightsLayout() {
 	// Handle consolidation response
 	useEffect(() => {
 		if (consolidateFetcher.data && consolidateFetcher.state === "idle") {
-			const data = consolidateFetcher.data as { ok?: boolean; message?: string; error?: string }
+			const data = consolidateFetcher.data as {
+				ok?: boolean
+				message?: string
+				error?: string
+			}
 			if (data.ok) {
 				toast.success(data.message || "Themes have been consolidated successfully.")
 				// If in refresh flow, move to next step
@@ -83,14 +102,23 @@ export default function InsightsLayout() {
 	// Handle delete response
 	useEffect(() => {
 		if (deleteFetcher.data && deleteFetcher.state === "idle") {
-			const data = deleteFetcher.data as { ok?: boolean; deleted?: number; message?: string; error?: string }
+			const data = deleteFetcher.data as {
+				ok?: boolean
+				deleted?: number
+				message?: string
+				error?: string
+			}
 			if (data.ok) {
 				toast.success(data.message || `Deleted ${data.deleted} empty themes`)
 				// If in refresh flow, move to next step
 				if (refreshStep === "delete") {
 					setRefreshStep("enrich")
 					enrichFetcher.submit(
-						{ project_id: projectId!, account_id: accountId!, max_themes: "50" },
+						{
+							project_id: projectId!,
+							account_id: accountId!,
+							max_themes: "50",
+						},
 						{ method: "POST", action: "/api/enrich-themes" }
 					)
 				}
@@ -104,7 +132,11 @@ export default function InsightsLayout() {
 	// Handle enrich response
 	useEffect(() => {
 		if (enrichFetcher.data && enrichFetcher.state === "idle") {
-			const data = enrichFetcher.data as { success?: boolean; message?: string; error?: string }
+			const data = enrichFetcher.data as {
+				success?: boolean
+				message?: string
+				error?: string
+			}
 			if (data.success) {
 				toast.success(data.message || "Theme enrichment started.")
 				// End refresh flow

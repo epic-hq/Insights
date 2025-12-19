@@ -2415,6 +2415,8 @@ export type Database = {
 			interviews: {
 				Row: {
 					account_id: string
+					context_confidence: number | null
+					context_reasoning: string | null
 					conversation_analysis: Json | null
 					created_at: string
 					created_by: string | null
@@ -2422,6 +2424,7 @@ export type Database = {
 					file_extension: string | null
 					high_impact_themes: string[] | null
 					id: string
+					interaction_context: Database["public"]["Enums"]["interaction_context"] | null
 					interview_date: string | null
 					interview_type: string | null
 					interviewer_id: string | null
@@ -2453,6 +2456,8 @@ export type Database = {
 				}
 				Insert: {
 					account_id: string
+					context_confidence?: number | null
+					context_reasoning?: string | null
 					conversation_analysis?: Json | null
 					created_at?: string
 					created_by?: string | null
@@ -2460,6 +2465,7 @@ export type Database = {
 					file_extension?: string | null
 					high_impact_themes?: string[] | null
 					id?: string
+					interaction_context?: Database["public"]["Enums"]["interaction_context"] | null
 					interview_date?: string | null
 					interview_type?: string | null
 					interviewer_id?: string | null
@@ -2491,6 +2497,8 @@ export type Database = {
 				}
 				Update: {
 					account_id?: string
+					context_confidence?: number | null
+					context_reasoning?: string | null
 					conversation_analysis?: Json | null
 					created_at?: string
 					created_by?: string | null
@@ -2498,6 +2506,7 @@ export type Database = {
 					file_extension?: string | null
 					high_impact_themes?: string[] | null
 					id?: string
+					interaction_context?: Database["public"]["Enums"]["interaction_context"] | null
 					interview_date?: string | null
 					interview_type?: string | null
 					interviewer_id?: string | null
@@ -3368,6 +3377,7 @@ export type Database = {
 					name: string | null
 					name_hash: string | null
 					occupation: string | null
+					person_type: string | null
 					preferences: string | null
 					primary_email: string | null
 					primary_phone: string | null
@@ -3379,6 +3389,7 @@ export type Database = {
 					timezone: string | null
 					title: string | null
 					updated_at: string
+					user_id: string | null
 					website_url: string | null
 				}
 				Insert: {
@@ -3407,6 +3418,7 @@ export type Database = {
 					name?: string | null
 					name_hash?: string | null
 					occupation?: string | null
+					person_type?: string | null
 					preferences?: string | null
 					primary_email?: string | null
 					primary_phone?: string | null
@@ -3418,6 +3430,7 @@ export type Database = {
 					timezone?: string | null
 					title?: string | null
 					updated_at?: string
+					user_id?: string | null
 					website_url?: string | null
 				}
 				Update: {
@@ -3446,6 +3459,7 @@ export type Database = {
 					name?: string | null
 					name_hash?: string | null
 					occupation?: string | null
+					person_type?: string | null
 					preferences?: string | null
 					primary_email?: string | null
 					primary_phone?: string | null
@@ -3457,6 +3471,7 @@ export type Database = {
 					timezone?: string | null
 					title?: string | null
 					updated_at?: string
+					user_id?: string | null
 					website_url?: string | null
 				}
 				Relationships: [
@@ -5358,6 +5373,7 @@ export type Database = {
 					project_id: string
 					reason: string | null
 					segments: string | null
+					source_theme_id: string | null
 					stage: string | null
 					status: string
 					tags: string[] | null
@@ -5385,6 +5401,7 @@ export type Database = {
 					project_id: string
 					reason?: string | null
 					segments?: string | null
+					source_theme_id?: string | null
 					stage?: string | null
 					status?: string
 					tags?: string[] | null
@@ -5412,6 +5429,7 @@ export type Database = {
 					project_id?: string
 					reason?: string | null
 					segments?: string | null
+					source_theme_id?: string | null
 					stage?: string | null
 					status?: string
 					tags?: string[] | null
@@ -5431,6 +5449,13 @@ export type Database = {
 						columns: ["project_id"]
 						isOneToOne: false
 						referencedRelation: "projects"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "tasks_source_theme_id_fkey"
+						columns: ["source_theme_id"]
+						isOneToOne: false
+						referencedRelation: "themes"
 						referencedColumns: ["id"]
 					},
 				]
@@ -5521,6 +5546,7 @@ export type Database = {
 					novelty: string | null
 					opportunity_ideas: string[] | null
 					pain: string | null
+					priority: number | null
 					project_id: string | null
 					related_tags: string[] | null
 					statement: string | null
@@ -5555,6 +5581,7 @@ export type Database = {
 					novelty?: string | null
 					opportunity_ideas?: string[] | null
 					pain?: string | null
+					priority?: number | null
 					project_id?: string | null
 					related_tags?: string[] | null
 					statement?: string | null
@@ -5589,6 +5616,7 @@ export type Database = {
 					novelty?: string | null
 					opportunity_ideas?: string[] | null
 					pain?: string | null
+					priority?: number | null
 					project_id?: string | null
 					related_tags?: string[] | null
 					statement?: string | null
@@ -5759,6 +5787,8 @@ export type Database = {
 			conversations: {
 				Row: {
 					account_id: string | null
+					context_confidence: number | null
+					context_reasoning: string | null
 					conversation_analysis: Json | null
 					created_at: string | null
 					created_by: string | null
@@ -5766,6 +5796,7 @@ export type Database = {
 					file_extension: string | null
 					high_impact_themes: string[] | null
 					id: string | null
+					interaction_context: Database["public"]["Enums"]["interaction_context"] | null
 					interview_date: string | null
 					interview_type: string | null
 					interviewer_id: string | null
@@ -5793,6 +5824,8 @@ export type Database = {
 				}
 				Insert: {
 					account_id?: string | null
+					context_confidence?: number | null
+					context_reasoning?: string | null
 					conversation_analysis?: Json | null
 					created_at?: string | null
 					created_by?: string | null
@@ -5800,6 +5833,7 @@ export type Database = {
 					file_extension?: string | null
 					high_impact_themes?: string[] | null
 					id?: string | null
+					interaction_context?: Database["public"]["Enums"]["interaction_context"] | null
 					interview_date?: string | null
 					interview_type?: string | null
 					interviewer_id?: string | null
@@ -5827,6 +5861,8 @@ export type Database = {
 				}
 				Update: {
 					account_id?: string | null
+					context_confidence?: number | null
+					context_reasoning?: string | null
 					conversation_analysis?: Json | null
 					created_at?: string | null
 					created_by?: string | null
@@ -5834,6 +5870,7 @@ export type Database = {
 					file_extension?: string | null
 					high_impact_themes?: string[] | null
 					id?: string | null
+					interaction_context?: Database["public"]["Enums"]["interaction_context"] | null
 					interview_date?: string | null
 					interview_type?: string | null
 					interviewer_id?: string | null
@@ -6496,6 +6533,7 @@ export type Database = {
 		}
 		Enums: {
 			asset_type: "table" | "pdf" | "document" | "image" | "audio" | "video" | "link"
+			interaction_context: "research" | "sales" | "support" | "internal" | "debrief"
 			interview_status:
 				| "draft"
 				| "scheduled"
@@ -6639,6 +6677,7 @@ export const Constants = {
 	public: {
 		Enums: {
 			asset_type: ["table", "pdf", "document", "image", "audio", "video", "link"],
+			interaction_context: ["research", "sales", "support", "internal", "debrief"],
 			interview_status: [
 				"draft",
 				"scheduled",

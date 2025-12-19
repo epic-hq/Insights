@@ -50,7 +50,13 @@ interface PersonFacetSummary {
 	confidence: number | null
 }
 
-export default function EnhancedPersonCard({ person, className, facets, conversationCount, evidenceCount }: EnhancedPersonCardProps) {
+export default function EnhancedPersonCard({
+	person,
+	className,
+	facets,
+	conversationCount,
+	evidenceCount,
+}: EnhancedPersonCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
@@ -158,7 +164,11 @@ export default function EnhancedPersonCard({ person, className, facets, conversa
 						{topFacets.length > 0 && (
 							<div className="mb-3 flex flex-wrap gap-2">
 								{topFacets.slice(0, 2).map((facet) => (
-									<Badge key={`${person.id}-${facet.facet_account_id}`} variant="secondary" className="max-w-full capitalize">
+									<Badge
+										key={`${person.id}-${facet.facet_account_id}`}
+										variant="secondary"
+										className="max-w-full capitalize"
+									>
 										<span className="line-clamp-1">{facet.label}</span>
 									</Badge>
 								))}
@@ -166,14 +176,10 @@ export default function EnhancedPersonCard({ person, className, facets, conversa
 						)}
 						<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
 							{typeof conversationCount === "number" && (
-								<span className="rounded bg-muted px-2 py-0.5">
-									{conversationCount} conversations
-								</span>
+								<span className="rounded bg-muted px-2 py-0.5">{conversationCount} conversations</span>
 							)}
 							{typeof evidenceCount === "number" && (
-								<span className="rounded bg-muted px-2 py-0.5">
-									{evidenceCount} evidence
-								</span>
+								<span className="rounded bg-muted px-2 py-0.5">{evidenceCount} evidence</span>
 							)}
 						</div>
 					</CardContent>

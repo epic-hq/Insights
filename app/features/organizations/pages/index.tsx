@@ -103,7 +103,6 @@ export default function OrganizationsIndexPage() {
 							<Building2 className="h-7 w-7" />
 							Organizations
 						</h1>
-
 					</div>
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 						<ToggleGroup

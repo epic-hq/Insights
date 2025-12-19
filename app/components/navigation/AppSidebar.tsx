@@ -249,11 +249,13 @@ export function AppSidebar() {
 		| "deals"
 		| "contacts"
 		| "opportunities"
+		| "highPriorityTasks"
 	> = {
 		// Main navigation
 		conversations: "encounters", // Conversations = encounters/interviews count
 		insights: "themes", // Insights = themes count (renamed from Topics)
 		content: "content", // Content = conversations + notes + files
+		tasks: "highPriorityTasks", // Tasks = high priority tasks count
 
 		relationships: "people",
 
@@ -298,10 +300,16 @@ export function AppSidebar() {
 
 	const resolveItemState = (itemKey: string) => {
 		if (itemKey === "insights") {
-			return { locked: insightsLocked, hint: insightsLocked ? "Add content to unlock" : undefined }
+			return {
+				locked: insightsLocked,
+				hint: insightsLocked ? "Add content to unlock" : undefined,
+			}
 		}
 		if (itemKey === "lenses") {
-			return { locked: lensesLocked, hint: lensesLocked ? "Generate insights first" : undefined }
+			return {
+				locked: lensesLocked,
+				hint: lensesLocked ? "Generate insights first" : undefined,
+			}
 		}
 
 		return { locked: false, hint: undefined }

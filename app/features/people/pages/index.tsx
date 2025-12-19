@@ -179,9 +179,9 @@ export default function PeopleIndexPage() {
 				title: jobTitle,
 				organization: primaryOrganization
 					? {
-						id: primaryOrganization.id,
-						name: primaryOrganization.name || primaryOrganization.website_url || null,
-					}
+							id: primaryOrganization.id,
+							name: primaryOrganization.name || primaryOrganization.website_url || null,
+						}
 					: null,
 				conversationCount: person.interview_people?.length ?? 0,
 				evidenceCount: evidence_counts[person.id] ?? 0,
@@ -321,9 +321,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-												name: pp.personas.name,
-												color_hex: pp.personas.color_hex || undefined,
-											}
+													name: pp.personas.name,
+													color_hex: pp.personas.color_hex || undefined,
+												}
 											: undefined,
 									})),
 								}}

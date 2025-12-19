@@ -1,15 +1,15 @@
 import type { UUID } from "node:crypto"
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
-import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
-import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 
 // Remix action to handle multipart/form-data file uploads, stream the file to
 // AssemblyAI's /upload endpoint, then run the existing transcript->insights pipeline.
@@ -49,6 +49,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	const accountId = projectRow.account_id
 	consola.log(`api.upload-file resolved accountId: ${accountId}, projectId: ${projectId}`)
 
+	const interviewTitle = `Interview - ${format(new Date(), "yyyy-MM-dd")}`
+
 	try {
 		// Check if file is text/markdown - handle directly without AssemblyAI
 		const isTextFile =
@@ -59,6 +61,52 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		let transcriptData: Record<string, unknown>
 		let mediaUrl: string
+		let interviewId: string
+
+		// Detect file type for source_type field up front
+		const fileExtension = file.name.split(".").pop()?.toLowerCase() || ""
+		let sourceType = "audio_upload"
+		if (file.type.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(fileExtension)) {
+			sourceType = "video_upload"
+		}
+		if (isTextFile) {
+			sourceType = "document"
+		}
+
+		// Create interview record upfront (used as analysisJobId)
+		const { data: interview, error: insertError } = await supabase
+			.from("interviews")
+			.insert({
+				account_id: accountId,
+				project_id: projectId,
+				title: isTextFile ? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}` : interviewTitle,
+				status: "uploading",
+				original_filename: file.name,
+				source_type: sourceType,
+				file_extension: fileExtension,
+			})
+			.select()
+			.single()
+
+		if (insertError || !interview) {
+			return Response.json({ error: "Failed to create interview record" }, { status: 500 })
+		}
+
+		interviewId = interview.id
+
+		if (userId) {
+			await ensureInterviewInterviewerLink({
+				supabase,
+				accountId,
+				projectId,
+				interviewId: interview.id,
+				userId,
+				userSettings: ctx.user_settings || null,
+				userMetadata: ctx.user_metadata || null,
+			})
+		}
+
+		await createPlannedAnswersForInterview(supabase, { projectId, interviewId: interview.id })
 
 		if (isTextFile) {
 			// Handle text/markdown files - read content directly
@@ -84,46 +132,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			)
 		} else {
 			// Handle audio/video files - store file and transcribe
-
-			// Detect file type for source_type field
-			const fileExtension = file.name.split(".").pop()?.toLowerCase() || ""
-			let sourceType = "audio_upload"
-			if (file.type.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(fileExtension)) {
-				sourceType = "video_upload"
-			}
-
-			// First create interview record to get ID for storage
-			const { data: interview, error: insertError } = await supabase
-				.from("interviews")
-				.insert({
-					account_id: accountId,
-					project_id: projectId,
-					title: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
-					status: "uploading",
-					original_filename: file.name,
-					source_type: sourceType,
-					file_extension: fileExtension,
-				})
-				.select()
-				.single()
-
-			if (insertError || !interview) {
-				return Response.json({ error: "Failed to create interview record" }, { status: 500 })
-			}
-
-			if (userId) {
-				await ensureInterviewInterviewerLink({
-					supabase,
-					accountId,
-					projectId,
-					interviewId: interview.id,
-					userId,
-					userSettings: ctx.user_settings || null,
-					userMetadata: ctx.user_metadata || null,
-				})
-			}
-
-			await createPlannedAnswersForInterview(supabase, { projectId, interviewId: interview.id })
 
 			// Store audio file in Cloudflare R2
 			consola.log("Storing audio file in Cloudflare R2...")
@@ -166,25 +174,38 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			projectId,
 			userId: userId ?? undefined,
 			fileName: file?.name,
-			interviewTitle: isTextFile
-				? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}`
-				: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
+			interviewTitle: isTextFile ? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}` : interviewTitle,
 			participantName: "Anonymous",
 			segment: "Unknown",
 		}
 
 		const userCustomInstructions = (formData.get("userCustomInstructions") as string) || ""
 
-		// 3. Run insight extraction + store in Supabase
-		const result = await processInterviewTranscript({
+		// 3. Persist transcript to interview for resumeFrom: evidence
+		const transcriptString = (transcriptData?.full_transcript as string) || ""
+		await supabase
+			.from("interviews")
+			.update({
+				transcript: transcriptString,
+				transcript_formatted: transcriptData as any,
+				status: "transcribed",
+				media_url: mediaUrl,
+			})
+			.eq("id", interviewId)
+
+		// 4. Trigger v2 orchestrator starting from evidence (skip upload)
+		const handle = await tasks.trigger("interview.v2.orchestrator", {
+			analysisJobId: interviewId,
 			metadata,
 			transcriptData,
 			mediaUrl,
 			userCustomInstructions,
-			request,
+			existingInterviewId: interviewId,
+			resumeFrom: "evidence",
+			skipSteps: ["upload"],
 		})
 
-		return Response.json({ success: true, insights: result.stored, interviewId: result.interview.id })
+		return Response.json({ success: true, interviewId, runId: handle.id })
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "Unknown error"
 		return Response.json({ error: message }, { status: 500 })

@@ -5,7 +5,7 @@
 DROP INDEX IF EXISTS uniq_people_account_namehash;
 
 -- Create new unique index including company (COALESCE handles null companies)
-CREATE UNIQUE INDEX uniq_people_account_name_company
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_people_account_name_company
   ON public.people (account_id, name_hash, COALESCE(lower(company), ''));
 
 -- Add a plain-column unique index to support ON CONFLICT clause

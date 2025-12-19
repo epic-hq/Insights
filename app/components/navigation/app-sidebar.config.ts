@@ -64,7 +64,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			{
 				key: "tasks",
 				title: "Tasks",
-				description: "Actions created from insights.",
+				description: "Top focus tasks for the next 7 days.",
 				icon: CheckSquare,
 				to: (routes) => routes.priorities(),
 			},

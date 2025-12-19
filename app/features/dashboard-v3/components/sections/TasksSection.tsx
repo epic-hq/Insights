@@ -10,6 +10,7 @@
 import { CheckSquare } from "lucide-react"
 import { useMemo } from "react"
 import { Link, useFetcher } from "react-router"
+import { Streamdown } from "streamdown"
 import { Card, CardContent } from "~/components/ui/card"
 import { PriorityBars } from "~/features/tasks/components/PriorityBars"
 import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
@@ -81,6 +82,12 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 								<PriorityBars priority={task.priority || 1} size="sm" />
 							</div>
 							<p className="line-clamp-2 text-muted-foreground text-xs">{task.benefit}</p>
+						</div>
+					)}
+
+					{task.description && (
+						<div className="mt-2">
+							<Streamdown className="line-clamp-3 text-muted-foreground text-xs">{task.description}</Streamdown>
 						</div>
 					)}
 

@@ -62,12 +62,12 @@ const CLUSTERS = [
 /** Convert insight into HMW (How Might We) format using desired outcome */
 function toHowMightWe(insight: Insight): string {
 	// Use desired_outcome as primary source, fallback to statement/name
-	const outcome = insight.desired_outcome || insight.statement || insight.name || ""
+	const outcome = insight.desired_outcome || insight.name || insight.statement || ""
 
 	if (outcome) {
 		// Remove trailing period, keep original capitalization
 		const cleanOutcome = outcome.replace(/\.$/, "")
-		return `HMW: ${cleanOutcome}`
+		return `HMW address: ${cleanOutcome}`
 	}
 
 	return ""

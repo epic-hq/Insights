@@ -20,8 +20,9 @@ import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { cn } from "~/lib/utils"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
@@ -36,6 +37,8 @@ interface LinkedItem {
 	id: string
 	linkId: string
 	label: string
+	company?: string | null
+	segment?: string | null
 }
 
 interface AvailableItem {
@@ -52,6 +55,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 	const linkFetcher = useFetcher()
 	const navigate = useNavigate()
 	const revalidator = useRevalidator()
+	const routes = useProjectRoutes(`/a/${interview.account_id}/${projectId}`)
 	const supabase = createClient()
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isIndexing, setIsIndexing] = useState(false)
@@ -111,7 +115,10 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 		try {
 			const [{ data: linkedPeopleData, error: linkedPeopleError }, { data: peopleData, error: peopleError }] =
 				await Promise.all([
-					supabase.from("interview_people").select("id, people(id, name)").eq("interview_id", interview.id),
+					supabase
+						.from("interview_people")
+						.select("id, people(id, name, company, segment)")
+						.eq("interview_id", interview.id),
 					supabase.from("people").select("id, name").eq("project_id", projectId).order("name", { ascending: true }),
 				])
 
@@ -124,12 +131,16 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 							const person = row.people as {
 								id: string
 								name: string | null
+								company?: string | null
+								segment?: string | null
 							} | null
 							if (!person?.id) return null
 							return {
 								id: person.id,
 								linkId: String(row.id),
 								label: person.name || "Unnamed",
+								company: person.company ?? null,
+								segment: person.segment ?? null,
 							} satisfies LinkedItem
 						})
 						.filter(Boolean) as LinkedItem[]
@@ -563,7 +574,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 					<div className="flex items-center gap-2">
 						<span
 							className={cn(
-								"rounded-full px-2.5 py-1 text-xs font-medium",
+								"rounded-full px-2.5 py-1 font-medium text-xs",
 								{
 									emerald: "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200",
 									amber: "bg-amber-100 text-amber-800 ring-1 ring-amber-200",
@@ -603,11 +614,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 										) : (
 											<Search className="mr-2 h-3.5 w-3.5" />
 										)}
-										{isReprocessing
-											? "Processing..."
-											: isIndexed
-												? "Re-index note"
-												: "Index note"}
+										{isReprocessing ? "Processing..." : isIndexed ? "Re-index note" : "Index note"}
 									</DropdownMenuItem>
 								)}
 								<DropdownMenuItem onClick={handleApplyLenses} disabled={isApplyingLenses || !hasContent}>
@@ -618,11 +625,15 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 									)}
 									{isApplyingLenses ? "Applying lenses..." : "Apply lenses"}
 								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={() => setShowDeleteDialog(true)}
+									className="text-destructive focus:text-destructive"
+								>
+									<Trash2 className="mr-2 h-3.5 w-3.5" />
+									Delete...
+								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
-						<Button variant="ghost" size="sm" onClick={() => setShowDeleteDialog(true)}>
-							<Trash2 className="h-4 w-4 text-destructive" />
-						</Button>
 					</div>
 				</div>
 
@@ -664,6 +675,9 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 									id: p.id,
 									label: p.label,
 									link_id: p.linkId,
+									href: routes.people.detail(p.id),
+									company: p.company ?? null,
+									segment: p.segment ?? null,
 								})),
 								available_items: available_people,
 								on_link: handleLinkPerson,

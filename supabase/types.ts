@@ -5385,6 +5385,7 @@ export type Database = {
           project_id: string
           reason: string | null
           segments: string | null
+          source_theme_id: string | null
           stage: string | null
           status: string
           tags: string[] | null
@@ -5412,6 +5413,7 @@ export type Database = {
           project_id: string
           reason?: string | null
           segments?: string | null
+          source_theme_id?: string | null
           stage?: string | null
           status?: string
           tags?: string[] | null
@@ -5439,6 +5441,7 @@ export type Database = {
           project_id?: string
           reason?: string | null
           segments?: string | null
+          source_theme_id?: string | null
           stage?: string | null
           status?: string
           tags?: string[] | null
@@ -5458,6 +5461,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_source_theme_id_fkey"
+            columns: ["source_theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
             referencedColumns: ["id"]
           },
         ]
@@ -5548,6 +5558,7 @@ export type Database = {
           novelty: string | null
           opportunity_ideas: string[] | null
           pain: string | null
+          priority: number | null
           project_id: string | null
           related_tags: string[] | null
           statement: string | null
@@ -5582,6 +5593,7 @@ export type Database = {
           novelty?: string | null
           opportunity_ideas?: string[] | null
           pain?: string | null
+          priority?: number | null
           project_id?: string | null
           related_tags?: string[] | null
           statement?: string | null
@@ -5616,6 +5628,7 @@ export type Database = {
           novelty?: string | null
           opportunity_ideas?: string[] | null
           pain?: string | null
+          priority?: number | null
           project_id?: string | null
           related_tags?: string[] | null
           statement?: string | null

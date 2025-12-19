@@ -1,14 +1,14 @@
 /**
- * V2 Extract Evidence Task
+ * V2 Extract Evidence Task (inlined)
  *
- * Atomic task that extracts evidence units and people from interview transcript.
- * Fully idempotent - can be safely retried.
+ * Extracts evidence and people from transcript_data, maps BAML person_key to person_id,
+ * normalizes speaker labels, and links interview_people with transcript_key.
  */
 
 import { task } from "@trigger.dev/sdk"
 import consola from "consola"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { extractEvidenceAndPeopleCore, workflowRetryConfig } from "~/utils/processInterview.server"
 import {
 	errorMessage,
 	saveWorkflowState,
@@ -16,32 +16,33 @@ import {
 	updateAnalysisJobProgress,
 } from "./state"
 import type { ExtractEvidencePayload, ExtractEvidenceResult } from "./types"
+import {
+	isPlaceholderPerson,
+	normalizeSpeakerLabel,
+	upsertPersonWithCompanyAwareConflict,
+} from "~/features/interviews/peopleNormalization.server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { mapRawPeopleToInterviewLinks } from "./personMapping"
+import type { Database } from "~/../supabase/types"
 
 export const extractEvidenceTaskV2 = task({
 	id: "interview.v2.extract-evidence",
-	retry: workflowRetryConfig,
+	retry: {
+		maxAttempts: 3,
+		factor: 1.8,
+		minTimeoutInMs: 500,
+		maxTimeoutInMs: 30_000,
+		randomize: false,
+	},
 	run: async (payload: ExtractEvidencePayload, { ctx }): Promise<ExtractEvidenceResult> => {
 		const { interviewId, fullTranscript, language, analysisJobId } = payload
 		const client = createSupabaseAdminClient()
 
-		consola.info("[extractEvidence] Task started with payload:", {
-			interviewId,
-			fullTranscriptLength: fullTranscript?.length ?? 0,
-			language,
-			analysisJobId,
-		})
-
-		// Validate payload
 		if (!interviewId || interviewId === "undefined") {
-			const errorMsg = `Invalid interviewId received: "${interviewId}". ` +
-				`This indicates a bug in the orchestrator or state management. ` +
-				`Full payload: ${JSON.stringify(payload, null, 2)}`
-			consola.error("[extractEvidence]", errorMsg)
-			throw new Error(errorMsg)
+			throw new Error(`Invalid interviewId: ${interviewId}`)
 		}
 
 		try {
-			// Update progress and processing_metadata
 			await updateAnalysisJobProgress(client, analysisJobId, {
 				currentStep: "evidence",
 				progress: 40,
@@ -60,65 +61,86 @@ export const extractEvidenceTaskV2 = task({
 				})
 				.eq("id", interviewId)
 
-			// Load interview data
-			consola.info(`[extractEvidence] Loading interview: ${interviewId}`)
 			const { data: interview, error: interviewError } = await client
 				.from("interviews")
 				.select("*")
 				.eq("id", interviewId)
 				.single()
-
 			if (interviewError || !interview) {
 				throw new Error(`Interview ${interviewId} not found: ${interviewError?.message}`)
 			}
 
-			consola.success(`[extractEvidence] Loaded interview: ${interview.id}`)
-
-			// Delete existing evidence for idempotency
-			const { error: deleteError } = await client.from("evidence").delete().eq("interview_id", interviewId)
-
-			if (deleteError) {
-				console.warn(`Failed to delete existing evidence for ${interviewId}:`, deleteError)
-			}
-
-			// Extract evidence with timestamps (reuse existing core function)
-			const evidenceResult = await extractEvidenceAndPeopleCore({
-				db: client,
+			// Clean transcript data
+			const transcriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted as any)
+			// Call legacy core but with people hooks; rawPeople returned for mapping
+			const { extractEvidenceAndPeopleCore } = await import("~/utils/processInterview.server")
+			const extraction = await extractEvidenceAndPeopleCore({
+				db: client as any,
 				metadata: {
 					accountId: interview.account_id,
 					projectId: interview.project_id || undefined,
 				},
 				interviewRecord: interview as any,
-				transcriptData: interview.transcript_formatted as any,
+				transcriptData: transcriptData as any,
 				language,
 				fullTranscript,
+				peopleHooks: {
+					normalizeSpeakerLabel,
+					isPlaceholderPerson,
+					upsertPerson: async (payload) =>
+						upsertPersonWithCompanyAwareConflict(client as any, payload, payload.person_type ?? undefined),
+				},
 			})
 
-			// Update workflow state
+			// Map raw people to people table and set transcript_key on interview_people
+			const rawPeople = Array.isArray((extraction as any)?.rawPeople)
+				? ((extraction as any).rawPeople as any[])
+				: []
+			if (rawPeople.length) {
+				const { speakerLabelByPersonId } = await mapRawPeopleToInterviewLinks({
+					db: client as unknown as SupabaseClient<Database>,
+					rawPeople,
+					accountId: interview.account_id,
+					projectId: interview.project_id,
+				})
+
+				for (const [personId, transcriptKey] of speakerLabelByPersonId.entries()) {
+					await client
+						.from("interview_people")
+						.upsert(
+							{
+								interview_id: interviewId,
+								person_id: personId,
+								project_id: interview.project_id,
+								transcript_key: transcriptKey,
+							},
+							{ onConflict: "interview_id,person_id" },
+						)
+				}
+			}
+
 			if (analysisJobId) {
 				await saveWorkflowState(client, analysisJobId, {
-					evidenceIds: evidenceResult.insertedEvidenceIds,
-					evidenceUnits: evidenceResult.evidenceUnits,
-					personId: evidenceResult.personData?.id || null,
+					evidenceIds: extraction.insertedEvidenceIds,
+					evidenceUnits: extraction.evidenceUnits,
+					personId: extraction.personData?.id || null,
 					completedSteps: ["upload", "evidence"],
 					currentStep: "evidence",
 					interviewId,
 				})
 
-				// Update evidence extraction progress
 				await updateAnalysisJobProgress(client, analysisJobId, {
 					progress: 55,
-					statusDetail: `Extracted ${evidenceResult.insertedEvidenceIds.length} evidence units`,
+					statusDetail: `Extracted ${extraction.insertedEvidenceIds.length} evidence units`,
 				})
 			}
 
 			return {
-				evidenceIds: evidenceResult.insertedEvidenceIds,
-				evidenceUnits: evidenceResult.evidenceUnits,
-				personId: evidenceResult.personData?.id || null,
+				evidenceIds: extraction.insertedEvidenceIds,
+				evidenceUnits: extraction.evidenceUnits,
+				personId: extraction.personData?.id || null,
 			}
 		} catch (error) {
-			// Update processing_metadata on error
 			await client
 				.from("interviews")
 				.update({

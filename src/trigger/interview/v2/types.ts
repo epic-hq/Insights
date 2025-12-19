@@ -58,6 +58,7 @@ export interface ExtractEvidencePayload {
 	fullTranscript?: string // Optional - extracted from transcript_formatted
 	language: string
 	analysisJobId?: string
+	personKey?: string | null
 }
 
 export interface ExtractEvidenceResult {

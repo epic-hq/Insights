@@ -279,11 +279,7 @@ export function ManagePeopleAssociations({
 							<div key={participant.id} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
 								<div className="min-w-[100px] font-medium text-sm">{speakerLabel}</div>
 
-								{linkedPerson ? (
-									<Check className="h-4 w-4 shrink-0 text-green-600" />
-								) : (
-									<div className="h-4 w-4" />
-								)}
+								{linkedPerson ? <Check className="h-4 w-4 shrink-0 text-green-600" /> : <div className="h-4 w-4" />}
 
 								<Popover
 									open={openPopoverId === participant.id}
@@ -311,7 +307,7 @@ export function ManagePeopleAssociations({
 														{linkedPerson ? linkedPerson.name || "Unnamed" : "Select person"}
 													</span>
 													{linkedPerson?.person_type === "internal" && (
-														<span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+														<span className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
 															Team
 														</span>
 													)}
@@ -347,7 +343,7 @@ export function ManagePeopleAssociations({
 															<div className="flex items-center gap-2">
 																<span>{person.name || "Unnamed Person"}</span>
 																{person.person_type === "internal" && (
-																	<span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+																	<span className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
 																		Team
 																	</span>
 																)}
@@ -355,26 +351,26 @@ export function ManagePeopleAssociations({
 														</CommandItem>
 													))}
 												</CommandGroup>
-							<CommandSeparator />
-							<CommandGroup>
-								<CommandItem
-									value={`create-new-${searchInput}`}
-									onSelect={() => {
-										if (searchInput.trim()) {
-											const tokens = searchInput.trim().split(/\s+/)
-											const firstGuess = tokens[0] ?? ""
-											const lastGuess = tokens.length > 1 ? tokens.slice(1).join(" ") : ""
-											setNewPersonFirst(firstGuess)
-											setNewPersonLast(lastGuess)
-											setNewPersonName(searchInput.trim())
-											setShowAddPersonDialog(true)
-										}
-										setOpenPopoverId(null)
-									}}
-									className="text-primary"
-								>
-									<Plus className="mr-2 h-4 w-4" />
-									{searchInput.trim() ? `Create "${searchInput.trim()}"` : "Create new person..."}
+												<CommandSeparator />
+												<CommandGroup>
+													<CommandItem
+														value={`create-new-${searchInput}`}
+														onSelect={() => {
+															if (searchInput.trim()) {
+																const tokens = searchInput.trim().split(/\s+/)
+																const firstGuess = tokens[0] ?? ""
+																const lastGuess = tokens.length > 1 ? tokens.slice(1).join(" ") : ""
+																setNewPersonFirst(firstGuess)
+																setNewPersonLast(lastGuess)
+																setNewPersonName(searchInput.trim())
+																setShowAddPersonDialog(true)
+															}
+															setOpenPopoverId(null)
+														}}
+														className="text-primary"
+													>
+														<Plus className="mr-2 h-4 w-4" />
+														{searchInput.trim() ? `Create "${searchInput.trim()}"` : "Create new person..."}
 													</CommandItem>
 												</CommandGroup>
 											</CommandList>

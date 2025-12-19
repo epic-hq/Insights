@@ -369,7 +369,15 @@ export function SimpleMediaPlayer({
 
 			{isClient &&
 				(isAudio ? (
-					<audio ref={audioRef} src={signedUrl} controls autoPlay={autoPlay || hasUserInteracted} className="w-full" />
+					<div className="overflow-hidden rounded-md bg-muted/20">
+						<audio
+							ref={audioRef}
+							src={signedUrl}
+							controls
+							autoPlay={autoPlay || hasUserInteracted}
+							className="w-full border-0 bg-transparent shadow-none outline-none focus:outline-none"
+						/>
+					</div>
 				) : isVideo ? (
 					<video
 						ref={videoRef}

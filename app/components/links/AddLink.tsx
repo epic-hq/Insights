@@ -1,5 +1,6 @@
 import { Briefcase, Building2, Check, Loader2, Plus, Users, X } from "lucide-react"
 import { useMemo, useState } from "react"
+import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import {
@@ -21,6 +22,9 @@ export type Add_link_item = {
 	id: string
 	label: string
 	link_id: string
+	href?: string
+	company?: string | null
+	segment?: string | null
 }
 
 export type Add_link_option = {
@@ -96,24 +100,63 @@ export function AddLink({
 					if (k.linked_items.length === 0) return null
 					const Icon = get_kind_icon(k.kind)
 					return (
-						<div key={k.kind} className="flex flex-wrap items-center gap-2">
-							<div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-								<Icon className="h-4 w-4" />
-								<span>{k.label_plural}:</span>
-							</div>
-							{k.linked_items.map((item) => (
-								<Badge key={item.link_id} variant="secondary" className="group flex items-center gap-1 pr-1">
-									{item.label}
-									<button
-										onClick={() => k.on_unlink(item.link_id)}
-										className="ml-1 rounded-full p-0.5 opacity-60 hover:bg-destructive/20 hover:opacity-100"
-										title="Remove link"
-										type="button"
-									>
-										<X className="h-3 w-3" />
-									</button>
-								</Badge>
-							))}
+						<div
+							key={k.kind}
+							className={cn("flex flex-wrap items-center", k.kind === "person" ? "gap-3 text-sm" : "gap-2")}
+						>
+							{k.kind === "person" ? (
+								<span className="text-muted-foreground">{k.label_plural}:</span>
+							) : (
+								<div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+									<Icon className="h-4 w-4" />
+									<span>{k.label_plural}:</span>
+								</div>
+							)}
+							{k.kind === "person"
+								? k.linked_items.map((item) => (
+										<div key={item.link_id} className="flex items-center gap-1.5">
+											{item.href ? (
+												<Link
+													to={item.href}
+													className="font-medium text-foreground hover:underline"
+													onClick={(e) => {
+														e.stopPropagation()
+													}}
+												>
+													{item.label}
+												</Link>
+											) : (
+												<span className="font-medium text-foreground">{item.label}</span>
+											)}
+											{item.company && <span className="text-muted-foreground">({item.company})</span>}
+											{item.segment && item.segment !== "Unknown" && (
+												<Badge variant="outline" className="text-xs">
+													{item.segment}
+												</Badge>
+											)}
+											<button
+												onClick={() => k.on_unlink(item.link_id)}
+												className="ml-1 rounded-full p-0.5 opacity-60 hover:bg-destructive/20 hover:opacity-100"
+												title="Remove link"
+												type="button"
+											>
+												<X className="h-3 w-3" />
+											</button>
+										</div>
+									))
+								: k.linked_items.map((item) => (
+										<Badge key={item.link_id} variant="secondary" className="group flex items-center gap-1 pr-1">
+											<span>{item.label}</span>
+											<button
+												onClick={() => k.on_unlink(item.link_id)}
+												className="ml-1 rounded-full p-0.5 opacity-60 hover:bg-destructive/20 hover:opacity-100"
+												title="Remove link"
+												type="button"
+											>
+												<X className="h-3 w-3" />
+											</button>
+										</Badge>
+									))}
 						</div>
 					)
 				})

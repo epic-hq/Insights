@@ -27,6 +27,9 @@ create table if not exists tasks (
   stage text,
   reason text,
 
+  -- Source linking (optional - if task was created from an insight)
+  source_theme_id uuid references themes(id) on delete set null,
+
   -- Assignment
   assigned_to jsonb default '[]'::jsonb,
   -- Array of: [
@@ -62,6 +65,7 @@ create index if not exists idx_tasks_parent on tasks(parent_task_id) where paren
 create index if not exists idx_tasks_assigned_to on tasks using gin(assigned_to);
 create index if not exists idx_tasks_tags on tasks using gin(tags);
 create index if not exists idx_tasks_priority_status on tasks(project_id, priority, status);
+create index if not exists idx_tasks_source_theme on tasks(source_theme_id) where source_theme_id is not null;
 
 -- Triggers
 create trigger set_tasks_timestamp

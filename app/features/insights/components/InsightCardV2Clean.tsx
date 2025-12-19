@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Archive, Edit, EyeOff, MessageCircle, MoreHorizontal, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react"
+import { Archive, Edit, EyeOff, MessageCircle, MoreHorizontal, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -23,11 +23,10 @@ export default function InsightCardV2({ insight, onEdit, onDelete, className }: 
 	const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
 	// Use the new annotations system
-	const { annotations, voteCounts, userVote, userFlags, submitAnnotation, submitVote, submitFlag, isLoading } =
-		useEntityAnnotations({
-			entityType: "insight",
-			entityId: insight.id,
-		})
+	const { annotations, userFlags, submitAnnotation, submitFlag } = useEntityAnnotations({
+		entityType: "insight",
+		entityId: insight.id,
+	})
 
 	const toggleComments = () => {
 		if (!insight?.id) {
@@ -35,23 +34,6 @@ export default function InsightCardV2({ insight, onEdit, onDelete, className }: 
 			return
 		}
 		setShowComments((prev) => !prev)
-	}
-
-	const handleVote = (voteType: "upvote" | "downvote") => {
-		if (!insight?.id) {
-			consola.error("handleVote: insight.id is undefined", { insight })
-			return
-		}
-
-		const voteValue = voteType === "upvote" ? 1 : -1
-
-		// If user already voted the same way, remove the vote
-		if (userVote?.vote_value === voteValue) {
-			submitVote({ _action: "remove" })
-		} else {
-			// Otherwise, submit the new vote
-			submitVote({ vote_value: voteValue })
-		}
 	}
 
 	const handleAddComment = () => {
@@ -99,8 +81,6 @@ export default function InsightCardV2({ insight, onEdit, onDelete, className }: 
 	}
 
 	// Get current state from annotations system
-	const upvotes = voteCounts?.upvotes || 0
-	const downvotes = voteCounts?.downvotes || 0
 	const comments = annotations?.filter((a) => a.annotation_type === "comment") || []
 	const isArchived = userFlags?.some((f) => f.flag_type === "archived" && f.flag_value) || false
 	const isHidden = userFlags?.some((f) => f.flag_type === "hidden" && f.flag_value) || false
@@ -178,34 +158,6 @@ export default function InsightCardV2({ insight, onEdit, onDelete, className }: 
 			<CardContent className="pt-0">
 				{/* Action buttons */}
 				<div className="mb-4 flex items-center gap-2">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => handleVote("upvote")}
-						className={cn(
-							"flex items-center gap-1 hover:bg-green-50",
-							userVote?.vote_value === 1 ? "bg-green-50 text-green-700" : "text-green-600 hover:text-green-700"
-						)}
-						disabled={isLoading}
-					>
-						<ThumbsUp className="h-4 w-4" />
-						<span className="font-medium text-sm">{upvotes}</span>
-					</Button>
-
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => handleVote("downvote")}
-						className={cn(
-							"flex items-center gap-1 hover:bg-red-50",
-							userVote?.vote_value === -1 ? "bg-red-50 text-red-700" : "text-red-600 hover:text-red-700"
-						)}
-						disabled={isLoading}
-					>
-						<ThumbsDown className="h-4 w-4" />
-						<span className="font-medium text-sm">{downvotes}</span>
-					</Button>
-
 					<Button
 						variant="ghost"
 						size="sm"

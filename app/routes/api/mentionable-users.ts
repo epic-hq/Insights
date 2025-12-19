@@ -2,8 +2,9 @@
  * Mentionable Users API
  * Returns list of users and people that can be @mentioned in comments
  */
-import type { LoaderFunctionArgs } from "react-router"
+
 import consola from "consola"
+import type { LoaderFunctionArgs } from "react-router"
 import { userContext } from "~/server/user-context"
 
 export interface MentionableUser {
