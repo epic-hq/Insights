@@ -4,7 +4,19 @@
 
 import type { EvidenceTurn, InterviewExtraction } from "~/../baml_client/types"
 import type { Interview, InsightInsert } from "~/types"
-import type { InterviewMetadata } from "~/utils/processInterview.server"
+export interface InterviewMetadata {
+	accountId: string
+	userId?: string
+	projectId?: string
+	interviewTitle?: string
+	interviewDate?: string
+	fileName?: string
+	personName?: string
+	personRole?: string
+	participantName?: string
+	segment?: string
+	skipLenses?: boolean
+}
 
 /**
  * Workflow state stored in analysis_jobs.workflow_state

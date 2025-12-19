@@ -20,7 +20,7 @@
 import { task } from "@trigger.dev/sdk"
 import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { workflowRetryConfig } from "~/utils/processInterview.server"
+import { workflowRetryConfig } from "./config"
 import { uploadAndTranscribeTaskV2 } from "./uploadAndTranscribe"
 import { extractEvidenceTaskV2 } from "./extractEvidence"
 import { enrichPersonTaskV2 } from "./enrichPerson"
@@ -203,12 +203,18 @@ export const processInterviewOrchestratorV2 = task({
 
 				consola.info(`[Orchestrator] State validation passed: interviewId=${state.interviewId}`)
 
-				const result = await extractEvidenceTaskV2.triggerAndWait({
-					interviewId: state.interviewId,
-					fullTranscript: state.fullTranscript,
-					language: state.language || "en",
-					analysisJobId,
-				})
+				const result = await extractEvidenceTaskV2.triggerAndWait(
+					{
+						interviewId: state.interviewId,
+						fullTranscript: state.fullTranscript,
+						language: state.language || "en",
+						analysisJobId,
+					},
+					{
+						idempotencyKey: `extract-${state.interviewId}`,
+						queue: `extract-${state.interviewId}`,
+					}
+				)
 
 				if (!result.ok) {
 					throw new Error(`Evidence extraction failed: ${result.error}`)

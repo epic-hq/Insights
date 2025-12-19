@@ -16,7 +16,7 @@ import consola from "consola";
 import { PostHog } from "posthog-node";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
-import { workflowRetryConfig } from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "./config";
 import {
   generateTitleFromContent,
   isTimestampTitle,

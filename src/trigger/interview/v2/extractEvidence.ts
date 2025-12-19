@@ -23,6 +23,7 @@ import {
 } from "~/features/interviews/peopleNormalization.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 import { mapRawPeopleToInterviewLinks } from "./personMapping"
+import { extractEvidenceCore } from "./extractEvidenceCore"
 import type { Database } from "~/../supabase/types"
 
 export const extractEvidenceTaskV2 = task({
@@ -34,6 +35,10 @@ export const extractEvidenceTaskV2 = task({
 		maxTimeoutInMs: 30_000,
 		randomize: false,
 	},
+	maxDuration: 1_800, // allow up to 30 minutes for large transcripts; heartbeats handled by Trigger.dev
+	machine: {
+		preset: "medium-2x", // faster than default for long transcripts
+	},
 	run: async (payload: ExtractEvidencePayload, { ctx }): Promise<ExtractEvidenceResult> => {
 		const { interviewId, fullTranscript, language, analysisJobId } = payload
 		const client = createSupabaseAdminClient()
@@ -43,6 +48,7 @@ export const extractEvidenceTaskV2 = task({
 		}
 
 		try {
+			// Early heartbeat/progress update to keep run active
 			await updateAnalysisJobProgress(client, analysisJobId, {
 				currentStep: "evidence",
 				progress: 40,
@@ -72,9 +78,8 @@ export const extractEvidenceTaskV2 = task({
 
 			// Clean transcript data
 			const transcriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted as any)
-			// Call legacy core but with people hooks; rawPeople returned for mapping
-			const { extractEvidenceAndPeopleCore } = await import("~/utils/processInterview.server")
-			const extraction = await extractEvidenceAndPeopleCore({
+			// Call v2 core (currently delegating to legacy) with people hooks; rawPeople returned for mapping
+			const extraction = await extractEvidenceCore({
 				db: client as any,
 				metadata: {
 					accountId: interview.account_id,

@@ -62,7 +62,7 @@ flowchart TD
 ```mermaid
 flowchart LR
   orch[interview.v2.orchestrator] --> sanitize[interview.v2.sanitizeTranscript]
-  sanitize --> extract[interview.v2.extractEvidenceAndPeople]
+  sanitize --> extract[interview.v2.extractEvidence]
   extract --> assign_people[interview.v2.assignPeople]
   assign_people --> assign_personas[interview.v2.assignPersonas]
   assign_personas --> finalize[interview.v2.finalizeInterview]
@@ -94,7 +94,7 @@ flowchart LR
 - Default to v2 everywhere: remove ENABLE_MODULAR_WORKFLOW branches and stop invoking legacy/v1 routes (`/api.upload-file`, `/api.process-interview-internal`, v1 trigger ids).
 - Shared helpers: use `normalizeSpeakerLabel`, `isPlaceholderPerson`, and `upsertPersonWithCompanyAwareConflict` (account_id,name_hash,company) across v2 tasks.
 - V2 tasks:
-  - `extractEvidenceTaskV2`: inline/replace legacy core; apply shared helpers; skip placeholders.
+  - `extractEvidenceTaskV2`: inline/replace legacy core (no import from processInterview.server); apply shared helpers; skip placeholders; emit transcript_key + person_key mapping directly.
   - `assignPersonasTaskV2`: port persona logic from legacy core.
   - `enrichPersonTaskV2`: ensure person upserts use company-aware conflict/person_type.
   - `finalizeInterviewTaskV2`: write `transcript_key` onto `interview_people` after mapping.
@@ -104,25 +104,13 @@ flowchart LR
 > Mermaid tip: Each node is on its own line; IDs avoid slashes; labels in quotes; avoid parentheses/linebreaks in labels.
 
 
-## Potential issues?
+## Status & remaining concerns
 
-  1. onConflict alignment
+- Duplicate key collisions: mitigated by queue/idempotency on extract and lowercase company normalization; requires migration `20251235000000_people_unique_with_company.sql` applied.
+- Legacy dependency: `extractEvidenceTaskV2` still imports `extractEvidenceAndPeopleCore`; must inline to delete `processInterview.server.ts`.
+- Persona synthesis: still in legacy core; needs port into `assignPersonasTaskV2`.
+- Placeholder enforcement: helpers exist, but full enforcement depends on inlining the legacy core.
+- Transcript_key: v2 sets it after mapping; ensure the inlined core preserves this.
+- Import-from-URL uses a shim; safe post-legacy deletion once inlining is done.
 
-  - DB: `uniq_people_account_name_company` (expression with COALESCE) plus `uniq_people_account_name_company_plain` (plain columns).
-  - Code: `upsertPersonWithCompanyAwareConflict` now normalizes `company` to `""` so `onConflict: "account_id,name_hash,company"` hits the plain index and also satisfies the expression index. **Ensure migration `20251235000000_people_unique_with_company.sql` is applied.**
-
-  2. Missing firstname/lastname Parsing
-
-  Original code in processInterview.server.ts:1716:
-  const { firstname, lastname } = parseFullName(fullName)
-  const payload: PeopleInsert = {
-    firstname: firstname || null,
-    lastname: lastname || null,
-    ...
-  }
-
-  But upsertPersonWithCompanyAwareConflict expects pre-parsed names. The hook call:
-  upsertPerson: async (payload) =>
-    upsertPersonWithCompanyAwareConflict(client, payload, payload.person_type ?? undefined)
-
-  Problem: If caller passes { name: "John Smith" } without firstname/lastname, the upsert will fail or create incomplete records.
+Confidence: Medium. The plan is clear and helpers/migration are in place, but risk remains until the legacy extract and persona logic are fully inlined into v2 and verified end-to-end.

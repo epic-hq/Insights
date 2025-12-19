@@ -12,7 +12,7 @@ import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server"
 import { getPersonById } from "~/features/people/db"
-import { workflowRetryConfig } from "~/utils/processInterview.server"
+import { workflowRetryConfig } from "./config"
 import {
 	errorMessage,
 	saveWorkflowState,

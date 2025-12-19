@@ -25,10 +25,8 @@ import {
 } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
-import {
-  generateInterviewInsightsFromEvidenceCore,
-  workflowRetryConfig,
-} from "~/utils/processInterview.server";
+import { workflowRetryConfig } from "./config";
+import { generateInterviewInsightsFromEvidenceCore } from "./extractEvidenceCore";
 import {
   errorMessage,
   saveWorkflowState,

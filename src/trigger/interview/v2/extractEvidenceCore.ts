@@ -1,0 +1,1996 @@
+// TODO: Remove Legacy
+
+// Import the BAML async client helper ("b"), following the official BoundaryML docs.
+// After running `baml-cli generate`, all functions are exposed on this client.
+// NOTE: tsconfig path alias `~` maps to `app/`, so baml_client (generated at project root)
+// is accessible via `~/../baml_client`.
+// Import BAML client - this file is server-only so it's safe to import directly
+
+import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
+import posthog from "posthog-js"
+import { b } from "~/../baml_client"
+import type {
+	FacetCatalog,
+	FacetMention,
+	InterviewExtraction,
+	PersonFacetInput,
+	PersonFacetObservation,
+	PersonScaleInput,
+} from "~/../baml_client/types"
+import type { Json } from "~/../supabase/types"
+import { ensureInterviewInterviewerLink, resolveInternalPerson } from "~/features/people/services/internalPeople.server"
+import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
+import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
+import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema"
+import { FacetResolver, getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { getLangfuseClient } from "~/lib/langfuse.server"
+import { getServerClient } from "~/lib/supabase/client.server"
+import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
+import { batchExtractEvidence } from "~/utils/batchEvidence"
+import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
+import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+
+// Supabase table types
+type Tables = Database["public"]["Tables"]
+type PeopleInsert = Tables["people"]["Insert"] & {
+	person_type?: string | null
+	user_id?: string | null
+}
+type PeopleUpdate = Tables["people"]["Update"] & {
+	person_type?: string | null
+	user_id?: string | null
+}
+type InterviewPeopleInsert = Tables["interview_people"]["Insert"]
+type EvidenceInsert = Tables["evidence"]["Insert"]
+
+export interface ProcessingResult {
+	stored: InsightInsert[]
+	interview: Interview
+}
+
+export interface UploadMediaAndTranscribePayload {
+	metadata: InterviewMetadata
+	transcriptData: Record<string, unknown>
+	mediaUrl: string
+	existingInterviewId?: string
+	analysisJobId?: string
+	userCustomInstructions?: string
+}
+
+export interface UploadMediaAndTranscribeResult {
+	metadata: InterviewMetadata
+	interview: Interview
+	sanitizedTranscriptData: Record<string, unknown>
+	transcriptData: Record<string, unknown>
+	fullTranscript: string
+	language: string
+	analysisJobId?: string
+	userCustomInstructions?: string
+}
+
+export interface AnalyzeThemesAndPersonaResult {
+	storedInsights: InsightInsert[]
+	interview: Interview
+}
+
+export interface GenerateInterviewInsightsTaskPayload {
+	metadata: InterviewMetadata
+	interview: Interview
+	fullTranscript: string
+	userCustomInstructions?: string
+	evidenceResult: ExtractEvidenceResult
+	analysisJobId?: string
+}
+
+export interface AnalyzeThemesTaskPayload extends GenerateInterviewInsightsTaskPayload {
+	interviewInsights: InterviewExtraction
+}
+
+export interface AttributeAnswersTaskPayload {
+	metadata: InterviewMetadata
+	interview: Interview
+	fullTranscript: string
+	insertedEvidenceIds: string[]
+	storedInsights: InsightInsert[]
+	analysisJobId?: string
+}
+
+export const workflowRetryConfig = {
+	maxAttempts: 3,
+	factor: 1.8,
+	minTimeoutInMs: 500,
+	maxTimeoutInMs: 30_000,
+	randomize: false,
+}
+
+export interface InterviewMetadata {
+	accountId: string
+	userId?: string // Add user ID for audit fields
+	projectId?: string
+	interviewTitle?: string
+	interviewDate?: string
+	interviewerName?: string
+	participantName?: string
+	segment?: string
+	durationMin?: number
+	fileName?: string
+}
+
+export interface GenerateInterviewInsightsOptions {
+	evidenceUnits: EvidenceTurn[]
+	userCustomInstructions?: string
+}
+
+function sanitizeVerbatim(input: unknown): string | null {
+	if (typeof input !== "string") return null
+	// Replace smart quotes, collapse whitespace, and drop ASCII control chars
+	const mapQuotes = input.replace(/[\u2018\u2019\u201B\u2032]/g, "'").replace(/[\u201C\u201D\u2033]/g, '"')
+	let out = ""
+	for (let i = 0; i < mapQuotes.length; i++) {
+		const code = mapQuotes.charCodeAt(i)
+		// Skip control chars: 0-31 and 127
+		if ((code >= 0 && code <= 31) || code === 127) {
+			out += " "
+		} else {
+			out += mapQuotes[i]
+		}
+	}
+	const cleaned = out.replace(/\s+/g, " ").trim()
+	return cleaned.length ? cleaned : null
+}
+
+// Generate a stable, short signature for dedupe/independence.
+// Not cryptographically strong; sufficient to cluster near-duplicates.
+function stringHash(input: string): string {
+	let h = 2166136261 >>> 0
+	for (let i = 0; i < input.length; i++) {
+		h ^= input.charCodeAt(i)
+		h = Math.imul(h, 16777619) >>> 0
+	}
+	return `00000000${h.toString(16)}`.slice(-8)
+}
+
+function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
+	const normQuote = verbatim.toLowerCase().replace(/\s+/g, " ").trim()
+	const mainTag = (kindTags[0] || "").toLowerCase().trim()
+	const basis = `${normQuote.slice(0, 160)}|${mainTag}`
+	return stringHash(basis)
+}
+
+type WordTimelineEntry = { text: string; start: number }
+type SegmentTimelineEntry = { text: string; start: number | null }
+
+function coerceSeconds(value: unknown): number | null {
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value > 500 ? value / 1000 : value
+	}
+	if (typeof value === "string") {
+		if (value.endsWith("ms")) {
+			const ms = Number.parseFloat(value.replace("ms", ""))
+			return Number.isFinite(ms) ? ms / 1000 : null
+		}
+		if (value.includes(":")) {
+			const parts = value.split(":").map((part) => Number.parseFloat(part))
+			if (parts.length === 2 && parts.every((part) => Number.isFinite(part))) {
+				return parts[0] * 60 + parts[1]
+			}
+		}
+		const numeric = Number.parseFloat(value)
+		if (Number.isFinite(numeric)) {
+			return numeric > 500 ? numeric / 1000 : numeric
+		}
+	}
+	return null
+}
+
+function normalizeTokens(input: string): string[] {
+	return input
+		.toLowerCase()
+		.replace(/[^a-z0-9\s']/gi, " ")
+		.split(/\s+/)
+		.filter(Boolean)
+}
+
+function buildWordTimeline(transcriptData: Record<string, unknown>): WordTimelineEntry[] {
+	const wordsRaw = Array.isArray((transcriptData as any).words) ? ((transcriptData as any).words as any[]) : []
+	const timeline: WordTimelineEntry[] = []
+	for (const word of wordsRaw) {
+		if (!word || typeof word !== "object") continue
+		const text = typeof word.text === "string" ? word.text.trim().toLowerCase() : ""
+		if (!text) continue
+		const start = coerceSeconds((word as any).start ?? (word as any).start_ms ?? (word as any).startTime)
+		if (start === null) continue
+		timeline.push({ text, start })
+	}
+	return timeline
+}
+
+function buildSegmentTimeline(transcriptData: Record<string, unknown>): SegmentTimelineEntry[] {
+	// Include speaker_transcripts since that's where sanitized AssemblyAI utterances are stored
+	const sources = ["utterances", "segments", "sentences", "speaker_transcripts"] as const
+	const timeline: SegmentTimelineEntry[] = []
+	for (const key of sources) {
+		const items = Array.isArray((transcriptData as any)[key]) ? ((transcriptData as any)[key] as any[]) : []
+		for (const item of items) {
+			if (!item || typeof item !== "object") continue
+			const text = typeof item.text === "string" ? item.text : typeof item.gist === "string" ? item.gist : null
+			if (!text) continue
+			const start = coerceSeconds(item.start ?? item.start_ms ?? item.startTime)
+			timeline.push({ text, start })
+		}
+	}
+	return timeline
+}
+
+function findStartSecondsForSnippet({
+	snippet,
+	wordTimeline,
+	segmentTimeline,
+	fullTranscript,
+	durationSeconds,
+}: {
+	snippet: string
+	wordTimeline: WordTimelineEntry[]
+	segmentTimeline: SegmentTimelineEntry[]
+	fullTranscript: string
+	durationSeconds: number | null
+}): number | null {
+	const normalizedTokens = normalizeTokens(snippet)
+	const searchTokens = normalizedTokens.slice(0, Math.min(4, normalizedTokens.length))
+
+	if (searchTokens.length && wordTimeline.length) {
+		const window = searchTokens.length
+		for (let i = 0; i <= wordTimeline.length - window; i++) {
+			let matches = true
+			for (let j = 0; j < window; j++) {
+				if (wordTimeline[i + j]?.text !== searchTokens[j]) {
+					matches = false
+					break
+				}
+			}
+			if (matches) {
+				return wordTimeline[i].start
+			}
+		}
+	}
+
+	const normalizedSnippet = normalizeForSearchText(snippet)
+	const snippetSample = normalizedSnippet.slice(0, 160)
+	if (snippetSample && segmentTimeline.length) {
+		for (const segment of segmentTimeline) {
+			if (!segment.text) continue
+			const segmentNormalized = normalizeForSearchText(segment.text)
+			if (segmentNormalized.includes(snippetSample)) {
+				const start = segment.start
+				if (start !== null) return start
+			}
+		}
+	}
+
+	if (durationSeconds && fullTranscript) {
+		const transcriptNormalized = normalizeForSearchText(fullTranscript)
+		const index = transcriptNormalized.indexOf(snippetSample)
+		if (index >= 0) {
+			const ratio = transcriptNormalized.length ? index / transcriptNormalized.length : 0
+			const estimated = durationSeconds * ratio
+			return Number.isFinite(estimated) ? Math.max(0, Math.min(durationSeconds, estimated)) : null
+		}
+	}
+
+	return null
+}
+
+function humanizeKey(value?: string | null): string | null {
+	if (!value) return null
+	const cleaned = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ")
+	const capitalized = cleaned.replace(/\b\w/g, (char) => char.toUpperCase()).trim()
+	if (!capitalized.length) return null
+	return capitalized
+}
+
+type FacetLookup = Map<string, Map<string, FacetCatalog["facets"][number]>>
+
+function normalizeFacetValue(value: string | null | undefined): string | null {
+	if (!value) return null
+	const trimmed = value.trim().toLowerCase()
+	if (!trimmed.length) return null
+	return trimmed.replace(/\s+/g, " ")
+}
+
+function buildFacetLookup(catalog: FacetCatalog): FacetLookup {
+	const lookup: FacetLookup = new Map()
+	for (const facet of catalog.facets ?? []) {
+		const rawKind = typeof facet.kind_slug === "string" ? facet.kind_slug.trim().toLowerCase() : ""
+		if (!rawKind || !facet.facet_account_id) continue
+		const byKind = lookup.get(rawKind) ?? new Map<string, FacetCatalog["facets"][number]>()
+		if (!lookup.has(rawKind)) {
+			lookup.set(rawKind, byKind)
+		}
+		const candidates = new Set<string>()
+		const primary = normalizeFacetValue(facet.alias ?? facet.label)
+		if (primary) candidates.add(primary)
+		const label = normalizeFacetValue(facet.label)
+		if (label) candidates.add(label)
+		for (const synonym of facet.synonyms ?? []) {
+			const normalized = normalizeFacetValue(synonym)
+			if (normalized) candidates.add(normalized)
+		}
+		for (const candidate of candidates) {
+			// Do not overwrite existing entries to preserve the first (usually alias) match
+			if (!byKind.has(candidate)) {
+				byKind.set(candidate, facet)
+			}
+		}
+	}
+	return lookup
+}
+
+function matchFacetFromLookup(
+	lookup: FacetLookup,
+	kindSlug: string,
+	label: string
+): FacetCatalog["facets"][number] | null {
+	const normalized = normalizeFacetValue(label)
+	if (!normalized) return null
+	const canonicalKind = kindSlug.trim().toLowerCase()
+	if (!canonicalKind) return null
+	const kindMap = lookup.get(canonicalKind)
+	if (!kindMap) return null
+	return kindMap.get(normalized) ?? null
+}
+
+function sanitizeFacetLabel(label: string | null | undefined): string | null {
+	if (typeof label !== "string") return null
+	const trimmed = label.replace(/\s+/g, " ").trim()
+	if (!trimmed.length) return null
+	return trimmed.length > 240 ? `${trimmed.slice(0, 237).trimEnd()}...` : trimmed
+}
+
+function normalizeForSearchText(value: string | null | undefined): string {
+	if (!value || typeof value !== "string") return ""
+	const replaced = value
+		.replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+		.replace(/[\u201C\u201D\u2033]/g, '"')
+		.replace(/\u00A0/g, " ")
+	return replaced.replace(/\s+/g, " ").trim().toLowerCase()
+}
+
+function sanitizePersonKey(value: unknown, fallback: string): string {
+	if (typeof value === "string") {
+		const trimmed = value.trim()
+		if (trimmed.length) return trimmed
+	}
+	return fallback
+}
+
+async function resolveFacetCatalog(
+	db: SupabaseClient<Database>,
+	accountId: string,
+	projectId?: string | null
+): Promise<FacetCatalog> {
+	if (!projectId) {
+		return {
+			kinds: [],
+			facets: [],
+			version: `account:${accountId}:no-project`,
+		}
+	}
+	try {
+		return await getFacetCatalog({ db, accountId, projectId })
+	} catch (error) {
+		consola.warn("Failed to load facet catalog", error)
+		return {
+			kinds: [],
+			facets: [],
+			version: `account:${accountId}:project:${projectId}:fallback`,
+		}
+	}
+}
+
+function generateFallbackPersonName(metadata: InterviewMetadata): string {
+	if (metadata.fileName) {
+		const nameFromFile = metadata.fileName
+			.replace(/\.[^/.]+$/, "")
+			.replace(/[_-]/g, " ")
+			.replace(/\b\w/g, (l) => l.toUpperCase())
+			.trim()
+
+		if (nameFromFile.length > 0) return nameFromFile
+	}
+	if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) return metadata.interviewTitle
+	const timestamp = new Date().toISOString().split("T")[0]
+	return timestamp
+}
+
+type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscriptV2>>
+type PersonaSynthesisFromBaml = Awaited<ReturnType<typeof b.DerivePersonaFacetsFromEvidence>>
+
+type EvidenceTurn = EvidenceFromBaml["evidence"][number]
+
+interface NormalizedParticipant {
+	person_key: string
+	speaker_label: string | null // AssemblyAI speaker label (e.g., "SPEAKER A")
+	role: string | null
+	display_name: string | null
+	inferred_name: string | null
+	organization: string | null
+	summary: string | null
+	segments: string[]
+	personas: string[]
+	facets: PersonFacetInput[]
+	scales: PersonScaleInput[]
+}
+
+type NameResolutionSource = "display" | "inferred" | "metadata" | "person_key" | "fallback"
+
+const GENERIC_PERSON_LABEL_PATTERNS: RegExp[] = [
+	/^(participant|person|speaker|customer|interviewee|user|client|respondent|guest|attendee)(?:[\s_-]*(\d+|[a-z]))?$/i,
+	/^(interviewer|moderator|facilitator)(?:[\s_-]*(\d+|[a-z]))?$/i,
+	/^(participant|speaker)\s*(one|two|three|first|second|third)$/i,
+]
+
+function _isGenericPersonLabel(label: string | null | undefined): boolean {
+	if (!label) return false
+	const normalized = label.trim().toLowerCase()
+	if (!normalized.length) return false
+	return GENERIC_PERSON_LABEL_PATTERNS.some((pattern) => pattern.test(normalized))
+}
+
+/**
+ * Parse a full name into firstname and lastname
+ * Returns { firstname, lastname } with lastname being null for single-word names
+ */
+function parseFullName(fullName: string): {
+	firstname: string
+	lastname: string | null
+} {
+	const trimmed = fullName.trim()
+	if (!trimmed) return { firstname: "", lastname: null }
+
+	const parts = trimmed.split(/\s+/)
+	if (parts.length === 1) {
+		return { firstname: parts[0], lastname: null }
+	}
+
+	// firstname is the first part, lastname is everything else joined
+	return {
+		firstname: parts[0],
+		lastname: parts.slice(1).join(" "),
+	}
+}
+
+interface ExtractEvidenceOptions {
+	db: SupabaseClient<Database>
+	metadata: InterviewMetadata
+	interviewRecord: Interview
+	transcriptData: Record<string, unknown>
+	language: string
+	fullTranscript?: string // Optional - only used for logging
+	peopleHooks?: {
+		normalizeSpeakerLabel?: (label: string | null) => string | null
+		isPlaceholderPerson?: (name: string) => boolean
+		upsertPerson?: (payload: PeopleInsert) => Promise<{ id: string; name: string | null }>
+	}
+}
+
+interface ExtractEvidenceResult {
+	personData: { id: string }
+	primaryPersonName: string | null
+	primaryPersonRole: string | null
+	primaryPersonDescription: string | null
+	primaryPersonOrganization: string | null
+	primaryPersonSegments: string[]
+	insertedEvidenceIds: string[]
+	evidenceUnits: EvidenceFromBaml["evidence"]
+	evidenceFacetKinds: string[][]
+	// LLM-determined interaction context for automatic lens selection
+	interactionContext: "research" | "sales" | "support" | "internal" | "debrief" | null
+	contextConfidence: number | null
+	contextReasoning: string | null
+	rawPeople?: EvidenceParticipant[]
+}
+
+export async function generateInterviewInsightsFromEvidenceCore({
+	evidenceUnits,
+	userCustomInstructions,
+}: GenerateInterviewInsightsOptions): Promise<InterviewExtraction> {
+	const instructions = userCustomInstructions ?? ""
+
+	// Source function guarantees evidenceUnits is an array
+	if (evidenceUnits.length === 0) {
+		consola.warn("evidenceUnits is empty, returning minimal response")
+		return {
+			insights: [],
+			participant: {},
+			highImpactThemes: [],
+			openQuestionsAndNextSteps: "",
+			observationsAndNotes: "",
+			metadata: { title: "" },
+			relevantAnswers: [],
+		}
+	}
+
+	// No validation needed - source guarantees correct EvidenceUnit[] structure
+	let lastErr: unknown = null
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const response = await b.GenerateKeyTakeawaysFromEvidence(evidenceUnits, instructions)
+			consola.log("BAML generateInterviewInsights response:", response)
+			return response
+		} catch (error) {
+			lastErr = error
+			const delayMs = 500 * (attempt + 1)
+			consola.warn(
+				`GenerateKeyTakeawaysFromEvidence failed (attempt ${attempt + 1}/3), retrying in ${delayMs}ms`,
+				error
+			)
+			await new Promise((resolve) => setTimeout(resolve, delayMs))
+		}
+	}
+
+	throw lastErr
+}
+
+export async function extractEvidenceAndPeopleCore({
+	db,
+	metadata,
+	interviewRecord,
+	transcriptData,
+	language,
+	fullTranscript,
+	peopleHooks,
+}: ExtractEvidenceOptions): Promise<ExtractEvidenceResult> {
+	type RawChapter = {
+		start_ms?: number
+		end_ms?: number
+		start?: number
+		end?: number
+		summary?: string
+		gist?: string
+		title?: string
+	}
+
+	let chapters: Array<{
+		start_ms: number
+		end_ms?: number
+		summary?: string
+		title?: string
+	}> = []
+	try {
+		const rawChapters =
+			((transcriptData as Record<string, unknown>).chapters as RawChapter[] | undefined) ||
+			((transcriptData as Record<string, unknown>).segments as RawChapter[] | undefined) ||
+			[]
+		if (Array.isArray(rawChapters)) {
+			chapters = rawChapters
+				.map((c: RawChapter) => ({
+					start_ms: typeof c.start_ms === "number" ? c.start_ms : typeof c.start === "number" ? c.start : 0,
+					end_ms: typeof c.end_ms === "number" ? c.end_ms : typeof c.end === "number" ? c.end : undefined,
+					summary: c.summary ?? c.gist ?? undefined,
+					title: c.title ?? undefined,
+				}))
+				.filter((c) => typeof c.start_ms === "number")
+		}
+	} catch (chapterErr) {
+		consola.warn("Failed to normalize chapters for evidence extraction", chapterErr)
+	}
+
+	let evidenceUnits: EvidenceFromBaml["evidence"] = []
+	let insertedEvidenceIds: string[] = []
+	const evidenceFacetKinds: string[][] = []
+	const evidenceFacetRowsToInsert: Array<{
+		account_id: string
+		project_id: string | null
+		evidence_index: number
+		kind_slug: string
+		facet_account_id: number
+		label: string
+		source: string
+		confidence: number
+		quote: string | null
+	}> = []
+	const facetMentionsByPersonKey = new Map<
+		string,
+		Array<{
+			kindSlug: string
+			label: string
+			facetAccountId: number
+			quote: string | null
+			evidenceIndex: number
+		}>
+	>()
+	const personKeyForEvidence: string[] = []
+	const personRoleByKey = new Map<string, string | null>()
+	const facetObservationsByPersonKey = new Map<string, PersonFacetObservation[]>()
+	const facetObservationDedup = new Map<string, Set<string>>()
+
+	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
+	const facetLookup = buildFacetLookup(facetCatalog)
+	const facetResolver = new FacetResolver(db, metadata.accountId)
+	const langfuse = getLangfuseClient()
+	const lfTrace = (
+		langfuse as unknown as {
+			trace?: (options: Record<string, unknown>) => unknown
+		}
+	)?.trace?.({
+		name: "baml.extract-evidence",
+		metadata: {
+			accountId: metadata.accountId,
+			projectId: metadata.projectId ?? null,
+			interviewId: interviewRecord.id ?? null,
+		},
+	})
+	const transcriptPreviewLength = 1200
+	const transcriptPreview = fullTranscript
+		? fullTranscript.length > transcriptPreviewLength
+			? `${fullTranscript.slice(0, transcriptPreviewLength)}...`
+			: fullTranscript
+		: "(no fullTranscript provided)"
+	consola.info(`📊 Extracting evidence with ${chapters.length} chapters`, {
+		chapterSample: chapters.slice(0, 3),
+		transcriptLength: fullTranscript?.length ?? 0,
+	})
+
+	const lfGeneration = lfTrace?.generation?.({
+		name: "baml.ExtractEvidenceFromTranscriptV2",
+		input: {
+			language,
+			transcriptLength: fullTranscript?.length ?? 0,
+			transcriptPreview,
+			chapterCount: chapters.length,
+			facetCatalogVersion: facetCatalog.version,
+		},
+	})
+	const collector = createBamlCollector("extract-evidence")
+	const promptCostPer1K = Number(process.env.BAML_EXTRACT_EVIDENCE_PROMPT_COST_PER_1K_TOKENS)
+	const completionCostPer1K = Number(process.env.BAML_EXTRACT_EVIDENCE_COMPLETION_COST_PER_1K_TOKENS)
+	const costOptions = {
+		promptCostPer1KTokens: Number.isFinite(promptCostPer1K) ? promptCostPer1K : undefined,
+		completionCostPer1KTokens: Number.isFinite(completionCostPer1K) ? completionCostPer1K : undefined,
+	}
+	const instrumentedClient = b.withOptions({ collector })
+	let evidenceResponse: EvidenceFromBaml | undefined
+	let usageSummary: ReturnType<typeof summarizeCollectorUsage> | null = null
+	let langfuseUsage: ReturnType<typeof mapUsageToLangfuse> | undefined
+	let generationEnded = false
+	try {
+		// Keep passing the merged facet catalog so the model can ground mentions against the project taxonomy.
+		// Dropping this trims the prompt slightly but increases the odds that facet references drift from known labels.
+
+		// Get speaker transcripts from sanitized data
+		const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>).speaker_transcripts
+		const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
+			? (speakerTranscriptsRaw as Array<Record<string, unknown>>).map((u) => ({
+					speaker: typeof u.speaker === "string" ? u.speaker : "",
+					text: typeof u.text === "string" ? u.text : "",
+					start: typeof u.start === "number" || typeof u.start === "string" ? u.start : null,
+					end: typeof u.end === "number" || typeof u.end === "string" ? u.end : null,
+				}))
+			: []
+
+		// Log speaker transcripts timing data for debugging
+		const utterancesWithTiming = speakerTranscripts.filter((u) => u.start !== null).length
+		const sampleTimings = speakerTranscripts.slice(0, 3).map((u) => ({ start: u.start, end: u.end }))
+		consola.info(
+			`📝 Passing ${speakerTranscripts.length} speaker utterances to AI (${utterancesWithTiming} with timing)`,
+			{
+				sampleTimings,
+			}
+		)
+
+		evidenceResponse = await batchExtractEvidence(speakerTranscripts, async (batch) => {
+			return await instrumentedClient.ExtractEvidenceFromTranscriptV2(batch, chapters, language, facetCatalog)
+		})
+		usageSummary = summarizeCollectorUsage(collector, costOptions)
+		if (usageSummary) {
+			consola.log("[BAML usage] ExtractEvidenceFromTranscriptV2:", usageSummary)
+		}
+		langfuseUsage = mapUsageToLangfuse(usageSummary)
+
+		// Log evidence response summary
+		const evidenceCount = evidenceResponse?.evidence?.length ?? 0
+		const totalFacetMentions =
+			evidenceResponse?.evidence?.reduce((sum, ev) => {
+				const mentions = (ev as { facet_mentions?: unknown[] }).facet_mentions
+				return sum + (Array.isArray(mentions) ? mentions.length : 0)
+			}, 0) ?? 0
+		consola.info(`🔍 BAML returned ${evidenceCount} evidence units with ${totalFacetMentions} total facet mentions`)
+
+		lfGeneration?.update?.({
+			output: evidenceResponse,
+			usage: langfuseUsage,
+			metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
+		})
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		lfGeneration?.end?.({
+			level: "ERROR",
+			statusMessage: message,
+			usage: langfuseUsage,
+			metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
+		})
+		generationEnded = true
+		throw error
+	} finally {
+		if (!generationEnded) {
+			lfGeneration?.end?.({
+				usage: langfuseUsage,
+				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
+			})
+		}
+		;(lfTrace as any)?.end?.()
+	}
+
+	if (!evidenceResponse) {
+		return {
+			personData: {
+				id: await ensureFallbackPerson(db, metadata, interviewRecord),
+			},
+			primaryPersonName: null,
+			primaryPersonRole: null,
+			primaryPersonDescription: null,
+			primaryPersonOrganization: null,
+			primaryPersonSegments: [],
+			insertedEvidenceIds,
+			evidenceUnits,
+			evidenceFacetKinds,
+			interactionContext: null,
+			contextConfidence: null,
+			contextReasoning: null,
+		}
+	}
+
+	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
+	consola.log("🔍 evidenceResponse.evidence type:", typeof evidenceResponse?.evidence)
+	consola.log("🔍 evidenceResponse.evidence isArray:", Array.isArray(evidenceResponse?.evidence))
+	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
+
+	// Validate the return structure
+	if (!Array.isArray(evidenceUnits)) {
+		throw new Error(`extractEvidenceAndPeopleCore: evidenceUnits must be an array, got ${typeof evidenceUnits}`)
+	}
+	const scenes = Array.isArray(evidenceResponse?.scenes) ? evidenceResponse.scenes : []
+
+	// ═══════════════════════════════════════════════════════════════
+	// Extract Interaction Context (LLM-determined content classification)
+	// ═══════════════════════════════════════════════════════════════
+	const rawInteractionContext = (evidenceResponse as any)?.interaction_context
+	const interactionContext: ExtractEvidenceResult["interactionContext"] =
+		rawInteractionContext && ["Research", "Sales", "Support", "Internal", "Debrief"].includes(rawInteractionContext)
+			? (rawInteractionContext.toLowerCase() as ExtractEvidenceResult["interactionContext"])
+			: null
+	const contextConfidence: number | null =
+		typeof (evidenceResponse as any)?.context_confidence === "number"
+			? (evidenceResponse as any).context_confidence
+			: null
+	const contextReasoning: string | null =
+		typeof (evidenceResponse as any)?.context_reasoning === "string"
+			? (evidenceResponse as any).context_reasoning
+			: null
+
+	if (interactionContext) {
+		consola.info(
+			`🏷️  LLM determined interaction_context: ${interactionContext} (confidence: ${contextConfidence?.toFixed(2) ?? "N/A"})`
+		)
+		consola.debug(`   Reasoning: ${contextReasoning ?? "none provided"}`)
+
+		// Update interview record with interaction context
+		const { error: contextUpdateErr } = await db
+			.from("interviews")
+			.update({
+				interaction_context: interactionContext,
+				context_confidence: contextConfidence,
+				context_reasoning: contextReasoning,
+			})
+			.eq("id", interviewRecord.id)
+
+		if (contextUpdateErr) {
+			consola.warn(
+				`Failed to update interaction_context for interview ${interviewRecord.id}:`,
+				contextUpdateErr.message
+			)
+		}
+	}
+
+	// ═══════════════════════════════════════════════════════════════
+	// Phase 2: Derive Persona Facets from Evidence
+	// ═══════════════════════════════════════════════════════════════
+	let personaSynthesis: PersonaSynthesisFromBaml | null = null
+	const personaFacetsByPersonKey = new Map<string, PersonaSynthesisFromBaml["persona_facets"]>()
+
+	try {
+		consola.log("🧠 Running Phase 2: Persona synthesis from evidence...")
+		const synthesisCollector = createBamlCollector("persona-synthesis")
+		const synthesisClient = b.withOptions({ collector: synthesisCollector })
+
+		const lfSynthesisGeneration = lfTrace?.generation?.({
+			name: "baml.DerivePersonaFacetsFromEvidence",
+			input: {
+				evidenceCount: evidenceUnits.length,
+				peopleCount: evidenceResponse?.people?.length ?? 0,
+			},
+		})
+
+		// Ensure required interaction context fields are present to satisfy BAML schema
+		const fallbackInteraction = interactionContext
+			? interactionContext.charAt(0).toUpperCase() + interactionContext.slice(1)
+			: ((evidenceResponse as any)?.interaction_context as string | null) ?? "Internal"
+		const fallbackConfidence =
+			typeof contextConfidence === "number"
+				? contextConfidence
+				: typeof (evidenceResponse as any)?.context_confidence === "number"
+					? (evidenceResponse as any)?.context_confidence
+					: 0.5
+		const fallbackReasoning =
+			typeof contextReasoning === "string"
+				? contextReasoning
+				: (evidenceResponse as any)?.context_reasoning ?? "not provided"
+
+		const safeEvidenceResponse = {
+			...((evidenceResponse as Record<string, unknown>) || {}),
+			interaction_context: fallbackInteraction,
+			context_confidence: fallbackConfidence,
+			context_reasoning: fallbackReasoning,
+		}
+
+		personaSynthesis = await synthesisClient.DerivePersonaFacetsFromEvidence(safeEvidenceResponse as any)
+
+		const synthesisUsage = summarizeCollectorUsage(synthesisCollector, costOptions)
+		if (synthesisUsage) {
+			consola.log("[BAML usage] DerivePersonaFacetsFromEvidence:", synthesisUsage)
+		}
+		const synthesisLangfuseUsage = mapUsageToLangfuse(synthesisUsage)
+
+		lfSynthesisGeneration?.end?.({
+			output: personaSynthesis,
+			usage: synthesisLangfuseUsage,
+			metadata: synthesisUsage ? { tokenUsage: synthesisUsage } : undefined,
+		})
+
+		// Group persona facets by person_key for efficient lookup
+		if (personaSynthesis?.persona_facets) {
+			for (const facet of personaSynthesis.persona_facets) {
+				if (!facet.person_key) continue
+				const facets = personaFacetsByPersonKey.get(facet.person_key) ?? []
+				if (!personaFacetsByPersonKey.has(facet.person_key)) {
+					personaFacetsByPersonKey.set(facet.person_key, facets)
+				}
+				facets.push(facet)
+			}
+			consola.log(
+				`✅ Phase 2 complete: Synthesized ${personaSynthesis.persona_facets.length} persona facets for ${personaFacetsByPersonKey.size} people`
+			)
+		}
+	} catch (synthesisError) {
+		consola.warn("⚠️  Phase 2 persona synthesis failed; falling back to Phase 1 raw mentions", synthesisError)
+		// Continue with raw mentions if synthesis fails
+	}
+
+	const rawPeople = Array.isArray((evidenceResponse as { people?: EvidenceParticipant[] })?.people)
+		? (((evidenceResponse as { people?: EvidenceParticipant[] }).people ?? []) as EvidenceParticipant[])
+		: []
+	consola.info(`📋 Phase 1 extracted ${rawPeople.length} people from transcript`)
+	// Debug: Log raw BAML people output
+	for (let i = 0; i < rawPeople.length; i++) {
+		const raw = rawPeople[i] as any
+		consola.info(`📋 BAML Person ${i}:`, {
+			person_key: raw?.person_key,
+			speaker_label: raw?.speaker_label,
+			display_name: raw?.display_name,
+			inferred_name: raw?.inferred_name,
+			person_name: raw?.person_name,
+			role: raw?.role,
+		})
+	}
+	const participants: NormalizedParticipant[] = []
+	const participantByKey = new Map<string, NormalizedParticipant>()
+
+	const coerceString = (value: unknown): string | null => {
+		if (typeof value === "string") {
+			const trimmed = value.trim()
+			return trimmed.length ? trimmed : null
+		}
+		return null
+	}
+
+	for (let i = 0; i < rawPeople.length; i++) {
+		const raw = rawPeople[i] ?? ({} as EvidenceParticipant)
+		let person_key = sanitizePersonKey((raw as EvidenceParticipant).person_key, `person-${i}`)
+		if (participantByKey.has(person_key)) {
+			person_key = `${person_key}-${i}`
+		}
+		const role = coerceString((raw as EvidenceParticipant).role)
+		// Extract speaker_label from BAML Person (AssemblyAI format like "SPEAKER A")
+		const speaker_label = coerceString((raw as any).speaker_label)
+		const display_name = coerceString((raw as EvidenceParticipant).display_name)
+		const inferred_name = coerceString((raw as EvidenceParticipant).inferred_name)
+		const organization = coerceString((raw as EvidenceParticipant).organization)
+		const summary = coerceString((raw as EvidenceParticipant).summary)
+		const segments = Array.isArray((raw as EvidenceParticipant).segments)
+			? ((raw as EvidenceParticipant).segments as unknown[])
+					.map((segment) => coerceString(segment))
+					.filter((segment): segment is string => Boolean(segment))
+			: []
+		const personas = Array.isArray((raw as EvidenceParticipant).personas)
+			? ((raw as EvidenceParticipant).personas as unknown[])
+					.map((persona) => coerceString(persona))
+					.filter((persona): persona is string => Boolean(persona))
+			: []
+		const facets = Array.isArray((raw as EvidenceParticipant).facets)
+			? ((raw as EvidenceParticipant).facets as unknown[])
+					.map((facet) => {
+						if (!facet || typeof facet !== "object") return null
+						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+						const value = coerceString((facet as PersonFacetObservation).value)
+						if (!kind_slug || !value) return null
+						return {
+							...facet,
+							kind_slug,
+							value,
+							source: (facet as PersonFacetObservation).source || "interview",
+						} as PersonFacetObservation
+					})
+					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+			: []
+		const scales = Array.isArray((raw as EvidenceParticipant).scales)
+			? ((raw as EvidenceParticipant).scales as unknown[])
+					.map((scale) => {
+						if (!scale || typeof scale !== "object") return null
+						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+						const score = (scale as PersonScaleObservation).score
+						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+						return {
+							...scale,
+							kind_slug,
+							score,
+							source: (scale as PersonScaleObservation).source || "interview",
+						} as PersonScaleObservation
+					})
+					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+			: []
+
+		const normalized: NormalizedParticipant = {
+			person_key,
+			speaker_label,
+			role,
+			display_name,
+			inferred_name,
+			organization,
+			summary,
+			segments,
+			personas,
+			facets,
+			scales,
+		}
+		participants.push(normalized)
+		participantByKey.set(person_key, normalized)
+		personRoleByKey.set(person_key, role ?? null)
+	}
+
+	if (!participants.length) {
+		const fallbackKey = "person-0"
+		const fallbackName = metadata.participantName?.trim() || generateFallbackPersonName(metadata)
+		const fallbackParticipant: NormalizedParticipant = {
+			person_key: fallbackKey,
+			speaker_label: null,
+			role: null,
+			display_name: fallbackName,
+			inferred_name: fallbackName,
+			organization: null,
+			summary: null,
+			segments: metadata.segment ? [metadata.segment] : [],
+			personas: [],
+			facets: [],
+			scales: [],
+		}
+		participants.push(fallbackParticipant)
+		participantByKey.set(fallbackKey, fallbackParticipant)
+		personRoleByKey.set(fallbackKey, null)
+	}
+
+	const primaryParticipant =
+		participants.find((participant) => {
+			const roleLower = participant.role?.toLowerCase()
+			return roleLower ? roleLower !== "interviewer" : false
+		}) ??
+		participants[0] ??
+		null
+
+	const primaryPersonKey = primaryParticipant?.person_key ?? participants[0]?.person_key ?? "person-0"
+
+	for (const participant of participants) {
+		if (participant.facets.length) {
+			const observationList = facetObservationsByPersonKey.get(participant.person_key) ?? []
+			const dedupeSet = facetObservationDedup.get(participant.person_key) ?? new Set<string>()
+			if (!facetObservationsByPersonKey.has(participant.person_key)) {
+				facetObservationsByPersonKey.set(participant.person_key, observationList)
+				facetObservationDedup.set(participant.person_key, dedupeSet)
+			}
+			for (const facet of participant.facets) {
+				const dedupeKey = `${facet.kind_slug.toLowerCase()}|${facet.value.toLowerCase()}|${facet.evidence_unit_index ?? -1}`
+				if (dedupeSet.has(dedupeKey)) continue
+				dedupeSet.add(dedupeKey)
+				observationList.push(facet)
+			}
+		}
+	}
+
+	if (!evidenceUnits.length) {
+		return {
+			personData: {
+				id: await ensureFallbackPerson(db, metadata, interviewRecord),
+			},
+			primaryPersonName: null,
+			primaryPersonRole: null,
+			primaryPersonDescription: null,
+			primaryPersonOrganization: null,
+			primaryPersonSegments: [],
+			insertedEvidenceIds,
+			evidenceUnits,
+			evidenceFacetKinds,
+			interactionContext: null,
+			contextConfidence: null,
+			contextReasoning: null,
+			rawPeople,
+		}
+	}
+
+	const sceneTopicByIndex = new Map<number, string>()
+	for (const scene of scenes ?? []) {
+		const startIndex =
+			typeof (scene as { start_index?: number }).start_index === "number"
+				? (scene as { start_index?: number }).start_index
+				: null
+		const endIndex =
+			typeof (scene as { end_index?: number }).end_index === "number"
+				? (scene as { end_index?: number }).end_index
+				: null
+		const topicRaw =
+			typeof (scene as { topic?: string }).topic === "string" ? (scene as { topic?: string }).topic : null
+		if (startIndex === null || startIndex === undefined || topicRaw === null) continue
+		const topic = sanitizeVerbatim(topicRaw) ?? null
+		const end = endIndex !== null && endIndex !== undefined ? endIndex : startIndex
+		for (let idx = startIndex; idx <= end; idx++) {
+			if (topic) sceneTopicByIndex.set(idx, topic)
+		}
+	}
+
+	const empathyStats = {
+		says: 0,
+		does: 0,
+		thinks: 0,
+		feels: 0,
+		pains: 0,
+		gains: 0,
+	}
+	const empathySamples: Record<keyof typeof empathyStats, string[]> = {
+		says: [],
+		does: [],
+		thinks: [],
+		feels: [],
+		pains: [],
+		gains: [],
+	}
+
+	const evidenceRows: EvidenceInsert[] = []
+	const durationSeconds =
+		typeof (transcriptData as { audio_duration?: unknown }).audio_duration === "number"
+			? (transcriptData as { audio_duration?: number }).audio_duration
+			: typeof interviewRecord.duration_sec === "number"
+				? interviewRecord.duration_sec
+				: null
+	const wordTimeline = buildWordTimeline(transcriptData)
+	const segmentTimeline = buildSegmentTimeline(transcriptData)
+	consola.info(
+		`⏱️ Timing data available: ${wordTimeline.length} words, ${segmentTimeline.length} segments, duration=${durationSeconds}s`
+	)
+	for (let idx = 0; idx < evidenceUnits.length; idx++) {
+		const ev = evidenceUnits[idx] as EvidenceTurn
+		const rawPersonKey = coerceString((ev as { person_key?: string }).person_key)
+		const fallbackPersonKey = primaryPersonKey || participants[0]?.person_key || "person-0"
+		const personKey = rawPersonKey && participantByKey.has(rawPersonKey) ? rawPersonKey : fallbackPersonKey
+		const verb = sanitizeVerbatim(ev?.verbatim)
+		if (!verb) continue
+		const chunk = sanitizeVerbatim(ev?.chunk) ?? verb
+		const gist = sanitizeVerbatim(ev?.gist) ?? verb
+		const evidenceIndex = idx
+		const sceneTopic = sceneTopicByIndex.get(evidenceIndex) ?? null
+		const facetMentions = Array.isArray((ev as { facet_mentions?: FacetMention[] }).facet_mentions)
+			? ((ev as { facet_mentions?: FacetMention[] }).facet_mentions as FacetMention[])
+			: []
+
+		if (facetMentions.length > 0) {
+			consola.info(`Evidence ${evidenceIndex} has ${facetMentions.length} facet mentions`)
+		}
+
+		const kindSlugSet = new Set<string>()
+		const mentionDedup = new Set<number>()
+		const projectIdForInsert = metadata.projectId ?? null
+
+		for (const mention of facetMentions) {
+			if (!mention || typeof mention !== "object") continue
+			const kindRaw = typeof mention.kind_slug === "string" ? mention.kind_slug.trim().toLowerCase() : ""
+			const labelRaw = sanitizeFacetLabel((mention as FacetMention).value)
+			if (!kindRaw || !labelRaw) continue
+			const resolvedLabel = sanitizeFacetLabel(labelRaw)
+			if (!resolvedLabel) continue
+
+			const matchedFacet = matchFacetFromLookup(facetLookup, kindRaw, resolvedLabel)
+			const synonyms = Array.isArray(matchedFacet?.synonyms) ? (matchedFacet?.synonyms ?? []) : []
+			let facetAccountId: number | null = matchedFacet?.facet_account_id ?? null
+
+			// If no match found in catalog, create new facet
+			if (!facetAccountId) {
+				facetAccountId = await facetResolver.ensureFacet({
+					kindSlug: kindRaw,
+					label: resolvedLabel,
+					synonyms,
+				})
+			}
+
+			if (!facetAccountId) continue
+			if (mentionDedup.has(facetAccountId)) continue
+			mentionDedup.add(facetAccountId)
+			kindSlugSet.add(kindRaw)
+			const mentionQuote = sanitizeFacetLabel((mention as FacetMention).quote ?? null)
+
+			// Build evidence_facet row directly
+			evidenceFacetRowsToInsert.push({
+				account_id: metadata.accountId,
+				project_id: projectIdForInsert,
+				evidence_index: idx,
+				kind_slug: kindRaw,
+				facet_account_id: facetAccountId,
+				label: resolvedLabel,
+				source: "interview",
+				confidence: 0.8,
+				quote: mentionQuote,
+			})
+		}
+
+		const kindSlugs = Array.from(kindSlugSet)
+		evidenceFacetKinds.push(kindSlugs)
+
+		// Track facets by person for persona synthesis
+		if (kindSlugSet.size > 0) {
+			const byPerson = facetMentionsByPersonKey.get(personKey) ?? []
+			if (!facetMentionsByPersonKey.has(personKey)) {
+				facetMentionsByPersonKey.set(personKey, byPerson)
+			}
+			// Add facets for this evidence to person's collection
+			for (const row of evidenceFacetRowsToInsert) {
+				if (row.evidence_index === idx) {
+					byPerson.push({
+						kindSlug: row.kind_slug,
+						label: row.label,
+						facetAccountId: row.facet_account_id,
+						quote: row.quote,
+						evidenceIndex,
+					})
+				}
+			}
+		}
+		const confidenceStr: string = ((ev as { confidence?: EvidenceInsert["confidence"] }).confidence ||
+			"medium") as string
+		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
+		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
+		const independence_key = computeIndependenceKey(gist ?? verb, kindSlugs)
+		const rawAnchors =
+			ev && typeof (ev as any).anchors === "object" && (ev as any).anchors !== null
+				? [((ev as any).anchors ?? {}) as Record<string, any>]
+				: []
+
+		// Get timing from multiple sources - prefer word-level precision when available
+		let anchorSeconds: number | null = null
+		let timingSource = "none"
+
+		// First, try word-level text search for precise timing (best for single-speaker content)
+		const snippetForTiming = chunk || gist || verb
+		if (snippetForTiming?.length && wordTimeline.length > 0) {
+			anchorSeconds = findStartSecondsForSnippet({
+				snippet: snippetForTiming,
+				wordTimeline,
+				segmentTimeline,
+				fullTranscript,
+				durationSeconds,
+			})
+			if (anchorSeconds !== null) {
+				timingSource = "word-level"
+			}
+		}
+
+		// Fall back to AI-provided timing if word-level search failed
+		if (anchorSeconds === null && rawAnchors.length > 0 && rawAnchors[0]) {
+			const firstAnchor = rawAnchors[0]
+			if (typeof firstAnchor.start_ms === "number") {
+				anchorSeconds = firstAnchor.start_ms / 1000
+				timingSource = "ai-ms"
+			} else if (typeof firstAnchor.start_seconds === "number") {
+				anchorSeconds = firstAnchor.start_seconds
+				timingSource = "ai-seconds"
+			}
+		}
+
+		// Last resort: segment-level search without word data
+		if (anchorSeconds === null && snippetForTiming?.length && segmentTimeline.length > 0) {
+			anchorSeconds = findStartSecondsForSnippet({
+				snippet: snippetForTiming,
+				wordTimeline: [], // Already tried word-level
+				segmentTimeline,
+				fullTranscript,
+				durationSeconds,
+			})
+			if (anchorSeconds !== null) {
+				timingSource = "segment-level"
+			}
+		}
+
+		if (evidenceIndex < 5) {
+			if (anchorSeconds !== null) {
+				consola.info(`Evidence ${evidenceIndex}: timing=${anchorSeconds}s source=${timingSource}`)
+			} else {
+				consola.warn(`Evidence ${evidenceIndex}: No timing available from any source`)
+			}
+		}
+
+		const sanitizedAnchors = rawAnchors
+			.map((anchor) => {
+				if (!anchor || typeof anchor !== "object") return null
+
+				const result: Record<string, any> = {}
+
+				// Store timing data
+				if (anchorSeconds !== null) {
+					result.start_ms = Math.round(anchorSeconds * 1000)
+				}
+				if (anchor.end_ms !== undefined) {
+					result.end_ms = anchor.end_ms
+				}
+
+				// Store R2 key (stable identifier) instead of signed URL
+				if (interviewRecord.media_url) {
+					result.media_key = getR2KeyFromPublicUrl(interviewRecord.media_url)
+				}
+
+				// Preserve optional metadata
+				if (anchor.chapter_title) {
+					result.chapter_title = anchor.chapter_title
+				}
+				if (anchor.char_span) {
+					result.char_span = anchor.char_span
+				}
+
+				return result
+			})
+			.filter((anchor): anchor is Record<string, any> => Boolean(anchor))
+
+		// Create default anchor if none exist
+		if (sanitizedAnchors.length === 0 && interviewRecord.media_url && anchorSeconds !== null) {
+			sanitizedAnchors.push({
+				start_ms: Math.round(anchorSeconds * 1000),
+				media_key: getR2KeyFromPublicUrl(interviewRecord.media_url),
+			})
+		}
+		const row: EvidenceInsert = {
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			interview_id: interviewRecord.id,
+			source_type: "primary",
+			method: "interview",
+			modality: "qual",
+			support: "supports",
+			personas: [],
+			segments: [],
+			journey_stage: null,
+			chunk,
+			gist,
+			topic: sceneTopic,
+			weight_quality,
+			weight_relevance,
+			independence_key,
+			confidence: confidenceStr,
+			verbatim: verb,
+			anchors: sanitizedAnchors as unknown as Json,
+			is_question: ev.isQuestion ?? false,
+		}
+
+		const _says = Array.isArray(ev?.says) ? (ev.says as string[]) : []
+		const _does = Array.isArray(ev?.does) ? (ev.does as string[]) : []
+		const _thinks = Array.isArray(ev?.thinks) ? (ev.thinks as string[]) : []
+		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
+		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
+		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
+
+		empathyStats.says += _says.length
+		empathyStats.does += _does.length
+		empathyStats.thinks += _thinks.length
+		empathyStats.feels += _feels.length
+		empathyStats.pains += _pains.length
+		empathyStats.gains += _gains.length
+		for (const [k, arr] of Object.entries({
+			says: _says,
+			does: _does,
+			thinks: _thinks,
+			feels: _feels,
+			pains: _pains,
+			gains: _gains,
+		}) as Array<[keyof typeof empathyStats, string[]]>) {
+			for (const v of arr) {
+				if (typeof v === "string" && v.trim() && empathySamples[k].length < 3) empathySamples[k].push(v.trim())
+			}
+		}
+
+		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
+		if (whyItMatters) {
+			;(row as Record<string, unknown>).context_summary = whyItMatters
+		}
+
+		// Skip raw mention processing - we'll use Phase 2 persona facets instead
+		// This prevents over-extraction of interview content as personal traits
+
+		evidenceRows.push(row)
+		personKeyForEvidence.push(personKey)
+	}
+
+	if (!evidenceRows.length) {
+		return {
+			personData: {
+				id: await ensureFallbackPerson(db, metadata, interviewRecord),
+			},
+			primaryPersonName: null,
+			primaryPersonRole: null,
+			primaryPersonDescription: null,
+			primaryPersonOrganization: null,
+			primaryPersonSegments: [],
+			insertedEvidenceIds,
+			evidenceUnits,
+			evidenceFacetKinds,
+		}
+	}
+
+	await db.from("evidence").delete().eq("interview_id", interviewRecord.id)
+
+	// Note: Embeddings generated async via DB trigger → pgmq queue → edge function
+	// (same pattern as evidence_facet, themes, person_facet)
+
+	const { data: insertedEvidence, error: evidenceInsertError } = await db
+		.from("evidence")
+		.insert(evidenceRows)
+		.select("id")
+	if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
+	insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
+
+	consola.info(
+		`📋 Evidence insertion complete: ${insertedEvidenceIds.length} evidence rows, ${evidenceFacetRowsToInsert.length} facet rows to insert`
+	)
+
+	// Map evidence_index to evidence_id and insert facets
+	if (insertedEvidenceIds.length && evidenceFacetRowsToInsert.length) {
+		try {
+			await db.from("evidence_facet").delete().in("evidence_id", insertedEvidenceIds)
+		} catch (cleanupErr) {
+			consola.warn("Failed to clear existing evidence_facet rows", cleanupErr)
+		}
+
+		// Map evidence_index to evidence_id
+		const finalFacetRows = evidenceFacetRowsToInsert.map((row) => {
+			const { evidence_index, ...rest } = row
+			return {
+				...rest,
+				evidence_id: insertedEvidenceIds[evidence_index],
+			}
+		})
+
+		if (finalFacetRows.length) {
+			consola.info(`Attempting to insert ${finalFacetRows.length} evidence_facet rows`)
+			const { error: facetInsertError } = await db.from("evidence_facet").insert(finalFacetRows)
+			if (facetInsertError) {
+				consola.error("Failed to insert evidence_facet rows", {
+					error: facetInsertError.message,
+					code: facetInsertError.code,
+					details: facetInsertError.details,
+					hint: facetInsertError.hint,
+					sampleRow: finalFacetRows[0],
+				})
+			} else {
+				consola.success(`Successfully inserted ${finalFacetRows.length} evidence_facet rows`)
+			}
+		}
+	}
+
+	const personIdByKey = new Map<string, string>()
+	const personNameByKey = new Map<string, string>()
+	const keyByPersonId = new Map<string, string>()
+	const speakerLabelByPersonId = new Map<string, string>() // AssemblyAI speaker label (e.g., "SPEAKER A")
+	const displayNameByKey = new Map<string, string>()
+	const personRoleById = new Map<string, string | null>()
+	const internalPerson = metadata.userId
+		? await resolveInternalPerson({
+				supabase: db,
+				accountId: metadata.accountId,
+				projectId: metadata.projectId ?? null,
+				userId: metadata.userId,
+			})
+		: null
+	let internalPersonLinked = false
+	let internalPersonHasTranscriptKey = false
+
+	if (metadata.projectId) {
+		const { data: existingInterviewPeople } = await db
+			.from("interview_people")
+			.select("person_id, transcript_key, display_name, role")
+			.eq("interview_id", interviewRecord.id)
+		if (Array.isArray(existingInterviewPeople)) {
+			existingInterviewPeople.forEach((row) => {
+				if (row.transcript_key && row.person_id) {
+					personIdByKey.set(row.transcript_key, row.person_id)
+					keyByPersonId.set(row.person_id, row.transcript_key)
+				}
+				if (row.display_name && row.transcript_key) {
+					displayNameByKey.set(row.transcript_key, row.display_name)
+				}
+				if (row.person_id && row.role) {
+					personRoleById.set(row.person_id, row.role)
+				}
+				if (internalPerson?.id && row.person_id === internalPerson.id) {
+					internalPersonLinked = true
+					if (row.transcript_key) {
+						internalPersonHasTranscriptKey = true
+					}
+				}
+			})
+		}
+	}
+
+	const resolveName = (
+		participant: NormalizedParticipant,
+		index: number
+	): { name: string; source: NameResolutionSource } => {
+		const candidates: Array<{
+			value: string | null | undefined
+			source: NameResolutionSource
+		}> = [
+			{ value: participant.display_name, source: "display" },
+			{ value: participant.inferred_name, source: "inferred" },
+			{
+				value: participant.person_key ? humanizeKey(participant.person_key) : null,
+				source: "person_key",
+			},
+			{ value: metadata.participantName, source: "metadata" },
+			{ value: metadata.interviewerName, source: "metadata" },
+		]
+		for (const candidate of candidates) {
+			if (typeof candidate.value === "string") {
+				const trimmed = candidate.value.trim()
+				if (trimmed.length) {
+					return { name: trimmed, source: candidate.source }
+				}
+			}
+		}
+		return { name: `Participant ${index + 1}`, source: "fallback" }
+	}
+
+	const upsertPerson = async (
+		fullName: string,
+		overrides: Partial<PeopleInsert> = {}
+	): Promise<{ id: string; name: string }> => {
+		if (
+			peopleHooks?.isPlaceholderPerson?.(fullName) ||
+			/^participant\s*\d+$/i.test(fullName) ||
+			/^speaker\s+[A-Z]$/i.test(fullName)
+		) {
+			throw new Error("skip-placeholder-person")
+		}
+
+		const { firstname, lastname } = parseFullName(fullName)
+		const payload: PeopleInsert = {
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			firstname: firstname || null,
+			lastname: lastname || null,
+			description: overrides.description ?? null,
+			segment: overrides.segment ?? metadata.segment ?? null,
+			contact_info: overrides.contact_info ?? null,
+			company: overrides.company ?? null,
+			role: overrides.role ?? null,
+		}
+		if (peopleHooks?.upsertPerson) {
+			const result = await peopleHooks.upsertPerson(payload)
+			if (!result?.id) {
+				throw new Error(`Failed to upsert person ${fullName}: missing id`)
+			}
+			return { id: result.id, name: result.name ?? fullName.trim() }
+		}
+
+		const { data: upserted, error: upsertErr } = await db
+			.from("people")
+			.upsert(payload, { onConflict: "account_id,name_hash,company" })
+			.select("id, name, firstname, lastname")
+			.single()
+		if (upsertErr) throw new Error(`Failed to upsert person ${fullName}: ${upsertErr.message}`)
+		if (!upserted?.id) throw new Error(`Person upsert returned no id for ${fullName}`)
+		return { id: upserted.id, name: upserted.name ?? fullName.trim() }
+	}
+
+	let primaryPersonId: string | null = null
+	let primaryPersonName: string | null = null
+	let primaryPersonRole: string | null = null
+	let primaryPersonDescription: string | null = null
+	let primaryPersonOrganization: string | null = null
+	let primaryPersonSegments: string[] = []
+
+	consola.info(`👥 Processing ${participants.length} participants for person records`)
+	if (participants.length) {
+		for (const [index, participant] of participants.entries()) {
+			const participantKey = participant.person_key
+			consola.debug(`  - Creating person record for "${participantKey}" (role: ${participant.role})`)
+			const resolved = resolveName(participant, index)
+			if (peopleHooks?.isPlaceholderPerson?.(resolved.name)) {
+				consola.info(`[extractEvidence] Skipping placeholder person "${resolved.name}"`)
+				continue
+			}
+			const normalizedRole = participant.role?.toLowerCase() ?? ""
+			const isInterviewer = internalPerson && normalizedRole === "interviewer"
+
+			if (isInterviewer && internalPerson) {
+				personIdByKey.set(participantKey, internalPerson.id)
+				personNameByKey.set(participantKey, internalPerson.name ?? resolved.name)
+				keyByPersonId.set(internalPerson.id, participantKey)
+				personRoleById.set(internalPerson.id, participant.role ?? "interviewer")
+				if (participant.speaker_label) {
+					speakerLabelByPersonId.set(internalPerson.id, participant.speaker_label)
+				}
+				const preferredDisplayName = internalPerson.name ?? participant.display_name?.trim() ?? resolved.name
+				if (preferredDisplayName) {
+					displayNameByKey.set(participantKey, preferredDisplayName)
+				}
+
+				if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+					primaryPersonId = internalPerson.id
+					primaryPersonName = internalPerson.name ?? resolved.name
+					primaryPersonRole = participant.role ?? null
+					primaryPersonDescription = participant.summary ?? null
+					primaryPersonOrganization = participant.organization ?? null
+					primaryPersonSegments = participant.segments.length
+						? participant.segments
+						: metadata.segment
+							? [metadata.segment]
+							: []
+				}
+
+				internalPersonLinked = true
+				continue
+			}
+			const segments = participant.segments.length ? participant.segments : metadata.segment ? [metadata.segment] : []
+			const participantOverrides: Partial<PeopleInsert> = {
+				description: participant.summary ?? null,
+				segment: segments[0] || metadata.segment || null,
+				company: participant.organization ?? null,
+				role: participant.role ?? null,
+			}
+			let personRecord: { id: string; name: string } | null = null
+			try {
+				personRecord = await upsertPerson(resolved.name, participantOverrides)
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e)
+				if (msg === "skip-placeholder-person") {
+					consola.info(`[processInterview] Skipping placeholder person "${resolved.name}"`)
+					continue
+				}
+				throw e
+			}
+			if (!personRecord) continue
+			personIdByKey.set(participantKey, personRecord.id)
+			personNameByKey.set(participantKey, personRecord.name)
+			keyByPersonId.set(personRecord.id, participantKey)
+			// Use speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key
+			if (participant.speaker_label) {
+				const normalized = peopleHooks?.normalizeSpeakerLabel?.(participant.speaker_label) ?? participant.speaker_label
+				speakerLabelByPersonId.set(personRecord.id, normalized)
+			}
+			const preferredDisplayName = participant.display_name?.trim() || personRecord.name || null
+			if (preferredDisplayName) {
+				displayNameByKey.set(participantKey, preferredDisplayName)
+			}
+			personRoleById.set(personRecord.id, participant.role ?? null)
+
+			if (!primaryPersonId && participant.person_key === primaryPersonKey) {
+				primaryPersonId = personRecord.id
+				primaryPersonName = personRecord.name
+				primaryPersonRole = participant.role ?? null
+				primaryPersonDescription = participantOverrides.description ?? null
+				primaryPersonOrganization = participantOverrides.company ?? null
+				primaryPersonSegments = segments.length ? segments : metadata.segment ? [metadata.segment] : []
+			}
+		}
+	}
+
+	if (!primaryPersonId && participants.length) {
+		const fallbackKey = participants[0].person_key
+		const fallbackId = personIdByKey.get(fallbackKey) ?? null
+		if (fallbackId) {
+			primaryPersonId = fallbackId
+			primaryPersonName = personNameByKey.get(fallbackKey) ?? resolveName(participants[0], 0).name
+			primaryPersonRole = participants[0].role ?? null
+			primaryPersonDescription = participants[0].summary ?? null
+			primaryPersonOrganization = participants[0].organization ?? null
+			primaryPersonSegments = participants[0].segments.length
+				? participants[0].segments
+				: metadata.segment
+					? [metadata.segment]
+					: []
+		}
+	}
+
+	if (!primaryPersonId) {
+		const fallback = await upsertPerson(generateFallbackPersonName(metadata))
+		primaryPersonId = fallback.id
+		primaryPersonName = fallback.name
+		primaryPersonSegments = metadata.segment ? [metadata.segment] : []
+		primaryPersonRole = primaryPersonRole ?? null
+		primaryPersonDescription = primaryPersonDescription ?? null
+		primaryPersonOrganization = primaryPersonOrganization ?? null
+	}
+
+	if (!primaryPersonId) throw new Error("Failed to resolve primary person for interview")
+
+	if (!personRoleById.has(primaryPersonId) || primaryPersonRole !== null) {
+		personRoleById.set(primaryPersonId, primaryPersonRole ?? null)
+	}
+
+	const ensuredPersonIds = new Set<string>([primaryPersonId])
+	for (const id of personIdByKey.values()) ensuredPersonIds.add(id)
+	for (const personId of ensuredPersonIds) {
+		const role = personRoleById.get(personId) ?? null
+		const personKey = keyByPersonId.get(personId) ?? null
+		// Prefer speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key,
+		// fall back to person_key (BAML format like "participant-1") if speaker_label not available
+		const transcriptKey = speakerLabelByPersonId.get(personId) ?? personKey
+
+		consola.info(`🔗 Creating interview_people for person ${personId}:`, {
+			personKey,
+			speakerLabel: speakerLabelByPersonId.get(personId),
+			transcriptKey,
+			role,
+		})
+
+		// Check existing interview_people record to preserve user-entered display_name
+		const { data: existingLink } = await db
+			.from("interview_people")
+			.select("display_name")
+			.eq("interview_id", interviewRecord.id)
+			.eq("person_id", personId)
+			.single()
+
+		const existingDisplayName = existingLink?.display_name
+		const isExistingDisplayNameGeneric =
+			!existingDisplayName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(existingDisplayName)
+
+		const bamlDisplayName = personKey ? (displayNameByKey.get(personKey) ?? null) : null
+		const isBamlDisplayNameGeneric =
+			!bamlDisplayName || /^(Participant|Anonymous|Speaker|Person|Interviewee)\s*\d*$/i.test(bamlDisplayName)
+
+		// Preserve existing non-generic display_name, only use BAML value if existing is generic or BAML has a better name
+		const finalDisplayName = !isExistingDisplayNameGeneric
+			? existingDisplayName
+			: isBamlDisplayNameGeneric
+				? existingDisplayName
+				: bamlDisplayName
+
+		const linkPayload: InterviewPeopleInsert = {
+			interview_id: interviewRecord.id,
+			person_id: personId,
+			project_id: metadata.projectId ?? null,
+			role,
+			transcript_key: transcriptKey,
+			display_name: finalDisplayName,
+		}
+		const { error: linkErr } = await db
+			.from("interview_people")
+			.upsert(linkPayload, { onConflict: "interview_id,person_id" })
+		if (linkErr && !linkErr.message?.includes("duplicate")) {
+			consola.warn(`Failed linking person ${personId} to interview ${interviewRecord.id}`, linkErr.message)
+		}
+		if (internalPerson?.id && personId === internalPerson.id && transcriptKey) {
+			internalPersonHasTranscriptKey = true
+		}
+	}
+
+	// Ensure ALL transcript speakers have interview_people records, not just BAML-extracted ones
+	// This handles the case where BAML only extracts the primary participant but not the interviewer
+	const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>).speaker_transcripts
+	consola.info(`🎙️  Checking transcript speakers for interview ${interviewRecord.id}`, {
+		hasSpeakerTranscripts: Array.isArray(speakerTranscriptsRaw),
+		speakerTranscriptsCount: Array.isArray(speakerTranscriptsRaw) ? speakerTranscriptsRaw.length : 0,
+	})
+
+	if (Array.isArray(speakerTranscriptsRaw) && speakerTranscriptsRaw.length > 0) {
+		// Get unique speaker labels from transcript
+		const uniqueSpeakers = new Set<string>()
+		for (const utterance of speakerTranscriptsRaw as Array<Record<string, unknown>>) {
+			const speaker = typeof utterance.speaker === "string" ? utterance.speaker.trim() : ""
+			if (speaker) uniqueSpeakers.add(speaker)
+		}
+
+		consola.info(`🎙️  Found unique speakers in transcript: ${Array.from(uniqueSpeakers).join(", ")}`)
+
+		// Get existing transcript_keys that are already linked
+		const existingTranscriptKeys = new Set<string>()
+		const { data: existingLinks } = await db
+			.from("interview_people")
+			.select("transcript_key")
+			.eq("interview_id", interviewRecord.id)
+		if (existingLinks) {
+			for (const link of existingLinks) {
+				if (link.transcript_key) {
+					// Normalize to uppercase for comparison
+					existingTranscriptKeys.add(link.transcript_key.toUpperCase())
+				}
+			}
+		}
+
+		consola.info(
+			`🎙️  Existing transcript_keys in interview_people: ${Array.from(existingTranscriptKeys).join(", ") || "(none)"}`
+		)
+
+		// Find speakers without interview_people records
+		const missingSpeakers: string[] = []
+		for (const speaker of uniqueSpeakers) {
+			const normalizedSpeaker = speaker.toUpperCase()
+			// Check if this speaker is already linked (could be "A", "SPEAKER A", etc.)
+			const isLinked =
+				existingTranscriptKeys.has(normalizedSpeaker) ||
+				existingTranscriptKeys.has(`SPEAKER ${normalizedSpeaker}`) ||
+				(normalizedSpeaker.startsWith("SPEAKER ") &&
+					existingTranscriptKeys.has(normalizedSpeaker.replace("SPEAKER ", "")))
+
+			consola.debug(`🎙️  Speaker "${speaker}" (normalized: "${normalizedSpeaker}") isLinked: ${isLinked}`)
+
+			if (!isLinked) {
+				missingSpeakers.push(speaker)
+			}
+		}
+
+		if (missingSpeakers.length > 0) {
+			consola.info(
+				`🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`
+			)
+
+			if (internalPerson?.id && !internalPersonHasTranscriptKey) {
+				const preferredInternalSpeaker =
+					missingSpeakers.find((speaker) => speaker.toUpperCase().includes("A")) ?? missingSpeakers[0]
+
+				if (preferredInternalSpeaker) {
+					const internalTranscriptKey = preferredInternalSpeaker.toUpperCase().startsWith("SPEAKER ")
+						? preferredInternalSpeaker
+						: `SPEAKER ${preferredInternalSpeaker}`.toUpperCase()
+
+					const { error: internalLinkError } = await db.from("interview_people").upsert(
+						{
+							interview_id: interviewRecord.id,
+							person_id: internalPerson.id,
+							project_id: metadata.projectId ?? null,
+							role: "interviewer",
+							transcript_key: internalTranscriptKey,
+							display_name: internalPerson.name,
+						},
+						{ onConflict: "interview_id,person_id" }
+					)
+
+					if (internalLinkError) {
+						consola.warn(
+							`Failed linking internal person to interview ${interviewRecord.id}:`,
+							internalLinkError.message
+						)
+					} else {
+						internalPersonLinked = true
+						internalPersonHasTranscriptKey = true
+						const index = missingSpeakers.indexOf(preferredInternalSpeaker)
+						if (index >= 0) {
+							missingSpeakers.splice(index, 1)
+						}
+					}
+				}
+			}
+
+			for (const speakerLabel of missingSpeakers) {
+				// Create a placeholder person record for this speaker
+				// The user can later link them to a real person or the system can auto-link to the uploading user
+				const placeholderName = `Speaker ${speakerLabel.replace(/^SPEAKER\s*/i, "").toUpperCase()}`
+				const { data: placeholderPerson, error: personErr } = await db
+					.from("people")
+					.insert({
+						account_id: metadata.accountId,
+						name: placeholderName,
+						source: "interview_upload",
+					})
+					.select("id, name")
+					.single()
+
+				if (personErr || !placeholderPerson) {
+					consola.warn(`Failed to create placeholder person for speaker ${speakerLabel}:`, personErr?.message)
+					continue
+				}
+
+				// Determine role - if we already have a primary participant, this is likely the interviewer
+				const speakerRole = primaryPersonId && ensuredPersonIds.size > 0 ? "interviewer" : null
+
+				const linkPayload: InterviewPeopleInsert = {
+					interview_id: interviewRecord.id,
+					person_id: placeholderPerson.id,
+					project_id: metadata.projectId ?? null,
+					role: speakerRole,
+					transcript_key: speakerLabel.toUpperCase().startsWith("SPEAKER ")
+						? speakerLabel
+						: `SPEAKER ${speakerLabel}`.toUpperCase(),
+					display_name: placeholderName,
+				}
+
+				const { error: linkErr } = await db
+					.from("interview_people")
+					.upsert(linkPayload, { onConflict: "interview_id,person_id" })
+				if (linkErr && !linkErr.message?.includes("duplicate")) {
+					consola.warn(`Failed linking placeholder speaker ${speakerLabel} to interview:`, linkErr.message)
+				} else {
+					consola.info(
+						`  ✅ Created interview_people record for speaker "${speakerLabel}" as ${speakerRole || "unknown role"}`
+					)
+				}
+			}
+		}
+	}
+
+	if (insertedEvidenceIds.length) {
+		for (let idx = 0; idx < insertedEvidenceIds.length; idx++) {
+			const evId = insertedEvidenceIds[idx]
+			const key = personKeyForEvidence[idx]
+			const targetPersonId = (key && personIdByKey.get(key)) || primaryPersonId
+			if (!targetPersonId) continue
+			const role = targetPersonId ? personRoleById.get(targetPersonId) : null
+			const { error: epErr } = await db.from("evidence_people").insert({
+				evidence_id: evId,
+				person_id: targetPersonId,
+				account_id: metadata.accountId,
+				project_id: metadata.projectId,
+				role: role || "speaker",
+			})
+			if (epErr && !epErr.message?.includes("duplicate")) {
+				consola.warn(`Failed linking evidence ${evId} to person ${targetPersonId}: ${epErr.message}`)
+			}
+		}
+	}
+
+	if (metadata.projectId) {
+		// Use Phase 2 synthesized persona facets instead of raw Phase 1 mentions
+		const observationInputs: Array<{
+			personId: string
+			facets: PersonFacetObservation[]
+			scales: PersonScaleObservation[]
+		}> = []
+
+		const allPersonKeys = new Set<string>([
+			...personaFacetsByPersonKey.keys(),
+			...participantByKey.keys(),
+			...facetMentionsByPersonKey.keys(),
+		])
+
+		consola.info(`🎯 Processing facets for ${allPersonKeys.size} person_keys`)
+		consola.debug("  - personaFacetsByPersonKey has keys:", Array.from(personaFacetsByPersonKey.keys()))
+		consola.debug("  - participantByKey has keys:", Array.from(participantByKey.keys()))
+		consola.debug("  - personIdByKey has keys:", Array.from(personIdByKey.keys()))
+
+		for (const personKey of allPersonKeys) {
+			const personId = personIdByKey.get(personKey)
+			if (!personId) {
+				consola.warn(`⚠️  Skipping facets for person_key "${personKey}" - no matching person record found`)
+				consola.debug("Available person_keys in personIdByKey:", Array.from(personIdByKey.keys()))
+				continue
+			}
+
+			const facetObservations: PersonFacetObservation[] = []
+			const personaFacets = personaFacetsByPersonKey.get(personKey) ?? []
+			for (const pf of personaFacets) {
+				if (!pf.kind_slug || !pf.value) continue
+				const evidenceIndices = Array.isArray(pf.evidence_refs) ? pf.evidence_refs : []
+				const primaryEvidenceIndex = evidenceIndices[0] ?? undefined
+
+				const facetObservation: PersonFacetObservation = {
+					kind_slug: pf.kind_slug,
+					value: pf.value,
+					source: "interview",
+					evidence_unit_index: primaryEvidenceIndex,
+					confidence: typeof pf.confidence === "number" ? pf.confidence : 0.8,
+					notes: pf.reasoning ? [pf.reasoning] : undefined,
+					facet_account_id: pf.facet_account_id ?? undefined,
+				}
+				if (!pf.facet_account_id) {
+					facetObservation.candidate = {
+						kind_slug: pf.kind_slug,
+						label: pf.value,
+						synonyms: [],
+						notes: pf.reasoning
+							? [`Frequency: ${pf.frequency ?? 1}, Evidence refs: ${evidenceIndices.join(", ")}`]
+							: undefined,
+					}
+				}
+				facetObservations.push(facetObservation)
+			}
+
+			// Fallback: derive facets from direct evidence mentions when synthesis is sparse
+			const existingFacetAccountIds = new Set<number>()
+			const existingKindValueKeys = new Set<string>()
+			for (const obs of facetObservations) {
+				if (obs.facet_account_id) {
+					existingFacetAccountIds.add(obs.facet_account_id)
+				}
+				if (obs.value) {
+					existingKindValueKeys.add(`${obs.kind_slug.toLowerCase()}|${obs.value.toLowerCase()}`)
+				}
+			}
+			const mentionFallback = facetMentionsByPersonKey.get(personKey) ?? []
+			for (const mention of mentionFallback) {
+				if (existingFacetAccountIds.has(mention.facetAccountId)) continue
+				const key = `${mention.kindSlug.toLowerCase()}|${mention.label.toLowerCase()}`
+				if (existingKindValueKeys.has(key)) continue
+				existingFacetAccountIds.add(mention.facetAccountId)
+				existingKindValueKeys.add(key)
+				facetObservations.push({
+					kind_slug: mention.kindSlug,
+					value: mention.label,
+					source: "interview",
+					evidence_unit_index: mention.evidenceIndex,
+					confidence: 0.6,
+					facet_account_id: mention.facetAccountId,
+					notes: mention.quote ? [mention.quote] : undefined,
+				})
+			}
+			const scaleObservations = participantByKey.get(personKey)?.scales ?? []
+			if (facetObservations.length || scaleObservations.length) {
+				observationInputs.push({
+					personId,
+					facets: facetObservations,
+					scales: scaleObservations,
+				})
+			}
+		}
+
+		if (observationInputs.length) {
+			await persistFacetObservations({
+				db,
+				accountId: metadata.accountId,
+				projectId: metadata.projectId,
+				observations: observationInputs,
+				evidenceIds: insertedEvidenceIds,
+			})
+		}
+	}
+
+	return {
+		personData: { id: primaryPersonId },
+		primaryPersonName,
+		primaryPersonRole,
+		primaryPersonDescription,
+		primaryPersonOrganization,
+		primaryPersonSegments,
+		insertedEvidenceIds,
+		evidenceUnits,
+		evidenceFacetKinds,
+		interactionContext,
+		contextConfidence,
+		contextReasoning,
+		rawPeople,
+	}
+}
+
+// Temporary alias for v2 task while we complete the transplant
+export { extractEvidenceAndPeopleCore as extractEvidenceCore }

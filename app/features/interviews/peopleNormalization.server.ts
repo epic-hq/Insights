@@ -3,6 +3,16 @@ import type { Database } from "~/../supabase/types"
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"]
 
+function computeNameHash(payload: PeopleInsert): string {
+	const first = (payload.firstname ?? "").trim()
+	const last = (payload.lastname ?? "").trim()
+	const full =
+		first && last
+			? `${first} ${last}`
+			: first || last || ""
+	return full.trim().toLowerCase()
+}
+
 /**
  * Normalize speaker labels to a consistent "SPEAKER X" format.
  */
@@ -47,8 +57,9 @@ export async function upsertPersonWithCompanyAwareConflict(
 ) {
 	// Normalize company so ON CONFLICT hits the plain (account_id, name_hash, company) index
 	// and matches the expression index (COALESCE(lower(company), '')).
-	const normalizedCompany =
+	const normalizedCompanyRaw =
 		typeof payload.company === "string" && payload.company.trim().length > 0 ? payload.company.trim() : ""
+	const normalizedCompany = normalizedCompanyRaw.toLowerCase()
 
 	const insertPayload: PeopleInsert = {
 		...payload,
@@ -63,6 +74,20 @@ export async function upsertPersonWithCompanyAwareConflict(
 		.single()
 
 	if (error || !data?.id) {
+		if ((error as any)?.code === "23505") {
+			// Duplicate constraint hit; fetch existing row by name_hash/company
+			const nameHash = computeNameHash(insertPayload)
+			const { data: existing } = await db
+				.from("people")
+				.select("id, name")
+				.eq("account_id", insertPayload.account_id!)
+				.eq("name_hash", nameHash)
+				.eq("company", normalizedCompany)
+				.single()
+			if (existing?.id) {
+				return { id: existing.id, name: existing.name ?? null }
+			}
+		}
 		if ((error as any)?.code === "42P10") {
 			throw new Error(
 				"Missing unique index on people(account_id,name_hash,company). Apply the company-aware migration and retry."
