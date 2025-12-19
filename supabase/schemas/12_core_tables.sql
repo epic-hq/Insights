@@ -70,7 +70,7 @@ create table if not exists people (
   role text,
   title text,
   industry text,
-  company text,
+  company text not null default '',
   segment text,
   image_url text,
   age int,
@@ -128,8 +128,14 @@ create index if not exists idx_people_account_id on public.people using btree (a
 
 -- Unique index for deduplication by normalized name+company within account
 -- Allows same name at different companies (e.g., John Rubey at Testco vs John Rubey at Saxco)
+-- Expression index for constraint enforcement (handles null company normalization)
 create unique index if not exists uniq_people_account_name_company
   on public.people (account_id, name_hash, COALESCE(lower(company), ''));
+
+-- Plain column index required for ON CONFLICT clause (PostgreSQL limitation)
+-- Code must normalize company to lowercase before insert for this to work correctly
+create unique index if not exists uniq_people_account_name_company_plain
+  on public.people (account_id, name_hash, company);
 
 -- enable RLS on the table
 ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;

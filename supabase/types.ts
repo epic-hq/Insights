@@ -3367,7 +3367,7 @@ export type Database = {
           account_id: string | null
           age: number | null
           age_range: string | null
-          company: string | null
+          company: string
           contact_info: Json | null
           created_at: string
           default_organization_id: string | null
@@ -3408,7 +3408,7 @@ export type Database = {
           account_id?: string | null
           age?: number | null
           age_range?: string | null
-          company?: string | null
+          company?: string
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
@@ -3449,7 +3449,7 @@ export type Database = {
           account_id?: string | null
           age?: number | null
           age_range?: string | null
-          company?: string | null
+          company?: string
           contact_info?: Json | null
           created_at?: string
           default_organization_id?: string | null
