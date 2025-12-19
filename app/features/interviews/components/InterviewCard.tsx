@@ -94,11 +94,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 	const participantName = participant?.name || "Unknown Participant"
 
 	const participant_names = Array.from(
-		new Set(
-			sortedParticipants
-				.map((p) => p.people?.name?.trim())
-				.filter((name): name is string => Boolean(name))
-		)
+		new Set(sortedParticipants.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
 	)
 	const display_participant_names = participant_names.length > 0 ? participant_names : [participantName]
 	const displayed_participant_names = display_participant_names.slice(0, 3)

@@ -255,7 +255,15 @@ async function resolveAssignees({
 	return { resolved, warnings }
 }
 
-const taskLinkEntityTypeSchema = z.enum(["evidence", "person", "organization", "opportunity", "interview", "insight", "persona"])
+const taskLinkEntityTypeSchema = z.enum([
+	"evidence",
+	"person",
+	"organization",
+	"opportunity",
+	"interview",
+	"insight",
+	"persona",
+])
 const taskLinkTypeSchema = z.enum(["supports", "blocks", "related", "source"])
 
 function formatErrorMessage(error: unknown) {
@@ -600,13 +608,13 @@ export const createTaskTool = createTool({
 			const link_specs = [
 				...(input.source
 					? [
-						{
-							entityType: input.source.entityType,
-							entityId: input.source.entityId,
-							linkType: input.source.linkType ?? "source",
-							description: input.source.description,
-						},
-					]
+							{
+								entityType: input.source.entityType,
+								entityId: input.source.entityId,
+								linkType: input.source.linkType ?? "source",
+								description: input.source.description,
+							},
+						]
 					: []),
 				...(input.links ?? []),
 			]

@@ -330,16 +330,17 @@ function CreateLensCard({ accountId, onCreated }: { accountId: string; onCreated
 	}
 
 	return (
-		<Card className="border-2 border-primary/30 border-dashed bg-primary/5 transition-shadow hover:shadow-md">
-			<CardHeader className="pb-2">
+		<Card className="relative overflow-hidden border-2 border-primary/30 border-dashed bg-primary/[0.04] transition-shadow hover:shadow-md dark:border-primary/25 dark:bg-primary/[0.06] dark:hover:shadow-lg">
+			<div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-100 dark:from-primary/20 dark:via-primary/5" />
+			<CardHeader className="relative z-10 pb-2">
 				<div className="flex items-center gap-3">
-					<div className="rounded-lg bg-primary/10 p-2.5">
+					<div className="rounded-lg bg-primary/10 p-2.5 dark:bg-primary/15">
 						<Sparkles className="h-5 w-5 text-primary" />
 					</div>
 					<CardTitle className="text-lg">Create Custom Lens</CardTitle>
 				</div>
 			</CardHeader>
-			<CardContent className="space-y-3">
+			<CardContent className="relative z-10 space-y-3">
 				<Textarea
 					placeholder="Describe what you want to extract from conversations..."
 					value={description}

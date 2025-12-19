@@ -299,6 +299,86 @@ export const finalizeInterviewTaskV2 = task({
         // Don't fail the task if analytics fail
       }
 
+      // 4. Auto-consolidate themes if we've reached the threshold
+      if (metadata?.projectId && metadata?.accountId) {
+        try {
+          // Check if auto-consolidation should run
+          const { count: readyInterviewCount } = await client
+            .from("interviews")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", metadata.projectId)
+            .eq("status", "ready");
+
+          const { count: evidenceCount } = await client
+            .from("evidence")
+            .select("*", { count: "exact", head: true })
+            .eq("project_id", metadata.projectId);
+
+          // Check project settings for consolidation state
+          const { data: projectData } = await client
+            .from("projects")
+            .select("project_settings")
+            .eq("id", metadata.projectId)
+            .single();
+
+          const projectSettings =
+            (projectData?.project_settings as Record<string, unknown>) || {};
+          const hasConsolidated = Boolean(
+            projectSettings.insights_consolidated_at,
+          );
+
+          // Auto-consolidate at 3 interviews OR 15 evidence (whichever comes first)
+          // Only run once automatically (user can manually re-run)
+          const shouldAutoConsolidate =
+            !hasConsolidated &&
+            ((readyInterviewCount ?? 0) >= 3 || (evidenceCount ?? 0) >= 15);
+
+          if (shouldAutoConsolidate) {
+            consola.info(
+              `[finalizeInterview] Triggering auto-consolidation for project ${metadata.projectId}`,
+              { readyInterviewCount, evidenceCount },
+            );
+
+            // Import and call the auto-group function
+            const { autoGroupThemesAndApply } =
+              await import("~/features/themes/db.autoThemes.server");
+            const result = await autoGroupThemesAndApply({
+              supabase: client,
+              account_id: metadata.accountId,
+              project_id: metadata.projectId,
+              guidance:
+                "Consolidate similar themes into 5-12 high-level insights. Merge duplicates and ensure clear evidence links.",
+            });
+
+            // Mark consolidation as done in project settings
+            await client
+              .from("projects")
+              .update({
+                project_settings: {
+                  ...projectSettings,
+                  insights_consolidated_at: new Date().toISOString(),
+                  auto_consolidation_result: {
+                    theme_count: result.created_theme_ids.length,
+                    link_count: result.link_count,
+                    triggered_at_interview_count: readyInterviewCount,
+                  },
+                },
+              })
+              .eq("id", metadata.projectId);
+
+            consola.success(
+              `[finalizeInterview] Auto-consolidated ${result.created_theme_ids.length} themes with ${result.link_count} links`,
+            );
+          }
+        } catch (consolidateError) {
+          consola.warn(
+            "[finalizeInterview] Auto-consolidation failed:",
+            consolidateError,
+          );
+          // Don't fail the task if consolidation fails
+        }
+      }
+
       // Auto-link uploader as interviewer if userId is provided
       if (metadata?.userId && metadata?.accountId) {
         try {

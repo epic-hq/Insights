@@ -172,11 +172,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-		; (rows || []).forEach((interview) => {
-			const primaryParticipant = interview.interview_people?.[0]
-			const segment = primaryParticipant?.people?.segment || "Unknown"
-			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-		})
+	;(rows || []).forEach((interview) => {
+		const primaryParticipant = interview.interview_people?.[0]
+		const segment = primaryParticipant?.people?.segment || "Unknown"
+		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+	})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -239,15 +239,14 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		})
 
 		const participant_names = Array.from(
-			new Set(
-				sorted_people
-					.map((p) => p.people?.name?.trim())
-					.filter((name): name is string => Boolean(name))
-			)
+			new Set(sorted_people.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
 		)
 		const display_participant_names = participant_names.length > 0 ? participant_names : [interview.participant]
 		const displayed_participant_names = display_participant_names.slice(0, 3)
-		const remaining_participant_count = Math.max(0, display_participant_names.length - displayed_participant_names.length)
+		const remaining_participant_count = Math.max(
+			0,
+			display_participant_names.length - displayed_participant_names.length
+		)
 		const names_label =
 			remaining_participant_count > 0
 				? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
@@ -255,16 +254,16 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 		const participant_segments = Array.from(
 			new Set(
-				sorted_people
-					.map((p) => p.people?.segment?.trim())
-					.filter((segment): segment is string => Boolean(segment))
+				sorted_people.map((p) => p.people?.segment?.trim()).filter((segment): segment is string => Boolean(segment))
 			)
 		)
 		const display_segments = participant_segments.length > 0 ? participant_segments : ["Participant"]
 		const displayed_segments = display_segments.slice(0, 2)
 		const remaining_segment_count = Math.max(0, display_segments.length - displayed_segments.length)
 		const segments_label =
-			remaining_segment_count > 0 ? `${displayed_segments.join(", ")} +${remaining_segment_count}` : displayed_segments.join(", ")
+			remaining_segment_count > 0
+				? `${displayed_segments.join(", ")} +${remaining_segment_count}`
+				: displayed_segments.join(", ")
 
 		return { names_label, segments_label }
 	}
@@ -668,12 +667,8 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 																source_type={interview.source_type}
 															/>
 															<div>
-																<div className="font-medium text-base text-foreground">
-																	{names_label}
-																</div>
-																<div className="text-foreground/60 text-sm">
-																	{segments_label}
-																</div>
+																<div className="font-medium text-base text-foreground">{names_label}</div>
+																<div className="text-foreground/60 text-sm">{segments_label}</div>
 															</div>
 														</div>
 													</Link>
@@ -699,12 +694,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												</td>
 												<td className="whitespace-nowrap px-4 py-3">
 													<span
-														className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
-															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-															: interview.status === "transcribed"
-																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-															}`}
+														className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
+															interview.status === "ready"
+																? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+																: interview.status === "transcribed"
+																	? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+																	: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+														}`}
 													>
 														{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 													</span>

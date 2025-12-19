@@ -68,9 +68,7 @@ export default function NoteCard({ note, className }: NoteCardProps) {
 
 	const participant_names = Array.from(
 		new Set(
-			(note.interview_people ?? [])
-				.map((p) => p.people?.name?.trim())
-				.filter((name): name is string => Boolean(name))
+			(note.interview_people ?? []).map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name))
 		)
 	)
 	const displayed_participant_names = participant_names.slice(0, 3)

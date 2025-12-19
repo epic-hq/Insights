@@ -310,7 +310,7 @@ export function SimpleMediaPlayer({
 						<div
 							className={cn(
 								"rounded-full p-4 transition-colors",
-								signedThumbnailUrl ? "bg-black/60 group-hover:bg-black/80" : "bg-primary/90 group-hover:bg-primary"
+								signedThumbnailUrl ? "bg-black/60 group-hover:bg-black/80" : "bg-primary/60 group-hover:bg-primary/70"
 							)}
 						>
 							<svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
