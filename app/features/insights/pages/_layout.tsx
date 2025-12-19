@@ -1,8 +1,8 @@
 import consola from "consola"
-import { LayoutGrid, Loader2, MoreVertical, RefreshCw, Rows, Settings2, Sparkles, Trash2, Wand2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { LayoutGrid, Loader2, MoreVertical, RefreshCw, Rows, Sparkles, Trash2, Wand2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
-import { Outlet, useFetcher, useLoaderData, useLocation, useNavigate } from "react-router-dom"
+import { Outlet, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator } from "react-router-dom"
 import { toast } from "sonner"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
@@ -16,8 +16,10 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { ConsolidateProgressBar } from "~/features/themes/components/ConsolidateProgressBar"
 import { InsightsExplainerCard } from "~/features/themes/components/InsightsExplainerCard"
 import { InsightsSettingsModal } from "~/features/themes/components/InsightsSettingsModal"
+import { useConsolidateProgress } from "~/features/themes/hooks/useConsolidateProgress"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
@@ -83,6 +85,7 @@ export default function InsightsLayout() {
 		useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const location = useLocation()
+	const revalidator = useRevalidator()
 	const { projectPath, projectId, accountId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 	const consolidateFetcher = useFetcher()
@@ -92,33 +95,69 @@ export default function InsightsLayout() {
 	// Track refresh all flow: consolidate → delete → enrich
 	const [refreshStep, setRefreshStep] = useState<"idle" | "consolidate" | "delete" | "enrich">("idle")
 
-	const isConsolidating = consolidateFetcher.state !== "idle"
+	// Real-time consolidation progress tracking
+	const [consolidateRunId, setConsolidateRunId] = useState<string | null>(null)
+	const [consolidateToken, setConsolidateToken] = useState<string | null>(null)
+
+	// Handle consolidation complete - revalidate page data
+	const handleConsolidateComplete = useCallback(() => {
+		toast.success("Theme consolidation complete!")
+		revalidator.revalidate()
+		// If in refresh flow, move to next step
+		if (refreshStep === "consolidate") {
+			setRefreshStep("delete")
+			deleteFetcher.submit({ project_id: projectId! }, { method: "POST", action: "/api/delete-empty-themes" })
+		}
+	}, [revalidator, refreshStep, projectId, deleteFetcher])
+
+	// Subscribe to consolidation progress
+	const { progressInfo: consolidateProgress } = useConsolidateProgress({
+		runId: consolidateRunId,
+		accessToken: consolidateToken,
+		onComplete: handleConsolidateComplete,
+	})
+
+	// Derived state
+	const isConsolidatingTask =
+		consolidateRunId !== null && !consolidateProgress.isComplete && !consolidateProgress.hasError
+	const isConsolidating = consolidateFetcher.state !== "idle" || isConsolidatingTask
 	const isEnriching = enrichFetcher.state !== "idle"
 	const isDeleting = deleteFetcher.state !== "idle"
 	const isRefreshing = refreshStep !== "idle"
 	const isAnyLoading = isConsolidating || isEnriching || isDeleting
 
-	// Handle consolidation response
+	// Handle consolidation API response (now returns runId)
 	useEffect(() => {
 		if (consolidateFetcher.data && consolidateFetcher.state === "idle") {
 			const data = consolidateFetcher.data as {
 				ok?: boolean
+				runId?: string
 				message?: string
 				error?: string
 			}
-			if (data.ok) {
-				toast.success(data.message || "Themes have been consolidated successfully.")
-				// If in refresh flow, move to next step
-				if (refreshStep === "consolidate") {
-					setRefreshStep("delete")
-					deleteFetcher.submit({ project_id: projectId! }, { method: "POST", action: "/api/delete-empty-themes" })
-				}
+			if (data.ok && data.runId) {
+				// Fetch access token for real-time subscription
+				fetch("/api/trigger-run-token", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ runId: data.runId }),
+				})
+					.then((res) => res.json())
+					.then(({ token }) => {
+						if (token) {
+							setConsolidateRunId(data.runId!)
+							setConsolidateToken(token)
+						}
+					})
+					.catch((err) => {
+						consola.error("[InsightsLayout] Failed to get token:", err)
+					})
 			} else if (data.error) {
 				toast.error(data.error)
 				setRefreshStep("idle")
 			}
 		}
-	}, [consolidateFetcher.data, consolidateFetcher.state, refreshStep, projectId])
+	}, [consolidateFetcher.data, consolidateFetcher.state])
 
 	// Handle delete response
 	useEffect(() => {
@@ -226,6 +265,12 @@ export default function InsightsLayout() {
 		}
 	}
 
+	// Dismiss progress bar and reset state
+	const handleDismissProgress = useCallback(() => {
+		setConsolidateRunId(null)
+		setConsolidateToken(null)
+	}, [])
+
 	return (
 		<PageContainer className="space-y-8">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -308,10 +353,13 @@ export default function InsightsLayout() {
 				</div>
 			</div>
 
+			{/* Real-time consolidation progress */}
+			{consolidateRunId && <ConsolidateProgressBar progress={consolidateProgress} onDismiss={handleDismissProgress} />}
+
 			{/* Explainer Card - Shows guidance based on insights state */}
 			{projectId && accountId && (
 				<InsightsExplainerCard
-					interviewCount={interviewCount}
+					interviewCount={interviewCount ?? 0}
 					themeCount={insightCount}
 					evidenceCount={evidenceCount}
 					projectId={projectId}
