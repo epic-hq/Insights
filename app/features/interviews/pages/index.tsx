@@ -31,7 +31,7 @@ import NoteCard from "~/features/interviews/components/NoteCard"
 import { getInterviews } from "~/features/interviews/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
-import type { Interview } from "~/types"
+import type { InterviewWithPeople } from "~/types"
 
 function TableMediaPreview({
 	media_url,
@@ -145,7 +145,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	])
 
 	const { data: rows, error } = interviewsResult as {
-		data: Interview[] | null
+		data: InterviewWithPeople[] | null
 		error: PostgrestError | null
 	}
 	const { data: assets, error: assetsError } = assetsResult
@@ -172,11 +172,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+		; (rows || []).forEach((interview) => {
+			const primaryParticipant = interview.interview_people?.[0]
+			const segment = primaryParticipant?.people?.segment || "Unknown"
+			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+		})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -228,6 +228,47 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const _fetcher = useFetcher()
 
+	type InterviewListItem = (typeof interviews)[number]
+
+	const get_interview_participants_summary = (interview: InterviewListItem) => {
+		const interview_people = interview.interview_people ?? []
+		const sorted_people = [...interview_people].sort((a, b) => {
+			if (a.role === "participant") return -1
+			if (b.role === "participant") return 1
+			return 0
+		})
+
+		const participant_names = Array.from(
+			new Set(
+				sorted_people
+					.map((p) => p.people?.name?.trim())
+					.filter((name): name is string => Boolean(name))
+			)
+		)
+		const display_participant_names = participant_names.length > 0 ? participant_names : [interview.participant]
+		const displayed_participant_names = display_participant_names.slice(0, 3)
+		const remaining_participant_count = Math.max(0, display_participant_names.length - displayed_participant_names.length)
+		const names_label =
+			remaining_participant_count > 0
+				? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
+				: displayed_participant_names.join(", ")
+
+		const participant_segments = Array.from(
+			new Set(
+				sorted_people
+					.map((p) => p.people?.segment?.trim())
+					.filter((segment): segment is string => Boolean(segment))
+			)
+		)
+		const display_segments = participant_segments.length > 0 ? participant_segments : ["Participant"]
+		const displayed_segments = display_segments.slice(0, 2)
+		const remaining_segment_count = Math.max(0, display_segments.length - displayed_segments.length)
+		const segments_label =
+			remaining_segment_count > 0 ? `${displayed_segments.join(", ")} +${remaining_segment_count}` : displayed_segments.join(", ")
+
+		return { names_label, segments_label }
+	}
+
 	// Read tab from URL on mount (for redirects from asset delete, etc.)
 	useEffect(() => {
 		const tab = searchParams.get("tab")
@@ -237,7 +278,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 			searchParams.delete("tab")
 			setSearchParams(searchParams, { replace: true })
 		}
-	}, [])
+	}, [searchParams, setSearchParams])
 
 	// Sort interviews chronologically (includes notes now)
 	const allItems = [...interviews].sort((a, b) => {
@@ -346,7 +387,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								<ToggleGroup
 									type="single"
 									value={viewMode}
-									onValueChange={(v) => v && setViewMode(v)}
+									onValueChange={(v) => {
+										if (v === "cards" || v === "table") {
+											setViewMode(v)
+										}
+									}}
 									size="sm"
 									className="justify-end sm:w-auto"
 								>
@@ -386,7 +431,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							<ToggleGroup
 								type="single"
 								value={sourceFilter}
-								onValueChange={(v) => v && setSourceFilter(v as any)}
+								onValueChange={(v) => {
+									if (v === "all" || v === "conversations" || v === "notes" || v === "files") {
+										setSourceFilter(v)
+									}
+								}}
 								size="sm"
 								className="w-full sm:w-auto"
 							>
@@ -571,7 +620,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					<div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
 						{filteredInterviews.map((item) =>
 							item.source_type === "note" ? (
-								<NoteCard key={item.id} note={item as any} />
+								<NoteCard key={item.id} note={item} />
 							) : (
 								<InterviewCard key={item.id} interview={item} />
 							)
@@ -604,66 +653,68 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-									{filteredInterviews.map((interview) => (
-										<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-											<td className="px-4 py-3">
-												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
-													<div className="flex items-center gap-3">
-														<TableMediaPreview
-															media_url={interview.media_url}
-															thumbnail_url={interview.thumbnail_url}
-															file_extension={interview.file_extension}
-															media_type={interview.media_type}
-															source_type={interview.source_type}
-														/>
-														<div>
-															<div className="font-medium text-base text-foreground">
-																{interview.interview_people?.[0]?.people?.name || interview.participant}
-															</div>
-															<div className="text-foreground/60 text-sm">
-																{interview.interview_people?.[0]?.people?.segment || "Participant"}
+									{filteredInterviews.map((interview) => {
+										const { names_label, segments_label } = get_interview_participants_summary(interview)
+										return (
+											<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+												<td className="px-4 py-3">
+													<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
+														<div className="flex items-center gap-3">
+															<TableMediaPreview
+																media_url={interview.media_url}
+																thumbnail_url={interview.thumbnail_url}
+																file_extension={interview.file_extension}
+																media_type={interview.media_type}
+																source_type={interview.source_type}
+															/>
+															<div>
+																<div className="font-medium text-base text-foreground">
+																	{names_label}
+																</div>
+																<div className="text-foreground/60 text-sm">
+																	{segments_label}
+																</div>
 															</div>
 														</div>
-													</div>
-												</Link>
-											</td>
-											<td className="px-4 py-3">
-												<Link
-													to={routes.interviews.detail(interview.id)}
-													className="inline-flex items-center gap-2 text-foreground/70 text-sm hover:text-blue-600"
-												>
-													<MediaTypeIcon
-														mediaType={interview.media_type}
-														sourceType={interview.source_type}
-														iconClassName="h-4 w-4"
-														labelClassName="text-xs font-medium"
-													/>
-												</Link>
-											</td>
-											<td className="whitespace-nowrap px-4 py-3">
-												<span className="font-medium text-purple-600">{interview.evidenceCount}</span>
-											</td>
-											<td className="whitespace-nowrap px-4 py-3 text-gray-900 text-sm dark:text-white">
-												{interview.duration}
-											</td>
-											<td className="whitespace-nowrap px-4 py-3">
-												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-														interview.status === "ready"
+													</Link>
+												</td>
+												<td className="px-4 py-3">
+													<Link
+														to={routes.interviews.detail(interview.id)}
+														className="inline-flex items-center gap-2 text-foreground/70 text-sm hover:text-blue-600"
+													>
+														<MediaTypeIcon
+															mediaType={interview.media_type}
+															sourceType={interview.source_type}
+															iconClassName="h-4 w-4"
+															labelClassName="text-xs font-medium"
+														/>
+													</Link>
+												</td>
+												<td className="whitespace-nowrap px-4 py-3">
+													<span className="font-medium text-purple-600">{interview.evidenceCount}</span>
+												</td>
+												<td className="whitespace-nowrap px-4 py-3 text-gray-900 text-sm dark:text-white">
+													{interview.duration}
+												</td>
+												<td className="whitespace-nowrap px-4 py-3">
+													<span
+														className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
 															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 															: interview.status === "transcribed"
 																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
 																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-													}`}
-												>
-													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
-												</span>
-											</td>
-											<td className="whitespace-nowrap px-4 py-3 text-gray-500 text-sm dark:text-gray-400">
-												{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}
-											</td>
-										</tr>
-									))}
+															}`}
+													>
+														{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
+													</span>
+												</td>
+												<td className="whitespace-nowrap px-4 py-3 text-gray-500 text-sm dark:text-gray-400">
+													{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}
+												</td>
+											</tr>
+										)
+									})}
 								</tbody>
 							</table>
 						</div>

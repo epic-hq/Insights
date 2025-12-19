@@ -6,10 +6,7 @@ type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"]
 function computeNameHash(payload: PeopleInsert): string {
 	const first = (payload.firstname ?? "").trim()
 	const last = (payload.lastname ?? "").trim()
-	const full =
-		first && last
-			? `${first} ${last}`
-			: first || last || ""
+	const full = first && last ? `${first} ${last}` : first || last || ""
 	return full.trim().toLowerCase()
 }
 

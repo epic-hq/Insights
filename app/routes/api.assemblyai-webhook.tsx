@@ -243,6 +243,7 @@ export async function action({ request }: ActionFunctionArgs) {
       );
 
       // Create transcript data object matching expected format
+      // IMPORTANT: Include words array for word-level timestamp matching in evidence extraction
       const formattedTranscriptData = safeSanitizeTranscriptPayload({
         full_transcript: transcriptData.text,
         confidence: transcriptData.confidence,
@@ -252,12 +253,19 @@ export async function action({ request }: ActionFunctionArgs) {
         assembly_id: payload.transcript_id,
         original_filename: uploadMetadata.file_name,
         speaker_transcripts: transcriptData.utterances || [],
+        words: transcriptData.words || [], // Word-level timing for evidence timestamps
         topic_detection: transcriptData.iab_categories_result || {},
         sentiment_analysis_results:
           transcriptData.sentiment_analysis_results || [],
         auto_chapters:
           transcriptData.auto_chapters || transcriptData.chapters || [],
         language_code: transcriptData.language_code,
+      });
+
+      consola.info("[AssemblyAI Webhook] Words array status", {
+        rawWordsCount: transcriptData.words?.length ?? 0,
+        sanitizedWordsCount: formattedTranscriptData.words?.length ?? 0,
+        hasWords: Array.isArray(formattedTranscriptData.words),
       });
 
       // Update interview with transcript data - set to transcribed first

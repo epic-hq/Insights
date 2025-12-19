@@ -19,7 +19,8 @@ create type interaction_context as enum (
   'sales',      -- Sales calls, demos, deal discussions
   'support',    -- Support conversations, escalations, customer success
   'internal',   -- Team meetings, debriefs, planning
-  'debrief'     -- Voice memos, call recaps, field notes, quick capture
+  'debrief',    -- Voice memos, call recaps, field notes, quick capture
+  'personal'    -- Personal content, vlogs, non-business recordings
 );
 
 create table if not exists interviews (

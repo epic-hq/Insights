@@ -1,6 +1,6 @@
 drop trigger if exists "update_lens_summaries_updated_at" on "public"."conversation_lens_summaries";
 
-drop policy "insights_read_only" on "public"."insights";
+drop policy if exists "insights_read_only" on "public"."insights";
 
 alter table "public"."actions" drop constraint "actions_insight_id_fkey";
 

@@ -302,6 +302,7 @@ export enum InteractionContext {
   Support = "Support",
   Internal = "Internal",
   Debrief = "Debrief",
+  Personal = "Personal",
 }
 
 export interface ActionButton {

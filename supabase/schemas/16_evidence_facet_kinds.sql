@@ -13,7 +13,8 @@ INSERT INTO facet_kind_global (slug, label, description) VALUES
   ('context', 'Context', 'Situational factors or environmental conditions'),
   ('artifact', 'Artifact', 'Documents, deliverables, or tangible outputs'),
   ('emotion', 'Emotion', 'Feelings, emotional responses, or sentiment signals'),
-  ('workflow', 'Workflow', 'Processes, sequences, or ways of working')
+  ('workflow', 'Workflow', 'Processes, sequences, or ways of working'),
+  ('feature', 'Feature', 'Product features, capabilities, or functionality mentioned')
 ON CONFLICT (slug) DO UPDATE SET
   label = EXCLUDED.label,
   description = EXCLUDED.description,

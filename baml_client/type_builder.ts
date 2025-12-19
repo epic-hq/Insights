@@ -348,7 +348,7 @@ export default class TypeBuilder {
     
     Emotions: EnumViewer<'Emotions', "Abandoned" | "Accepted" | "Aggressive" | "Amazed" | "Angry" | "Annoyed" | "Anxious" | "Apathetic" | "Appalled" | "Aroused" | "Ashamed" | "Astonished" | "Awe" | "Awful" | "Bad" | "Betrayed" | "Bitter" | "Bored" | "Busy" | "Cheeky" | "Confident" | "Confused" | "Content" | "Courageous" | "Creative" | "Critical" | "Curious" | "Depressed" | "Despair" | "Detestable" | "Disappointed" | "Disapproving" | "Disgusted" | "Disillusioned" | "Dismayed" | "Dismissive" | "Disrespected" | "Distant" | "Eager" | "Embarrassed" | "Empty" | "Energetic" | "Excited" | "Excluded" | "Exposed" | "Fearful" | "Fragile" | "Free" | "Frightened" | "Frustrated" | "Furious" | "Grief" | "Guilty" | "Happy" | "Helpless" | "Hesitant" | "Hopeful" | "Horrified" | "Hostile" | "Humiliated" | "Hurt" | "Inadequate" | "Indifferent" | "Indignant" | "Inferior" | "Infuriated" | "Inquisitive" | "Insecure" | "Insignificant" | "Inspired" | "Interested" | "Intimate" | "Isolated" | "Jealous" | "Joyful" | "Judgmental" | "Let_down" | "Lonely" | "Loving" | "Mad" | "Nauseated" | "Nervous" | "Numb" | "Optimistic" | "Out_of_control" | "Overwhelmed" | "Peaceful" | "Perplexed" | "Persecuted" | "Playful" | "Powerful" | "Powerless" | "Pressured" | "Proud" | "Provoked" | "Rejected" | "Remorseful" | "Repelled" | "Resentful" | "Respected" | "Revolted" | "Ridiculed" | "Rushed" | "Sad" | "Scared" | "Sensitive" | "Shocked" | "Skeptical" | "Sleepy" | "Startled" | "Stressed" | "Successful" | "Surprised" | "Thankful" | "Threatened" | "Tired" | "Trusting" | "Unfocussed" | "Valued" | "Victimized" | "Violated" | "Vulnerable" | "Weak" | "Withdrawn" | "Worried" | "Worthless">;
     
-    InteractionContext: EnumViewer<'InteractionContext', "Research" | "Sales" | "Support" | "Internal" | "Debrief">;
+    InteractionContext: EnumViewer<'InteractionContext', "Research" | "Sales" | "Support" | "Internal" | "Debrief" | "Personal">;
     
 
     constructor() {
@@ -1004,7 +1004,7 @@ export default class TypeBuilder {
         ]);
         
         this.InteractionContext = this.tb.enumViewer("InteractionContext", [
-          "Research","Sales","Support","Internal","Debrief",
+          "Research","Sales","Support","Internal","Debrief","Personal",
         ]);
         
     }

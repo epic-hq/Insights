@@ -108,32 +108,40 @@ flowchart LR
 - [x] **Step order fix**: Added missing `enrich-person` step in `shouldExecuteStep`
 - [x] **Facet kinds seeded**: 12 new kinds (emotion, workflow, goal, pain, behavior, tool, value, requirements, preference, demographic, context, artifact)
 - [x] **Progress callbacks**: Heartbeat updates throughout extractEvidenceCore
+- [x] **Monolith refactoring (Phase 1)**:
+  - `timestampMapping.ts` (204 lines) - Pure timestamp resolution utilities
+  - `facetProcessing.ts` (159 lines) - Facet catalog and mention handling
+  - `peopleResolution.ts` (207 lines) - Name parsing, normalization, resolution
+  - `personaSynthesis.ts` (165 lines) - Persona facet derivation types/utilities
+  - Main `extractEvidenceCore.ts` reduced from ~2400 to ~2071 lines
 
 ### Remaining work
 
 | Issue | Severity | Notes |
 |-------|----------|-------|
-| **Monolithic extractEvidenceCore.ts** | High | 2400 lines, needs decomposition into focused modules |
+| **extractEvidenceCore still large** | Medium | 2071 lines; DB ops and workflow logic harder to extract |
 | **No transaction boundaries** | Medium | Evidence, people, facets in separate DB calls; partial failure = orphaned records |
 | **No partial checkpointing** | Low | Full step retry is acceptable for now |
 | **Legacy code deletion** | Low | `processInterview.server.ts` ready to delete after verification |
 
-### Refactoring plan for extractEvidenceCore
+### Extracted modules (src/trigger/interview/v2/)
 
-The 2400-line monolith should be split into:
+| Module | Lines | Purpose |
+|--------|-------|---------|
+| `timestampMapping.ts` | 204 | Timestamp coercion, word/segment timeline building, snippet anchoring |
+| `facetProcessing.ts` | 159 | Facet catalog resolution, lookup building, mention matching |
+| `peopleResolution.ts` | 207 | Name parsing, generic label detection, fallback names, name resolution |
+| `personaSynthesis.ts` | 165 | Persona facet grouping, observation building from BAML output |
 
-1. **evidenceExtraction.ts** - BAML call, batch processing, result parsing
-2. **peopleResolution.ts** - Person normalization, upsert, interview_people linking
-3. **facetProcessing.ts** - Facet catalog resolution, mention matching, persistence
-4. **timestampMapping.ts** - Word/segment timeline building, snippet anchoring
-5. **personaSynthesis.ts** - DerivePersonaFacetsFromEvidence call and storage
+All modules are <500 lines, have clear single responsibilities, are independently testable, and accept dependencies via parameters (no global state).
 
-Each module should:
-- Be <500 lines
-- Have a clear single responsibility
-- Be independently testable
-- Accept dependencies via parameters (no global state)
+### Further refactoring opportunities
 
-### Confidence: High (80%)
+The remaining ~2071 lines in extractEvidenceCore contain tightly coupled DB operations and workflow orchestration. Further decomposition would require:
+1. Transaction boundaries (wrap multiple inserts in single transaction)
+2. Separate evidence row builder from DB insert logic
+3. Extract interview_people linking into its own module
 
-Core reliability fixes are in place. Remaining work is tech debt (monolith refactor) rather than correctness issues.
+### Confidence: High (85%)
+
+Core reliability fixes are in place. Module extraction complete for pure utilities. Remaining code is workflow orchestration that works correctly but could benefit from transaction boundaries.
