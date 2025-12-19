@@ -138,11 +138,7 @@ function LinkedTaskIndicator({
 		async function checkLinkedTask() {
 			try {
 				const supabase = createClient()
-				const { data } = await supabase
-					.from("tasks")
-					.select("id")
-					.eq("source_theme_id", insightId)
-					.limit(1)
+				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insightId).limit(1)
 
 				const id = (data as Array<{ id: string }> | null)?.[0]?.id
 				if (!cancelled && id) {

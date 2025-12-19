@@ -64,12 +64,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				.in("entity_id", insight_ids),
 			user_id
 				? supabase
-					.from("entity_flags")
-					.select("entity_id, flag_type, flag_value")
-					.eq("project_id", projectId)
-					.eq("entity_type", "insight")
-					.eq("user_id", user_id)
-					.in("entity_id", insight_ids)
+						.from("entity_flags")
+						.select("entity_id, flag_type, flag_value")
+						.eq("project_id", projectId)
+						.eq("entity_type", "insight")
+						.eq("user_id", user_id)
+						.in("entity_id", insight_ids)
 				: Promise.resolve({ data: [], error: null }),
 		])
 

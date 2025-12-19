@@ -56,9 +56,9 @@ export const getInsights = async ({
 	// Get interview IDs via theme_evidence junction table
 	const { data: evidenceLinks } = insightIds.length
 		? await supabase
-			.from("theme_evidence")
-			.select("theme_id, evidence:evidence_id(interview_id)")
-			.in("theme_id", insightIds)
+				.from("theme_evidence")
+				.select("theme_id, evidence:evidence_id(interview_id)")
+				.in("theme_id", insightIds)
 		: { data: null }
 
 	const interviewIds =
@@ -68,25 +68,25 @@ export const getInsights = async ({
 
 	const [tagsResult, personasResult, interviewsResult, priorityResult, votesResult] = insightIds.length
 		? await Promise.all([
-			supabase
-				.from("insight_tags")
-				.select("insight_id, tags:tag_id(tag, term, definition)")
-				.in("insight_id", insightIds),
-			supabase
-				.from("persona_insights")
-				.select("insight_id, personas:persona_id(id, name)")
-				.in("insight_id", insightIds),
-			interviewIds.length
-				? supabase.from("interviews").select("id, title").in("id", interviewIds)
-				: Promise.resolve({ data: null, error: null }),
-			supabase.from("insights_with_priority").select("id, priority").in("id", insightIds),
-			supabase
-				.from("votes")
-				.select("entity_id")
-				.eq("entity_type", "insight")
-				.eq("project_id", projectId)
-				.in("entity_id", insightIds),
-		])
+				supabase
+					.from("insight_tags")
+					.select("insight_id, tags:tag_id(tag, term, definition)")
+					.in("insight_id", insightIds),
+				supabase
+					.from("persona_insights")
+					.select("insight_id, personas:persona_id(id, name)")
+					.in("insight_id", insightIds),
+				interviewIds.length
+					? supabase.from("interviews").select("id, title").in("id", interviewIds)
+					: Promise.resolve({ data: null, error: null }),
+				supabase.from("insights_with_priority").select("id, priority").in("id", insightIds),
+				supabase
+					.from("votes")
+					.select("entity_id")
+					.eq("entity_type", "insight")
+					.eq("project_id", projectId)
+					.in("entity_id", insightIds),
+			])
 		: [null, null, null, null, null]
 
 	const tagsMap = new Map<
@@ -129,7 +129,7 @@ export const getInsights = async ({
 	// Build interview map for each theme via evidence links
 	const themeInterviewsMap = new Map<string, string[]>()
 	if (evidenceLinks) {
-		; (evidenceLinks as any).forEach((link: any) => {
+		;(evidenceLinks as any).forEach((link: any) => {
 			const themeId = link.theme_id
 			const interviewId = link.evidence?.interview_id
 			if (themeId && interviewId) {
@@ -274,9 +274,9 @@ export const getInsightById = async ({
 						role: ep.role,
 						organization: ep.people.organizations
 							? {
-								id: ep.people.organizations.id,
-								name: ep.people.organizations.name,
-							}
+									id: ep.people.organizations.id,
+									name: ep.people.organizations.name,
+								}
 							: null,
 					})
 

@@ -145,20 +145,10 @@ export function BottomTabBar({ routes, onProfileClick, className }: BottomTabBar
 					/>
 
 					{/* Content (Interviews) */}
-					<TabItem
-						to={routes.content}
-						icon={<Mic className="h-5 w-5" />}
-						label="Content"
-						isActive={isContentActive}
-					/>
+					<TabItem to={routes.content} icon={<Mic className="h-5 w-5" />} label="Content" isActive={isContentActive} />
 
 					{/* AI Chat (Full Page) */}
-					<TabItem
-						to={routes.chat}
-						icon={<MessageSquare className="h-5 w-5" />}
-						label="AI"
-						isActive={isChatActive}
-					/>
+					<TabItem to={routes.chat} icon={<MessageSquare className="h-5 w-5" />} label="AI" isActive={isChatActive} />
 
 					{/* Insights (Cards) */}
 					<TabItem

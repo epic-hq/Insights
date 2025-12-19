@@ -20,7 +20,13 @@ interface InsightCardGridProps {
 	className?: string
 }
 
-export default function InsightCardGrid({ insights, comment_counts_by_id, flags_by_id, children, className }: InsightCardGridProps) {
+export default function InsightCardGrid({
+	insights,
+	comment_counts_by_id,
+	flags_by_id,
+	children,
+	className,
+}: InsightCardGridProps) {
 	const { accountId, projectId } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
