@@ -7,10 +7,14 @@ export const getInsights = async ({
 	supabase,
 	accountId,
 	projectId,
+	offset,
+	limit,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
 	projectId: string
+	offset?: number
+	limit?: number
 }) => {
 	const baseQuery = supabase
 		.from("themes")
@@ -41,15 +45,20 @@ export const getInsights = async ({
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
+	// Optional pagination (PostgREST range is inclusive)
+	if (typeof offset === "number" && typeof limit === "number") {
+		baseQuery.range(offset, offset + limit - 1)
+	}
+
 	const { data, error } = await baseQuery
 	const insightIds = data?.map((i) => i.id) || []
 
 	// Get interview IDs via theme_evidence junction table
 	const { data: evidenceLinks } = insightIds.length
 		? await supabase
-				.from("theme_evidence")
-				.select("theme_id, evidence:evidence_id(interview_id)")
-				.in("theme_id", insightIds)
+			.from("theme_evidence")
+			.select("theme_id, evidence:evidence_id(interview_id)")
+			.in("theme_id", insightIds)
 		: { data: null }
 
 	const interviewIds =
@@ -59,19 +68,25 @@ export const getInsights = async ({
 
 	const [tagsResult, personasResult, interviewsResult, priorityResult, votesResult] = insightIds.length
 		? await Promise.all([
-				supabase.from("insight_tags").select("insight_id, tags (tag, term, definition)").in("insight_id", insightIds),
-				supabase.from("persona_insights").select("insight_id, personas (id, name)").in("insight_id", insightIds),
-				interviewIds.length
-					? supabase.from("interviews").select("id, title").in("id", interviewIds)
-					: Promise.resolve({ data: null, error: null }),
-				supabase.from("insights_with_priority").select("id, priority").in("id", insightIds),
-				supabase
-					.from("votes")
-					.select("entity_id")
-					.eq("entity_type", "insight")
-					.eq("project_id", projectId)
-					.in("entity_id", insightIds),
-			])
+			supabase
+				.from("insight_tags")
+				.select("insight_id, tags:tag_id(tag, term, definition)")
+				.in("insight_id", insightIds),
+			supabase
+				.from("persona_insights")
+				.select("insight_id, personas:persona_id(id, name)")
+				.in("insight_id", insightIds),
+			interviewIds.length
+				? supabase.from("interviews").select("id, title").in("id", interviewIds)
+				: Promise.resolve({ data: null, error: null }),
+			supabase.from("insights_with_priority").select("id, priority").in("id", insightIds),
+			supabase
+				.from("votes")
+				.select("entity_id")
+				.eq("entity_type", "insight")
+				.eq("project_id", projectId)
+				.in("entity_id", insightIds),
+		])
 		: [null, null, null, null, null]
 
 	const tagsMap = new Map<
@@ -114,7 +129,7 @@ export const getInsights = async ({
 	// Build interview map for each theme via evidence links
 	const themeInterviewsMap = new Map<string, string[]>()
 	if (evidenceLinks) {
-		;(evidenceLinks as any).forEach((link: any) => {
+		; (evidenceLinks as any).forEach((link: any) => {
 			const themeId = link.theme_id
 			const interviewId = link.evidence?.interview_id
 			if (themeId && interviewId) {
@@ -215,9 +230,9 @@ export const getInsightById = async ({
 	const insightData: InsightById = data
 
 	const [tagsResult, personasResult, priorityResult] = await Promise.all([
-		supabase.from("insight_tags").select("insight_id, tags (tag, term, definition)").eq("insight_id", id),
-		supabase.from("persona_insights").select("insight_id, personas (id, name)").eq("insight_id", id),
-		supabase.from("insights_with_priority").select("id, priority").eq("id", id).single(),
+		supabase.from("insight_tags").select("insight_id, tags:tag_id(tag, term, definition)").eq("insight_id", id),
+		supabase.from("persona_insights").select("insight_id, personas:persona_id(id, name)").eq("insight_id", id),
+		supabase.from("insights_with_priority").select("priority").eq("id", id).maybeSingle(),
 	])
 
 	// Fetch people and orgs linked to this theme via evidence
@@ -259,9 +274,9 @@ export const getInsightById = async ({
 						role: ep.role,
 						organization: ep.people.organizations
 							? {
-									id: ep.people.organizations.id,
-									name: ep.people.organizations.name,
-								}
+								id: ep.people.organizations.id,
+								name: ep.people.organizations.name,
+							}
 							: null,
 					})
 
@@ -287,7 +302,7 @@ export const getInsightById = async ({
 
 	return {
 		...insightData,
-		priority: priorityResult?.data?.priority ?? 0,
+		priority: priorityResult.data?.priority ?? 0,
 		evidence_count: Array.isArray((insightData as any).theme_evidence)
 			? ((insightData as any).theme_evidence[0]?.count ?? 0)
 			: 0,

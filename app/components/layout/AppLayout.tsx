@@ -49,9 +49,10 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 					<BottomTabBar
 						routes={{
 							dashboard: `${projectPath}/dashboard`,
-							people: routes.people.index(),
-							opportunities: routes.opportunities.index(),
+							contacts: routes.people.index(),
+							content: routes.interviews.index(),
 							chat: `${projectPath}/assistant`,
+							insights: routes.insights.cards(),
 							upload: routes.interviews.upload(),
 						}}
 						onProfileClick={() => setIsProfileOpen(true)}

@@ -339,15 +339,18 @@ export const finalizeInterviewTaskV2 = task({
               { readyInterviewCount, evidenceCount },
             );
 
-            // Import and call the auto-group function
-            const { autoGroupThemesAndApply } =
-              await import("~/features/themes/db.autoThemes.server");
-            const result = await autoGroupThemesAndApply({
+            // Get similarity threshold from project settings (default 0.85)
+            const similarityThreshold =
+              ((projectSettings?.analysis as Record<string, unknown>)
+                ?.theme_dedup_threshold as number) ?? 0.85;
+
+            // Import and call the proper consolidation function (merges duplicates)
+            const { consolidateExistingThemes } =
+              await import("~/features/themes/db.consolidate.server");
+            const result = await consolidateExistingThemes({
               supabase: client,
-              account_id: metadata.accountId,
-              project_id: metadata.projectId,
-              guidance:
-                "Consolidate similar themes into 5-12 high-level insights. Merge duplicates and ensure clear evidence links.",
+              projectId: metadata.projectId,
+              similarityThreshold,
             });
 
             // Mark consolidation as done in project settings
@@ -358,8 +361,9 @@ export const finalizeInterviewTaskV2 = task({
                   ...projectSettings,
                   insights_consolidated_at: new Date().toISOString(),
                   auto_consolidation_result: {
-                    theme_count: result.created_theme_ids.length,
-                    link_count: result.link_count,
+                    clusters_found: result.clustersFound,
+                    themes_deleted: result.themesDeleted,
+                    evidence_moved: result.evidenceMoved,
                     triggered_at_interview_count: readyInterviewCount,
                   },
                 },
@@ -367,7 +371,7 @@ export const finalizeInterviewTaskV2 = task({
               .eq("id", metadata.projectId);
 
             consola.success(
-              `[finalizeInterview] Auto-consolidated ${result.created_theme_ids.length} themes with ${result.link_count} links`,
+              `[finalizeInterview] Auto-consolidated: ${result.clustersFound} clusters, ${result.themesDeleted} themes merged, ${result.evidenceMoved} evidence moved`,
             );
           }
         } catch (consolidateError) {

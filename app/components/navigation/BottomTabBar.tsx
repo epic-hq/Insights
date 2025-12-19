@@ -6,7 +6,7 @@
  * Includes safe area padding for notched devices.
  */
 
-import { Briefcase, LayoutDashboard, Plus, Sparkles, User, Users } from "lucide-react"
+import { LayoutDashboard, Lightbulb, MessageSquare, Mic, Plus, User, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
 import { cn } from "~/lib/utils"
 
@@ -14,9 +14,10 @@ export interface BottomTabBarProps {
 	/** Route helpers for navigation */
 	routes: {
 		dashboard: string
-		people: string
-		opportunities: string
+		contacts: string
+		content: string
 		chat: string // Full page AI chat
+		insights: string
 		upload: string
 	}
 	/** Callback when profile tab is clicked */
@@ -93,49 +94,85 @@ export function BottomTabBar({ routes, onProfileClick, className }: BottomTabBar
 	// Check active states
 	const isDashboardActive =
 		location.pathname.includes("/dashboard") || location.pathname.endsWith(routes.dashboard.replace(/\/$/, ""))
-	const isPeopleActive = location.pathname.includes("/people")
-	const isOpportunitiesActive = location.pathname.includes("/opportunities")
+	const isContactsActive = location.pathname.includes("/people")
+	const isContentActive = location.pathname.includes("/interviews")
 	const isChatActive = location.pathname.includes("/assistant")
+	const isInsightsActive = location.pathname.includes("/insights")
+	const isUploadActive = location.pathname.includes("/interviews/upload")
 
 	return (
-		<nav
-			className={cn(
-				"fixed right-0 bottom-0 left-0 z-50",
-				"border-border border-t bg-background/95 backdrop-blur-md",
-				"pb-[env(safe-area-inset-bottom)]",
-				className
+		<>
+			{/* Floating Action Button (Upload) */}
+			{!isUploadActive && (
+				<NavLink
+					to={routes.upload}
+					aria-label="Add"
+					className={cn(
+						"fixed right-4 z-[60]",
+						"bottom-[calc(env(safe-area-inset-bottom)+84px)]",
+						"inline-flex h-12 w-12 items-center justify-center rounded-full",
+						"bg-primary text-primary-foreground shadow-lg",
+						"transition-all hover:bg-primary/90 active:scale-95"
+					)}
+				>
+					<Plus className="h-6 w-6" />
+				</NavLink>
 			)}
-		>
-			<div className="flex items-end justify-around px-2 py-1">
-				{/* Dashboard */}
-				<TabItem
-					to={routes.dashboard}
-					icon={<LayoutDashboard className="h-5 w-5" />}
-					label="Home"
-					isActive={isDashboardActive}
-				/>
 
-				{/* People */}
-				<TabItem to={routes.people} icon={<Users className="h-5 w-5" />} label="People" isActive={isPeopleActive} />
+			<nav
+				className={cn(
+					"fixed right-0 bottom-0 left-0 z-50",
+					"border-border border-t bg-background/95 backdrop-blur-md",
+					"pb-[env(safe-area-inset-bottom)]",
+					className
+				)}
+			>
+				<div className="flex items-end justify-around px-2 py-1">
+					{/* Dashboard */}
+					<TabItem
+						to={routes.dashboard}
+						icon={<LayoutDashboard className="h-5 w-5" />}
+						label="Home"
+						isActive={isDashboardActive}
+					/>
 
-				{/* Opportunities */}
-				<TabItem
-					to={routes.opportunities}
-					icon={<Briefcase className="h-5 w-5" />}
-					label="Opps"
-					isActive={isOpportunitiesActive}
-				/>
+					{/* Contacts (People) */}
+					<TabItem
+						to={routes.contacts}
+						icon={<Users className="h-5 w-5" />}
+						label="Contacts"
+						isActive={isContactsActive}
+					/>
 
-				{/* AI Chat (Center - Full Page) */}
-				<TabItem to={routes.chat} icon={<Sparkles className="h-6 w-6" />} label="AI" isCenter isActive={isChatActive} />
+					{/* Content (Interviews) */}
+					<TabItem
+						to={routes.content}
+						icon={<Mic className="h-5 w-5" />}
+						label="Content"
+						isActive={isContentActive}
+					/>
 
-				{/* Add - Links to full upload page */}
-				<TabItem to={routes.upload} icon={<Plus className="h-5 w-5" />} label="Add" />
+					{/* AI Chat (Full Page) */}
+					<TabItem
+						to={routes.chat}
+						icon={<MessageSquare className="h-5 w-5" />}
+						label="AI"
+						isActive={isChatActive}
+					/>
 
-				{/* Profile - Opens sheet */}
-				<TabItem onClick={onProfileClick} icon={<User className="h-5 w-5" />} label="Profile" />
-			</div>
-		</nav>
+					{/* Insights (Cards) */}
+					<TabItem
+						to={routes.insights}
+						icon={<Lightbulb className="h-5 w-5" />}
+						label="Insights"
+						isActive={isInsightsActive}
+					/>
+
+					{/* Profile - Opens sheet */}
+					<TabItem onClick={onProfileClick} icon={<User className="h-5 w-5" />} label="Profile" />
+				</div>
+			</nav>
+		</>
 	)
 }
 

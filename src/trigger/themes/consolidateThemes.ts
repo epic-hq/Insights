@@ -4,30 +4,32 @@
  * Runs theme consolidation as a background task with real-time progress updates.
  * Uses metadata to report progress that can be subscribed to via Trigger.dev realtime.
  *
+ * This MERGES similar existing themes (reducing total count) rather than creating new ones.
+ *
  * Progress steps:
- * 1. Loading evidence
- * 2. Analyzing with AI (BAML AutoGroupThemes)
- * 3. Creating themes
- * 4. Linking evidence
+ * 1. Finding duplicate themes via embedding similarity
+ * 2. Building clusters of similar themes
+ * 3. Merging evidence links to canonical themes
+ * 4. Deleting duplicate themes
  */
 
 import { metadata, task } from "@trigger.dev/sdk";
 import consola from "consola";
-import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server";
+import { consolidateExistingThemes } from "~/features/themes/db.consolidate.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 export interface ConsolidateThemesPayload {
   projectId: string;
   accountId: string;
-  guidance?: string;
-  limit?: number;
+  similarityThreshold?: number; // Default 0.85
 }
 
 export interface ConsolidateThemesResult {
   success: boolean;
-  themeCount: number;
-  linkCount: number;
-  themeIds: string[];
+  clustersFound: number;
+  themesDeleted: number;
+  evidenceMoved: number;
+  errors: string[];
   message: string;
 }
 
@@ -42,70 +44,60 @@ export const consolidateThemesTask = task({
   run: async (
     payload: ConsolidateThemesPayload,
   ): Promise<ConsolidateThemesResult> => {
-    const { projectId, accountId, guidance = "", limit = 200 } = payload;
+    const { projectId, similarityThreshold = 0.85 } = payload;
     const supabase = createSupabaseAdminClient();
 
     consola.info(`[consolidateThemes] Starting for project ${projectId}`);
 
     // Initialize progress
     metadata
-      .set("step", "loading")
+      .set("step", "starting")
       .set("status", "Starting consolidation...")
       .set("progress", 5)
-      .set("evidenceCount", 0)
-      .set("themeCount", 0)
-      .set("linkCount", 0);
+      .set("clustersFound", 0)
+      .set("themesDeleted", 0)
+      .set("evidenceMoved", 0);
 
     try {
-      // Update progress - analyzing
-      metadata
-        .set("step", "analyzing")
-        .set("status", "Analyzing evidence with AI...")
-        .set("progress", 15);
-
-      // Use the existing autoGroupThemesAndApply function
-      // It handles loading evidence, calling BAML, creating themes, and linking
-      const result = await autoGroupThemesAndApply({
-        supabase: supabase as any, // Type mismatch between admin client and SupabaseClient
-        account_id: accountId,
-        project_id: projectId,
-        guidance:
-          guidance ||
-          "Consolidate similar themes, merge duplicates, and ensure each theme has clear evidence links.",
-        limit,
+      // Run the consolidation with progress callback
+      const result = await consolidateExistingThemes({
+        supabase: supabase as any,
+        projectId,
+        similarityThreshold,
+        onProgress: (step, progress, message) => {
+          metadata
+            .set("step", step)
+            .set("status", message)
+            .set("progress", progress);
+        },
       });
 
-      // Update progress to show we're done linking
-      metadata
-        .set("step", "linking")
-        .set(
-          "status",
-          `Linked evidence to ${result.created_theme_ids.length} themes`,
-        )
-        .set("progress", 75)
-        .set("themeCount", result.created_theme_ids.length);
-
-      // Complete
+      // Update final metadata
       metadata
         .set("step", "complete")
         .set(
           "status",
-          `Done: ${result.created_theme_ids.length} themes, ${result.link_count} links`,
+          `Done: ${result.themesDeleted} themes merged, ${result.evidenceMoved} evidence links moved`,
         )
         .set("progress", 100)
-        .set("themeCount", result.created_theme_ids.length)
-        .set("linkCount", result.link_count);
+        .set("clustersFound", result.clustersFound)
+        .set("themesDeleted", result.themesDeleted)
+        .set("evidenceMoved", result.evidenceMoved);
 
       consola.success(
-        `[consolidateThemes] Complete: ${result.created_theme_ids.length} themes, ${result.link_count} evidence links`,
+        `[consolidateThemes] Complete: ${result.clustersFound} clusters found, ${result.themesDeleted} themes deleted, ${result.evidenceMoved} evidence moved`,
       );
 
       return {
-        success: true,
-        themeCount: result.created_theme_ids.length,
-        linkCount: result.link_count,
-        themeIds: result.created_theme_ids,
-        message: `Consolidated into ${result.created_theme_ids.length} themes with ${result.link_count} evidence links`,
+        success: result.errors.length === 0,
+        clustersFound: result.clustersFound,
+        themesDeleted: result.themesDeleted,
+        evidenceMoved: result.evidenceMoved,
+        errors: result.errors,
+        message:
+          result.themesDeleted > 0
+            ? `Merged ${result.themesDeleted} duplicate themes`
+            : "No duplicate themes found to merge",
       };
     } catch (error) {
       consola.error("[consolidateThemes] Error:", error);
