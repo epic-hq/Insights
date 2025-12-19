@@ -3,6 +3,7 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
+import { userContext } from "~/server/user-context"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -38,7 +39,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	}
 
 	// Link current user as interviewer if available
-	const ctx = context.get("userContext" as any)
+	const ctx = context.get?.(userContext)
 	const userId = ctx?.claims?.sub ?? null
 	if (userId) {
 		await ensureInterviewInterviewerLink({

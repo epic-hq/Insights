@@ -63,6 +63,30 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 
 ## Plan (todos)
 
+### Insights & Theme Consolidation (Dec 2024)
+**RCA Complete - Fixes In Progress**
+
+Root causes for themes with 0 evidence:
+1. ✅ **Auto-consolidation used wrong function** - `finalizeInterview.ts` was calling `autoGroupThemesAndApply` (creates NEW themes) instead of `consolidateExistingThemes` (merges duplicates). Fixed.
+2. ✅ **Theme creation before evidence linking** - If semantic search fails or finds no matches, theme exists with 0 evidence. Added logging to track these cases.
+3. ✅ **Settings modal UX** - Now closes after successful save.
+4. ✅ **Insight detail accordions** - Now collapsed by default for cleaner UX.
+
+Remaining work:
+- [ ] **Consider deleting themes with 0 evidence automatically** after creation, or require at least 1 evidence link
+- [ ] **Lower evidence linking threshold** if too many themes get 0 links (currently 0.4)
+- [ ] **Add "Expand All / Collapse All" toggle** for evidence accordions on insight detail
+
+### Customer Discovery Lens Simplification
+Review notes (see `app/features/lenses/pages/aggregated-customer-discovery.tsx`):
+- Current: Heavy aggregation with pattern extraction, field grouping, and hygiene tracking
+- Data flows: `conversation_lens_analyses` → `aggregateCustomerDiscovery.server.ts` → React page
+- Opportunities:
+  - [ ] **Add executive summary at top** - 3-5 bullet key takeaways before diving into sections
+  - [ ] **Simplify validation cards** - Currently 4 cards (Problem, Solution, Market, WTP), could consolidate to 2 (Problem Validation, Solution Validation)
+  - [ ] **Improve quote card linkage** - Make it clearer which interview each quote came from
+  - [ ] **Add "confidence meter"** showing how validated findings are based on evidence count
+
 [ ] **Public Link Sharing** - Enable unauthenticated access to shared resources via unique tokens. See `docs/features/sharing/public-link-sharing-plan.md` for full plan. Est: 3-4 days (full) / 2 days (MVP interviews-only).
 
 [ ] Persona Facet Summaries - summarize facet group takeaways atop an accordion
