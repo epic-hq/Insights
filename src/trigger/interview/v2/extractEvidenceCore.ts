@@ -2103,5 +2103,43 @@ export async function extractEvidenceAndPeopleCore({
   };
 }
 
+// ============================================================================
+// Helper: Ensure fallback person exists when no person extracted
+// ============================================================================
+
+async function ensureFallbackPerson(
+  db: SupabaseClient<Database>,
+  metadata: InterviewMetadata,
+  interviewRecord: Interview,
+): Promise<string> {
+  const fallbackName = generateFallbackPersonName(metadata);
+  const { firstname, lastname } = parseFullName(fallbackName);
+  const payload: PeopleInsert = {
+    account_id: metadata.accountId,
+    project_id: metadata.projectId,
+    firstname: firstname || null,
+    lastname: lastname || null,
+    company: null,
+  };
+  const { data, error } = await db
+    .from("people")
+    .upsert(payload, { onConflict: "account_id,name_hash,company" })
+    .select("id")
+    .single();
+  if (error || !data?.id) {
+    throw new Error(`Failed to ensure fallback person: ${error?.message}`);
+  }
+  const linkPayload: InterviewPeopleInsert = {
+    interview_id: interviewRecord.id,
+    person_id: data.id,
+    project_id: metadata.projectId ?? null,
+    role: "participant",
+  };
+  await db
+    .from("interview_people")
+    .upsert(linkPayload, { onConflict: "interview_id,person_id" });
+  return data.id;
+}
+
 // Temporary alias for v2 task while we complete the transplant
 export { extractEvidenceAndPeopleCore as extractEvidenceCore };
