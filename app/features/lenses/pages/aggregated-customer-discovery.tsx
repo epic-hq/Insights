@@ -6,124 +6,109 @@
  */
 
 import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  ChevronRight,
-  CircleDashed,
-  ExternalLink,
-  Filter,
-  HelpCircle,
-  Lightbulb,
-  MessageSquare,
-  Quote,
-  Search,
-  Sparkles,
-  Target,
-  TrendingUp,
-  X,
-} from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
+	AlertCircle,
+	ArrowRight,
+	CheckCircle2,
+	ChevronRight,
+	CircleDashed,
+	ExternalLink,
+	Filter,
+	HelpCircle,
+	Lightbulb,
+	MessageSquare,
+	Quote,
+	Search,
+	Sparkles,
+	Target,
+	TrendingUp,
+	X,
+} from "lucide-react"
+import { useMemo, useState } from "react"
+import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router"
+import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
+import { userContext } from "~/server/user-context"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { cn } from "~/lib/utils";
-import { userContext } from "~/server/user-context";
-import {
-  type AggregatedFieldValue,
-  type AggregatedPattern,
-  aggregateCustomerDiscovery,
-} from "../services/aggregateCustomerDiscovery.server";
+	type AggregatedFieldValue,
+	type AggregatedPattern,
+	aggregateCustomerDiscovery,
+} from "../services/aggregateCustomerDiscovery.server"
 
 // ============================================================================
 // Loader
 // ============================================================================
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-  const ctx = context.get(userContext);
-  const supabase = ctx.supabase;
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
 
-  if (!supabase) {
-    throw new Response("Unauthorized", { status: 401 });
-  }
+	if (!supabase) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
 
-  const projectId = params.projectId as string;
-  const projectPath = `/a/${params.accountId}/${params.projectId}`;
+	const projectId = params.projectId as string
+	const projectPath = `/a/${params.accountId}/${params.projectId}`
 
-  if (!projectId) {
-    throw new Response("Project ID required", { status: 400 });
-  }
+	if (!projectId) {
+		throw new Response("Project ID required", { status: 400 })
+	}
 
-  const aggregatedData = await aggregateCustomerDiscovery({
-    supabase,
-    projectId,
-  });
+	const aggregatedData = await aggregateCustomerDiscovery({
+		supabase,
+		projectId,
+	})
 
-  return { aggregatedData, projectPath };
+	return { aggregatedData, projectPath }
 }
 
 // ============================================================================
 // Signal Status Types
 // ============================================================================
 
-type SignalStrength = "validated" | "emerging" | "needs_research" | "no_data";
+type SignalStrength = "validated" | "emerging" | "needs_research" | "no_data"
 
 function getSignalStrength(evidenceCount: number): SignalStrength {
-  if (evidenceCount >= 3) return "validated";
-  if (evidenceCount >= 1) return "emerging";
-  return "no_data";
+	if (evidenceCount >= 3) return "validated"
+	if (evidenceCount >= 1) return "emerging"
+	return "no_data"
 }
 
 function SignalBadge({ strength }: { strength: SignalStrength }) {
-  const config = {
-    validated: {
-      icon: CheckCircle2,
-      label: "Validated",
-      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    },
-    emerging: {
-      icon: TrendingUp,
-      label: "Emerging",
-      className: "bg-amber-50 text-amber-700 border-amber-200",
-    },
-    needs_research: {
-      icon: HelpCircle,
-      label: "Needs Research",
-      className: "bg-blue-50 text-blue-700 border-blue-200",
-    },
-    no_data: {
-      icon: CircleDashed,
-      label: "No Data",
-      className: "bg-gray-50 text-gray-500 border-gray-200",
-    },
-  }[strength];
+	const config = {
+		validated: {
+			icon: CheckCircle2,
+			label: "Validated",
+			className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+		},
+		emerging: {
+			icon: TrendingUp,
+			label: "Emerging",
+			className: "bg-amber-50 text-amber-700 border-amber-200",
+		},
+		needs_research: {
+			icon: HelpCircle,
+			label: "Needs Research",
+			className: "bg-blue-50 text-blue-700 border-blue-200",
+		},
+		no_data: {
+			icon: CircleDashed,
+			label: "No Data",
+			className: "bg-gray-50 text-gray-500 border-gray-200",
+		},
+	}[strength]
 
-  const Icon = config.icon;
+	const Icon = config.icon
 
-  return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1 font-medium", config.className)}
-    >
-      <Icon className="h-3 w-3" />
-      {config.label}
-    </Badge>
-  );
+	return (
+		<Badge variant="outline" className={cn("gap-1 font-medium", config.className)}>
+			<Icon className="h-3 w-3" />
+			{config.label}
+		</Badge>
+	)
 }
 
 // ============================================================================
@@ -131,599 +116,510 @@ function SignalBadge({ strength }: { strength: SignalStrength }) {
 // ============================================================================
 
 export default function AggregatedCustomerDiscoveryPage() {
-  const { aggregatedData, projectPath } = useLoaderData<typeof loader>();
-  const routes = useProjectRoutes(projectPath);
+	const { aggregatedData, projectPath } = useLoaderData<typeof loader>()
+	const routes = useProjectRoutes(projectPath)
 
-  // Filter state
-  const [segmentFilter, setSegmentFilter] = useState<string>("all");
-  const [dateRangeFilter, setDateRangeFilter] = useState<string>("all");
+	// Filter state
+	const [segmentFilter, setSegmentFilter] = useState<string>("all")
+	const [dateRangeFilter, setDateRangeFilter] = useState<string>("all")
 
-  const DATE_RANGES = [
-    { value: "7", label: "Last 7 days" },
-    { value: "30", label: "Last 30 days" },
-    { value: "90", label: "Last 90 days" },
-    { value: "all", label: "All time" },
-  ];
+	const DATE_RANGES = [
+		{ value: "7", label: "Last 7 days" },
+		{ value: "30", label: "Last 30 days" },
+		{ value: "90", label: "Last 90 days" },
+		{ value: "all", label: "All time" },
+	]
 
-  const uniqueSegments = useMemo(() => {
-    return aggregatedData.summary.unique_segments.filter(Boolean).sort();
-  }, [aggregatedData.summary.unique_segments]);
+	const uniqueSegments = useMemo(() => {
+		return aggregatedData.summary.unique_segments.filter(Boolean).sort()
+	}, [aggregatedData.summary.unique_segments])
 
-  // Apply filters
-  const filteredData = useMemo(() => {
-    const now = new Date();
-    const cutoffDate =
-      dateRangeFilter === "all"
-        ? null
-        : new Date(
-            now.getTime() -
-              Number.parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000,
-          );
+	// Apply filters
+	const filteredData = useMemo(() => {
+		const now = new Date()
+		const cutoffDate =
+			dateRangeFilter === "all"
+				? null
+				: new Date(now.getTime() - Number.parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000)
 
-    const filteredInterviews = aggregatedData.interviews.filter((interview) => {
-      if (segmentFilter !== "all" && interview.segment !== segmentFilter)
-        return false;
-      if (cutoffDate && interview.processed_at) {
-        const processedDate = new Date(interview.processed_at);
-        if (processedDate < cutoffDate) return false;
-      }
-      return true;
-    });
+		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
+			if (segmentFilter !== "all" && interview.segment !== segmentFilter) return false
+			if (cutoffDate && interview.processed_at) {
+				const processedDate = new Date(interview.processed_at)
+				if (processedDate < cutoffDate) return false
+			}
+			return true
+		})
 
-    const filteredInterviewIds = new Set(
-      filteredInterviews.map((i) => i.interview_id),
-    );
+		const filteredInterviewIds = new Set(filteredInterviews.map((i) => i.interview_id))
 
-    const filterFieldValues = (
-      fields: AggregatedFieldValue[],
-    ): AggregatedFieldValue[] => {
-      return fields
-        .map((f) => ({
-          ...f,
-          values: f.values.filter((v) =>
-            filteredInterviewIds.has(v.interview_id),
-          ),
-        }))
-        .filter((f) => f.values.length > 0);
-    };
+		const filterFieldValues = (fields: AggregatedFieldValue[]): AggregatedFieldValue[] => {
+			return fields
+				.map((f) => ({
+					...f,
+					values: f.values.filter((v) => filteredInterviewIds.has(v.interview_id)),
+				}))
+				.filter((f) => f.values.length > 0)
+		}
 
-    const filterPatterns = (
-      patterns: AggregatedPattern[],
-    ): AggregatedPattern[] => {
-      return patterns
-        .map((p) => ({
-          ...p,
-          interviews: p.interviews.filter((i) =>
-            filteredInterviewIds.has(i.id),
-          ),
-          count: p.interviews.filter((i) => filteredInterviewIds.has(i.id))
-            .length,
-        }))
-        .filter((p) => p.count > 0)
-        .sort((a, b) => b.count - a.count);
-    };
+		const filterPatterns = (patterns: AggregatedPattern[]): AggregatedPattern[] => {
+			return patterns
+				.map((p) => ({
+					...p,
+					interviews: p.interviews.filter((i) => filteredInterviewIds.has(i.id)),
+					count: p.interviews.filter((i) => filteredInterviewIds.has(i.id)).length,
+				}))
+				.filter((p) => p.count > 0)
+				.sort((a, b) => b.count - a.count)
+		}
 
-    return {
-      ...aggregatedData,
-      interviews: filteredInterviews,
-      problem_validation_fields: filterFieldValues(
-        aggregatedData.problem_validation_fields,
-      ),
-      solution_validation_fields: filterFieldValues(
-        aggregatedData.solution_validation_fields,
-      ),
-      market_insights_fields: filterFieldValues(
-        aggregatedData.market_insights_fields,
-      ),
-      common_problems: filterPatterns(aggregatedData.common_problems),
-      current_solutions: filterPatterns(aggregatedData.current_solutions),
-      competitive_alternatives: filterPatterns(
-        aggregatedData.competitive_alternatives,
-      ),
-      objections: aggregatedData.objections
-        .map((o) => ({
-          ...o,
-          interviews: o.interviews.filter((i) =>
-            filteredInterviewIds.has(i.id),
-          ),
-          count: o.interviews.filter((i) => filteredInterviewIds.has(i.id))
-            .length,
-        }))
-        .filter((o) => o.count > 0),
-      recommendations: aggregatedData.recommendations.filter((r) =>
-        filteredInterviewIds.has(r.interview_id),
-      ),
-      hygiene_gaps: aggregatedData.hygiene_gaps
-        .map((g) => ({
-          ...g,
-          interviews: g.interviews.filter((i) =>
-            filteredInterviewIds.has(i.id),
-          ),
-          count: g.interviews.filter((i) => filteredInterviewIds.has(i.id))
-            .length,
-        }))
-        .filter((g) => g.count > 0),
-      summary: {
-        ...aggregatedData.summary,
-        total_interviews: filteredInterviews.length,
-      },
-    };
-  }, [aggregatedData, segmentFilter, dateRangeFilter]);
+		return {
+			...aggregatedData,
+			interviews: filteredInterviews,
+			problem_validation_fields: filterFieldValues(aggregatedData.problem_validation_fields),
+			solution_validation_fields: filterFieldValues(aggregatedData.solution_validation_fields),
+			market_insights_fields: filterFieldValues(aggregatedData.market_insights_fields),
+			common_problems: filterPatterns(aggregatedData.common_problems),
+			current_solutions: filterPatterns(aggregatedData.current_solutions),
+			competitive_alternatives: filterPatterns(aggregatedData.competitive_alternatives),
+			objections: aggregatedData.objections
+				.map((o) => ({
+					...o,
+					interviews: o.interviews.filter((i) => filteredInterviewIds.has(i.id)),
+					count: o.interviews.filter((i) => filteredInterviewIds.has(i.id)).length,
+				}))
+				.filter((o) => o.count > 0),
+			recommendations: aggregatedData.recommendations.filter((r) => filteredInterviewIds.has(r.interview_id)),
+			hygiene_gaps: aggregatedData.hygiene_gaps
+				.map((g) => ({
+					...g,
+					interviews: g.interviews.filter((i) => filteredInterviewIds.has(i.id)),
+					count: g.interviews.filter((i) => filteredInterviewIds.has(i.id)).length,
+				}))
+				.filter((g) => g.count > 0),
+			summary: {
+				...aggregatedData.summary,
+				total_interviews: filteredInterviews.length,
+			},
+		}
+	}, [aggregatedData, segmentFilter, dateRangeFilter])
 
-  const hasFilters = segmentFilter !== "all" || dateRangeFilter !== "all";
+	const hasFilters = segmentFilter !== "all" || dateRangeFilter !== "all"
 
-  const clearFilters = () => {
-    setSegmentFilter("all");
-    setDateRangeFilter("all");
-  };
+	const clearFilters = () => {
+		setSegmentFilter("all")
+		setDateRangeFilter("all")
+	}
 
-  const { total_interviews: totalConversations } = filteredData.summary;
+	const { total_interviews: totalConversations } = filteredData.summary
 
-  // Calculate validation signals
-  const problemEvidenceCount = filteredData.common_problems.length;
-  const solutionEvidenceCount = filteredData.solution_validation_fields.reduce(
-    (sum, f) => sum + f.values.length,
-    0,
-  );
-  const marketEvidenceCount =
-    filteredData.current_solutions.length +
-    filteredData.competitive_alternatives.length;
-  const wtpEvidenceCount =
-    filteredData.market_insights_fields.find((f) =>
-      f.field_key.includes("willingness"),
-    )?.values.length || 0;
+	// Calculate validation signals
+	const problemEvidenceCount = filteredData.common_problems.length
+	const solutionEvidenceCount = filteredData.solution_validation_fields.reduce((sum, f) => sum + f.values.length, 0)
+	const marketEvidenceCount = filteredData.current_solutions.length + filteredData.competitive_alternatives.length
+	const wtpEvidenceCount =
+		filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values.length || 0
 
-  const problemSignal = getSignalStrength(problemEvidenceCount);
-  const solutionSignal = getSignalStrength(solutionEvidenceCount);
-  const marketSignal = getSignalStrength(marketEvidenceCount);
-  const wtpSignal = getSignalStrength(wtpEvidenceCount);
+	const problemSignal = getSignalStrength(problemEvidenceCount)
+	const solutionSignal = getSignalStrength(solutionEvidenceCount)
+	const marketSignal = getSignalStrength(marketEvidenceCount)
+	const wtpSignal = getSignalStrength(wtpEvidenceCount)
 
-  // Calculate overall research confidence (0-100)
-  const calculateConfidence = () => {
-    const signals = [problemSignal, solutionSignal, marketSignal, wtpSignal];
-    const weights = {
-      validated: 25,
-      emerging: 12,
-      needs_research: 5,
-      no_data: 0,
-    };
-    return signals.reduce((sum, s) => sum + weights[s], 0);
-  };
-  const researchConfidence = calculateConfidence();
+	// Calculate overall research confidence (0-100)
+	const calculateConfidence = () => {
+		const signals = [problemSignal, solutionSignal, marketSignal, wtpSignal]
+		const weights = {
+			validated: 25,
+			emerging: 12,
+			needs_research: 5,
+			no_data: 0,
+		}
+		return signals.reduce((sum, s) => sum + weights[s], 0)
+	}
+	const researchConfidence = calculateConfidence()
 
-  // Generate executive summary takeaways
-  const keyTakeaways = useMemo(() => {
-    const takeaways: string[] = [];
+	// Generate executive summary takeaways
+	const keyTakeaways = useMemo(() => {
+		const takeaways: string[] = []
 
-    // Top problem
-    if (filteredData.common_problems[0]) {
-      takeaways.push(
-        `Top problem: "${filteredData.common_problems[0].pattern}" (${filteredData.common_problems[0].count} mentions)`,
-      );
-    }
+		// Top problem
+		if (filteredData.common_problems[0]) {
+			takeaways.push(
+				`Top problem: "${filteredData.common_problems[0].pattern}" (${filteredData.common_problems[0].count} mentions)`
+			)
+		}
 
-    // Solution validation status
-    if (solutionSignal === "validated") {
-      takeaways.push("Solution resonates with multiple customers");
-    } else if (solutionSignal === "emerging") {
-      takeaways.push("Early positive signals on solution fit");
-    }
+		// Solution validation status
+		if (solutionSignal === "validated") {
+			takeaways.push("Solution resonates with multiple customers")
+		} else if (solutionSignal === "emerging") {
+			takeaways.push("Early positive signals on solution fit")
+		}
 
-    // Market landscape
-    if (filteredData.current_solutions.length > 0) {
-      takeaways.push(
-        `${filteredData.current_solutions.length} competing solutions identified`,
-      );
-    }
+		// Market landscape
+		if (filteredData.current_solutions.length > 0) {
+			takeaways.push(`${filteredData.current_solutions.length} competing solutions identified`)
+		}
 
-    // Open objections
-    const openObjections = filteredData.objections.filter(
-      (o) => o.status !== "addressed",
-    );
-    if (openObjections.length > 0) {
-      takeaways.push(`${openObjections.length} open objection(s) to address`);
-    }
+		// Open objections
+		const openObjections = filteredData.objections.filter((o) => o.status !== "addressed")
+		if (openObjections.length > 0) {
+			takeaways.push(`${openObjections.length} open objection(s) to address`)
+		}
 
-    // Willingness to pay
-    if (wtpSignal === "validated") {
-      takeaways.push("Willingness to pay validated");
-    } else if (wtpSignal === "no_data") {
-      takeaways.push("Willingness to pay not yet explored");
-    }
+		// Willingness to pay
+		if (wtpSignal === "validated") {
+			takeaways.push("Willingness to pay validated")
+		} else if (wtpSignal === "no_data") {
+			takeaways.push("Willingness to pay not yet explored")
+		}
 
-    return takeaways.slice(0, 4);
-  }, [
-    filteredData.common_problems,
-    filteredData.current_solutions,
-    filteredData.objections,
-    solutionSignal,
-    wtpSignal,
-  ]);
+		return takeaways.slice(0, 4)
+	}, [filteredData.common_problems, filteredData.current_solutions, filteredData.objections, solutionSignal, wtpSignal])
 
-  if (totalConversations === 0 && !hasFilters) {
-    return (
-      <div className="container py-8">
-        <div className="py-16 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h2 className="mb-2 font-semibold text-xl">Start Your Discovery</h2>
-          <p className="mx-auto mb-6 max-w-md text-muted-foreground">
-            Apply the Customer Discovery lens to your conversations to uncover
-            insights about problems, solutions, and market dynamics.
-          </p>
-          <Link to={routes.interviews.index()}>
-            <Button>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Go to Conversations
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+	if (totalConversations === 0 && !hasFilters) {
+		return (
+			<div className="container py-8">
+				<div className="py-16 text-center">
+					<div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+						<Search className="h-8 w-8 text-muted-foreground" />
+					</div>
+					<h2 className="mb-2 font-semibold text-xl">Start Your Discovery</h2>
+					<p className="mx-auto mb-6 max-w-md text-muted-foreground">
+						Apply the Customer Discovery lens to your conversations to uncover insights about problems, solutions, and
+						market dynamics.
+					</p>
+					<Link to={routes.interviews.index()}>
+						<Button>
+							<MessageSquare className="mr-2 h-4 w-4" />
+							Go to Conversations
+						</Button>
+					</Link>
+				</div>
+			</div>
+		)
+	}
 
-  return (
-    <div className="container space-y-6 py-6">
-      {/* Header with filters */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-bold text-2xl tracking-tight">
-            Customer Discovery
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            {totalConversations} conversation
-            {totalConversations !== 1 ? "s" : ""} analyzed
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {uniqueSegments.length > 0 && (
-            <Select value={segmentFilter} onValueChange={setSegmentFilter}>
-              <SelectTrigger className="h-8 w-[140px]">
-                <SelectValue placeholder="All Segments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Segments</SelectItem>
-                {uniqueSegments.map((segment) => (
-                  <SelectItem key={segment} value={segment}>
-                    {segment}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
-            <SelectTrigger className="h-8 w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DATE_RANGES.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {hasFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="h-8 px-2"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
+	return (
+		<div className="container space-y-6 py-6">
+			{/* Header with filters */}
+			<div className="flex flex-wrap items-start justify-between gap-4">
+				<div>
+					<h1 className="font-bold text-2xl tracking-tight">Customer Discovery</h1>
+					<p className="mt-1 text-muted-foreground">
+						{totalConversations} conversation
+						{totalConversations !== 1 ? "s" : ""} analyzed
+					</p>
+				</div>
+				<div className="flex flex-wrap items-center gap-2">
+					{uniqueSegments.length > 0 && (
+						<Select value={segmentFilter} onValueChange={setSegmentFilter}>
+							<SelectTrigger className="h-8 w-[140px]">
+								<SelectValue placeholder="All Segments" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All Segments</SelectItem>
+								{uniqueSegments.map((segment) => (
+									<SelectItem key={segment} value={segment}>
+										{segment}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					)}
+					<Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
+						<SelectTrigger className="h-8 w-[120px]">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{DATE_RANGES.map((range) => (
+								<SelectItem key={range.value} value={range.value}>
+									{range.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					{hasFilters && (
+						<Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2">
+							<X className="h-4 w-4" />
+						</Button>
+					)}
+				</div>
+			</div>
 
-      {/* Executive Summary with Confidence Meter */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            {/* Key Takeaways */}
-            <div className="flex-1 space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-lg">Key Findings</h2>
-              </div>
-              {keyTakeaways.length > 0 ? (
-                <ul className="space-y-2">
-                  {keyTakeaways.map((takeaway, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                      <span>{takeaway}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-sm italic">
-                  Add more conversations to generate key findings
-                </p>
-              )}
-            </div>
+			{/* Executive Summary with Confidence Meter */}
+			<Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+				<CardContent className="pt-6">
+					<div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+						{/* Key Takeaways */}
+						<div className="flex-1 space-y-3">
+							<div className="flex items-center gap-2">
+								<Sparkles className="h-5 w-5 text-primary" />
+								<h2 className="font-semibold text-lg">Key Findings</h2>
+							</div>
+							{keyTakeaways.length > 0 ? (
+								<ul className="space-y-2">
+									{keyTakeaways.map((takeaway, i) => (
+										<li key={i} className="flex items-start gap-2 text-sm">
+											<ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+											<span>{takeaway}</span>
+										</li>
+									))}
+								</ul>
+							) : (
+								<p className="text-muted-foreground text-sm italic">Add more conversations to generate key findings</p>
+							)}
+						</div>
 
-            {/* Confidence Meter */}
-            <div className="w-full lg:w-64">
-              <ConfidenceMeter
-                value={researchConfidence}
-                problemSignal={problemSignal}
-                solutionSignal={solutionSignal}
-                marketSignal={marketSignal}
-                wtpSignal={wtpSignal}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+						{/* Confidence Meter */}
+						<div className="w-full lg:w-64">
+							<ConfidenceMeter
+								value={researchConfidence}
+								problemSignal={problemSignal}
+								solutionSignal={solutionSignal}
+								marketSignal={marketSignal}
+								wtpSignal={wtpSignal}
+							/>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
-      {/* Consolidated Validation Cards - 2 instead of 4 */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <FitCard
-          title="Problem-Solution Fit"
-          question="Are we solving a real problem that resonates?"
-          items={[
-            {
-              label: "Problem",
-              signal: problemSignal,
-              count: problemEvidenceCount,
-              highlight: filteredData.common_problems[0]?.pattern,
-            },
-            {
-              label: "Solution",
-              signal: solutionSignal,
-              count: solutionEvidenceCount,
-              highlight:
-                filteredData.solution_validation_fields[0]?.values[0]?.value,
-            },
-          ]}
-        />
-        <FitCard
-          title="Market-Payment Fit"
-          question="Is there a market and will they pay?"
-          items={[
-            {
-              label: "Market",
-              signal: marketSignal,
-              count: marketEvidenceCount,
-              highlight: filteredData.current_solutions[0]?.pattern,
-            },
-            {
-              label: "Willingness to Pay",
-              signal: wtpSignal,
-              count: wtpEvidenceCount,
-              highlight: filteredData.market_insights_fields.find((f) =>
-                f.field_key.includes("willingness"),
-              )?.values[0]?.value,
-            },
-          ]}
-        />
-      </div>
+			{/* Consolidated Validation Cards - 2 instead of 4 */}
+			<div className="grid gap-4 md:grid-cols-2">
+				<FitCard
+					title="Problem-Solution Fit"
+					question="Are we solving a real problem that resonates?"
+					items={[
+						{
+							label: "Problem",
+							signal: problemSignal,
+							count: problemEvidenceCount,
+							highlight: filteredData.common_problems[0]?.pattern,
+						},
+						{
+							label: "Solution",
+							signal: solutionSignal,
+							count: solutionEvidenceCount,
+							highlight: filteredData.solution_validation_fields[0]?.values[0]?.value,
+						},
+					]}
+				/>
+				<FitCard
+					title="Market-Payment Fit"
+					question="Is there a market and will they pay?"
+					items={[
+						{
+							label: "Market",
+							signal: marketSignal,
+							count: marketEvidenceCount,
+							highlight: filteredData.current_solutions[0]?.pattern,
+						},
+						{
+							label: "Willingness to Pay",
+							signal: wtpSignal,
+							count: wtpEvidenceCount,
+							highlight: filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values[0]
+								?.value,
+						},
+					]}
+				/>
+			</div>
 
-      {/* What We Learned: Problems */}
-      {filteredData.common_problems.length > 0 && (
-        <LearningSection
-          title="Problems We're Hearing"
-          subtitle="Pain points mentioned across conversations"
-          icon={Target}
-          iconColor="text-red-500"
-        >
-          <div className="space-y-3">
-            {filteredData.common_problems.slice(0, 6).map((problem, i) => (
-              <QuoteCard
-                key={i}
-                quote={problem.pattern}
-                count={problem.count}
-                sources={problem.interviews}
-                projectPath={projectPath}
-              />
-            ))}
-          </div>
-        </LearningSection>
-      )}
+			{/* What We Learned: Problems */}
+			{filteredData.common_problems.length > 0 && (
+				<LearningSection
+					title="Problems We're Hearing"
+					subtitle="Pain points mentioned across conversations"
+					icon={Target}
+					iconColor="text-red-500"
+				>
+					<div className="space-y-3">
+						{filteredData.common_problems.slice(0, 6).map((problem, i) => (
+							<QuoteCard
+								key={i}
+								quote={problem.pattern}
+								count={problem.count}
+								sources={problem.interviews}
+								projectPath={projectPath}
+							/>
+						))}
+					</div>
+				</LearningSection>
+			)}
 
-      {/* What We Learned: Solution Reactions */}
-      {filteredData.solution_validation_fields.length > 0 && (
-        <LearningSection
-          title="Solution Reactions"
-          subtitle="How people responded to our ideas"
-          icon={Sparkles}
-          iconColor="text-purple-500"
-        >
-          <div className="space-y-3">
-            {filteredData.solution_validation_fields.slice(0, 3).map((field) =>
-              field.values.slice(0, 2).map((value, i) => (
-                <QuoteCard
-                  key={`${field.field_key}-${i}`}
-                  label={field.field_name}
-                  quote={value.value}
-                  source={{
-                    id: value.interview_id,
-                    title: value.interview_title,
-                    interviewee_name: value.interviewee_name,
-                  }}
-                  projectPath={projectPath}
-                />
-              )),
-            )}
-          </div>
-        </LearningSection>
-      )}
+			{/* What We Learned: Solution Reactions */}
+			{filteredData.solution_validation_fields.length > 0 && (
+				<LearningSection
+					title="Solution Reactions"
+					subtitle="How people responded to our ideas"
+					icon={Sparkles}
+					iconColor="text-purple-500"
+				>
+					<div className="space-y-3">
+						{filteredData.solution_validation_fields.slice(0, 3).map((field) =>
+							field.values.slice(0, 2).map((value, i) => (
+								<QuoteCard
+									key={`${field.field_key}-${i}`}
+									label={field.field_name}
+									quote={value.value}
+									source={{
+										id: value.interview_id,
+										title: value.interview_title,
+										interviewee_name: value.interviewee_name,
+									}}
+									projectPath={projectPath}
+								/>
+							))
+						)}
+					</div>
+				</LearningSection>
+			)}
 
-      {/* Market Reality */}
-      {(filteredData.current_solutions.length > 0 ||
-        filteredData.competitive_alternatives.length > 0) && (
-        <LearningSection
-          title="Market Reality"
-          subtitle="How customers solve this problem today"
-          icon={TrendingUp}
-          iconColor="text-blue-500"
-        >
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredData.current_solutions.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-muted-foreground text-sm">
-                  Current Solutions
-                </h4>
-                {filteredData.current_solutions
-                  .slice(0, 4)
-                  .map((solution, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between rounded-lg border bg-card p-3"
-                    >
-                      <span className="text-sm">{solution.pattern}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        {solution.count}
-                      </Badge>
-                    </div>
-                  ))}
-              </div>
-            )}
-            {filteredData.competitive_alternatives.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-muted-foreground text-sm">
-                  Alternatives Considered
-                </h4>
-                {filteredData.competitive_alternatives
-                  .slice(0, 4)
-                  .map((alt, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between rounded-lg border bg-card p-3"
-                    >
-                      <span className="text-sm">{alt.pattern}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        {alt.count}
-                      </Badge>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        </LearningSection>
-      )}
+			{/* Market Reality */}
+			{(filteredData.current_solutions.length > 0 || filteredData.competitive_alternatives.length > 0) && (
+				<LearningSection
+					title="Market Reality"
+					subtitle="How customers solve this problem today"
+					icon={TrendingUp}
+					iconColor="text-blue-500"
+				>
+					<div className="grid gap-4 md:grid-cols-2">
+						{filteredData.current_solutions.length > 0 && (
+							<div className="space-y-2">
+								<h4 className="font-medium text-muted-foreground text-sm">Current Solutions</h4>
+								{filteredData.current_solutions.slice(0, 4).map((solution, i) => (
+									<div key={i} className="flex items-center justify-between rounded-lg border bg-card p-3">
+										<span className="text-sm">{solution.pattern}</span>
+										<Badge variant="secondary" className="ml-2">
+											{solution.count}
+										</Badge>
+									</div>
+								))}
+							</div>
+						)}
+						{filteredData.competitive_alternatives.length > 0 && (
+							<div className="space-y-2">
+								<h4 className="font-medium text-muted-foreground text-sm">Alternatives Considered</h4>
+								{filteredData.competitive_alternatives.slice(0, 4).map((alt, i) => (
+									<div key={i} className="flex items-center justify-between rounded-lg border bg-card p-3">
+										<span className="text-sm">{alt.pattern}</span>
+										<Badge variant="secondary" className="ml-2">
+											{alt.count}
+										</Badge>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				</LearningSection>
+			)}
 
-      {/* Concerns & Objections */}
-      {filteredData.objections.length > 0 && (
-        <LearningSection
-          title="Concerns to Address"
-          subtitle="Objections and hesitations we've heard"
-          icon={AlertCircle}
-          iconColor="text-amber-500"
-        >
-          <div className="space-y-3">
-            {filteredData.objections.slice(0, 5).map((obj, i) => (
-              <div key={i} className="rounded-lg border bg-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <p className="font-medium">{obj.objection}</p>
-                    {obj.response && (
-                      <p className="mt-2 text-muted-foreground text-sm">
-                        <span className="font-medium text-foreground">
-                          Our response:
-                        </span>{" "}
-                        {obj.response}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {obj.status === "addressed" ? (
-                      <Badge className="bg-emerald-100 text-emerald-700">
-                        Addressed
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="border-amber-200 text-amber-600"
-                      >
-                        Open
-                      </Badge>
-                    )}
-                    <Badge variant="secondary">{obj.count}</Badge>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </LearningSection>
-      )}
+			{/* Concerns & Objections */}
+			{filteredData.objections.length > 0 && (
+				<LearningSection
+					title="Concerns to Address"
+					subtitle="Objections and hesitations we've heard"
+					icon={AlertCircle}
+					iconColor="text-amber-500"
+				>
+					<div className="space-y-3">
+						{filteredData.objections.slice(0, 5).map((obj, i) => (
+							<div key={i} className="rounded-lg border bg-card p-4">
+								<div className="flex items-start justify-between gap-3">
+									<div className="flex-1">
+										<p className="font-medium">{obj.objection}</p>
+										{obj.response && (
+											<p className="mt-2 text-muted-foreground text-sm">
+												<span className="font-medium text-foreground">Our response:</span> {obj.response}
+											</p>
+										)}
+									</div>
+									<div className="flex items-center gap-2">
+										{obj.status === "addressed" ? (
+											<Badge className="bg-emerald-100 text-emerald-700">Addressed</Badge>
+										) : (
+											<Badge variant="outline" className="border-amber-200 text-amber-600">
+												Open
+											</Badge>
+										)}
+										<Badge variant="secondary">{obj.count}</Badge>
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				</LearningSection>
+			)}
 
-      {/* Areas Needing More Research */}
-      {filteredData.hygiene_gaps.length > 0 && (
-        <LearningSection
-          title="Areas Needing More Research"
-          subtitle="Information we still need to gather"
-          icon={HelpCircle}
-          iconColor="text-blue-500"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredData.hygiene_gaps.map((gap, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-lg border border-blue-200 border-dashed bg-blue-50/50 p-4"
-              >
-                <CircleDashed className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
-                <div>
-                  <p className="font-medium text-sm">
-                    {formatGapCode(gap.code)}
-                  </p>
-                  <p className="mt-1 text-muted-foreground text-xs">
-                    Missing from {gap.count} conversation
-                    {gap.count !== 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </LearningSection>
-      )}
+			{/* Areas Needing More Research */}
+			{filteredData.hygiene_gaps.length > 0 && (
+				<LearningSection
+					title="Areas Needing More Research"
+					subtitle="Information we still need to gather"
+					icon={HelpCircle}
+					iconColor="text-blue-500"
+				>
+					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						{filteredData.hygiene_gaps.map((gap, i) => (
+							<div
+								key={i}
+								className="flex items-start gap-3 rounded-lg border border-blue-200 border-dashed bg-blue-50/50 p-4"
+							>
+								<CircleDashed className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
+								<div>
+									<p className="font-medium text-sm">{formatGapCode(gap.code)}</p>
+									<p className="mt-1 text-muted-foreground text-xs">
+										Missing from {gap.count} conversation
+										{gap.count !== 1 ? "s" : ""}
+									</p>
+								</div>
+							</div>
+						))}
+					</div>
+				</LearningSection>
+			)}
 
-      {/* Next Steps */}
-      {filteredData.recommendations.length > 0 && (
-        <LearningSection
-          title="Suggested Next Steps"
-          subtitle="Actions to continue your discovery"
-          icon={Lightbulb}
-          iconColor="text-yellow-500"
-        >
-          <div className="space-y-2">
-            {filteredData.recommendations.slice(0, 6).map((rec, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-lg border bg-card p-4"
-              >
-                <ChevronRight className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
-                <div className="flex-1">
-                  <p className="text-sm">{rec.description}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        rec.priority === "high" &&
-                          "border-red-200 text-red-600",
-                        rec.priority === "medium" &&
-                          "border-amber-200 text-amber-600",
-                      )}
-                    >
-                      {rec.priority} priority
-                    </Badge>
-                    <Link
-                      to={routes.interviews.detail(rec.interview_id)}
-                      className="text-muted-foreground text-xs hover:text-primary hover:underline"
-                    >
-                      from {rec.interviewee_name || rec.interview_title}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </LearningSection>
-      )}
-    </div>
-  );
+			{/* Next Steps */}
+			{filteredData.recommendations.length > 0 && (
+				<LearningSection
+					title="Suggested Next Steps"
+					subtitle="Actions to continue your discovery"
+					icon={Lightbulb}
+					iconColor="text-yellow-500"
+				>
+					<div className="space-y-2">
+						{filteredData.recommendations.slice(0, 6).map((rec, i) => (
+							<div key={i} className="flex items-start gap-3 rounded-lg border bg-card p-4">
+								<ChevronRight className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+								<div className="flex-1">
+									<p className="text-sm">{rec.description}</p>
+									<div className="mt-2 flex items-center gap-2">
+										<Badge
+											variant="outline"
+											className={cn(
+												"text-xs",
+												rec.priority === "high" && "border-red-200 text-red-600",
+												rec.priority === "medium" && "border-amber-200 text-amber-600"
+											)}
+										>
+											{rec.priority} priority
+										</Badge>
+										<Link
+											to={routes.interviews.detail(rec.interview_id)}
+											className="text-muted-foreground text-xs hover:text-primary hover:underline"
+										>
+											from {rec.interviewee_name || rec.interview_title}
+										</Link>
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				</LearningSection>
+			)}
+		</div>
+	)
 }
 
 // ============================================================================
@@ -731,78 +627,73 @@ export default function AggregatedCustomerDiscoveryPage() {
 // ============================================================================
 
 function ConfidenceMeter({
-  value,
-  problemSignal,
-  solutionSignal,
-  marketSignal,
-  wtpSignal,
+	value,
+	problemSignal,
+	solutionSignal,
+	marketSignal,
+	wtpSignal,
 }: {
-  value: number;
-  problemSignal: SignalStrength;
-  solutionSignal: SignalStrength;
-  marketSignal: SignalStrength;
-  wtpSignal: SignalStrength;
+	value: number
+	problemSignal: SignalStrength
+	solutionSignal: SignalStrength
+	marketSignal: SignalStrength
+	wtpSignal: SignalStrength
 }) {
-  const getLabel = () => {
-    if (value >= 80) return "Strong";
-    if (value >= 50) return "Growing";
-    if (value >= 25) return "Early";
-    return "Starting";
-  };
+	const getLabel = () => {
+		if (value >= 80) return "Strong"
+		if (value >= 50) return "Growing"
+		if (value >= 25) return "Early"
+		return "Starting"
+	}
 
-  const getColor = () => {
-    if (value >= 80) return "bg-emerald-500";
-    if (value >= 50) return "bg-amber-500";
-    if (value >= 25) return "bg-blue-500";
-    return "bg-gray-400";
-  };
+	const getColor = () => {
+		if (value >= 80) return "bg-emerald-500"
+		if (value >= 50) return "bg-amber-500"
+		if (value >= 25) return "bg-blue-500"
+		return "bg-gray-400"
+	}
 
-  const signalToIcon = (s: SignalStrength) => {
-    if (s === "validated") return "text-emerald-500";
-    if (s === "emerging") return "text-amber-500";
-    return "text-gray-300";
-  };
+	const signalToIcon = (s: SignalStrength) => {
+		if (s === "validated") return "text-emerald-500"
+		if (s === "emerging") return "text-amber-500"
+		return "text-gray-300"
+	}
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="font-medium text-sm">Research Confidence</span>
-        <span className="font-semibold text-sm">{getLabel()}</span>
-      </div>
+	return (
+		<div className="space-y-3">
+			<div className="flex items-center justify-between">
+				<span className="font-medium text-sm">Research Confidence</span>
+				<span className="font-semibold text-sm">{getLabel()}</span>
+			</div>
 
-      {/* Progress bar */}
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-full transition-all duration-500", getColor())}
-          style={{ width: `${value}%` }}
-        />
-      </div>
+			{/* Progress bar */}
+			<div className="h-2 overflow-hidden rounded-full bg-muted">
+				<div className={cn("h-full transition-all duration-500", getColor())} style={{ width: `${value}%` }} />
+			</div>
 
-      {/* Signal indicators */}
-      <div className="grid grid-cols-4 gap-1 text-center">
-        {[
-          { label: "Problem", signal: problemSignal },
-          { label: "Solution", signal: solutionSignal },
-          { label: "Market", signal: marketSignal },
-          { label: "WTP", signal: wtpSignal },
-        ].map((item) => (
-          <div key={item.label} className="space-y-1">
-            <div
-              className={cn(
-                "mx-auto h-2 w-2 rounded-full",
-                item.signal === "validated" && "bg-emerald-500",
-                item.signal === "emerging" && "bg-amber-500",
-                item.signal === "no_data" && "bg-gray-300",
-              )}
-            />
-            <span className="text-[10px] text-muted-foreground">
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+			{/* Signal indicators */}
+			<div className="grid grid-cols-4 gap-1 text-center">
+				{[
+					{ label: "Problem", signal: problemSignal },
+					{ label: "Solution", signal: solutionSignal },
+					{ label: "Market", signal: marketSignal },
+					{ label: "WTP", signal: wtpSignal },
+				].map((item) => (
+					<div key={item.label} className="space-y-1">
+						<div
+							className={cn(
+								"mx-auto h-2 w-2 rounded-full",
+								item.signal === "validated" && "bg-emerald-500",
+								item.signal === "emerging" && "bg-amber-500",
+								item.signal === "no_data" && "bg-gray-300"
+							)}
+						/>
+						<span className="text-[10px] text-muted-foreground">{item.label}</span>
+					</div>
+				))}
+			</div>
+		</div>
+	)
 }
 
 // ============================================================================
@@ -810,53 +701,41 @@ function ConfidenceMeter({
 // ============================================================================
 
 interface FitItem {
-  label: string;
-  signal: SignalStrength;
-  count: number;
-  highlight?: string;
+	label: string
+	signal: SignalStrength
+	count: number
+	highlight?: string
 }
 
-function FitCard({
-  title,
-  question,
-  items,
-}: {
-  title: string;
-  question: string;
-  items: FitItem[];
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="font-semibold text-base">{title}</CardTitle>
-        <CardDescription className="text-xs">{question}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {items.map((item) => (
-          <div key={item.label} className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                {item.label}
-              </span>
-              <SignalBadge strength={item.signal} />
-            </div>
-            {item.highlight ? (
-              <p className="line-clamp-2 text-sm">{item.highlight}</p>
-            ) : (
-              <p className="text-muted-foreground text-sm italic">
-                No data yet
-              </p>
-            )}
-            {item.count > 0 && (
-              <p className="text-muted-foreground text-xs">
-                {item.count} data point{item.count !== 1 ? "s" : ""}
-              </p>
-            )}
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
+function FitCard({ title, question, items }: { title: string; question: string; items: FitItem[] }) {
+	return (
+		<Card>
+			<CardHeader className="pb-3">
+				<CardTitle className="font-semibold text-base">{title}</CardTitle>
+				<CardDescription className="text-xs">{question}</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				{items.map((item) => (
+					<div key={item.label} className="space-y-1.5">
+						<div className="flex items-center justify-between">
+							<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{item.label}</span>
+							<SignalBadge strength={item.signal} />
+						</div>
+						{item.highlight ? (
+							<p className="line-clamp-2 text-sm">{item.highlight}</p>
+						) : (
+							<p className="text-muted-foreground text-sm italic">No data yet</p>
+						)}
+						{item.count > 0 && (
+							<p className="text-muted-foreground text-xs">
+								{item.count} data point{item.count !== 1 ? "s" : ""}
+							</p>
+						)}
+					</div>
+				))}
+			</CardContent>
+		</Card>
+	)
 }
 
 // ============================================================================
@@ -864,32 +743,32 @@ function FitCard({
 // ============================================================================
 
 function LearningSection({
-  title,
-  subtitle,
-  icon: Icon,
-  iconColor,
-  children,
+	title,
+	subtitle,
+	icon: Icon,
+	iconColor,
+	children,
 }: {
-  title: string;
-  subtitle: string;
-  icon: typeof Target;
-  iconColor: string;
-  children: React.ReactNode;
+	title: string
+	subtitle: string
+	icon: typeof Target
+	iconColor: string
+	children: React.ReactNode
 }) {
-  return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className={cn("rounded-lg bg-muted p-2", iconColor)}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="font-semibold text-lg">{title}</h2>
-          <p className="text-muted-foreground text-sm">{subtitle}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
+	return (
+		<section className="space-y-4">
+			<div className="flex items-center gap-3">
+				<div className={cn("rounded-lg bg-muted p-2", iconColor)}>
+					<Icon className="h-5 w-5" />
+				</div>
+				<div>
+					<h2 className="font-semibold text-lg">{title}</h2>
+					<p className="text-muted-foreground text-sm">{subtitle}</p>
+				</div>
+			</div>
+			{children}
+		</section>
+	)
 }
 
 // ============================================================================
@@ -897,66 +776,64 @@ function LearningSection({
 // ============================================================================
 
 function QuoteCard({
-  label,
-  quote,
-  count,
-  source,
-  sources,
-  projectPath,
+	label,
+	quote,
+	count,
+	source,
+	sources,
+	projectPath,
 }: {
-  label?: string;
-  quote: string;
-  count?: number;
-  source?: { id: string; title: string; interviewee_name: string | null };
-  sources?: Array<{
-    id: string;
-    title: string;
-    interviewee_name: string | null;
-  }>;
-  projectPath: string;
+	label?: string
+	quote: string
+	count?: number
+	source?: { id: string; title: string; interviewee_name: string | null }
+	sources?: Array<{
+		id: string
+		title: string
+		interviewee_name: string | null
+	}>
+	projectPath: string
 }) {
-  const routes = useProjectRoutes(projectPath);
-  const displaySources = sources || (source ? [source] : []);
+	const routes = useProjectRoutes(projectPath)
+	const displaySources = sources || (source ? [source] : [])
 
-  return (
-    <div className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30">
-      <div className="flex gap-3">
-        <Quote className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary/40" />
-        <div className="min-w-0 flex-1">
-          {label && (
-            <span className="mb-1 block font-medium text-muted-foreground text-xs uppercase tracking-wide">
-              {label}
-            </span>
-          )}
-          <p className="text-sm leading-relaxed">{quote}</p>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1">
-              {displaySources.slice(0, 3).map((s, idx) => (
-                <Link
-                  key={s.id}
-                  to={routes.interviews.detail(s.id)}
-                  className="inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-0.5 text-xs transition-colors hover:bg-primary/10 hover:text-primary"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {s.interviewee_name || s.title}
-                </Link>
-              ))}
-              {displaySources.length > 3 && (
-                <span className="text-muted-foreground text-xs">
-                  +{displaySources.length - 3} more
-                </span>
-              )}
-            </div>
-            {count && count > 1 && (
-              <Badge variant="secondary" className="shrink-0 text-xs">
-                {count}x
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+	return (
+		<div className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30">
+			<div className="flex gap-3">
+				<Quote className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary/40" />
+				<div className="min-w-0 flex-1">
+					{label && (
+						<span className="mb-1 block font-medium text-muted-foreground text-xs uppercase tracking-wide">
+							{label}
+						</span>
+					)}
+					<p className="text-sm leading-relaxed">{quote}</p>
+					<div className="mt-3 flex items-center justify-between gap-2">
+						<div className="flex flex-wrap items-center gap-1">
+							{displaySources.slice(0, 3).map((s, idx) => (
+								<Link
+									key={s.id}
+									to={routes.interviews.detail(s.id)}
+									className="inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-0.5 text-xs transition-colors hover:bg-primary/10 hover:text-primary"
+								>
+									<ExternalLink className="h-3 w-3" />
+									{s.interviewee_name || s.title}
+								</Link>
+							))}
+							{displaySources.length > 3 && (
+								<span className="text-muted-foreground text-xs">+{displaySources.length - 3} more</span>
+							)}
+						</div>
+						{count && count > 1 && (
+							<Badge variant="secondary" className="shrink-0 text-xs">
+								{count}x
+							</Badge>
+						)}
+					</div>
+				</div>
+			</div>
+		</div>
+	)
 }
 
 // ============================================================================
@@ -964,16 +841,13 @@ function QuoteCard({
 // ============================================================================
 
 function formatGapCode(code: string): string {
-  const labels: Record<string, string> = {
-    missing_problem: "Primary problem not identified",
-    missing_need: "Core need not articulated",
-    missing_solution_reaction: "No solution feedback captured",
-    missing_willingness_to_pay: "Willingness to pay not discussed",
-    no_champion: "No internal advocate identified",
-    unaddressed_objection: "Objection not resolved",
-  };
-  return (
-    labels[code] ||
-    code.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  );
+	const labels: Record<string, string> = {
+		missing_problem: "Primary problem not identified",
+		missing_need: "Core need not articulated",
+		missing_solution_reaction: "No solution feedback captured",
+		missing_willingness_to_pay: "Willingness to pay not discussed",
+		no_champion: "No internal advocate identified",
+		unaddressed_objection: "Objection not resolved",
+	}
+	return labels[code] || code.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }

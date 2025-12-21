@@ -140,39 +140,43 @@ export function InsightCardV3Page({
 		<div className="mx-auto max-w-4xl px-4 py-8 sm:px-0">
 			{/* Header Section */}
 			<div className="mb-6 space-y-4">
-				<div className="flex flex-wrap items-start gap-4">
-					<div className="min-w-0 flex-1 space-y-3">
+				<div className="space-y-3">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<div className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Insight Theme</div>
-						<h1 className="font-bold text-3xl tracking-tight">{insight.name}</h1>
-						{/* Desired Outcome - prominent placement */}
-						<div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900/30 dark:bg-blue-950/10">
-							<TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-							Desired Outcome:
-							<div className="min-w-0 flex-1">
-								<InlineEdit
-									value={insight.desired_outcome || ""}
-									onSubmit={(value) => handleFieldUpdate("desired_outcome", value)}
-									placeholder="Click to add desired outcome..."
-									multiline
-									textClassName="text-foreground text-sm leading-relaxed"
-									showEditButton
+						{propProjectPath && accountId ? (
+							<div className="flex flex-wrap items-center gap-2 sm:justify-end">
+								<InsightActions insight={insight_for_action} projectPath={propProjectPath} showLabel={true} />
+								<ResourceShareMenu
+									projectPath={propProjectPath}
+									accountId={accountId}
+									resourceId={insight.id}
+									resourceName={shareableName}
+									resourceType="insight"
 								/>
 							</div>
-						</div>
-						{insight.statement && <p className="text-foreground text-lg leading-relaxed">{insight.statement}</p>}
+						) : null}
 					</div>
-					{propProjectPath && accountId ? (
-						<div className="flex shrink-0 items-center gap-2">
-							<InsightActions insight={insight_for_action} projectPath={propProjectPath} showLabel={true} />
-							<ResourceShareMenu
-								projectPath={propProjectPath}
-								accountId={accountId}
-								resourceId={insight.id}
-								resourceName={shareableName}
-								resourceType="insight"
+					<h1 className="break-words font-bold text-2xl leading-tight tracking-tight sm:text-3xl">{insight.name}</h1>
+					{/* Desired Outcome - prominent placement */}
+					<div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3 sm:flex-row sm:items-start dark:border-blue-900/30 dark:bg-blue-950/10">
+						<div className="flex items-center gap-2">
+							<TrendingUp className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+							<span className="font-medium text-foreground text-sm">Desired Outcome:</span>
+						</div>
+						<div className="min-w-0 flex-1">
+							<InlineEdit
+								value={insight.desired_outcome || ""}
+								onSubmit={(value) => handleFieldUpdate("desired_outcome", value)}
+								placeholder="Click to add desired outcome..."
+								multiline
+								textClassName="text-foreground text-sm leading-relaxed"
+								showEditButton
 							/>
 						</div>
-					) : null}
+					</div>
+					{insight.statement && (
+						<p className="break-words text-base text-foreground leading-relaxed sm:text-lg">{insight.statement}</p>
+					)}
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">

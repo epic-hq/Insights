@@ -216,6 +216,7 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 		let organizationsCreated = 0
 
 		try {
+			const writer = context?.writer
 			const { assetId, columnMapping, createOrganizations, skipDuplicates, defaultStage, defaultCurrency } = input
 
 			// Get accountId and projectId from runtime context

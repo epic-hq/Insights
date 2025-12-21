@@ -15,6 +15,8 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import { CreateTaskFromInsightModal } from "./CreateTaskFromInsightModal"
 
+const ENABLE_LINKED_TASK_LOOKUP = false
+
 export interface InsightForAction {
 	id: string
 	name: string | null
@@ -54,11 +56,11 @@ export function InsightActions({
 	const routes = useProjectRoutes(projectPath)
 	const [modalOpen, setModalOpen] = useState(false)
 	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(initialLinkedTaskId ?? null)
-	const [isLoading, setIsLoading] = useState(enableLinkedTaskLookup && initialLinkedTaskId === undefined)
+	const [isLoading, setIsLoading] = useState(false)
 
 	// Fetch linked task if not provided
 	useEffect(() => {
-		if (!enableLinkedTaskLookup) {
+		if (!ENABLE_LINKED_TASK_LOOKUP || !enableLinkedTaskLookup) {
 			setIsLoading(false)
 			return
 		}
