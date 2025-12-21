@@ -87,8 +87,10 @@ function ActivityFeedItem({ item, projectPath }: ActivityFeedItemProps) {
 							<Sparkles className="h-4 w-4" />
 						</div>
 						<div className="min-w-0 flex-1">
+							{item.keyTakeaway && <p className="mt-1 line-clamp-2 text-foreground text-sm">{item.keyTakeaway}</p>}
 							<div className="flex items-center gap-2">
-								<Badge variant="secondary" className="text-xs">
+								<p className="mt-1.5 font-medium text-muted-foreground text-sm">{item.interviewTitle}</p>
+								<Badge variant="secondary" className="bg-background/50 text-muted-foreground text-xs">
 									{item.templateName}
 								</Badge>
 								<span className="flex items-center gap-1 text-muted-foreground text-xs">
@@ -96,10 +98,6 @@ function ActivityFeedItem({ item, projectPath }: ActivityFeedItemProps) {
 									{formatRelativeTime(item.processedAt)}
 								</span>
 							</div>
-							<p className="mt-1.5 font-medium text-foreground text-sm">{item.interviewTitle}</p>
-							{item.keyTakeaway && (
-								<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">{item.keyTakeaway}</p>
-							)}
 						</div>
 						<ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
 					</div>
@@ -195,7 +193,7 @@ export function LensFeed({
 					/>
 					{visibleActivity.length > 0 ? (
 						<div className="space-y-3">
-							{visibleActivity.map((item) => (
+							{visibleActivity.slice(0, 3).map((item) => (
 								<ActivityFeedItem key={item.id} item={item} projectPath={projectPath} />
 							))}
 						</div>

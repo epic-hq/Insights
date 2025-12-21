@@ -33,6 +33,7 @@ import {
 	fetchInterviewPromptsTool,
 	updateInterviewPromptTool,
 } from "../tools/manage-interview-prompts"
+import { manageInterviewsTool } from "../tools/manage-interviews"
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { managePeopleTool } from "../tools/manage-people"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
@@ -102,11 +103,7 @@ First call "fetchProjectStatusContext" with scopes=["sections"]. If sections are
 - Use "saveTableToAssets" - this saves to project_assets with inline editing support
 - Pass headers as array of strings, rows as array of objects with header keys
 - The table will appear in "Files" tab and support inline cell editing, sorting, search, CSV export
-- Example: competitive_analysis matrix should use saveTableToAssets, NOT manageDocuments
-
-**How to decide:**
-- If the output is primarily a table/matrix → saveTableToAssets
-- If the output is prose/narrative with occasional tables → manageDocuments\n
+- Example: competitive_analysis matrix should use saveTableToAssets, NOT manageDocuments\n
 
 ## Tool Selection
 
@@ -147,6 +144,8 @@ Call "getCurrentDate" first for any date/time questions.
   - After the user picks a candidate, call "managePeople" with { action: "delete", personId, dryRun: true } and report linkedCounts.
   - Ask for confirmation in plain language (no special phrase required): "Delete '<name>'?"
   - Only after user confirms, call "managePeople" with { action: "delete", personId, force: true, confirmName: "<name>" }.
+  - After a successful delete, if linkedInterviews were returned, you MUST say interviews were NOT deleted and ask: "Do you also want me to delete the linked interview record(s) too?" Only delete interviews if the user explicitly confirms.
+    - If user confirms, for each interview: call "manageInterviews" with { action: "delete", interviewId, dryRun: true } then ask: "Delete interview '<title>'?" and only then call "manageInterviews" with { action: "delete", interviewId, force: true, confirmTitle: "<title>" }.
 - Text documents: "manageDocuments" for prose content (positioning, strategies, meeting notes)
 - **Tables/matrices**: "saveTableToAssets" for competitive matrices, feature comparisons, pricing tables - anything with rows/columns that should be editable
 - **Search files/assets**: "semanticSearchAssets" to find previously saved tables, documents, spreadsheets by natural language query
@@ -279,6 +278,7 @@ Please try:
 		managePersonOrganizations: managePersonOrganizationsTool,
 		upsertPerson: upsertPersonTool,
 		managePeople: managePeopleTool,
+		manageInterviews: manageInterviewsTool,
 		manageDocuments: manageDocumentsTool,
 		capabilityLookup: capabilityLookupTool,
 		manageAnnotations: manageAnnotationsTool,

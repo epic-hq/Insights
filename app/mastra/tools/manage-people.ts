@@ -41,6 +41,14 @@ const toolOutputSchema = z.object({
 		})
 		.nullable()
 		.optional(),
+	linkedInterviews: z
+		.array(
+			z.object({
+				id: z.string(),
+				title: z.string().nullable(),
+			})
+		)
+		.optional(),
 	people: z
 		.array(
 			z.object({
@@ -83,7 +91,7 @@ async function countLinks(db: SupabaseClient<Database>, person_id: string) {
 export const managePeopleTool = createTool({
 	id: "manage-people",
 	description:
-		"Deterministic people management: list/get/delete people in the current account+project. Use semanticSearchPeople for fuzzy search; use this for authoritative CRUD.",
+		"Deterministic people management: list/get/delete people in the current account+project. Deleting a person deletes the person record and may cascade junction rows (interview_people, project_people, people_organizations, people_personas) but does NOT delete interview records. Returns linkedInterviews so callers can optionally delete interviews separately.",
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
 	execute: async (input, context?) => {
@@ -203,6 +211,26 @@ export const managePeopleTool = createTool({
 				}
 
 				const linked_counts = await countLinks(supabase, person_row.id)
+				const { data: interview_links } = await supabase
+					.from("interview_people")
+					.select("interview_id")
+					.eq("person_id", person_row.id)
+					.eq("project_id", resolved_project_id)
+
+				const linked_interview_ids = Array.from(
+					new Set((interview_links ?? []).map((row) => row.interview_id).filter(Boolean))
+				) as string[]
+
+				const { data: interview_rows } = linked_interview_ids.length
+					? await supabase
+						.from("interviews")
+						.select("id, title")
+						.in("id", linked_interview_ids)
+						.eq("account_id", resolved_account_id)
+						.eq("project_id", resolved_project_id)
+					: { data: [] as { id: string; title: string | null }[] }
+
+				const linked_interviews = (interview_rows ?? []).map((row) => ({ id: row.id, title: row.title }))
 				const total_links =
 					linked_counts.interview_people +
 					linked_counts.project_people +
@@ -212,7 +240,7 @@ export const managePeopleTool = createTool({
 				if (dryRun) {
 					return {
 						success: true,
-						message: `Dry run: would delete person ${person_row.name ?? person_row.id} and cascade linked rows.`,
+						message: `Dry run: would delete the person record ${person_row.name ?? person_row.id} and remove linked rows (interview_people, project_people, people_organizations, people_personas). This does NOT delete interview records.`,
 						person: {
 							id: person_row.id,
 							name: person_row.name,
@@ -221,6 +249,7 @@ export const managePeopleTool = createTool({
 							primary_email: null,
 							segment: null,
 						},
+						linkedInterviews: linked_interviews,
 						linkedCounts: linked_counts,
 						dryRun: true,
 					}
@@ -281,13 +310,14 @@ export const managePeopleTool = createTool({
 							primary_email: null,
 							segment: null,
 						},
+						linkedInterviews: linked_interviews,
 						linkedCounts: linked_counts,
 					}
 				}
 
 				return {
 					success: true,
-					message: `Deleted person ${person_row.name ?? person_row.id}.`,
+					message: `Deleted person ${person_row.name ?? person_row.id}. Interview records were NOT deleted.`,
 					person: {
 						id: person_row.id,
 						name: person_row.name,
@@ -296,6 +326,7 @@ export const managePeopleTool = createTool({
 						primary_email: null,
 						segment: null,
 					},
+					linkedInterviews: linked_interviews,
 					linkedCounts: linked_counts,
 				}
 			}

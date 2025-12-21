@@ -46,9 +46,10 @@ export const mainAgent = new Agent({
       7. **Destructive action safety (People)**: Never delete a person record based on an ambiguous name.
          - If user says "delete Participant 2", first call "manage_people" with { action: "list", nameSearch: "Participant 2", limit: 10 } and show candidate rows.
          - Ask the user which exact person to delete by repeating the exact displayed name.
-         - After user chooses, call "manage_people" with { action: "delete", personId, dryRun: true } and report linkedCounts.
+         - After user chooses, call "manage_people" with { action: "delete", personId, dryRun: true } and report linkedCounts. Note: interviews are NOT deleted when deleting a person.
          - Ask for confirmation in plain language (no special phrase required): "Delete '<name>'?"
          - Only after user confirms, call "manage_people" with { action: "delete", personId, force: true, confirmName: "<name>" }.
+         - After a successful delete, if the tool returned linkedInterviews, ask: "Do you also want to delete the linked interview record(s) too?" If yes, tell the user you can do that via the project-status agent (which has interview delete tooling) or via the Interviews UI.
 
       When users ask about project information:
       - Use the upsight_search tool to gather comprehensive project data
