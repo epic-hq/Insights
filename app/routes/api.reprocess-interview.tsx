@@ -57,6 +57,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		// 2. Update interview status to processing
 		await supabase.from("interviews").update({ status: "processing" }).eq("id", interviewId)
 
+		const { data: linkedOrgs } = await supabase
+			.from("interview_organizations")
+			.select("organizations(name)")
+			.eq("interview_id", interviewId)
+			.limit(1)
+		const participant_organization =
+			(linkedOrgs as Array<{ organizations: { name: string | null } | null }> | null)?.[0]?.organizations?.name ??
+			undefined
+
 		// 3. ALWAYS re-transcribe from media if available, otherwise use transcript
 		let transcriptData: Record<string, unknown>
 
@@ -109,6 +118,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				fileName: interview.original_filename || undefined,
 				interviewTitle: interview.title || undefined,
 				participantName: interview.participant_pseudonym || undefined,
+				participantOrganization: participant_organization,
 				segment: interview.segment || undefined,
 			},
 			transcriptData,

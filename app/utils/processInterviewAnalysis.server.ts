@@ -2,7 +2,6 @@ import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import type { processInterviewOrchestratorV2 } from "~/trigger/interview/v2/orchestrator"
-import type { Database } from "~/types"
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdminClient>
 
@@ -13,6 +12,9 @@ type CreateAndProcessParams = {
 	adminClient?: SupabaseAdmin
 	mediaUrl?: string | null
 	initiatingUserId?: string | null
+	participantName?: string | null
+	participantOrganization?: string | null
+	segment?: string | null
 }
 
 /**
@@ -20,7 +22,17 @@ type CreateAndProcessParams = {
  * Creates metadata from the interview row and triggers the v2 orchestrator.
  */
 export async function createAndProcessAnalysisJob(params: CreateAndProcessParams) {
-	const { interviewId, transcriptData, customInstructions, adminClient, mediaUrl, initiatingUserId } = params
+	const {
+		interviewId,
+		transcriptData,
+		customInstructions,
+		adminClient,
+		mediaUrl,
+		initiatingUserId,
+		participantName,
+		participantOrganization,
+		segment,
+	} = params
 	const db = adminClient ?? createSupabaseAdminClient()
 
 	const { data: interview, error } = await db
@@ -39,6 +51,9 @@ export async function createAndProcessAnalysisJob(params: CreateAndProcessParams
 		interviewTitle: interview.title ?? interview.original_filename ?? "Interview",
 		fileName: interview.original_filename ?? interview.title ?? "interview",
 		userId: initiatingUserId ?? undefined,
+		participantName: participantName ?? undefined,
+		participantOrganization: participantOrganization ?? undefined,
+		segment: segment ?? undefined,
 	}
 
 	const handle = await tasks.trigger<typeof processInterviewOrchestratorV2>("interview.v2.orchestrator", {

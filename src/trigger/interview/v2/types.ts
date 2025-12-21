@@ -14,6 +14,7 @@ export interface InterviewMetadata {
 	personName?: string
 	personRole?: string
 	participantName?: string
+	participantOrganization?: string
 	segment?: string
 	skipLenses?: boolean
 }
@@ -71,6 +72,7 @@ export interface ExtractEvidencePayload {
 	language: string
 	analysisJobId?: string
 	personKey?: string | null
+	metadata?: InterviewMetadata
 }
 
 export interface ExtractEvidenceResult {

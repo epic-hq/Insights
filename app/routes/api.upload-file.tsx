@@ -29,6 +29,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	}
 	// const body = formData.get("body") as string | null
 	const projectId = formData.get("projectId") as UUID
+	const participant_name = formData.get("participantName")?.toString() || null
+	const participant_organization =
+		formData.get("participantOrganization")?.toString() || formData.get("participantCompany")?.toString() || null
+	const segment = formData.get("segment")?.toString() || null
 
 	if (!projectId) {
 		return Response.json({ error: "No projectId provided" }, { status: 400 })
@@ -61,7 +65,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		let transcriptData: Record<string, unknown>
 		let mediaUrl: string
-		let interviewId: string
 
 		// Detect file type for source_type field up front
 		const fileExtension = file.name.split(".").pop()?.toLowerCase() || ""
@@ -92,7 +95,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			return Response.json({ error: "Failed to create interview record" }, { status: 500 })
 		}
 
-		interviewId = interview.id
+		const interviewId = interview.id
 
 		if (userId) {
 			await ensureInterviewInterviewerLink({
@@ -175,11 +178,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			userId: userId ?? undefined,
 			fileName: file?.name,
 			interviewTitle: isTextFile ? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}` : interviewTitle,
-			participantName: "Anonymous",
-			segment: "Unknown",
+			participantName: participant_name ?? "Anonymous",
+			participantOrganization: participant_organization ?? undefined,
+			segment: segment ?? "Unknown",
 		}
 
-		const userCustomInstructions = (formData.get("userCustomInstructions") as string) || ""
+		const userCustomInstructions = formData.get("userCustomInstructions")?.toString() || ""
 
 		// 3. Persist transcript to interview for resumeFrom: evidence
 		const transcriptString = (transcriptData?.full_transcript as string) || ""
@@ -187,7 +191,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			.from("interviews")
 			.update({
 				transcript: transcriptString,
-				transcript_formatted: transcriptData as any,
+				transcript_formatted: transcriptData as unknown as Record<string, unknown>,
 				status: "transcribed",
 				media_url: mediaUrl,
 			})

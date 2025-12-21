@@ -1,7 +1,6 @@
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import type { extractEvidenceAndPeopleTask } from "~/../../src/trigger/interview/extractEvidenceAndPeople"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -56,7 +55,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		try {
 			// Get current conversation_analysis
-			const conversationAnalysis = (interview.conversation_analysis as any) || {}
+			const conversationAnalysis = (interview.conversation_analysis as unknown as Record<string, unknown> | null) || {}
 
 			// Update conversation_analysis for reprocessing
 			await admin
@@ -65,7 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					status: "processing",
 					conversation_analysis: {
 						...conversationAnalysis,
-						transcript_data: formattedTranscriptData as any,
+						transcript_data: formattedTranscriptData as unknown as Record<string, unknown>,
 						status_detail: "Re-extracting evidence from transcript",
 						current_step: "evidence",
 					},
@@ -83,6 +82,15 @@ export async function action({ request }: ActionFunctionArgs) {
 				participantName: interview.participant_pseudonym || undefined,
 				duration_sec: interview.duration_sec || undefined,
 			}
+
+			const { data: linkedOrgs } = await admin
+				.from("interview_organizations")
+				.select("organizations(name)")
+				.eq("interview_id", interviewId)
+				.limit(1)
+			const participant_organization =
+				(linkedOrgs as Array<{ organizations: { name: string | null } | null }> | null)?.[0]?.organizations?.name ??
+				undefined
 
 			consola.info("Triggering evidence extraction directly (skipping transcription)")
 
@@ -108,8 +116,11 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				handle = await tasks.trigger("interview.v2.orchestrator", {
 					analysisJobId: interviewId, // Use interview ID
-					metadata,
-					transcriptData: formattedTranscriptData as any,
+					metadata: {
+						...metadata,
+						participantOrganization: participant_organization,
+					},
+					transcriptData: formattedTranscriptData as unknown as Record<string, unknown>,
 					mediaUrl: mediaUrlForTask,
 					existingInterviewId: interviewId,
 					resumeFrom: "evidence", // Skip upload/transcription, start from evidence extraction
