@@ -80,7 +80,7 @@ function ActivityFeedItem({ item, projectPath }: ActivityFeedItemProps) {
 
 	return (
 		<Link to={routes.interviews.detail(item.interviewId)} className="group block">
-			<Card className="transition-all hover:border-primary/30 hover:shadow-sm">
+			<Card surface="muted" className="transition-all hover:border-primary/30 hover:shadow-md">
 				<CardContent className="p-4">
 					<div className="flex items-start gap-3">
 						<div className={cn("mt-0.5 rounded-lg p-2", colorClass)}>
@@ -111,35 +111,30 @@ function LensLibraryItem({ lens }: LensLibraryItemProps) {
 	const colorClass = categoryColors[lens.category] || categoryColors.general
 
 	return (
-		<Link
-			to={lens.href}
-			className={cn(
-				"group flex items-center justify-between rounded-lg border bg-card px-4 py-3",
-				"transition-all hover:border-primary/30 hover:bg-muted/50",
-				!lens.hasData && "opacity-60"
-			)}
-		>
-			<div className="flex items-center gap-3">
-				<div className={cn("rounded-lg p-1.5", colorClass)}>
-					<Glasses className="h-3.5 w-3.5" />
+		<Card asChild surface={lens.hasData ? "glass" : "muted"} className={cn("group", !lens.hasData && "opacity-70")}>
+			<Link to={lens.href} className="flex items-center justify-between px-4 py-3">
+				<div className="flex items-center gap-3">
+					<div className={cn("rounded-lg p-1.5", colorClass)}>
+						<Glasses className="h-3.5 w-3.5" />
+					</div>
+					<div>
+						<h4 className="font-medium text-foreground text-sm">{lens.name}</h4>
+						<p className="text-muted-foreground text-xs">
+							{lens.hasData ? `${lens.conversationCount} analyzed` : "No data yet"}
+						</p>
+					</div>
 				</div>
-				<div>
-					<h4 className="font-medium text-foreground text-sm">{lens.name}</h4>
-					<p className="text-muted-foreground text-xs">
-						{lens.hasData ? `${lens.conversationCount} analyzed` : "No data yet"}
-					</p>
-				</div>
-			</div>
 
-			<div className="flex items-center gap-2">
-				{lens.hasData && (
-					<Badge variant="secondary" className="text-xs">
-						{lens.conversationCount}
-					</Badge>
-				)}
-				<ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-			</div>
-		</Link>
+				<div className="flex items-center gap-2">
+					{lens.hasData && (
+						<Badge variant="secondary" className="text-xs">
+							{lens.conversationCount}
+						</Badge>
+					)}
+					<ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+				</div>
+			</Link>
+		</Card>
 	)
 }
 

@@ -122,16 +122,18 @@ create or replace trigger trg_enqueue_theme
 comment on trigger trg_enqueue_theme on public.themes is 'Enqueue theme for embedding generation when created or pain field updated';
 
 -- Evidence facet enqueue function
+-- Note: For survey_response facets, we embed label (question) + quote (answer) together
 create or replace function public.enqueue_facet_embedding()
 returns trigger language plpgsql as $$
 begin
   if (TG_OP = 'INSERT'
-      or (TG_OP = 'UPDATE' and old.label is distinct from new.label)) then
+      or (TG_OP = 'UPDATE' and (old.label is distinct from new.label or old.quote is distinct from new.quote))) then
     perform pgmq.send(
       'facet_embedding_queue',
       json_build_object(
         'facet_id', new.id::text,
         'label', new.label,
+        'quote', new.quote,
         'kind_slug', new.kind_slug
       )::jsonb
     );

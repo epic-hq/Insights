@@ -36,7 +36,7 @@ function InsightPreviewCard({ insight, detailHref }: InsightPreviewCardProps) {
 
 	return (
 		<Link to={detailHref}>
-			<Card className="h-full transition-all hover:border-primary/30 hover:shadow-sm">
+			<Card surface="soft" className="h-full transition-all hover:border-primary/40 hover:shadow-md">
 				<CardContent className="p-4">
 					{/* Category & Evidence count */}
 					<div className="mb-3 flex items-center justify-between">

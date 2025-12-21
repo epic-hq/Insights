@@ -62,7 +62,7 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 
 	return (
 		<Link to={detailHref}>
-			<Card className="h-full transition-all hover:border-primary/30 hover:shadow-sm">
+			<Card surface="elevated" className="h-full transition-all hover:border-primary/40 hover:shadow-md">
 				<CardContent className="p-4">
 					{/* Title & Status on same row */}
 					<div className="mb-2 flex items-start justify-between gap-2">

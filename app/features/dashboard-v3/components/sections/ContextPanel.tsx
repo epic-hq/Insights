@@ -151,7 +151,7 @@ export function ContextPanel({
 			</div>
 
 			{/* Project Context - Collapsible */}
-			<Card>
+			<Card surface="muted">
 				<Collapsible open={isOpen} onOpenChange={setIsOpen}>
 					<CollapsibleTrigger asChild>
 						<button

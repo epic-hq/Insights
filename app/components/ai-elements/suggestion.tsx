@@ -24,8 +24,11 @@ export const Suggestion = ({ suggestion, onClick, className, ...props }: Suggest
 		size="sm"
 		className={cn(
 			"h-auto whitespace-normal rounded-full px-3 py-1.5 text-left font-normal text-sm",
-			"hover:border-primary/30 hover:bg-muted/80",
-			"transition-colors duration-150",
+			"border-border/60 bg-card/80 text-foreground shadow-sm transition-all duration-200",
+			"hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-lg",
+			"focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none",
+			"active:translate-y-0",
+			"dark:bg-slate-900/60",
 			className
 		)}
 		onClick={() => onClick?.(suggestion)}
