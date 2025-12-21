@@ -1934,20 +1934,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-3">
 						<BackButton />
-						<div className="flex items-start justify-between gap-4">
-							<InlineEdit
-								value={interviewTitle}
-								onSubmit={(value) => {
-									try {
-										submitInterviewFieldUpdate("title", value)
-									} catch (error) {
-										consola.error("Failed to update interview title", error)
-									}
-								}}
-								submitOnBlur={true}
-								textClassName="font-semibold text-2xl"
-							/>
-							<div className="flex items-center gap-2">
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+							<div className="min-w-0 flex-1">
+								<InlineEdit
+									value={interviewTitle}
+									onSubmit={(value) => {
+										try {
+											submitInterviewFieldUpdate("title", value)
+										} catch (error) {
+											consola.error("Failed to update interview title", error)
+										}
+									}}
+									submitOnBlur={true}
+									textClassName="break-words font-semibold text-xl leading-tight sm:text-2xl"
+								/>
+							</div>
+							<div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
 								{shareProjectPath && contextAccountId ? (
 									<ResourceShareMenu
 										projectPath={shareProjectPath}
