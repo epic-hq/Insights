@@ -637,6 +637,28 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
             "[parse-spreadsheet] Mapping confidence:",
             mappingConfidence,
           );
+
+          // Add warnings for missing important columns
+          if (!mappingWarnings) mappingWarnings = [];
+          if (!columnMapping.company) {
+            mappingWarnings.push(
+              "No company column detected - people will be imported without company associations",
+            );
+          }
+          if (!columnMapping.email) {
+            mappingWarnings.push(
+              "No email column detected - duplicate detection and upsert mode won't work",
+            );
+          }
+          if (
+            !columnMapping.name &&
+            !columnMapping.firstname &&
+            !columnMapping.lastname
+          ) {
+            mappingWarnings.push(
+              "No name columns detected - import may fail without names",
+            );
+          }
         } catch (llmError) {
           consola.error(
             "[parse-spreadsheet] LLM mapping failed, falling back to pattern matching:",
