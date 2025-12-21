@@ -572,16 +572,16 @@ export function InterviewCopilot({
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch { }
+				} catch {}
 			}
-		} catch { }
+		} catch {}
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch { }
+		} catch {}
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -609,7 +609,7 @@ export function InterviewCopilot({
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch { }
+				} catch {}
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -662,18 +662,18 @@ export function InterviewCopilot({
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch { }
+							} catch {}
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch { }
+				} catch {}
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch { }
+			} catch {}
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -686,7 +686,7 @@ export function InterviewCopilot({
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch { }
+			} catch {}
 
 			// finalize or abort recording
 			void (async () => {
@@ -706,13 +706,13 @@ export function InterviewCopilot({
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									; (rec as any).onstop = handler
+									;(rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch { }
+								} catch {}
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -1241,12 +1241,7 @@ export function InterviewCopilot({
 					)}
 
 					{/* Notes */}
-					<div
-						className={cn(
-							"p-3",
-							mode === "notes" && "lg:col-span-2"
-						)}
-					>
+					<div className={cn("p-3", mode === "notes" && "lg:col-span-2")}>
 						<h2 className="mb-4 font-semibold text-slate-900 text-xl dark:text-white">Notes</h2>
 						<Textarea
 							placeholder="Jot down key insights, observations, or follow-up items..."

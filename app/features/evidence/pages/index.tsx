@@ -95,6 +95,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
 	const rqId = url.searchParams.get("rq_id")
 	const themeId = url.searchParams.get("theme_id")
+	const filterInterviewId = url.searchParams.get("interview_id") || undefined
 
 	// Sort and filter params
 	const sortBy = url.searchParams.get("sort_by") || "created_at"
@@ -142,7 +143,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		evidenceIdFilter = personEvidence?.map((pe) => pe.evidence_id) || []
 
 		if (evidenceIdFilter.length === 0) {
-			return { evidence: [], filteredByPerson: filterPersonId }
+			return {
+				evidence: [],
+				filteredByPerson: filterPersonId,
+				filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: null } : null,
+			}
 		}
 	}
 
@@ -166,7 +171,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		}
 
 		if (evidenceIdFilter.length === 0) {
-			return { evidence: [], filteredByRQ: rqId, filteredByPerson: filterPersonId }
+			return {
+				evidence: [],
+				filteredByRQ: rqId,
+				filteredByPerson: filterPersonId,
+				filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: null } : null,
+			}
 		}
 	}
 
@@ -190,7 +200,13 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		}
 
 		if (evidenceIdFilter.length === 0) {
-			return { evidence: [], filteredByTheme: themeId, filteredByRQ: rqId, filteredByPerson: filterPersonId }
+			return {
+				evidence: [],
+				filteredByTheme: themeId,
+				filteredByRQ: rqId,
+				filteredByPerson: filterPersonId,
+				filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: null } : null,
+			}
 		}
 	}
 
@@ -230,6 +246,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	if (filterSupport) query = query.eq("support", filterSupport)
 	if (filterConfidence) query = query.eq("confidence", filterConfidence)
 	if (filterMethod) query = query.eq("method", filterMethod)
+	if (filterInterviewId) query = query.eq("interview_id", filterInterviewId)
 
 	// Sorting
 	const sortable = new Set(["created_at", "confidence"]) // extendable
@@ -358,16 +375,20 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		facets: facetsByEvidence.get(row.id) ?? [],
 	}))
 
+	const filteredInterviewTitle = filterInterviewId ? (rows[0]?.interview?.title ?? null) : null
+
 	return {
 		evidence: enriched,
 		filteredByRQ: rqId,
 		filteredByPerson: filterPersonId ? { id: filterPersonId, name: filteredPersonName } : null,
 		filteredByIds: idsParam ? evidenceIdFilter?.length || 0 : null,
+		filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: filteredInterviewTitle } : null,
 	}
 }
 
 export default function EvidenceIndex() {
-	const { evidence, filteredByRQ, filteredByPerson, filteredByIds } = useLoaderData<typeof loader>()
+	const { evidence, filteredByRQ, filteredByPerson, filteredByIds, filteredByInterview } =
+		useLoaderData<typeof loader>()
 	const fetcher = useFetcher<typeof action>()
 	const isRegenerating = fetcher.state !== "idle"
 	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini")
@@ -417,6 +438,11 @@ export default function EvidenceIndex() {
 					{filteredByIds && (
 						<Badge variant="outline" className="mt-1 ml-2 w-fit">
 							Showing {filteredByIds} selected {filteredByIds === 1 ? "item" : "items"}
+						</Badge>
+					)}
+					{filteredByInterview && (
+						<Badge variant="outline" className="mt-1 ml-2 w-fit">
+							{filteredByInterview.title ? `Interview: ${filteredByInterview.title}` : "Filtered by interview"}
 						</Badge>
 					)}
 				</div>

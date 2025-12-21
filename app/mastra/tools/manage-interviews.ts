@@ -22,7 +22,10 @@ const toolInputSchema = z.object({
 
 type ToolInput = z.infer<typeof toolInputSchema>
 
-type InterviewListRow = Pick<Database["public"]["Tables"]["interviews"]["Row"], "id" | "title" | "created_at" | "status">
+type InterviewListRow = Pick<
+	Database["public"]["Tables"]["interviews"]["Row"],
+	"id" | "title" | "created_at" | "status"
+>
 
 const toolOutputSchema = z.object({
 	success: z.boolean(),
@@ -56,7 +59,11 @@ const toolOutputSchema = z.object({
 
 async function countLinks(db: SupabaseClient<Database>, interview_id: string, project_id: string) {
 	const [evidence_res, interview_people_res] = await Promise.all([
-		db.from("evidence").select("id", { count: "exact", head: true }).eq("interview_id", interview_id).eq("project_id", project_id),
+		db
+			.from("evidence")
+			.select("id", { count: "exact", head: true })
+			.eq("interview_id", interview_id)
+			.eq("project_id", project_id),
 		db
 			.from("interview_people")
 			.select("id", { count: "exact", head: true })

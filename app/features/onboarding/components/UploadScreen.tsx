@@ -35,13 +35,13 @@ type ActionType = "upload" | "record"
 type SelectablePerson =
 	| (Person & { isMember?: false })
 	| {
-		id: string
-		name: string
-		company?: string | null
-		isMember: true
-		user_id: string
-		email?: string | null
-	}
+			id: string
+			name: string
+			company?: string | null
+			isMember: true
+			user_id: string
+			email?: string | null
+	  }
 
 export default function UploadScreen({
 	onNext,
@@ -462,18 +462,18 @@ export default function UploadScreen({
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
 		? people.filter(
-			(p) =>
-				p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				p.company?.toLowerCase().includes(searchQuery.toLowerCase())
-		)
+				(p) =>
+					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+			)
 		: people.slice(0, 8)
 	const filteredMembers =
 		searchQuery.trim().length > 0
 			? members.filter(
-				(m) =>
-					m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					(m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
-			)
+					(m) =>
+						m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						(m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
+				)
 			: members.slice(0, 8)
 
 	// Quick note handler
@@ -626,15 +626,15 @@ export default function UploadScreen({
 																isSelected
 																	? prev.filter((p) => !(p.isMember && p.user_id === member.user_id))
 																	: [
-																		...prev,
-																		{
-																			id: key,
-																			isMember: true,
-																			user_id: member.user_id,
-																			name: member.name,
-																			email: member.email,
-																		},
-																	]
+																			...prev,
+																			{
+																				id: key,
+																				isMember: true,
+																				user_id: member.user_id,
+																				name: member.name,
+																				email: member.email,
+																			},
+																		]
 															)
 														}
 														className={cn(

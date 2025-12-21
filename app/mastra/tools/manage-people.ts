@@ -223,11 +223,11 @@ export const managePeopleTool = createTool({
 
 				const { data: interview_rows } = linked_interview_ids.length
 					? await supabase
-						.from("interviews")
-						.select("id, title")
-						.in("id", linked_interview_ids)
-						.eq("account_id", resolved_account_id)
-						.eq("project_id", resolved_project_id)
+							.from("interviews")
+							.select("id, title")
+							.in("id", linked_interview_ids)
+							.eq("account_id", resolved_account_id)
+							.eq("project_id", resolved_project_id)
 					: { data: [] as { id: string; title: string | null }[] }
 
 				const linked_interviews = (interview_rows ?? []).map((row) => ({ id: row.id, title: row.title }))

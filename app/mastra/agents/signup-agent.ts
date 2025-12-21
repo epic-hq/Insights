@@ -10,6 +10,7 @@ import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 
 export const AgentState = z.object({
 	signupChatData: z
@@ -60,14 +61,14 @@ ${JSON.stringify(data)}
 `
 	},
 	model: openai("gpt-5-mini"),
-	tools: {
+	tools: wrapToolsWithStatusEvents({
 		// Validation guard to ensure the agent never prematurely completes
 		// signupCompletionGuardTool,
 		// Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
 		saveUserSettingsData: saveUserSettingsDataTool,
 		navigateToPage: navigateToPageTool,
 		displayUserQuestions: displayUserQuestionsTool,
-	},
+	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

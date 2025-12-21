@@ -8,6 +8,7 @@ import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 
 const InterviewMemoryState = z.object({
 	lastInterviewId: z.string().optional(),
@@ -42,10 +43,10 @@ Tone:
 `
 	},
 	model: openai("gpt-5-mini"),
-	tools: {
+	tools: wrapToolsWithStatusEvents({
 		fetchInterviewContext: fetchInterviewContextTool,
 		semanticSearchEvidence: semanticSearchEvidenceTool,
-	},
+	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

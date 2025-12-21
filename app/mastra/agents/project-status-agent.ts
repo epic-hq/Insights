@@ -52,6 +52,7 @@ import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
 import { suggestionTool } from "../tools/suggestion-tool"
 import { switchAgentTool } from "../tools/switch-agent"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { updateTableAssetTool } from "../tools/update-table-asset"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
@@ -242,7 +243,7 @@ Please try:
 		}
 	},
 	model: openai("gpt-4.1"),
-	tools: {
+	tools: wrapToolsWithStatusEvents({
 		getCurrentDate: getCurrentDateTool,
 		fetchProjectStatusContext: fetchProjectStatusContextTool,
 		fetchInterviewContext: fetchInterviewContextTool,
@@ -291,7 +292,7 @@ Please try:
 		updateTableAsset: updateTableAssetTool,
 		importPeopleFromTable: importPeopleFromTableTool,
 		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
-	},
+	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

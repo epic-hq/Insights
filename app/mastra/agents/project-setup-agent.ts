@@ -19,6 +19,7 @@ import {
 	updateProjectSectionMetaTool,
 } from "../tools/manage-project-sections"
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { webResearchTool } from "../tools/web-research"
 
 // Dynamically build ProjectSetupState from section config
@@ -96,7 +97,7 @@ ${JSON.stringify(existing)}
 `
 	},
 	model: openai("gpt-5.1"),
-	tools: {
+	tools: wrapToolsWithStatusEvents({
 		saveProjectSectionsData: saveProjectSectionsDataTool,
 		fetchProjectSection: fetchProjectSectionTool,
 		updateProjectSectionMeta: updateProjectSectionMetaTool,
@@ -107,7 +108,7 @@ ${JSON.stringify(existing)}
 		manageDocuments: manageDocumentsTool,
 		manageAnnotations: manageAnnotationsTool,
 		webResearch: webResearchTool,
-	},
+	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

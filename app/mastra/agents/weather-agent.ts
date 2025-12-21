@@ -2,6 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { LibSQLStore } from "@mastra/libsql"
 import { Memory } from "@mastra/memory"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { weatherTool } from "../tools/weather-tool"
 
 export const weatherAgent = new Agent({
@@ -22,7 +23,7 @@ export const weatherAgent = new Agent({
       Use the weatherTool to fetch current weather data.
 `,
 	model: openai("gpt-5-mini"),
-	tools: { weatherTool },
+	tools: wrapToolsWithStatusEvents({ weatherTool }),
 	memory: new Memory({
 		storage: new LibSQLStore({
 			id: "weather-agent-memory",

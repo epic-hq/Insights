@@ -4,6 +4,7 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } fro
 import consola from "consola"
 import {
 	AlertTriangle,
+	ArrowUpRight,
 	BotMessageSquare,
 	Briefcase,
 	Edit2,
@@ -1261,6 +1262,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const navigate = useNavigate()
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
+	const evidenceFilterLink = `${routes.evidence.index()}?interview_id=${encodeURIComponent(interview.id)}`
 	const shareProjectPath =
 		projectPath || (contextAccountId && contextProjectId ? `/a/${contextAccountId}/${contextProjectId}` : "")
 	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
@@ -2236,10 +2238,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									</span>
 								</>
 							)}
-							{evidence.length > 0 && (
+							{evidenceFilterLink && (
 								<>
 									<span>•</span>
-									<span>{evidence.length} evidence points</span>
+									<Link
+										to={evidenceFilterLink}
+										className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+									>
+										<span>
+											{evidence.length} evidence {evidence.length === 1 ? "point" : "points"}
+										</span>
+										<ArrowUpRight className="h-3.5 w-3.5" />
+									</Link>
 								</>
 							)}
 						</div>

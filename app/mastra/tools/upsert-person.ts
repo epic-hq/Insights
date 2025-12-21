@@ -25,10 +25,105 @@ function parseFullName(fullName: string): { firstname: string; lastname: string 
 	}
 }
 
+function normalizeOrganizationName(value: string | null | undefined): string {
+	return (value ?? "").trim()
+}
+
+async function ensureOrganizationByName(
+	supabase: SupabaseClient<Database>,
+	{
+		accountId,
+		projectId,
+		name,
+	}: {
+		accountId: string
+		projectId: string
+		name: string
+	}
+): Promise<{ id: string; name: string; created: boolean }> {
+	const trimmed = normalizeOrganizationName(name)
+	if (!trimmed) {
+		throw new Error("Organization name is required")
+	}
+
+	const { data: existing, error: existingError } = await supabase
+		.from("organizations")
+		.select("id, name")
+		.eq("account_id", accountId)
+		.eq("project_id", projectId)
+		.ilike("name", trimmed)
+		.order("updated_at", { ascending: false })
+		.limit(1)
+
+	if (existingError) {
+		throw new Error(`Failed to find organization "${trimmed}": ${existingError.message}`)
+	}
+
+	if (existing && existing.length > 0) {
+		return { id: existing[0].id, name: existing[0].name, created: false }
+	}
+
+	const insertPayload: Database["public"]["Tables"]["organizations"]["Insert"] = {
+		account_id: accountId,
+		project_id: projectId,
+		name: trimmed,
+	}
+
+	const { data: inserted, error: insertError } = await supabase
+		.from("organizations")
+		.insert(insertPayload)
+		.select("id, name")
+		.single()
+
+	if (insertError || !inserted) {
+		throw new Error(`Failed to create organization "${trimmed}": ${insertError?.message ?? "unknown error"}`)
+	}
+
+	return { id: inserted.id, name: inserted.name, created: true }
+}
+
+async function upsertPersonOrganizationLink(
+	supabase: SupabaseClient<Database>,
+	{
+		accountId,
+		projectId,
+		personId,
+		organizationId,
+		role,
+		isPrimary,
+	}: {
+		accountId: string
+		projectId: string
+		personId: string
+		organizationId: string
+		role?: string | null
+		isPrimary: boolean
+	}
+) {
+	const payload: Database["public"]["Tables"]["people_organizations"]["Insert"] = {
+		account_id: accountId,
+		project_id: projectId,
+		person_id: personId,
+		organization_id: organizationId,
+		role: role ?? null,
+		is_primary: isPrimary,
+		relationship_status: null,
+		notes: null,
+	}
+
+	const { error } = await supabase
+		.from("people_organizations")
+		.upsert(payload, { onConflict: "person_id,organization_id" })
+
+	if (error) {
+		throw new Error(`Failed to link person to organization: ${error.message}`)
+	}
+}
+
 export const upsertPersonTool = createTool({
 	id: "upsert-person",
 	description:
-		"Create or update a person's basic information including contact details (email, phone), demographics, and title. Use this for simple person data updates. NOTE: To link a person to an organization (employer/affiliation), use 'manage-person-organizations' instead.",
+		"Create or update a person's basic information including contact details (email, phone), demographics, and title. If company is provided, this tool will ensure an organization record exists and link the person to it.",
 	inputSchema: z.object({
 		personId: z.string().optional().describe("Person ID if updating an existing person"),
 		name: z.string().optional().describe("Full name of the person"),
@@ -115,7 +210,10 @@ export const upsertPersonTool = createTool({
 			}
 			if (title !== undefined) updateData.title = title
 			if (role !== undefined) updateData.role = role
-			if (company !== undefined) updateData.company = company
+			if (company !== undefined) {
+				const normalized_company = normalizeOrganizationName(company)
+				updateData.company = normalized_company ? normalized_company : null
+			}
 			if (description !== undefined) updateData.description = description
 			if (primaryEmail !== undefined) updateData.primary_email = primaryEmail
 			if (primaryPhone !== undefined) updateData.primary_phone = primaryPhone
@@ -136,7 +234,18 @@ export const upsertPersonTool = createTool({
 				}
 			}
 
-			let result
+			type PersonResultRow = {
+				id: string
+				name: string | null
+				title: string | null
+				company: string | null
+				primary_email: string | null
+				primary_phone: string | null
+			}
+
+			let result: PersonResultRow
+			let organization_linked: { id: string; name: string; created: boolean } | null = null
+			let organization_link_error: string | null = null
 
 			if (personId) {
 				// Update existing person
@@ -193,11 +302,71 @@ export const upsertPersonTool = createTool({
 				}
 			}
 
+			if (company !== undefined) {
+				const normalized_company = normalizeOrganizationName(company)
+				if (!normalized_company) {
+					try {
+						const { error: clearError } = await supabase
+							.from("people")
+							.update({ default_organization_id: null })
+							.eq("id", result.id)
+							.eq("account_id", accountId)
+							.eq("project_id", projectId)
+
+						if (clearError) {
+							throw clearError
+						}
+					} catch (error) {
+						organization_link_error = error instanceof Error ? error.message : "Failed to clear organization link"
+						consola.warn("upsert-person: failed to clear default organization", error)
+					}
+				} else {
+					try {
+						organization_linked = await ensureOrganizationByName(supabase, {
+							accountId,
+							projectId,
+							name: normalized_company,
+						})
+
+						await upsertPersonOrganizationLink(supabase, {
+							accountId,
+							projectId,
+							personId: result.id,
+							organizationId: organization_linked.id,
+							role: (role ?? title ?? null) as string | null,
+							isPrimary: true,
+						})
+
+						const { error: defaultOrgError } = await supabase
+							.from("people")
+							.update({ default_organization_id: organization_linked.id })
+							.eq("id", result.id)
+							.eq("account_id", accountId)
+							.eq("project_id", projectId)
+
+						if (defaultOrgError) {
+							throw defaultOrgError
+						}
+					} catch (error) {
+						organization_link_error = error instanceof Error ? error.message : "Failed to link organization"
+						consola.warn("upsert-person: failed to ensure/link organization", error)
+					}
+				}
+			}
+
+			const base_message = personId
+				? `Successfully updated ${result.name || "person"}`
+				: `Successfully created ${result.name || "new person"}`
+
+			const org_message = organization_linked
+				? ` Linked to organization "${organization_linked.name}"${organization_linked.created ? " (created)" : ""}.`
+				: organization_link_error
+					? ` Note: organization link failed (${organization_link_error}).`
+					: ""
+
 			return {
 				success: true,
-				message: personId
-					? `Successfully updated ${result.name || "person"}`
-					: `Successfully created ${result.name || "new person"}`,
+				message: `${base_message}.${org_message}`,
 				person: {
 					id: result.id,
 					name: result.name,

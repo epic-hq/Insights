@@ -156,9 +156,23 @@ export function InsightCardV3Page({
 							</div>
 						) : null}
 					</div>
-					<h1 className="break-words font-bold text-2xl leading-tight tracking-tight sm:text-3xl">{insight.name}</h1>
+					<h1 className="break-words font-bold text-2xl leading-tight tracking-tight sm:text-3xl">
+						{insight.name}&nbsp;{" "}
+						{propProjectPath ? (
+							<InsightPrioritySelector
+								priority={priority}
+								onSelect={(nextPriority) => {
+									setPriority(nextPriority)
+									handleFieldUpdate("priority", String(nextPriority))
+								}}
+							/>
+						) : null}
+					</h1>
 					{/* Desired Outcome - prominent placement */}
 					<div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3 sm:flex-row sm:items-start dark:border-blue-900/30 dark:bg-blue-950/10">
+						{insight.statement && (
+							<p className="break-words text-base text-foreground leading-relaxed sm:text-lg">{insight.statement}</p>
+						)}
 						<div className="flex items-center gap-2">
 							<TrendingUp className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
 							<span className="font-medium text-foreground text-sm">Desired Outcome:</span>
@@ -174,9 +188,6 @@ export function InsightCardV3Page({
 							/>
 						</div>
 					</div>
-					{insight.statement && (
-						<p className="break-words text-base text-foreground leading-relaxed sm:text-lg">{insight.statement}</p>
-					)}
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">
@@ -190,15 +201,6 @@ export function InsightCardV3Page({
 							{insight.journey_stage}
 						</Badge>
 					)}
-					{propProjectPath ? (
-						<InsightPrioritySelector
-							priority={priority}
-							onSelect={(nextPriority) => {
-								setPriority(nextPriority)
-								handleFieldUpdate("priority", String(nextPriority))
-							}}
-						/>
-					) : null}
 				</div>
 			</div>
 

@@ -106,7 +106,7 @@ export function InsightsSection({ insights, projectPath, maxVisible = 3, classNa
 
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				{topInsights.map((insight) => (
-					<InsightPreviewCard key={insight.id} insight={insight} detailHref={routes.themes.detail(insight.id)} />
+					<InsightPreviewCard key={insight.id} insight={insight} detailHref={routes.insights.detail(insight.id)} />
 				))}
 			</div>
 		</section>

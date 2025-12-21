@@ -5,6 +5,7 @@ import { Memory } from "@mastra/memory"
 import z from "zod"
 import { manageOrganizationsTool } from "../tools/manage-organizations"
 import { managePeopleTool } from "../tools/manage-people"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { upsightTool } from "../tools/upsight-tool"
 
 export const AgentState = z.object({
@@ -71,11 +72,11 @@ export const mainAgent = new Agent({
       - Identification of critical tasks that should be marked as "must_do"
 `,
 	model: openai("gpt-5-mini"),
-	tools: {
+	tools: wrapToolsWithStatusEvents({
 		upsight_search: upsightTool,
 		manage_organizations: manageOrganizationsTool,
 		manage_people: managePeopleTool,
-	},
+	}),
 	memory: new Memory({
 		storage: new LibSQLStore({
 			id: "main-agent-memory",
