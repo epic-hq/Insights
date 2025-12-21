@@ -1176,12 +1176,24 @@ export namespace partial_types {
       lastname?: string | null
       email?: string | null
       phone?: string | null
+      website?: string | null
+      address?: string | null
       linkedin?: string | null
+      twitter?: string | null
+      instagram?: string | null
+      tiktok?: string | null
       title?: string | null
       company?: string | null
       role?: string | null
       industry?: string | null
       location?: string | null
+      company_stage?: string | null
+      company_size?: string | null
+      company_url?: string | null
+      annual_revenue?: string | null
+      market_cap?: string | null
+      funding_stage?: string | null
+      total_funding?: string | null
       segment?: string | null
       lifecycle_stage?: string | null
     }
@@ -1198,6 +1210,7 @@ export namespace partial_types {
     export interface SuggestedFacet {
       column?: string | null
       facet_kind?: string | null
+      sample_values: string[]
       reason?: string | null
     }
     export interface SuggestedQuestion {

@@ -317,11 +317,11 @@ export default class TypeBuilder {
     
     SpreadsheetAnalysis: ClassViewer<'SpreadsheetAnalysis', "column_mapping" | "confidence" | "unmapped_columns" | "suggested_facets" | "warnings">;
     
-    SpreadsheetColumnMapping: ClassViewer<'SpreadsheetColumnMapping', "name" | "firstname" | "lastname" | "email" | "phone" | "linkedin" | "title" | "company" | "role" | "industry" | "location" | "segment" | "lifecycle_stage">;
+    SpreadsheetColumnMapping: ClassViewer<'SpreadsheetColumnMapping', "name" | "firstname" | "lastname" | "email" | "phone" | "website" | "address" | "linkedin" | "twitter" | "instagram" | "tiktok" | "title" | "company" | "role" | "industry" | "location" | "company_stage" | "company_size" | "company_url" | "annual_revenue" | "market_cap" | "funding_stage" | "total_funding" | "segment" | "lifecycle_stage">;
     
     StakeholderRole: ClassViewer<'StakeholderRole', "person_name" | "person_role" | "role_type" | "influence_level" | "sentiment" | "key_concerns" | "key_motivations" | "evidence_ids">;
     
-    SuggestedFacet: ClassViewer<'SuggestedFacet', "column" | "facet_kind" | "reason">;
+    SuggestedFacet: ClassViewer<'SuggestedFacet', "column" | "facet_kind" | "sample_values" | "reason">;
     
     SuggestedQuestion: ClassViewer<'SuggestedQuestion', "question" | "rationale" | "interview_type" | "priority">;
     
@@ -943,7 +943,7 @@ export default class TypeBuilder {
         ]);
         
         this.SpreadsheetColumnMapping = this.tb.classViewer("SpreadsheetColumnMapping", [
-          "name","firstname","lastname","email","phone","linkedin","title","company","role","industry","location","segment","lifecycle_stage",
+          "name","firstname","lastname","email","phone","website","address","linkedin","twitter","instagram","tiktok","title","company","role","industry","location","company_stage","company_size","company_url","annual_revenue","market_cap","funding_stage","total_funding","segment","lifecycle_stage",
         ]);
         
         this.StakeholderRole = this.tb.classViewer("StakeholderRole", [
@@ -951,7 +951,7 @@ export default class TypeBuilder {
         ]);
         
         this.SuggestedFacet = this.tb.classViewer("SuggestedFacet", [
-          "column","facet_kind","reason",
+          "column","facet_kind","sample_values","reason",
         ]);
         
         this.SuggestedQuestion = this.tb.classViewer("SuggestedQuestion", [

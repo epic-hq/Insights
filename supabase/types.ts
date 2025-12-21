@@ -3203,12 +3203,14 @@ export type Database = {
           domain: string | null
           email: string | null
           employee_count: number | null
+          funding_stage: string | null
           headquarters_location: string | null
           id: string
           industry: string | null
           legal_name: string | null
           lifecycle_stage: string | null
           linkedin_url: string | null
+          market_cap: number | null
           name: string
           notes: string | null
           parent_organization_id: string | null
@@ -3220,6 +3222,7 @@ export type Database = {
           sub_industry: string | null
           tags: string[] | null
           timezone: string | null
+          total_funding: number | null
           twitter_url: string | null
           updated_at: string
           website_url: string | null
@@ -3235,12 +3238,14 @@ export type Database = {
           domain?: string | null
           email?: string | null
           employee_count?: number | null
+          funding_stage?: string | null
           headquarters_location?: string | null
           id?: string
           industry?: string | null
           legal_name?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
+          market_cap?: number | null
           name: string
           notes?: string | null
           parent_organization_id?: string | null
@@ -3252,6 +3257,7 @@ export type Database = {
           sub_industry?: string | null
           tags?: string[] | null
           timezone?: string | null
+          total_funding?: number | null
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
@@ -3267,12 +3273,14 @@ export type Database = {
           domain?: string | null
           email?: string | null
           employee_count?: number | null
+          funding_stage?: string | null
           headquarters_location?: string | null
           id?: string
           industry?: string | null
           legal_name?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
+          market_cap?: number | null
           name?: string
           notes?: string | null
           parent_organization_id?: string | null
@@ -3284,6 +3292,7 @@ export type Database = {
           sub_industry?: string | null
           tags?: string[] | null
           timezone?: string | null
+          total_funding?: number | null
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null

@@ -1,5 +1,15 @@
 // Map spreadsheet columns to CRM fields using LLM intelligence
 // This provides accurate column mapping for contact/people imports
+//
+// 2-Step Validation Flow:
+// 1. parseSpreadsheet → MapSpreadsheetColumns (this function) → saves to project_assets
+// 2. User reviews/confirms → importPeopleFromTable → creates CRM records
+//
+// The LLM analysis provides:
+// - column_mapping: Standard CRM field mappings
+// - suggested_facets: Custom columns (event signups, surveys) to import as facets
+// - unmapped_columns: Columns that couldn't be classified
+// - warnings: Data quality issues to review before import
 
 class SpreadsheetColumnMapping {
   // Name fields - IMPORTANT: Only set ONE of these based on the actual column structure
@@ -9,17 +19,35 @@ class SpreadsheetColumnMapping {
   firstname string? @description("Column containing FIRST NAME ONLY (e.g., 'John'). Only set if there's a separate first name column.")
   lastname string? @description("Column containing LAST NAME ONLY (e.g., 'Smith'). Only set if there's a separate last name column.")
 
-  // Contact info
+  // Primary contact info
   email string? @description("Column containing email address")
   phone string? @description("Column containing phone number")
-  linkedin string? @description("Column containing LinkedIn URL or profile")
+  website string? @description("Column containing personal or company website URL")
+  address string? @description("Column containing full mailing/street address")
+
+  // Social profiles
+  linkedin string? @description("Column containing LinkedIn URL or profile handle")
+  twitter string? @description("Column containing Twitter/X URL or @handle")
+  instagram string? @description("Column containing Instagram URL or handle")
+  tiktok string? @description("Column containing TikTok URL or handle")
 
   // Professional info
   title string? @description("Column containing job title (e.g., 'VP of Sales', 'Software Engineer')")
   company string? @description("Column containing company/organization name")
   role string? @description("Column containing role or job function (if different from title)")
   industry string? @description("Column containing industry or sector")
-  location string? @description("Column containing location, city, or region")
+  location string? @description("Column containing location, city, or region (not full address)")
+
+  // Company context
+  company_stage string? @description("Column containing company stage (Startup, Growth, Enterprise) or funding stage")
+  company_size string? @description("Column containing employee count or size range (1-10, 11-50, etc.)")
+
+  // Company metrics
+  company_url string? @description("Column containing company website URL or domain")
+  annual_revenue string? @description("Column containing company annual revenue (ARR, revenue, etc.)")
+  market_cap string? @description("Column containing company market capitalization")
+  funding_stage string? @description("Column containing funding stage (Seed, Series A, Series B, Pre-IPO, etc.)")
+  total_funding string? @description("Column containing total funding raised amount")
 
   // Segmentation
   segment string? @description("Column containing customer segment or type")
@@ -36,7 +64,8 @@ class SpreadsheetAnalysis {
 
 class SuggestedFacet {
   column string @description("The column name from the spreadsheet")
-  facet_kind string @description("Suggested facet kind slug (e.g., 'event', 'survey_response', 'tool')")
+  facet_kind string @description("Suggested facet kind slug: 'event' (event signups), 'survey_response' (form answers), 'preference' (interests/choices), 'tool' (software used), 'custom' (other)")
+  sample_values string[] @description("2-3 example values from the column to help understand the data")
   reason string @description("Why this column should be a facet")
 }
 
@@ -59,6 +88,27 @@ function MapSpreadsheetColumns(
     - "John Smith" = full name → use `name`
     - "John" in one column, "Smith" in another = separate → use `firstname` and `lastname`
 
+    SOCIAL PROFILE DETECTION:
+    - twitter: Twitter, X, @handle columns → look for twitter.com URLs or @handles
+    - instagram: Instagram, IG columns → look for instagram.com URLs or handles
+    - tiktok: TikTok columns → look for tiktok.com URLs or handles
+    - linkedin: LinkedIn columns → look for linkedin.com URLs
+
+    ADDRESS vs LOCATION:
+    - address: Full mailing address with street, city, zip (e.g., "123 Main St, NYC 10001")
+    - location: City, region, or country only (e.g., "New York", "US", "EMEA")
+
+    COMPANY CONTEXT:
+    - company_stage: Startup, Growth, Series A, Enterprise, etc.
+    - company_size: Employee counts or ranges (1-10, 50-200, etc.)
+
+    COMPANY METRICS (important for B2B data):
+    - company_url: Company website, domain, URL columns
+    - annual_revenue: Revenue, ARR, Annual Revenue columns → look for dollar amounts or revenue figures
+    - market_cap: Market Cap, Valuation columns → look for large dollar figures
+    - funding_stage: Funding Stage, Round columns → Seed, Series A, Series B, Pre-IPO, etc.
+    - total_funding: Total Funding, Funding Raised columns → look for dollar amounts
+
     Given these spreadsheet headers and sample data, analyze and map the columns.
 
     Headers: {{ headers }}
@@ -77,7 +127,10 @@ function MapSpreadsheetColumns(
     2. Map columns to the appropriate CRM fields based on BOTH header names AND actual values
     3. For name columns: Look at the VALUES to determine if it's full name or first/last
     4. Identify columns that don't fit standard fields but could be valuable as facets
-    5. Flag any data quality issues or ambiguities
+    5. For custom columns (event questions, survey answers, preferences), suggest as facets with:
+       - facet_kind: 'event' for event signups, 'survey_response' for form answers, 'preference' for interests, 'custom' for other
+       - sample_values: Include 2-3 example values from the data
+    6. Flag any data quality issues or ambiguities in warnings
 
     Return your analysis as a SpreadsheetAnalysis object.
 

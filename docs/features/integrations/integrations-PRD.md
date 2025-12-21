@@ -90,38 +90,130 @@ The "Content" page (`/a/:accountId/:projectId/interviews`) provides a unified vi
 
 The agent uses `parseSpreadsheet` tool which automatically saves to `project_assets` with `saveToAssets: true`.
 
-### CRM Import Flow
+### CRM Import Flow (2-Step Validation)
+
+The CRM import uses a **2-step validation flow** where data is first parsed and analyzed, then imported after user review.
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 1: Parse & Validate                                        │
+│                                                                 │
+│  User pastes CSV/TSV → parseSpreadsheet tool                   │
+│       ↓                                                        │
+│  MapSpreadsheetColumns (BAML/LLM) → Intelligent column mapping │
+│       ↓                                                        │
+│  Saved to project_assets → User can review/edit inline         │
+│       ↓                                                        │
+│  Returns: columnMapping, suggestedFacets, warnings             │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 2: Import to CRM                                           │
+│                                                                 │
+│  Agent asks "Import these as People?" → User confirms          │
+│       ↓                                                        │
+│  importPeopleFromTable with assetId + columnMapping            │
+│       ↓                                                        │
+│  Creates: People, Organizations, Facets                        │
+│       ↓                                                        │
+│  Returns: summary with counts and skip reasons                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Step 1: parseSpreadsheet
+
+Uses LLM (BAML `MapSpreadsheetColumns`) for intelligent column detection:
+
+**Standard Column Mappings**:
+
+| Category | Fields | Storage |
+|----------|--------|---------|
+| **Name** | name, firstname, lastname | Direct columns |
+| **Contact** | email, phone, website, address | `primary_email`, `primary_phone`, `contact_info` JSONB |
+| **Social** | linkedin, twitter, instagram, tiktok | `linkedin_url`, `contact_info` JSONB |
+| **Professional** | title, company, role, industry, location | Direct columns |
+| **Company Context** | company_stage, company_size | `organizations.company_type`, `organizations.size_range` |
+| **Segmentation** | segment, lifecycle_stage | Direct columns + facets |
+
+**LLM Analysis Output**:
+
+- `columnMapping`: Detected field → column mappings
+- `suggestedFacets`: Custom columns to import as facets (event signups, survey answers)
+- `mappingConfidence`: 0-1 confidence score
+- `mappingWarnings`: Data quality issues
+- `unmapped_columns`: Columns that couldn't be classified
+
+**Example suggestedFacets**:
+
+```json
+[
+  { "column": "Attended Workshop?", "facetKind": "event", "sampleValues": ["Yes", "No"], "reason": "Event attendance indicator" },
+  { "column": "Preferred Contact Method", "facetKind": "preference", "sampleValues": ["Email", "Phone"], "reason": "User preference" }
+]
+```
+
+#### Step 2: importPeopleFromTable
 
 **Tool**: `importPeopleFromTable`
 
-**Trigger**: When `parseSpreadsheet` returns `looksLikeContacts: true`, agent offers to import.
+**Input**:
+- `assetId`: ID of the project_asset from Step 1
+- `columnMapping`: LLM mapping from parseSpreadsheet (or auto-detected fallback)
+- `suggestedFacets`: Custom columns to import as facets
+- `mode`: `create` (skip duplicates) or `upsert` (update existing by email)
 
 **Features**:
 
-- **Auto-detect column mappings** - name, email, phone, company, title, etc.
-- **Organization creation** - creates `organizations` from company column
-- **Duplicate detection** - skips rows where email already exists
-- **People-Organization linking** - creates `people_organizations` junction records
+- **LLM-based column mapping** - Uses BAML analysis for accurate mapping
+- **Pattern matching fallback** - If LLM fails, uses keyword patterns
+- **Organization creation** - Creates `organizations` from company column
+- **Duplicate detection** - Skips or updates based on email match
+- **Flexible field storage** - Social profiles stored in `contact_info` JSONB
+- **Auto-facet creation** - suggestedFacets automatically created for each person
 
-**Column Detection Patterns**:
+**Flexible Storage (contact_info JSONB)**:
 
-| Field | Detected Columns |
-|-------|------------------|
-| name | name, fullname, contactname |
-| email | email, emailaddress, mail |
-| phone | phone, mobile, cell, telephone |
-| company | company, organization, org, employer, account |
-| title | title, jobtitle, position, designation |
-| linkedin | linkedin, linkedinurl |
+Social profiles and flexible fields are stored in the `people.contact_info` JSONB column:
+
+```json
+{
+  "twitter": "@johndoe",
+  "instagram": "johndoe",
+  "tiktok": "johndoe",
+  "website": "https://johndoe.com",
+  "address": "123 Main St, NYC 10001"
+}
+```
+
+**Facet System for Custom Fields**:
+
+Event signups, survey answers, and other custom data are stored as **person facets**:
+
+- `event`: Event signup or attendance
+- `survey_response`: Answer to a survey/form question
+- `preference`: User preference or interest
+- `custom`: Other imported attributes
+
+**Organization Fields** (stored directly on organizations table, not as facets):
+
+- `company_stage` → `organizations.company_type`
+- `company_size` → `organizations.size_range`
 
 **Example Flow**:
 
-1. User pastes CSV with contacts
-2. `parseSpreadsheet` parses and saves to `project_assets`
-3. Agent sees `looksLikeContacts: true` and asks "Import these as People?"
+1. User pastes CSV with contacts from event signup
+2. `parseSpreadsheet` parses, LLM detects columns:
+   - Standard: name, email, company
+   - Custom: "How did you hear about us?", "Interested in demo?"
+3. Agent shows preview: "Found 50 contacts with 2 custom fields. Import?"
 4. User confirms
-5. Agent calls `importPeopleFromTable` with `assetId`
-6. Tool creates People and Organizations, returns summary
+5. Agent calls `importPeopleFromTable` with `assetId` and `suggestedFacets`
+6. Tool creates:
+   - 50 People records
+   - 12 Organization records
+   - 100 Facet observations (2 per person)
 
 ### Opportunity Import Flow
 
