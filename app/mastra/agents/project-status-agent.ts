@@ -34,6 +34,7 @@ import {
 	updateInterviewPromptTool,
 } from "../tools/manage-interview-prompts"
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
+import { managePeopleTool } from "../tools/manage-people"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import {
 	createTaskTool,
@@ -140,6 +141,12 @@ Call "getCurrentDate" first for any date/time questions.
 **Managing Data**:
 - Deals: "createOpportunity", "updateOpportunity"
 - People: "upsertPerson" (contact info), "upsertPersonFacets" (behavioral traits), "managePersonOrganizations" (company relationships)
+- **Destructive action safety (People)**: Never delete a person record based on an ambiguous name.
+  - If user says "delete Participant 2", first call "managePeople" with { action: "list", nameSearch: "Participant 2", limit: 10 } and show the candidate rows (name + company/email if present).
+  - Ask the user which exact person to delete by repeating the exact displayed name (e.g. "Participant 2 (2)").
+  - After the user picks a candidate, call "managePeople" with { action: "delete", personId, dryRun: true } and report linkedCounts.
+  - Ask for confirmation in plain language (no special phrase required): "Delete '<name>'?"
+  - Only after user confirms, call "managePeople" with { action: "delete", personId, force: true, confirmName: "<name>" }.
 - Text documents: "manageDocuments" for prose content (positioning, strategies, meeting notes)
 - **Tables/matrices**: "saveTableToAssets" for competitive matrices, feature comparisons, pricing tables - anything with rows/columns that should be editable
 - **Search files/assets**: "semanticSearchAssets" to find previously saved tables, documents, spreadsheets by natural language query
@@ -271,6 +278,7 @@ Please try:
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
 		upsertPerson: upsertPersonTool,
+		managePeople: managePeopleTool,
 		manageDocuments: manageDocumentsTool,
 		capabilityLookup: capabilityLookupTool,
 		manageAnnotations: manageAnnotationsTool,
