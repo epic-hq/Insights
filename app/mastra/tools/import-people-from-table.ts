@@ -355,22 +355,28 @@ export const importPeopleFromTableTool = createTool({
   id: "importPeopleFromTable",
   description: `Import people and organizations from a parsed spreadsheet table into the CRM.
 
+CRITICAL - Column Mapping Rules:
+- columnMapping is OPTIONAL - the tool auto-detects columns from headers
+- You do NOT need to map every field - only map columns that exist in the spreadsheet
+- Fields not in the spreadsheet should be LEFT UNMAPPED (do not set them to null)
+- Unmapped fields are simply SKIPPED - they do NOT overwrite existing data
+- In upsert mode: ONLY fields with actual values are updated, existing data is preserved
+
 Use this tool when:
 - User has pasted contact/customer data and wants to import it
 - parseSpreadsheet returned looksLikeContacts: true
 - User explicitly asks to "import contacts", "add these people", "create CRM records"
 
-IMPORTANT - Handle duplicates properly:
-- Default mode="create" skips rows where email already exists in CRM
-- Use mode="upsert" to UPDATE existing people (match by email) and ADD NEW facets/data
-- ALWAYS ask user: "Some contacts already exist. Should I skip them or update them with new data?"
-- If many duplicates detected, recommend mode="upsert" to enrich existing records
+Handle duplicates:
+- Default mode="create" skips rows where email already exists
+- Use mode="upsert" to UPDATE existing people with new data from spreadsheet
+- In upsert mode: existing fields are PRESERVED unless the spreadsheet has a value for them
 
 The tool will:
-1. Auto-detect column mappings if not provided
+1. Auto-detect column mappings if not provided (RECOMMENDED - just omit columnMapping)
 2. Create organization records for unique companies
 3. Create or update people records linked to organizations
-4. In upsert mode: match by email and append new facets to existing people
+4. In upsert mode: match by email, update ONLY provided fields, preserve all other data
 5. Return summary with created/updated/skipped counts`,
   inputSchema: z.object({
     assetId: z
@@ -380,14 +386,14 @@ The tool will:
     columnMapping: columnMappingSchema
       .optional()
       .describe(
-        "Optional explicit column mappings. Auto-detected if not provided.",
+        "OPTIONAL - Leave undefined to use auto-detection (RECOMMENDED). If provided, only include fields that exist in your spreadsheet. Do NOT map fields to null - simply omit them. Unmapped fields are skipped, not overwritten.",
       ),
     mode: z
       .enum(["create", "upsert"])
       .optional()
       .default("create")
       .describe(
-        "'create' = skip existing people, 'upsert' = match by email and append facets to existing people",
+        "'create' = skip existing people, 'upsert' = match by email and UPDATE only fields that have values in spreadsheet (preserves existing data for unmapped/empty fields)",
       ),
     skipDuplicates: z
       .boolean()
@@ -629,7 +635,11 @@ The tool will:
       }> = [];
 
       consola.info(`[import-people] Starting import from asset ${assetId}`);
-      consola.info("[import-people] Detected mapping:", mapping);
+      // Log only non-undefined mappings for cleaner output
+      const activeMappings = Object.fromEntries(
+        Object.entries(mapping).filter(([_, v]) => v != null),
+      );
+      consola.info("[import-people] Active mappings:", activeMappings);
       consola.info("[import-people] Headers:", headers);
       consola.info(`[import-people] Total rows: ${rows.length}`);
 
@@ -693,17 +703,50 @@ The tool will:
         const email = getValue(row, mapping.email);
         let existingPersonId: string | undefined;
 
-        if (mode === "upsert" && email) {
-          // In upsert mode, find existing person by email
-          const { data: existingPerson } = (await (supabase as any)
-            .from("people")
-            .select("*")
-            .eq("project_id", projectId)
-            .ilike("primary_email", email)
-            .maybeSingle()) as { data: Person | null };
+        if (mode === "upsert") {
+          // In upsert mode, find existing person by email first
+          if (email) {
+            const { data: existingPerson } = (await (supabase as any)
+              .from("people")
+              .select("id")
+              .eq("project_id", projectId)
+              .ilike("primary_email", email)
+              .maybeSingle()) as { data: { id: string } | null };
 
-          if (existingPerson) {
-            existingPersonId = existingPerson.id;
+            if (existingPerson) {
+              existingPersonId = existingPerson.id;
+            }
+          }
+
+          // Fallback: if no email match, try to find by name + company
+          // This handles cases where the person exists but with a different/no email
+          if (!existingPersonId && (firstname || fullName)) {
+            const displayName =
+              fullName || `${firstname || ""} ${lastname || ""}`.trim();
+            const companyName = getValue(row, mapping.company);
+
+            // Build query to match by name (using name_hash which is lowercase)
+            let query = (supabase as any)
+              .from("people")
+              .select("id")
+              .eq("project_id", projectId)
+              .ilike("name", displayName);
+
+            // Also match company if provided
+            if (companyName) {
+              query = query.ilike("company", companyName);
+            }
+
+            const { data: existingByName } = (await query.maybeSingle()) as {
+              data: { id: string } | null;
+            };
+
+            if (existingByName) {
+              existingPersonId = existingByName.id;
+              consola.info(
+                `[import-people] Row ${i}: Found existing person by name+company: ${displayName}`,
+              );
+            }
           }
         } else if (
           skipDuplicates &&
@@ -804,11 +847,103 @@ The tool will:
         if (address) contactInfo.address = address;
 
         if (existingPersonId) {
-          // Upsert mode: update existing person
+          // Upsert mode: update existing person with only non-null fields from spreadsheet
           personId = existingPersonId;
+
+          // Build update object with only fields that have values in the spreadsheet
+          // This ensures we don't overwrite existing data with null values
+          const updateFields: Record<string, unknown> = {};
+
+          // Only update name fields if they have values
+          if (firstname) updateFields.firstname = firstname;
+          if (lastname) updateFields.lastname = lastname;
+
+          // Contact info - only update if column exists in mapping AND has a value
+          if (mapping.phone) {
+            const phone = getValue(row, mapping.phone);
+            if (phone) updateFields.primary_phone = phone;
+          }
+          if (mapping.linkedin) {
+            const linkedin = getValue(row, mapping.linkedin);
+            if (linkedin) updateFields.linkedin_url = linkedin;
+          }
+
+          // Professional info
+          if (mapping.title) {
+            const title = getValue(row, mapping.title);
+            if (title) updateFields.title = title;
+          }
+          if (mapping.role) {
+            const role = getValue(row, mapping.role);
+            if (role) updateFields.role = role;
+          }
+          if (mapping.industry) {
+            const industry = getValue(row, mapping.industry);
+            if (industry) updateFields.industry = industry;
+          }
+          if (mapping.location) {
+            const location = getValue(row, mapping.location);
+            if (location) updateFields.location = location;
+          }
+
+          // Segmentation
+          if (mapping.segment) {
+            const segment = getValue(row, mapping.segment);
+            if (segment) updateFields.segment = segment;
+          }
+          if (mapping.lifecycle_stage) {
+            const lifecycleStage = getValue(row, mapping.lifecycle_stage);
+            if (lifecycleStage) updateFields.lifecycle_stage = lifecycleStage;
+          }
+
+          // Company name - update if present
+          if (companyName) updateFields.company = companyName;
+
+          // Update organization link if we have one
+          if (organizationId)
+            updateFields.default_organization_id = organizationId;
+
+          // Merge contact_info with existing values (don't overwrite)
+          if (Object.keys(contactInfo).length > 0) {
+            // Fetch existing contact_info to merge
+            const { data: existingPersonData } = await (supabase as any)
+              .from("people")
+              .select("contact_info")
+              .eq("id", existingPersonId)
+              .single();
+
+            const existingContactInfo =
+              (existingPersonData?.contact_info as Record<string, string>) ||
+              {};
+            // Merge: new values take precedence, but don't remove existing ones
+            updateFields.contact_info = {
+              ...existingContactInfo,
+              ...contactInfo,
+            };
+          }
+
+          // Only update if we have fields to update
+          if (Object.keys(updateFields).length > 0) {
+            const { error: updateError } = await (supabase as any)
+              .from("people")
+              .update(updateFields)
+              .eq("id", existingPersonId);
+
+            if (updateError) {
+              consola.warn(
+                `[import-people] Row ${i}: Failed to update person ${displayName}:`,
+                updateError,
+              );
+            } else {
+              consola.info(
+                `[import-people] Row ${i}: Updated person ${displayName} with ${Object.keys(updateFields).length} fields`,
+              );
+            }
+          }
+
           peopleUpdated++;
           consola.info(
-            `[import-people] Row ${i}: Updating existing person ${displayName} (${existingPersonId})`,
+            `[import-people] Row ${i}: Processed existing person ${displayName} (${existingPersonId})`,
           );
         } else {
           // Create new person

@@ -369,6 +369,32 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
           .nullable()
           .optional()
           .describe("Column with company size"),
+        // Company metrics (all optional - not required for import)
+        company_url: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Column with company website URL"),
+        annual_revenue: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Column with annual revenue"),
+        market_cap: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Column with market capitalization"),
+        funding_stage: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Column with funding stage (Seed, Series A, etc.)"),
+        total_funding: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Column with total funding amount"),
         // Segmentation
         segment: z
           .string()
@@ -383,7 +409,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
       })
       .optional()
       .describe(
-        "LLM-analyzed column mapping for CRM import - USE THIS for importPeopleFromTable",
+        "LLM-analyzed column mapping for CRM import. ONLY contains fields that were detected in the spreadsheet - unmapped fields are OMITTED (not set to null). Pass this directly to importPeopleFromTable.",
       ),
     suggestedFacets: z
       .array(
@@ -586,40 +612,42 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
           );
 
           // Convert the mapping to the expected format
-          columnMapping = {
-            // Name fields
-            name: analysis.column_mapping.name || null,
-            firstname: analysis.column_mapping.firstname || null,
-            lastname: analysis.column_mapping.lastname || null,
-            // Primary contact
-            email: analysis.column_mapping.email || null,
-            phone: analysis.column_mapping.phone || null,
-            website: analysis.column_mapping.website || null,
-            address: analysis.column_mapping.address || null,
-            // Social profiles
-            linkedin: analysis.column_mapping.linkedin || null,
-            twitter: analysis.column_mapping.twitter || null,
-            instagram: analysis.column_mapping.instagram || null,
-            tiktok: analysis.column_mapping.tiktok || null,
-            // Professional info
-            title: analysis.column_mapping.title || null,
-            company: analysis.column_mapping.company || null,
-            role: analysis.column_mapping.role || null,
-            industry: analysis.column_mapping.industry || null,
-            location: analysis.column_mapping.location || null,
-            // Company context
-            company_stage: analysis.column_mapping.company_stage || null,
-            company_size: analysis.column_mapping.company_size || null,
-            // Company metrics
-            company_url: analysis.column_mapping.company_url || null,
-            annual_revenue: analysis.column_mapping.annual_revenue || null,
-            market_cap: analysis.column_mapping.market_cap || null,
-            funding_stage: analysis.column_mapping.funding_stage || null,
-            total_funding: analysis.column_mapping.total_funding || null,
-            // Segmentation
-            segment: analysis.column_mapping.segment || null,
-            lifecycle_stage: analysis.column_mapping.lifecycle_stage || null,
+          // IMPORTANT: Only include fields that have actual mappings
+          // Do NOT include null values - omit unmapped fields entirely
+          // This ensures importPeopleFromTable only updates fields present in the spreadsheet
+          const rawMapping: Record<string, string | undefined> = {
+            name: analysis.column_mapping.name,
+            firstname: analysis.column_mapping.firstname,
+            lastname: analysis.column_mapping.lastname,
+            email: analysis.column_mapping.email,
+            phone: analysis.column_mapping.phone,
+            website: analysis.column_mapping.website,
+            address: analysis.column_mapping.address,
+            linkedin: analysis.column_mapping.linkedin,
+            twitter: analysis.column_mapping.twitter,
+            instagram: analysis.column_mapping.instagram,
+            tiktok: analysis.column_mapping.tiktok,
+            title: analysis.column_mapping.title,
+            company: analysis.column_mapping.company,
+            role: analysis.column_mapping.role,
+            industry: analysis.column_mapping.industry,
+            location: analysis.column_mapping.location,
+            company_stage: analysis.column_mapping.company_stage,
+            company_size: analysis.column_mapping.company_size,
+            company_url: analysis.column_mapping.company_url,
+            annual_revenue: analysis.column_mapping.annual_revenue,
+            market_cap: analysis.column_mapping.market_cap,
+            funding_stage: analysis.column_mapping.funding_stage,
+            total_funding: analysis.column_mapping.total_funding,
+            segment: analysis.column_mapping.segment,
+            lifecycle_stage: analysis.column_mapping.lifecycle_stage,
           };
+          // Filter out undefined/null values - only keep actual mappings
+          columnMapping = Object.fromEntries(
+            Object.entries(rawMapping).filter(
+              ([_, v]) => v != null && v !== "",
+            ),
+          ) as Record<string, string>;
           suggestedFacets = analysis.suggested_facets.map((f) => ({
             column: f.column,
             facetKind: f.facet_kind,
