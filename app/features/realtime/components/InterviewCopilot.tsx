@@ -572,16 +572,16 @@ export function InterviewCopilot({
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch {}
+				} catch { }
 			}
-		} catch {}
+		} catch { }
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch {}
+		} catch { }
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -609,7 +609,7 @@ export function InterviewCopilot({
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch {}
+				} catch { }
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -662,18 +662,18 @@ export function InterviewCopilot({
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch {}
+							} catch { }
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch {}
+				} catch { }
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch {}
+			} catch { }
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -686,7 +686,7 @@ export function InterviewCopilot({
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch {}
+			} catch { }
 
 			// finalize or abort recording
 			void (async () => {
@@ -706,13 +706,13 @@ export function InterviewCopilot({
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									;(rec as any).onstop = handler
+									; (rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch {}
+								} catch { }
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -1147,7 +1147,6 @@ export function InterviewCopilot({
 									</div>
 									<div>
 										<p className="font-medium text-slate-900 dark:text-white">Ready to record</p>
-										<p className="text-muted-foreground text-sm">Click start when ready</p>
 									</div>
 								</>
 							)}
@@ -1234,17 +1233,17 @@ export function InterviewCopilot({
 				<div className="grid gap-6 lg:grid-cols-2">
 					{/* Questions - Only show in interview mode */}
 					{mode === "interview" && (
-						<div className="rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80">
-							<div className="max-h-96 overflow-y-auto">
-								<MinimalQuestionView projectId={projectId} interviewId={interviewId} />
-							</div>
+						// <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80">
+						<div className="max-h-86 overflow-y-auto">
+							<MinimalQuestionView projectId={projectId} interviewId={interviewId} />
 						</div>
+						// </div>
 					)}
 
 					{/* Notes */}
 					<div
 						className={cn(
-							"rounded-3xl border border-slate-200/60 bg-white/80 p-6 shadow-slate-900/5 shadow-xl backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/80",
+							"p-3",
 							mode === "notes" && "lg:col-span-2"
 						)}
 					>
