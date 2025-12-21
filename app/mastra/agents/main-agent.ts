@@ -4,6 +4,7 @@ import { LibSQLStore } from "@mastra/libsql"
 import { Memory } from "@mastra/memory"
 import z from "zod"
 import { manageOrganizationsTool } from "../tools/manage-organizations"
+import { managePeopleTool } from "../tools/manage-people"
 import { upsightTool } from "../tools/upsight-tool"
 
 export const AgentState = z.object({
@@ -42,6 +43,12 @@ export const mainAgent = new Agent({
       4. Share project status information with the frontend through agent state
       5. Track critical "must do" items that need immediate attention
       6. Manage organizations - create, update, delete, and retrieve company/organization records
+      7. **Destructive action safety (People)**: Never delete a person record based on an ambiguous name.
+         - If user says "delete Participant 2", first call "manage_people" with { action: "list", nameSearch: "Participant 2", limit: 10 } and show candidate rows.
+         - Ask the user which exact person to delete by repeating the exact displayed name.
+         - After user chooses, call "manage_people" with { action: "delete", personId, dryRun: true } and report linkedCounts.
+         - Ask for confirmation in plain language (no special phrase required): "Delete '<name>'?"
+         - Only after user confirms, call "manage_people" with { action: "delete", personId, force: true, confirmName: "<name>" }.
 
       When users ask about project information:
       - Use the upsight_search tool to gather comprehensive project data
@@ -66,6 +73,7 @@ export const mainAgent = new Agent({
 	tools: {
 		upsight_search: upsightTool,
 		manage_organizations: manageOrganizationsTool,
+		manage_people: managePeopleTool,
 	},
 	memory: new Memory({
 		storage: new LibSQLStore({
