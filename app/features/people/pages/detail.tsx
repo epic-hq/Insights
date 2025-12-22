@@ -145,7 +145,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         relationship_type: link.relationship_type,
       }));
 
-    // Fetch survey responses for this person via evidence.created_by (set during import)
+    // Fetch survey responses for this person via direct person_id on evidence_facet
     const { data: surveyResponses } = await supabase
       .from("evidence_facet")
       .select(
@@ -157,7 +157,6 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				evidence!inner (
 					id,
 					interview_id,
-					created_by,
 					interviews!inner (
 						id,
 						title,
@@ -168,8 +167,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       )
       .eq("kind_slug", "survey_response")
       .eq("project_id", projectId)
-      // Filter by person_id stored in evidence.created_by during survey import
-      .eq("evidence.created_by", personId)
+      .eq("person_id", personId) // Direct filter - cleaner than going through evidence_people
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -591,10 +589,11 @@ export default function PersonDetail() {
   const allInterviewLinks = (person.interview_people || []).filter(
     (ip) => ip.interviews?.id,
   );
-  // Split into conversations (interviews) and notes
+  // Split into conversations (interviews), notes, and imported data
   const interviewLinks = allInterviewLinks.filter(
     (ip) =>
       ip.interviews?.source_type !== "note" &&
+      ip.interviews?.source_type !== "survey_response" &&
       ip.interviews?.media_type !== "voice_memo",
   );
   const noteLinks = allInterviewLinks.filter(
@@ -710,10 +709,13 @@ export default function PersonDetail() {
   }, [personFacets, catalog.kinds]);
 
   const facetLensGroups = useMemo(() => {
-    return facetsGrouped.map((group) => ({
-      ...group,
-      summary: facetSummaryMap.get(group.kind_slug)?.summary ?? null,
-    }));
+    // Filter out survey_response - shown in dedicated "Imported Data" section instead
+    return facetsGrouped
+      .filter((group) => group.kind_slug !== "survey_response")
+      .map((group) => ({
+        ...group,
+        summary: facetSummaryMap.get(group.kind_slug)?.summary ?? null,
+      }));
   }, [facetsGrouped, facetSummaryMap]);
 
   const availableFacetsByKind = useMemo(() => {
@@ -1152,7 +1154,7 @@ export default function PersonDetail() {
               <section className="space-y-3">
                 <h2 className="flex items-center gap-2 font-semibold text-foreground text-lg">
                   <ClipboardList className="h-5 w-5" />
-                  Survey Responses
+                  Imported Data
                 </h2>
                 <div className="space-y-4">
                   {surveyResponses.map((survey) => (
@@ -1254,7 +1256,7 @@ export default function PersonDetail() {
               </Card>
 
               {contactInfo.length > 0 && (
-                <Card className="max-w-sm">
+                <Card className="max-w-sm" surface="">
                   <CardHeader>
                     <CardTitle>Contact & Social</CardTitle>
                   </CardHeader>

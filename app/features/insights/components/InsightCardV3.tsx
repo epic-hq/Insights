@@ -24,7 +24,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 
 	return (
 		<>
-			<Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setSelected(insight)}>
+			<Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setSelected(insight)} surface="elevated">
 				<CardContent className="p-4">
 					<div className="mb-2 flex items-start justify-between gap-2">
 						<h3 className="font-semibold text-foreground">{insight.name || "Untitled Theme"}</h3>

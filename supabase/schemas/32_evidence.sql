@@ -131,6 +131,7 @@ create table if not exists evidence_facet (
   evidence_id uuid not null references evidence(id) on delete cascade,
   account_id uuid not null,
   project_id uuid references projects(id) on delete cascade,
+  person_id uuid references people(id) on delete set null, -- Direct link to person (e.g., for survey_response facets where each Q&A belongs to one person)
   kind_slug text not null,
   facet_account_id integer not null references facet_account(id) on delete cascade,
   label text not null,
@@ -149,6 +150,7 @@ create table if not exists evidence_facet (
 create index if not exists idx_evidence_facet_evidence_id on evidence_facet(evidence_id);
 create index if not exists idx_evidence_facet_account_id  on evidence_facet(account_id);
 create index if not exists idx_evidence_facet_project_id  on evidence_facet(project_id);
+create index if not exists idx_evidence_facet_person_id   on evidence_facet(person_id);
 create index if not exists idx_evidence_facet_kind_slug   on evidence_facet(kind_slug);
 create index if not exists idx_evidence_facet_facet_account_id on evidence_facet(facet_account_id);
 

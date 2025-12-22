@@ -52,7 +52,7 @@ export function DetailPageHeader({
 			<Badge variant="secondary" className="w-fit gap-1 text-xs">
 				<Icon className="h-3.5 w-3.5" /> {typeLabel}
 			</Badge>
-			<Card className="mb-8 border border-border/80">
+			<Card className="mb-8 border border-border/80" surface="gradient">
 				<CardHeader className="space-y-3">
 					<div className="flex items-center gap-4">
 						{avatar && <div className="flex-shrink-0">{avatar}</div>}

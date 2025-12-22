@@ -284,11 +284,11 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 						<div className="grid grid-cols-3 gap-3 text-sm">
 							{/* Evidence Count - Most Important */}
 							<div className="flex items-center gap-1.5">
-								<FileText className="h-3.5 w-3.5 text-purple-600" />
-								<span className="font-medium text-purple-600">
+								<FileText className="h-3.5 w-3.5 text-muted-foreground" />
+								<span className="font-medium text-muted-foreground">
 									{interview.evidenceCount || interview.insightCount || 0}
 								</span>
-								<span className="text-gray-500 text-xs">evidence</span>
+								<span className="text-muted-foreground text-xs">evidence</span>
 							</div>
 
 							{/* Duration */}

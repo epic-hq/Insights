@@ -3,22 +3,22 @@
  * GET /api/evidence/:evidenceId
  */
 
-import type { LoaderFunctionArgs } from "react-router"
-import { userContext } from "~/server/user-context"
+import type { LoaderFunctionArgs } from "react-router";
+import { userContext } from "~/server/user-context";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const { supabase } = context.get(userContext)
-	const { evidenceId } = params
+  const { supabase } = context.get(userContext);
+  const { evidenceId } = params;
 
-	if (!evidenceId) {
-		return Response.json({ error: "Missing evidenceId" }, { status: 400 })
-	}
+  if (!evidenceId) {
+    return Response.json({ error: "Missing evidenceId" }, { status: 400 });
+  }
 
-	// Fetch evidence with interview data
-	const { data: evidence, error } = await supabase
-		.from("evidence")
-		.select(
-			`
+  // Fetch evidence with interview data
+  const { data: evidence, error } = await supabase
+    .from("evidence")
+    .select(
+      `
 			id,
 			verbatim,
 			gist,
@@ -36,53 +36,60 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				media_url,
 				thumbnail_url
 			)
-		`
-		)
-		.eq("id", evidenceId)
-		.single()
+		`,
+    )
+    .eq("id", evidenceId)
+    .single();
 
-	if (error || !evidence) {
-		return Response.json({ error: "Evidence not found" }, { status: 404 })
-	}
+  if (error || !evidence) {
+    return Response.json({ error: "Evidence not found" }, { status: 404 });
+  }
 
-	// Fetch people separately
-	const { data: peopleData } = await supabase
-		.from("evidence_people")
-		.select(
-			`
+  // Fetch people separately
+  const { data: peopleData } = await supabase
+    .from("evidence_people")
+    .select(
+      `
 			role,
 			people:person_id!inner(
 				id,
 				name
 			)
-		`
-		)
-		.eq("evidence_id", evidenceId)
+		`,
+    )
+    .eq("evidence_id", evidenceId);
 
-	// Fetch facets
-	const { data: facetData } = await supabase
-		.from("evidence_facet")
-		.select("kind_slug, label")
-		.eq("evidence_id", evidenceId)
+  // Fetch facets with their owners via person_id
+  const { data: facetData } = await supabase
+    .from("evidence_facet")
+    .select(
+      `
+			kind_slug,
+			label,
+			person:person_id(id, name)
+		`,
+    )
+    .eq("evidence_id", evidenceId);
 
-	// Transform people data
-	const people = (peopleData ?? []).map((row: any) => ({
-		id: row.people?.id,
-		name: row.people?.name,
-		role: row.role,
-	}))
+  // Transform people data (participants with roles)
+  const people = (peopleData ?? []).map((row: any) => ({
+    id: row.people?.id,
+    name: row.people?.name,
+    role: row.role,
+  }));
 
-	// Transform facets
-	const facets = (facetData ?? []).map((row: any) => ({
-		kind_slug: row.kind_slug,
-		label: row.label,
-	}))
+  // Transform facets (with owner info)
+  const facets = (facetData ?? []).map((row: any) => ({
+    kind_slug: row.kind_slug,
+    label: row.label,
+    person: row.person ? { id: row.person.id, name: row.person.name } : null,
+  }));
 
-	return Response.json({
-		evidence: {
-			...evidence,
-			people,
-			facets,
-		},
-	})
+  return Response.json({
+    evidence: {
+      ...evidence,
+      people,
+      facets,
+    },
+  });
 }

@@ -526,11 +526,14 @@ The tool will:
         (fc) => fc.facetKind !== "survey_response",
       );
 
-      // Get accountId and projectId from runtime context
+      // Get accountId, projectId, and userId from runtime context
       const accountId = context?.requestContext?.get?.("account_id") as
         | string
         | undefined;
       const projectId = context?.requestContext?.get?.("project_id") as
+        | string
+        | undefined;
+      const userId = context?.requestContext?.get?.("user_id") as
         | string
         | undefined;
 
@@ -776,32 +779,38 @@ The tool will:
             fullName || `${firstname || ""} ${lastname || ""}`.trim();
           const companyName = getValue(row, mapping.company);
 
-          // Build query to match by name (case insensitive)
-          // Use account_id to match the unique constraint scope
-          const baseQuery = (supabase as any)
-            .from("people")
-            .select("id, project_id")
-            .eq("account_id", accountId)
-            .ilike("name", displayName);
-
           let existingByName: { id: string; project_id: string } | null = null;
 
           if (companyName) {
             // Match by name + specific company
-            const { data } = await baseQuery
+            const { data } = await (supabase as any)
+              .from("people")
+              .select("id, project_id")
+              .eq("account_id", accountId)
+              .ilike("name", displayName)
               .ilike("company", companyName)
               .maybeSingle();
             existingByName = data;
           } else {
             // Match by name + empty/null company
             // The constraint uses COALESCE(lower(company), '') so we need to match both null and empty string
-            const { data: withNull } = await baseQuery
+            // NOTE: Must create separate queries - Supabase query builder MUTATES the object!
+            const { data: withNull } = await (supabase as any)
+              .from("people")
+              .select("id, project_id")
+              .eq("account_id", accountId)
+              .ilike("name", displayName)
               .is("company", null)
               .maybeSingle();
+
             if (withNull) {
               existingByName = withNull;
             } else {
-              const { data: withEmpty } = await baseQuery
+              const { data: withEmpty } = await (supabase as any)
+                .from("people")
+                .select("id, project_id")
+                .eq("account_id", accountId)
+                .ilike("name", displayName)
                 .eq("company", "")
                 .maybeSingle();
               existingByName = withEmpty;
@@ -1255,10 +1264,13 @@ The tool will:
               source_type: "survey_response",
               interview_type: "survey",
               status: "ready", // Valid enum values: draft,scheduled,uploading,uploaded,transcribing,transcribed,processing,ready,tagged,archived,error
+              created_by: userId || null, // Track who imported this survey
               processing_metadata: {
                 source_asset_id: assetId,
                 import_date: new Date().toISOString(),
-                survey_columns: surveyColumns.map((sc) => sc.column),
+                survey_columns: [
+                  ...new Set(surveyColumns.map((sc) => sc.column)),
+                ], // Deduplicate
               },
             })
             .select("id")
@@ -1346,8 +1358,10 @@ The tool will:
                 source_type: string;
                 method: string;
                 modality: string;
-                created_by: string; // Use created_by to store person_id for filtering
               }> = [];
+
+              // Track which person each evidence row belongs to (by index)
+              const evidencePersonIds: string[] = [];
 
               const personRowDataMap = new Map<
                 string,
@@ -1382,8 +1396,8 @@ The tool will:
                     source_type: "primary",
                     method: "survey",
                     modality: "qual",
-                    created_by: detail.personId, // Store person_id for filtering survey responses
                   });
+                  evidencePersonIds.push(detail.personId); // Track person for evidence_people link
 
                   personRowDataMap.set(detail.personId, {
                     rowIndex: detail.rowIndex,
@@ -1411,11 +1425,43 @@ The tool will:
                     (e: { id: string }) => e.id,
                   );
 
+                  // Create evidence_people links (proper junction table for evidence<->person relationship)
+                  const evidencePeopleRows = evidenceIds.map(
+                    (evidenceId, idx) => ({
+                      evidence_id: evidenceId,
+                      person_id: evidencePersonIds[idx],
+                      account_id: accountId,
+                      project_id: projectId,
+                      role: "respondent",
+                    }),
+                  );
+
+                  if (evidencePeopleRows.length > 0) {
+                    const { error: epError } = await (supabase as any)
+                      .from("evidence_people")
+                      .upsert(evidencePeopleRows, {
+                        onConflict: "evidence_id,person_id,account_id",
+                      });
+
+                    if (epError) {
+                      consola.warn(
+                        "[import-people] Failed to link evidence to people:",
+                        epError,
+                      );
+                    } else {
+                      consola.info(
+                        `[import-people] Created ${evidencePeopleRows.length} evidence_people links`,
+                      );
+                    }
+                  }
+
                   // Create evidence_facet records for each Q&A pair
+                  // person_id links directly to the person who answered (simpler than going through evidence_people)
                   const evidenceFacetRows: Array<{
                     evidence_id: string;
                     account_id: string;
                     project_id: string;
+                    person_id: string; // Direct link to person who answered
                     kind_slug: string;
                     facet_account_id: number;
                     label: string;
@@ -1463,6 +1509,7 @@ The tool will:
                             evidence_id: evidenceId,
                             account_id: accountId,
                             project_id: projectId,
+                            person_id: detail.personId, // Direct link to person who answered
                             kind_slug: "survey_response",
                             facet_account_id: facetAccountId,
                             label: surveyCol.column, // Question

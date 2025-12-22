@@ -42,7 +42,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			},
 			{
 				key: "content",
-				title: "Content",
+				title: "Conversations",
 				description: "Add conversations, notes, docs, or recordings.",
 				icon: File,
 				to: (routes) => routes.interviews.index(),

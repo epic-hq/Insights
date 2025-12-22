@@ -189,12 +189,19 @@ Social profiles and flexible fields are stored in the `people.contact_info` JSON
 
 **Facet System for Custom Fields**:
 
-Event signups, survey answers, and other custom data are stored as **person facets**:
+Custom data is stored as facets, but the storage location depends on the type:
 
+**Person Facets** (stored in `person_facet` table - direct attributes):
 - `event`: Event signup or attendance
-- `survey_response`: Answer to a survey/form question
 - `preference`: User preference or interest
 - `custom`: Other imported attributes
+
+**Survey Responses** (stored in `evidence_facet` table - evidence-linked Q&A):
+- `survey_response`: Question + Answer pairs stored as `evidence_facet` records
+- `evidence_facet.label` = the question
+- `evidence_facet.quote` = the answer
+- `evidence_facet.person_id` = direct link to the person who answered
+- This enables semantic search on Q&A pairs and links to interview/evidence provenance
 
 **Organization Fields** (stored directly on organizations table, not as facets):
 

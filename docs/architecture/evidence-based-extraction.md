@@ -559,6 +559,172 @@ const synthesized = {
 }
 ```
 
+## Linking Evidence & Facets to People
+
+### Target Model (Unified)
+
+All facets use `evidence_facet.person_id` for direct attribution:
+
+```mermaid
+erDiagram
+    interviews ||--o{ interview_people : "participants"
+    interviews ||--o{ evidence : "contains"
+    interview_people }o--|| people : "is"
+
+    evidence ||--o{ evidence_people : "involved"
+    evidence ||--o{ evidence_facet : "extracted from"
+    evidence_people }o--|| people : "is"
+
+    evidence_facet }o--o| people : "person_id (PRIMARY)"
+
+    evidence_facet {
+        uuid id PK
+        uuid evidence_id FK
+        uuid person_id FK "WHO this facet belongs to"
+        string kind_slug
+        string label
+        string quote
+    }
+```
+
+**Key principle**: `evidence_facet.person_id` = "Whose facet is this?" (direct, unambiguous)
+
+```mermaid
+flowchart LR
+    subgraph "Query: Get person's facets"
+        EF[evidence_facet] -->|person_id| P[people]
+    end
+
+    subgraph "Query: Get all people in evidence"
+        E[evidence] --> EP[evidence_people] --> P2[people]
+    end
+```
+
+### Two Tables, Two Purposes
+
+| Table | Purpose | Cardinality |
+|-------|---------|-------------|
+| `evidence_facet.person_id` | "Who does this facet belong to?" | 1:1 (one owner per facet) |
+| `evidence_people` | "Who was involved in this evidence?" | 1:many (multiple participants) |
+
+### Content Type Examples
+
+**Conversation:**
+```
+evidence: "John mentioned the API is slow"
+  │
+  ├── evidence_people: John (speaker), Mary (listener)  ← All participants
+  │
+  └── evidence_facet: kind=pain, label="API performance"
+          └── person_id: John  ← Who expressed this pain
+```
+
+**Survey:**
+```
+evidence: "Q: Biggest challenge? A: Slow deployments"
+  │
+  ├── evidence_people: Alice (respondent)  ← Participant
+  │
+  └── evidence_facet: kind=survey_response, label="Biggest challenge?", quote="Slow deployments"
+          └── person_id: Alice  ← Who answered
+```
+
+### Unified Query Pattern
+
+```sql
+-- Get all pains for a specific person (works for BOTH conversations and surveys)
+SELECT ef.label, ef.quote, ef.kind_slug
+FROM evidence_facet ef
+WHERE ef.person_id = $personId
+  AND ef.kind_slug = 'pain';
+
+-- Get all people involved in an evidence record (context query)
+SELECT p.name, ep.role
+FROM evidence_people ep
+JOIN people p ON ep.person_id = p.id
+WHERE ep.evidence_id = $evidenceId;
+```
+
+### Migration Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Schema: `evidence_facet.person_id` | ✅ Done | Column added, indexed, FK to people |
+| Backfill existing facets | ✅ Done | 5,547 of 5,865 facets backfilled from `evidence_people` |
+| Survey import | ✅ Done | Sets `person_id` on each facet |
+| Conversation extraction | ✅ Done | Sets `person_id` = speaker after person resolution |
+| Query: `generatePainMatrix` | 🔲 Optional | Can simplify from 2 queries to 1 |
+| Query: `generatePersonas` | 🔲 Optional | Can simplify from 2 queries to 1 |
+| UI: Person detail page | ✅ Done | Uses `person_id` directly |
+
+### Migration Scope
+
+**Completed (extraction pipeline):**
+```
+src/trigger/interview/v2/extractEvidenceCore.ts (~lines 1934-1986)
+  └── Sets person_id = speaker's person_id on each evidence_facet row
+  └── Happens after person resolution so personIdByKey is populated
+```
+
+**Optional (query simplification):**
+```
+app/features/lenses/services/generatePainMatrix.server.ts
+  └── Currently: 2 queries (evidence_facet + evidence_people)
+  └── After: 1 query with person_id join
+  └── ~30 lines simplified
+
+app/features/personas/services/generatePersonas.server.ts
+  └── Currently: 2 queries (evidence_people + evidence_facet)
+  └── After: 1 query with person_id filter
+  └── ~20 lines simplified
+```
+
+**No change needed:**
+```
+app/features/themes/db.autoThemes.server.ts      - Doesn't need person attribution
+app/features/evidence/pages/index.tsx            - Doesn't need person attribution
+app/features/evidence/pages/evidenceDetail.tsx   - Shows evidence, not person-scoped
+```
+
+**Completed effort:** ~50 lines across extraction pipeline + backfill migration
+**Optional remaining:** ~50 lines for query simplification (can be done incrementally)
+
+### Design Confidence: 85-90%
+
+**Why this model is better:**
+1. ✅ Single query pattern for "get person's facets" everywhere
+2. ✅ Explicit attribution - no ambiguity about whose facet it is
+3. ✅ Simpler mental model - facet knows its owner directly
+4. ✅ Query efficiency - no junction table traversal
+
+**Remaining edge cases (exist in BOTH models):**
+1. Multi-speaker quotes: "John and Mary both complained" → We pick primary speaker
+2. Reported speech: "John said Mary is frustrated" → Facet attributed to John (speaker)
+3. Unknown speaker: → `person_id` = NULL (same as no `evidence_people` link)
+
+**Why not 95%+:**
+- Edge cases above require smarter extraction logic regardless of model
+- `evidence_people` still needed for "all participants" queries
+- Some redundancy between `person_id` and `evidence_people` for single-speaker evidence
+
+### Future: Multi-Person Disambiguation
+
+The current model attributes each facet to a single person. Multi-person scenarios (e.g., "John and Mary both expressed frustration with the API") are theoretical but could exist in practice.
+
+**Current behavior:** We pick the primary speaker and attribute the facet to them.
+
+**Future enhancement:** With smarter extraction prompts, we could:
+1. Detect when multiple people express the same sentiment
+2. Create separate evidence_facet rows for each person
+3. Link them via `related_evidence_ids` or a shared `group_id`
+
+This would require:
+- Updated BAML prompts to detect multi-person expressions
+- Extraction logic to fan out into multiple facet rows
+- UI to show "shared" facets appropriately
+
+The `evidence_facet.person_id` model supports this naturally - each facet simply gets its own `person_id`. The junction table `evidence_people` continues to track all participants in the source evidence for context.
+
 ## Key Takeaway
 
 > **observations_and_notes is sparse BY DESIGN**

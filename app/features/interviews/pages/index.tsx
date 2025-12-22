@@ -118,7 +118,7 @@ function TableMediaPreview({
 }
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Content | Insights" }, { name: "description", content: "Conversations, notes, and files" }]
+	return [{ title: "Conversations, Notes & Research | Insights" }, { name: "description", content: "Conversations, notes, and files" }]
 }
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -172,11 +172,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+		; (rows || []).forEach((interview) => {
+			const primaryParticipant = interview.interview_people?.[0]
+			const segment = primaryParticipant?.people?.segment || "Unknown"
+			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+		})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -223,7 +223,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const routes = useProjectRoutes(projectPath)
 	const [searchParams, setSearchParams] = useSearchParams()
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
-	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("all")
+	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("conversations")
 	const [fileSearchQuery, setFileSearchQuery] = useState("")
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const _fetcher = useFetcher()
@@ -377,7 +377,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							<div className="space-y-1">
 								<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
 									<MessagesSquare />
-									Content
+									Conversations, Notes & Research
 								</h1>
 							</div>
 
@@ -516,16 +516,16 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 										</p>
 										<ul className="space-y-1">
 											<li>
-												• <strong>Ask questions</strong> — "What trends do you see in my customer list?"
+												• <strong>Import contacts</strong> and survey results and add them to the internal CRM
 											</li>
 											<li>
-												• <strong>Import contacts</strong> — "Import these as People" to add them to your CRM
+												• <strong>Ask questions</strong> — "What trends do you see in my customer list?"
 											</li>
 											<li>
 												• <strong>Cross-reference</strong> — "Compare this data with our interview findings"
 											</li>
 											<li>
-												• <strong>Edit inline</strong> — Click any file to view and edit the data directly
+												• <strong>Edit inline</strong> — Click any file to view and edit the data directly and it becomes immediately usably by Uppy
 											</li>
 										</ul>
 									</PopoverContent>
@@ -694,13 +694,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												</td>
 												<td className="whitespace-nowrap px-4 py-3">
 													<span
-														className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-															interview.status === "ready"
-																? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-																: interview.status === "transcribed"
-																	? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-																	: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-														}`}
+														className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
+															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+															: interview.status === "transcribed"
+																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+															}`}
 													>
 														{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 													</span>

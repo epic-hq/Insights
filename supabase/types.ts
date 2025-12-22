@@ -1445,6 +1445,7 @@ export type Database = {
           kind_slug: string
           label: string
           notes: string | null
+          person_id: string | null
           project_id: string | null
           quote: string | null
           source: string
@@ -1464,6 +1465,7 @@ export type Database = {
           kind_slug: string
           label: string
           notes?: string | null
+          person_id?: string | null
           project_id?: string | null
           quote?: string | null
           source?: string
@@ -1483,6 +1485,7 @@ export type Database = {
           kind_slug?: string
           label?: string
           notes?: string | null
+          person_id?: string | null
           project_id?: string | null
           quote?: string | null
           source?: string
@@ -1501,6 +1504,13 @@ export type Database = {
             columns: ["facet_account_id"]
             isOneToOne: false
             referencedRelation: "facet_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_facet_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
