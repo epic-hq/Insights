@@ -300,16 +300,22 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     const allPersonIds = new Set<string>();
     const personDataMap = new Map<
       string,
-      { name: string | null; email: string | null; facet_count: number }
+      {
+        name: string | null;
+        email: string | null;
+        facet_count: number;
+        is_team_member: boolean;
+      }
     >();
 
-    // Add people from facets query
+    // Add people from facets query (is_team_member will be set later)
     for (const p of peopleFromFacets) {
       allPersonIds.add(p.person_id);
       personDataMap.set(p.person_id, {
         name: p.person_name,
         email: p.email,
         facet_count: p.facet_count,
+        is_team_member: false, // Will be updated below
       });
     }
 
@@ -327,7 +333,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
           personDataMap.set(ep.person_id, {
             name: ep.people.name,
             email: ep.people.primary_email,
-            facet_count: 1, // At least 1 evidence link
+            facet_count: 1,
+            is_team_member: false, // Will be updated below
           });
         }
       }
@@ -353,8 +360,25 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
               name: ip.people.name,
               email: ip.people.primary_email,
               facet_count: 1,
+              is_team_member: false, // Will be updated below
             });
           }
+        }
+      }
+    }
+
+    // Query people table to check which are team members (have user_id)
+    if (allPersonIds.size > 0) {
+      const { data: peopleWithUserId } = await supabase
+        .from("people")
+        .select("id, user_id")
+        .in("id", Array.from(allPersonIds))
+        .not("user_id", "is", null);
+
+      for (const p of peopleWithUserId ?? []) {
+        const existing = personDataMap.get(p.id);
+        if (existing) {
+          existing.is_team_member = true;
         }
       }
     }
@@ -366,6 +390,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         person_name: data.name,
         email: data.email,
         facet_count: data.facet_count,
+        is_team_member: data.is_team_member,
       }))
       .sort((a, b) => b.facet_count - a.facet_count)
       .slice(0, 20);

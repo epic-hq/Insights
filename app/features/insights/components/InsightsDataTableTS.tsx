@@ -76,6 +76,7 @@ const ENABLE_LINKED_TASK_LOOKUP = false;
 type Insight = BaseInsight & {
   priority: number;
   evidence_count?: number;
+  person_count?: number;
   persona_insights?: Array<{ personas: { id: string; name: string | null } }>;
 };
 
@@ -85,11 +86,12 @@ interface InsightsDataTableProps {
 
 type ViewMode = "flat" | "grouped";
 
-const STORAGE_KEY = "insights_table_columns_v2";
+const STORAGE_KEY = "insights_table_columns_v3";
 
 // Column labels for visibility selector
 const columnLabels: Record<string, string> = {
   name: "Insight theme",
+  person_count: "People",
   evidence_count: "Evidence",
   segment: "Segment",
   jtbd: "JTBD",
@@ -101,6 +103,7 @@ const columnLabels: Record<string, string> = {
 // Default column visibility
 const defaultColumnVisibility: VisibilityState = {
   name: true,
+  person_count: true,
   evidence_count: true,
   segment: true,
   jtbd: true,
@@ -381,6 +384,19 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
             />
           </div>
         ),
+      },
+      {
+        id: "person_count",
+        accessorFn: (row) => row.person_count ?? 0,
+        header: () => "People",
+        cell: (cell: CellContext<Insight, unknown>) => {
+          const count = cell.getValue() as number;
+          return count > 0 ? (
+            <span className="font-semibold text-sm">{count}</span>
+          ) : (
+            <span className="text-muted-foreground text-sm">0</span>
+          );
+        },
       },
       {
         id: "evidence_count",

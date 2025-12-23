@@ -5,10 +5,11 @@
  * Links directly to individual insight detail pages.
  */
 
-import { Lightbulb, Quote } from "lucide-react"
+import { Lightbulb, Quote, Users } from "lucide-react"
 import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
+import { PriorityBars } from "~/features/tasks/components/PriorityBars"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import type { Insight } from "~/types"
@@ -33,18 +34,28 @@ interface InsightPreviewCardProps {
 
 function InsightPreviewCard({ insight, detailHref }: InsightPreviewCardProps) {
 	const evidenceCount = (insight as any).evidence_count || 0
+	const personCount = (insight as any).person_count || 0
+	const priority = ((insight as any).priority ?? 3) as 1 | 2 | 3
 
 	return (
 		<Link to={detailHref}>
 			<Card surface="soft" className="h-full transition-all hover:border-primary/40 hover:shadow-md">
 				<CardContent className="p-4">
 					{/* Category & Evidence count */}
-					<div className="mb-3 flex items-center justify-between">
-						{(insight as any).category && (
-							<Badge variant="secondary" className="text-xs">
-								{(insight as any).category}
-							</Badge>
-						)}
+					<div className="mb-2 flex items-center justify-between gap-3">
+						<div className="flex items-center gap-2">
+							{(insight as any).category && (
+								<Badge variant="secondary" className="text-xs">
+									{(insight as any).category}
+								</Badge>
+							)}
+							{personCount > 0 && (
+								<Badge variant="outline" className="gap-1 text-xs">
+									<Users className="h-3 w-3" />
+									{personCount}
+								</Badge>
+							)}
+						</div>
 						{evidenceCount > 0 && (
 							<Badge variant="outline" className="gap-1 text-xs">
 								<Quote className="h-3 w-3" />
@@ -58,12 +69,11 @@ function InsightPreviewCard({ insight, detailHref }: InsightPreviewCardProps) {
 						{insight.name || "Untitled Insight"}
 					</h3>
 
-					{/* Pain or statement preview */}
-					{((insight as any).pain || (insight as any).statement) && (
-						<p className="line-clamp-2 text-muted-foreground text-xs">
-							{(insight as any).pain || (insight as any).statement}
-						</p>
-					)}
+					{/* Priority indicator */}
+					<div className="mt-2 flex items-center gap-2">
+						<PriorityBars priority={priority} size="sm" />
+
+					</div>
 				</CardContent>
 			</Card>
 		</Link>

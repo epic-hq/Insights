@@ -112,28 +112,34 @@ function LensLibraryItem({ lens }: LensLibraryItemProps) {
 
 	return (
 		<Card asChild surface={lens.hasData ? "glass" : "muted"} className={cn("group", !lens.hasData && "opacity-70")}>
-			<Link to={lens.href} className="flex items-center justify-between px-4 py-3">
-				<div className="flex items-center gap-3">
-					<div className={cn("rounded-lg p-1.5", colorClass)}>
-						<Glasses className="h-3.5 w-3.5" />
-					</div>
-					<div>
-						<h4 className="font-medium text-foreground text-sm">{lens.name}</h4>
-						<p className="text-muted-foreground text-xs">
-							{lens.hasData ? `${lens.conversationCount} analyzed` : "No data yet"}
-						</p>
-					</div>
-				</div>
+			<div className="flex w-full flex-row justify-between gap-3">
+				<Link to={lens.href} className="flex w-full flex-row justify-between gap-3 p-4">
+					<div className="flex min-w-0 flex-1 justify-between gap-3">
+						<div className={cn("rounded-lg px-2 py-0", colorClass)}>
+							<div className="flex items-center gap-2">
+								<Glasses className="h-4 w-4 flex-row" />
 
-				<div className="flex items-center gap-2">
-					{lens.hasData && (
-						<Badge variant="secondary" className="text-xs">
-							{lens.conversationCount}
-						</Badge>
-					)}
-					<ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-				</div>
-			</Link>
+								<h4 className="truncate font-medium text-foreground text-sm">{lens.name}</h4>
+								{lens.hasData && (
+									<p className="text-muted-foreground text-xs">
+										{/* {lens.conversationCount} conversation{lens.conversationCount !== 1 ? "s" : ""} */}
+									</p>
+								)}
+							</div>
+						</div>
+						<div className="flex items-center gap-2">
+							{lens.hasData ? (
+								<Badge variant="secondary" className="px-2 py-1 text-[11px]">
+									{lens.conversationCount}
+								</Badge>
+							) : (
+								<span className="text-muted-foreground text-xs">No data</span>
+							)}
+							<ChevronRight className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+						</div>
+					</div>
+				</Link>
+			</div>
 		</Card>
 	)
 }
