@@ -653,8 +653,8 @@ WHERE ep.evidence_id = $evidenceId;
 | Backfill existing facets | ✅ Done | 5,547 of 5,865 facets backfilled from `evidence_people` |
 | Survey import | ✅ Done | Sets `person_id` on each facet |
 | Conversation extraction | ✅ Done | Sets `person_id` = speaker after person resolution |
-| Query: `generatePainMatrix` | 🔲 Optional | Can simplify from 2 queries to 1 |
-| Query: `generatePersonas` | 🔲 Optional | Can simplify from 2 queries to 1 |
+| Query: `generatePainMatrix` | ✅ Done | Optimized to use `person_id` directly (single query) |
+| Query: `generatePersonas` | ✅ Done | Optimized to use `person_id` directly (single query) |
 | UI: Person detail page | ✅ Done | Uses `person_id` directly |
 
 ### Migration Scope
@@ -666,17 +666,15 @@ src/trigger/interview/v2/extractEvidenceCore.ts (~lines 1934-1986)
   └── Happens after person resolution so personIdByKey is populated
 ```
 
-**Optional (query simplification):**
+**Completed (query simplification):**
 ```
 app/features/lenses/services/generatePainMatrix.server.ts
-  └── Currently: 2 queries (evidence_facet + evidence_people)
-  └── After: 1 query with person_id join
-  └── ~30 lines simplified
+  └── Optimized: Single query via evidence_facet with person_id
+  └── Eliminated junction table traversal via evidence_people
 
 app/features/personas/services/generatePersonas.server.ts
-  └── Currently: 2 queries (evidence_people + evidence_facet)
-  └── After: 1 query with person_id filter
-  └── ~20 lines simplified
+  └── Optimized: Single query with person_id filter on evidence_facet
+  └── Eliminated evidence_people junction table query
 ```
 
 **No change needed:**
@@ -686,8 +684,7 @@ app/features/evidence/pages/index.tsx            - Doesn't need person attributi
 app/features/evidence/pages/evidenceDetail.tsx   - Shows evidence, not person-scoped
 ```
 
-**Completed effort:** ~50 lines across extraction pipeline + backfill migration
-**Optional remaining:** ~50 lines for query simplification (can be done incrementally)
+**Total effort:** ~100 lines across extraction pipeline, backfill migration, and query optimization
 
 ### Design Confidence: 85-90%
 

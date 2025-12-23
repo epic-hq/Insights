@@ -1,12 +1,26 @@
 import consola from "consola"
-import { LayoutGrid, Loader2, MoreVertical, RefreshCw, Rows, Sparkles, Trash2, Wand2 } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import {
+	Grid3X3,
+	LayoutGrid,
+	Loader2,
+	MoreVertical,
+	PieChart as PieChartIcon,
+	RefreshCw,
+	Rows,
+	Sparkles,
+	Trash2,
+	TrendingUp,
+	Wand2,
+} from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { Outlet, useFetcher, useLoaderData, useLocation, useNavigate, useRevalidator } from "react-router-dom"
+import { Cell, Label, Pie, PieChart, ResponsiveContainer, Tooltip, Treemap } from "recharts"
 import { toast } from "sonner"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -16,13 +30,25 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { ConsolidateProgressBar } from "~/features/themes/components/ConsolidateProgressBar"
-import { InsightsExplainerCard } from "~/features/themes/components/InsightsExplainerCard"
-import { InsightsSettingsModal } from "~/features/themes/components/InsightsSettingsModal"
-import { useConsolidateProgress } from "~/features/themes/hooks/useConsolidateProgress"
+import { ConsolidateProgressBar } from "~/features/insights/components/ConsolidateProgressBar"
+import { InsightsExplainerCard } from "~/features/insights/components/InsightsExplainerCard"
+import { InsightsSettingsModal } from "~/features/insights/components/InsightsSettingsModal"
+import { useConsolidateProgress } from "~/features/insights/hooks/useConsolidateProgress"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
+
+// Colors for pie chart
+const PIE_COLORS = [
+	"#6366f1", // indigo
+	"#8b5cf6", // violet
+	"#a855f7", // purple
+	"#d946ef", // fuchsia
+	"#ec4899", // pink
+	"#f43f5e", // rose
+	"#f97316", // orange
+	"#eab308", // yellow
+]
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
@@ -40,7 +66,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// Get counts for the header and explainer card
 	const [themesResult, evidenceResult, interviewsResult, projectResult] = await Promise.all([
-		supabase.from("themes").select("*", { count: "exact", head: true }).eq("project_id", projectId),
+		supabase
+			.from("themes")
+			.select("id, name, statement")
+			.eq("project_id", projectId)
+			.order("created_at", { ascending: false }),
 		supabase
 			.from("evidence")
 			.select("*", { count: "exact", head: true })
@@ -54,9 +84,104 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		supabase.from("projects").select("project_settings").eq("id", projectId).single(),
 	])
 
+	const themes = themesResult.data ?? []
+	const themeIds = themes.map((t) => t.id)
+
+	// Get theme_evidence links and person counts using evidence_facet.person_id
+	let themesRanked: Array<{
+		id: string
+		name: string
+		statement: string | null
+		evidence_count: number
+		person_count: number
+		frequency: number
+	}> = []
+
+	if (themeIds.length > 0) {
+		// Get theme_evidence links
+		const { data: themeEvidenceLinks } = await supabase
+			.from("theme_evidence")
+			.select("theme_id, evidence_id")
+			.eq("project_id", projectId)
+
+		// Build theme -> evidence IDs map
+		const themeEvidenceMap = new Map<string, Set<string>>()
+		for (const link of themeEvidenceLinks ?? []) {
+			if (!themeEvidenceMap.has(link.theme_id)) {
+				themeEvidenceMap.set(link.theme_id, new Set())
+			}
+			themeEvidenceMap.get(link.theme_id)!.add(link.evidence_id)
+		}
+
+		// Get all evidence IDs across all themes
+		const allEvidenceIds = new Set<string>()
+		for (const evSet of themeEvidenceMap.values()) {
+			for (const evId of evSet) allEvidenceIds.add(evId)
+		}
+
+		// Get person attribution from evidence_facet
+		const themePersonCounts = new Map<string, Set<string>>()
+		if (allEvidenceIds.size > 0) {
+			const { data: facetPersons } = await supabase
+				.from("evidence_facet")
+				.select("evidence_id, person_id")
+				.eq("project_id", projectId)
+				.in("evidence_id", Array.from(allEvidenceIds))
+				.not("person_id", "is", null)
+
+			// Build evidence -> person mapping
+			const evidenceToPersons = new Map<string, Set<string>>()
+			for (const fp of facetPersons ?? []) {
+				if (!fp.person_id) continue
+				if (!evidenceToPersons.has(fp.evidence_id)) {
+					evidenceToPersons.set(fp.evidence_id, new Set())
+				}
+				evidenceToPersons.get(fp.evidence_id)!.add(fp.person_id)
+			}
+
+			// Calculate person counts per theme
+			for (const [themeId, evidenceIds] of themeEvidenceMap) {
+				const personSet = new Set<string>()
+				for (const evId of evidenceIds) {
+					const persons = evidenceToPersons.get(evId)
+					if (persons) {
+						for (const p of persons) personSet.add(p)
+					}
+				}
+				themePersonCounts.set(themeId, personSet)
+			}
+		}
+
+		// Get total people count for frequency
+		const { count: totalPeopleCount } = await supabase
+			.from("people")
+			.select("*", { count: "exact", head: true })
+			.eq("project_id", projectId)
+
+		// Build ranked themes
+		themesRanked = themes.map((t) => {
+			const evidenceIds = themeEvidenceMap.get(t.id)
+			const personSet = themePersonCounts.get(t.id)
+			const evidenceCount = evidenceIds?.size ?? 0
+			const personCount = personSet?.size ?? 0
+			const frequency = totalPeopleCount && totalPeopleCount > 0 ? personCount / totalPeopleCount : 0
+			return {
+				id: t.id,
+				name: t.name,
+				statement: t.statement,
+				evidence_count: evidenceCount,
+				person_count: personCount,
+				frequency,
+			}
+		})
+
+		// Sort by person count descending
+		themesRanked.sort((a, b) => b.person_count - a.person_count)
+	}
+
 	consola.log("[InsightsLayout] Count query results:", {
 		projectId,
-		themesCount: themesResult.count,
+		themesCount: themes.length,
 		themesError: themesResult.error?.message,
 		evidenceCount: evidenceResult.count,
 		evidenceError: evidenceResult.error?.message,
@@ -72,16 +197,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	} | null
 
 	return {
-		insightCount: themesResult.count ?? 0,
+		insightCount: themes.length,
 		evidenceCount: evidenceResult.count ?? 0,
 		interviewCount: interviewsResult.count ?? 0,
 		analysisSettings: projectSettings?.analysis,
 		hasConsolidated: Boolean(projectSettings?.insights_consolidated_at),
+		themesRanked,
 	}
 }
 
 export default function InsightsLayout() {
-	const { insightCount, evidenceCount, interviewCount, analysisSettings, hasConsolidated } =
+	const { insightCount, evidenceCount, interviewCount, analysisSettings, hasConsolidated, themesRanked } =
 		useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const location = useLocation()
@@ -94,6 +220,22 @@ export default function InsightsLayout() {
 
 	// Track refresh all flow: consolidate → delete → enrich
 	const [refreshStep, setRefreshStep] = useState<"idle" | "consolidate" | "delete" | "enrich">("idle")
+	const [chartType, setChartType] = useState<"pie" | "treemap">("pie")
+
+	// Prepare data for chart (top 5 themes)
+	const topThemes = useMemo(() => themesRanked.slice(0, 5), [themesRanked])
+	const totalPeopleInChart = useMemo(() => topThemes.reduce((sum, t) => sum + t.person_count, 0), [topThemes])
+	const pieData = useMemo(
+		() =>
+			topThemes.map((t) => ({
+				name: t.name.length > 25 ? `${t.name.slice(0, 22)}...` : t.name,
+				fullName: t.name,
+				value: t.person_count,
+				percent: totalPeopleInChart > 0 ? Math.round((t.person_count / totalPeopleInChart) * 100) : 0,
+				id: t.id,
+			})),
+		[topThemes, totalPeopleInChart]
+	)
 
 	// Real-time consolidation progress tracking
 	const [consolidateRunId, setConsolidateRunId] = useState<string | null>(null)
@@ -383,6 +525,195 @@ export default function InsightsLayout() {
 					hasConsolidated={hasConsolidated}
 					similarityThreshold={analysisSettings?.theme_dedup_threshold ?? 0.85}
 				/>
+			)}
+
+			{/* Insights Overview Chart */}
+			{themesRanked.length > 0 && (
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between pb-4">
+						<CardTitle className="flex items-center gap-2">
+							<TrendingUp className="h-5 w-5" />
+							Top Insights Overview
+						</CardTitle>
+						<div className="flex items-center gap-1 rounded-lg border p-1">
+							<Button
+								variant={chartType === "pie" ? "secondary" : "ghost"}
+								size="sm"
+								className="h-7 px-2"
+								onClick={() => setChartType("pie")}
+							>
+								<PieChartIcon className="h-4 w-4" />
+							</Button>
+							<Button
+								variant={chartType === "treemap" ? "secondary" : "ghost"}
+								size="sm"
+								className="h-7 px-2"
+								onClick={() => setChartType("treemap")}
+							>
+								<Grid3X3 className="h-4 w-4" />
+							</Button>
+						</div>
+					</CardHeader>
+					<CardContent>
+						{chartType === "pie" ? (
+							<div className="flex justify-center">
+								<div className="w-[400px]">
+									<ResponsiveContainer width="100%" height={280}>
+										<PieChart>
+											<Pie
+												data={pieData}
+												cx="50%"
+												cy="50%"
+												innerRadius={45}
+												outerRadius={70}
+												paddingAngle={2}
+												dataKey="value"
+												label={({ name, value, cx, cy, midAngle, outerRadius, index }) => {
+													const RADIAN = Math.PI / 180
+													const radius = outerRadius + 25
+													const x = cx + radius * Math.cos(-midAngle * RADIAN)
+													const y = cy + radius * Math.sin(-midAngle * RADIAN)
+													const truncatedName = name.length > 15 ? `${name.slice(0, 12)}...` : name
+													const pct = pieData[index]?.percent ?? 0
+													return (
+														<text
+															x={x}
+															y={y}
+															fill="currentColor"
+															textAnchor={x > cx ? "start" : "end"}
+															dominantBaseline="central"
+															className="fill-muted-foreground text-[10px]"
+														>
+															{truncatedName} ({value}) {pct}%
+														</text>
+													)
+												}}
+												labelLine={{
+													stroke: "currentColor",
+													strokeWidth: 1,
+													className: "stroke-muted-foreground/50",
+												}}
+											>
+												{pieData.map((entry, index) => (
+													<Cell
+														key={entry.id}
+														fill={PIE_COLORS[index % PIE_COLORS.length]}
+														className="cursor-pointer transition-opacity hover:opacity-80"
+														onClick={() => navigate(routes.insights.detail(entry.id))}
+													/>
+
+												))}
+												<Label
+													value={`${totalPeopleInChart} people`}
+													position="center"
+													className="fill-foreground font-medium text-foreground text-sm"
+												/>
+											</Pie>
+											<Tooltip
+												content={({ payload }) => {
+													if (!payload?.[0]) return null
+													const data = payload[0].payload
+													return (
+														<div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+															<p className="font-medium text-sm">{data.fullName}</p>
+															<p className="text-muted-foreground text-xs">
+																{data.value} people ({data.percent}%)
+															</p>
+														</div>
+													)
+												}}
+											/>
+										</PieChart>
+									</ResponsiveContainer>
+								</div>
+							</div>
+						) : (
+							<div className="w-full">
+								<ResponsiveContainer width="100%" height={280}>
+									<Treemap
+										data={pieData}
+										dataKey="value"
+										aspectRatio={4 / 3}
+										stroke="#fff"
+										content={({ x, y, width, height, name, value, index }) => {
+											const entry = pieData[index as number]
+											if (!entry || width < 50 || height < 40) return null
+
+											// Calculate how many characters fit per line (roughly)
+											const charsPerLine = Math.floor(width / 9)
+											const fullName = entry.fullName || (name as string)
+											const lines: string[] = []
+
+											// Word wrap the name
+											const words = fullName.split(" ")
+											let currentLine = ""
+											for (const word of words) {
+												if (currentLine.length + word.length + 1 <= charsPerLine) {
+													currentLine += (currentLine ? " " : "") + word
+												} else {
+													if (currentLine) lines.push(currentLine)
+													currentLine = word
+												}
+											}
+											if (currentLine) lines.push(currentLine)
+
+											// Limit to 2 lines max
+											if (lines.length > 2) {
+												lines.length = 2
+												lines[1] = lines[1].length > 3 ? lines[1].slice(0, -3) + "..." : "..."
+											}
+
+											const lineHeight = 18
+											const totalTextHeight = lines.length * lineHeight + 20
+											const startY = y + height / 2 - totalTextHeight / 2 + 10
+
+											return (
+												<g>
+													<rect
+														x={x}
+														y={y}
+														width={width}
+														height={height}
+														fill={PIE_COLORS[(index as number) % PIE_COLORS.length]}
+														className="cursor-pointer transition-opacity hover:opacity-80"
+														onClick={() => navigate(routes.insights.detail(entry.id))}
+													/>
+													{lines.map((line, i) => (
+														<text
+															key={i}
+															x={x + width / 2}
+															y={startY + i * lineHeight}
+															textAnchor="middle"
+															fill="white"
+															className="font-medium text-sm"
+															style={{
+																textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+															}}
+														>
+															{line}
+														</text>
+													))}
+													<text
+														x={x + width / 2}
+														y={startY + lines.length * lineHeight + 4}
+														textAnchor="middle"
+														fill="white"
+														className="text-xs opacity-90"
+														style={{
+															textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+														}}
+													>
+														{value} ({entry.percent}%)
+													</text>
+												</g>
+											)
+										}}
+									/>
+								</ResponsiveContainer>
+							</div>
+						)}
+					</CardContent>
+				</Card>
 			)}
 
 			{/* Outlet content */}

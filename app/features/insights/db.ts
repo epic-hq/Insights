@@ -193,6 +193,7 @@ export const getInsightById = async ({
 			journey_stage,
 			emotional_response,
 			motivation,
+			priority,
 			details,
 			evidence,
 			impact,
@@ -234,6 +235,8 @@ export const getInsightById = async ({
 		supabase.from("persona_insights").select("insight_id, personas:persona_id(id, name)").eq("insight_id", id),
 		supabase.from("insights_with_priority").select("priority").eq("id", id).maybeSingle(),
 	])
+
+	const priority = (insightData as any).priority ?? priorityResult?.data?.priority ?? 3
 
 	// Fetch people and orgs linked to this theme via evidence
 	// 1. Get evidence IDs for this theme
@@ -302,7 +305,7 @@ export const getInsightById = async ({
 
 	return {
 		...insightData,
-		priority: priorityResult.data?.priority ?? 0,
+		priority,
 		evidence_count: Array.isArray((insightData as any).theme_evidence)
 			? ((insightData as any).theme_evidence[0]?.count ?? 0)
 			: 0,

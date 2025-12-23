@@ -9,9 +9,11 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { useEffect, useRef, useState } from "react"
 import type { ImperativePanelHandle } from "react-resizable-panels"
-import { Outlet, redirect, useLoaderData, useMatches, useParams } from "react-router"
+import { Outlet, redirect, useLoaderData, useMatches, useOutletContext, useParams } from "react-router"
+import type { Database as ProjectsDatabase } from "supabase/types"
 import { z } from "zod"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
+import type { AppLayoutOutletContext } from "~/components/layout/AppLayout"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "~/components/ui/resizable"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { ProjectStatusAgentProvider, useProjectStatusAgent } from "~/contexts/project-status-agent-context"
@@ -19,18 +21,18 @@ import { getProjectById } from "~/features/projects/db"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import { currentProjectContext } from "~/server/current-project-context"
 import { type UserMetadata, userContext } from "~/server/user-context"
-import type { Database, GetAccount, Project, UserSettings } from "~/types"
+import type { Database as AppDatabase, GetAccount, Project, UserSettings } from "~/types"
 import { getProjectStatusData, type ProjectStatusData } from "~/utils/project-status.server"
 import type { Route } from "./+types/projects"
 
 type ProjectRecord = Awaited<ReturnType<typeof getProjectById>>["data"]
 
 // Server-side Authentication Middleware
-export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
+export const unstable_middleware: Route.MiddlewareFunction[] = [
 	async ({ request: _request, context, params }) => {
 		try {
 			const ctx = context.get(userContext)
-			const _supabase = ctx.supabase
+			const _supabase = ctx.supabase as unknown as SupabaseClient<unknown> | null
 			const project_id_or_slug = params?.projectId || ""
 			const urlAccountId = params?.accountId || ""
 
@@ -73,7 +75,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 	try {
 		// const currentProject = context.get(currentProjectContext)
 		const ctx = context.get(userContext)
-		const { supabase } = ctx
+		const supabase = ctx.supabase as unknown as SupabaseClient<unknown> | null
 
 		if (!supabase) {
 			throw new Response("Database connection not available", { status: 500 })
@@ -81,10 +83,13 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 
 		const _accountId = params?.accountId
 		const projectId = params?.projectId
-		const project = await getProjectById({ supabase, id: projectId })
+		const project = await getProjectById({
+			supabase: supabase as unknown as SupabaseClient<ProjectsDatabase>,
+			id: projectId,
+		})
 
 		// Load project status (latest analysis or fallback counts)
-		const statusData = await getProjectStatusData(projectId, supabase)
+		const statusData = await getProjectStatusData(projectId, supabase as unknown as SupabaseClient<AppDatabase>)
 		const userProfileContext = buildUserProfileContext(ctx.user_settings, ctx.user_metadata)
 
 		return {
@@ -112,7 +117,7 @@ async function _parse_project_id_from_params({
 	supabase: _supabase,
 }: {
 	project_id_or_slug: string
-	supabase: SupabaseClient<Database> | null
+	supabase: SupabaseClient<unknown> | null
 }) {
 	if (isUUID(project_id_or_slug || "")) {
 		// TODO: Replace with actual RPC or query to fetch project by UUID
@@ -135,6 +140,7 @@ function ProjectLayout({
 	userProfileContext?: string | null
 }) {
 	const { isMobile } = useDeviceDetection()
+	const appLayoutContext = useOutletContext<AppLayoutOutletContext | undefined>()
 	const params = useParams()
 	const accountId = params.accountId || ""
 	const projectId = params.projectId || ""
@@ -155,6 +161,19 @@ function ProjectLayout({
 		}
 		return handle.hideProjectStatusAgent
 	})
+
+	useEffect(() => {
+		if (!appLayoutContext) return
+		if (isMobile) {
+			appLayoutContext.setForceSidebarCollapsed(false)
+			return
+		}
+		const shouldForce = !hideProjectStatusAgent && isExpanded && !isChatCollapsed
+		appLayoutContext.setForceSidebarCollapsed(shouldForce)
+		return () => {
+			appLayoutContext.setForceSidebarCollapsed(false)
+		}
+	}, [appLayoutContext, hideProjectStatusAgent, isChatCollapsed, isExpanded, isMobile])
 
 	useEffect(() => {
 		// Skip panel management on mobile

@@ -64,18 +64,31 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 ## Plan (todos)
 
 ### Insights & Theme Consolidation (Dec 2024)
-**RCA Complete - Fixes In Progress**
+**RCA Complete - All Fixes Applied**
 
 Root causes for themes with 0 evidence:
 1. ✅ **Auto-consolidation used wrong function** - `finalizeInterview.ts` was calling `autoGroupThemesAndApply` (creates NEW themes) instead of `consolidateExistingThemes` (merges duplicates). Fixed.
 2. ✅ **Theme creation before evidence linking** - If semantic search fails or finds no matches, theme exists with 0 evidence. Added logging to track these cases.
 3. ✅ **Settings modal UX** - Now closes after successful save.
 4. ✅ **Insight detail accordions** - Now collapsed by default for cleaner UX.
+5. ✅ **Auto-delete orphaned themes** - `autoGroupThemesAndApply` now deletes themes with 0 evidence after creation.
 
 Remaining work:
-- [ ] **Consider deleting themes with 0 evidence automatically** after creation, or require at least 1 evidence link
 - [ ] **Lower evidence linking threshold** if too many themes get 0 links (currently 0.4)
 - [ ] **Add "Expand All / Collapse All" toggle** for evidence accordions on insight detail
+
+### Bidirectional Theme × Segment Queries (Dec 2024)
+**New service functions for discovery patterns:**
+
+Added `app/features/themes/services/segmentThemeQueries.server.ts`:
+- ✅ `getTopConcernsForSegment()` - "What are the top pains/themes for this user segment?"
+- ✅ `getUsersWithThemes()` - "Who are the users experiencing these specific themes?"
+- ✅ `getOrphanedThemes()` - Find themes with 0 evidence links
+- ✅ `deleteOrphanedThemes()` - Clean up themes with no evidence
+
+Query optimizations (Dec 2024):
+- ✅ `generatePainMatrix` - Now uses `evidence_facet.person_id` directly (single query)
+- ✅ `generatePersonas` - Now uses `evidence_facet.person_id` directly (single query)
 
 ### Customer Discovery Lens Simplification
 Review notes (see `app/features/lenses/pages/aggregated-customer-discovery.tsx`):

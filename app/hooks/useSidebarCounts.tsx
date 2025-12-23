@@ -43,7 +43,7 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 						projectAssetsResult,
 						personasResult,
 						themesResult,
-						insightsResult,
+						themeEvidenceThemesResult,
 						peopleResult,
 						organizationsResult,
 						opportunitiesResult,
@@ -54,7 +54,6 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 							.from("interviews")
 							.select("*", { count: "exact", head: true })
 							.eq("project_id", projectId),
-
 
 						// Count notes (stored as interviews)
 						supabase
@@ -81,10 +80,10 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 							.select("*", { count: "exact", head: true })
 							.eq("project_id", projectId),
 
-						// Count insights
+						// Count insights (themes that have evidence)
 						supabase
-							.from("themes")
-							.select("*", { count: "exact", head: true })
+							.from("theme_evidence")
+							.select("theme_id")
 							.eq("project_id", projectId),
 
 						// Count people for this project
@@ -120,12 +119,17 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 						const conversations_count = Math.max(0, interview_count - notes_count)
 						const files_count = projectAssetsResult.count || 0
 						const content_count = conversations_count + notes_count + files_count
+						const insight_count = new Set(
+							(themeEvidenceThemesResult.data ?? [])
+								.map((row: { theme_id: string | null }) => row.theme_id)
+								.filter(Boolean)
+						).size
 
 						setCounts({
 							encounters: interview_count,
 							personas: personasResult.count || 0,
 							themes: themesResult.count || 0,
-							insights: insightsResult.count || 0,
+							insights: insight_count,
 							content: content_count,
 							people: peopleResult.count || 0,
 							organizations: organizationsResult.count || 0,

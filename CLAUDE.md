@@ -53,7 +53,7 @@ function MyComponent({ projectPath }: { projectPath: string }) {
 // <Link to={`/projects/${projectPath}/insights/${id}`}>
 ```
 
-**Available route helpers**: `routes.evidence.detail()`, `routes.insights.detail()`, `routes.interviews.detail()`, `routes.themes.detail()`, `routes.people.detail()`
+**Available route helpers**: `routes.evidence.detail()`, `routes.insights.detail()`, `routes.interviews.detail()`, `routes.people.detail()`, `routes.opportunities.detail()`
 
 ### File Organization
 - **Features**: Domain-organized in `app/features/[feature]/` with `routes.ts`, `pages/`, `components/`, `api/`

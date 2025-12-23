@@ -6,12 +6,13 @@
  */
 
 import consola from "consola"
-import { Outlet, redirect } from "react-router"
+import { Outlet, redirect, useOutletContext } from "react-router"
 import { z } from "zod"
+import type { AppLayoutOutletContext } from "~/components/layout/AppLayout"
 import { CurrentAccountProvider } from "~/contexts/current-account-context"
 import { currentAccountContext } from "~/server/current-account-context"
 import { userContext } from "~/server/user-context"
-import type { GetAccount, SupabaseClient } from "~/types"
+import type { SupabaseClient } from "~/types"
 import type { Route } from "./+types/accounts"
 
 function isUUID(str: string) {
@@ -21,12 +22,10 @@ function isUUID(str: string) {
 }
 
 async function parse_account_id_from_params({
-	user_id,
 	account_id_or_slug,
 	supabase,
 	userAccounts,
 }: {
-	user_id: string
 	account_id_or_slug: string
 	supabase: SupabaseClient
 	userAccounts?: Array<{ account_id: string; slug: string | null }>
@@ -53,13 +52,13 @@ async function parse_account_id_from_params({
 
 		consola.warn("No userAccounts available, falling back to database query")
 		// Fallback: query database if userAccounts not available
-		const accountQuery = supabase.schema("accounts").from("accounts").select("*").eq("id", account_id_or_slug)
+		const accountQuery = supabase.schema("accounts").from("accounts").select("id").eq("id", account_id_or_slug)
 		const { data: account, error } = await accountQuery.single()
 		if (error) {
 			consola.error("Get account error:", error)
 			throw new Response("Account not found", { status: 404 })
 		}
-		return account
+		return { account_id: account.id }
 	}
 
 	// If slug, look up in user's accounts first
@@ -71,7 +70,11 @@ async function parse_account_id_from_params({
 	}
 
 	// Fallback to RPC for slug lookup
-	const getAccountBySlugResponse = await supabase.rpc("get_account_by_slug", {
+	const getAccountBySlugResponse = await (
+		supabase as unknown as {
+			rpc: (fn: string, args: unknown) => Promise<{ data: unknown; error: { message: string } | null }>
+		}
+	).rpc("get_account_by_slug", {
 		slug: account_id_or_slug,
 	})
 	if (!getAccountBySlugResponse.data) {
@@ -82,25 +85,38 @@ async function parse_account_id_from_params({
 		consola.error("Get account id error:", getAccountBySlugResponse.error)
 		throw new Response(getAccountBySlugResponse.error.message, { status: 500 })
 	}
-	const data = getAccountBySlugResponse.data as GetAccount
-	return data
+	const data = getAccountBySlugResponse.data as Record<string, unknown>
+	const account_id_candidate =
+		(typeof data.account_id === "string" && data.account_id.trim().length > 0 && data.account_id.trim()) ||
+		(typeof data.id === "string" && data.id.trim().length > 0 && data.id.trim()) ||
+		null
+	if (!account_id_candidate) {
+		throw new Response("Account not found", { status: 404 })
+	}
+	return { account_id: account_id_candidate }
 }
 
 // Server-side Authentication Middleware
 // This middleware runs before every loader in current-project-layout routes
 // It ensures the user is authenticated and sets up the user context
 export const middleware: Route.MiddlewareFunction[] = [
-	async ({ request, context, params }) => {
+	async ({ request: _request, context, params }) => {
 		try {
 			const ctx = context.get(userContext)
 			const _supabase = ctx.supabase
+			if (!_supabase) {
+				throw new Response("Database connection not available", { status: 500 })
+			}
 			const account_id_or_slug = params?.accountId || ""
 
 			// Get user accounts from middleware context for validation
-			const userAccounts = ctx.accounts?.map((acc: any) => ({
-				account_id: acc.account_id,
-				slug: acc.slug,
-			}))
+			const userAccounts = ctx.accounts?.map((acc: unknown) => {
+				const record = acc as { account_id?: string; slug?: string | null }
+				return {
+					account_id: record.account_id ?? "",
+					slug: record.slug ?? null,
+				}
+			})
 
 			// consola.log("_protected/accounts middleware:", {
 			// 	account_id_or_slug,
@@ -110,7 +126,6 @@ export const middleware: Route.MiddlewareFunction[] = [
 			// })
 
 			const parsed_account = await parse_account_id_from_params({
-				user_id: ctx.account_id,
 				account_id_or_slug,
 				supabase: _supabase,
 				userAccounts,
@@ -119,7 +134,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 			// Set user context for all child loaders/actions to access
 			context.set(currentAccountContext, {
 				current_account_id: parsed_account?.account_id,
-				account: parsed_account,
+				account: null,
 			})
 			// current_account_id: account_id_or_slug,
 			// account: {},
@@ -147,10 +162,11 @@ export async function loader({ context }: Route.LoaderArgs) {
 export default function Accounts() {
 	// const currentProject = useLoaderData<typeof loader>()
 	// consola.log("Accounts currentAccountContext:", currentProject)
+	const appLayoutContext = useOutletContext<AppLayoutOutletContext>()
 
 	return (
 		<CurrentAccountProvider>
-			<Outlet />
+			<Outlet context={appLayoutContext} />
 		</CurrentAccountProvider>
 	)
 }

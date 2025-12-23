@@ -28,6 +28,7 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useSidebarCounts } from "~/hooks/useSidebarCounts" // ⬅️ counts hook
 import { UserProfile } from "../auth/UserProfile"
 import { Logo, LogoBrand } from "../branding"
+import type { AppSidebarSection } from "./app-sidebar.config"
 import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
 import { InviteTeamModal } from "./InviteTeamModal"
 import { TeamSwitcher } from "./TeamSwitcher"
@@ -55,7 +56,11 @@ interface ProtectedLayoutData {
 	} | null
 }
 
-export function AppSidebar() {
+export type AppSidebarProps = {
+	forceSidebarCollapsed?: boolean
+}
+
+export function AppSidebar({ forceSidebarCollapsed = false }: AppSidebarProps) {
 	const { accountId, projectId, projectPath } = useCurrentProject()
 	const location = useLocation()
 	const { state } = useSidebar()
@@ -155,7 +160,7 @@ export function AppSidebar() {
 		})
 	}, [hasAnalysisData])
 
-	const salesSection = useMemo(() => {
+	const salesSection = useMemo<AppSidebarSection | null>(() => {
 		if (!salesCrmEnabled || !salesProject || !salesProjectBasePath) {
 			return null
 		}
@@ -171,25 +176,25 @@ export function AppSidebar() {
 					key: "sales-lenses",
 					title: "Sales Lenses",
 					icon: Handshake,
-					to: () => `${base}/sales-lenses`,
+					to: (_routes) => `${base}/sales-lenses`,
 				},
 				{
 					key: "accounts",
 					title: "Organizations",
 					icon: Building2,
-					to: () => `${base}/organizations`,
+					to: (_routes) => `${base}/organizations`,
 				},
 				{
 					key: "contacts",
 					title: "People",
 					icon: Users,
-					to: () => `${base}/people`,
+					to: (_routes) => `${base}/people`,
 				},
 				{
 					key: "deals",
 					title: "Opportunities",
 					icon: Briefcase,
-					to: () => `${base}/opportunities`,
+					to: (_routes) => `${base}/opportunities`,
 				},
 			],
 		}
@@ -253,7 +258,7 @@ export function AppSidebar() {
 	> = {
 		// Main navigation
 		conversations: "encounters", // Conversations = encounters/interviews count
-		insights: "themes", // Insights = themes count (renamed from Topics)
+		insights: "insights",
 		content: "content", // Content = conversations + notes + files
 		tasks: "highPriorityTasks", // Tasks = high priority tasks count
 
@@ -475,7 +480,15 @@ export function AppSidebar() {
 			</SidebarFooter>
 
 			<SidebarRail className="group pointer-events-auto">
-				<SidebarTrigger className="-right-4 absolute top-3" />
+				<SidebarTrigger
+					disabled={forceSidebarCollapsed}
+					title={
+						forceSidebarCollapsed
+							? "Sidebar is collapsed while Project Status Agent is open"
+							: "Toggle sidebar"
+					}
+					className="mt-3"
+				/>
 			</SidebarRail>
 		</Sidebar>
 	)

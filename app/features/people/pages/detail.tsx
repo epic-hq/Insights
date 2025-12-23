@@ -14,6 +14,7 @@ import {
   Paperclip,
   Phone,
   RefreshCw,
+  Sparkles,
   StickyNote,
   Trash2,
   Twitter,
@@ -210,6 +211,74 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     }
     const surveyResponsesList = Array.from(surveyResponsesGrouped.values());
 
+    // Fetch themes linked to this person via evidence_facet → theme_evidence → themes
+    const { data: personFacets } = await supabase
+      .from("evidence_facet")
+      .select("evidence_id")
+      .eq("project_id", projectId)
+      .eq("person_id", personId);
+
+    const evidenceIdsForThemes = [
+      ...new Set((personFacets || []).map((f) => f.evidence_id)),
+    ];
+
+    let personThemes: Array<{
+      id: string;
+      name: string;
+      statement: string | null;
+      evidence_count: number;
+    }> = [];
+
+    if (evidenceIdsForThemes.length > 0) {
+      const { data: themeLinks } = await supabase
+        .from("theme_evidence")
+        .select(
+          `
+          theme_id,
+          themes!inner (
+            id,
+            name,
+            statement
+          )
+        `,
+        )
+        .eq("project_id", projectId)
+        .in("evidence_id", evidenceIdsForThemes);
+
+      // Aggregate theme counts
+      const themeMap = new Map<
+        string,
+        { id: string; name: string; statement: string | null; count: number }
+      >();
+      for (const link of themeLinks || []) {
+        const theme = link.themes as {
+          id: string;
+          name: string;
+          statement: string | null;
+        };
+        if (!theme) continue;
+        const existing = themeMap.get(theme.id);
+        if (existing) {
+          existing.count++;
+        } else {
+          themeMap.set(theme.id, {
+            id: theme.id,
+            name: theme.name,
+            statement: theme.statement,
+            count: 1,
+          });
+        }
+      }
+      personThemes = Array.from(themeMap.values())
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          statement: t.statement,
+          evidence_count: t.count,
+        }))
+        .sort((a, b) => b.evidence_count - a.evidence_count);
+    }
+
     if (!person) {
       consola.warn("PersonDetail loader: person not found", {
         accountId,
@@ -250,6 +319,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       orgCount: organizations.data?.length ?? 0,
       assetsCount: relatedAssets.length,
       surveyResponsesCount: surveyResponsesList.length,
+      themesCount: personThemes.length,
     });
     return {
       person: personWithFacetSummaries,
@@ -257,6 +327,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       organizations: organizations.data ?? [],
       relatedAssets,
       surveyResponses: surveyResponsesList,
+      personThemes,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -572,8 +643,14 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function PersonDetail() {
-  const { person, catalog, organizations, relatedAssets, surveyResponses } =
-    useLoaderData<typeof loader>();
+  const {
+    person,
+    catalog,
+    organizations,
+    relatedAssets,
+    surveyResponses,
+    personThemes,
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const _organizationActionData = actionData?.organization;
   const refreshError = actionData?.refresh?.error;
@@ -1062,6 +1139,38 @@ export default function PersonDetail() {
                 availableFacetsByKind={availableFacetsByKind}
                 isGenerating={isRefreshingDescription || isFacetSummaryPending}
               />
+            )}
+
+            {personThemes.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="flex items-center gap-2 font-semibold text-foreground text-lg">
+                  <Sparkles className="h-5 w-5" />
+                  Themes
+                </h2>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {personThemes.map((theme) => (
+                    <Link
+                      key={theme.id}
+                      to={routes.themes.detail(theme.id)}
+                      className="group rounded-lg border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium text-foreground transition-colors group-hover:text-primary">
+                          {theme.name}
+                        </h3>
+                        <Badge variant="secondary" className="shrink-0">
+                          {theme.evidence_count}
+                        </Badge>
+                      </div>
+                      {theme.statement && (
+                        <p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
+                          {theme.statement}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
             )}
 
             {relatedInsights.length > 0 && (
