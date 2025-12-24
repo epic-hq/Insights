@@ -32,6 +32,7 @@ import {
 	useNavigation,
 	useParams,
 } from "react-router-dom"
+import { InlineEditableField } from "~/components/InlineEditableField"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -40,7 +41,6 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { InlineEditableField } from "~/components/ui/InlineEditableField"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
@@ -56,7 +56,6 @@ import { getImageUrl } from "~/utils/storeImage.server"
 import { EditableNameField } from "../components/EditableNameField"
 import { getCompanySizeCategory } from "../components/PeopleDataTable"
 import { PersonFacetLenses } from "../components/PersonFacetLenses"
-import { PersonInlineEditableField } from "../components/PersonInlineEditableField"
 import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -563,6 +562,37 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		}
 	}
 
+	if (intent === "update-field") {
+		const field = formData.get("field") as string
+		const value = formData.get("value") as string
+
+		// Whitelist of allowed fields to update
+		const allowedFields = [
+			"title",
+			"description",
+			"job_function",
+			"seniority_level",
+			"industry",
+			"primary_email",
+			"primary_phone",
+			"linkedin_url",
+		]
+
+		if (!allowedFields.includes(field)) {
+			return { error: `Field ${field} is not editable` }
+		}
+
+		await updatePerson({
+			supabase,
+			accountId,
+			projectId,
+			id: personId,
+			data: { [field]: value || null },
+		})
+
+		return { success: true, field }
+	}
+
 	if (intent === "create-and-link-organization") {
 		const name = (formData.get("name") as string | null)?.trim()
 		if (!name) {
@@ -872,9 +902,10 @@ export default function PersonDetail() {
 
 	const metadataNode = (
 		<>
-			<PersonInlineEditableField
+			<InlineEditableField
 				value={person.title}
-				personId={person.id}
+				entityId={person.id}
+				entityIdKey="personId"
 				field="title"
 				placeholder="Add job title"
 				className="font-medium text-muted-foreground text-sm"
@@ -1039,9 +1070,10 @@ export default function PersonDetail() {
 						/>
 					}
 					description={
-						<PersonInlineEditableField
+						<InlineEditableField
 							value={person.description}
-							personId={person.id}
+							entityId={person.id}
+							entityIdKey="personId"
 							field="description"
 							placeholder="Add a description"
 							multiline

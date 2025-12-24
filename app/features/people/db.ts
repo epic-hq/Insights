@@ -1,82 +1,78 @@
-import type {
-  PostgrestError,
-  QueryData,
-  SupabaseClient,
-} from "@supabase/supabase-js";
-import { tasks } from "@trigger.dev/sdk/v3";
-import consola from "consola";
-import type { inferSegmentsTask } from "~/../src/trigger/people/inferSegments";
-import type { Database } from "~/types";
+import type { PostgrestError, QueryData, SupabaseClient } from "@supabase/supabase-js"
+import { tasks } from "@trigger.dev/sdk/v3"
+import consola from "consola"
+import type { inferSegmentsTask } from "~/../src/trigger/people/inferSegments"
+import type { Database } from "~/types"
 
 /**
  * Trigger segment inference for a person if they have a title but missing job_function/seniority
  * Runs asynchronously in background - doesn't block the request
  */
 async function triggerSegmentInferenceIfNeeded(person: {
-  id: string;
-  title?: string | null;
-  job_function?: string | null;
-  seniority_level?: string | null;
-  account_id: string;
-  project_id?: string | null;
+	id: string
+	title?: string | null
+	job_function?: string | null
+	seniority_level?: string | null
+	account_id: string
+	project_id?: string | null
 }) {
-  // Only trigger if person has a title but missing segment data
-  if (!person.title || (person.job_function && person.seniority_level)) {
-    return;
-  }
+	// Only trigger if person has a title but missing segment data
+	if (!person.title || (person.job_function && person.seniority_level)) {
+		return
+	}
 
-  if (!person.project_id) {
-    consola.warn("[db] Cannot trigger segment inference - missing project_id", {
-      personId: person.id,
-    });
-    return;
-  }
+	if (!person.project_id) {
+		consola.warn("[db] Cannot trigger segment inference - missing project_id", {
+			personId: person.id,
+		})
+		return
+	}
 
-  try {
-    // Fire and forget - don't await
-    tasks
-      .trigger<typeof inferSegmentsTask>("people.infer-segments", {
-        projectId: person.project_id,
-        accountId: person.account_id,
-        personId: person.id,
-        force: false,
-      })
-      .then((handle) => {
-        consola.info("[db] Triggered segment inference", {
-          personId: person.id,
-          runId: handle.id,
-        });
-      })
-      .catch((err) => {
-        consola.warn("[db] Failed to trigger segment inference", {
-          personId: person.id,
-          error: err,
-        });
-      });
-  } catch (err) {
-    // Don't fail the main operation if inference trigger fails
-    consola.warn("[db] Error triggering segment inference", {
-      personId: person.id,
-      error: err,
-    });
-  }
+	try {
+		// Fire and forget - don't await
+		tasks
+			.trigger<typeof inferSegmentsTask>("people.infer-segments", {
+				projectId: person.project_id,
+				accountId: person.account_id,
+				personId: person.id,
+				force: false,
+			})
+			.then((handle) => {
+				consola.info("[db] Triggered segment inference", {
+					personId: person.id,
+					runId: handle.id,
+				})
+			})
+			.catch((err) => {
+				consola.warn("[db] Failed to trigger segment inference", {
+					personId: person.id,
+					error: err,
+				})
+			})
+	} catch (err) {
+		// Don't fail the main operation if inference trigger fails
+		consola.warn("[db] Error triggering segment inference", {
+			personId: person.id,
+			error: err,
+		})
+	}
 }
 
 export const getPeople = async ({
-  supabase,
-  accountId,
-  projectId,
-  scope = "project",
-  includeInternal = false,
+	supabase,
+	accountId,
+	projectId,
+	scope = "project",
+	includeInternal = false,
 }: {
-  supabase: SupabaseClient<Database>;
-  accountId: string;
-  projectId: string;
-  scope?: "project" | "account";
-  includeInternal?: boolean;
+	supabase: SupabaseClient<Database>
+	accountId: string
+	projectId: string
+	scope?: "project" | "account"
+	includeInternal?: boolean
 }) => {
-  // Build select string conditionally based on scope
-  const baseSelect = `
+	// Build select string conditionally based on scope
+	const baseSelect = `
 			*,
 			people_personas (
 				personas (
@@ -131,46 +127,43 @@ export const getPeople = async ({
                                         id,
                                         title
                                 )
-			)`;
+			)`
 
-  // Build query based on scope
-  let query = supabase
-    .from("people")
-    .select(baseSelect)
-    .eq("account_id", accountId);
+	// Build query based on scope
+	let query = supabase.from("people").select(baseSelect).eq("account_id", accountId)
 
-  if (!includeInternal) {
-    query = query.or("person_type.is.null,person_type.neq.internal");
-  }
+	if (!includeInternal) {
+		query = query.or("person_type.is.null,person_type.neq.internal")
+	}
 
-  // Filter by project using the project_id column directly
-  // NOTE: We use people.project_id instead of project_people junction table
-  // because junction records may not always be created/maintained
-  if (scope === "project") {
-    query = query.eq("project_id", projectId);
-  }
+	// Filter by project using the project_id column directly
+	// NOTE: We use people.project_id instead of project_people junction table
+	// because junction records may not always be created/maintained
+	if (scope === "project") {
+		query = query.eq("project_id", projectId)
+	}
 
-  const { data, error } = await query.order("created_at", { ascending: false });
+	const { data, error } = await query.order("created_at", { ascending: false })
 
-  // consola.log("getPeople data: ", data)
-  return { data, error };
-};
+	// consola.log("getPeople data: ", data)
+	return { data, error }
+}
 
 export const getPersonById = async ({
-  supabase,
-  accountId,
-  projectId,
-  id,
+	supabase,
+	accountId,
+	projectId,
+	id,
 }: {
-  supabase: SupabaseClient<Database>;
-  accountId: string;
-  projectId: string;
-  id: string;
+	supabase: SupabaseClient<Database>
+	accountId: string
+	projectId: string
+	id: string
 }) => {
-  const personByIdQuery = supabase
-    .from("people")
-    .select(
-      `
+	const personByIdQuery = supabase
+		.from("people")
+		.select(
+			`
 			*,
 			people_personas (
 				personas (
@@ -244,166 +237,160 @@ export const getPersonById = async ({
                                         media_type
 				)
 			)
-		`,
-    )
-    .eq("account_id", accountId)
-    .eq("id", id)
-    .single();
+		`
+		)
+		.eq("account_id", accountId)
+		.eq("id", id)
+		.single()
 
-  type PersonById = QueryData<typeof personByIdQuery>;
+	type PersonById = QueryData<typeof personByIdQuery>
 
-  consola.info("getPersonById query params:", { accountId, projectId, id });
+	consola.info("getPersonById query params:", { accountId, projectId, id })
 
-  const { data, error } = await personByIdQuery;
+	const { data, error } = await personByIdQuery
 
-  if (error) {
-    const supabaseError = error as PostgrestError;
-    consola.error("getPersonById error", {
-      accountId,
-      projectId,
-      id,
-      message: error.message,
-      details: supabaseError?.details,
-      hint: supabaseError?.hint,
-      code: supabaseError?.code,
-    });
+	if (error) {
+		const supabaseError = error as PostgrestError
+		consola.error("getPersonById error", {
+			accountId,
+			projectId,
+			id,
+			message: error.message,
+			details: supabaseError?.details,
+			hint: supabaseError?.hint,
+			code: supabaseError?.code,
+		})
 
-    throw new Response("Failed to load person", { status: 500 });
-  }
+		throw new Response("Failed to load person", { status: 500 })
+	}
 
-  if (!data) {
-    consola.warn("getPersonById: no data returned", {
-      accountId,
-      projectId,
-      id,
-    });
-    throw new Response("Person not found", { status: 404 });
-  }
+	if (!data) {
+		consola.warn("getPersonById: no data returned", {
+			accountId,
+			projectId,
+			id,
+		})
+		throw new Response("Person not found", { status: 404 })
+	}
 
-  const personData: PersonById = data;
-  // consola.info("getPersonById success", { id: personData.id, project_id: projectId })
-  return personData;
-};
+	const personData: PersonById = data
+	// consola.info("getPersonById success", { id: personData.id, project_id: projectId })
+	return personData
+}
 
 export const createPerson = async ({
-  supabase,
-  data,
+	supabase,
+	data,
 }: {
-  supabase: SupabaseClient<Database>;
-  data: Database["public"]["Tables"]["people"]["Insert"];
+	supabase: SupabaseClient<Database>
+	data: Database["public"]["Tables"]["people"]["Insert"]
 }) => {
-  const result = await supabase.from("people").insert(data).select().single();
+	const result = await supabase.from("people").insert(data).select().single()
 
-  // Trigger segment inference if person was created successfully with a title
-  if (result.data && !result.error) {
-    triggerSegmentInferenceIfNeeded({
-      id: result.data.id,
-      title: result.data.title,
-      job_function: result.data.job_function,
-      seniority_level: result.data.seniority_level,
-      account_id: result.data.account_id,
-      project_id: result.data.project_id,
-    });
-  }
+	// Trigger segment inference if person was created successfully with a title
+	if (result.data && !result.error) {
+		triggerSegmentInferenceIfNeeded({
+			id: result.data.id,
+			title: result.data.title,
+			job_function: result.data.job_function,
+			seniority_level: result.data.seniority_level,
+			account_id: result.data.account_id,
+			project_id: result.data.project_id,
+		})
+	}
 
-  return result;
-};
+	return result
+}
 
 export const updatePerson = async ({
-  supabase,
-  id,
-  accountId,
-  projectId,
-  data,
+	supabase,
+	id,
+	accountId,
+	projectId,
+	data,
 }: {
-  supabase: SupabaseClient<Database>;
-  id: string;
-  accountId: string;
-  projectId: string;
-  data: Database["public"]["Tables"]["people"]["Update"];
+	supabase: SupabaseClient<Database>
+	id: string
+	accountId: string
+	projectId: string
+	data: Database["public"]["Tables"]["people"]["Update"]
 }) => {
-  const updatePersonQuery = supabase
-    .from("people")
-    .update(data)
-    .eq("id", id)
-    .eq("project_id", projectId)
-    .select()
-    .single();
+	const updatePersonQuery = supabase
+		.from("people")
+		.update(data)
+		.eq("id", id)
+		.eq("project_id", projectId)
+		.select()
+		.single()
 
-  type UpdatedPerson = QueryData<typeof updatePersonQuery>;
+	type UpdatedPerson = QueryData<typeof updatePersonQuery>
 
-  const { data: updatedData, error } = await updatePersonQuery;
+	const { data: updatedData, error } = await updatePersonQuery
 
-  if (error) {
-    throw new Response("Failed to update person", { status: 500 });
-  }
+	if (error) {
+		throw new Response("Failed to update person", { status: 500 })
+	}
 
-  const personData: UpdatedPerson = updatedData;
+	const personData: UpdatedPerson = updatedData
 
-  // Trigger segment inference if title was updated and segments are missing
-  // Use force=true if title changed to re-infer even if segments exist
-  if (personData && data.title !== undefined) {
-    triggerSegmentInferenceIfNeeded({
-      id: personData.id,
-      title: personData.title,
-      job_function: personData.job_function,
-      seniority_level: personData.seniority_level,
-      account_id: accountId,
-      project_id: projectId,
-    });
-  }
+	// Trigger segment inference if title was updated and segments are missing
+	// Use force=true if title changed to re-infer even if segments exist
+	if (personData && data.title !== undefined) {
+		triggerSegmentInferenceIfNeeded({
+			id: personData.id,
+			title: personData.title,
+			job_function: personData.job_function,
+			seniority_level: personData.seniority_level,
+			account_id: accountId,
+			project_id: projectId,
+		})
+	}
 
-  return personData;
-};
+	return personData
+}
 
 export const deletePerson = async ({
-  supabase,
-  id,
-  accountId,
-  projectId,
+	supabase,
+	id,
+	accountId,
+	projectId,
 }: {
-  supabase: SupabaseClient<Database>;
-  id: string;
-  accountId: string;
-  projectId: string;
+	supabase: SupabaseClient<Database>
+	id: string
+	accountId: string
+	projectId: string
 }) => {
-  void accountId;
-  const { data, error } = await supabase
-    .from("people")
-    .delete()
-    .eq("id", id)
-    .eq("project_id", projectId);
+	void accountId
+	const { data, error } = await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
 
-  if (error) {
-    console.error("Delete person error:", error);
-    throw new Error(
-      `Failed to delete person: ${error.message} (code: ${error.code})`,
-    );
-  }
+	if (error) {
+		console.error("Delete person error:", error)
+		throw new Error(`Failed to delete person: ${error.message} (code: ${error.code})`)
+	}
 
-  return { data, error };
-};
+	return { data, error }
+}
 
 /**
  * Get people with validation details for the validation status page
  * Returns people who have validation-related data (outcome, stage, etc.)
  */
 const _getPeopleWithValidation = async ({
-  supabase,
-  accountId,
-  projectId,
+	supabase,
+	accountId,
+	projectId,
 }: {
-  supabase: SupabaseClient<Database>;
-  accountId: string;
-  projectId: string;
+	supabase: SupabaseClient<Database>
+	accountId: string
+	projectId: string
 }) => {
-  void accountId;
-  // Query people with their interview data and insights
-  // We'll use the contact_info JSONB field to store validation details
-  const { data, error } = await supabase
-    .from("people")
-    .select(
-      `
+	void accountId
+	// Query people with their interview data and insights
+	// We'll use the contact_info JSONB field to store validation details
+	const { data, error } = await supabase
+		.from("people")
+		.select(
+			`
 			id,
 			name,
 			company,
@@ -432,10 +419,10 @@ const _getPeopleWithValidation = async ({
                                         title
 				)
 			)
-		`,
-    )
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+		`
+		)
+		.eq("project_id", projectId)
+		.order("created_at", { ascending: false })
 
-  return { data, error };
-};
+	return { data, error }
+}

@@ -325,11 +325,13 @@ function OrganizationCell({
 	personId,
 	organizations,
 	endpoint,
+	orgDetailUrl,
 }: {
 	value: { id: string; name?: string | null } | null | undefined
 	personId: string
 	organizations: Organization[]
 	endpoint: string
+	orgDetailUrl?: string
 }) {
 	const fetcher = useFetcher()
 	const revalidator = useRevalidator()
@@ -388,76 +390,88 @@ function OrganizationCell({
 	}
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					className={cn(
-						"group flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-sm transition-colors hover:bg-muted",
-						!displayName && "text-muted-foreground",
-						isPending && "opacity-70"
-					)}
+		<div className="flex items-center gap-1">
+			{/* Link to org detail page */}
+			{orgDetailUrl && value?.id && (
+				<Link
+					to={orgDetailUrl}
+					className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+					title="View organization"
+					onClick={(e) => e.stopPropagation()}
 				>
-					{isPending ? (
-						<>
-							<Loader2 className="h-3 w-3 animate-spin" />
-							<span className="flex-1 truncate">{displayName}</span>
-						</>
-					) : displayName ? (
-						<>
-							<Building2 className="h-3 w-3 shrink-0 opacity-50" />
-							<span className="flex-1 truncate">{displayName}</span>
-							<Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
-						</>
-					) : (
-						<span className="text-muted-foreground">—</span>
-					)}
-				</button>
-			</PopoverTrigger>
-			<PopoverContent className="w-[250px] p-0" align="start">
-				<Command>
-					<CommandInput placeholder="Search or create..." value={search} onValueChange={setSearch} />
-					<CommandList>
-						<CommandEmpty>
-							{search ? (
-								<button
-									type="button"
-									onClick={handleCreateNew}
-									className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted"
-									disabled={isPending}
-								>
-									<Plus className="h-4 w-4" />
-									Create "{search}"
-								</button>
-							) : (
-								<span className="px-2 py-1.5 text-muted-foreground text-sm">No organizations found</span>
-							)}
-						</CommandEmpty>
-						<CommandGroup>
-							{filteredOrgs.map((org) => (
-								<CommandItem
-									key={org.id}
-									value={org.name ?? org.id}
-									onSelect={() => handleSelect(org.id)}
-									className="flex items-center gap-2"
-								>
-									<Check className={cn("h-4 w-4", value?.id === org.id ? "opacity-100" : "opacity-0")} />
-									{org.name || "Unnamed"}
-								</CommandItem>
-							))}
-						</CommandGroup>
-						{search && !filteredOrgs.some((o) => o.name?.toLowerCase() === search.toLowerCase()) && (
-							<CommandGroup>
-								<CommandItem onSelect={handleCreateNew} className="flex items-center gap-2">
-									<Plus className="h-4 w-4" />
-									Create "{search}"
-								</CommandItem>
-							</CommandGroup>
+					<Building2 className="h-3 w-3" />
+				</Link>
+			)}
+			<Popover open={open} onOpenChange={setOpen}>
+				<PopoverTrigger asChild>
+					<button
+						type="button"
+						className={cn(
+							"group flex flex-1 items-center gap-1 rounded px-1 py-0.5 text-left text-sm transition-colors hover:bg-muted",
+							!displayName && "text-muted-foreground",
+							isPending && "opacity-70"
 						)}
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
+					>
+						{isPending ? (
+							<>
+								<Loader2 className="h-3 w-3 animate-spin" />
+								<span className="flex-1 truncate">{displayName}</span>
+							</>
+						) : displayName ? (
+							<>
+								<span className="flex-1 truncate">{displayName}</span>
+								<Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
+							</>
+						) : (
+							<span className="text-muted-foreground">—</span>
+						)}
+					</button>
+				</PopoverTrigger>
+				<PopoverContent className="w-[250px] p-0" align="start">
+					<Command>
+						<CommandInput placeholder="Search or create..." value={search} onValueChange={setSearch} />
+						<CommandList>
+							<CommandEmpty>
+								{search ? (
+									<button
+										type="button"
+										onClick={handleCreateNew}
+										className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted"
+										disabled={isPending}
+									>
+										<Plus className="h-4 w-4" />
+										Create "{search}"
+									</button>
+								) : (
+									<span className="px-2 py-1.5 text-muted-foreground text-sm">No organizations found</span>
+								)}
+							</CommandEmpty>
+							<CommandGroup>
+								{filteredOrgs.map((org) => (
+									<CommandItem
+										key={org.id}
+										value={org.name ?? org.id}
+										onSelect={() => handleSelect(org.id)}
+										className="flex items-center gap-2"
+									>
+										<Check className={cn("h-4 w-4", value?.id === org.id ? "opacity-100" : "opacity-0")} />
+										{org.name || "Unnamed"}
+									</CommandItem>
+								))}
+							</CommandGroup>
+							{search && !filteredOrgs.some((o) => o.name?.toLowerCase() === search.toLowerCase()) && (
+								<CommandGroup>
+									<CommandItem onSelect={handleCreateNew} className="flex items-center gap-2">
+										<Plus className="h-4 w-4" />
+										Create "{search}"
+									</CommandItem>
+								</CommandGroup>
+							)}
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</div>
 	)
 }
 
@@ -738,6 +752,9 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 						personId={row.original.id}
 						organizations={organizations}
 						endpoint={updateEndpoint}
+						orgDetailUrl={
+							row.original.organization?.id ? routes.organizations.detail(row.original.organization.id) : undefined
+						}
 					/>
 				),
 				enableSorting: false,
