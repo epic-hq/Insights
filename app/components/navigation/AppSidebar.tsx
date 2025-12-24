@@ -482,11 +482,7 @@ export function AppSidebar({ forceSidebarCollapsed = false }: AppSidebarProps) {
 			<SidebarRail className="group pointer-events-auto">
 				<SidebarTrigger
 					disabled={forceSidebarCollapsed}
-					title={
-						forceSidebarCollapsed
-							? "Sidebar is collapsed while Project Status Agent is open"
-							: "Toggle sidebar"
-					}
+					title={forceSidebarCollapsed ? "Sidebar is collapsed while Project Status Agent is open" : "Toggle sidebar"}
 					className="mt-3"
 				/>
 			</SidebarRail>

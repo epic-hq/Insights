@@ -11,14 +11,14 @@ const cardVariants = cva(
 			surface: {
 				default: "border-border bg-card shadow-sm",
 				muted: "border-border/30 bg-muted/80 shadow-none dark:bg-muted/50",
-				elevated: "border-border bg-card shadow-lg shadow-black/10 dark:shadow-black/40",
+				elevated: "border-border bg-card shadow-black/10 shadow-lg dark:shadow-black/40",
 				outline: "border-primary/50 bg-background/70 shadow-none ring-1 ring-primary/10",
 				soft: "border-primary/25 bg-primary/10 text-foreground shadow-[0_20px_70px_-45px_rgba(59,130,246,0.65)] dark:border-primary/35 dark:bg-primary/15",
-				glass: "border-white/40 bg-white/75 shadow-xl backdrop-blur-xl ring-1 ring-white/40 dark:border-white/15 dark:bg-slate-900/50 dark:ring-white/10",
+				glass:
+					"border-white/40 bg-white/75 shadow-xl ring-1 ring-white/40 backdrop-blur-xl dark:border-white/15 dark:bg-slate-900/50 dark:ring-white/10",
 				gradient:
 					"border-transparent bg-gradient-to-br from-primary/18 via-card to-indigo-200/35 text-foreground shadow-lg dark:from-primary/25 dark:via-slate-900 dark:to-indigo-500/15",
-				glow:
-					"border-primary/30 bg-card shadow-[0_18px_55px_-25px_rgba(59,130,246,0.75)] ring-2 ring-primary/15 dark:shadow-[0_16px_50px_-24px_rgba(59,130,246,0.65)]",
+				glow: "border-primary/30 bg-card shadow-[0_18px_55px_-25px_rgba(59,130,246,0.75)] ring-2 ring-primary/15 dark:shadow-[0_16px_50px_-24px_rgba(59,130,246,0.65)]",
 			},
 		},
 		defaultVariants: {
