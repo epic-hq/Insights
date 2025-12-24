@@ -466,69 +466,48 @@ graph TD
 ### Core Data Model
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f1f5f9' }}}%%
-erDiagram
-  PROJECT {
-    uuid id PK
-    string name
-    string goals
-  }
-  CONVERSATION {
-    uuid id PK
-    string transcript
-    timestamp created_at
-  }
-  EVIDENCE {
-    uuid id PK
-    string verbatim
-    string gist
-    jsonb anchors
-  }
-  INSIGHT {
-    uuid id PK
-    string name
-    string statement
-    int priority
-  }
-  PERSON {
-    uuid id PK
-    string name
-    string title
-    string email
-  }
-  ORGANIZATION {
-    uuid id PK
-    string name
-    string industry
-  }
-  OPPORTUNITY {
-    uuid id PK
-    string name
-    decimal amount
-    string stage
-  }
-  TASK {
-    uuid id PK
-    string title
-    string status
-    uuid owner_id
-  }
+%%{init: {'theme': 'base', 'themeVariables': { 'lineColor': '#64748b', 'primaryColor': '#e2e8f0' }}}%%
+flowchart TB
+  subgraph project_scope["Project Scope"]
+    PROJECT[🗂️ Project]
+    CONVERSATION[💬 Conversation]
+    OPPORTUNITY[💰 Opportunity]
+    TASK[✅ Task]
+    ASSET[📎 Asset]
+  end
 
-  PROJECT ||--o{ CONVERSATION : contains
-  PROJECT ||--o{ OPPORTUNITY : tracks
-  PROJECT ||--o{ TASK : has
+  subgraph intelligence["Intelligence Layer"]
+    EVIDENCE[📝 Evidence]
+    INSIGHT[💡 Insight]
+    LENS[🔍 Lens Analysis]
+  end
 
-  CONVERSATION ||--o{ EVIDENCE : yields
-  CONVERSATION ||--o{ LENS_ANALYSIS : analyzed_by
+  subgraph crm["People & Orgs"]
+    PERSON[👤 Person]
+    ORGANIZATION[🏢 Organization]
+    PERSONA[🎭 Persona]
+  end
 
-  EVIDENCE }o--|| PERSON : spoken_by
-  EVIDENCE }o--o{ INSIGHT : supports
+  PROJECT --> CONVERSATION
+  PROJECT --> OPPORTUNITY
+  PROJECT --> TASK
+  PROJECT --> ASSET
 
-  PERSON }o--o| ORGANIZATION : belongs_to
+  CONVERSATION --> EVIDENCE
+  CONVERSATION --> LENS
+  EVIDENCE --> INSIGHT
+  EVIDENCE -.-> PERSON
 
-  TASK }o--o{ EVIDENCE : linked_to
-  TASK }o--o{ INSIGHT : linked_to
-  TASK }o--o{ OPPORTUNITY : linked_to
+  PERSON -.-> ORGANIZATION
+  INSIGHT -.-> PERSONA
+
+  TASK -.-> INSIGHT
+  TASK -.-> OPPORTUNITY
+  TASK -.-> EVIDENCE
+
+  style project_scope fill:#dbeafe,stroke:#3b82f6
+  style intelligence fill:#fef3c7,stroke:#f59e0b
+  style crm fill:#dcfce7,stroke:#22c55e
 ```
 
 ### Annotation Layer (Comments & Collaboration)
