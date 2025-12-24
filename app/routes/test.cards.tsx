@@ -1,5 +1,5 @@
-import type React from "react"
 import { Calendar, Clock, MessageCircle, Mic, Sparkles, Tag, Users } from "lucide-react"
+import type React from "react"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Separator } from "~/components/ui/separator"
@@ -41,17 +41,16 @@ function InterviewStyleCard({ className }: { className?: string }) {
 			</CardHeader>
 			<CardContent className="space-y-3 pb-4">
 				<div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed">
-					Customer is struggling to roll out training updates quickly. Needs self-serve templates and better
-					analytics for adoption.
+					Customer is struggling to roll out training updates quickly. Needs self-serve templates and better analytics
+					for adoption.
 				</div>
-				<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+				<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
 					<Badge variant="outline" className="gap-1">
 						<Tag className="h-3 w-3" />
 						Enablement
 					</Badge>
 					<Badge variant="secondary" className="gap-1">
-						<Sparkles className="h-3 w-3" />
-						3 new themes
+						<Sparkles className="h-3 w-3" />3 new themes
 					</Badge>
 					<span className="flex items-center gap-1 rounded-full bg-card/80 px-2 py-1">
 						<MessageCircle className="h-3 w-3" />
@@ -73,8 +72,9 @@ export default function CardSurfacesDemo() {
 			<header className="space-y-2">
 				<h1 className="font-semibold text-2xl text-foreground">Card Surface Gallery</h1>
 				<p className="text-muted-foreground">
-					Preview the available <code className="rounded bg-muted px-1 py-0.5 text-xs">surface</code> variants on the shared
-					Card component. Use this page as a sandbox when picking a style for insights, tasks, lenses, or chat surfaces.
+					Preview the available <code className="rounded bg-muted px-1 py-0.5 text-xs">surface</code> variants on the
+					shared Card component. Use this page as a sandbox when picking a style for insights, tasks, lenses, or chat
+					surfaces.
 				</p>
 			</header>
 
@@ -83,7 +83,7 @@ export default function CardSurfacesDemo() {
 					<Card
 						key={surface.key}
 						surface={surface.key}
-						className="border-dashed border-border/40 hover:border-solid hover:border-primary/40 hover:shadow-lg"
+						className="border-border/40 border-dashed hover:border-primary/40 hover:border-solid hover:shadow-lg"
 					>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2 text-base">
@@ -106,7 +106,8 @@ export default function CardSurfacesDemo() {
 				<div>
 					<h2 className="font-semibold text-lg">Interview-style layout</h2>
 					<p className="text-muted-foreground text-sm">
-						A richer layout similar to interviews/personas: header metadata, pill badges, and a muted body for summaries.
+						A richer layout similar to interviews/personas: header metadata, pill badges, and a muted body for
+						summaries.
 					</p>
 				</div>
 				<InterviewStyleCard />

@@ -32,122 +32,122 @@ export function useSidebarCounts(accountId?: string, projectId?: string, _workfl
 		if (!accountId || !projectId) return
 		let isCancelled = false
 
-			; (async () => {
-				setLoading(true)
-				try {
-					const supabase = createClient()
-					// Execute all count queries in parallel
-					const [
-						interviewsResult,
-						noteInterviewsResult,
-						projectAssetsResult,
-						personasResult,
-						themesResult,
-						themeEvidenceThemesResult,
-						peopleResult,
-						organizationsResult,
-						opportunitiesResult,
-						highPriorityTasksResult,
-					] = await Promise.all([
-						// Count interviews
-						supabase
-							.from("interviews")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+		;(async () => {
+			setLoading(true)
+			try {
+				const supabase = createClient()
+				// Execute all count queries in parallel
+				const [
+					interviewsResult,
+					noteInterviewsResult,
+					projectAssetsResult,
+					personasResult,
+					themesResult,
+					themeEvidenceThemesResult,
+					peopleResult,
+					organizationsResult,
+					opportunitiesResult,
+					highPriorityTasksResult,
+				] = await Promise.all([
+					// Count interviews
+					supabase
+						.from("interviews")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count notes (stored as interviews)
-						supabase
-							.from("interviews")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId)
-							.or("source_type.eq.note,interview_type.eq.note,media_type.eq.note"),
+					// Count notes (stored as interviews)
+					supabase
+						.from("interviews")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId)
+						.or("source_type.eq.note,interview_type.eq.note,media_type.eq.note"),
 
-						// Count project assets (files)
-						supabase
-							.from("project_assets")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count project assets (files)
+					supabase
+						.from("project_assets")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count personas
-						supabase
-							.from("personas")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count personas
+					supabase
+						.from("personas")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count themes
-						supabase
-							.from("themes")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count themes
+					supabase
+						.from("themes")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count insights (themes that have evidence)
-						supabase
-							.from("theme_evidence")
-							.select("theme_id")
-							.eq("project_id", projectId),
+					// Count insights (themes that have evidence)
+					supabase
+						.from("theme_evidence")
+						.select("theme_id")
+						.eq("project_id", projectId),
 
-						// Count people for this project
-						supabase
-							.from("people")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count people for this project
+					supabase
+						.from("people")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count organizations
-						supabase
-							.from("organizations")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count organizations
+					supabase
+						.from("organizations")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count opportunities
-						supabase
-							.from("opportunities")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count opportunities
+					supabase
+						.from("opportunities")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count high priority tasks (priority = 1, active statuses)
-						supabase
-							.from("tasks")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId)
-							.eq("priority", 1)
-							.in("status", ["todo", "in_progress", "blocked", "review"]),
-					])
+					// Count high priority tasks (priority = 1, active statuses)
+					supabase
+						.from("tasks")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId)
+						.eq("priority", 1)
+						.in("status", ["todo", "in_progress", "blocked", "review"]),
+				])
 
-					if (!isCancelled) {
-						const interview_count = interviewsResult.count || 0
-						const notes_count = noteInterviewsResult.count || 0
-						const conversations_count = Math.max(0, interview_count - notes_count)
-						const files_count = projectAssetsResult.count || 0
-						const content_count = conversations_count + notes_count + files_count
-						const insight_count = new Set(
-							(themeEvidenceThemesResult.data ?? [])
-								.map((row: { theme_id: string | null }) => row.theme_id)
-								.filter(Boolean)
-						).size
+				if (!isCancelled) {
+					const interview_count = interviewsResult.count || 0
+					const notes_count = noteInterviewsResult.count || 0
+					const conversations_count = Math.max(0, interview_count - notes_count)
+					const files_count = projectAssetsResult.count || 0
+					const content_count = conversations_count + notes_count + files_count
+					const insight_count = new Set(
+						(themeEvidenceThemesResult.data ?? [])
+							.map((row: { theme_id: string | null }) => row.theme_id)
+							.filter(Boolean)
+					).size
 
-						setCounts({
-							encounters: interview_count,
-							personas: personasResult.count || 0,
-							themes: themesResult.count || 0,
-							insights: insight_count,
-							content: content_count,
-							people: peopleResult.count || 0,
-							organizations: organizationsResult.count || 0,
-							opportunities: opportunitiesResult.count || 0,
-							highPriorityTasks: highPriorityTasksResult.count || 0,
-						})
-					}
-				} catch (error) {
-					console.error("[useSidebarCounts] Error fetching counts:", error)
-					if (!isCancelled) {
-						setCounts({})
-					}
-				} finally {
-					if (!isCancelled) {
-						setLoading(false)
-					}
+					setCounts({
+						encounters: interview_count,
+						personas: personasResult.count || 0,
+						themes: themesResult.count || 0,
+						insights: insight_count,
+						content: content_count,
+						people: peopleResult.count || 0,
+						organizations: organizationsResult.count || 0,
+						opportunities: opportunitiesResult.count || 0,
+						highPriorityTasks: highPriorityTasksResult.count || 0,
+					})
 				}
-			})()
+			} catch (error) {
+				console.error("[useSidebarCounts] Error fetching counts:", error)
+				if (!isCancelled) {
+					setCounts({})
+				}
+			} finally {
+				if (!isCancelled) {
+					setLoading(false)
+				}
+			}
+		})()
 
 		return () => {
 			isCancelled = true
