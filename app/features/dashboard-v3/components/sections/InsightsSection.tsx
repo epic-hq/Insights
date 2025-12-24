@@ -72,7 +72,6 @@ function InsightPreviewCard({ insight, detailHref }: InsightPreviewCardProps) {
 					{/* Priority indicator */}
 					<div className="mt-2 flex items-center gap-2">
 						<PriorityBars priority={priority} size="sm" />
-
 					</div>
 				</CardContent>
 			</Card>

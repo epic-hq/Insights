@@ -11,8 +11,8 @@ import {
 	AlertTriangle,
 	ArrowUpRight,
 	Calendar,
-	ClipboardList,
 	CheckCircle2,
+	ClipboardList,
 	Clock,
 	Info,
 	Loader2,
@@ -203,7 +203,9 @@ function QALensView({
 	const renderEvidenceBadges = (evidenceIds?: string[]) => {
 		if (!evidenceIds || evidenceIds.length === 0) return null
 		const refs = evidenceMap ? hydrateEvidenceRefs(evidenceIds, evidenceMap) : undefined
-		return <EvidenceTimestampBadges evidenceRefs={refs} evidenceIds={!refs ? evidenceIds : undefined} className="mt-2" />
+		return (
+			<EvidenceTimestampBadges evidenceRefs={refs} evidenceIds={!refs ? evidenceIds : undefined} className="mt-2" />
+		)
 	}
 
 	return (
@@ -224,9 +226,7 @@ function QALensView({
 				</div>
 				<div className="flex items-center gap-2 text-muted-foreground text-sm">
 					{confidence !== null && confidence !== undefined && <ConfidenceIndicator confidence={confidence} />}
-					{analysis?.processed_at ? (
-						<span>Analyzed {new Date(analysis.processed_at).toLocaleDateString()}</span>
-					) : null}
+					{analysis?.processed_at ? <span>Analyzed {new Date(analysis.processed_at).toLocaleDateString()}</span> : null}
 				</div>
 			</div>
 
@@ -264,7 +264,7 @@ function QALensView({
 									</div>
 
 									<div className="space-y-2">
-										<p className="text-xs uppercase tracking-wide text-muted-foreground">Question</p>
+										<p className="text-muted-foreground text-xs uppercase tracking-wide">Question</p>
 										<p className="font-medium text-foreground text-sm leading-relaxed">
 											{pair?.question || "Question not captured"}
 										</p>
@@ -272,10 +272,10 @@ function QALensView({
 									</div>
 
 									<div className="mt-4 space-y-2">
-										<p className="text-xs uppercase tracking-wide text-muted-foreground">Answer</p>
+										<p className="text-muted-foreground text-xs uppercase tracking-wide">Answer</p>
 										<p className="text-foreground text-sm leading-relaxed">{pair?.answer || "No answer captured"}</p>
 										{pair?.answer_verbatim ? (
-											<blockquote className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-muted-foreground text-sm italic">
+											<blockquote className="rounded-md border-primary/50 border-l-2 bg-muted/40 px-3 py-2 text-muted-foreground text-sm italic">
 												“{pair.answer_verbatim}”
 											</blockquote>
 										) : null}
