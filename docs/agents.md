@@ -73,9 +73,11 @@ The `projectPath` is formatted as `/a/{accountId}/{projectId}` and must be passe
 - [x] Added project/theme/docs tooling that surfaces votes/priority as part of `fetchProjectStatusContext` and UI tables.
 - [x] Implemented hybrid semantic search for evidence (verbatim + facets) and people (Dec 2024).
 - [x] Fixed evidence detail page scroll bug - respects `?t=` timestamp parameter for media playback.
+- [x] People table inline editing with Remix optimistic updates (Dec 2024).
+- [x] People deduplication with merge logic - preserves all evidence/interview links (Dec 2024).
+- [x] Removed Matrix page (features consolidated into table view).
 - [ ] Generate embeddings for evidence/facets missing them (currently ~36% of evidence lacks embeddings).
 - [ ] Standardize instructions for any agents still referencing legacy routing (especially `projectSetupAgent`).
-- [ ] Confirm the `/themes` page only shows the Table + Cards toggles, and remove old matrix/table links.
 - [ ] Keep this checklist updated; when new automation ideas arise (e.g., priority audit, theme adoption coach), append them here so future LLMs can keep extending the ledger.
 
 ## 6. Reference Docs

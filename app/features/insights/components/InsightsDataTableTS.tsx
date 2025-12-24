@@ -25,10 +25,20 @@ import {
   ChevronDown,
   ChevronRight,
   Columns3,
+  Users,
 } from "lucide-react";
+
+// Segment data for an insight
+export interface InsightSegmentData {
+  jobFunction: Record<string, number>;
+  seniority: Record<string, number>;
+  segment: Record<string, number>;
+  facets: Record<string, number>;
+}
 import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useFetcher } from "react-router-dom";
 import { Badge } from "~/components/ui/badge";
+import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -82,30 +92,92 @@ type Insight = BaseInsight & {
 
 interface InsightsDataTableProps {
   data: Insight[];
+  segmentData?: Record<string, InsightSegmentData>;
+}
+
+// Helper to get top N entries from a count object
+function getTopEntries(
+  counts: Record<string, number>,
+  n: number,
+): Array<{ label: string; count: number }> {
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([label, count]) => ({ label, count }));
+}
+
+// Segment breakdown cell component
+function SegmentBreakdownCell({
+  data,
+  type,
+}: {
+  data: InsightSegmentData | undefined;
+  type: "jobFunction" | "seniority" | "segment" | "facets";
+}) {
+  if (!data) return <span className="text-muted-foreground text-sm">-</span>;
+
+  const counts = data[type];
+  const entries = getTopEntries(counts, 3);
+
+  if (entries.length === 0) {
+    return <span className="text-muted-foreground text-sm">-</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {entries.map(({ label, count }) => (
+        <Badge
+          key={label}
+          variant="outline"
+          className="gap-1 px-1.5 py-0.5 text-[10px]"
+        >
+          <span className="max-w-[80px] truncate">{label}</span>
+          <span className="text-muted-foreground">({count})</span>
+        </Badge>
+      ))}
+    </div>
+  );
 }
 
 type ViewMode = "flat" | "grouped";
 
 const STORAGE_KEY = "insights_table_columns_v3";
+const VIEW_MODE_KEY = "insights_table_view_mode";
 
-// Column labels for visibility selector
+// Column labels for visibility selector (ordered)
 const columnLabels: Record<string, string> = {
   name: "Insight theme",
   person_count: "People",
   evidence_count: "Evidence",
-  segment: "Segment",
+  // Segment columns grouped together
+  seg_jobFunction: "Job Function",
+  seg_seniority: "Seniority",
+  seg_facets: "Facets",
+  // NOTE: seg_segment removed - deprecated field
+  segment: "Personas",
+  // JTBD columns
   jtbd: "JTBD",
   impact: "Impact",
   benefit: "Benefit",
   priority: "Priority",
 };
 
+// Columns that should have segment header styling
+const SEGMENT_COLUMNS = new Set([
+  "seg_jobFunction",
+  "seg_seniority",
+  "seg_facets",
+]);
+
 // Default column visibility
 const defaultColumnVisibility: VisibilityState = {
   name: true,
   person_count: true,
   evidence_count: true,
-  segment: true,
+  segment: false, // Hide personas by default
+  seg_jobFunction: true,
+  seg_seniority: true,
+  seg_facets: true, // Show facets - they have data from interview analysis
   jtbd: true,
   impact: true,
   benefit: true,
@@ -263,7 +335,10 @@ function PriorityPopover({
   );
 }
 
-export function InsightsDataTable({ data }: InsightsDataTableProps) {
+export function InsightsDataTable({
+  data,
+  segmentData,
+}: InsightsDataTableProps) {
   const { projectPath } = useCurrentProject();
   const routes = useProjectRoutes(projectPath || "");
   const priorityFetcher = useFetcher();
@@ -273,10 +348,19 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
     { id: "evidence_count", desc: true },
   ]);
   const [columnFilters, setColumnFilters] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>("grouped"); // Default to grouped
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "grouped";
+    try {
+      const stored = window.localStorage.getItem(VIEW_MODE_KEY);
+      return stored === "flat" ? "flat" : "grouped";
+    } catch {
+      return "grouped";
+    }
+  });
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(),
+    () => new Set(), // Start empty, will be initialized once
   );
+  const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false);
   const [filterValue, setFilterValue] = useState("");
 
   // Column visibility with localStorage persistence
@@ -301,6 +385,13 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
       );
     }
   }, [columnVisibility]);
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(VIEW_MODE_KEY, viewMode);
+    }
+  }, [viewMode]);
 
   // Handle priority change
   const handlePriorityChange = (insightId: string, newPriority: number) => {
@@ -341,12 +432,13 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
   // Group filtered data
   const grouped = useMemo(() => groupByCategory(filteredData), [filteredData]);
 
-  // Initialize expanded categories when grouped changes
-  useMemo(() => {
-    if (expandedCategories.size === 0 && grouped.length > 0) {
+  // Initialize expanded categories ONLY once on first load
+  useEffect(() => {
+    if (!hasInitializedExpanded && grouped.length > 0) {
       setExpandedCategories(new Set(grouped.map((g) => g.category)));
+      setHasInitializedExpanded(true);
     }
-  }, [grouped, expandedCategories.size]);
+  }, [grouped, hasInitializedExpanded]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) => {
@@ -417,12 +509,48 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
           );
         },
       },
+      // Demographic segment columns (grouped together after counts)
+      {
+        id: "seg_jobFunction",
+        accessorFn: (row) => segmentData?.[row.id]?.jobFunction || {},
+        header: () => "Job Function",
+        cell: (cell: CellContext<Insight, unknown>) => (
+          <SegmentBreakdownCell
+            data={segmentData?.[cell.row.original.id]}
+            type="jobFunction"
+          />
+        ),
+      },
+      {
+        id: "seg_seniority",
+        accessorFn: (row) => segmentData?.[row.id]?.seniority || {},
+        header: () => "Seniority",
+        cell: (cell: CellContext<Insight, unknown>) => (
+          <SegmentBreakdownCell
+            data={segmentData?.[cell.row.original.id]}
+            type="seniority"
+          />
+        ),
+      },
+      // NOTE: seg_segment column removed - deprecated field
+      {
+        id: "seg_facets",
+        accessorFn: (row) => segmentData?.[row.id]?.facets || {},
+        header: () => "Facets",
+        cell: (cell: CellContext<Insight, unknown>) => (
+          <SegmentBreakdownCell
+            data={segmentData?.[cell.row.original.id]}
+            type="facets"
+          />
+        ),
+      },
+      // Personas column (after segment columns)
       {
         id: "segment",
         accessorFn: (row) =>
           row.persona_insights?.map((p) => p.personas?.name).filter(Boolean) ||
           [],
-        header: () => "Segment",
+        header: () => "Personas",
         cell: (cell: CellContext<Insight, unknown>) => {
           const personas = cell.getValue() as string[];
           if (!personas.length)
@@ -546,7 +674,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
         },
       },
     ],
-    [routes.evidence, routes.insights, projectPath],
+    [routes.evidence, routes.insights, projectPath, segmentData],
   );
 
   const table = useReactTable({
@@ -673,7 +801,13 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
                   .getAllColumns()
                   .filter((col) => col.getIsVisible())
                   .map((column) => (
-                    <TableHead key={column.id}>
+                    <TableHead
+                      key={column.id}
+                      className={cn(
+                        SEGMENT_COLUMNS.has(column.id) &&
+                          "bg-blue-50 dark:bg-blue-950/30",
+                      )}
+                    >
                       {flexRender(column.columnDef.header, { column } as any)}
                     </TableHead>
                   ))}
@@ -730,7 +864,11 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
                     <TableHead
                       key={header.id}
                       onClick={header.column.getToggleSortingHandler()}
-                      className="cursor-pointer select-none"
+                      className={cn(
+                        "cursor-pointer select-none",
+                        SEGMENT_COLUMNS.has(header.id) &&
+                          "bg-blue-50 dark:bg-blue-950/30",
+                      )}
                     >
                       {flexRender(
                         header.column.columnDef.header,

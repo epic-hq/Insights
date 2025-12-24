@@ -68,6 +68,16 @@ ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS key_takeaways text;
 COMMENT ON COLUMN public.interviews.key_takeaways IS 'AI-generated synopsis of conversation value, critical next steps, and future improvements (3-4 sentences)';
 COMMENT ON COLUMN public.interviews.interviewer_id IS 'DEPRECATED: Use interview_people + people.person_type=internal for internal attendees';
 
+COMMENT ON COLUMN public.interviews.media_url IS 'URL to the primary asset (audio/video/document) for this interview. For uploads this is typically an R2/Supabase Storage URL; for external imports it may be a remote URL.';
+COMMENT ON COLUMN public.interviews.thumbnail_url IS 'Optional preview image URL for video content (or other rich media).';
+
+COMMENT ON COLUMN public.interviews.source_type IS 'Where the content came from / ingestion path (free-text). Conventions: realtime_recording | audio_upload | video_upload | document_upload | transcript_paste | transcript_import.';
+COMMENT ON COLUMN public.interviews.interview_type IS 'User-entered workflow classification for UI + filtering (free-text). Conventions: interview | voice_memo | note | meeting. Notes are often stored as interviews for a unified pipeline.';
+COMMENT ON COLUMN public.interviews.media_type IS 'User-entered semantic content category (free-text). Conventions: interview | focus_group | customer_call | user_testing | voice_memo | meeting. Distinct from interaction_context (LLM) and from file_extension (format).';
+
+COMMENT ON COLUMN public.interviews.file_extension IS 'File format of the uploaded asset (mp3, mp4, wav, m4a, pdf, csv, md, etc.). Prefer lowercase without leading dot.';
+COMMENT ON COLUMN public.interviews.original_filename IS 'Original filename from the user upload (for display/debugging).';
+
 -- Indexes for performance based on common queries
 CREATE INDEX idx_interviews_account_id ON public.interviews(account_id);
 CREATE INDEX idx_interviews_project_id ON public.interviews(project_id);

@@ -1,77 +1,81 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { Memory } from "@mastra/memory"
-import consola from "consola"
-import { z } from "zod"
+import { openai } from "@ai-sdk/openai";
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
+import consola from "consola";
+import { z } from "zod";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { capabilityLookupTool } from "../tools/capability-lookup"
-import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
-import { fetchEvidenceTool } from "../tools/fetch-evidence"
-import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
-import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
-import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
-import { fetchPersonasTool } from "../tools/fetch-personas"
-import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
-import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
-import { fetchSegmentsTool } from "../tools/fetch-segments"
-import { fetchThemesTool } from "../tools/fetch-themes"
-import { fetchWebContentTool } from "../tools/fetch-web-content"
-import { generateDocumentLinkTool } from "../tools/generate-document-link"
-import { generateProjectRoutesTool } from "../tools/generate-project-routes"
-import { getCurrentDateTool } from "../tools/get-current-date"
-import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table"
-import { importPeopleFromTableTool } from "../tools/import-people-from-table"
-import { importVideoFromUrlTool } from "../tools/import-video-from-url"
-import { manageAnnotationsTool } from "../tools/manage-annotations"
-import { manageDocumentsTool } from "../tools/manage-documents"
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { capabilityLookupTool } from "../tools/capability-lookup";
+import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses";
+import { fetchEvidenceTool } from "../tools/fetch-evidence";
+import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
+import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
+import { fetchPeopleDetailsTool } from "../tools/fetch-people-details";
+import { fetchPersonasTool } from "../tools/fetch-personas";
+import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
+import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
+import { fetchSegmentsTool } from "../tools/fetch-segments";
+import { fetchThemesTool } from "../tools/fetch-themes";
+import { fetchWebContentTool } from "../tools/fetch-web-content";
+import { generateDocumentLinkTool } from "../tools/generate-document-link";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { getCurrentDateTool } from "../tools/get-current-date";
+import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table";
+import { importPeopleFromTableTool } from "../tools/import-people-from-table";
+import { importVideoFromUrlTool } from "../tools/import-video-from-url";
+import { manageAnnotationsTool } from "../tools/manage-annotations";
+import { manageDocumentsTool } from "../tools/manage-documents";
 import {
-	createInterviewPromptTool,
-	deleteInterviewPromptTool,
-	fetchInterviewPromptsTool,
-	updateInterviewPromptTool,
-} from "../tools/manage-interview-prompts"
-import { manageInterviewsTool } from "../tools/manage-interviews"
-import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
-import { managePeopleTool } from "../tools/manage-people"
-import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
+  createInterviewPromptTool,
+  deleteInterviewPromptTool,
+  fetchInterviewPromptsTool,
+  updateInterviewPromptTool,
+} from "../tools/manage-interview-prompts";
+import { manageInterviewsTool } from "../tools/manage-interviews";
 import {
-	createTaskTool,
-	deleteTaskTool,
-	fetchFocusTasksTool,
-	fetchTasksTool,
-	updateTaskTool,
-} from "../tools/manage-tasks"
-import { navigateToPageTool } from "../tools/navigate-to-page"
-import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
-import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
-import { semanticSearchAssetsTool } from "../tools/semantic-search-assets"
-import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
-import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
-import { suggestionTool } from "../tools/suggestion-tool"
-import { switchAgentTool } from "../tools/switch-agent"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
-import { updateTableAssetTool } from "../tools/update-table-asset"
-import { upsertPersonTool } from "../tools/upsert-person"
-import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
-import { findSimilarPagesTool, webResearchTool } from "../tools/web-research"
+  createOpportunityTool,
+  fetchOpportunitiesTool,
+  updateOpportunityTool,
+} from "../tools/manage-opportunities";
+import { managePeopleTool } from "../tools/manage-people";
+import { managePersonOrganizationsTool } from "../tools/manage-person-organizations";
+import {
+  createTaskTool,
+  deleteTaskTool,
+  fetchFocusTasksTool,
+  fetchTasksTool,
+  updateTaskTool,
+} from "../tools/manage-tasks";
+import { navigateToPageTool } from "../tools/navigate-to-page";
+import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
+import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
+import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
+import { semanticSearchPeopleTool } from "../tools/semantic-search-people";
+import { suggestionTool } from "../tools/suggestion-tool";
+import { switchAgentTool } from "../tools/switch-agent";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
+import { updateTableAssetTool } from "../tools/update-table-asset";
+import { upsertPersonTool } from "../tools/upsert-person";
+import { upsertPersonFacetsTool } from "../tools/upsert-person-facets";
+import { findSimilarPagesTool, webResearchTool } from "../tools/web-research";
 
 const ProjectStatusMemoryState = z.object({
-	lastProjectId: z.string().optional(),
-	lastSummary: z.string().optional(),
-	lastUpdatedAt: z.string().optional(),
-})
+  lastProjectId: z.string().optional(),
+  lastSummary: z.string().optional(),
+  lastUpdatedAt: z.string().optional(),
+});
 
 export const projectStatusAgent = new Agent({
-	id: "project-status-agent",
-	name: "projectStatusAgent",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id")
-			const accountId = requestContext.get("account_id")
-			return `
+  id: "project-status-agent",
+  name: "projectStatusAgent",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}
@@ -219,9 +223,15 @@ Call "getCurrentDate" first for any date/time questions.
 - Skips duplicates based on CRM external ID
 - Links opportunities to organizations automatically
 
-## Linking & Navigation
-Provide user with internal URL links to entitites you reference in answers, like people, Insights, Opportunities, Organizations.
-Use "generateProjectRoutes" to get URLs, format as **[Name](route)**. Call "navigateToPage" to proactively open relevant screens.
+## Linking & Navigation (CRITICAL)
+**ALWAYS include clickable links when you reference ANY record** - People, Insights, Interviews, Opportunities, Organizations, Themes, Evidence.
+- Call "generateProjectRoutes" with the record type and ID to get the URL
+- Format as markdown link: **[Record Name](url)** so users can click to view details
+- Example: "**[Jane Smith](/a/{accountId}/{projectId}/people/{personId})** mentioned budget concerns in her interview"
+- This applies to EVERY mention of a record in your response - never just reference by name without a link
+- If you're citing evidence, link to both the person AND the interview/evidence source
+
+Call "navigateToPage" to proactively open relevant screens when users ask to view something.
 
 ## Tone
 Be Direct and analytical. You're a trusted advisor, not a search engine.
@@ -230,76 +240,76 @@ Ask brief clarifying questions when the request is ambiguous.
 
 ## Suggestions
 Do NOT add a "Next steps" section in the text response. Rely on the suggestion widgets only: call "suggestNextSteps" with 2-3 brief, imperative commands that match your response. Keep them aligned with what you just delivered; no extra or conflicting steps.
-`
-		} catch (error) {
-			consola.error("Error in project status agent instructions:", error)
-			return `
+`;
+    } catch (error) {
+      consola.error("Error in project status agent instructions:", error);
+      return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
-2. Contacting support if the issue persists`
-		}
-	},
-	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents({
-		getCurrentDate: getCurrentDateTool,
-		fetchProjectStatusContext: fetchProjectStatusContextTool,
-		fetchInterviewContext: fetchInterviewContextTool,
-		fetchPeopleDetails: fetchPeopleDetailsTool,
-		fetchPersonas: fetchPersonasTool,
-		fetchEvidence: fetchEvidenceTool,
-		semanticSearchEvidence: semanticSearchEvidenceTool,
-		semanticSearchPeople: semanticSearchPeopleTool,
-		semanticSearchAssets: semanticSearchAssetsTool,
-		fetchProjectGoals: fetchProjectGoalsTool,
-		fetchThemes: fetchThemesTool,
-		fetchPainMatrixCache: fetchPainMatrixCacheTool,
-		fetchSegments: fetchSegmentsTool,
-		fetchConversationLenses: fetchConversationLensesTool,
-		generateProjectRoutes: generateProjectRoutesTool,
-		generateDocumentLink: generateDocumentLinkTool,
-		fetchOpportunities: fetchOpportunitiesTool,
-		createOpportunity: createOpportunityTool,
-		updateOpportunity: updateOpportunityTool,
-		fetchInterviewPrompts: fetchInterviewPromptsTool,
-		createInterviewPrompt: createInterviewPromptTool,
-		updateInterviewPrompt: updateInterviewPromptTool,
-		deleteInterviewPrompt: deleteInterviewPromptTool,
-		fetchTasks: fetchTasksTool,
-		fetchFocusTasks: fetchFocusTasksTool,
-		createTask: createTaskTool,
-		updateTask: updateTaskTool,
-		deleteTask: deleteTaskTool,
-		navigateToPage: navigateToPageTool,
-		importVideoFromUrl: importVideoFromUrlTool,
-		fetchWebContent: fetchWebContentTool,
-		upsertPersonFacets: upsertPersonFacetsTool,
-		managePersonOrganizations: managePersonOrganizationsTool,
-		upsertPerson: upsertPersonTool,
-		managePeople: managePeopleTool,
-		manageInterviews: manageInterviewsTool,
-		manageDocuments: manageDocumentsTool,
-		capabilityLookup: capabilityLookupTool,
-		manageAnnotations: manageAnnotationsTool,
-		switchAgent: switchAgentTool,
-		suggestNextSteps: suggestionTool,
-		webResearch: webResearchTool,
-		findSimilarPages: findSimilarPagesTool,
-		parseSpreadsheet: parseSpreadsheetTool,
-		saveTableToAssets: saveTableToAssetsTool,
-		updateTableAsset: updateTableAssetTool,
-		importPeopleFromTable: importPeopleFromTableTool,
-		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
-	}),
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-		options: {
-			workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
-		},
-	}),
-	// TokenLimiterProcessor prevents context window overflow
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(100_000)],
-})
+2. Contacting support if the issue persists`;
+    }
+  },
+  model: openai("gpt-4.1"),
+  tools: wrapToolsWithStatusEvents({
+    getCurrentDate: getCurrentDateTool,
+    fetchProjectStatusContext: fetchProjectStatusContextTool,
+    fetchInterviewContext: fetchInterviewContextTool,
+    fetchPeopleDetails: fetchPeopleDetailsTool,
+    fetchPersonas: fetchPersonasTool,
+    fetchEvidence: fetchEvidenceTool,
+    semanticSearchEvidence: semanticSearchEvidenceTool,
+    semanticSearchPeople: semanticSearchPeopleTool,
+    semanticSearchAssets: semanticSearchAssetsTool,
+    fetchProjectGoals: fetchProjectGoalsTool,
+    fetchThemes: fetchThemesTool,
+    fetchPainMatrixCache: fetchPainMatrixCacheTool,
+    fetchSegments: fetchSegmentsTool,
+    fetchConversationLenses: fetchConversationLensesTool,
+    generateProjectRoutes: generateProjectRoutesTool,
+    generateDocumentLink: generateDocumentLinkTool,
+    fetchOpportunities: fetchOpportunitiesTool,
+    createOpportunity: createOpportunityTool,
+    updateOpportunity: updateOpportunityTool,
+    fetchInterviewPrompts: fetchInterviewPromptsTool,
+    createInterviewPrompt: createInterviewPromptTool,
+    updateInterviewPrompt: updateInterviewPromptTool,
+    deleteInterviewPrompt: deleteInterviewPromptTool,
+    fetchTasks: fetchTasksTool,
+    fetchFocusTasks: fetchFocusTasksTool,
+    createTask: createTaskTool,
+    updateTask: updateTaskTool,
+    deleteTask: deleteTaskTool,
+    navigateToPage: navigateToPageTool,
+    importVideoFromUrl: importVideoFromUrlTool,
+    fetchWebContent: fetchWebContentTool,
+    upsertPersonFacets: upsertPersonFacetsTool,
+    managePersonOrganizations: managePersonOrganizationsTool,
+    upsertPerson: upsertPersonTool,
+    managePeople: managePeopleTool,
+    manageInterviews: manageInterviewsTool,
+    manageDocuments: manageDocumentsTool,
+    capabilityLookup: capabilityLookupTool,
+    manageAnnotations: manageAnnotationsTool,
+    switchAgent: switchAgentTool,
+    suggestNextSteps: suggestionTool,
+    webResearch: webResearchTool,
+    findSimilarPages: findSimilarPagesTool,
+    parseSpreadsheet: parseSpreadsheetTool,
+    saveTableToAssets: saveTableToAssetsTool,
+    updateTableAsset: updateTableAssetTool,
+    importPeopleFromTable: importPeopleFromTableTool,
+    importOpportunitiesFromTable: importOpportunitiesFromTableTool,
+  }),
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+    options: {
+      workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
+    },
+  }),
+  // TokenLimiterProcessor prevents context window overflow
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(100_000)],
+});

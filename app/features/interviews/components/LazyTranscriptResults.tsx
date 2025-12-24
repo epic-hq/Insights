@@ -104,7 +104,7 @@ export function LazyTranscriptResults({
 	if (!hasTranscript && !hasFormattedTranscript) {
 		return (
 			<div className="rounded-lg border bg-muted p-6 text-center">
-				<p className="text-muted-foreground">No transcript available for this interview.</p>
+				<p className="text-muted-foreground">No transcript available for this conversation.</p>
 			</div>
 		)
 	}
@@ -116,9 +116,9 @@ export function LazyTranscriptResults({
 					<div className="flex items-center gap-3">
 						<FileText className="h-5 w-5 text-muted-foreground" />
 						<div>
-							<h3 className="font-medium text-foreground">Interview Transcript</h3>
+							<h3 className="font-medium text-foreground">Transcript</h3>
 							<p className="text-foreground text-sm">
-								{hasFormattedTranscript ? "Full transcript with analysis available" : "Raw transcript available"}
+								{hasFormattedTranscript ? "Transcript with Speakers" : "Raw transcript available"}
 							</p>
 						</div>
 					</div>
@@ -166,9 +166,9 @@ export function LazyTranscriptResults({
 					<div className="flex items-center gap-3">
 						<FileText className="h-5 w-5 text-muted-foreground" />
 						<div>
-							<h3 className="font-medium text-foreground">Interview Transcript</h3>
+							<h3 className="font-medium text-foreground">Transcript</h3>
 							<p className="text-foreground text-sm">
-								{hasFormattedTranscript ? "Full transcript with analysis" : "Raw transcript"}
+								{hasFormattedTranscript ? "Transcript with speakers" : "Raw transcript"}
 							</p>
 						</div>
 					</div>

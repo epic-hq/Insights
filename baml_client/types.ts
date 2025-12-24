@@ -305,6 +305,35 @@ export enum InteractionContext {
   Personal = "Personal",
 }
 
+export enum JobFunction {
+  Engineering = "Engineering",
+  Product = "Product",
+  Design = "Design",
+  Sales = "Sales",
+  Marketing = "Marketing",
+  CustomerSuccess = "CustomerSuccess",
+  Operations = "Operations",
+  Finance = "Finance",
+  HR = "HR",
+  Legal = "Legal",
+  Executive = "Executive",
+  Data = "Data",
+  IT = "IT",
+  Research = "Research",
+  Other = "Other",
+}
+
+export enum SeniorityLevel {
+  CLevel = "CLevel",
+  VP = "VP",
+  Director = "Director",
+  Manager = "Manager",
+  Senior = "Senior",
+  IC = "IC",
+  Intern = "Intern",
+  Unknown = "Unknown",
+}
+
 export interface ActionButton {
   label: string
   action_type: string
@@ -869,6 +898,13 @@ export interface HypothesisValidation {
   
 }
 
+export interface InferredPersonSegments {
+  job_function: JobFunction
+  seniority_level: SeniorityLevel
+  confidence: number
+  
+}
+
 export interface InsightMatch {
   question: string
   insights_found: string[]
@@ -1189,6 +1225,13 @@ export interface PersonScaleInput {
   band?: string | null
   source?: string | null
   confidence?: number | null
+  
+}
+
+export interface PersonSegmentInput {
+  title?: string | null
+  role?: string | null
+  company?: string | null
   
 }
 

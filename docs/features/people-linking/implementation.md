@@ -390,3 +390,87 @@ This removes the manual linking burden and ensures every interview has speaker r
 - **Bulk speaker mapping** - Map multiple interviews at once for recurring participants
 - **Speaker voice fingerprinting** - Match speakers across interviews by voice characteristics
 - **Interview templates** - Pre-define expected participants for recurring interview types
+
+---
+
+## People Deduplication
+
+The deduplication system identifies and merges duplicate person records while preserving all relationship data.
+
+### API Endpoint
+
+**File:** `app/features/people/api/deduplicate.tsx`
+
+Supports three actions via POST:
+
+| Action | Description |
+|--------|-------------|
+| `find` | Scans for duplicate groups, returns candidates without changes |
+| `merge` | Merges specified duplicateIds into primaryId |
+| `auto-merge` | Automatically merges high-confidence duplicates (dryRun: true by default) |
+
+### Duplicate Detection Strategies
+
+**File:** `app/features/people/deduplicate.ts`
+
+Duplicates are detected using multiple strategies with confidence levels:
+
+| Strategy | Match Criteria | Example |
+|----------|----------------|---------|
+| `email` | Exact primary_email match | "john@acme.com" appears twice |
+| `linkedin` | Exact linkedin_url match | Same LinkedIn profile linked twice |
+| `name_company` | Normalized name + company | "John Smith" + "ACME Inc" |
+| `firstname_company` | First name + company (catches partial names) | "John" and "John Smith" both at "ACME" |
+| `placeholder_name` | Generic names like "Participant 1", "Speaker 2" | Groups all placeholder names together |
+
+```typescript
+// Placeholder name detection
+function isPlaceholderName(name: string | null | undefined): boolean {
+  if (!name) return false
+  const normalized = normalize(name)
+  return /^(participant|speaker|interviewee|respondent|user|person|unknown)\s*\d*$/i.test(normalized)
+}
+```
+
+### Merge Process
+
+When merging duplicates, all relationships are transferred to the primary record:
+
+1. **interview_people** - Interview associations
+2. **evidence_people** - Evidence links
+3. **person_facet** - Facet data (uses composite key: person_id + facet_account_id)
+4. **people_personas** - Persona associations (uses composite key: person_id + persona_id)
+5. **people_organizations** - Organization links
+6. **asset_people** - Asset associations
+
+```typescript
+// Example: Transfer people_personas (composite primary key)
+for (const pp of existingPersonaLinks) {
+  await supabase.from("people_personas").delete()
+    .eq("person_id", duplicateId)
+    .eq("persona_id", pp.persona_id)
+
+  await supabase.from("people_personas").insert({
+    person_id: primaryId,
+    persona_id: pp.persona_id,
+  })
+}
+```
+
+After relationship transfer, duplicate records are deleted.
+
+### Inline Editing Conflict Handling
+
+**File:** `app/features/people/api/update-inline.tsx`
+
+When inline editing triggers a unique constraint violation (name + company already exists), a 409 response guides users to use deduplication:
+
+```typescript
+if (errorMessage.includes("uniq_people_account_name") ||
+    errorMessage.includes("duplicate key")) {
+  return Response.json(
+    { error: "A person with this name already exists at this company. Use the deduplication feature to merge duplicate records." },
+    { status: 409 }
+  )
+}
+```

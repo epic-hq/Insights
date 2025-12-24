@@ -73,7 +73,10 @@ import { userContext } from "~/server/user-context";
 import type { Insight } from "~/types";
 import { createProjectRoutes } from "~/utils/routes.server";
 import { getImageUrl } from "~/utils/storeImage.server";
+import { EditableNameField } from "../components/EditableNameField";
+import { getCompanySizeCategory } from "../components/PeopleDataTable";
 import { PersonFacetLenses } from "../components/PersonFacetLenses";
+import { PersonInlineEditableField } from "../components/PersonInlineEditableField";
 import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -828,6 +831,14 @@ export default function PersonDetail() {
     });
   }, [linkedOrganizations]);
 
+  // Get primary organization for segment data
+  const primaryOrg = useMemo(() => {
+    const primary = linkedOrganizations.find((link) => link.is_primary);
+    return (
+      primary?.organization ?? linkedOrganizations[0]?.organization ?? null
+    );
+  }, [linkedOrganizations]);
+
   const availableOrganizations = useMemo(() => {
     const linkedIds = new Set(
       linkedOrganizations
@@ -944,10 +955,9 @@ export default function PersonDetail() {
 
   const metadataNode = (
     <>
-      <InlineEditableField
+      <PersonInlineEditableField
         value={person.title}
-        table="people"
-        id={person.id}
+        personId={person.id}
         field="title"
         placeholder="Add job title"
         className="font-medium text-muted-foreground text-sm"
@@ -991,9 +1001,47 @@ export default function PersonDetail() {
       </Link>
     </div>
   ) : null;
+
+  // Segment data badges for the header (job function, seniority, industry, company size)
+  const companySizeCategory = getCompanySizeCategory(primaryOrg?.size_range);
+  const segmentBadges: Array<{ label: string; value: string }> = [
+    person.job_function
+      ? { label: "Function", value: person.job_function }
+      : null,
+    person.seniority_level
+      ? { label: "Seniority", value: person.seniority_level }
+      : null,
+    person.industry || primaryOrg?.industry
+      ? {
+          label: "Industry",
+          value: person.industry || primaryOrg?.industry || "",
+        }
+      : null,
+    companySizeCategory
+      ? { label: "Company Size", value: companySizeCategory }
+      : null,
+  ].filter((item): item is { label: string; value: string } =>
+    Boolean(item?.value),
+  );
+
+  const segmentBadgesNode =
+    segmentBadges.length > 0 ? (
+      <>
+        {segmentBadges.map((item) => (
+          <Badge
+            key={item.label}
+            variant="outline"
+            className="gap-1 border-border/60 bg-muted/30 font-normal text-muted-foreground"
+          >
+            <span className="text-muted-foreground/70">{item.label}:</span>
+            <span className="text-foreground">{item.value}</span>
+          </Badge>
+        ))}
+      </>
+    ) : null;
+
+  // Metadata and activity counts
   const quickFacts: Array<{ label: string; value: string }> = [
-    person.segment ? { label: "Segment", value: person.segment } : null,
-    person.title ? { label: "Role", value: person.title } : null,
     person.email ? { label: "Email", value: person.email } : null,
     person.phone ? { label: "Phone", value: person.phone } : null,
     person.created_at
@@ -1098,20 +1146,18 @@ export default function PersonDetail() {
           icon={UserCircle}
           typeLabel="Person"
           title={
-            <InlineEditableField
-              value={person.name}
-              table="people"
-              id={person.id}
-              field="name"
-              placeholder="Enter name"
-              className="font-bold text-3xl text-foreground"
+            <EditableNameField
+              firstname={person.firstname}
+              lastname={person.lastname}
+              personId={person.id}
+              placeholder="Add name"
+              variant="header"
             />
           }
           description={
-            <InlineEditableField
+            <PersonInlineEditableField
               value={person.description}
-              table="people"
-              id={person.id}
+              personId={person.id}
               field="description"
               placeholder="Add a description"
               multiline
@@ -1120,6 +1166,7 @@ export default function PersonDetail() {
             />
           }
           metadata={metadataNode}
+          badges={segmentBadgesNode}
           avatar={avatarNode}
           aboveDescription={personaBadgeNode}
           organizations={{
@@ -1348,7 +1395,7 @@ export default function PersonDetail() {
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="max-w-sm">
                 <CardHeader>
-                  <CardTitle>Quick Facts</CardTitle>
+                  <CardTitle>Activity</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {quickFacts.map((fact) => (

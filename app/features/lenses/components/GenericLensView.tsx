@@ -11,6 +11,7 @@ import {
 	AlertTriangle,
 	ArrowUpRight,
 	Calendar,
+	ClipboardList,
 	CheckCircle2,
 	Clock,
 	Info,
@@ -158,6 +159,168 @@ function InlineEvidenceLink({ evidenceRef, projectPath }: { evidenceRef: Evidenc
 				projectPath={projectPath}
 			/>
 		</>
+	)
+}
+
+/**
+ * Purpose-built layout for the Q&A conversation lens (qa-summary)
+ * Presents question/answer pairs inline with a single follow-up list.
+ */
+function QALensView({
+	analysis,
+	analysisData,
+	evidenceMap,
+}: {
+	analysis: LensAnalysisWithTemplate | null
+	analysisData: any
+	evidenceMap?: Map<string, EvidenceRecord>
+}) {
+	const qaPairs = Array.isArray(analysisData?.qa_pairs) ? analysisData.qa_pairs : []
+	const unansweredQuestions = Array.isArray(analysisData?.unanswered_questions)
+		? analysisData.unanswered_questions.filter(Boolean)
+		: []
+	const keyTakeaways = Array.isArray(analysisData?.key_takeaways) ? analysisData.key_takeaways.filter(Boolean) : []
+	const topics = Array.isArray(analysisData?.topics_covered) ? analysisData.topics_covered.filter(Boolean) : []
+	const confidence = analysis?.confidence_score ?? analysisData?.overall_confidence ?? null
+
+	// Collect follow-ups: combine unanswered items + flagged pairs
+	const followUps: Array<{ question: string; reason: string }> = []
+	const seen = new Set<string>()
+	for (const question of unansweredQuestions) {
+		if (typeof question === "string" && question.trim() && !seen.has(question.trim())) {
+			seen.add(question.trim())
+			followUps.push({ question: question.trim(), reason: "Unanswered" })
+		}
+	}
+	for (const pair of qaPairs) {
+		const text = typeof pair?.question === "string" ? pair.question.trim() : ""
+		if (pair?.follow_up_needed && text && !seen.has(text)) {
+			seen.add(text)
+			followUps.push({ question: text, reason: "Needs follow-up" })
+		}
+	}
+
+	const renderEvidenceBadges = (evidenceIds?: string[]) => {
+		if (!evidenceIds || evidenceIds.length === 0) return null
+		const refs = evidenceMap ? hydrateEvidenceRefs(evidenceIds, evidenceMap) : undefined
+		return <EvidenceTimestampBadges evidenceRefs={refs} evidenceIds={!refs ? evidenceIds : undefined} className="mt-2" />
+	}
+
+	return (
+		<div className="space-y-6">
+			{analysisData?.executive_summary ? (
+				<div className="rounded-lg border-primary border-l-4 bg-primary/5 p-4 dark:bg-primary/10">
+					<p className="font-medium text-sm leading-relaxed">{analysisData.executive_summary}</p>
+				</div>
+			) : null}
+
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<div className="flex flex-wrap items-center gap-2">
+					{topics.map((topic: string) => (
+						<Badge key={topic} variant="outline" className="text-xs">
+							{topic}
+						</Badge>
+					))}
+				</div>
+				<div className="flex items-center gap-2 text-muted-foreground text-sm">
+					{confidence !== null && confidence !== undefined && <ConfidenceIndicator confidence={confidence} />}
+					{analysis?.processed_at ? (
+						<span>Analyzed {new Date(analysis.processed_at).toLocaleDateString()}</span>
+					) : null}
+				</div>
+			</div>
+
+			<section className="space-y-3">
+				<div className="flex items-center justify-between">
+					<h3 className="font-semibold text-lg">Question / Answer pairs</h3>
+					{qaPairs.length > 0 && (
+						<Badge variant="secondary" className="text-xs">
+							{qaPairs.length} pairs
+						</Badge>
+					)}
+				</div>
+
+				{qaPairs.length === 0 ? (
+					<p className="text-muted-foreground text-sm italic">No question/answer pairs captured yet.</p>
+				) : (
+					<div className="space-y-3">
+						{qaPairs.map((pair: any, idx: number) => {
+							return (
+								<div key={pair?.question_evidence_id || idx} className="rounded-lg border bg-card/70 p-4">
+									<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+										<div className="flex flex-wrap items-center gap-2">
+											{pair?.topic ? (
+												<Badge variant="outline" className="text-xs">
+													{pair.topic}
+												</Badge>
+											) : null}
+											{pair?.follow_up_needed ? (
+												<Badge variant="destructive" className="text-xs">
+													Follow up
+												</Badge>
+											) : null}
+										</div>
+										<ConfidenceIndicator confidence={pair?.confidence} />
+									</div>
+
+									<div className="space-y-2">
+										<p className="text-xs uppercase tracking-wide text-muted-foreground">Question</p>
+										<p className="font-medium text-foreground text-sm leading-relaxed">
+											{pair?.question || "Question not captured"}
+										</p>
+										{renderEvidenceBadges(pair?.question_evidence_id ? [pair.question_evidence_id] : undefined)}
+									</div>
+
+									<div className="mt-4 space-y-2">
+										<p className="text-xs uppercase tracking-wide text-muted-foreground">Answer</p>
+										<p className="text-foreground text-sm leading-relaxed">{pair?.answer || "No answer captured"}</p>
+										{pair?.answer_verbatim ? (
+											<blockquote className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-muted-foreground text-sm italic">
+												“{pair.answer_verbatim}”
+											</blockquote>
+										) : null}
+										{renderEvidenceBadges(pair?.answer_evidence_ids)}
+									</div>
+								</div>
+							)
+						})}
+					</div>
+				)}
+			</section>
+
+			{followUps.length > 0 && (
+				<section className="space-y-3">
+					<div className="flex items-center gap-2">
+						<ClipboardList className="h-4 w-4 text-muted-foreground" />
+						<h3 className="font-semibold text-lg">Next steps</h3>
+						<Badge variant="outline" className="text-xs">
+							{followUps.length}
+						</Badge>
+					</div>
+					<ul className="space-y-2">
+						{followUps.map((item, idx) => (
+							<li key={`${item.question}-${idx}`} className="rounded-md border bg-muted/20 p-3">
+								<p className="font-medium text-sm">{item.question}</p>
+								<p className="text-muted-foreground text-xs">{item.reason}</p>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{keyTakeaways.length > 0 && (
+				<section className="space-y-2">
+					<h3 className="font-semibold text-lg">Key takeaways</h3>
+					<ul className="list-disc space-y-1 pl-5 text-sm">
+						{keyTakeaways.map((takeaway: string, idx: number) => (
+							<li key={`${takeaway}-${idx}`} className="text-foreground">
+								{takeaway}
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+		</div>
 	)
 }
 
@@ -858,6 +1021,12 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 	const analysisData = analysis?.analysis_data || {}
 	const sections = analysisData.sections || []
+	const templateKey = template?.template_key || analysis?.template_key
+
+	// Dedicated presentation for Q&A lens (qa-summary) focused on readable Q/A pairs
+	if (templateKey === "qa-summary") {
+		return <QALensView analysis={analysis} analysisData={analysisData} evidenceMap={evidenceMap} />
+	}
 
 	// Build a map of section data by section_key
 	// Format: sections[].fields = [{field_key, value, confidence, evidence_ids}]

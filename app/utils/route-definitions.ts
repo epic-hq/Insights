@@ -54,6 +54,7 @@ export interface RouteDefinitions {
     quick: () => string;
     table: () => string;
     cards: () => string;
+    matrix: () => string;
     map: () => string;
     autoInsights: () => string;
     new: () => string;
@@ -242,6 +243,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
       quick: () => `${base}/insights/cards`,
       table: () => `${base}/insights/table`,
       cards: () => `${base}/insights/cards`,
+      matrix: () => `${base}/insights/matrix`,
       map: () => `${base}/insights/map`,
       autoInsights: () => `${base}/insights/auto-insights`,
       new: () => `${base}/insights/new`,

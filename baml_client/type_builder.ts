@@ -145,6 +145,8 @@ export default class TypeBuilder {
     
     HypothesisValidation: ClassViewer<'HypothesisValidation', "hypothesis_statement" | "validation_result" | "supporting_evidence" | "confidence_level" | "implications" | "evidence_ids">;
     
+    InferredPersonSegments: ClassViewer<'InferredPersonSegments', "job_function" | "seniority_level" | "confidence">;
+    
     InsightMatch: ClassViewer<'InsightMatch', "question" | "insights_found" | "confidence" | "answer_summary" | "evidence">;
     
     InterviewDoc: ClassViewer<'InterviewDoc', "source" | "snippets">;
@@ -214,6 +216,8 @@ export default class TypeBuilder {
     PersonProfileInput: ClassViewer<'PersonProfileInput', "person_id" | "name" | "title" | "role" | "company" | "segment" | "persona" | "quick_facts" | "facets" | "scales" | "evidence_highlights">;
     
     PersonScaleInput: ClassViewer<'PersonScaleInput', "kind_slug" | "score" | "band" | "source" | "confidence">;
+    
+    PersonSegmentInput: ClassViewer<'PersonSegmentInput', "title" | "role" | "company">;
     
     Persona: ClassViewer<'Persona', "name" | "name_and_tagline" | "description" | "role_context" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "percentage" | "goals" | "primary_goal" | "secondary_goals" | "motivations" | "values" | "success_definition" | "behaviors_habits" | "key_tasks" | "tools_used" | "frequency_of_purchase" | "frequency_of_use" | "triggers_decision_drivers" | "pain_points" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "key_quotes" | "sources" | "differentiators" | "confidence" | "evidence_count" | "hypothesis_notes" | "key_open_questions">;
     
@@ -350,14 +354,18 @@ export default class TypeBuilder {
     
     InteractionContext: EnumViewer<'InteractionContext', "Research" | "Sales" | "Support" | "Internal" | "Debrief" | "Personal">;
     
+    JobFunction: EnumViewer<'JobFunction', "Engineering" | "Product" | "Design" | "Sales" | "Marketing" | "CustomerSuccess" | "Operations" | "Finance" | "HR" | "Legal" | "Executive" | "Data" | "IT" | "Research" | "Other">;
+    
+    SeniorityLevel: EnumViewer<'SeniorityLevel', "CLevel" | "VP" | "Director" | "Manager" | "Senior" | "IC" | "Intern" | "Unknown">;
+    
 
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","SectionSynthesis","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
+            "ActionButton","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InferredPersonSegments","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","PersonSegmentInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","SectionSynthesis","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
-            "BBValues","Emotions","InteractionContext",
+            "BBValues","Emotions","InteractionContext","JobFunction","SeniorityLevel",
           ]),
           runtime: DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME
         });
@@ -598,6 +606,10 @@ export default class TypeBuilder {
           "hypothesis_statement","validation_result","supporting_evidence","confidence_level","implications","evidence_ids",
         ]);
         
+        this.InferredPersonSegments = this.tb.classViewer("InferredPersonSegments", [
+          "job_function","seniority_level","confidence",
+        ]);
+        
         this.InsightMatch = this.tb.classViewer("InsightMatch", [
           "question","insights_found","confidence","answer_summary","evidence",
         ]);
@@ -736,6 +748,10 @@ export default class TypeBuilder {
         
         this.PersonScaleInput = this.tb.classViewer("PersonScaleInput", [
           "kind_slug","score","band","source","confidence",
+        ]);
+        
+        this.PersonSegmentInput = this.tb.classViewer("PersonSegmentInput", [
+          "title","role","company",
         ]);
         
         this.Persona = this.tb.classViewer("Persona", [
@@ -1005,6 +1021,14 @@ export default class TypeBuilder {
         
         this.InteractionContext = this.tb.enumViewer("InteractionContext", [
           "Research","Sales","Support","Internal","Debrief","Personal",
+        ]);
+        
+        this.JobFunction = this.tb.enumViewer("JobFunction", [
+          "Engineering","Product","Design","Sales","Marketing","CustomerSuccess","Operations","Finance","HR","Legal","Executive","Data","IT","Research","Other",
+        ]);
+        
+        this.SeniorityLevel = this.tb.enumViewer("SeniorityLevel", [
+          "CLevel","VP","Director","Manager","Senior","IC","Intern","Unknown",
         ]);
         
     }
