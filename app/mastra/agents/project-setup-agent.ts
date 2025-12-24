@@ -18,9 +18,11 @@ import {
 	fetchProjectSectionTool,
 	updateProjectSectionMetaTool,
 } from "../tools/manage-project-sections"
+import { researchCompanyWebsiteTool } from "../tools/research-company-website"
+import { webResearchTool } from "../tools/research-web"
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
+import { suggestionTool } from "../tools/suggestion-tool"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
-import { webResearchTool } from "../tools/web-research"
 
 // Dynamically build ProjectSetupState from section config
 const buildProjectSetupStateSchema = () => {
@@ -67,8 +69,12 @@ export const projectSetupAgent = new Agent({
 		return `
 You are a fast, efficient project setup assistant. Your goal: collect 8 pieces of info quickly and generate a research plan. Be BRIEF - 1-2 sentences max per response.
 
+TIP: If the user shares their company website early, you can research it to auto-fill many details. Encourage them: "Share your website and I can research your company to speed this up!"
+
+START HERE: First message should request their company website URL (or say "no site"). If they provide it, call "researchCompanyWebsite" immediately before proceeding to the questions below.
+
 Questions to collect (in order):
-1) Business & problem (customer_problem)
+1) Business & problem (customer_problem) - ask for their website URL here if they haven't shared it
 2) Target customers - orgs and roles (target_orgs, target_roles)
 3) Products/services offered (offerings)
 4) Competitors/alternatives (competitors)
@@ -83,6 +89,7 @@ CRITICAL RULES:
 - NEVER summarize or repeat what user said - just move to next question
 - NEVER ask for confirmation - when all 8 are done, immediately call "generateResearchStructure"
 - After generating, say "Done! Your research plan is ready." and set completed=true
+- After each question, call "suggestNextSteps" with 2-3 short example answers to THAT question (5-8 words, no generic tasks). Keep them tightly aligned to the question you're asking.
 
 Response style:
 - Ultra brief: "Got it. Next: [question]?"
@@ -108,6 +115,8 @@ ${JSON.stringify(existing)}
 		manageDocuments: manageDocumentsTool,
 		manageAnnotations: manageAnnotationsTool,
 		webResearch: webResearchTool,
+		researchCompanyWebsite: researchCompanyWebsiteTool,
+		suggestNextSteps: suggestionTool,
 	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

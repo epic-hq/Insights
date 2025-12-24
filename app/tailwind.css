@@ -17,6 +17,15 @@
 			transform: translateY(-10px);
 		}
 	}
+
+	@keyframes shimmer {
+		0% {
+			transform: translateX(-100%);
+		}
+		100% {
+			transform: translateX(100%);
+		}
+	}
 }
 /*---break--- */
 /* For ai-sdk streamdown https://ai-sdk.dev/elements/components/response */
