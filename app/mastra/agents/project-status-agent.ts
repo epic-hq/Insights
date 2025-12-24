@@ -46,6 +46,7 @@ import {
 } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
+import { researchOrganizationTool } from "../tools/research-organization"
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
@@ -164,6 +165,17 @@ Call "getCurrentDate" first for any date/time questions.
 - If it's a video/audio URL, call "importVideoFromUrl". The tool accepts both direct media URLs and webpage URLs (it will scan for embedded video)
 - If it's a webpage or PDF URL, call "fetchWebContent" with the URL and process it based on content.
 - If we have access to Gemini, we can use it to extract the key insights from the content.
+
+**Organization Research** (researchOrganization):
+- Use when the user asks to "research [company name]" or wants to enrich organization data
+- FIRST search internally with semanticSearchEvidence - only use this if no results or user explicitly wants external research
+- This tool uses Exa's company search to find company information (size, industry, HQ, leadership, news)
+- It automatically:
+  1. Updates the organization record with extracted data (size_range, industry, headquarters)
+  2. Creates an annotation linked to the organization with full research findings
+  3. Creates evidence records for semantic search (so future internal searches find this data)
+- Pass organizationName (required) and optionally organizationId if you know it
+- Report extracted data: "I found [company] is a [size_range] [industry] company based in [location]"
 
 **Web Research** (webResearch, findSimilarPages):
 - Use ONLY after internal search returns nothing OR user explicitly asks for web/external research
@@ -298,6 +310,7 @@ Please try:
 		updateTableAsset: updateTableAssetTool,
 		importPeopleFromTable: importPeopleFromTableTool,
 		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
+		researchOrganization: researchOrganizationTool,
 	}),
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
