@@ -9,12 +9,16 @@ import { getInsights } from "~/features/insights/db";
 import { currentProjectContext } from "~/server/current-project-context";
 import { userContext } from "~/server/user-context";
 
-// Map facet kind slugs to segment group IDs
+// Map facet kind slugs to display labels
 const FACET_KIND_TO_SEGMENT: Record<string, string> = {
   role: "Role",
   industry: "Industry",
   location: "Location",
   use_case: "Use Case",
+  company_size: "Company Size",
+  budget_range: "Budget",
+  decision_authority: "Decision Authority",
+  timeline_urgency: "Timeline",
 };
 
 // Infer job function from title
@@ -169,8 +173,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
         string,
         Array<{ group: string; label: string }>
       >();
+      const personOrgData = new Map<
+        string,
+        { size_range: string | null; industry: string | null }
+      >();
 
       if (personIds.length > 0) {
+        // Fetch person_facet data
         const { data: facetRows } = await supabase
           .from("person_facet")
           .select(
@@ -204,6 +213,36 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
           personFacets
             .get(row.person_id)!
             .push({ group: groupLabel, label: facetAccount.label });
+        }
+
+        // Fetch organization data for people (company size, industry)
+        const { data: orgLinks } = await supabase
+          .from("people_organizations")
+          .select(
+            `
+            person_id,
+            is_primary,
+            organization:organization_id (
+              size_range,
+              industry
+            )
+          `,
+          )
+          .in("person_id", personIds);
+
+        for (const link of orgLinks ?? []) {
+          if (!link.person_id || !link.organization) continue;
+          const org = link.organization as {
+            size_range: string | null;
+            industry: string | null;
+          };
+          // Only set if not already set, or if this is the primary org
+          if (!personOrgData.has(link.person_id) || link.is_primary) {
+            personOrgData.set(link.person_id, {
+              size_range: org.size_range,
+              industry: org.industry,
+            });
+          }
         }
       }
 
@@ -265,6 +304,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
         if (facets) {
           for (const facet of facets) {
             const key = `${facet.group}: ${facet.label}`;
+            insightSegments[insightId].facets[key] =
+              (insightSegments[insightId].facets[key] || 0) + 1;
+          }
+        }
+
+        // Add organization data (company size, industry) as facets
+        const orgData = personOrgData.get(person.id);
+        if (orgData) {
+          if (orgData.size_range) {
+            const key = `Company Size: ${orgData.size_range}`;
+            insightSegments[insightId].facets[key] =
+              (insightSegments[insightId].facets[key] || 0) + 1;
+          }
+          if (orgData.industry) {
+            const key = `Industry: ${orgData.industry}`;
             insightSegments[insightId].facets[key] =
               (insightSegments[insightId].facets[key] || 0) + 1;
           }
