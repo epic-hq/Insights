@@ -1,5 +1,22 @@
 # UpSight: Customer Intelligence That Drives Action
 
+## Positioning
+
+**Category:** Customer Intelligence Platform (conversation-first CRM for Product + Sales)
+
+**Ideal customer:** B2B teams doing recurring customer conversations (discovery interviews, sales calls, support/QBRs) who need a shared system of record for what customers said and what it implies.
+
+**Wedge:** Start from *recordings → evidence → insights* (with receipts), then layer in lightweight CRM objects (people, orgs, opportunities, tasks) so action stays connected to proof.
+
+**Differentiators:**
+
+- **Receipts, not summaries**: Every insight is backed by timestamped evidence.
+- **One model across Product + Sales**: Same underlying conversation graph, different lenses (Research, Customer Discovery, BANT).
+- **Institutional memory**: Insights persist and remain queryable as the team changes.
+- **Segmented truth**: Patterns by role, seniority, org type—avoid averaging away the signal.
+
+**Why now:** Teams have more customer conversations than ever (Zoom/Meet/Slack huddles), but the intelligence is trapped in unstructured notes. AI can extract and maintain a living, evidence-backed customer memory—*if* it’s grounded in provenance.
+
 ## The Problem We Solve
 
 **For Product Teams:** Customer insights are scattered across Notion docs, Slack threads, and slide decks. When it's time to prioritize, teams debate opinions instead of referencing what customers actually said. Research gets done, then forgotten.
@@ -392,33 +409,33 @@ Lenses are analytical frameworks that extract structured data from conversations
 ## Appendix: Technical Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e0e7ff', 'primaryTextColor': '#1e1b4b', 'primaryBorderColor': '#6366f1', 'lineColor': '#6366f1', 'secondaryColor': '#fef3c7', 'tertiaryColor': '#dcfce7'}}}%%
 graph TD
-  subgraph Input
+  subgraph Input["📥 Input"]
     upload[Upload Recording]
     realtime[Real-time Recording]
     assets[Import Assets]
   end
 
-  subgraph Processing
+  subgraph Processing["⚙️ Processing"]
     transcribe[AssemblyAI Transcription]
     extract[Evidence Extraction]
     lens[Conversation Lenses]
     cluster[Insight Clustering]
   end
 
-  subgraph Storage
-    evidence[(Evidence + Embeddings)]
-    people[(People + Organizations)]
+  subgraph Storage["💾 Storage"]
+    evidence[(Evidence)]
+    people[(People & Orgs)]
     insights[(Insights)]
     opportunities[(Opportunities)]
     tasks[(Tasks)]
-    annotations[(Annotations)]
   end
 
-  subgraph Output
-    dashboard[Dashboard + Agent]
+  subgraph Output["📊 Output"]
+    dashboard[Dashboard & Agent]
     search[Semantic Search]
-    views[Cards/Table/Map Views]
+    views[Cards / Table / Map]
   end
 
   upload --> transcribe
@@ -435,18 +452,71 @@ graph TD
   insights --> views
   insights --> tasks
   opportunities --> tasks
+
+  style Input fill:#dbeafe,stroke:#3b82f6
+  style Processing fill:#fef3c7,stroke:#f59e0b
+  style Storage fill:#dcfce7,stroke:#22c55e
+  style Output fill:#f3e8ff,stroke:#a855f7
 ```
 
 ---
 
 ## Entity Relationships
 
+### Core Data Model
+
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f1f5f9' }}}%%
 erDiagram
+  PROJECT {
+    uuid id PK
+    string name
+    string goals
+  }
+  CONVERSATION {
+    uuid id PK
+    string transcript
+    timestamp created_at
+  }
+  EVIDENCE {
+    uuid id PK
+    string verbatim
+    string gist
+    jsonb anchors
+  }
+  INSIGHT {
+    uuid id PK
+    string name
+    string statement
+    int priority
+  }
+  PERSON {
+    uuid id PK
+    string name
+    string title
+    string email
+  }
+  ORGANIZATION {
+    uuid id PK
+    string name
+    string industry
+  }
+  OPPORTUNITY {
+    uuid id PK
+    string name
+    decimal amount
+    string stage
+  }
+  TASK {
+    uuid id PK
+    string title
+    string status
+    uuid owner_id
+  }
+
   PROJECT ||--o{ CONVERSATION : contains
   PROJECT ||--o{ OPPORTUNITY : tracks
   PROJECT ||--o{ TASK : has
-  PROJECT ||--o{ PROJECT_ASSET : stores
 
   CONVERSATION ||--o{ EVIDENCE : yields
   CONVERSATION ||--o{ LENS_ANALYSIS : analyzed_by
@@ -459,15 +529,48 @@ erDiagram
   TASK }o--o{ EVIDENCE : linked_to
   TASK }o--o{ INSIGHT : linked_to
   TASK }o--o{ OPPORTUNITY : linked_to
-  TASK }o--o{ PERSON : linked_to
-  TASK }o--o{ ORGANIZATION : linked_to
-  TASK }o--o{ PERSONA : linked_to
+```
 
-  ANNOTATION }o--|| INSIGHT : attached_to
-  ANNOTATION }o--|| CONVERSATION : attached_to
-  ANNOTATION }o--|| PERSON : attached_to
-  ANNOTATION }o--|| ORGANIZATION : attached_to
-  ANNOTATION }o--|| OPPORTUNITY : attached_to
-  ANNOTATION }o--|| TASK : attached_to
-  ANNOTATION }o--|| PERSONA : attached_to
+### Annotation Layer (Comments & Collaboration)
+
+Annotations provide a collaboration layer across the system. They can attach to any core entity:
+
+| Entity | Annotation Use Case |
+|--------|---------------------|
+| **Insight** | Discuss findings, add context, flag for review |
+| **Conversation** | Comment on specific moments, tag team members |
+| **Person** | Add notes about relationship, preferences |
+| **Organization** | Track company intel, competitive notes |
+| **Opportunity** | Deal strategy, win/loss notes |
+| **Task** | Progress updates, blockers |
+| **Persona** | Refine persona definition collaboratively |
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#fef3c7' }}}%%
+graph LR
+  subgraph Annotations["💬 Annotation Layer"]
+    ann[Annotations]
+  end
+
+  subgraph Entities["Core Entities"]
+    insight[Insight]
+    conv[Conversation]
+    person[Person]
+    org[Organization]
+    opp[Opportunity]
+    task[Task]
+    persona[Persona]
+  end
+
+  ann -.->|comments| insight
+  ann -.->|comments| conv
+  ann -.->|comments| person
+  ann -.->|comments| org
+  ann -.->|comments| opp
+  ann -.->|comments| task
+  ann -.->|comments| persona
+
+  style ann fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+  style Annotations fill:#fffbeb,stroke:#f59e0b
+  style Entities fill:#f8fafc,stroke:#94a3b8
 ```
