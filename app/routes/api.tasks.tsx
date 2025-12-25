@@ -13,7 +13,6 @@
 
 import consola from "consola"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { json } from "react-router"
 import {
 	bulkUpdateTasks,
 	createTask,
@@ -33,7 +32,7 @@ import { getServerClient } from "~/lib/supabase/client.server"
 export async function loader({ request }: LoaderFunctionArgs) {
 	const { client: supabase, user } = getServerClient(request)
 	if (!user) {
-		return json({ error: "Unauthorized" }, { status: 401 })
+		return Response.json({ error: "Unauthorized" }, { status: 401 })
 	}
 
 	try {
@@ -46,7 +45,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		// Get single task
 		if (id) {
 			const task = await getTaskById({ supabase, taskId: id })
-			return json({ task })
+			return { task }
 		}
 
 		// Get task activity
@@ -54,7 +53,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			const limitParam = url.searchParams.get("limit")
 			const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
 			const activity = await getTaskActivity({ supabase, taskId, limit })
-			return json({ activity })
+			return { activity }
 		}
 
 		// Get tasks for project
@@ -89,13 +88,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			}
 
 			const tasks = await getTasks({ supabase, projectId, options })
-			return json({ tasks })
+			return { tasks }
 		}
 
-		return json({ error: "Missing required parameters" }, { status: 400 })
+		return Response.json({ error: "Missing required parameters" }, { status: 400 })
 	} catch (error) {
 		consola.error("Error in tasks loader:", error)
-		return json({ error: "Failed to fetch tasks" }, { status: 500 })
+		return Response.json({ error: "Failed to fetch tasks" }, { status: 500 })
 	}
 }
 
@@ -106,7 +105,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
 	const { client: supabase, user } = getServerClient(request)
 	if (!user) {
-		return json({ error: "Unauthorized" }, { status: 401 })
+		return Response.json({ error: "Unauthorized" }, { status: 401 })
 	}
 
 	try {
@@ -120,7 +119,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const dataJson = formData.get("data") as string
 
 				if (!accountId || !projectId || !dataJson) {
-					return json({ error: "Missing required parameters" }, { status: 400 })
+					return Response.json({ error: "Missing required parameters" }, { status: 400 })
 				}
 
 				const data: TaskInsert = JSON.parse(dataJson)
@@ -132,7 +131,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					data,
 				})
 
-				return json({ task })
+				return { task }
 			}
 
 			case "update": {
@@ -140,7 +139,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const updatesJson = formData.get("updates") as string
 
 				if (!taskId || !updatesJson) {
-					return json({ error: "Missing required parameters" }, { status: 400 })
+					return Response.json({ error: "Missing required parameters" }, { status: 400 })
 				}
 
 				const updates: TaskUpdate = JSON.parse(updatesJson)
@@ -151,14 +150,14 @@ export async function action({ request }: ActionFunctionArgs) {
 					updates,
 				})
 
-				return json({ task })
+				return { task }
 			}
 
 			case "delete": {
 				const taskId = formData.get("taskId") as string
 
 				if (!taskId) {
-					return json({ error: "Missing taskId" }, { status: 400 })
+					return Response.json({ error: "Missing taskId" }, { status: 400 })
 				}
 
 				const task = await deleteTask({
@@ -167,7 +166,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					userId: user.id,
 				})
 
-				return json({ task })
+				return { task }
 			}
 
 			case "bulk-update": {
@@ -175,7 +174,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const updatesJson = formData.get("updates") as string
 
 				if (!taskIdsJson || !updatesJson) {
-					return json({ error: "Missing required parameters" }, { status: 400 })
+					return Response.json({ error: "Missing required parameters" }, { status: 400 })
 				}
 
 				const taskIds: string[] = JSON.parse(taskIdsJson)
@@ -188,14 +187,14 @@ export async function action({ request }: ActionFunctionArgs) {
 					updates,
 				})
 
-				return json({ tasks })
+				return { tasks }
 			}
 
 			default:
-				return json({ error: "Invalid action" }, { status: 400 })
+				return Response.json({ error: "Invalid action" }, { status: 400 })
 		}
 	} catch (error) {
 		consola.error("Error in tasks action:", error)
-		return json({ error: "Failed to process request" }, { status: 500 })
+		return Response.json({ error: "Failed to process request" }, { status: 500 })
 	}
 }

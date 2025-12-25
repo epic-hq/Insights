@@ -1,5 +1,5 @@
+import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
-import { json } from "react-router"
 import { userContext } from "~/server/user-context"
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -56,9 +56,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 		const people = Array.from(peopleMap.values())
 
-		return json({ people })
+		return { people }
 	} catch (error) {
-		console.error("Error fetching people:", error)
+		consola.error("Error fetching people:", error)
 		throw new Response("Internal server error", { status: 500 })
 	}
 }

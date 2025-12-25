@@ -19,6 +19,7 @@ import prioritiesRoutes from "./features/priorities/routes"
 import projectChatRoutes from "./features/project-chat/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
+import researchLinkRoutes from "./features/research-links/routes"
 import segmentsRoutes from "./features/segments/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
 import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes"
@@ -58,6 +59,7 @@ const routes = [
 			route("billing", "./features/billing/pages/index.tsx"),
 			// Projects under account - REMOVED duplicate layout
 			...projectsRoutes,
+			...researchLinkRoutes,
 			// Account-scoped team routes
 			...teamRoutes,
 			route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),
@@ -189,6 +191,9 @@ const routes = [
 	route("api/migrate-research-structure", "./routes/api.migrate-research-structure.tsx"),
 	route("api/check-research-structure", "./routes/api.check-research-structure.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
+	route("api/research-links/:slug/start", "./routes/api.research-links.$slug.start.tsx"),
+	route("api/research-links/:slug/save", "./routes/api.research-links.$slug.save.tsx"),
+	route("api/research-links/:slug/chat", "./routes/api.research-links.$slug.chat.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	route("api.livekit-token", "./routes/api.livekit-token.tsx"),
 	route("api/process", "./routes/api.process.tsx"),
@@ -233,6 +238,10 @@ const routes = [
 	route("test/question-quality", "./routes/test.question-quality.tsx"),
 	// route("realtime/quick", "./features/realtime/pages/quick.tsx"),
 	route("timeline", "./components/ui/timeline.tsx"),
+
+	// Public survey routes (research links)
+	route("survey/:slug", "./routes/research.$slug.tsx"), // New short URL
+	route("research/:slug", "./routes/research.$slug.redirect.tsx"), // Legacy redirect
 ] satisfies RouteConfig
 
 export default routes

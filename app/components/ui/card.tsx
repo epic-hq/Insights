@@ -11,7 +11,8 @@ const cardVariants = cva(
 			surface: {
 				default: "border-border bg-card shadow-sm",
 				muted: "border-border/30 bg-muted/80 shadow-none dark:bg-muted/50",
-				elevated: "border-border bg-card shadow-black/10 shadow-lg dark:shadow-black/40",
+				elevated:
+					"border-border/60 bg-gradient-to-b from-card to-muted/30 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.12),0_1px_3px_0_rgba(0,0,0,0.08),inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-black/[0.04] dark:from-card dark:to-muted/20 dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.04)] dark:ring-white/[0.06]",
 				outline: "border-primary/50 bg-background/70 shadow-none ring-1 ring-primary/10",
 				soft: "border-primary/25 bg-primary/10 text-foreground shadow-[0_20px_70px_-45px_rgba(59,130,246,0.65)] dark:border-primary/35 dark:bg-primary/15",
 				glass:

@@ -132,6 +132,14 @@ export interface RouteDefinitions {
 		detail: (id: string) => string
 	}
 
+	researchLinks: {
+		index: () => string
+		new: () => string
+		edit: (id: string) => string
+		responses: (id: string) => string
+		public: (slug: string) => string
+	}
+
 	// Questions
 	questions: {
 		index: () => string
@@ -195,6 +203,8 @@ export interface RouteDefinitions {
  */
 export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 	const base = projectPath
+	const accountId = extractAccountId(projectPath)
+	const accountBase = accountId ? `/a/${accountId}` : ""
 
 	return {
 		// Marketing
@@ -318,6 +328,15 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Assets (imported files, tables, etc.)
 		assets: {
 			detail: (id: string) => `${base}/assets/${id}`,
+		},
+
+		researchLinks: {
+			index: () => `${accountBase}/research-links`,
+			new: () => `${accountBase}/research-links/new`,
+			edit: (id: string) => `${accountBase}/research-links/${id}/edit`,
+			responses: (id: string) => `${accountBase}/research-links/${id}/responses`,
+			/** Short public URL for sharing: /survey/<slug> */
+			public: (slug: string) => `/survey/${slug}`,
 		},
 
 		// Questions

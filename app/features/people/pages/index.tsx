@@ -1,5 +1,5 @@
 import consola from "consola"
-import { GitMerge, LayoutGrid, Sparkles, Table as TableIcon, UserCircle } from "lucide-react"
+import { GitMerge, LayoutGrid, ListPlus, Sparkles, Table as TableIcon, UserCircle } from "lucide-react"
 import { useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useNavigate, useSearchParams } from "react-router"
 import { Link, useFetcher, useParams, useRevalidator } from "react-router-dom"
@@ -440,6 +440,12 @@ export default function PeopleIndexPage() {
 								<TableIcon className="h-4 w-4" />
 							</ToggleGroupItem>
 						</ToggleGroup>
+						<Button asChild variant="secondary" className="w-full sm:w-auto">
+							<Link to={routes.researchLinks.index()} className="flex items-center gap-2">
+								<ListPlus className="h-4 w-4" />
+								Research link responses
+							</Link>
+						</Button>
 						<Button asChild variant="outline" className="w-full sm:w-auto">
 							<Link to={routes.people.new()}>Add Person</Link>
 						</Button>

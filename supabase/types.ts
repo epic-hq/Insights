@@ -4744,6 +4744,128 @@ export type Database = {
         }
         Relationships: []
       }
+      research_link_responses: {
+        Row: {
+          completed: boolean
+          created_at: string
+          email: string
+          evidence_id: string | null
+          id: string
+          research_link_id: string
+          response_mode: string
+          responses: Json
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          email: string
+          evidence_id?: string | null
+          id?: string
+          research_link_id: string
+          response_mode?: string
+          responses?: Json
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          email?: string
+          evidence_id?: string | null
+          id?: string
+          research_link_id?: string
+          response_mode?: string
+          responses?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_link_responses_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_link_responses_research_link_id_fkey"
+            columns: ["research_link_id"]
+            isOneToOne: false
+            referencedRelation: "research_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_links: {
+        Row: {
+          account_id: string
+          allow_chat: boolean
+          calendar_url: string | null
+          created_at: string
+          default_response_mode: string
+          description: string | null
+          hero_cta_helper: string | null
+          hero_cta_label: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          is_live: boolean
+          name: string
+          project_id: string | null
+          questions: Json
+          redirect_url: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          allow_chat?: boolean
+          calendar_url?: string | null
+          created_at?: string
+          default_response_mode?: string
+          description?: string | null
+          hero_cta_helper?: string | null
+          hero_cta_label?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          is_live?: boolean
+          name: string
+          project_id?: string | null
+          questions?: Json
+          redirect_url?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          allow_chat?: boolean
+          calendar_url?: string | null
+          created_at?: string
+          default_response_mode?: string
+          description?: string | null
+          hero_cta_helper?: string | null
+          hero_cta_label?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          is_live?: boolean
+          name?: string
+          project_id?: string | null
+          questions?: Json
+          redirect_url?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_plan_data_sources: {
         Row: {
           id: string
@@ -6420,6 +6542,13 @@ export type Database = {
         }[]
       }
       get_personal_account: { Args: never; Returns: Json }
+      get_research_link_response_counts: {
+        Args: { link_ids: string[] }
+        Returns: {
+          research_link_id: string
+          response_count: number
+        }[]
+      }
       get_user_accounts: { Args: never; Returns: Json }
       get_user_flags: {
         Args: {
