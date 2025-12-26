@@ -120,7 +120,7 @@ export function ProjectStatusVoiceChat({ accountId, projectId }: ProjectStatusVo
 							</button>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>Interactive realtime voice chat with AI agent</p>
+							<p>Interactive realtime voice chat with AI agent: Beta</p>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
