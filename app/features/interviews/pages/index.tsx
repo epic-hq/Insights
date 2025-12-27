@@ -13,6 +13,7 @@ import {
 	Search,
 	Table,
 	Upload,
+	Users,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
@@ -73,7 +74,10 @@ function TableMediaPreview({
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ mediaUrl: preview_source, intent: "playback" }),
+					body: JSON.stringify({
+						mediaUrl: preview_source,
+						intent: "playback",
+					}),
 				})
 
 				if (!response.ok) return
@@ -226,8 +230,17 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const routes = useProjectRoutes(projectPath)
 	const [searchParams, setSearchParams] = useSearchParams()
 	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
-	const [sourceFilter, setSourceFilter] = useState<"all" | "conversations" | "notes" | "files">("conversations")
+	// Tab types: conversations (interviews only), responses (surveys & chats - shown under people), notes, files
+	const [sourceFilter, setSourceFilter] = useState<"conversations" | "responses" | "notes" | "files">("conversations")
 	const [fileSearchQuery, setFileSearchQuery] = useState("")
+
+	// Read type from URL param on mount
+	useEffect(() => {
+		const typeParam = searchParams.get("type")
+		if (typeParam === "conversations" || typeParam === "responses" || typeParam === "notes" || typeParam === "files") {
+			setSourceFilter(typeParam)
+		}
+	}, [searchParams])
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const _fetcher = useFetcher()
 
@@ -272,9 +285,10 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	}
 
 	// Read tab from URL on mount (for redirects from asset delete, etc.)
+	// Also supports legacy "tab" param for backwards compatibility
 	useEffect(() => {
 		const tab = searchParams.get("tab")
-		if (tab === "files" || tab === "conversations" || tab === "notes") {
+		if (tab === "files" || tab === "conversations" || tab === "notes" || tab === "responses") {
 			setSourceFilter(tab)
 			// Clear the param after reading
 			searchParams.delete("tab")
@@ -290,15 +304,23 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		return dateB - dateA
 	})
 
+	// Helper to check if item is a conversation (recorded interviews only - NOT surveys/chats)
+	const isConversation = (item: InterviewListItem) =>
+		item.source_type !== "note" &&
+		item.media_type === "interview" &&
+		item.source_type !== "document" &&
+		item.media_type !== "document" &&
+		item.media_type !== "voice_memo" &&
+		item.source_type !== "survey_response" &&
+		item.source_type !== "public_chat"
+
+	// Helper to check if item is a response (survey or chat - shown under People, not here)
+	const isResponse = (item: InterviewListItem) =>
+		item.source_type === "survey_response" || item.source_type === "public_chat"
+
 	// Calculate counts for each tab
-	const conversationsCount = allItems.filter(
-		(item) =>
-			item.source_type !== "note" &&
-			item.media_type === "interview" &&
-			item.source_type !== "document" &&
-			item.media_type !== "document" &&
-			item.media_type !== "voice_memo"
-	).length
+	const conversationsCount = allItems.filter(isConversation).length
+	const responsesCount = allItems.filter(isResponse).length
 	const notesCount = allItems.filter((item) => item.source_type === "note" || item.media_type === "voice_memo").length
 	const filesCount = projectAssets.length
 
@@ -310,22 +332,16 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	// Filter items by source type category (for interviews/notes)
 	const filteredInterviews = allItems.filter((item) => {
 		if (sourceFilter === "files") return false // Files come from projectAssets
-		if (sourceFilter === "all") return true
+		if (sourceFilter === "responses") return false // Responses shown under People, not here
 
 		// Notes filter - includes both quick notes and voice memos
 		if (sourceFilter === "notes") {
 			return item.source_type === "note" || item.media_type === "voice_memo"
 		}
 
-		// Conversations: all interviews (including generic interview type) but exclude voice memos, notes, and documents
+		// Conversations: recorded interviews only (NOT surveys/chats)
 		if (sourceFilter === "conversations") {
-			return (
-				item.source_type !== "note" &&
-				item.media_type === "interview" &&
-				item.source_type !== "document" &&
-				item.media_type !== "document" &&
-				item.media_type !== "voice_memo"
-			)
+			return isConversation(item)
 		}
 
 		return true
@@ -434,22 +450,32 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								type="single"
 								value={sourceFilter}
 								onValueChange={(v) => {
-									if (v === "all" || v === "conversations" || v === "notes" || v === "files") {
+									if (v === "conversations" || v === "responses" || v === "notes" || v === "files") {
 										setSourceFilter(v)
+										// Update URL param
+										const newParams = new URLSearchParams(searchParams)
+										newParams.set("type", v)
+										setSearchParams(newParams, { replace: true })
 									}
 								}}
 								size="sm"
 								className="w-full sm:w-auto"
 							>
-								<ToggleGroupItem value="all" className="flex-1 sm:flex-initial">
-									All
-								</ToggleGroupItem>
 								<ToggleGroupItem value="conversations" className="flex-1 gap-1.5 sm:flex-initial">
 									<MessageSquare className="h-3.5 w-3.5" />
 									Conversations
 									{conversationsCount > 0 && (
 										<span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
 											{conversationsCount}
+										</span>
+									)}
+								</ToggleGroupItem>
+								<ToggleGroupItem value="responses" className="flex-1 gap-1.5 sm:flex-initial">
+									<MessageSquareText className="h-3.5 w-3.5" />
+									Responses
+									{responsesCount > 0 && (
+										<span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
+											{responsesCount}
 										</span>
 									)}
 								</ToggleGroupItem>
@@ -599,6 +625,29 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							</div>
 						)}
 					</>
+				) : sourceFilter === "responses" ? (
+					// Responses tab - direct users to People page
+					<div className="py-16 text-center">
+						<div className="mx-auto max-w-md">
+							<div className="mb-6 flex justify-center">
+								<div className="rounded-full bg-purple-100 p-6 dark:bg-purple-900/30">
+									<MessageSquareText className="h-12 w-12 text-purple-500 dark:text-purple-400" />
+								</div>
+							</div>
+							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">
+								{responsesCount} Response{responsesCount !== 1 ? "s" : ""} from Surveys & Chats
+							</h3>
+							<p className="mb-8 text-gray-600 dark:text-gray-400">
+								Survey and chat responses are organized by person. View individual responses on each person's profile.
+							</p>
+							<Button asChild variant="default" className="gap-2">
+								<Link to={routes.people.index()}>
+									<Users className="h-4 w-4" />
+									View People
+								</Link>
+							</Button>
+						</div>
+					</div>
 				) : filteredInterviews.length === 0 ? (
 					<div className="py-16 text-center">
 						<div className="mx-auto max-w-md">

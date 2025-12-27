@@ -6,16 +6,17 @@
 
 **Ideal customer:** B2B teams doing recurring customer conversations (discovery interviews, sales calls, support/QBRs) who need a shared system of record for what customers said and what it implies.
 
-**Wedge:** Start from *recordings → evidence → insights* (with receipts), then layer in lightweight CRM objects (people, orgs, opportunities, tasks) so action stays connected to proof.
+**Wedge:** Start from *responses → evidence → insights* (with receipts), then layer in lightweight CRM objects (people, orgs, opportunities, tasks) so action stays connected to proof.
 
 **Differentiators:**
 
 - **Receipts, not summaries**: Every insight is backed by timestamped evidence.
 - **One model across Product + Sales**: Same underlying conversation graph, different lenses (Research, Customer Discovery, BANT).
+- **Multi-channel input**: Collect feedback via survey forms, AI chat, AI voice, or human interviews—all flowing into the same intelligence pipeline.
 - **Institutional memory**: Insights persist and remain queryable as the team changes.
 - **Segmented truth**: Patterns by role, seniority, org type—avoid averaging away the signal.
 
-**Why now:** Teams have more customer conversations than ever (Zoom/Meet/Slack huddles), but the intelligence is trapped in unstructured notes. AI can extract and maintain a living, evidence-backed customer memory—*if* it’s grounded in provenance.
+**Why now:** Teams have more customer conversations than ever (Zoom/Meet/Slack huddles), but the intelligence is trapped in unstructured notes. AI can extract and maintain a living, evidence-backed customer memory—*if* it's grounded in provenance.
 
 ## The Problem We Solve
 
@@ -29,7 +30,7 @@
 
 ## One-Sentence Promise
 
-> UpSight transforms customer conversations into verified insights with receipts—so Product knows what to build and Sales knows how to close.
+> UpSight transforms customer feedback into verified insights with receipts—so Product knows what to build and Sales knows how to close.
 
 ---
 
@@ -65,34 +66,161 @@
 
 ## Core Concepts
 
+### The Unified Project Model
+
+A **Project** is a research initiative built around a core set of questions. Participants can respond through multiple input channels, and all responses flow into the same intelligence pipeline.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        PROJECT                               │
+│  "Customer Discovery Q4"                                     │
+│                                                              │
+│  Questions:                                                  │
+│  1. What's your biggest challenge with [X]?                 │
+│  2. How are you solving it today?                           │
+│  3. What would success look like?                           │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │              INPUT CHANNELS (admin enables)             ││
+│  │                                                         ││
+│  │  📝 Survey    💬 AI Chat    🎙️ AI Voice    👤 Interview ││
+│  │   (form)    (conversational) (voice bot)   (human-led)  ││
+│  └─────────────────────────────────────────────────────────┘│
+│                           ↓                                  │
+│              All responses → Evidence → Insights             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Input Channels
+
+Each project can enable one or more input channels. Participants choose their preferred method (if multiple are enabled).
+
+| Channel | Experience | Best For |
+|---------|------------|----------|
+| **Survey (Form)** | Structured questions, one at a time | High volume, async feedback, quick pulse checks |
+| **AI Chat** | Conversational AI guides discussion | Deeper exploration, follow-up questions, flexible pacing |
+| **AI Voice** | Voice-based AI conversation | Hands-free, accessibility, natural conversation feel |
+| **Interview** | Human researcher conducts live call | Complex topics, relationship building, nuanced probing |
+
+**Key principle:** One project = one set of questions. The questions remain consistent across channels, but the *experience* adapts to each channel's strengths.
+
 ### Entity Model
 
 | Entity | Description |
 |--------|-------------|
-| **Conversations** | Audio/video recordings of customer interactions (interviews, sales calls, QBRs, support calls) |
-| **Evidence** | AI-extracted quotes and moments from conversations with timestamps |
+| **Projects** | Research initiatives with questions and enabled input channels |
+| **Responses** | Individual participant submissions via any input channel |
+| **Evidence** | AI-extracted quotes and moments with timestamps/attribution |
 | **Insights** | Clustered patterns and findings supported by multiple pieces of evidence |
-| **People** | Individuals who appear in or are mentioned in conversations |
+| **People** | Individuals who respond or are mentioned in conversations |
 | **Organizations** | Companies and institutions that people belong to |
 | **Opportunities** | Sales deals tracked through pipeline stages |
 | **Tasks** | Action items linked to insights and opportunities |
 | **Annotations** | Comments and notes attached to any entity |
 | **Conversation Lenses** | Analytical frameworks applied to extract structured data |
-| **Project Assets** | Imported files, tables, PDFs, and external data |
 
 ### Key Relationships
 
 ```
-Conversations → Evidence → Insights
-     ↓              ↓          ↓
-   People    ←→  Organizations
-     ↓              ↓
+Project (Questions + Channels)
+     ↓
+Responses (via Survey, Chat, Voice, Interview)
+     ↓
+Evidence → Insights
+     ↓         ↓
+  People ←→ Organizations
+     ↓         ↓
 Opportunities ←→ Tasks
 ```
 
-**Tasks can link to:** Evidence, People, Organizations, Opportunities, Conversations, Insights, Personas
+**Tasks can link to:** Evidence, People, Organizations, Opportunities, Responses, Insights, Personas
 
-**Annotations can attach to:** Insights, Personas, Opportunities, Conversations, People, Projects, Organizations, Tasks
+**Annotations can attach to:** Insights, Personas, Opportunities, Responses, People, Projects, Organizations, Tasks
+
+---
+
+## Onboarding Flow: Path to Aha
+
+The fastest path to value depends on the user's immediate need. UpSight guides new users through a quick setup that delivers their first insight within minutes.
+
+### Step 1: What Do You Want to Learn?
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  What's your research goal?                                  │
+│                                                              │
+│  ○ Understand customer problems (Product Discovery)          │
+│  ○ Qualify sales opportunities (BANT Analysis)              │
+│  ○ Gather product feedback (User Testing)                    │
+│  ○ Something else (Custom)                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+This choice pre-configures:
+- Suggested questions template
+- Recommended lenses
+- Dashboard widgets
+
+### Step 2: How Will You Collect Feedback?
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  How will participants share feedback?                       │
+│                                                              │
+│  ☑️ Survey form (structured, async)                          │
+│  ☑️ AI chat bot (conversational, async)                      │
+│  ☐ AI voice bot (coming soon)                                │
+│  ☑️ Upload recordings (interviews you've conducted)          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Enabling channels generates:
+- Public link for survey/chat: `yoursite.com/r/{project-slug}`
+- Upload interface for recordings
+
+### Step 3: Quick Start Options
+
+Based on selections, offer the fastest path to value:
+
+| If User Has... | Quick Start Path | Time to First Insight |
+|----------------|------------------|----------------------|
+| **Existing recordings** | Upload 1-2 calls → AI extracts evidence | 5-10 minutes |
+| **Access to customers** | Share survey/chat link → Review first responses | 15-30 minutes |
+| **Neither yet** | Use AI to draft questions → Share link | 5 minutes to link, insights when responses arrive |
+
+### Step 4: The Aha Moment
+
+The "Aha" happens when users see:
+
+1. **Evidence with receipts** — "This quote came from Sarah at Acme, 2:34 into the call"
+2. **Patterns emerging** — "3 of 5 enterprise users mentioned this same pain point"
+3. **Segmented truth** — "SMBs care about price, Enterprise cares about security"
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🎉 Your First Insight                                       │
+│                                                              │
+│  "Integration complexity is the #1 blocker"                  │
+│                                                              │
+│  Supported by 4 pieces of evidence:                          │
+│  • "We spent 3 months just on integrations" - Sarah, Acme    │
+│  • "Our team doesn't have bandwidth for APIs" - Mike, Beta   │
+│  • "Integration was why we churned from [competitor]" - Li   │
+│  • Survey: 73% rated "ease of integration" as critical       │
+│                                                              │
+│  [View Evidence] [Create Task] [Ask AI for More]             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Onboarding Success Metrics
+
+| Milestone | Target | Measurement |
+|-----------|--------|-------------|
+| Project created | < 2 minutes | Time from signup to project saved |
+| First response collected | < 24 hours | Via any input channel |
+| First evidence viewed | < 5 minutes after response | User clicks into evidence |
+| First insight generated | < 1 hour of first 3 responses | AI clustering produces insight |
+| Shared with team | < 1 week | Invited at least 1 teammate |
 
 ---
 
@@ -132,7 +260,38 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 ## Core User Journeys
 
-### Journey 1: Product Discovery to Insight
+### Journey 1: Async Feedback Collection (Survey + Chat)
+
+**Persona:** Product Manager, UX Researcher, Founder
+**Goal:** Collect feedback from many customers without scheduling calls
+**Time to Value:** First responses in hours, insights same day
+
+#### Steps in UpSight
+
+| Step | Action | Where in Product |
+|------|--------|------------------|
+| 1 | Create a project with research questions | Project Setup wizard |
+| 2 | Enable Survey and/or Chat channels | Input Channels settings |
+| 3 | Customize public link appearance | Hero title, subtitle, CTA |
+| 4 | Share link with customers | Email, Slack, in-app prompt |
+| 5 | Responses arrive and process automatically | Notifications when new responses |
+| 6 | Review extracted evidence | Evidence grid with quotes and attribution |
+| 7 | Explore auto-generated insights | AI clusters similar evidence |
+| 8 | Segment analysis | View patterns by role, company size, etc. |
+| 9 | Create tasks from insights | Link to priorities board |
+
+#### Channel Comparison
+
+| Aspect | Survey (Form) | AI Chat |
+|--------|---------------|---------|
+| Completion rate | Higher (structured) | Variable (conversational) |
+| Depth of response | Moderate | Higher (follow-ups) |
+| Time per response | 2-5 minutes | 5-15 minutes |
+| Best for | Quick pulse, many respondents | Deep discovery, fewer respondents |
+
+---
+
+### Journey 2: Product Discovery to Insight
 
 **Persona:** Product Manager, UX Researcher, Founder
 **Goal:** Understand customer needs and prioritize what to build
@@ -142,26 +301,16 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 | Step | Action | Where in Product |
 |------|--------|------------------|
-| 1 | Create a project with research goals | `/projects/new` → Project Setup wizard |
+| 1 | Create a project with research goals | Project Setup wizard |
 | 2 | Define what you're trying to learn | Setup: "What problem are you solving?" + "What do you want to learn?" |
-| 3 | Upload conversation recordings | `/projects/{id}/interviews/upload` — supports audio/video |
+| 3 | Upload conversation recordings | Upload interface — supports audio/video |
 | 4 | Wait for AI processing | 2-5 min per conversation for transcription + evidence extraction |
-| 5 | Review extracted evidence | `/projects/{id}/evidence` — grid/list of quotes with timestamps |
+| 5 | Review extracted evidence | Evidence grid — quotes with timestamps |
 | 6 | Apply Customer Discovery lens | Conversation detail → Lenses tab |
-| 7 | Explore auto-generated insights | `/projects/{id}/insights` — AI clusters similar evidence |
+| 7 | Explore auto-generated insights | AI clusters similar evidence |
 | 8 | Drill into evidence receipts | Click any insight → see linked quotes with audio playback |
-| 9 | Segment analysis | `/projects/{id}/insights/table` — view by job function, seniority, industry |
-| 10 | Create tasks from insights | Link insights to `/projects/{id}/priorities` |
-
-#### Friction Points & Gaps
-
-| Issue | Impact | Workaround |
-|-------|--------|------------|
-| **No bulk upload** | Must upload conversations one at a time | Plan for sequential uploads |
-| **Processing wait time** | 2-5 min per conversation blocks immediate analysis | Start with 2-3 conversations, add more while analyzing |
-| **Insight quality varies** | AI-generated insights sometimes need manual curation | Use "regenerate" or manually create insights |
-| **Cross-project synthesis missing** | Can't combine insights across multiple projects | Export and synthesize externally |
-| **Limited export options** | Basic data export only | Use API or copy content manually |
+| 9 | Segment analysis | View by job function, seniority, industry |
+| 10 | Create tasks from insights | Link insights to priorities board |
 
 #### Time to Value
 
@@ -174,7 +323,7 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 ---
 
-### Journey 2: Sales Call Intelligence
+### Journey 3: Sales Call Intelligence
 
 **Persona:** Account Executive, Sales Manager, Revenue Leader
 **Goal:** Extract qualification signals and deal intelligence from customer calls
@@ -184,24 +333,15 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 | Step | Action | Where in Product |
 |------|--------|------------------|
-| 1 | Upload or record sales call | `/projects/{id}/interviews/upload` or realtime recording |
+| 1 | Upload or record sales call | Upload interface or realtime recording |
 | 2 | Wait for AI processing | 2-5 min for transcription + lens analysis |
 | 3 | Apply Sales BANT lens | Conversation detail → Lenses tab → Sales BANT |
 | 4 | Review BANT analysis | See Budget, Authority, Need, Timeline extracted |
 | 5 | See stakeholder extraction | Lens identifies decision-makers, champions, blockers |
 | 6 | Review objections & next steps | AI pulls out concerns raised and commitments made |
-| 7 | Link to opportunity | Associate call with deal in `/projects/{id}/opportunities` |
+| 7 | Link to opportunity | Associate call with deal in opportunities pipeline |
 | 8 | Track deal progression | Kanban view by stage or calendar view by close date |
 | 9 | Add annotations | Comment on key moments for team visibility |
-
-#### Friction Points & Gaps
-
-| Issue | Impact | Workaround |
-|-------|--------|------------|
-| **No CRM integration** | Must manually sync with Salesforce/HubSpot | Use opportunities as lightweight CRM or export |
-| **No deal scoring** | No automatic qualification scoring | Manually interpret BANT signals |
-| **No multi-call threading** | Each call analyzed separately, not as deal progression | Use opportunity notes to synthesize across calls |
-| **No email/meeting integration** | Only processes audio/video, not written communications | Upload call recordings only |
 
 #### Time to Value
 
@@ -214,7 +354,7 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 ---
 
-### Journey 3: Customer Success Signal Detection
+### Journey 4: Customer Success Signal Detection
 
 **Persona:** Customer Success Manager, Account Manager
 **Goal:** Spot churn risk and expansion signals early
@@ -224,35 +364,18 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 | Step | Action | Where in Product |
 |------|--------|------------------|
-| 1 | Upload QBR or customer call | `/projects/{id}/interviews/upload` |
+| 1 | Upload QBR or customer call | Upload interface |
 | 2 | Review evidence for sentiment | Evidence shows pain points, frustrations, goals |
 | 3 | Apply Question Coverage lens | See what questions were asked/unanswered |
 | 4 | Check for churn signals | Look for evidence tagged with negative facets |
-| 5 | Link evidence to customer (person) | Associate with person record in `/projects/{id}/people` |
+| 5 | Link evidence to customer (person) | Associate with person record |
 | 6 | Add annotations | Comment on concerning signals for team visibility |
 | 7 | Create follow-up task | Link concerning evidence to task with owner |
 | 8 | Track customer health over time | Person detail shows all evidence across conversations |
 
-#### Friction Points & Gaps
-
-| Issue | Impact | Workaround |
-|-------|--------|------------|
-| **No health scoring** | No automatic churn risk calculation | Manually assess based on evidence sentiment |
-| **No alerts/notifications** | Won't proactively surface concerning signals | Regular review of new evidence required |
-| **No CSM-specific views** | General-purpose UI, not CS-optimized | Use people list filtered by role |
-| **No playbook triggers** | Can't auto-trigger CS playbooks based on signals | Manual task creation |
-
-#### Time to Value
-
-| Milestone | Time | Condition |
-|-----------|------|-----------|
-| Initial risk signals | 10-15 min | After first QBR processed |
-| Customer context view | 30 min | After linking evidence to person records |
-| Portfolio health view | 2-3 hours | After processing multiple customer calls |
-
 ---
 
-### Journey 4: Cross-Team Alignment
+### Journey 5: Cross-Team Alignment
 
 **Persona:** Executive, Department Head, Program Manager
 **Goal:** Get teams working from the same customer truth
@@ -262,36 +385,19 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 | Step | Action | Where in Product |
 |------|--------|------------------|
-| 1 | Create shared project for initiative | `/projects/new` with clear goals |
+| 1 | Create shared project for initiative | Project Setup with clear goals |
 | 2 | Invite team members | Account settings → Team management |
 | 3 | Establish research questions | Project setup defines what you're learning |
-| 4 | Aggregate evidence from multiple sources | Team uploads conversations, calls, QBRs |
-| 5 | Apply Project Research lens | Map findings to project goals and decisions |
-| 6 | Review synthesized insights | Dashboard shows top patterns, Agent chat for Q&A |
-| 7 | Add annotations across entities | Comment on insights, people, opportunities for context |
-| 8 | Assign tasks across teams | `/projects/{id}/priorities` with owners |
+| 4 | Enable multiple input channels | Survey for scale, Chat for depth, Upload for existing calls |
+| 5 | Aggregate evidence from multiple sources | All channels flow into same evidence pool |
+| 6 | Apply Project Research lens | Map findings to project goals and decisions |
+| 7 | Review synthesized insights | Dashboard shows top patterns, Agent chat for Q&A |
+| 8 | Assign tasks across teams | Priorities board with owners |
 | 9 | Track execution | Task status updates (Planned → In Progress → Done) |
-
-#### Friction Points & Gaps
-
-| Issue | Impact | Workaround |
-|-------|--------|------------|
-| **No role-based permissions** | Everyone sees everything (no read-only, etc.) | Trust-based access at account level |
-| **No workflow automation** | Can't auto-assign or auto-route insights | Manual assignment required |
-| **Limited notifications** | No digest emails or Slack alerts | Check dashboard regularly |
-| **No cross-project views** | Each project is siloed | Create umbrella project or synthesize manually |
-
-#### Time to Value
-
-| Milestone | Time | Condition |
-|-----------|------|-----------|
-| Team access established | 30 min | After invites sent and accepted |
-| Initial shared context | 1 day | After team uploads first batch of conversations |
-| Alignment on priorities | 3-5 days | After reviewing insights together and assigning work |
 
 ---
 
-### Journey 5: Semantic Search & Discovery
+### Journey 6: Semantic Search & Discovery
 
 **Persona:** Any team member needing answers
 **Goal:** Find specific customer evidence without digging through transcripts
@@ -306,22 +412,6 @@ Lenses are analytical frameworks that extract structured data from conversations
 | 3 | Get synthesized answer with sources | Agent returns answer with evidence links |
 | 4 | Drill into specific evidence | Click through to timestamped quotes |
 | 5 | Explore related insights | See which insights connect to your query |
-| 6 | Search project assets | Find relevant imported documents and tables |
-
-#### Friction Points & Gaps
-
-| Issue | Impact | Workaround |
-|-------|--------|------------|
-| **Agent quality varies** | Sometimes returns generic or incomplete answers | Rephrase question or browse evidence directly |
-| **No saved searches** | Can't save frequent queries | Re-ask each time |
-| **Limited filtering in search** | Can't combine search with segment filters | Browse evidence view with filters instead |
-
-#### Time to Value
-
-| Milestone | Time | Condition |
-|-----------|------|-----------|
-| First useful answer | Seconds | If project has processed conversations |
-| Trusted search resource | 1 week | After team builds habit of asking agent |
 
 ---
 
@@ -334,13 +424,13 @@ Lenses are analytical frameworks that extract structured data from conversations
 | Conversation transcription | High | AssemblyAI integration is reliable |
 | Evidence extraction | High | AI quality is good, links to timestamps |
 | Conversation Lenses | High | 8 lens types with structured extraction |
+| Multi-channel input | Medium-High | Survey + Chat working, Voice coming |
 | Sales BANT analysis | Medium-High | Framework works well for qualification |
 | Insight clustering | Medium | Auto-generation useful but needs curation |
 | People/Organization tracking | Medium | Basic CRM features, no external sync |
 | Dashboard & Agent | Medium | Useful for quick answers, improving |
 | Opportunities pipeline | Medium | Functional Kanban, no integrations |
 | Annotations | Medium | Comments work, but no notifications |
-| Project Assets | Medium | Can import tables/docs, basic search |
 
 ### Where We Have Gaps
 
@@ -348,6 +438,7 @@ Lenses are analytical frameworks that extract structured data from conversations
 |-----|-------------|-----------------|
 | **No CRM integrations** | Sales teams must double-enter data | High |
 | **No Slack/email notifications** | Users must check app proactively | High |
+| **AI Voice channel** | Missing hands-free option | Medium-High |
 | **No bulk operations** | Tedious for large research projects | Medium |
 | **No cross-project synthesis** | Can't see patterns across initiatives | Medium |
 | **Limited export/reporting** | Hard to share outside UpSight | Medium |
@@ -360,14 +451,19 @@ Lenses are analytical frameworks that extract structured data from conversations
 ## Competitive Positioning
 
 ### vs. Gong/Chorus (Revenue Intelligence)
-- **We're different:** Evidence-first with multiple lenses beyond sales. Insights link to receipts for verification.
+- **We're different:** Evidence-first with multiple lenses beyond sales. Multi-channel input (survey, chat, voice, interview). Insights link to receipts for verification.
 - **We're weaker:** No native CRM integrations, no real-time coaching, no email analysis.
 - **Best for:** Teams who want research + sales intelligence unified with product discovery.
 
 ### vs. Dovetail/Condens (Research Repositories)
-- **We're different:** CRM features built in. Opportunities + People + Insights together. Conversation Lenses for structured extraction.
+- **We're different:** CRM features built in. Multi-channel collection (not just interviews). Opportunities + People + Insights together.
 - **We're weaker:** Fewer research-specific features (tagging, highlights, video clips).
 - **Best for:** Teams who want discovery-to-action in one tool.
+
+### vs. Typeform/SurveyMonkey (Survey Tools)
+- **We're different:** AI-powered analysis. Multi-channel (add chat or voice to surveys). Evidence extraction, not just response aggregation.
+- **We're weaker:** Less sophisticated survey logic and branching.
+- **Best for:** Teams who want insight synthesis, not just data collection.
 
 ### vs. Notion/Confluence (Knowledge Management)
 - **We're different:** AI does the extraction. Evidence links to timestamps automatically. Lenses provide structured analysis.
@@ -378,31 +474,34 @@ Lenses are analytical frameworks that extract structured data from conversations
 
 ## Implementation Recommendations
 
-### Quick Win Setup (First Week)
+### Quick Win Setup (First Hour)
 
 1. Create one project focused on current priority
-2. Upload 5-10 recent customer conversations
-3. Apply relevant lenses (Customer Discovery, Sales BANT)
-4. Review evidence and refine any obvious errors
-5. Share 3 key insights with stakeholders—demonstrate receipts value
-6. Create 2-3 tasks linked to insights
+2. Choose your fastest path:
+   - **Have recordings?** Upload 2-3 → see evidence in 10 minutes
+   - **Have customer access?** Share survey/chat link → see responses same day
+   - **Neither?** Draft questions with AI → be ready when customers respond
+3. Review first evidence and share with 1 stakeholder
+4. Demonstrate the "receipt" value: "This is exactly what Sarah said at 2:34"
 
 ### Scaling Adoption (First Month)
 
-1. Establish upload habits (post-call ritual)
-2. Train team on lens selection for different conversation types
-3. Set up opportunities tracking for sales
-4. Create people/organization records for key accounts
-5. Weekly insight review meeting using dashboard
+1. Enable multiple input channels based on use case
+2. Establish habits: post-call upload ritual, survey link in signatures
+3. Train team on lens selection for different conversation types
+4. Set up opportunities tracking for sales
+5. Create people/organization records for key accounts
+6. Weekly insight review meeting using dashboard
 
 ### Full Value Realization (First Quarter)
 
 1. All customer conversations flowing through UpSight
-2. Research-backed prioritization is default
-3. Sales uses BANT analysis consistently
-4. Cross-team visibility into customer truth
-5. Historical evidence informs new initiatives
-6. Annotations create institutional knowledge
+2. Survey/chat links embedded in product and emails
+3. Research-backed prioritization is default
+4. Sales uses BANT analysis consistently
+5. Cross-team visibility into customer truth
+6. Historical evidence informs new initiatives
+7. Annotations create institutional knowledge
 
 ---
 
@@ -411,14 +510,17 @@ Lenses are analytical frameworks that extract structured data from conversations
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e0e7ff', 'primaryTextColor': '#1e1b4b', 'primaryBorderColor': '#6366f1', 'lineColor': '#6366f1', 'secondaryColor': '#fef3c7', 'tertiaryColor': '#dcfce7'}}}%%
 graph TD
-  subgraph Input["📥 Input"]
+  subgraph Input["📥 Input Channels"]
+    survey[Survey Form]
+    chat[AI Chat Bot]
+    voice[AI Voice Bot]
     upload[Upload Recording]
     realtime[Real-time Recording]
     assets[Import Assets]
   end
 
   subgraph Processing["⚙️ Processing"]
-    transcribe[AssemblyAI Transcription]
+    transcribe[Transcription]
     extract[Evidence Extraction]
     lens[Conversation Lenses]
     cluster[Insight Clustering]
@@ -438,6 +540,9 @@ graph TD
     views[Cards / Table / Map]
   end
 
+  survey --> extract
+  chat --> extract
+  voice --> transcribe
   upload --> transcribe
   realtime --> transcribe
   assets --> evidence
@@ -470,7 +575,9 @@ graph TD
 flowchart TB
   subgraph project_scope["Project Scope"]
     PROJECT[🗂️ Project]
-    CONVERSATION[💬 Conversation]
+    QUESTIONS[❓ Questions]
+    CHANNELS[📡 Input Channels]
+    RESPONSE[💬 Response]
     OPPORTUNITY[💰 Opportunity]
     TASK[✅ Task]
     ASSET[📎 Asset]
@@ -488,13 +595,16 @@ flowchart TB
     PERSONA[🎭 Persona]
   end
 
-  PROJECT --> CONVERSATION
+  PROJECT --> QUESTIONS
+  PROJECT --> CHANNELS
   PROJECT --> OPPORTUNITY
   PROJECT --> TASK
   PROJECT --> ASSET
 
-  CONVERSATION --> EVIDENCE
-  CONVERSATION --> LENS
+  CHANNELS --> RESPONSE
+  QUESTIONS --> RESPONSE
+  RESPONSE --> EVIDENCE
+  RESPONSE --> LENS
   EVIDENCE --> INSIGHT
   EVIDENCE -.-> PERSON
 
@@ -510,6 +620,46 @@ flowchart TB
   style crm fill:#dcfce7,stroke:#22c55e
 ```
 
+### Input Channel Flow
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#dbeafe' }}}%%
+flowchart LR
+  subgraph Channels["Input Channels"]
+    survey[📝 Survey]
+    chat[💬 AI Chat]
+    voice[🎙️ AI Voice]
+    interview[👤 Interview]
+  end
+
+  subgraph Project["Project"]
+    questions[Research Questions]
+    responses[Responses]
+  end
+
+  subgraph Pipeline["Processing Pipeline"]
+    evidence[Evidence Extraction]
+    insights[Insight Clustering]
+  end
+
+  survey --> responses
+  chat --> responses
+  voice --> responses
+  interview --> responses
+
+  questions -.->|guide| survey
+  questions -.->|guide| chat
+  questions -.->|guide| voice
+  questions -.->|guide| interview
+
+  responses --> evidence
+  evidence --> insights
+
+  style Channels fill:#dbeafe,stroke:#3b82f6
+  style Project fill:#fef3c7,stroke:#f59e0b
+  style Pipeline fill:#dcfce7,stroke:#22c55e
+```
+
 ### Annotation Layer (Comments & Collaboration)
 
 Annotations provide a collaboration layer across the system. They can attach to any core entity:
@@ -517,7 +667,7 @@ Annotations provide a collaboration layer across the system. They can attach to 
 | Entity | Annotation Use Case |
 |--------|---------------------|
 | **Insight** | Discuss findings, add context, flag for review |
-| **Conversation** | Comment on specific moments, tag team members |
+| **Response** | Comment on specific moments, tag team members |
 | **Person** | Add notes about relationship, preferences |
 | **Organization** | Track company intel, competitive notes |
 | **Opportunity** | Deal strategy, win/loss notes |
@@ -533,7 +683,7 @@ graph LR
 
   subgraph Entities["Core Entities"]
     insight[Insight]
-    conv[Conversation]
+    response[Response]
     person[Person]
     org[Organization]
     opp[Opportunity]
@@ -542,7 +692,7 @@ graph LR
   end
 
   ann -.->|comments| insight
-  ann -.->|comments| conv
+  ann -.->|comments| response
   ann -.->|comments| person
   ann -.->|comments| org
   ann -.->|comments| opp

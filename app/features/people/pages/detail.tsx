@@ -10,6 +10,7 @@ import {
 	Linkedin,
 	Mail,
 	MapPin,
+	MessageCircle,
 	MoreVertical,
 	Paperclip,
 	Phone,
@@ -658,16 +659,19 @@ export default function PersonDetail() {
 	const routes = accountId && projectId ? routesByIds : routesByPath
 
 	const allInterviewLinks = (person.interview_people || []).filter((ip) => ip.interviews?.id)
-	// Split into conversations (interviews), notes, and imported data
+	// Split into conversations (interviews), notes, surveys, and chats
 	const interviewLinks = allInterviewLinks.filter(
 		(ip) =>
 			ip.interviews?.source_type !== "note" &&
 			ip.interviews?.source_type !== "survey_response" &&
+			ip.interviews?.source_type !== "public_chat" &&
 			ip.interviews?.media_type !== "voice_memo"
 	)
 	const noteLinks = allInterviewLinks.filter(
 		(ip) => ip.interviews?.source_type === "note" || ip.interviews?.media_type === "voice_memo"
 	)
+	const surveyLinks = allInterviewLinks.filter((ip) => ip.interviews?.source_type === "survey_response")
+	const chatLinks = allInterviewLinks.filter((ip) => ip.interviews?.source_type === "public_chat")
 	const peoplePersonas = person.people_personas || []
 	const primaryPersona = peoplePersonas.length > 0 ? peoplePersonas[0] : null
 	const persona = primaryPersona?.personas
@@ -1078,7 +1082,7 @@ export default function PersonDetail() {
 							placeholder="Add a description"
 							multiline
 							rows={3}
-							className="text-foreground"
+							className="text-wrap text-foreground"
 						/>
 					}
 					metadata={metadataNode}
@@ -1180,6 +1184,56 @@ export default function PersonDetail() {
 												<Link to={routes.interviews.detail(link.interviews?.id || "")} className="block space-y-2">
 													<h3 className="font-medium text-foreground transition-colors hover:text-primary">
 														{link.interviews?.title || `Note ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
+													</h3>
+													<p className="text-muted-foreground text-sm">
+														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</Link>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</section>
+						)}
+
+						{surveyLinks.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="flex items-center gap-2 font-semibold text-foreground text-lg">
+									<ClipboardList className="h-5 w-5" />
+									Survey Responses
+								</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{surveyLinks.map((link) => (
+										<Card key={link.id} className="transition-shadow hover:shadow-md">
+											<CardContent className="p-4">
+												<Link to={routes.interviews.detail(link.interviews?.id || "")} className="block space-y-2">
+													<h3 className="font-medium text-foreground transition-colors hover:text-primary">
+														{link.interviews?.title || `Survey ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
+													</h3>
+													<p className="text-muted-foreground text-sm">
+														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</Link>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</section>
+						)}
+
+						{chatLinks.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="flex items-center gap-2 font-semibold text-foreground text-lg">
+									<MessageCircle className="h-5 w-5" />
+									Chat Conversations
+								</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{chatLinks.map((link) => (
+										<Card key={link.id} className="transition-shadow hover:shadow-md">
+											<CardContent className="p-4">
+												<Link to={routes.interviews.detail(link.interviews?.id || "")} className="block space-y-2">
+													<h3 className="font-medium text-foreground transition-colors hover:text-primary">
+														{link.interviews?.title || `Chat ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
 													</h3>
 													<p className="text-muted-foreground text-sm">
 														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}

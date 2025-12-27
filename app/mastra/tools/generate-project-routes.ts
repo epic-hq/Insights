@@ -1,6 +1,16 @@
 import { createTool } from "@mastra/core/tools"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { HOST } from "~/paths"
+import type { Database } from "~/types"
 import { createRouteDefinitions } from "~/utils/route-definitions"
+
+function extractProjectIdFromResourceId(resourceId?: string | null): string | null {
+	if (!resourceId) return null
+	const match = resourceId.match(/[0-9a-fA-F-]{36}$/)
+	return match ? match[0] : null
+}
 
 /**
  * Tool to generate project-scoped routes for linking to entities in AI responses
@@ -36,6 +46,14 @@ export const generateProjectRoutesTool = createTool({
 				enum: ["detail", "edit"],
 				default: "detail",
 				description: "The action/route type to generate (detail page or edit page)",
+			},
+			projectId: {
+				type: "string",
+				description: "Optional project ID override when request context is missing",
+			},
+			accountId: {
+				type: "string",
+				description: "Optional account ID override when request context is missing",
 			},
 		},
 		required: ["entityType", "entityId"],
@@ -80,11 +98,12 @@ export const generateProjectRoutesTool = createTool({
 		},
 	},
 	execute: async (input, context?) => {
+		const supabase = supabaseAdmin as SupabaseClient<Database>
 		const { entityType, entityId, action = "detail" } = input || {}
 
 		// Validate required parameters
 		if (!entityType || !entityId) {
-			console.warn("generate-project-routes: Missing required parameters", { entityType, entityId, action })
+			consola.warn("generate-project-routes: Missing required parameters", { entityType, entityId, action })
 			return {
 				success: false,
 				error: "Missing required parameters: entityType and entityId are required",
@@ -93,12 +112,33 @@ export const generateProjectRoutesTool = createTool({
 			}
 		}
 
-		// Get accountId and projectId from runtime context
-		const accountId = context?.requestContext?.get?.("account_id") as string
-		const projectId = context?.requestContext?.get?.("project_id") as string
+		const contextAccountId = context?.requestContext?.get?.("account_id") as string | undefined
+		const contextProjectId = context?.requestContext?.get?.("project_id") as string | undefined
+		const resourceProjectId = extractProjectIdFromResourceId(context?.agent?.resourceId)
+		const inputProjectId = typeof input.projectId === "string" ? input.projectId : undefined
+		const inputAccountId = typeof input.accountId === "string" ? input.accountId : undefined
+
+		const projectId = (contextProjectId || inputProjectId || resourceProjectId || "").trim()
+		let accountId = (contextAccountId || inputAccountId || "").trim()
+
+		if (!accountId && projectId) {
+			const { data: projectRow, error } = await supabase
+				.from("projects")
+				.select("account_id")
+				.eq("id", projectId)
+				.maybeSingle()
+
+			if (error) {
+				consola.error("generate-project-routes: failed to resolve accountId from project", error)
+			}
+
+			if (projectRow?.account_id) {
+				accountId = projectRow.account_id
+			}
+		}
 
 		if (!accountId || !projectId) {
-			console.warn("generate-project-routes: Missing runtime context", { accountId, projectId })
+			consola.warn("generate-project-routes: Missing runtime context", { accountId, projectId })
 			return {
 				success: false,
 				error: "Missing accountId or projectId in runtime context",
@@ -162,7 +202,7 @@ export const generateProjectRoutesTool = createTool({
 				action,
 			}
 		} catch (error) {
-			console.error("generate-project-routes: Unexpected error", error)
+			consola.error("generate-project-routes: Unexpected error", error)
 			return {
 				success: false,
 				error: "Unexpected error generating route",

@@ -1,11 +1,34 @@
-import { CheckCircle, File, Link2, Mic, PenLine, Search, Sparkles, Upload, UserPlus, Users, X } from "lucide-react"
+import {
+	AlertTriangle,
+	CheckCircle,
+	File,
+	Link2,
+	Mic,
+	PenLine,
+	Search,
+	Sparkles,
+	Upload,
+	UserPlus,
+	Users,
+	X,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { Button } from "~/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useRecordNow } from "~/hooks/useRecordNow"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
@@ -82,9 +105,14 @@ export default function UploadScreen({
 	// Dialogs
 	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
 	const [showUploadMethodDialog, setShowUploadMethodDialog] = useState(false)
+	const [showNoQuestionsDialog, setShowNoQuestionsDialog] = useState(false)
+	const [isCheckingQuestions, setIsCheckingQuestions] = useState(false)
 
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const supabase = createClient()
+	const navigate = useNavigate()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 	const { recordNow, isRecording } = useRecordNow()
 
 	// Detect file type for setting source_type
@@ -160,11 +188,63 @@ export default function UploadScreen({
 		setUploadStep("associate")
 	}
 
-	// Record handler - show person association first
-	const handleRecordClick = useCallback(() => {
+	// Record handler - check for questions first, then show person association
+	const handleRecordClick = useCallback(async () => {
+		if (!projectId) {
+			// No project yet, proceed directly
+			setPendingAction("record")
+			setUploadStep("associate")
+			return
+		}
+
+		setIsCheckingQuestions(true)
+		try {
+			// Check if project has any selected interview prompts
+			const { data: prompts, error } = await supabase
+				.from("interview_prompts")
+				.select("id")
+				.eq("project_id", projectId)
+				.eq("is_selected", true)
+				.limit(1)
+
+			if (error) {
+				console.warn("[UploadScreen] Failed to check questions:", error)
+				// Proceed anyway on error
+				setPendingAction("record")
+				setUploadStep("associate")
+				return
+			}
+
+			if (!prompts || prompts.length === 0) {
+				// No questions configured, show dialog
+				setShowNoQuestionsDialog(true)
+				return
+			}
+
+			// Questions exist, proceed to person association
+			setPendingAction("record")
+			setUploadStep("associate")
+		} finally {
+			setIsCheckingQuestions(false)
+		}
+	}, [projectId, supabase])
+
+	// Proceed to record without questions (user chose to continue)
+	const handleRecordWithoutQuestions = useCallback(() => {
+		setShowNoQuestionsDialog(false)
 		setPendingAction("record")
 		setUploadStep("associate")
 	}, [])
+
+	// Navigate to questions setup
+	const handleSetupQuestions = useCallback(() => {
+		setShowNoQuestionsDialog(false)
+		if (routes.questions?.index) {
+			navigate(routes.questions.index())
+		} else if (projectPath) {
+			navigate(`${projectPath}/questions`)
+		}
+	}, [navigate, routes, projectPath])
 
 	// Start recording with optional people (pass all via comma-separated personIds param)
 	const handleStartRecording = useCallback(
@@ -830,19 +910,26 @@ export default function UploadScreen({
 					<button
 						type="button"
 						onClick={handleRecordClick}
-						disabled={isRecording}
+						disabled={isRecording || isCheckingQuestions}
 						className={cn(
 							"group flex flex-col items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-lg backdrop-blur-sm transition-all duration-200",
 							"hover:scale-[1.02] hover:border-red-300 hover:shadow-xl",
 							"dark:border-slate-800/60 dark:bg-slate-900/80 dark:hover:border-red-700",
-							isRecording && "cursor-not-allowed opacity-50"
+							(isRecording || isCheckingQuestions) && "cursor-not-allowed opacity-50"
 						)}
 					>
-						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-transform group-hover:scale-110">
+						<div
+							className={cn(
+								"flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-transform group-hover:scale-110",
+								isCheckingQuestions && "animate-pulse"
+							)}
+						>
 							<Mic className="h-7 w-7 text-white" />
 						</div>
 						<div className="text-center">
-							<h2 className="font-semibold text-base text-slate-900 dark:text-white">Record</h2>
+							<h2 className="font-semibold text-base text-slate-900 dark:text-white">
+								{isCheckingQuestions ? "Checking..." : "Record"}
+							</h2>
 							<p className="mt-1 text-muted-foreground text-xs">Live recording</p>
 						</div>
 					</button>
@@ -971,6 +1058,30 @@ export default function UploadScreen({
 				onSave={handleSaveNote}
 				projectId={projectId}
 			/>
+
+			{/* No Questions Warning Dialog */}
+			<Dialog open={showNoQuestionsDialog} onOpenChange={setShowNoQuestionsDialog}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<AlertTriangle className="h-5 w-5 text-amber-500" />
+							No Interview Questions
+						</DialogTitle>
+						<DialogDescription>
+							This project doesn't have interview questions set up yet. Questions help guide your conversation and
+							ensure you capture key insights.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="flex-col gap-2 sm:flex-row">
+						<Button variant="outline" onClick={handleRecordWithoutQuestions} className="w-full sm:w-auto">
+							Record Anyway
+						</Button>
+						<Button onClick={handleSetupQuestions} className="w-full sm:w-auto">
+							Set Up Questions
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }

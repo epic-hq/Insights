@@ -19,7 +19,8 @@ import prioritiesRoutes from "./features/priorities/routes"
 import projectChatRoutes from "./features/project-chat/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
-import researchLinkRoutes from "./features/research-links/routes"
+// DEPRECATED: research-links routes removed - functionality integrated into projects
+// import researchLinkRoutes from "./features/research-links/routes"
 import segmentsRoutes from "./features/segments/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
 import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes"
@@ -59,7 +60,8 @@ const routes = [
 			route("billing", "./features/billing/pages/index.tsx"),
 			// Projects under account - REMOVED duplicate layout
 			...projectsRoutes,
-			...researchLinkRoutes,
+			// DEPRECATED: research-links routes removed - functionality integrated into projects
+			// ...researchLinkRoutes,
 			// Account-scoped team routes
 			...teamRoutes,
 			route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),

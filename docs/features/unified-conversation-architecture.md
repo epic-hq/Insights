@@ -334,31 +334,31 @@ sequenceDiagram
 ## Slug Generation
 
 ### Strategy
-Auto-generate from project name with collision handling:
+Generate unique 6-character slugs using nanoid with BASE58 alphabet:
 
 ```typescript
-function generatePublicSlug(projectName: string, existingSlugs: string[]): string {
-  const base = slugify(projectName, { lower: true, strict: true });
+import { customAlphabet } from "nanoid/non-secure";
 
-  if (!existingSlugs.includes(base)) {
-    return base;
-  }
-
-  // Add 4-char hash on collision
-  const hash = crypto.randomBytes(2).toString('hex');
-  return `${base}-${hash}`;
-}
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const generateSlug = customAlphabet(BASE58, 6);
 
 // Examples:
-// "Customer Research" → "customer-research"
-// "Customer Research" (collision) → "customer-research-a3f2"
+// generateSlug() → 'f3GkQp'
+// generateSlug() → 'aBc123'
+// generateSlug() → 'XyZ789'
 ```
 
+**Why BASE58?**
+- Excludes ambiguous characters: 0, O, I, l
+- URL-safe without encoding
+- Readable and easy to share verbally
+- ~56.8 billion possible combinations (58^6)
+
 ### UI Behavior
-1. Auto-generate slug when project name is entered
-2. Show preview: "Your link: /r/customer-research"
-3. Allow manual editing with real-time availability check
-4. Show error if slug is taken
+1. Generate slug automatically when enabling public access
+2. Show preview: "Your link: /r/f3GkQp"
+3. Slug is permanent once generated (no collisions possible)
+4. Keep it simple - no manual editing needed
 
 ## Real-time Answer Saving
 

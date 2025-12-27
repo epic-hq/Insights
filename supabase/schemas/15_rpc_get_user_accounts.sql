@@ -19,20 +19,22 @@ AS $$
         'created_at', a.created_at,
         'updated_at', a.updated_at,
         'projects', COALESCE(
-          (SELECT json_agg(
-            json_build_object(
-              'id', p.id,
-              'account_id', p.account_id,
-              'name', p.name,
-              'description', p.description,
-              'status', p.status,
-							'slug', p.slug,
-              'created_at', p.created_at,
-              'updated_at', p.updated_at
-            )
-          )
-          FROM public.projects p
-          WHERE p.account_id = au.account_id
+          (SELECT json_agg(proj_row ORDER BY proj_row->>'updated_at' DESC)
+           FROM (
+             SELECT json_build_object(
+               'id', p.id,
+               'account_id', p.account_id,
+               'name', p.name,
+               'description', p.description,
+               'status', p.status,
+               'slug', p.slug,
+               'created_at', p.created_at,
+               'updated_at', p.updated_at
+             ) as proj_row
+             FROM public.projects p
+             WHERE p.account_id = au.account_id
+             ORDER BY p.updated_at DESC
+           ) subq
           ), '[]'::json
         )
       )
