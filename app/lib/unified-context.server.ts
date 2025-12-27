@@ -32,22 +32,29 @@ export interface CompanyContext {
   offerings: string[] | null;
   competitors: string[] | null;
   industry: string | null;
-  /** Broad industry categories - default for target_org */
-  target_industries: string[] | null;
-  /** Typical buyer roles - default for target_roles */
+  target_orgs: string[] | null;
+  target_company_sizes: string[] | null;
   target_roles: string[] | null;
 }
 
-/** Project-level research context from project_sections */
+/**
+ * Project-level research context from project_sections
+ * All fields are optional - when present, they OVERRIDE account defaults
+ */
 export interface ResearchContext {
-  target_orgs: string[] | null;
-  target_roles: string[] | null;
+  // Research-specific (no account equivalent)
   research_goal: string | null;
   research_goal_details: string | null;
   assumptions: string[] | null;
   unknowns: string[] | null;
   custom_instructions: string | null;
   research_mode: string | null;
+  // Layerable fields (override account defaults when present)
+  customer_problem: string | null;
+  offerings: string[] | null;
+  target_orgs: string[] | null;
+  target_company_sizes: string[] | null;
+  target_roles: string[] | null;
 }
 
 /** Unified context combining account + project */
@@ -62,6 +69,7 @@ export interface UnifiedContext {
 export interface BamlContext {
   customer_problem: string | null;
   target_org: string | null; // Joined from target_orgs array
+  target_company_sizes: string | null; // Joined from target_company_sizes array
   target_roles: string | null; // Joined from target_roles array
   offerings: string | null; // Joined from offerings array
   competitors: string | null; // Joined from competitors array
@@ -83,7 +91,7 @@ async function getCompanyContext(
   const { data: account, error } = await supabase
     .from("accounts")
     .select(
-      "website_url, company_description, customer_problem, offerings, competitors, industry, target_industries, target_roles",
+      "website_url, company_description, customer_problem, offerings, competitors, industry, target_orgs, target_company_sizes, target_roles",
     )
     .eq("id", accountId)
     .single();
@@ -99,13 +107,15 @@ async function getCompanyContext(
     offerings: account?.offerings ?? null,
     competitors: account?.competitors ?? null,
     industry: account?.industry ?? null,
-    target_industries: account?.target_industries ?? null,
+    target_orgs: account?.target_orgs ?? null,
+    target_company_sizes: account?.target_company_sizes ?? null,
     target_roles: account?.target_roles ?? null,
   };
 }
 
 /**
  * Fetch research context from project_sections
+ * Includes layerable fields that can override account defaults
  */
 async function getResearchContext(
   supabase: SupabaseClient<Database>,
@@ -115,12 +125,7 @@ async function getResearchContext(
   const merged = context?.merged ?? {};
 
   return {
-    target_orgs: Array.isArray(merged.target_orgs)
-      ? (merged.target_orgs as string[])
-      : null,
-    target_roles: Array.isArray(merged.target_roles)
-      ? (merged.target_roles as string[])
-      : null,
+    // Research-specific fields
     research_goal:
       typeof merged.research_goal === "string" ? merged.research_goal : null,
     research_goal_details:
@@ -139,6 +144,23 @@ async function getResearchContext(
         : null,
     research_mode:
       typeof merged.research_mode === "string" ? merged.research_mode : null,
+    // Layerable fields (override account defaults when present)
+    customer_problem:
+      typeof merged.customer_problem === "string"
+        ? merged.customer_problem
+        : null,
+    offerings: Array.isArray(merged.offerings)
+      ? (merged.offerings as string[])
+      : null,
+    target_orgs: Array.isArray(merged.target_orgs)
+      ? (merged.target_orgs as string[])
+      : null,
+    target_company_sizes: Array.isArray(merged.target_company_sizes)
+      ? (merged.target_company_sizes as string[])
+      : null,
+    target_roles: Array.isArray(merged.target_roles)
+      ? (merged.target_roles as string[])
+      : null,
   };
 }
 
@@ -161,12 +183,24 @@ function layerArrays(
   return accountValue;
 }
 
+/** Layer strings: project overrides account if present */
+function layerString(
+  accountValue: string | null,
+  projectValue: string | null,
+): string | null {
+  // Project overrides if it has a non-empty value
+  if (projectValue && projectValue.trim().length > 0) {
+    return projectValue;
+  }
+  // Fall back to account default
+  return accountValue;
+}
+
 /**
  * Get unified context combining account company context + project research context
  *
  * LAYERING: Project values override account defaults when present.
- * - target_orgs (project) overrides target_industries (account)
- * - target_roles (project) overrides target_roles (account)
+ * Layerable fields: customer_problem, offerings, target_orgs, target_roles
  *
  * @param supabase - Supabase client
  * @param accountId - Account ID for company context
@@ -183,12 +217,19 @@ export async function getUnifiedContext(
     getResearchContext(supabase, projectId),
   ]);
 
-  // LAYERING: Project overrides account defaults
-  // - target_orgs (project-specific) > target_industries (account default)
-  // - target_roles (project-specific) > target_roles (account default)
-  const effectiveTargetOrg = layerArrays(
-    company.target_industries,
+  // LAYERING: Project overrides account defaults when present
+  const effectiveCustomerProblem = layerString(
+    company.customer_problem,
+    research.customer_problem,
+  );
+  const effectiveOfferings = layerArrays(company.offerings, research.offerings);
+  const effectiveTargetOrgs = layerArrays(
+    company.target_orgs,
     research.target_orgs,
+  );
+  const effectiveTargetCompanySizes = layerArrays(
+    company.target_company_sizes,
+    research.target_company_sizes,
   );
   const effectiveTargetRoles = layerArrays(
     company.target_roles,
@@ -197,10 +238,11 @@ export async function getUnifiedContext(
 
   // Create flat BAML-compatible context with layered values
   const forBaml: BamlContext = {
-    customer_problem: company.customer_problem,
-    target_org: joinArray(effectiveTargetOrg),
+    customer_problem: effectiveCustomerProblem,
+    target_org: joinArray(effectiveTargetOrgs),
+    target_company_sizes: joinArray(effectiveTargetCompanySizes),
     target_roles: joinArray(effectiveTargetRoles),
-    offerings: joinArray(company.offerings),
+    offerings: joinArray(effectiveOfferings),
     competitors: joinArray(company.competitors),
     research_goal: research.research_goal,
     research_goal_details: research.research_goal_details,

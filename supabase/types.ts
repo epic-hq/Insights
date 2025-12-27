@@ -57,7 +57,7 @@ export type Database = {
           public_metadata: Json | null
           slug: string | null
           target_company_sizes: string[] | null
-          target_industries: string[] | null
+          target_orgs: string[] | null
           target_roles: string[] | null
           updated_at: string | null
           updated_by: string | null
@@ -79,7 +79,7 @@ export type Database = {
           public_metadata?: Json | null
           slug?: string | null
           target_company_sizes?: string[] | null
-          target_industries?: string[] | null
+          target_orgs?: string[] | null
           target_roles?: string[] | null
           updated_at?: string | null
           updated_by?: string | null
@@ -101,7 +101,7 @@ export type Database = {
           public_metadata?: Json | null
           slug?: string | null
           target_company_sizes?: string[] | null
-          target_industries?: string[] | null
+          target_orgs?: string[] | null
           target_roles?: string[] | null
           updated_at?: string | null
           updated_by?: string | null
