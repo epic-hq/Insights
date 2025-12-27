@@ -42,43 +42,70 @@ export type Database = {
       }
       accounts: {
         Row: {
+          company_description: string | null
+          competitors: string[] | null
           created_at: string | null
           created_by: string | null
+          customer_problem: string | null
           id: string
+          industry: string | null
           name: string | null
+          offerings: string[] | null
           personal_account: boolean
           primary_owner_user_id: string
           private_metadata: Json | null
           public_metadata: Json | null
           slug: string | null
+          target_company_sizes: string[] | null
+          target_industries: string[] | null
+          target_roles: string[] | null
           updated_at: string | null
           updated_by: string | null
+          website_url: string | null
         }
         Insert: {
+          company_description?: string | null
+          competitors?: string[] | null
           created_at?: string | null
           created_by?: string | null
+          customer_problem?: string | null
           id?: string
+          industry?: string | null
           name?: string | null
+          offerings?: string[] | null
           personal_account?: boolean
           primary_owner_user_id?: string
           private_metadata?: Json | null
           public_metadata?: Json | null
           slug?: string | null
+          target_company_sizes?: string[] | null
+          target_industries?: string[] | null
+          target_roles?: string[] | null
           updated_at?: string | null
           updated_by?: string | null
+          website_url?: string | null
         }
         Update: {
+          company_description?: string | null
+          competitors?: string[] | null
           created_at?: string | null
           created_by?: string | null
+          customer_problem?: string | null
           id?: string
+          industry?: string | null
           name?: string | null
+          offerings?: string[] | null
           personal_account?: boolean
           primary_owner_user_id?: string
           private_metadata?: Json | null
           public_metadata?: Json | null
           slug?: string | null
+          target_company_sizes?: string[] | null
+          target_industries?: string[] | null
+          target_roles?: string[] | null
           updated_at?: string | null
           updated_by?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
