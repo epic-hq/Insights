@@ -240,8 +240,7 @@ const routes = [
 	route("timeline", "./components/ui/timeline.tsx"),
 
 	// Public survey routes (research links)
-	route("survey/:slug", "./routes/research.$slug.tsx"), // New short URL
-	route("research/:slug", "./routes/research.$slug.redirect.tsx"), // Legacy redirect
+	route("r/:slug", "./routes/research.$slug.tsx"), // Short public URL
 ] satisfies RouteConfig
 
 export default routes
