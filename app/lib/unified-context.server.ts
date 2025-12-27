@@ -10,11 +10,11 @@
  *
  * Account context (defaults, set once):
  * - company_description, customer_problem, offerings, competitors, industry
- * - target_industries (broad: "Healthcare", "Fintech")
+ * - target_orgs (broad: "Healthcare", "Fintech startups")
  * - target_roles (typical buyer roles)
  *
  * Project context (overrides, per-study from project_sections):
- * - target_orgs (specific: "Enterprise hospital networks") - overrides target_industries
+ * - target_orgs (specific: "Enterprise hospital networks") - overrides account target_orgs
  * - target_roles (narrowed for this study) - overrides account target_roles
  * - research_goal, assumptions, unknowns, custom_instructions
  */

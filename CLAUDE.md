@@ -72,6 +72,7 @@ function MyComponent({ projectPath }: { projectPath: string }) {
 - **React Router 7**: Use `useLoaderData`, `useFetcher`, `Link` from `react-router`
 - **State**: Prefer local state, use Zustand for cross-component state
 - **Forms**: Use `useFetcher` for mutations, `@conform-to/zod` for validation
+- **Form IDs**: Use `useId()` hook for form element IDs instead of hardcoded strings (SSR-safe, prevents collisions)
 - **Styling**: Tailwind CSS with `cn()` utility for conditional classes
 - **Return data directly** from loaders - don't wrap in `json()` or Response
 

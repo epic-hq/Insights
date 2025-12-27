@@ -1,130 +1,179 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { createTool } from "@mastra/core/tools"
-import { Memory } from "@mastra/memory"
-import { z } from "zod"
-import { PROJECT_SECTIONS } from "~/features/projects/section-config"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { openai } from "@ai-sdk/openai";
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { createTool } from "@mastra/core/tools";
+import { Memory } from "@mastra/memory";
+import { z } from "zod";
+import { PROJECT_SECTIONS } from "~/features/projects/section-config";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { displayUserQuestionsTool } from "../tools/display-user-questions"
-import { generateResearchStructureTool } from "../tools/generate-research-structure"
-import { manageAnnotationsTool } from "../tools/manage-annotations"
-import { manageDocumentsTool } from "../tools/manage-documents"
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { displayUserQuestionsTool } from "../tools/display-user-questions";
+import { generateResearchStructureTool } from "../tools/generate-research-structure";
+import { manageAnnotationsTool } from "../tools/manage-annotations";
+import { manageDocumentsTool } from "../tools/manage-documents";
 import {
-	deleteProjectSectionMetaKeyTool,
-	fetchProjectSectionTool,
-	updateProjectSectionMetaTool,
-} from "../tools/manage-project-sections"
-import { researchCompanyWebsiteTool } from "../tools/research-company-website"
-import { webResearchTool } from "../tools/research-web"
-import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
-import { suggestionTool } from "../tools/suggestion-tool"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+  deleteProjectSectionMetaKeyTool,
+  fetchProjectSectionTool,
+  updateProjectSectionMetaTool,
+} from "../tools/manage-project-sections";
+import { researchCompanyWebsiteTool } from "../tools/research-company-website";
+import { webResearchTool } from "../tools/research-web";
+import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data";
+import { suggestionTool } from "../tools/suggestion-tool";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 // Dynamically build ProjectSetupState from section config
 const buildProjectSetupStateSchema = () => {
-	const stateFields: Record<string, z.ZodTypeAny> = {}
+  const stateFields: Record<string, z.ZodTypeAny> = {};
 
-	for (const section of PROJECT_SECTIONS) {
-		if (section.kind === "research_goal") {
-			stateFields.research_goal = z.string().optional()
-			stateFields.research_goal_details = z.string().optional()
-		} else if (section.type === "string[]") {
-			stateFields[section.kind] = z.array(z.string()).optional()
-		} else if (section.type === "string") {
-			stateFields[section.kind] = z.string().optional()
-		}
-	}
+  for (const section of PROJECT_SECTIONS) {
+    if (section.kind === "research_goal") {
+      stateFields.research_goal = z.string().optional();
+      stateFields.research_goal_details = z.string().optional();
+    } else if (section.type === "string[]") {
+      stateFields[section.kind] = z.array(z.string()).optional();
+    } else if (section.type === "string") {
+      stateFields[section.kind] = z.string().optional();
+    }
+  }
 
-	stateFields.completed = z.boolean().optional()
+  stateFields.completed = z.boolean().optional();
 
-	return z.object({
-		projectSetup: z.object(stateFields).optional(),
-	})
-}
+  return z.object({
+    projectSetup: z.object(stateFields).optional(),
+  });
+};
 
-const ProjectSetupState = buildProjectSetupStateSchema()
+const ProjectSetupState = buildProjectSetupStateSchema();
 
 const navigateToPageTool = createTool({
-	id: "navigate-to-page",
-	description:
-		"Navigate to a specific in-app route. Use the account-scoped paths (e.g. /a/:accountId/:projectId/setup) or other current UI routes—avoid legacy /projects/... URLs.",
-	inputSchema: z.object({
-		path: z.string().describe("Relative path to navigate to"),
-	}),
-})
+  id: "navigate-to-page",
+  description:
+    "Navigate to a specific in-app route. Use the account-scoped paths (e.g. /a/:accountId/:projectId/setup) or other current UI routes—avoid legacy /projects/... URLs.",
+  inputSchema: z.object({
+    path: z.string().describe("Relative path to navigate to"),
+  }),
+});
 
 export const projectSetupAgent = new Agent({
-	id: "project-setup-agent",
-	name: "projectSetupAgent",
-	instructions: async ({ requestContext }) => {
-		const projectId = requestContext.get("project_id")
-		const { data: existing } = await supabaseAdmin
-			.from("project_sections")
-			.select("project_id, kind, meta, content_md")
-			.eq("project_id", projectId)
-		return `
-You are a fast, efficient project setup assistant. Your goal: collect 8 pieces of info quickly and generate a research plan. Be BRIEF - 1-2 sentences max per response.
+  id: "project-setup-agent",
+  name: "projectSetupAgent",
+  instructions: async ({ requestContext }) => {
+    const projectId = requestContext.get("project_id");
 
-TIP: If the user shares their company website early, you can research it to auto-fill many details. Encourage them: "Share your website and I can research your company to speed this up!"
+    // Fetch existing project sections
+    const { data: existing } = await supabaseAdmin
+      .from("project_sections")
+      .select("project_id, kind, meta, content_md")
+      .eq("project_id", projectId);
 
-START HERE: First message should request their company website URL (or say "no site"). If they provide it, call "researchCompanyWebsite" immediately before proceeding to the questions below.
+    // Fetch project to get account_id
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("account_id")
+      .eq("id", projectId)
+      .single();
 
-Questions to collect (in order):
-1) Business & problem (customer_problem) - ask for their website URL here if they haven't shared it
+    // Fetch account context (company info)
+    let accountContext: Record<string, unknown> | null = null;
+    if (project?.account_id) {
+      const { data: account } = await supabaseAdmin
+        .from("accounts")
+        .select(
+          "company_description, customer_problem, offerings, target_orgs, target_roles, competitors, website_url",
+        )
+        .eq("id", project.account_id)
+        .maybeSingle();
+
+      accountContext = account;
+    }
+
+    // Check if account has company context filled in
+    const hasCompanyContext =
+      accountContext &&
+      (accountContext.company_description ||
+        accountContext.customer_problem ||
+        (Array.isArray(accountContext.offerings) &&
+          accountContext.offerings.length > 0));
+
+    return `
+You are a fast, efficient project setup assistant. Be BRIEF - 1-2 sentences max per response.
+
+## Journey: Define > Design > Collect > Synthesize > Prioritize
+
+${
+  hasCompanyContext
+    ? `
+## COMPANY CONTEXT ALREADY SET
+The account already has company info. Skip company questions and focus on PROJECT goals.
+Account context: ${JSON.stringify(accountContext)}
+
+Start with: "What's the main thing you want to learn from this research?"
+`
+    : `
+## COMPANY CONTEXT NEEDED
+First collect company context (saved to account for reuse):
+
+1) Business & problem (customer_problem) - ask for website URL to auto-fill
 2) Target customers - orgs and roles (target_orgs, target_roles)
 3) Products/services offered (offerings)
 4) Competitors/alternatives (competitors)
-5) Research goal (research_goal)
-6) What you need to learn (unknowns)
-7) Key decisions to make (decision_questions)
-8) Riskiest assumptions (assumptions)
 
-CRITICAL RULES:
+TIP: If user shares website, call "researchCompanyWebsite" to auto-fill.
+`
+}
+
+## PROJECT GOALS (always collect)
+${hasCompanyContext ? "Start here:" : "After company context:"}
+1) Research goal (research_goal) - what do you want to learn?
+2) What you need to learn (unknowns)
+3) Key decisions to make (decision_questions)
+4) Riskiest assumptions (assumptions)
+
+## RULES
 - Ask ONE question at a time, max 1-2 sentences
 - Save each answer immediately via "saveProjectSectionsData"
-- NEVER summarize or repeat what user said - just move to next question
-- NEVER ask for confirmation - when all 8 are done, immediately call "generateResearchStructure"
-- After generating, say "Done! Your research plan is ready." and set completed=true
-- After each question, call "suggestNextSteps" with 2-3 short example answers to THAT question (5-8 words, no generic tasks). Keep them tightly aligned to the question you're asking.
+- NEVER summarize or repeat - just move forward
+- When all goals are done, call "generateResearchStructure"
+- After generating, say "Done! Your research plan is ready."
+- After each question, call "suggestNextSteps" with 2-3 short examples (5-8 words)
 
-Response style:
+## STYLE
 - Ultra brief: "Got it. Next: [question]?"
-- If user is vague, give 2-3 quick examples, don't lecture
-- No bullets, no formatting unless truly needed
-- No "Great!", "Perfect!", "Thanks for sharing" - just move forward
+- If vague, give 2-3 quick examples
+- No bullets, no formatting unless needed
+- No "Great!", "Perfect!" - just move forward
 
-Document requests: If user asks to "save", "create", or "document" something, use manageDocuments tool.
+Document requests: Use manageDocuments tool.
 
-Existing project sections (skip questions already answered):
+Existing project sections (skip if answered):
 ${JSON.stringify(existing)}
-`
-	},
-	model: openai("gpt-5.1"),
-	tools: wrapToolsWithStatusEvents({
-		saveProjectSectionsData: saveProjectSectionsDataTool,
-		fetchProjectSection: fetchProjectSectionTool,
-		updateProjectSectionMeta: updateProjectSectionMetaTool,
-		deleteProjectSectionMetaKey: deleteProjectSectionMetaKeyTool,
-		displayUserQuestions: displayUserQuestionsTool,
-		navigateToPage: navigateToPageTool,
-		generateResearchStructure: generateResearchStructureTool,
-		manageDocuments: manageDocumentsTool,
-		manageAnnotations: manageAnnotationsTool,
-		webResearch: webResearchTool,
-		researchCompanyWebsite: researchCompanyWebsiteTool,
-		suggestNextSteps: suggestionTool,
-	}),
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-		options: {
-			workingMemory: { enabled: false, schema: ProjectSetupState },
-		},
-		generateTitle: false,
-	}),
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(100_000)],
-})
+`;
+  },
+  model: openai("gpt-5.1"),
+  tools: wrapToolsWithStatusEvents({
+    saveProjectSectionsData: saveProjectSectionsDataTool,
+    fetchProjectSection: fetchProjectSectionTool,
+    updateProjectSectionMeta: updateProjectSectionMetaTool,
+    deleteProjectSectionMetaKey: deleteProjectSectionMetaKeyTool,
+    displayUserQuestions: displayUserQuestionsTool,
+    navigateToPage: navigateToPageTool,
+    generateResearchStructure: generateResearchStructureTool,
+    manageDocuments: manageDocumentsTool,
+    manageAnnotations: manageAnnotationsTool,
+    webResearch: webResearchTool,
+    researchCompanyWebsite: researchCompanyWebsiteTool,
+    suggestNextSteps: suggestionTool,
+  }),
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+    options: {
+      workingMemory: { enabled: false, schema: ProjectSetupState },
+    },
+    generateTitle: false,
+  }),
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(100_000)],
+});
