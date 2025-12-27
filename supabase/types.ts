@@ -2645,22 +2645,36 @@ export type Database = {
           createdAtZ: string | null
           endedAt: string | null
           endedAtZ: string | null
+          entityId: string | null
+          entityName: string | null
+          entityType: string | null
+          environment: string | null
           error: Json | null
           input: Json | null
           isEvent: boolean
           links: Json | null
           metadata: Json | null
           name: string
+          organizationId: string | null
           output: Json | null
           parentSpanId: string | null
+          requestId: string | null
+          resourceId: string | null
+          runId: string | null
           scope: Json | null
+          serviceName: string | null
+          sessionId: string | null
+          source: string | null
           spanId: string
           spanType: string
           startedAt: string
           startedAtZ: string | null
+          tags: Json | null
+          threadId: string | null
           traceId: string
           updatedAt: string | null
           updatedAtZ: string | null
+          userId: string | null
         }
         Insert: {
           attributes?: Json | null
@@ -2668,22 +2682,36 @@ export type Database = {
           createdAtZ?: string | null
           endedAt?: string | null
           endedAtZ?: string | null
+          entityId?: string | null
+          entityName?: string | null
+          entityType?: string | null
+          environment?: string | null
           error?: Json | null
           input?: Json | null
           isEvent: boolean
           links?: Json | null
           metadata?: Json | null
           name: string
+          organizationId?: string | null
           output?: Json | null
           parentSpanId?: string | null
+          requestId?: string | null
+          resourceId?: string | null
+          runId?: string | null
           scope?: Json | null
+          serviceName?: string | null
+          sessionId?: string | null
+          source?: string | null
           spanId: string
           spanType: string
           startedAt: string
           startedAtZ?: string | null
+          tags?: Json | null
+          threadId?: string | null
           traceId: string
           updatedAt?: string | null
           updatedAtZ?: string | null
+          userId?: string | null
         }
         Update: {
           attributes?: Json | null
@@ -2691,22 +2719,36 @@ export type Database = {
           createdAtZ?: string | null
           endedAt?: string | null
           endedAtZ?: string | null
+          entityId?: string | null
+          entityName?: string | null
+          entityType?: string | null
+          environment?: string | null
           error?: Json | null
           input?: Json | null
           isEvent?: boolean
           links?: Json | null
           metadata?: Json | null
           name?: string
+          organizationId?: string | null
           output?: Json | null
           parentSpanId?: string | null
+          requestId?: string | null
+          resourceId?: string | null
+          runId?: string | null
           scope?: Json | null
+          serviceName?: string | null
+          sessionId?: string | null
+          source?: string | null
           spanId?: string
           spanType?: string
           startedAt?: string
           startedAtZ?: string | null
+          tags?: Json | null
+          threadId?: string | null
           traceId?: string
           updatedAt?: string | null
           updatedAtZ?: string | null
+          userId?: string | null
         }
         Relationships: []
       }
