@@ -3,6 +3,8 @@ const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
 module.exports = {
   packagerConfig: {
+    name: "UpSight",
+    appBundleId: "com.getupsight.desktop",
     asar: {
       unpackDir: "{node_modules/@recallai,node_modules/keytar}",
     },
