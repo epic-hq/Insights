@@ -16,30 +16,33 @@ const sdkLogger = require("./sdk-logger");
 require("dotenv").config();
 const auth = require("./auth");
 
-// Function to get the OpenRouter headers
-function getHeaderLines() {
-  return [
-    "HTTP-Referer: https://recall.ai", // Replace with your actual app's URL
-    "X-Title: UpSight",
-  ];
-}
-
-// Initialize OpenAI client with OpenRouter as the base URL
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "https://recall.ai",
-    "X-Title": "UpSight",
-  },
-});
-
 // Define available models with their capabilities
 const MODELS = {
   // Primary models
   PRIMARY: "openai/gpt-4o-mini",
   FALLBACKS: [],
 };
+
+// Lazy-initialized OpenAI client for local AI features (optional)
+let _openai = null;
+function getOpenAIClient() {
+  if (!_openai) {
+    const apiKey = process.env.OPENROUTER_KEY;
+    if (!apiKey) {
+      console.warn("OPENROUTER_KEY not set - local AI features disabled");
+      return null;
+    }
+    _openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey,
+      defaultHeaders: {
+        "HTTP-Referer": "https://getupsight.com",
+        "X-Title": "UpSight",
+      },
+    });
+  }
+  return _openai;
+}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
@@ -1899,6 +1902,14 @@ async function processTranscriptData(evt) {
 // Function to generate AI summary from transcript with streaming support
 async function generateMeetingSummary(meeting, progressCallback = null) {
   try {
+    const openai = getOpenAIClient();
+    if (!openai) {
+      console.log(
+        "AI summarization not available - OPENROUTER_KEY not configured",
+      );
+      return "AI summarization not available. Configure OPENROUTER_KEY for local AI features.";
+    }
+
     if (!meeting.transcript || meeting.transcript.length === 0) {
       console.log("No transcript available to summarize");
       return "No transcript available to summarize.";
