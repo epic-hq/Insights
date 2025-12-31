@@ -23,16 +23,16 @@ import {
   useNavigate,
   useOutletContext,
 } from "react-router";
-import type { AppLayoutOutletContext } from "~/components/layout/AppLayout";
 import { JourneyPhaseBar } from "~/components/JourneyPhaseBar";
+import type { AppLayoutOutletContext } from "~/components/layout/AppLayout";
 import { PageContainer } from "~/components/layout/PageContainer";
 import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned";
 import { MethodSettingsButton } from "~/features/projects/components/InputChannelSettings";
 import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat";
 import { SetupModeSelector } from "~/features/projects/components/SetupModeSelector";
 import {
-  SetupModeToggle,
   type SetupMode,
+  SetupModeToggle,
 } from "~/features/projects/components/SetupModeToggle";
 import { TypeformQuestion } from "~/features/projects/components/TypeformQuestion";
 import {
@@ -195,7 +195,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   }
 
   // Fetch existing project sections for initial state
-  let initialSections: Record<string, unknown> = {};
+  const initialSections: Record<string, unknown> = {};
   if (ctx.supabase) {
     const { data: sections } = await ctx.supabase
       .from("project_sections")
@@ -645,13 +645,14 @@ export default function ProjectSetupPage() {
             <JourneyPhaseBar
               currentPhase="plan"
               basePath={`/a/${accountId}/${projectId}`}
+              projectId={projectId}
               planSubStep="context"
               contextComplete={Boolean(formValues.research_goal)}
             />
           </div>
 
           {/* Mode toggle bar */}
-          <div className="flex items-center justify-center gap-4 border-b border-border/30 bg-muted/20 px-4 py-2">
+          <div className="flex items-center justify-center gap-4 border-border/30 border-b bg-muted/20 px-4 py-2">
             <SetupModeToggle
               mode={mode}
               onModeChange={(m) => setMode(m as SetupMode)}
@@ -731,12 +732,13 @@ export default function ProjectSetupPage() {
           <JourneyPhaseBar
             currentPhase="plan"
             basePath={`/a/${accountId}/${projectId}`}
+            projectId={projectId}
             planSubStep="context"
           />
         </div>
 
         {/* Mode toggle bar */}
-        <div className="flex items-center justify-center gap-4 border-b border-border/30 bg-muted/20 px-4 py-2">
+        <div className="flex items-center justify-center gap-4 border-border/30 border-b bg-muted/20 px-4 py-2">
           <SetupModeToggle
             mode={mode}
             onModeChange={(m) => setMode(m as SetupMode)}
@@ -753,7 +755,7 @@ export default function ProjectSetupPage() {
                 <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
                   <span className="text-4xl">🎙️</span>
                 </div>
-                <h2 className="mb-2 text-xl font-semibold">Voice Setup</h2>
+                <h2 className="mb-2 font-semibold text-xl">Voice Setup</h2>
                 <p className="mb-6 max-w-sm text-muted-foreground">
                   Have a natural conversation to set up your research project.
                   Coming soon with LiveKit integration.

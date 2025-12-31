@@ -4,6 +4,7 @@
  * Shows users exactly where they are: Plan → Collect → Learn
  * Plan phase has sub-steps: Context → Questions
  * Used consistently across setup, questions, and dashboard pages.
+ * Includes "Skip for now" option per Don Norman's escape principle.
  */
 
 import {
@@ -13,9 +14,10 @@ import {
   Lightbulb,
   MessageSquareText,
   Settings,
+  SkipForward,
   Target,
 } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useFetcher } from "react-router";
 import { cn } from "~/lib/utils";
 
 export type JourneyPhase = "plan" | "collect" | "learn";
@@ -26,6 +28,8 @@ interface JourneyPhaseBarProps {
   currentPhase: JourneyPhase;
   /** Base path for navigation (e.g., /a/accountId/projectId) */
   basePath: string;
+  /** Project ID for skip functionality */
+  projectId?: string;
   /** Whether plan phase is complete (context + questions done) */
   planComplete?: boolean;
   /** Whether collect phase is complete */
@@ -36,6 +40,8 @@ interface JourneyPhaseBarProps {
   contextComplete?: boolean;
   /** Whether questions sub-step is complete */
   questionsComplete?: boolean;
+  /** Show skip option for escape (default: true when in Plan phase) */
+  showSkip?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -165,15 +171,31 @@ function getSubStepStatus(
 export function JourneyPhaseBar({
   currentPhase,
   basePath,
+  projectId,
   planComplete = false,
   collectComplete = false,
   planSubStep,
   contextComplete = false,
   questionsComplete = false,
+  showSkip,
   className,
 }: JourneyPhaseBarProps) {
+  const fetcher = useFetcher();
+
   // Show sub-steps when in Plan phase
   const showPlanSubSteps = currentPhase === "plan" && !planComplete;
+
+  // Show skip option in Plan phase when projectId is provided
+  const canSkip =
+    showSkip !== false && currentPhase === "plan" && !planComplete && projectId;
+
+  const handleSkip = () => {
+    if (!projectId) return;
+    fetcher.submit(
+      { projectId },
+      { method: "POST", action: "/api/skip-setup" },
+    );
+  };
 
   return (
     <div className={cn("flex flex-col items-center gap-2 py-3", className)}>
@@ -266,6 +288,18 @@ export function JourneyPhaseBar({
             );
           })}
         </div>
+      )}
+
+      {/* Skip option for escape (Don Norman principle) */}
+      {canSkip && (
+        <Link
+          to={basePath}
+          onClick={handleSkip}
+          className="flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
+        >
+          <SkipForward className="h-3 w-3" />
+          <span>Skip for now</span>
+        </Link>
       )}
     </div>
   );

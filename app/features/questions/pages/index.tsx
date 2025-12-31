@@ -106,6 +106,7 @@ export default function QuestionsIndex() {
         <JourneyPhaseBar
           currentPhase="plan"
           basePath={projectPath}
+          projectId={projectId}
           planComplete={planComplete}
           planSubStep="questions"
           contextComplete={contextComplete}
