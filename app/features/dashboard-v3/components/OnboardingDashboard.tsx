@@ -78,9 +78,7 @@ export function OnboardingDashboard({
       {/* Header */}
       {!hideHeader && (
         <header className="mb-8 text-center">
-          <h1 className="mb-2 font-semibold text-2xl text-foreground">
-            {projectName}
-          </h1>
+          <h1 className="mb-2 font-semibold text-2xl text-foreground">Setup</h1>
           <p className="text-muted-foreground">
             Let's set up your research project
           </p>
