@@ -494,6 +494,7 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 export default function DashboardV3Page() {
   const {
     project,
+    projectId,
     conversationCount,
     processingCount,
     activeLensCount,
@@ -516,6 +517,7 @@ export default function DashboardV3Page() {
       <DashboardShell
         projectName={project?.name || "Untitled Project"}
         projectPath={projectPath || ""}
+        projectId={projectId}
         conversationCount={conversationCount}
         processingCount={processingCount}
         activeLensCount={activeLensCount}

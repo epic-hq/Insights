@@ -23,6 +23,8 @@ export interface DashboardShellProps {
   projectName: string;
   /** Base path for project routes */
   projectPath: string;
+  /** Project ID for navigation and skip functionality */
+  projectId: string;
   /** Total conversation count */
   conversationCount: number;
   /** Number of items currently processing */
@@ -92,6 +94,7 @@ export function shouldShowSidebar(
 export function DashboardShell({
   projectName,
   projectPath,
+  projectId,
   conversationCount,
   processingCount,
   activeLensCount,
@@ -115,6 +118,7 @@ export function DashboardShell({
         <OnboardingDashboard
           projectName={projectName}
           projectPath={projectPath}
+          projectId={projectId}
           hasGoals={hasGoals}
           hasLenses={hasLenses}
           hasCompanyContext={hasCompanyContext}
@@ -161,6 +165,7 @@ export function DashboardShell({
             <OnboardingDashboard
               projectName={projectName}
               projectPath={projectPath}
+              projectId={projectId}
               hasGoals={hasGoals}
               hasLenses={hasLenses}
               hasCompanyContext={hasCompanyContext}

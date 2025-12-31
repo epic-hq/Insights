@@ -8,7 +8,6 @@
 import {
   ArrowRight,
   Building2,
-  CheckCircle2,
   FileText,
   Lightbulb,
   MessageSquareText,
@@ -17,6 +16,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { JourneyPhaseBar } from "~/components/JourneyPhaseBar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
@@ -26,6 +26,8 @@ export interface OnboardingDashboardProps {
   projectName: string;
   /** Base path for project routes */
   projectPath: string;
+  /** Project ID for skip functionality */
+  projectId: string;
   /** Whether project goals have been set up */
   hasGoals: boolean;
   /** Whether lenses have been configured */
@@ -44,41 +46,10 @@ export interface OnboardingDashboardProps {
   className?: string;
 }
 
-interface PhaseProps {
-  number: number;
-  title: string;
-  isActive: boolean;
-  isComplete: boolean;
-}
-
-function PhaseIndicator({ number, title, isActive, isComplete }: PhaseProps) {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm",
-          isComplete && "bg-green-100 text-green-700 dark:bg-green-900/30",
-          isActive && !isComplete && "bg-primary text-primary-foreground",
-          !isActive && !isComplete && "bg-muted text-muted-foreground",
-        )}
-      >
-        {isComplete ? <CheckCircle2 className="h-5 w-5" /> : number}
-      </div>
-      <span
-        className={cn(
-          "font-medium text-sm",
-          isActive || isComplete ? "text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {title}
-      </span>
-    </div>
-  );
-}
-
 export function OnboardingDashboard({
   projectName,
   projectPath,
+  projectId,
   hasGoals,
   hasLenses: _hasLenses,
   hasCompanyContext,
@@ -88,10 +59,6 @@ export function OnboardingDashboard({
   hideHeader,
   className,
 }: OnboardingDashboardProps) {
-  // Extract accountId from projectPath (format: /a/{accountId}/{projectId})
-  const pathParts = projectPath.split("/");
-  const accountId = pathParts[2];
-
   // Determine current phase
   // Plan phase requires: context (company + goals) AND interview prompts
   const hasContext = hasCompanyContext && hasGoals;
@@ -120,29 +87,20 @@ export function OnboardingDashboard({
         </header>
       )}
 
-      {/* Phase Progress Bar */}
-      <div className="mb-8 flex items-center justify-center gap-4">
-        <PhaseIndicator
-          number={1}
-          title="Plan"
-          isActive={currentPhase === 1}
-          isComplete={phase1Complete}
-        />
-        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        <PhaseIndicator
-          number={2}
-          title="Collect"
-          isActive={currentPhase === 2}
-          isComplete={phase2Complete}
-        />
-        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        <PhaseIndicator
-          number={3}
-          title="Learn"
-          isActive={currentPhase === 3}
-          isComplete={phase3Complete}
-        />
-      </div>
+      {/* Journey Phase Bar with sub-steps */}
+      <JourneyPhaseBar
+        currentPhase={
+          currentPhase === 1 ? "plan" : currentPhase === 2 ? "collect" : "learn"
+        }
+        basePath={projectPath}
+        projectId={projectId}
+        planComplete={phase1Complete}
+        collectComplete={phase2Complete}
+        planSubStep={needsQuestionsSetup ? "questions" : "context"}
+        contextComplete={hasContext}
+        questionsComplete={hasPrompts}
+        className="mb-8"
+      />
 
       {/* Current Phase Content */}
       <Card className="mb-6">
