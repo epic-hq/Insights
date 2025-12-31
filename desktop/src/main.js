@@ -164,9 +164,13 @@ async function handleOAuthCallback(callbackUrl) {
           mainWindow.focus();
 
           // Show notification that login was successful
+          const userName =
+            result.user?.user_metadata?.full_name ||
+            result.user?.user_metadata?.name ||
+            result.user?.email;
           new Notification({
             title: "Signed in successfully",
-            body: `Welcome, ${result.user?.fullName || result.user?.email}! You can close the browser tab.`,
+            body: `Welcome${userName ? `, ${userName}` : ""}! You can close the browser tab.`,
           }).show();
         } else {
           console.error("mainWindow not available for navigation");
