@@ -217,6 +217,9 @@
     "test:ui": "vitest",
     "typecheck": "react-router typegen && tsc -p tsconfig.typecheck.json",
     "typegen": "react-router typegen",
+    "dev:desktop": "pnpm --filter @insights/desktop start",
+    "build:desktop": "pnpm --filter @insights/desktop make",
+    "package:desktop": "pnpm --filter @insights/desktop package",
     "validate": "pnpm run check && pnpm run typecheck && pnpm run test && pnpm run check:unused"
   },
   "sideEffects": false,
