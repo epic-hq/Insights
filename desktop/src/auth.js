@@ -157,12 +157,14 @@ function waitForOAuthCallback() {
 
       if (code) {
         // Send success page
-        res.writeHead(200, { "Content-Type": "text/html" });
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(`
+          <!DOCTYPE html>
           <html>
+            <head><meta charset="utf-8"></head>
             <body style="font-family: system-ui; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #1a1a2e; color: white;">
               <div style="text-align: center;">
-                <h1>✅ Signed in successfully!</h1>
+                <h1>Signed in successfully!</h1>
                 <p>You can close this window and return to UpSight.</p>
                 <script>setTimeout(() => window.close(), 2000);</script>
               </div>
@@ -177,12 +179,14 @@ function waitForOAuthCallback() {
         const refreshToken = url.searchParams.get("refresh_token");
 
         if (accessToken) {
-          res.writeHead(200, { "Content-Type": "text/html" });
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
           res.end(`
+            <!DOCTYPE html>
             <html>
+              <head><meta charset="utf-8"></head>
               <body style="font-family: system-ui; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #1a1a2e; color: white;">
                 <div style="text-align: center;">
-                  <h1>✅ Signed in successfully!</h1>
+                  <h1>Signed in successfully!</h1>
                   <p>You can close this window and return to UpSight.</p>
                   <script>setTimeout(() => window.close(), 2000);</script>
                 </div>
