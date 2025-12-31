@@ -173,7 +173,10 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@biomejs/biome",
+      "@recallai/desktop-sdk",
       "esbuild",
+      "electron",
+      "keytar",
       "lefthook",
       "msw",
       "supabase"
