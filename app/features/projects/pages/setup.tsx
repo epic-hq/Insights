@@ -29,6 +29,7 @@ import { PageContainer } from "~/components/layout/PageContainer";
 import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned";
 import { MethodSettingsButton } from "~/features/projects/components/InputChannelSettings";
 import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat";
+import { SetupVoiceChat } from "~/features/projects/components/SetupVoiceChat";
 import { SetupModeSelector } from "~/features/projects/components/SetupModeSelector";
 import {
   type SetupMode,
@@ -750,24 +751,12 @@ export default function ProjectSetupPage() {
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-2xl px-4 py-6">
             {mode === "voice" ? (
-              // Voice mode placeholder - will integrate LiveKit
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
-                  <span className="text-4xl">🎙️</span>
-                </div>
-                <h2 className="mb-2 font-semibold text-xl">Voice Setup</h2>
-                <p className="mb-6 max-w-sm text-muted-foreground">
-                  Have a natural conversation to set up your research project.
-                  Coming soon with LiveKit integration.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setMode("chat")}
-                  className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Use Chat Instead
-                </button>
-              </div>
+              <SetupVoiceChat
+                accountId={accountId}
+                projectId={projectId}
+                projectName={project?.name || "Project"}
+                onSetupComplete={handleSetupComplete}
+              />
             ) : (
               <ProjectSetupChat
                 accountId={accountId}
