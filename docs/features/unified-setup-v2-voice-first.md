@@ -166,6 +166,79 @@ When user gives an open response:
 
 No confirmation dialogs - trust the AI, let user correct by clicking captured items.
 
+## Contextual Suggestions Integration
+
+Users love our AI-powered suggestions. We need to leverage them in both modes.
+
+### Current System
+- BAML `GenerateContextualSuggestions` generates 3 context-aware suggestions
+- Supports: decision_questions, assumptions, unknowns, organizations, roles
+- Uses research_goal + current_input as context
+- Tracks shown/rejected to avoid repeats
+
+### Form Mode (Typeform-style)
+1. **Pre-generate suggestions** before showing each question (not after focus)
+2. **Show prominently** as animated chips below the input
+3. **For tag fields** (orgs, roles): One-click pills - "Tap to add: [Fintech startups] [SaaS companies]"
+4. **For text fields**: Show as sentence starters or examples
+5. **Keyboard shortcut**: Tab to cycle through suggestions, Enter to accept
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   Who are your target customers?                                │
+│                                                                 │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │ Series A B2B SaaS companies...                    [🎤]  │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│   Suggestions:                                                  │
+│   [+ Fintech startups] [+ Healthcare enterprises] [+ E-commerce]│
+│                                                                 │
+│                         [Continue →]                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Voice/Chat Mode (Agent Tool)
+Create `generateFieldSuggestions` tool for agents to proactively offer options:
+
+```typescript
+// New tool for agents
+generateFieldSuggestions({
+  fieldType: "target_orgs",
+  researchGoal: "Understand why SMBs churn...",
+  existingValues: ["Fintech startups"],
+  count: 3
+})
+// Returns: ["Series A B2B SaaS", "Healthcare startups", "E-commerce brands"]
+```
+
+**Conversation flow:**
+```
+Agent: "Who are your target customers?"
+User: "Um... I'm not sure how to describe them"
+Agent: *calls generateFieldSuggestions*
+Agent: "No problem. Based on your research goal, I'm thinking:
+        - Series A B2B SaaS companies, or
+        - Enterprise healthcare organizations?
+        Does either sound right?"
+User: "The first one"
+Agent: *saves target_orgs: ["Series A B2B SaaS companies"]*
+Agent: "Got it. What problem does your product solve for them?"
+```
+
+**Voice mode benefits:**
+- Reduces cognitive load - user doesn't have to articulate from scratch
+- Faster completion - "yes" or "the second one" vs composing an answer
+- Handles "I don't know" gracefully with concrete options
+- Agent can offer to combine: "Both of those, or maybe something else?"
+
+### Implementation
+1. Create `generateFieldSuggestionsTool` in `app/mastra/tools/`
+2. Wire to existing BAML `GenerateContextualSuggestions` function
+3. Add to project-setup-agent and LiveKit agent tools
+4. Update agent prompts to use suggestions when user hesitates
+
 ## Components to Build
 
 ### 1. VoiceOrb

@@ -7,7 +7,6 @@ import { useFetcher, useNavigate } from "react-router"
 import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
-import { Card, CardContent } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { VoiceButton, type VoiceButtonState } from "~/components/ui/voice-button"
@@ -79,21 +78,50 @@ function ThinkingWave() {
 	)
 }
 
+// Opening prompt for the onboarding conversation
+const OPENING_PROMPT = `I'll help you get insights from customer conversations.
+
+Do you want to:`
+
+// Path-based suggested responses (per onboarding spec v2)
+const INITIAL_PATH_SUGGESTIONS = [
+	{
+		emoji: "📋",
+		text: "Help me figure out what to ask customers",
+		path: "plan",
+	},
+	{ emoji: "📊", text: "Find patterns in recordings I have", path: "analyze" },
+	{ emoji: "🎙️", text: "Take notes on a call for me", path: "record" },
+	{ emoji: "🔍", text: "See how it works first", path: "explore" },
+] as const
+
 interface ProjectSetupChatProps {
 	accountId: string
 	projectId: string
 	projectName: string
 	onSetupComplete?: () => void
+	/** Initial message to send automatically when chat opens */
+	initialMessage?: string | null
+	/** Callback when user selects a path from initial suggestions */
+	onPathSelect?: (path: "plan" | "analyze" | "record" | "explore") => void
 }
 
-export function ProjectSetupChat({ accountId, projectId, projectName, onSetupComplete }: ProjectSetupChatProps) {
+export function ProjectSetupChat({
+	accountId,
+	projectId,
+	projectName,
+	onSetupComplete,
+	initialMessage,
+	onPathSelect,
+}: ProjectSetupChatProps) {
 	const [input, setInput] = useState("")
+	const initialMessageSentRef = useRef(false)
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const navigate = useNavigate()
 
-	// History loading
+	// History loading - use projectId as key to prevent reload on remount
 	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
-	const historyLoadedRef = useRef(false)
+	const [historyLoadedForProject, setHistoryLoadedForProject] = useState<string | null>(null)
 
 	const systemContext = useMemo(() => {
 		return `Project: ${projectName}\nProject ID: ${projectId}\nAccount ID: ${accountId}`
@@ -128,7 +156,10 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 
 			// Handle agent switching (setup complete → status agent)
 			if (toolCall.toolName === "switchAgent") {
-				const input = toolCall.input as { targetAgent?: string; reason?: string }
+				const input = toolCall.input as {
+					targetAgent?: string
+					reason?: string
+				}
 				const targetAgent = input?.targetAgent
 				const reason = input?.reason || "Switching..."
 
@@ -147,22 +178,27 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 					addToolResult({
 						tool: "switchAgent",
 						toolCallId: toolCall.toolCallId,
-						output: { success: true, targetAgent, message: "Already in setup mode." },
+						output: {
+							success: true,
+							targetAgent,
+							message: "Already in setup mode.",
+						},
 					})
 				}
 			}
 		},
 	})
 
-	// Load history once on mount
+	// Load history once per project
 	useEffect(() => {
-		if (historyLoadedRef.current) return
-		historyLoadedRef.current = true
+		// Skip if already loaded for this project or if fetcher is busy
+		if (historyLoadedForProject === projectId || historyFetcher.state !== "idle") return
 
 		const historyUrl = `/a/${accountId}/${projectId}/api/chat/project-setup/history`
 		consola.info("Loading setup chat history from:", historyUrl)
 		historyFetcher.load(historyUrl)
-	}, [accountId, projectId]) // eslint-disable-line react-hooks/exhaustive-deps
+		setHistoryLoadedForProject(projectId)
+	}, [accountId, projectId, historyLoadedForProject, historyFetcher.state])
 
 	// Update messages when history loads
 	useEffect(() => {
@@ -235,19 +271,26 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 		}
 	}, [])
 
+	// Auto-send initial message when chat opens (from entry screen)
+	useEffect(() => {
+		if (initialMessage && !initialMessageSentRef.current && status === "idle" && historyFetcher.state === "idle") {
+			initialMessageSentRef.current = true
+			sendMessage({ text: initialMessage })
+		}
+	}, [initialMessage, status, historyFetcher.state, sendMessage])
+
 	// State for LLM-generated suggestions (fallback)
 	const [generatedSuggestions, setGeneratedSuggestions] = useState<string[]>([])
 	const lastProcessedMessageId = useRef<string | null>(null)
 
+	// Track if we're in initial state (showing opening prompt with path options)
+	const isInitialState = displayableMessages.length === 0
+
 	// Extract suggestions from assistant's response via tool invocations
 	const toolSuggestions = useMemo(() => {
-		// Initial suggestions when no messages
-		if (displayableMessages.length === 0) {
-			return [
-				"We're building a B2B SaaS for HR teams",
-				"I run an e-commerce store selling fitness gear",
-				"We help small businesses manage their finances",
-			]
+		// Initial path-based suggestions when no messages
+		if (isInitialState) {
+			return INITIAL_PATH_SUGGESTIONS.map((s) => `${s.emoji} ${s.text}`)
 		}
 
 		// Find the last assistant message
@@ -267,7 +310,7 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 		}
 
 		return []
-	}, [displayableMessages])
+	}, [displayableMessages, isInitialState])
 
 	// Fallback: Generate suggestions if no tool calls found
 	useEffect(() => {
@@ -317,9 +360,35 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 
 	const handleSuggestionClick = useCallback(
 		(suggestion: string) => {
+			// Check if this is an initial path-based suggestion
+			if (isInitialState) {
+				const matchedPath = INITIAL_PATH_SUGGESTIONS.find((s) => `${s.emoji} ${s.text}` === suggestion)
+				if (matchedPath) {
+					// Route based on the path
+					switch (matchedPath.path) {
+						case "analyze":
+							// Navigate to upload page
+							navigate(`/a/${accountId}/${projectId}/interviews/upload`)
+							return
+						case "record":
+							// Navigate to new interview (which has recording option)
+							navigate(`/a/${accountId}/${projectId}/interviews/new`)
+							return
+						case "explore":
+							// Navigate to dashboard with sample data
+							navigate(`/a/${accountId}/${projectId}`)
+							return
+						case "plan":
+							// Continue in chat for planning flow
+							onPathSelect?.("plan")
+							sendMessage({ text: suggestion })
+							return
+					}
+				}
+			}
 			sendMessage({ text: suggestion })
 		},
-		[sendMessage]
+		[sendMessage, isInitialState, navigate, accountId, projectId, onPathSelect]
 	)
 
 	const submitMessage = () => {
@@ -342,25 +411,30 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 	}
 
 	return (
-		<Card className="flex h-[85vh] flex-col overflow-hidden border-0 bg-background/80 shadow-sm ring-1 ring-border/60 backdrop-blur">
-			<CardContent className="flex min-h-0 flex-1 flex-col p-6">
+		<div className="flex h-[85vh] flex-col overflow-hidden md:rounded-xl md:border md:border-border/60 md:bg-background/80 md:shadow-sm md:backdrop-blur">
+			<div className="flex min-h-0 flex-1 flex-col px-2 py-4 md:p-6">
 				{/* Messages area with auto-scroll */}
 				<Conversation className="min-h-0 flex-1">
 					<ConversationContent className="space-y-4 p-0 pr-2">
 						{displayableMessages.length === 0 ? (
-							<div className="flex h-full flex-col items-center justify-center text-center">
-								<WizardIcon className="mb-4" />
-								<h2 className="mb-2 font-semibold text-lg">Project Context</h2>
-								{/* <p className="max-w-md text-balance text-muted-foreground text-sm leading-relaxed">
-									I'm here to assist with your customer strategy. Share your goals and vision, and together we'll define
-									clear goals, identify and nurture your ideal customers, and uncover the questions that matter most.
-								</p> */}
-								{displayableMessages.length === 0 && (
-									<p className="mt-4 text-balance text-ms text-muted-foreground/70">
-										Just start with something like "We're building a B2B SaaS for HR teams" or "I need to understand my
-										customers better"
-									</p>
-								)}
+							<div className="flex flex-col pt-4 md:pt-8">
+								{/* Opening prompt as initial AI message */}
+								<div className="flex justify-start">
+									<div className="flex max-w-[95%] flex-col gap-2 md:max-w-[85%] md:flex-row md:gap-3">
+										<div className="flex items-center gap-2 md:block">
+											<WizardIcon className="h-6 w-6 flex-shrink-0 md:mt-1 md:h-8 md:w-8" />
+											<span className="text-[10px] text-foreground/60 uppercase tracking-wide md:hidden">UpSight</span>
+										</div>
+										<div className="min-w-0 flex-1">
+											<div className="mb-1 hidden text-[10px] text-foreground/60 uppercase tracking-wide md:block">
+												UpSight
+											</div>
+											<div className="whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-muted/50 px-3 py-2 text-foreground shadow-sm ring-1 ring-border/60 md:rounded-lg md:px-4 md:py-3">
+												<AiResponse>{OPENING_PROMPT}</AiResponse>
+											</div>
+										</div>
+									</div>
+								</div>
 							</div>
 						) : (
 							displayableMessages.map((message, index) => {
@@ -370,16 +444,30 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 								const messageText = textParts.filter(Boolean).join("\n").trim()
 								return (
 									<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-										<div className={cn("max-w-[85%]", !isUser && "flex gap-3")}>
-											{!isUser && <WizardIcon className="mt-1 h-8 w-8 flex-shrink-0" />}
-											<div>
-												<div className="mb-1 text-[10px] text-foreground/60 uppercase tracking-wide">
+										<div
+											className={cn(
+												"max-w-[95%] md:max-w-[85%]",
+												!isUser && "flex flex-col gap-2 md:flex-row md:gap-3"
+											)}
+										>
+											{!isUser && (
+												<div className="flex items-center gap-2 md:block">
+													<WizardIcon className="h-6 w-6 flex-shrink-0 md:mt-1 md:h-8 md:w-8" />
+													<span className="text-[10px] text-foreground/60 uppercase tracking-wide md:hidden">
+														UpSight
+													</span>
+												</div>
+											)}
+											<div className="min-w-0 flex-1">
+												<div className="mb-1 hidden text-[10px] text-foreground/60 uppercase tracking-wide md:block">
 													{isUser ? "You" : "Setup Assistant"}
 												</div>
 												<div
 													className={cn(
-														"whitespace-pre-wrap rounded-lg px-4 py-3 shadow-sm",
-														isUser ? "bg-blue-600 text-white" : "bg-muted/50 text-foreground ring-1 ring-border/60"
+														"whitespace-pre-wrap px-3 py-2 shadow-sm md:px-4 md:py-3",
+														isUser
+															? "rounded-2xl rounded-br-sm bg-blue-600 text-white"
+															: "rounded-2xl rounded-tl-sm bg-muted/50 text-foreground ring-1 ring-border/60 md:rounded-lg"
 													)}
 												>
 													{messageText ? (
@@ -406,8 +494,32 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 
 				{/* Input area */}
 				<div className="mt-4 flex-shrink-0 border-t pt-4">
-					{/* Suggestions */}
-					{suggestions.length > 0 && !isBusy && (
+					{/* Path-based suggestions (initial state) */}
+					{isInitialState && !isBusy && (
+						<div className="mb-4 grid gap-2">
+							{INITIAL_PATH_SUGGESTIONS.map((pathOption) => (
+								<button
+									key={pathOption.path}
+									type="button"
+									onClick={() => handleSuggestionClick(`${pathOption.emoji} ${pathOption.text}`)}
+									className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/50 hover:bg-muted/50"
+								>
+									<span className="text-xl">{pathOption.emoji}</span>
+									<div className="flex-1">
+										<span className="font-medium text-foreground text-sm">{pathOption.text}</span>
+										<span className="mt-0.5 block text-muted-foreground text-xs">
+											{pathOption.path === "plan" && "Get interview questions & a research plan"}
+											{pathOption.path === "analyze" && "Upload calls, get insights in minutes"}
+											{pathOption.path === "record" && "Record a call now, I'll capture everything"}
+											{pathOption.path === "explore" && "Explore with sample data, no commitment"}
+										</span>
+									</div>
+								</button>
+							))}
+						</div>
+					)}
+					{/* Regular suggestions (after initial state) */}
+					{!isInitialState && suggestions.length > 0 && !isBusy && (
 						<Suggestions className="mb-3">
 							{suggestions.map((suggestion) => (
 								<Suggestion key={suggestion} suggestion={suggestion} onClick={handleSuggestionClick} />
@@ -420,10 +532,10 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 							value={input}
 							onChange={(event) => setInput(event.currentTarget.value)}
 							onKeyDown={handleKeyDown}
-							placeholder="Tell me about your business..."
-							rows={3}
+							placeholder={isInitialState ? "Or type something else..." : "Tell me about your business..."}
+							rows={isInitialState ? 2 : 3}
 							disabled={isBusy}
-							className="min-h-[80px] resize-none"
+							className="min-h-[60px] resize-none"
 						/>
 						<div className="flex items-center justify-between gap-2">
 							<span className="text-muted-foreground text-xs" aria-live="polite">
@@ -479,7 +591,7 @@ export function ProjectSetupChat({ accountId, projectId, projectName, onSetupCom
 						</div>
 					</form>
 				</div>
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	)
 }

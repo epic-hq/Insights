@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Author:** Cascade
-**Date:** December 2024
+**Date:** December 27, 2025 v2
 **Confidence:** 88%
 
 ---
@@ -97,16 +97,49 @@ From Recall.ai's API after `sdk_upload.complete`:
 ]
 ```
 
-### 2.3 Mapping to Our Pipeline
+### 2.3 Speaker Names & Participant Metadata
 
-| Recall.ai Format | Our Format (`speaker_utterances`) |
-|------------------|-----------------------------------|
-| `participant.name` | `speaker` |
-| `words[].text` | `text` |
-| `words[].start_timestamp.relative` | `start` (seconds) |
-| `words[].end_timestamp.relative` | `end` (seconds) |
+**How Recall.ai Provides Speaker Names:**
+
+Recall.ai automatically detects and labels speaker names from the meeting platform (Zoom, Google Meet, Teams). Each participant in the transcript includes:
+
+```typescript
+{
+  "participant": {
+    "id": 100,                    // Unique participant ID
+    "name": "John Doe",           // Display name from meeting platform
+    "is_host": false,             // Host status
+    "platform": "desktop",        // Platform type
+    "email": "john@example.com",  // Email (if available from platform)
+    "extra_data": null            // Additional platform-specific metadata
+  },
+  "words": [...]
+}
+```
+
+**Key Points:**
+- Speaker names are automatically extracted from meeting platform metadata
+- Email addresses included when available (useful for linking to existing `people` records)
+- `participant.id` is consistent across all utterances for the same speaker
+- No manual speaker identification required
+
+### 2.4 Mapping to Our Pipeline
+
+| Recall.ai Format | Our Format (`speaker_utterances`) | Notes |
+|------------------|-----------------------------------|-------|
+| `participant.name` | `speaker` | Use as display name |
+| `participant.email` | Link to `people.primary_email` | For matching existing people |
+| `participant.id` | Track speaker consistency | Same ID = same speaker |
+| `words[].text` | `text` | Utterance text |
+| `words[].start_timestamp.relative` | `start` (seconds) | Start time |
+| `words[].end_timestamp.relative` | `end` (seconds) | End time |
 
 **Transformation required**: Recall groups by participant with multiple word blocks; AssemblyAI provides flat `utterances` array. We need a transformer function.
+
+**Person Matching Strategy:**
+1. **Email match**: If `participant.email` exists, match to existing `people` record by `primary_email`
+2. **Name match**: Fuzzy match on `participant.name` within same project
+3. **Create new**: If no match, create new person with name and email from participant metadata
 
 ---
 
@@ -245,6 +278,27 @@ export function transformRecallTranscript(
     }))
   )
 }
+
+export async function extractParticipantsFromTranscript(
+  recallTranscript: RecallTranscriptEntry[]
+): Promise<ParticipantMetadata[]> {
+  // Extract unique participants with their metadata
+  const participantMap = new Map<number, ParticipantMetadata>()
+
+  for (const entry of recallTranscript) {
+    if (!participantMap.has(entry.participant.id)) {
+      participantMap.set(entry.participant.id, {
+        recall_participant_id: entry.participant.id,
+        name: entry.participant.name,
+        email: entry.participant.email || null,
+        is_host: entry.participant.is_host,
+        platform: entry.participant.platform,
+      })
+    }
+  }
+
+  return Array.from(participantMap.values())
+}
 ```
 
 ### Phase 3: Trigger.dev Task (Day 2)
@@ -281,30 +335,622 @@ export const processRecallMeetingTask = task({
 })
 ```
 
-### Phase 4: User Association (Day 2)
+### Phase 4: Desktop App API Endpoints (Day 2-3)
 
-**Challenge:** Link Recall recordings to correct account/project.
+**Challenge:** Desktop app needs secure API access for authentication, context selection, and interview management.
 
-**Solutions:**
-1. **Metadata in SDK**: Pass `account_id` and `project_id` when creating upload token
-2. **User mapping table**: Map Recall user IDs to our user IDs
-3. **Email matching**: Match participant emails to existing people records
+#### 4.1 Authentication
 
-**Recommended:** Use metadata approach - cleanest and most explicit.
+**Endpoint:** `POST /api/desktop/auth`
 
 ```typescript
-// Backend endpoint called by desktop app
-POST /api/recall/create-upload-token
+// Request
 {
-  "account_id": "uuid",
-  "project_id": "uuid"
+  "email": "user@example.com",
+  "password": "secure_password"
 }
-// Returns upload token with metadata embedded
+
+// Response
+{
+  "access_token": "jwt_token",
+  "refresh_token": "refresh_jwt",
+  "user": {
+    "id": "user_uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
 ```
+
+**Alternative: OAuth Flow**
+- Desktop app opens browser to `/auth/desktop-callback`
+- User authenticates via web UI
+- Redirect back to desktop app with auth code
+- Exchange code for tokens
+
+#### 4.2 Get User Accounts & Projects
+
+**Endpoint:** `GET /api/desktop/context`
+
+```typescript
+// Headers: Authorization: Bearer {access_token}
+
+// Response
+{
+  "accounts": [
+    {
+      "id": "account_uuid",
+      "name": "Acme Corp",
+      "slug": "acme-corp",
+      "projects": [
+        {
+          "id": "project_uuid",
+          "name": "Q1 Customer Discovery",
+          "slug": "q1-discovery",
+          "is_default": true
+        }
+      ]
+    }
+  ],
+  "default_account_id": "account_uuid",
+  "default_project_id": "project_uuid"
+}
+```
+
+**Purpose:**
+- Desktop app shows account/project selector
+- Caches context for subsequent API calls
+- Allows user to switch projects without re-auth
+
+#### 4.3 Create Recall Upload Token
+
+**Endpoint:** `POST /api/desktop/recall-token`
+
+```typescript
+// Request
+{
+  "account_id": "account_uuid",
+  "project_id": "project_uuid"
+}
+
+// Response
+{
+  "upload_token": "recall_upload_token",
+  "expires_at": "2025-12-27T23:59:59Z",
+  "metadata": {
+    "account_id": "account_uuid",
+    "project_id": "project_uuid",
+    "user_id": "user_uuid"
+  }
+}
+```
+
+**Purpose:** Generate Recall.ai upload token with embedded metadata for webhook routing
+
+#### 4.4 List Interviews
+
+**Endpoint:** `GET /api/desktop/interviews?account_id={id}&project_id={id}&limit=20&offset=0`
+
+```typescript
+// Response
+{
+  "interviews": [
+    {
+      "id": "interview_uuid",
+      "title": "Customer Interview - John Doe",
+      "created_at": "2025-12-27T10:00:00Z",
+      "source_type": "recall",
+      "meeting_platform": "zoom",
+      "status": "completed",
+      "duration_sec": 1800,
+      "participant_count": 2,
+      "evidence_count": 15,
+      "media_url": "https://r2.../media.mp4" // Presigned URL
+    }
+  ],
+  "total": 42,
+  "has_more": true
+}
+```
+
+**Purpose:** Show recent interviews in desktop app, allow playback/review
+
+#### 4.5 Get Interview Detail
+
+**Endpoint:** `GET /api/desktop/interviews/{interview_id}?account_id={id}&project_id={id}`
+
+```typescript
+// Response
+{
+  "id": "interview_uuid",
+  "title": "Customer Interview - John Doe",
+  "created_at": "2025-12-27T10:00:00Z",
+  "source_type": "recall",
+  "meeting_platform": "zoom",
+  "recall_recording_id": "recall_uuid",
+  "status": "completed",
+  "media_r2_key": "media/account/project/recording.mp4",
+  "media_url": "https://r2.../media.mp4", // Presigned URL, 1hr expiry
+  "transcript": {
+    "full_transcript": "...",
+    "speaker_utterances": [...]
+  },
+  "participants": [
+    {
+      "person_id": "person_uuid",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "participant"
+    }
+  ],
+  "evidence_count": 15,
+  "themes": ["pricing concerns", "feature requests"]
+}
+```
+
+#### 4.6 Update Interview Metadata
+
+**Endpoint:** `PATCH /api/desktop/interviews/{interview_id}`
+
+```typescript
+// Request
+{
+  "account_id": "account_uuid",
+  "project_id": "project_uuid",
+  "title": "Updated Interview Title",
+  "notes": "Additional context about this interview"
+}
+
+// Response
+{
+  "success": true,
+  "interview": { /* updated interview object */ }
+}
+```
+
+**Purpose:** Allow desktop app to update interview titles, add notes post-recording
+
+#### 4.7 Get Recording Status
+
+**Endpoint:** `GET /api/desktop/recordings/{recall_recording_id}/status?account_id={id}`
+
+```typescript
+// Response
+{
+  "recall_recording_id": "recall_uuid",
+  "status": "processing", // pending, processing, completed, error
+  "interview_id": "interview_uuid", // null if not yet created
+  "progress": {
+    "media_downloaded": true,
+    "transcript_complete": true,
+    "evidence_extracted": false,
+    "themes_linked": false
+  },
+  "estimated_completion": "2025-12-27T10:15:00Z"
+}
+```
+
+**Purpose:** Desktop app polls this to show processing progress after recording ends
+
+#### 4.8 Health Check
+
+**Endpoint:** `GET /api/desktop/health`
+
+```typescript
+// Response
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "features": {
+    "recall_integration": true,
+    "real_time_coaching": false
+  }
+}
+```
+
+**Purpose:** Desktop app checks API availability and feature flags
 
 ---
 
-## 6. Gotchas & Edge Cases
+### 4.9 Security Considerations
+
+**Authentication:**
+- All endpoints require `Authorization: Bearer {jwt_token}` header
+- Tokens expire after 24 hours, refresh tokens valid for 30 days
+- Desktop app stores tokens in OS-secure keychain (macOS Keychain, Windows Credential Manager)
+
+**Rate Limiting:**
+- 100 requests per minute per user
+- 10 upload token requests per hour per user
+- Webhook endpoints excluded from rate limits
+
+**CORS:**
+- Desktop app uses `electron://` or `file://` protocol
+- Backend allows `Origin: electron://app` for Electron apps
+- No CORS for native desktop apps (direct HTTP)
+
+**Data Scoping:**
+- All endpoints require `account_id` and `project_id` parameters
+- Backend validates user has access to requested account/project via RLS
+- Presigned media URLs expire after 1 hour
+
+---
+
+## 6. Desktop App Integration Guide
+
+### 6.1 Complete Upload & Processing Flow
+
+**Overview:** Desktop app uses Recall.ai SDK to capture meetings, then our backend processes them via webhooks and Trigger.dev tasks.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Desktop App Flow                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│ 1. User authenticates → Get JWT token                               │
+│ 2. User selects account/project → Cache context                     │
+│ 3. User starts meeting → Request upload token from backend          │
+│ 4. Desktop SDK captures meeting → Uploads to Recall.ai              │
+│ 5. Recall.ai sends webhook → Backend processes automatically        │
+│ 6. Desktop app polls status → Shows progress to user                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.2 Step-by-Step Implementation
+
+#### Step 1: Authentication
+
+```typescript
+// Desktop app: Authenticate user
+const response = await fetch('https://api.yourdomain.com/api/desktop/auth', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: userEmail,
+    password: userPassword
+  })
+})
+
+const { access_token, refresh_token, user } = await response.json()
+
+// Store tokens securely in OS keychain
+await secureStore.set('access_token', access_token)
+await secureStore.set('refresh_token', refresh_token)
+```
+
+#### Step 2: Get User Context
+
+```typescript
+// Desktop app: Fetch accounts and projects
+const response = await fetch('https://api.yourdomain.com/api/desktop/context', {
+  headers: {
+    'Authorization': `Bearer ${access_token}`
+  }
+})
+
+const { accounts, default_account_id, default_project_id } = await response.json()
+
+// Show account/project selector UI
+// User selects or uses defaults
+const selectedAccountId = default_account_id
+const selectedProjectId = default_project_id
+```
+
+#### Step 3: Request Recall Upload Token
+
+```typescript
+// Desktop app: Get upload token before starting recording
+const response = await fetch('https://api.yourdomain.com/api/desktop/recall-token', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${access_token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    account_id: selectedAccountId,
+    project_id: selectedProjectId
+  })
+})
+
+const { upload_token, expires_at, metadata } = await response.json()
+
+// Store for SDK initialization
+const recallUploadToken = upload_token
+```
+
+#### Step 4: Initialize Recall SDK & Start Recording
+
+```typescript
+// Desktop app: Initialize Recall.ai Desktop SDK
+import { RecallSDK } from '@recall.ai/desktop-sdk'
+
+const sdk = new RecallSDK({
+  apiKey: process.env.RECALL_API_KEY // Your Recall.ai API key
+})
+
+// Start SDK and listen for meetings
+await sdk.start()
+
+sdk.on('meeting.detected', async (meeting) => {
+  console.log('Meeting detected:', meeting.platform) // 'zoom', 'google_meet', 'teams'
+
+  // Start recording with our upload token
+  const recording = await sdk.startRecording({
+    uploadToken: recallUploadToken, // Token from Step 3
+    transcription: {
+      provider: 'recallai_streaming', // Use Recall's transcription
+      realTime: true // Enable real-time transcription
+    },
+    media: {
+      captureVideo: true,
+      captureAudio: true,
+      captureScreenShare: true
+    }
+  })
+
+  // Store recording ID for status polling
+  const recallRecordingId = recording.id
+  await localDB.set('current_recording_id', recallRecordingId)
+
+  // Show recording indicator in UI
+  showRecordingIndicator(meeting.platform)
+})
+
+sdk.on('recording.complete', async (recording) => {
+  console.log('Recording complete:', recording.id)
+
+  // Start polling for processing status
+  startStatusPolling(recording.id)
+})
+```
+
+#### Step 5: Backend Webhook Processing (Automatic)
+
+**Backend automatically receives webhook from Recall.ai:**
+
+```typescript
+// Backend: app/routes/api.recall-webhook.tsx
+export async function action({ request }: ActionFunctionArgs) {
+  const payload = await request.json()
+
+  // Verify webhook signature
+  const signature = request.headers.get('X-Recall-Signature')
+  if (!verifyRecallSignature(payload, signature)) {
+    return json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
+  if (payload.event === 'sdk_upload.complete') {
+    const { id: recordingId, metadata, media_shortcuts } = payload.data
+
+    // Extract account/project from upload token metadata
+    const { account_id, project_id, user_id } = metadata
+
+    // Download media from Recall to R2
+    const mediaR2Key = await downloadRecallMediaToR2({
+      downloadUrl: media_shortcuts.video_mixed.data.download_url,
+      accountId: account_id,
+      projectId: project_id,
+      recordingId: recordingId
+    })
+
+    // Download transcript if available
+    let transcript = null
+    if (media_shortcuts.transcript?.data?.download_url) {
+      const transcriptData = await fetch(media_shortcuts.transcript.data.download_url)
+      transcript = await transcriptData.json()
+    }
+
+    // Create interview record
+    const interview = await createInterview({
+      account_id,
+      project_id,
+      source_type: 'recall',
+      meeting_platform: payload.data.platform, // 'zoom', 'google_meet', 'teams'
+      recall_recording_id: recordingId,
+      media_r2_key: mediaR2Key,
+      status: 'processing'
+    })
+
+    // Trigger processing pipeline
+    await processRecallMeetingTask.trigger({
+      interviewId: interview.id,
+      accountId: account_id,
+      projectId: project_id,
+      recallRecordingId: recordingId,
+      mediaR2Key: mediaR2Key,
+      recallTranscript: transcript,
+      participants: extractParticipantsFromTranscript(transcript)
+    })
+
+    return json({ success: true, interview_id: interview.id })
+  }
+
+  return json({ success: true })
+}
+```
+
+#### Step 6: Poll Processing Status
+
+```typescript
+// Desktop app: Poll for processing status
+async function startStatusPolling(recallRecordingId: string) {
+  const pollInterval = setInterval(async () => {
+    const response = await fetch(
+      `https://api.yourdomain.com/api/desktop/recordings/${recallRecordingId}/status?account_id=${selectedAccountId}`,
+      {
+        headers: { 'Authorization': `Bearer ${access_token}` }
+      }
+    )
+
+    const status = await response.json()
+
+    // Update UI with progress
+    updateProgressUI({
+      status: status.status, // 'pending', 'processing', 'completed', 'error'
+      progress: status.progress,
+      interviewId: status.interview_id
+    })
+
+    if (status.status === 'completed') {
+      clearInterval(pollInterval)
+
+      // Show success notification
+      showNotification('Interview processed successfully!')
+
+      // Optionally fetch full interview details
+      const interview = await fetchInterviewDetail(status.interview_id)
+      showInterviewDetail(interview)
+    }
+
+    if (status.status === 'error') {
+      clearInterval(pollInterval)
+      showError('Processing failed. Please try again.')
+    }
+  }, 5000) // Poll every 5 seconds
+}
+```
+
+### 6.3 Trigger.dev Task Flow
+
+**Backend processing task:**
+
+```typescript
+// Backend: src/trigger/meeting/processRecallMeeting.ts
+import { task } from "@trigger.dev/sdk"
+
+export const processRecallMeetingTask = task({
+  id: "meeting.process-recall-meeting",
+  retry: {
+    maxAttempts: 3,
+    factor: 2,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10000
+  },
+  run: async (payload: {
+    interviewId: string
+    accountId: string
+    projectId: string
+    recallRecordingId: string
+    mediaR2Key: string
+    recallTranscript: RecallTranscriptEntry[]
+    participants: ParticipantMetadata[]
+  }) => {
+    // 1. Transform Recall transcript to our format
+    const utterances = transformRecallTranscript(payload.recallTranscript)
+
+    // 2. Match or create people records
+    const peopleIds = await matchOrCreatePeople({
+      participants: payload.participants,
+      accountId: payload.accountId,
+      projectId: payload.projectId
+    })
+
+    // 3. Update interview with transcript and people
+    await updateInterview({
+      id: payload.interviewId,
+      full_transcript: utterances.map(u => u.text).join(' '),
+      speaker_utterances: utterances,
+      status: 'transcribed'
+    })
+
+    await linkInterviewPeople({
+      interviewId: payload.interviewId,
+      peopleIds: peopleIds
+    })
+
+    // 4. Extract evidence using existing pipeline
+    const evidenceResult = await extractEvidenceTask.triggerAndWait({
+      interviewId: payload.interviewId,
+      accountId: payload.accountId,
+      projectId: payload.projectId,
+      utterances: utterances
+    })
+
+    // 5. Link evidence to themes
+    if (evidenceResult.ok) {
+      await linkEvidenceToThemesTask.triggerAndWait({
+        interviewId: payload.interviewId,
+        accountId: payload.accountId,
+        projectId: payload.projectId,
+        evidenceIds: evidenceResult.output.evidenceIds
+      })
+    }
+
+    // 6. Mark interview as completed
+    await updateInterview({
+      id: payload.interviewId,
+      status: 'completed',
+      processed_at: new Date()
+    })
+
+    return {
+      success: true,
+      interviewId: payload.interviewId,
+      evidenceCount: evidenceResult.ok ? evidenceResult.output.evidenceIds.length : 0
+    }
+  }
+})
+```
+
+### 6.4 Environment Variables Required
+
+**Desktop App:**
+```bash
+# .env
+RECALL_API_KEY=your_recall_api_key
+BACKEND_API_URL=https://api.yourdomain.com
+```
+
+**Backend:**
+```bash
+# .env
+RECALL_API_KEY=your_recall_api_key
+RECALL_WEBHOOK_SECRET=your_webhook_secret
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_BUCKET_NAME=your_bucket_name
+TRIGGER_SECRET_KEY=your_trigger_dev_key
+```
+
+### 6.5 Error Handling & Retry Logic
+
+**Desktop App:**
+- Network errors: Retry with exponential backoff
+- Token expiration: Refresh token automatically
+- Recording failures: Show error, allow retry
+- Status polling timeout: Stop after 10 minutes, show manual refresh option
+
+**Backend:**
+- Webhook signature validation: Reject invalid requests
+- Media download failures: Retry 3 times with Trigger.dev
+- Transcript parsing errors: Log and continue with empty transcript
+- Evidence extraction failures: Mark interview as "partial" but don't fail
+
+### 6.6 Testing Checklist
+
+**Desktop App:**
+- [ ] Authentication flow works
+- [ ] Account/project selection persists
+- [ ] Upload token request succeeds
+- [ ] Recall SDK detects meetings (Zoom, Meet, Teams)
+- [ ] Recording starts with correct metadata
+- [ ] Status polling shows progress
+- [ ] Completed interviews appear in list
+- [ ] Error states display properly
+
+**Backend:**
+- [ ] Webhook endpoint receives Recall events
+- [ ] Signature verification works
+- [ ] Media downloads to R2 successfully
+- [ ] Transcript transforms correctly
+- [ ] People matching/creation works
+- [ ] Trigger.dev tasks execute
+- [ ] Evidence extraction completes
+- [ ] Interview status updates properly
+
+---
+
+## 7. Gotchas & Edge Cases
 
 ### 6.1 Known Issues
 
@@ -419,58 +1065,34 @@ function onTranscriptData(event: TranscriptDataEvent, state: MeetingState) {
 
 ## 8. Database Schema Changes
 
-### 8.1 New Table: `meeting_recordings`
+### 8.1 Extend Interviews Table
+
+**Rationale:** Use existing `interviews` table instead of creating a separate `meeting_recordings` table. This:
+- Leverages existing pipeline, evidence extraction, and UI
+- Avoids data duplication and sync issues
+- Enables conversation lenses for analytics (talk ratio, question density, etc.)
+- Simplifies architecture and reduces maintenance burden
+
+**Schema Updates:**
 
 ```sql
-CREATE TABLE meeting_recordings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id UUID NOT NULL REFERENCES accounts(id),
-  project_id UUID NOT NULL REFERENCES projects(id),
-
-  -- Recall.ai identifiers
-  recall_recording_id TEXT UNIQUE NOT NULL,
-  recall_upload_id TEXT,
-
-  -- Meeting metadata
-  platform TEXT, -- 'zoom', 'google_meet', 'teams'
-  meeting_title TEXT,
-  started_at TIMESTAMPTZ,
-  ended_at TIMESTAMPTZ,
-  duration_sec INTEGER,
-
-  -- Participants (JSONB for flexibility)
-  participants JSONB DEFAULT '[]',
-
-  -- Media references
-  media_r2_key TEXT,
-  transcript_r2_key TEXT,
-
-  -- Processing state
-  status TEXT DEFAULT 'pending', -- pending, processing, completed, error
-  interview_id UUID REFERENCES interviews(id), -- Link to created interview
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- RLS policies
-ALTER TABLE meeting_recordings ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their account's recordings"
-  ON meeting_recordings FOR SELECT
-  USING (account_id IN (SELECT account_id FROM account_user WHERE user_id = auth.uid()));
-```
-
-### 8.2 Interviews Table Updates
-
-Add source tracking:
-
-```sql
+-- Add meeting platform tracking
 ALTER TABLE interviews
-  ADD COLUMN source_type TEXT DEFAULT 'upload', -- 'upload', 'recall', 'import'
-  ADD COLUMN source_reference_id UUID; -- References meeting_recordings.id for Recall
+  ADD COLUMN IF NOT EXISTS meeting_platform TEXT; -- 'zoom', 'google_meet', 'teams', null for non-meeting sources
+
+-- Add Recall.ai reference for idempotency and debugging
+ALTER TABLE interviews
+  ADD COLUMN IF NOT EXISTS recall_recording_id TEXT UNIQUE; -- Recall's recording ID for deduplication
+
+-- Existing source_type already supports this:
+-- source_type: 'upload', 'recall', 'note', 'survey_response', 'public_chat'
 ```
+
+**Notes:**
+- `source_type = 'recall'` identifies Recall.ai meetings
+- `meeting_platform` distinguishes Zoom vs Meet vs Teams
+- `recall_recording_id` prevents duplicate processing if webhook fires twice
+- All other fields (media_r2_key, transcript, participants via interview_people) already exist
 
 ---
 

@@ -1,3 +1,7 @@
+> **⚠️ V1 - SUPERSEDED** - This is the V1 design (chat/form dual-mode).
+> See [unified-setup-v2-voice-first.md](unified-setup-v2-voice-first.md) for V2 (voice-first architecture).
+> V1 serves as a stepping stone to V2. Current implementation follows V1 patterns.
+
 # Unified Project Setup Experience
 
 A design specification for a real-time synchronized chat and form experience during project setup.

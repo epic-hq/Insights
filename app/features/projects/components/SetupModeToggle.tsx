@@ -1,19 +1,21 @@
 /**
- * Mode toggle for switching between chat and form modes
+ * Mode toggle for switching between chat, voice and form modes
  *
  * Uses a segmented control pattern with smooth transitions.
- * Both modes access the same underlying data.
+ * All modes access the same underlying data.
  */
 
-import { FileText, MessageSquare } from "lucide-react"
+import { FileText, MessageSquare, Volume2 } from "lucide-react"
 import { cn } from "~/lib/utils"
 
-export type SetupMode = "chat" | "form"
+export type SetupMode = "chat" | "voice" | "form"
 
 interface SetupModeToggleProps {
 	mode: SetupMode
 	onModeChange: (mode: SetupMode) => void
 	className?: string
+	/** Whether to show voice mode option */
+	showVoice?: boolean
 }
 
 /**
@@ -22,7 +24,7 @@ interface SetupModeToggleProps {
  * Designed to feel like two views into the same data,
  * not two separate features.
  */
-export function SetupModeToggle({ mode, onModeChange, className }: SetupModeToggleProps) {
+export function SetupModeToggle({ mode, onModeChange, className, showVoice = false }: SetupModeToggleProps) {
 	return (
 		<div
 			className={cn("inline-flex items-center gap-1 rounded-lg border bg-muted/50 p-1", className)}
@@ -42,6 +44,21 @@ export function SetupModeToggle({ mode, onModeChange, className }: SetupModeTogg
 				<MessageSquare className="h-4 w-4" />
 				<span>Chat</span>
 			</button>
+			{showVoice && (
+				<button
+					onClick={() => onModeChange("voice")}
+					role="tab"
+					aria-selected={mode === "voice"}
+					aria-controls="setup-content"
+					className={cn(
+						"inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-medium text-sm transition-all duration-200",
+						mode === "voice" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+					)}
+				>
+					<Volume2 className="h-4 w-4" />
+					<span>Voice</span>
+				</button>
+			)}
 			<button
 				onClick={() => onModeChange("form")}
 				role="tab"

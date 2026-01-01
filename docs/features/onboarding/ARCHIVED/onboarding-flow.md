@@ -1,3 +1,6 @@
+> **⚠️ ARCHIVED** - This document has been superseded by [onboarding-spec.md](../onboarding-spec.md).
+> Kept for historical reference only.
+
 # Onboarding Flow: Define → Collect → Learn
 
 This document outlines the onboarding experience for new users following a clear 3-phase journey.
