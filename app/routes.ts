@@ -149,6 +149,13 @@ const routes = [
 	route("accept-invite", "./routes/accept-invite.tsx"),
 	route("invites", "./routes/invites.tsx"),
 
+	// Desktop API routes (for Electron app)
+	route("api/desktop/health", "./routes/api.desktop.health.ts"),
+	route("api/desktop/context", "./routes/api.desktop.context.ts"),
+	route("api/desktop/recall-token", "./routes/api.desktop.recall-token.ts"),
+	route("api/desktop/recordings/:recordingId/status", "./routes/api.desktop.recordings.$recordingId.status.ts"),
+	route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
+
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),

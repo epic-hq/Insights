@@ -46,6 +46,10 @@ const envSchema = z.object({
 
 	TRIGGER_SECRET_KEY: z.string().optional(),
 
+	// Recall.ai Desktop SDK
+	RECALL_API_KEY: z.string().optional(),
+	RECALL_WEBHOOK_SECRET: z.string().optional(),
+
 	// Payload CMS
 	PAYLOAD_CMS_URL: z.string().default("https://upsight-cms.vercel.app"),
 })
