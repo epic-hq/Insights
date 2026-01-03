@@ -91,15 +91,18 @@ export async function action({ request }: ActionFunctionArgs) {
 		const supabase = createSupabaseAdminClient()
 
 		// Check for duplicate (idempotency)
-		const { data: existing } = await supabase
+		// Note: recall_recording_id column will be added by pending migration
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: existing } = await (supabase as any)
 			.from("interviews")
 			.select("id")
 			.eq("recall_recording_id", recordingId)
 			.maybeSingle()
 
 		if (existing) {
-			console.log(`Duplicate webhook for recording ${recordingId}, interview ${existing.id}`)
-			return Response.json({ received: true, interview_id: existing.id })
+			const existingId = (existing as unknown as { id: string }).id
+			console.log(`Duplicate webhook for recording ${recordingId}, interview ${existingId}`)
+			return Response.json({ received: true, interview_id: existingId })
 		}
 
 		// Get video and transcript URLs
@@ -107,49 +110,54 @@ export async function action({ request }: ActionFunctionArgs) {
 		const transcriptUrl = media_shortcuts?.transcript?.data?.download_url
 
 		// Create interview record
-		const { data: interview, error: createError } = await supabase
+		// Note: Some columns will be added by pending migration - using type assertion
+		const insertData = {
+			account_id,
+			project_id,
+			created_by: user_id || null,
+			recall_recording_id: recordingId,
+			title: meeting?.title || "Recorded Meeting",
+			status: "processing",
+			source_type: "recall",
+			meeting_platform: meeting?.platform || null,
+			// Store URLs temporarily - will be moved to R2 by Trigger task
+			media_url: videoUrl || null,
+			transcript_url: transcriptUrl || null,
+		} as Record<string, unknown>
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: interviewData, error: createError } = await (supabase as any)
 			.from("interviews")
-			.insert({
-				account_id,
-				project_id,
-				created_by: user_id || null,
-				recall_recording_id: recordingId,
-				title: meeting?.title || "Recorded Meeting",
-				status: "processing",
-				source_type: "recall",
-				meeting_platform: meeting?.platform || null,
-				// Store URLs temporarily - will be moved to R2 by Trigger task
-				media_url: videoUrl || null,
-				transcript_url: transcriptUrl || null,
-			})
+			.insert(insertData)
 			.select("id")
 			.single()
 
-		if (createError) {
+		if (createError || !interviewData) {
 			console.error("Failed to create interview:", createError)
 			return Response.json({ error: "Failed to create interview" }, { status: 500 })
 		}
 
-		console.log(`Created interview ${interview.id} for recording ${recordingId}`)
+		const interviewId = (interviewData as unknown as { id: string }).id
+		console.log(`Created interview ${interviewId} for recording ${recordingId}`)
 
 		// Trigger background processing task
 		try {
-			const { processRecallMeetingTask } = await import("~/trigger/interview/processRecallMeeting")
+			const { processRecallMeetingTask } = await import("~/../src/trigger/interview/processRecallMeeting")
 			await processRecallMeetingTask.trigger({
-				interviewId: interview.id,
+				interviewId,
 				recordingId,
 				accountId: account_id,
 				projectId: project_id,
-				videoUrl,
-				transcriptUrl,
+				videoUrl: videoUrl ?? null,
+				transcriptUrl: transcriptUrl ?? null,
 			})
-			console.log(`Triggered processRecallMeetingTask for interview ${interview.id}`)
+			console.log(`Triggered processRecallMeetingTask for interview ${interviewId}`)
 		} catch (triggerError) {
 			console.error("Failed to trigger processing task:", triggerError)
 			// Don't fail the webhook - the interview is created
 		}
 
-		return Response.json({ received: true, interview_id: interview.id })
+		return Response.json({ received: true, interview_id: interviewId })
 	}
 
 	// Acknowledge other events

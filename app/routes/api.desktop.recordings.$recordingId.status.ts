@@ -1,6 +1,22 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server"
 
+// Type for interview with recall_recording_id (pending migration)
+interface InterviewWithRecall {
+	id: string
+	recall_recording_id: string | null
+	status: string
+	title: string | null
+	created_at: string
+	updated_at: string
+	account_id: string
+	project_id: string
+	projects: {
+		slug: string
+		accounts: { slug: string }
+	} | null
+}
+
 /**
  * GET /api/desktop/recordings/:recordingId/status
  * Poll processing status for a recording uploaded via Recall.ai.
@@ -22,34 +38,34 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	try {
 		// Look up interview by recall_recording_id
-		let query = supabase
+		// Note: recall_recording_id column will be added by pending migration
+		// Using type assertion until types are regenerated
+		const baseQuery = supabase
 			.from("interviews")
 			.select(
 				`
-				id,
-				recall_recording_id,
-				status,
-				title,
-				created_at,
-				updated_at,
-				account_id,
-				project_id,
-				projects!inner (
-					slug,
-					accounts!inner (
-						slug
-					)
-				)
-			`
+        id,
+        recall_recording_id,
+        status,
+        title,
+        created_at,
+        updated_at,
+        account_id,
+        project_id,
+        projects!inner (
+          slug,
+          accounts!inner (
+            slug
+          )
+        )
+      `
 			)
-			.eq("recall_recording_id", recordingId)
+			.eq("recall_recording_id" as string, recordingId)
 
-		// If account_id provided, filter by it
-		if (accountId) {
-			query = query.eq("account_id", accountId)
-		}
+		const query = accountId ? baseQuery.eq("account_id", accountId) : baseQuery
 
-		const { data: interview, error } = await query.maybeSingle()
+		const { data, error } = await query.maybeSingle()
+		const interview = data as InterviewWithRecall | null
 
 		if (error) {
 			console.error("Error fetching interview:", error)
@@ -66,8 +82,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		}
 
 		// Build web URL
-		const accountSlug = (interview.projects as any)?.accounts?.slug
-		const projectSlug = (interview.projects as any)?.slug
+		const accountSlug = interview.projects?.accounts?.slug
+		const projectSlug = interview.projects?.slug
 		const webUrl =
 			accountSlug && projectSlug
 				? `https://getupsight.com/a/${interview.account_id}/${interview.project_id}/interviews/${interview.id}`

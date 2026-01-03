@@ -30,7 +30,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Verify user has access to this account
 		const { data: accounts } = await supabase.rpc("get_user_accounts")
-		const hasAccess = (accounts || []).some((a: { account_id: string }) => a.account_id === account_id)
+		const accountsArray = (Array.isArray(accounts) ? accounts : []) as Array<{
+			account_id: string
+		}>
+		const hasAccess = accountsArray.some((a) => a.account_id === account_id)
 
 		if (!hasAccess) {
 			return Response.json({ error: "User does not have access to this account" }, { status: 403 })
