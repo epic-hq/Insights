@@ -126,8 +126,21 @@ function waitForOAuthCallback() {
     callbackServer.on("request", async (req, res) => {
       clearTimeout(timeout);
 
-      // Parse the callback URL
-      const url = new URL(req.url, `http://127.0.0.1:${callbackPort}`);
+      // Parse the callback URL (sanitize spaces that may appear from hash fragment redirects)
+      let url;
+      try {
+        const sanitizedUrl = req.url.replace(/ /g, "");
+        url = new URL(sanitizedUrl, `http://127.0.0.1:${callbackPort}`);
+      } catch (urlError) {
+        console.error(
+          "Failed to parse OAuth callback URL:",
+          req.url,
+          urlError.message,
+        );
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("Invalid callback URL");
+        return;
+      }
       console.log("OAuth callback received:", url.pathname, url.search);
 
       // Check for error
