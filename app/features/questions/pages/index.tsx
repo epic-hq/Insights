@@ -85,7 +85,8 @@ export default function QuestionsIndex() {
 	const { recordNow, isRecording } = useRecordNow()
 
 	// Mode state: form (default), chat, or voice
-	const [mode, setMode] = useState<SetupMode>("form")
+	// Default to chat mode for consistency with setup page
+	const [mode, setMode] = useState<SetupMode>("chat")
 
 	// Voice mode feature flag
 	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice")

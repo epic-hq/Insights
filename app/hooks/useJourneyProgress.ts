@@ -2,7 +2,7 @@
  * useJourneyProgress - Track onboarding journey progress
  *
  * Determines completion status for:
- * - Context: research_goal is set in project_context
+ * - Context: research_goal is set in project_sections
  * - Prompts: interview_prompts exist for the project
  * - Conversations: interviews exist
  * - Insights: insights with evidence exist
@@ -49,12 +49,13 @@ export function useJourneyProgress(projectId?: string) {
 				const supabase = createClient()
 
 				const [contextResult, promptsResult, interviewsResult, insightsResult] = await Promise.all([
-					// Check if project_context has research_goal
+					// Check if project_sections has research_goal
 					supabase
-						.from("project_context")
-						.select("merged")
+						.from("project_sections")
+						.select("meta")
 						.eq("project_id", projectId)
-						.single(),
+						.eq("kind", "research_goal")
+						.maybeSingle(),
 
 					// Check if interview_prompts exist
 					supabase
@@ -77,9 +78,9 @@ export function useJourneyProgress(projectId?: string) {
 				])
 
 				if (!isCancelled) {
-					// Context is complete if research_goal exists and is non-empty
-					const merged = contextResult.data?.merged as Record<string, unknown> | null
-					const researchGoal = merged?.research_goal
+					// Context is complete if research_goal section exists with non-empty goal
+					const meta = contextResult.data?.meta as Record<string, unknown> | null
+					const researchGoal = meta?.research_goal
 					const contextComplete = typeof researchGoal === "string" && researchGoal.trim().length > 0
 
 					setProgress({

@@ -632,7 +632,7 @@ export default function ProjectSetupPage() {
 			)
 		}
 
-		// Chat/Voice mode - simplified header
+		// Chat/Voice mode - simple centered layout, status shown in sidebar
 		return (
 			<motion.div
 				key="chat"
@@ -648,7 +648,7 @@ export default function ProjectSetupPage() {
 					<SetupModeToggle mode={mode} onModeChange={(m) => setMode(m as SetupMode)} showVoice={isVoiceEnabled} />
 				</div>
 
-				{/* Main Content Area - full width, no sidebar */}
+				{/* Main content - centered, status in sidebar */}
 				<div className="flex-1 overflow-y-auto">
 					<div className="mx-auto max-w-2xl px-4 py-6">
 						{mode === "voice" ? (

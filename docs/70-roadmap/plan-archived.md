@@ -1,4 +1,4 @@
-# Project Task Board
+# Project Task Board - Archived Plan
 
 ## Onboarding Storyboard ✅ Minor tasks to complete and verify
 
@@ -142,8 +142,8 @@ TEST IT MORE
 
 - [x] Create proper component for annotations. Stubbed out.
 - [x] Add annotations to insights and pick cards, v2, quick, or mobile
-- [ ] Users feature and api needed for team members to see each other, and Annothation comments to display who made them. /api/user-profile stubbed out.
-- [ ] Revise DB calls and build Annotations View in DB [spec](annotations-schema-proposal.md##Enhancement:AnnotationViews)
+- [x] Users feature and api needed for team members to see each other, and Annothation comments to display who made them. /api/user-profile stubbed out.
+- [x] Revise DB calls and build Annotations View in DB [spec](annotations-schema-proposal.md##Enhancement:AnnotationViews)
 
 ## Sprint 4: Workflow Pipelines ✅ COMPLETED
 
