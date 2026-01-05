@@ -1,0 +1,13 @@
+{
+	"mcpServers": {
+		"docs-manager": {
+			"command": "node",
+			"args": [
+				"./mcp-servers/docs-manager/dist/index.js"
+			],
+			"env": {
+				"DOCS_ROOT": "./docs"
+			}
+		}
+	}
+}
