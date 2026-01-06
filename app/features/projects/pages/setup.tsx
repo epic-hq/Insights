@@ -120,10 +120,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   let accountData: {
     website_url?: string | null;
     company_description?: string | null;
+    industry?: string | null;
     customer_problem?: string | null;
-    offerings?: string[] | null;
+    offerings?: string | string[] | null;
     target_orgs?: string[] | null;
     target_roles?: string[] | null;
+    competitors?: string[] | null;
   } | null = null;
   let hasCompanyContext = false;
 
@@ -132,7 +134,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
       .schema("accounts")
       .from("accounts")
       .select(
-        "website_url, company_description, customer_problem, offerings, target_orgs, target_roles",
+        "website_url, company_description, industry, customer_problem, offerings, target_orgs, target_roles, competitors",
       )
       .eq("id", accountId)
       .single();
@@ -241,6 +243,13 @@ export const handle = {
 const CAPTURED_FIELD_DEFINITIONS: CapturedField[] = [
   // Company-level fields (stored in accounts.accounts)
   {
+    key: "website_url",
+    label: "Website",
+    value: null,
+    category: "company",
+    description: "Company website for auto-research",
+  },
+  {
     key: "company_description",
     label: "Company Description",
     value: null,
@@ -248,11 +257,25 @@ const CAPTURED_FIELD_DEFINITIONS: CapturedField[] = [
     description: "What does your company do?",
   },
   {
+    key: "industry",
+    label: "Industry",
+    value: null,
+    category: "company",
+    description: "Your company's industry",
+  },
+  {
     key: "customer_problem",
     label: "Customer Problem",
     value: null,
     category: "company",
     description: "What pain point do you solve?",
+  },
+  {
+    key: "offerings",
+    label: "Products/Services",
+    value: null,
+    category: "company",
+    description: "What products or services do you offer?",
   },
   {
     key: "target_orgs",
@@ -311,10 +334,14 @@ function SetupCapturedPane({
 }: {
   localFields: CapturedField[];
   accountData?: {
+    website_url?: string | null;
     company_description?: string | null;
+    industry?: string | null;
     customer_problem?: string | null;
+    offerings?: string | string[] | null;
     target_orgs?: string[] | null;
     target_roles?: string[] | null;
+    competitors?: string[] | null;
   } | null;
   onAskAboutField?: (fieldKey: string) => void;
 }) {

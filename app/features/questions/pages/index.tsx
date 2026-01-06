@@ -210,6 +210,13 @@ export default function QuestionsIndex() {
                 projectName={loaderData.projectName}
                 onSetupComplete={() => navigate(routes.dashboard())}
                 initialMessage="Help me create or refine interview prompts for this project."
+                researchContext={{
+                  research_goal: loaderData.research_goal,
+                  target_roles: loaderData.target_roles,
+                  target_orgs: loaderData.target_orgs,
+                  assumptions: loaderData.assumptions,
+                  unknowns: loaderData.unknowns,
+                }}
               />
             </motion.div>
           )}
@@ -266,6 +273,13 @@ export default function QuestionsIndex() {
                   projectName={loaderData.projectName}
                   onSetupComplete={() => navigate(routes.dashboard())}
                   initialMessage="Help me create or refine interview prompts for this project."
+                  researchContext={{
+                    research_goal: loaderData.research_goal,
+                    target_roles: loaderData.target_roles,
+                    target_orgs: loaderData.target_orgs,
+                    assumptions: loaderData.assumptions,
+                    unknowns: loaderData.unknowns,
+                  }}
                 />
               </div>
             </div>
