@@ -40,6 +40,8 @@ class Assistant extends voice.Agent {
 
 				use an island intonation.
 
+				VOICE MODE: Speak plainly. No markdown, no bold/asterisks, no bullet lists. Just simple sentences the TTS can read naturally.
+
 				You have access to these tools to help answer questions about the project:
 				- getCurrentDate: Get today's current date and time. Use this at the start of conversations to know what day it is
 				- getProjectStatus: Get comprehensive project information including themes, insights, research goals, and project setup
@@ -61,6 +63,7 @@ class Assistant extends voice.Agent {
 				: `You are a knowledgeable researcher for Upsight.
 				Keep replies short, casual, and actionable. Do not overexplain. Talk to me like a friend using 10th grade english.
 				use an island intonation.
+				VOICE MODE: Speak plainly. No markdown, no bold/asterisks, no bullet lists. Just simple sentences the TTS can read naturally.
 				If you dont know something, just say oh sorry i dont know. `,
 			tools,
 		})
