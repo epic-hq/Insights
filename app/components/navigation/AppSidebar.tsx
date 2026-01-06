@@ -77,6 +77,9 @@ export function AppSidebar({ forceSidebarCollapsed = false }: AppSidebarProps) {
 	// Journey progress for onboarding sidebar
 	const { progress: journeyProgress, allComplete: journeyComplete } = useJourneyProgress(projectId)
 
+	// Determine if Plan phase is complete (context + prompts)
+	const planComplete = journeyProgress.contextComplete && journeyProgress.promptsComplete
+
 	// Derive current journey phase from location
 	const journeyPhaseInfo = useMemo(() => {
 		const pathname = location.pathname
@@ -367,34 +370,25 @@ export function AppSidebar({ forceSidebarCollapsed = false }: AppSidebarProps) {
 			</SidebarHeader>
 
 			<SidebarContent>
+				{/* Primary CTA - always "Add conversation" for simplicity */}
 				<div className="px-2 pb-2">
-					{(() => {
-						const addContentHref = canNavigate ? routes.interviews.upload() : undefined
-
-						return (
-							<Button
-								asChild={Boolean(addContentHref)}
-								disabled={!addContentHref}
-								className="w-full justify-start gap-2"
-							>
-								{addContentHref ? (
-									<Link to={addContentHref} className="flex w-full items-center gap-2">
-										<Plus className="h-4 w-4" />
-										<span className={isCollapsed ? "sr-only" : ""}>Add content</span>
-									</Link>
-								) : (
-									<span className="flex w-full items-center gap-2">
-										<Plus className="h-4 w-4" />
-										<span className={isCollapsed ? "sr-only" : ""}>Add content</span>
-									</span>
-								)}
-							</Button>
-						)
-					})()}
+					<Button asChild={canNavigate} disabled={!canNavigate} className="w-full justify-start gap-2">
+						{canNavigate ? (
+							<Link to={routes.interviews.upload()} className="flex w-full items-center gap-2">
+								<Plus className="h-4 w-4" />
+								<span className={isCollapsed ? "sr-only" : ""}>Add conversation</span>
+							</Link>
+						) : (
+							<span className="flex w-full items-center gap-2">
+								<Plus className="h-4 w-4" />
+								<span className={isCollapsed ? "sr-only" : ""}>Add conversation</span>
+							</span>
+						)}
+					</Button>
 				</div>
 
-				{/* Journey sidebar group - shows during onboarding */}
-				{!journeyComplete && effectiveProjectPath && (
+				{/* Journey sidebar group - always shows (transforms to "Research Plan" after complete) */}
+				{effectiveProjectPath && (
 					<JourneySidebarGroup
 						basePath={effectiveProjectPath}
 						currentPhase={journeyPhaseInfo.currentPhase}
@@ -403,6 +397,7 @@ export function AppSidebar({ forceSidebarCollapsed = false }: AppSidebarProps) {
 					/>
 				)}
 
+				{/* Main navigation - always visible for discoverability */}
 				{sectionsToRender.map((section) => (
 					<SidebarGroup key={section.key}>
 						{section.key !== "home" && section.key !== "main" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}

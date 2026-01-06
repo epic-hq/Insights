@@ -4,16 +4,18 @@
  * Shows one question at a time with:
  * - Smooth slide animations between questions
  * - Forward/back navigation with keyboard support
- * - Pre-generated contextual suggestions as clickable chips
+ * - AI-powered contextual suggestions via ContextualSuggestions component
  * - Speech-to-text for textarea inputs
- * - Progress indicator
+ * - Progress indicator (X/Y format)
  */
 
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Loader2, Search, SkipForward, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Loader2, Search } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
+import { useParams } from "react-router"
 import { Button } from "~/components/ui/button"
 import { TextareaWithSTT } from "~/components/ui/textarea-with-stt"
+import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions"
 import { cn } from "~/lib/utils"
 
 export type FieldType = "text" | "textarea" | "tags" | "select" | "url"
@@ -45,18 +47,10 @@ export interface TypeformQuestionProps {
 	required?: boolean
 	/** Enable speech-to-text button */
 	showSTT?: boolean
-	/** Field key for suggestions */
-	fieldKey?: string
-	/** Suggestions to display */
-	suggestions?: string[]
-	/** Loading state for suggestions */
-	suggestionsLoading?: boolean
-	/** Handle suggestion click */
-	onSuggestionClick?: (suggestion: string) => void
-	/** Handle suggestion rejection */
-	onSuggestionReject?: (suggestion: string) => void
-	/** Refresh suggestions */
-	onRefreshSuggestions?: () => void
+	/** Suggestion type for ContextualSuggestions */
+	suggestionType?: SuggestionType
+	/** Research goal for generating suggestions */
+	researchGoal?: string
 	/** Animation direction: 1 = forward, -1 = back */
 	direction?: number
 	/** Placeholder text */
@@ -87,21 +81,6 @@ const slideVariants = {
 	}),
 }
 
-const suggestionVariants = {
-	hidden: { opacity: 0, scale: 0.8, y: 10 },
-	visible: (i: number) => ({
-		opacity: 1,
-		scale: 1,
-		y: 0,
-		transition: {
-			delay: i * 0.1,
-			duration: 0.3,
-			ease: "easeOut" as const,
-		},
-	}),
-	exit: { opacity: 0, scale: 0.8, transition: { duration: 0.2 } },
-}
-
 export function TypeformQuestion({
 	question,
 	description,
@@ -115,11 +94,8 @@ export function TypeformQuestion({
 	totalSteps,
 	required = false,
 	showSTT = false,
-	suggestions = [],
-	suggestionsLoading = false,
-	onSuggestionClick,
-	onSuggestionReject,
-	onRefreshSuggestions,
+	suggestionType,
+	researchGoal = "",
 	direction = 1,
 	placeholder,
 	options = [],
@@ -129,65 +105,67 @@ export function TypeformQuestion({
 }: TypeformQuestionProps) {
 	const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 	const formId = useId()
-	const [rejectedSuggestions, setRejectedSuggestions] = useState<Set<string>>(new Set())
+	const params = useParams()
 
-	// Calculate if user can proceed (must be defined before useEffect that uses it)
+	// Build API path for suggestions
+	const apiPath =
+		params.accountId && params.projectId
+			? `/a/${params.accountId}/${params.projectId}/api/contextual-suggestions`
+			: "/api/contextual-suggestions"
+
+	// Track shown suggestions to avoid duplicates
+	const [shownSuggestions, setShownSuggestions] = useState<string[]>([])
+
+	// Calculate if user can proceed
 	const canProceed = !required || (Array.isArray(value) ? value.length > 0 : Boolean(value?.toString().trim()))
+
+	// Has the user entered any value?
+	const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value?.toString().trim())
 
 	// Focus input when question changes
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			inputRef.current?.focus()
-		}, 400) // After animation completes
+		}, 400)
 		return () => clearTimeout(timer)
+	}, [stepNumber])
+
+	// Reset shown suggestions when question changes
+	useEffect(() => {
+		setShownSuggestions([])
 	}, [stepNumber])
 
 	// Keyboard navigation
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Enter") {
-				// Textarea: allow newlines unless Cmd/Ctrl is held
 				if (fieldType === "textarea" && !e.metaKey && !e.ctrlKey) {
 					return
 				}
-
 				e.preventDefault()
-
-				// Enter (no shift) to continue
 				if (!e.shiftKey && canProceed) {
 					onNext()
 				}
 			}
-
-			// Escape to skip
 			if (e.key === "Escape" && onSkip && !required) {
 				e.preventDefault()
 				onSkip()
 			}
 		}
-
 		window.addEventListener("keydown", handleKeyDown)
 		return () => window.removeEventListener("keydown", handleKeyDown)
 	}, [fieldType, onNext, onSkip, required, canProceed])
 
-	// Handle suggestion click
+	// Handle suggestion click from ContextualSuggestions
 	const handleSuggestionClick = (suggestion: string) => {
 		if (fieldType === "tags" && Array.isArray(value)) {
 			if (!value.includes(suggestion)) {
 				onChange([...value, suggestion])
 			}
 		} else if (typeof value === "string") {
-			// For text/textarea, append suggestion
-			const newValue = value ? `${value}\n${suggestion}` : suggestion
-			onChange(newValue)
+			// For text/textarea, set value directly
+			onChange(suggestion)
 		}
-		onSuggestionClick?.(suggestion)
-	}
-
-	// Handle suggestion rejection
-	const handleSuggestionReject = (suggestion: string) => {
-		setRejectedSuggestions((prev) => new Set(prev).add(suggestion))
-		onSuggestionReject?.(suggestion)
 	}
 
 	// Remove tag
@@ -197,7 +175,8 @@ export function TypeformQuestion({
 		}
 	}
 
-	const visibleSuggestions = suggestions.filter((s) => !rejectedSuggestions.has(s))
+	// Get existing items for suggestions (to avoid duplicates)
+	const existingItems = Array.isArray(value) ? value : []
 
 	return (
 		<AnimatePresence mode="wait" custom={direction}>
@@ -211,24 +190,32 @@ export function TypeformQuestion({
 				transition={{ duration: 0.3, ease: "easeInOut" }}
 				className={cn("flex w-full flex-col items-center px-4 pt-8 md:pt-16", className)}
 			>
-				<div className="w-full max-w-xl space-y-8">
+				<div className="w-full max-w-xl space-y-10">
 					{/* Question Header */}
-					<div className="space-y-3 text-center">
+					<div className="space-y-4 text-center">
+						<motion.div
+							initial={{ opacity: 0, scale: 0.9 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ delay: 0.05, duration: 0.3 }}
+							className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"
+						>
+							<span className="font-semibold text-primary text-sm">{stepNumber}</span>
+						</motion.div>
 						<motion.h2
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.1, duration: 0.4 }}
-							className="font-medium text-2xl text-foreground sm:text-3xl"
+							className="font-semibold text-2xl text-foreground tracking-tight sm:text-3xl"
 						>
 							{question}
-							{required && <span className="ml-1 text-destructive">*</span>}
+							{required && <span className="ml-1 text-destructive/70 text-lg">*</span>}
 						</motion.h2>
 						{description && (
 							<motion.p
 								initial={{ opacity: 0, y: 10 }}
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ delay: 0.2, duration: 0.4 }}
-								className="text-muted-foreground text-sm sm:text-base"
+								className="mx-auto max-w-md text-base text-muted-foreground leading-relaxed"
 							>
 								{description}
 							</motion.p>
@@ -384,76 +371,20 @@ export function TypeformQuestion({
 							)}
 						</div>
 
-						{/* Suggestions */}
-						<AnimatePresence mode="sync">
-							{(visibleSuggestions.length > 0 || suggestionsLoading) && (
-								<motion.div
-									initial={{ opacity: 0, height: 0 }}
-									animate={{ opacity: 1, height: "auto" }}
-									exit={{ opacity: 0, height: 0 }}
-									className="space-y-2"
-								>
-									<div className="flex items-center justify-between">
-										<span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-											<Sparkles className="h-3.5 w-3.5" />
-											Suggestions
-										</span>
-										{onRefreshSuggestions && !suggestionsLoading && (
-											<button
-												type="button"
-												onClick={() => {
-													setRejectedSuggestions(new Set())
-													onRefreshSuggestions()
-												}}
-												className="text-muted-foreground text-xs hover:text-foreground"
-											>
-												Refresh
-											</button>
-										)}
-									</div>
-
-									{suggestionsLoading ? (
-										<div className="flex gap-2">
-											{[1, 2, 3].map((i) => (
-												<div key={i} className="h-8 w-24 animate-pulse rounded-lg bg-muted" />
-											))}
-										</div>
-									) : (
-										<div className="flex flex-wrap gap-2">
-											{visibleSuggestions.map((suggestion, i) => (
-												<motion.button
-													key={suggestion}
-													custom={i}
-													variants={suggestionVariants}
-													initial="hidden"
-													animate="visible"
-													exit="exit"
-													type="button"
-													onClick={() => handleSuggestionClick(suggestion)}
-													className={cn(
-														"group inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 font-medium text-sm transition-all",
-														"hover:border-primary hover:bg-primary/5 hover:text-primary"
-													)}
-												>
-													<span>+ {suggestion}</span>
-													<button
-														type="button"
-														onClick={(e) => {
-															e.stopPropagation()
-															handleSuggestionReject(suggestion)
-														}}
-														className="ml-1 opacity-0 transition-opacity group-hover:opacity-100"
-														title="Dismiss suggestion"
-													>
-														×
-													</button>
-												</motion.button>
-											))}
-										</div>
-									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
+						{/* Contextual Suggestions - uses existing working component */}
+						{suggestionType && (
+							<ContextualSuggestions
+								suggestionType={suggestionType}
+								currentInput=""
+								researchGoal={researchGoal}
+								existingItems={existingItems}
+								apiPath={apiPath}
+								shownSuggestions={shownSuggestions}
+								isActive={true}
+								onSuggestionClick={handleSuggestionClick}
+								onSuggestionShown={(suggestions) => setShownSuggestions((prev) => [...prev, ...suggestions])}
+							/>
+						)}
 					</motion.div>
 
 					{/* Navigation */}
@@ -466,53 +397,68 @@ export function TypeformQuestion({
 						{/* Back Button */}
 						<div>
 							{onBack && stepNumber > 1 && (
-								<Button type="button" variant="ghost" onClick={onBack} className="gap-2">
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={onBack}
+									className="gap-2 text-muted-foreground hover:text-foreground"
+								>
 									<ArrowLeft className="h-4 w-4" />
 									Back
 								</Button>
 							)}
 						</div>
 
-						{/* Continue / Skip */}
-						<div className="flex items-center gap-3">
-							{onSkip && !required && (
-								<Button type="button" variant="ghost" onClick={onSkip} className="gap-2 text-muted-foreground">
-									Skip
-									<SkipForward className="h-4 w-4" />
-								</Button>
+						{/* Single Primary Action - Smart labeling based on context */}
+						<Button
+							type="button"
+							onClick={hasValue ? onNext : onSkip || onNext}
+							disabled={required && !hasValue}
+							className={cn(
+								"gap-2 transition-all",
+								// Subtle styling for skip action
+								!required && !hasValue && "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
 							)}
-							<Button type="button" onClick={onNext} disabled={!canProceed} className="gap-2">
-								{stepNumber === totalSteps ? (
-									<>
-										<Check className="h-4 w-4" />
-										Done
-									</>
-								) : (
-									<>
-										Continue
-										<ArrowRight className="h-4 w-4" />
-									</>
-								)}
-							</Button>
-						</div>
+						>
+							{stepNumber === totalSteps ? (
+								<>
+									<Check className="h-4 w-4" />
+									{hasValue ? "Done" : "Finish"}
+								</>
+							) : hasValue ? (
+								<>
+									Continue
+									<ArrowRight className="h-4 w-4" />
+								</>
+							) : !required ? (
+								<>
+									Skip for now
+									<ArrowRight className="h-4 w-4" />
+								</>
+							) : (
+								<>
+									Continue
+									<ArrowRight className="h-4 w-4" />
+								</>
+							)}
+						</Button>
 					</motion.div>
 
-					{/* Progress Dots */}
+					{/* Progress Bar */}
 					<motion.div
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						transition={{ delay: 0.4, duration: 0.4 }}
-						className="flex items-center justify-center gap-2 pt-6"
+						className="flex flex-col items-center gap-2 pt-8"
 					>
-						{Array.from({ length: totalSteps }).map((_, i) => (
-							<div
-								key={i}
-								className={cn(
-									"h-2 w-2 rounded-full transition-all duration-300",
-									i + 1 === stepNumber ? "w-6 bg-primary" : i + 1 < stepNumber ? "bg-primary/60" : "bg-muted"
-								)}
+						<div className="flex h-1 w-24 overflow-hidden rounded-full bg-muted">
+							<motion.div
+								initial={{ width: 0 }}
+								animate={{ width: `${(stepNumber / totalSteps) * 100}%` }}
+								transition={{ delay: 0.5, duration: 0.4, ease: "easeOut" }}
+								className="h-full rounded-full bg-primary"
 							/>
-						))}
+						</div>
 					</motion.div>
 				</div>
 			</motion.div>

@@ -51,6 +51,7 @@ See [our-honest-assessment.md](./our-honest-assessment.md) for an unvarnished lo
 |---------|----------|--------|---------------|---------------|
 | [Gong](./gong.md) | Revenue Intelligence | Low | $300M+ ARR, $7B val | Sales-only, enterprise pricing |
 | [Chorus](./chorus.md) | Conversation Intel | Low | Acquired by ZoomInfo | Sales-only |
+| [QCall AI](./qcall.md) | AI Voice Automation | Low | Unknown | Call automation (we're research insights) |
 
 ### Meeting Notetakers (Different Use Case)
 
@@ -83,6 +84,7 @@ See [our-honest-assessment.md](./our-honest-assessment.md) for an unvarnished lo
 | Fathom | Low-Med | Different category, could expand |
 | Gong | Low | Different market, won't simplify |
 | Chorus | Low | Different market, ZoomInfo focused |
+| QCall AI | Low | Call automation focus, different buyer |
 | Granola | Low | Personal productivity focus |
 
 ---

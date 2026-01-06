@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { redirect, useLoaderData } from "react-router"
+import { useLoaderData } from "react-router"
 import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen"
 import { getProjectById } from "~/features/projects/db"
 import { getProjectContextGeneric } from "~/features/questions/db"
@@ -22,13 +22,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 	}
 
-	// If the user hasn't visited the setup flow for this project yet, send them there first
-	const steps = (ctx.user_settings?.onboarding_steps || {}) as Record<string, any>
-	const setupByProject = (steps.project_setup || {}) as Record<string, any>
-	const visited = setupByProject?.[projectId]?.visited === true
-	if (!visited) {
-		throw redirect(`/a/${accountId}/${projectId}/setup`)
-	}
+	// NOTE: We no longer force-redirect to setup - users can access home even without completing setup
+	// The sidebar shows "Getting Started" section to guide them, but doesn't block access
 
 	const { data: project } = await getProjectById({ supabase, id: projectId })
 

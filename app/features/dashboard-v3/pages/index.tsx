@@ -100,16 +100,12 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 		})
 	}
 
-	// If the user hasn't visited the setup flow for this project yet, send them there first
-	// Force setup view with ?setup=1 query param (for testing)
+	// Force setup view with ?setup=1 query param (for testing only)
+	// NOTE: We no longer force-redirect to setup - users can access home even without completing setup
+	// The sidebar shows "Getting Started" section to guide them, but doesn't block access
 	const url = new URL(request.url)
 	const forceSetup = url.searchParams.get("setup") === "1"
-
-	const steps = (ctx.user_settings?.onboarding_steps || {}) as Record<string, unknown>
-	const setupByProject = (steps.project_setup || {}) as Record<string, unknown>
-	const projectSetup = setupByProject?.[projectId] as { visited?: boolean } | undefined
-	const visited = projectSetup?.visited === true
-	if (!visited || forceSetup) {
+	if (forceSetup) {
 		const { redirect } = await import("react-router")
 		throw redirect(`/a/${accountId}/${projectId}/setup`)
 	}

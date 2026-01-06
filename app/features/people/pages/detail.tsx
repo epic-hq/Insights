@@ -55,7 +55,6 @@ import type { Insight } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
 import { getImageUrl } from "~/utils/storeImage.server"
 import { EditableNameField } from "../components/EditableNameField"
-import { getCompanySizeCategory } from "../components/PeopleDataTable"
 import { PersonFacetLenses } from "../components/PersonFacetLenses"
 import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server"
 
@@ -943,7 +942,6 @@ export default function PersonDetail() {
 	) : null
 
 	// Segment data badges for the header (job function, seniority, industry, company size)
-	const companySizeCategory = getCompanySizeCategory(primaryOrg?.size_range)
 	const segmentBadges: Array<{ label: string; value: string }> = [
 		person.job_function ? { label: "Function", value: person.job_function } : null,
 		person.seniority_level ? { label: "Seniority", value: person.seniority_level } : null,
@@ -953,13 +951,12 @@ export default function PersonDetail() {
 					value: person.industry || primaryOrg?.industry || "",
 				}
 			: null,
-		companySizeCategory ? { label: "Company Size", value: companySizeCategory } : null,
+		primaryOrg?.size_range ? { label: "Company Size", value: primaryOrg.size_range } : null,
 	].filter((item): item is { label: string; value: string } => Boolean(item?.value))
 
 	const segmentBadgesNode =
-		segmentBadges.length > 0 ? (
-			<>
-				{segmentBadges.map((item) => (
+		segmentBadges.length > 0
+			? segmentBadges.map((item) => (
 					<Badge
 						key={item.label}
 						variant="outline"
@@ -968,9 +965,8 @@ export default function PersonDetail() {
 						<span className="text-muted-foreground/70">{item.label}:</span>
 						<span className="text-foreground">{item.value}</span>
 					</Badge>
-				))}
-			</>
-		) : null
+				))
+			: null
 
 	// Metadata and activity counts
 	const quickFacts: Array<{ label: string; value: string }> = [

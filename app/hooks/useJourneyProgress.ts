@@ -7,18 +7,46 @@
  * - Conversations: interviews exist
  * - Insights: insights with evidence exist
  *
+ * Also provides detailed field counts for progress indicators.
  * Used by JourneySidebarGroup to show progress during onboarding.
  */
 
 import { useEffect, useState } from "react"
 import { createClient } from "~/lib/supabase/client"
 
+// Context fields we track for progress with human-readable labels
+const CONTEXT_FIELDS = [
+	{ key: "research_goal", label: "Research Goal" },
+	{ key: "target_roles", label: "Target Roles" },
+	{ key: "target_orgs", label: "Target Orgs" },
+	{ key: "assumptions", label: "Assumptions" },
+	{ key: "unknowns", label: "Unknowns" },
+] as const
+
+export interface FieldStatus {
+	key: string
+	label: string
+	filled: boolean
+}
+
 export interface JourneyProgress {
 	contextComplete: boolean
 	promptsComplete: boolean
 	hasConversations: boolean
 	hasInsights: boolean
+	// Detailed counts for progress indicators
+	contextFieldsFilled: number
+	contextFieldsTotal: number
+	contextFields: FieldStatus[]
+	promptsCount: number
 }
+
+// Default field statuses (all empty)
+const defaultContextFields: FieldStatus[] = CONTEXT_FIELDS.map((f) => ({
+	key: f.key,
+	label: f.label,
+	filled: false,
+}))
 
 export function useJourneyProgress(projectId?: string) {
 	const [progress, setProgress] = useState<JourneyProgress>({
@@ -26,6 +54,10 @@ export function useJourneyProgress(projectId?: string) {
 		promptsComplete: false,
 		hasConversations: false,
 		hasInsights: false,
+		contextFieldsFilled: 0,
+		contextFieldsTotal: CONTEXT_FIELDS.length,
+		contextFields: defaultContextFields,
+		promptsCount: 0,
 	})
 	const [loading, setLoading] = useState(true)
 
@@ -36,6 +68,10 @@ export function useJourneyProgress(projectId?: string) {
 				promptsComplete: false,
 				hasConversations: false,
 				hasInsights: false,
+				contextFieldsFilled: 0,
+				contextFieldsTotal: CONTEXT_FIELDS.length,
+				contextFields: defaultContextFields,
+				promptsCount: 0,
 			})
 			setLoading(false)
 			return
@@ -48,16 +84,17 @@ export function useJourneyProgress(projectId?: string) {
 			try {
 				const supabase = createClient()
 
-				const [contextResult, promptsResult, interviewsResult, insightsResult] = await Promise.all([
-					// Check if project_sections has research_goal
+				const fieldKeys = CONTEXT_FIELDS.map((f) => f.key)
+
+				const [sectionsResult, promptsResult, interviewsResult, insightsResult] = await Promise.all([
+					// Get all context-related project_sections
 					supabase
 						.from("project_sections")
-						.select("meta")
+						.select("kind, meta")
 						.eq("project_id", projectId)
-						.eq("kind", "research_goal")
-						.maybeSingle(),
+						.in("kind", fieldKeys),
 
-					// Check if interview_prompts exist
+					// Get count of interview_prompts
 					supabase
 						.from("interview_prompts")
 						.select("id", { count: "exact", head: true })
@@ -78,16 +115,53 @@ export function useJourneyProgress(projectId?: string) {
 				])
 
 				if (!isCancelled) {
-					// Context is complete if research_goal section exists with non-empty goal
-					const meta = contextResult.data?.meta as Record<string, unknown> | null
+					// Build field status array with filled/unfilled status
+					const sections = sectionsResult.data || []
+					const contextFields: FieldStatus[] = []
+					let filledFields = 0
+
+					for (const fieldDef of CONTEXT_FIELDS) {
+						const section = sections.find((s) => s.kind === fieldDef.key)
+						let filled = false
+
+						if (section) {
+							const meta = section.meta as Record<string, unknown> | null
+							const value = meta?.[fieldDef.key]
+
+							// Check if field has a meaningful value
+							if (typeof value === "string" && value.trim().length > 0) {
+								filled = true
+								filledFields++
+							} else if (Array.isArray(value) && value.length > 0) {
+								filled = true
+								filledFields++
+							}
+						}
+
+						contextFields.push({
+							key: fieldDef.key,
+							label: fieldDef.label,
+							filled,
+						})
+					}
+
+					// Context is complete if research_goal exists (minimum requirement)
+					const researchGoalSection = sections.find((s) => s.kind === "research_goal")
+					const meta = researchGoalSection?.meta as Record<string, unknown> | null
 					const researchGoal = meta?.research_goal
 					const contextComplete = typeof researchGoal === "string" && researchGoal.trim().length > 0
 
+					const promptsCount = promptsResult.count ?? 0
+
 					setProgress({
 						contextComplete,
-						promptsComplete: (promptsResult.count ?? 0) > 0,
+						promptsComplete: promptsCount > 0,
 						hasConversations: (interviewsResult.count ?? 0) > 0,
 						hasInsights: (insightsResult.data?.length ?? 0) > 0,
+						contextFieldsFilled: filledFields,
+						contextFieldsTotal: CONTEXT_FIELDS.length,
+						contextFields,
+						promptsCount,
 					})
 				}
 			} catch (error) {
@@ -98,6 +172,10 @@ export function useJourneyProgress(projectId?: string) {
 						promptsComplete: false,
 						hasConversations: false,
 						hasInsights: false,
+						contextFieldsFilled: 0,
+						contextFieldsTotal: CONTEXT_FIELDS.length,
+						contextFields: defaultContextFields,
+						promptsCount: 0,
 					})
 				}
 			} finally {

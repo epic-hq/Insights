@@ -82,9 +82,9 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 /** Footer / global utilities (Directory removed to avoid duplication) */
 export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
 	{
-		key: "project-settings",
-		title: "Project Settings",
-		description: "Research goals, target audience, and context.",
+		key: "project-context",
+		title: "Project Context",
+		description: "Research goals, target audience, and background.",
 		icon: Settings,
 		to: (routes) => routes.projects.setup(),
 	},

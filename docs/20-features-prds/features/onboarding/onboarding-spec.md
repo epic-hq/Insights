@@ -3,6 +3,12 @@
 > **This is the canonical onboarding spec.** Previous design explorations have been consolidated here.
 > See [ARCHIVED/](#archived-documents) for historical context.
 
+## Related Documents
+
+- **[Sidebar UX Analysis](./sidebar-ux-analysis.md)** - UX teardown of sidebar in onboarding vs post-onboarding states, with prioritized improvement plan
+- **[Navigation Redesign Proposal](./navigation-redesign-proposal.md)** - Navigation architecture and journey-based navigation
+- **[Adaptive Companion Spec](./adaptive-companion-spec.md)** - AI companion for guided setup
+
 ## Overview
 
 Single continuous conversation that routes users to the right outcome. No separate "entry screen" - the conversation IS the onboarding.

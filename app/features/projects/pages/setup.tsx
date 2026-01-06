@@ -19,9 +19,10 @@ import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useFetcher, useLoaderData, useNavigate, useOutletContext } from "react-router"
 import type { AppLayoutOutletContext } from "~/components/layout/AppLayout"
-import { PageContainer } from "~/components/layout/PageContainer"
-import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned"
-import { MethodSettingsButton } from "~/features/projects/components/InputChannelSettings"
+// NOTE: ProjectGoalsScreenRedesigned (accordion form) intentionally hidden
+// Keeping code until Typeform version is proven, per user decision 2025-01-05
+// import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned";
+import { type CapturedField, CapturedPane } from "~/features/projects/components/CapturedPane"
 import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat"
 import { SetupModeSelector } from "~/features/projects/components/SetupModeSelector"
 import { type SetupMode, SetupModeToggle } from "~/features/projects/components/SetupModeToggle"
@@ -202,6 +203,28 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 // Hide the project status agent sidebar on this page (we have our own chat)
 export const handle = {
 	hideProjectStatusAgent: true,
+}
+
+/**
+ * SetupCapturedPane - Wrapper that gets data from context
+ * Must be rendered inside ProjectSetupProvider
+ */
+function SetupCapturedPane({ localFields }: { localFields: CapturedField[] }) {
+	const sections = useProjectSections()
+
+	// Merge context data with local form values
+	// Context takes priority (real-time synced), local is fallback
+	const capturedFields: CapturedField[] = localFields.map((field) => {
+		const contextValue = sections[field.key as keyof typeof sections]
+		const hasContextValue = Array.isArray(contextValue) ? contextValue.length > 0 : Boolean(contextValue)
+
+		return {
+			...field,
+			value: hasContextValue ? (contextValue as string | string[] | null) : field.value,
+		}
+	})
+
+	return <CapturedPane fields={capturedFields} />
 }
 
 // Company context questions (for new accounts) - asked FIRST
@@ -540,11 +563,45 @@ export default function ProjectSetupPage() {
 	// State to hold initial message for chat
 	const [initialChatMessage, setInitialChatMessage] = useState<string | null>(null)
 
+	// NOTE: Suggestions are now handled directly by ContextualSuggestions component
+	// inside TypeformQuestion, using the suggestionType prop
+
 	// Calculate form mode values
 	const companyStepCount = hasCompanyContext ? 0 : COMPANY_QUESTIONS.length
 	const totalSteps = companyStepCount + PROJECT_QUESTIONS.length
 	const currentStepNumber = formPhase === "company" ? formStep + 1 : companyStepCount + formStep + 1
 	const isUrlQuestion = currentQuestion?.key === "website_url"
+
+	// Build captured fields from local state for form mode fallback
+	// The SetupCapturedPane component below will merge with context data
+	const localCapturedFields: CapturedField[] = [
+		{
+			key: "research_goal",
+			label: "Research Goal",
+			value: formValues.research_goal as string | null,
+			required: true,
+		},
+		{
+			key: "target_roles",
+			label: "Target Roles",
+			value: companyValues.target_roles as string[] | null,
+		},
+		{
+			key: "target_orgs",
+			label: "Target Orgs",
+			value: companyValues.target_orgs as string[] | null,
+		},
+		{
+			key: "assumptions",
+			label: "Assumptions",
+			value: null, // Will be filled from context
+		},
+		{
+			key: "unknowns",
+			label: "Unknowns",
+			value: null, // Will be filled from context
+		},
+	]
 
 	// Render mode content with smooth fade transitions
 	const renderModeContent = () => {
@@ -623,6 +680,10 @@ export default function ProjectSetupPage() {
 													}
 												: undefined
 										}
+										suggestionType={"suggestionType" in currentQuestion ? currentQuestion.suggestionType : undefined}
+										researchGoal={
+											formValues.research_goal?.toString() || companyValues.company_description?.toString() || ""
+										}
 									/>
 								)}
 							</AnimatePresence>
@@ -677,6 +738,8 @@ export default function ProjectSetupPage() {
 	return (
 		<ProjectSetupProvider projectId={projectId} initialData={initialSections as Record<string, unknown>}>
 			<AnimatePresence mode="wait">{renderModeContent()}</AnimatePresence>
+			{/* CapturedPane shows in all modes (form, chat, voice) - floats bottom-right */}
+			{mode !== null && <SetupCapturedPane localFields={localCapturedFields} />}
 		</ProjectSetupProvider>
 	)
 }

@@ -4,7 +4,7 @@
  * Works with any entity type by using a fetcher to POST updates.
  * The parent page's action handler must handle the "_action": "update-field" intent.
  */
-import { Check, ChevronDown, Loader2, Pencil } from "lucide-react"
+import { ChevronDown, Loader2, Pencil } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useFetcher } from "react-router-dom"
 import { Input } from "~/components/ui/input"
@@ -188,7 +188,7 @@ export function InlineEditableField({
 				className
 			)}
 		>
-			<span className="flex-1 truncate">{displayValue || placeholder}</span>
+			<span className={cn("flex-1", multiline ? "whitespace-normal" : "truncate")}>{displayValue || placeholder}</span>
 			{type === "select" ? (
 				<ChevronDown className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-50" />
 			) : (

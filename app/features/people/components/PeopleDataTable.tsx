@@ -19,7 +19,7 @@ import {
 	type VisibilityState,
 } from "@tanstack/react-table"
 import { formatDistanceToNow } from "date-fns"
-import { Building2, Check, Columns3, ExternalLink, Loader2, Pencil, Plus, X } from "lucide-react"
+import { Building2, Check, Columns3, ExternalLink, Loader2, Pencil, Plus } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useFetcher, useRevalidator } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -39,6 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { COMPANY_SIZE_RANGES } from "~/lib/constants/options"
 import { cn } from "~/lib/utils"
 import { EditableNameField } from "./EditableNameField"
 
@@ -95,82 +96,6 @@ const JOB_FUNCTIONS = [
 
 // Seniority options
 const SENIORITY_LEVELS = ["C-Level", "VP", "Director", "Manager", "Senior", "IC", "Intern"]
-
-// Company size categories with employee range mapping
-export const COMPANY_SIZE_CATEGORIES = [
-	{ value: "Startup", label: "Startup", range: "1-10", maxEmployees: 10 },
-	{ value: "Small", label: "Small", range: "11-50", maxEmployees: 50 },
-	{
-		value: "Mid-Market",
-		label: "Mid-Market",
-		range: "51-500",
-		maxEmployees: 500,
-	},
-	{
-		value: "Enterprise",
-		label: "Enterprise",
-		range: "500+",
-		maxEmployees: Number.POSITIVE_INFINITY,
-	},
-] as const
-
-// Map raw employee count or size range to categories
-export function getCompanySizeCategory(sizeRangeOrCount: string | number | null | undefined): string | null {
-	if (sizeRangeOrCount === null || sizeRangeOrCount === undefined) return null
-
-	// If it's a number, map directly to category
-	if (typeof sizeRangeOrCount === "number") {
-		if (sizeRangeOrCount <= 10) return "Startup"
-		if (sizeRangeOrCount <= 50) return "Small"
-		if (sizeRangeOrCount <= 500) return "Mid-Market"
-		return "Enterprise"
-	}
-
-	const sizeRange = sizeRangeOrCount.trim()
-	if (!sizeRange) return null
-
-	// Direct category match (case-insensitive)
-	const lowerSize = sizeRange.toLowerCase()
-	const directMatch = COMPANY_SIZE_CATEGORIES.find(
-		(c) => c.value.toLowerCase() === lowerSize || c.label.toLowerCase() === lowerSize
-	)
-	if (directMatch) return directMatch.value
-
-	// Match common patterns:
-	// "1-10", "11-50", "51-200", "201-1000", "1000+", "10", "50+", "500-1000"
-	// Also handle "1 - 10" with spaces
-	const rangeMatch = sizeRange.match(/^(\d+)\s*[-–]\s*(\d+)$/)
-	if (rangeMatch) {
-		const min = Number.parseInt(rangeMatch[1], 10)
-		if (min <= 10) return "Startup"
-		if (min <= 50) return "Small"
-		if (min <= 500) return "Mid-Market"
-		return "Enterprise"
-	}
-
-	// Match "1000+" or "500+" patterns
-	const plusMatch = sizeRange.match(/^(\d+)\+$/)
-	if (plusMatch) {
-		const count = Number.parseInt(plusMatch[1], 10)
-		if (count >= 500) return "Enterprise"
-		if (count >= 51) return "Mid-Market"
-		if (count >= 11) return "Small"
-		return "Startup"
-	}
-
-	// Match plain numbers "10", "100", "1000"
-	const numMatch = sizeRange.match(/^(\d+)$/)
-	if (numMatch) {
-		const count = Number.parseInt(numMatch[1], 10)
-		if (count <= 10) return "Startup"
-		if (count <= 50) return "Small"
-		if (count <= 500) return "Mid-Market"
-		return "Enterprise"
-	}
-
-	// Return original if can't parse
-	return sizeRange
-}
 
 // Editable text cell component with optimistic updates
 function EditableTextCell({
@@ -630,9 +555,9 @@ function CompanySizeCell({
 				<SelectItem value="__clear__">
 					<span className="text-muted-foreground">Clear</span>
 				</SelectItem>
-				{COMPANY_SIZE_CATEGORIES.map((cat) => (
-					<SelectItem key={cat.value} value={cat.value}>
-						{cat.label}
+				{COMPANY_SIZE_RANGES.map((option) => (
+					<SelectItem key={option.value} value={option.value}>
+						{option.label}
 					</SelectItem>
 				))}
 			</SelectContent>
@@ -873,7 +798,7 @@ export function PeopleDataTable({ rows, organizations = [] }: PeopleDataTablePro
 				enableSorting: true,
 			},
 		],
-		[routes.people, organizations, updateEndpoint]
+		[routes.people, routes.organizations.detail, organizations, updateEndpoint]
 	)
 
 	const table = useReactTable({
