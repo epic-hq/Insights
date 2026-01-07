@@ -323,7 +323,7 @@ export default function EditResearchLinkPage() {
     <PageContainer className="space-y-4">
       <Form
         method="post"
-        className="grid gap-6 lg:grid-cols-[minmax(0,480px),minmax(260px,320px)]"
+        className="grid gap-6 lg:grid-cols-[minmax(0,400px),minmax(240px,280px)]"
       >
         <div className="space-y-4">
           {/* Alerts */}
