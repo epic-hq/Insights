@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, UploadCloud } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Link2, Mic, UploadCloud } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate } from "react-router";
 import { PageContainer } from "~/components/layout/PageContainer";
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager";
 import { Button } from "~/components/ui/button";
 import { useCurrentProject } from "~/contexts/current-project-context";
+import type { CapturedField } from "~/features/projects/components/CapturedPane";
 import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat";
 import {
   type SetupMode,
@@ -127,6 +128,48 @@ export default function QuestionsIndex() {
   // Plan phase is complete when both are done
   const planComplete = contextComplete && questionsComplete;
 
+  // Build captured fields for the chat footer
+  const capturedFields: CapturedField[] = useMemo(
+    () => [
+      {
+        key: "research_goal",
+        label: "Research Goal",
+        value: loaderData.research_goal,
+        category: "project",
+        description: "What decision are you trying to make?",
+      },
+      {
+        key: "target_roles",
+        label: "Target Roles",
+        value: loaderData.target_roles,
+        category: "project",
+        description: "Who should you interview?",
+      },
+      {
+        key: "target_orgs",
+        label: "Target Organizations",
+        value: loaderData.target_orgs,
+        category: "project",
+        description: "What types of companies?",
+      },
+      {
+        key: "assumptions",
+        label: "Assumptions",
+        value: loaderData.assumptions,
+        category: "project",
+        description: "What do you believe to be true?",
+      },
+      {
+        key: "unknowns",
+        label: "Unknowns",
+        value: loaderData.unknowns,
+        category: "project",
+        description: "What questions need answers?",
+      },
+    ],
+    [loaderData],
+  );
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* Page header with inline mode toggle */}
@@ -163,10 +206,10 @@ export default function QuestionsIndex() {
                   Ready to start collecting?
                 </h3>
                 <p className="mb-4 text-muted-foreground text-sm">
-                  Your questions are set. Now conduct interviews or upload
-                  recordings.
+                  Your questions are set. Now conduct interviews, upload
+                  recordings, or send a link.
                 </p>
-                <div className="flex flex-row justify-center gap-3">
+                <div className="flex flex-row flex-wrap justify-center gap-3">
                   <Button
                     onClick={handleRecordNow}
                     variant="default"
@@ -187,6 +230,18 @@ export default function QuestionsIndex() {
                   >
                     <UploadCloud className="h-4 w-4" />
                     Upload Recording
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (routes) {
+                        navigate(routes.ask.index());
+                      }
+                    }}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Send Ask Link
                   </Button>
                 </div>
               </div>
@@ -217,6 +272,7 @@ export default function QuestionsIndex() {
                   assumptions: loaderData.assumptions,
                   unknowns: loaderData.unknowns,
                 }}
+                capturedFields={capturedFields}
               />
             </motion.div>
           )}
@@ -280,6 +336,7 @@ export default function QuestionsIndex() {
                     assumptions: loaderData.assumptions,
                     unknowns: loaderData.unknowns,
                   }}
+                  capturedFields={capturedFields}
                 />
               </div>
             </div>

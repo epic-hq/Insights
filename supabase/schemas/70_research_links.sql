@@ -15,7 +15,8 @@ create table if not exists public.research_links (
     calendar_url text,
     questions jsonb not null default '[]'::jsonb,
     allow_chat boolean not null default false,
-    default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat')),
+    allow_voice boolean not null default false,
+    default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
     is_live boolean not null default false,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -29,7 +30,7 @@ create table if not exists public.research_link_responses (
     research_link_id uuid not null references public.research_links (id) on delete cascade,
     email text not null,
     responses jsonb not null default '{}'::jsonb,
-    response_mode text not null default 'form' check (response_mode in ('form', 'chat')),
+    response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
     completed boolean not null default false,
     evidence_id uuid references public.evidence (id) on delete set null,
     created_at timestamptz not null default now(),

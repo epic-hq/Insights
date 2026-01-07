@@ -2477,6 +2477,7 @@ export type Database = {
           lens_visibility: string | null
           media_type: string | null
           media_url: string | null
+          meeting_platform: string | null
           observations_and_notes: string | null
           open_questions_and_next_steps: string | null
           original_filename: string | null
@@ -2484,6 +2485,7 @@ export type Database = {
           person_id: string | null
           processing_metadata: Json | null
           project_id: string
+          recall_recording_id: string | null
           relevant_answers: string[] | null
           segment: string | null
           share_created_at: string | null
@@ -2496,6 +2498,7 @@ export type Database = {
           title: string | null
           transcript: string | null
           transcript_formatted: Json | null
+          transcript_url: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -2520,6 +2523,7 @@ export type Database = {
           lens_visibility?: string | null
           media_type?: string | null
           media_url?: string | null
+          meeting_platform?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           original_filename?: string | null
@@ -2527,6 +2531,7 @@ export type Database = {
           person_id?: string | null
           processing_metadata?: Json | null
           project_id: string
+          recall_recording_id?: string | null
           relevant_answers?: string[] | null
           segment?: string | null
           share_created_at?: string | null
@@ -2539,6 +2544,7 @@ export type Database = {
           title?: string | null
           transcript?: string | null
           transcript_formatted?: Json | null
+          transcript_url?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -2563,6 +2569,7 @@ export type Database = {
           lens_visibility?: string | null
           media_type?: string | null
           media_url?: string | null
+          meeting_platform?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           original_filename?: string | null
@@ -2570,6 +2577,7 @@ export type Database = {
           person_id?: string | null
           processing_metadata?: Json | null
           project_id?: string
+          recall_recording_id?: string | null
           relevant_answers?: string[] | null
           segment?: string | null
           share_created_at?: string | null
@@ -2582,6 +2590,7 @@ export type Database = {
           title?: string | null
           transcript?: string | null
           transcript_formatted?: Json | null
+          transcript_url?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -4868,6 +4877,7 @@ export type Database = {
         Row: {
           account_id: string
           allow_chat: boolean
+          allow_voice: boolean
           calendar_url: string | null
           created_at: string
           default_response_mode: string
@@ -4888,6 +4898,7 @@ export type Database = {
         Insert: {
           account_id: string
           allow_chat?: boolean
+          allow_voice?: boolean
           calendar_url?: string | null
           created_at?: string
           default_response_mode?: string
@@ -4908,6 +4919,7 @@ export type Database = {
         Update: {
           account_id?: string
           allow_chat?: boolean
+          allow_voice?: boolean
           calendar_url?: string | null
           created_at?: string
           default_response_mode?: string

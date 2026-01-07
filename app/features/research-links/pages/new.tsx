@@ -175,7 +175,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		)
 	}
 
-	return redirect(routes.researchLinks.edit(data.id))
+	return redirect(routes.ask.edit(data.id))
 }
 
 export default function NewResearchLinkPage() {
@@ -270,7 +270,7 @@ export default function NewResearchLinkPage() {
 									required
 								/>
 								<p className="text-muted-foreground text-xs">
-									Shareable link: {routes.researchLinks.public(slug || "your-slug")}
+									Shareable link: {routes.ask.public(slug || "your-slug")}
 								</p>
 								{actionData?.errors?.slug ? <p className="text-destructive text-sm">{actionData.errors.slug}</p> : null}
 							</div>
@@ -439,7 +439,7 @@ export default function NewResearchLinkPage() {
 					<input type="hidden" name="questions" value={questionsJson} />
 					<div className="flex items-center justify-end gap-3">
 						<Button asChild variant="outline">
-							<Link to={routes.researchLinks.index()}>Cancel</Link>
+							<Link to={routes.ask.index()}>Cancel</Link>
 						</Button>
 						<Button type="submit" disabled={isSubmitting}>
 							{isSubmitting ? "Saving..." : "Create research link"}
