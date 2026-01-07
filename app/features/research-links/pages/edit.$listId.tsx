@@ -22,9 +22,11 @@ import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { getServerClient } from "~/lib/supabase/client.server";
+import { createR2PresignedUrl } from "~/utils/r2.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 import { QuestionListEditor } from "../components/QuestionListEditor";
 import { ResearchLinkPreview } from "../components/ResearchLinkPreview";
+import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
 import { getResearchLinkById } from "../db";
 import {
   createEmptyQuestion,
@@ -60,12 +62,33 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const questionsResult = ResearchLinkQuestionSchema.array().safeParse(
     data.questions,
   );
+
+  // Generate signed URL for walkthrough video if it exists
+  let walkthroughSignedUrl: string | null = null;
+  if (data.walkthrough_video_url) {
+    const key = data.walkthrough_video_url;
+    const ext = key.split(".").pop()?.toLowerCase();
+    const contentType =
+      ext === "mp4"
+        ? "video/mp4"
+        : ext === "mov"
+          ? "video/quicktime"
+          : "video/webm";
+    const presigned = createR2PresignedUrl({
+      key,
+      expiresInSeconds: 3600,
+      responseContentType: contentType,
+    });
+    walkthroughSignedUrl = presigned?.url ?? null;
+  }
+
   return {
     accountId,
     projectId,
     listId,
     list: data,
     questions: questionsResult.success ? questionsResult.data : [],
+    walkthroughSignedUrl,
   };
 }
 
@@ -83,6 +106,7 @@ interface EditActionData {
     redirectUrl?: string | null;
     allowChat?: boolean;
     allowVoice?: boolean;
+    allowVideo?: boolean;
     defaultResponseMode?: "form" | "chat" | "voice";
     isLive?: boolean;
     questions?: ResearchLinkQuestion[];
@@ -110,6 +134,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     redirectUrl: formData.get("redirect_url") ?? "",
     allowChat: formData.get("allow_chat"),
     allowVoice: formData.get("allow_voice"),
+    allowVideo: formData.get("allow_video"),
     defaultResponseMode: formData.get("default_response_mode"),
     isLive: formData.get("is_live"),
     questions: formData.get("questions") ?? "[]",
@@ -182,6 +207,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       questions: payload.questions,
       allow_chat: payload.allowChat,
       allow_voice: payload.allowVoice,
+      allow_video: payload.allowVideo,
       default_response_mode: payload.defaultResponseMode,
       is_live: payload.isLive,
     })
@@ -228,6 +254,7 @@ export default function EditResearchLinkPage() {
     projectId,
     list,
     questions: initialQuestions,
+    walkthroughSignedUrl: initialWalkthroughUrl,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<EditActionData>();
   const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
@@ -249,10 +276,14 @@ export default function EditResearchLinkPage() {
   const [redirectUrl, setRedirectUrl] = useState(list.redirect_url ?? "");
   const [allowChat, setAllowChat] = useState(Boolean(list.allow_chat));
   const [allowVoice, setAllowVoice] = useState(Boolean(list.allow_voice));
+  const [allowVideo, setAllowVideo] = useState(Boolean(list.allow_video));
   const [defaultResponseMode, setDefaultResponseMode] = useState<
     "form" | "chat" | "voice"
   >((list.default_response_mode as "form" | "chat" | "voice") ?? "form");
   const [isLive, setIsLive] = useState(Boolean(list.is_live));
+  const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(
+    initialWalkthroughUrl ?? null,
+  );
   const [questions, setQuestions] = useState<ResearchLinkQuestion[]>(() => {
     if (initialQuestions.length > 0) return initialQuestions;
     return [createEmptyQuestion()];
@@ -306,6 +337,8 @@ export default function EditResearchLinkPage() {
         setAllowChat(actionData.values.allowChat);
       if (typeof actionData.values.allowVoice === "boolean")
         setAllowVoice(actionData.values.allowVoice);
+      if (typeof actionData.values.allowVideo === "boolean")
+        setAllowVideo(actionData.values.allowVideo);
       if (typeof actionData.values.defaultResponseMode === "string") {
         const mode = actionData.values.defaultResponseMode;
         setDefaultResponseMode(
@@ -320,7 +353,7 @@ export default function EditResearchLinkPage() {
   const questionsJson = useMemo(() => JSON.stringify(questions), [questions]);
 
   return (
-    <PageContainer className="space-y-4">
+    <PageContainer className="max-w-3xl space-y-4">
       <Form
         method="post"
         className="grid gap-6 lg:grid-cols-[minmax(0,400px),minmax(240px,280px)]"
@@ -479,6 +512,19 @@ export default function EditResearchLinkPage() {
             </Card>
           </div>
 
+          {/* Walkthrough Video */}
+          <div className="space-y-1.5">
+            <h3 className="font-medium text-foreground/80 text-sm">
+              Walkthrough Video
+            </h3>
+            <WalkthroughRecorder
+              listId={list.id}
+              existingVideoUrl={walkthroughVideoUrl}
+              onUploadComplete={(url) => setWalkthroughVideoUrl(url)}
+              onDelete={() => setWalkthroughVideoUrl(null)}
+            />
+          </div>
+
           {/* Questions */}
           <div className="space-y-1.5">
             <h3 className="font-medium text-foreground/80 text-sm">
@@ -518,11 +564,11 @@ export default function EditResearchLinkPage() {
                     value={String(allowChat)}
                   />
                 </div>
-                <div className="flex items-center justify-between gap-4 rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-4 rounded-md border border-violet-500/30 border-dashed bg-violet-500/5 px-3 py-2.5">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">Voice mode</p>
-                      <span className="rounded bg-violet-500/20 px-1.5 py-0.5 font-medium text-violet-600 text-[10px]">
+                      <span className="rounded bg-violet-500/20 px-1.5 py-0.5 font-medium text-[10px] text-violet-600">
                         Experimental
                       </span>
                     </div>
@@ -538,6 +584,23 @@ export default function EditResearchLinkPage() {
                     type="hidden"
                     name="allow_voice"
                     value={String(allowVoice)}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm">Video responses</p>
+                    <p className="truncate text-muted-foreground text-xs">
+                      Let respondents record video feedback
+                    </p>
+                  </div>
+                  <Switch
+                    checked={allowVideo}
+                    onCheckedChange={setAllowVideo}
+                  />
+                  <input
+                    type="hidden"
+                    name="allow_video"
+                    value={String(allowVideo)}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">

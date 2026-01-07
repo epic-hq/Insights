@@ -3,8 +3,17 @@ import {
   DefaultChatTransport,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+import { AnimatePresence, motion } from "framer-motion";
 import consola from "consola";
-import { Mic, Send, Square } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  MessageCircle,
+  Mic,
+  Send,
+  Square,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -33,6 +42,7 @@ import {
   type VoiceButtonState,
 } from "~/components/ui/voice-button";
 import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions";
+import type { CapturedField } from "~/features/projects/components/CapturedPane";
 import { useProjectSections } from "~/features/projects/contexts/project-setup-context";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
 import { cn } from "~/lib/utils";
@@ -167,6 +177,216 @@ function ThinkingWave() {
   );
 }
 
+// Helper to check if a captured field has a value
+function hasFieldValue(value: string | string[] | null): boolean {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+// Format captured field value for display
+function formatFieldValue(value: string | string[] | null): string {
+  if (!hasFieldValue(value)) return "";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "";
+    if (value.length <= 2) return value.join(", ");
+    return `${value.slice(0, 2).join(", ")} +${value.length - 2}`;
+  }
+  if (typeof value === "string") {
+    return value.length > 40 ? `${value.slice(0, 40)}...` : value;
+  }
+  return "";
+}
+
+/**
+ * Collapsible footer showing captured context progress
+ * Integrated into chat panel per UI spec
+ */
+function CapturedFooter({
+  fields,
+  expanded,
+  onToggle,
+  onAskAboutField,
+}: {
+  fields: CapturedField[];
+  expanded: boolean;
+  onToggle: () => void;
+  onAskAboutField?: (fieldKey: string) => void;
+}) {
+  const capturedCount = fields.filter((f) => hasFieldValue(f.value)).length;
+  const totalCount = fields.length;
+
+  // Group by category
+  const companyFields = fields.filter((f) => f.category === "company");
+  const projectFields = fields.filter((f) => f.category === "project");
+
+  return (
+    <div className="border-t border-border/60 bg-muted/30">
+      {/* Collapsed header - always visible */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2 transition-colors hover:bg-muted/50"
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground/80 text-xs">
+            Context
+          </span>
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-primary text-[10px]">
+            {capturedCount}/{totalCount}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Progress dots */}
+          <div className="flex items-center gap-0.5">
+            {fields.slice(0, 6).map((field) => (
+              <div
+                key={field.key}
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full transition-colors",
+                  hasFieldValue(field.value)
+                    ? "bg-emerald-500"
+                    : "bg-muted-foreground/30",
+                )}
+                title={`${field.label}: ${hasFieldValue(field.value) ? "Captured" : "Not captured"}`}
+              />
+            ))}
+            {fields.length > 6 && (
+              <span className="ml-0.5 text-muted-foreground text-[10px]">
+                +{fields.length - 6}
+              </span>
+            )}
+          </div>
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {/* Expanded content */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="max-h-48 space-y-3 overflow-y-auto border-t border-border/40 px-3 py-2">
+              {/* Company fields */}
+              {companyFields.length > 0 && (
+                <div>
+                  <h4 className="mb-1.5 font-medium text-muted-foreground text-[10px] uppercase tracking-wide">
+                    Company
+                  </h4>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {companyFields.map((field) => (
+                      <CapturedFieldChip
+                        key={field.key}
+                        field={field}
+                        onAsk={
+                          onAskAboutField
+                            ? () => onAskAboutField(field.key)
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Project fields */}
+              {projectFields.length > 0 && (
+                <div>
+                  <h4 className="mb-1.5 font-medium text-muted-foreground text-[10px] uppercase tracking-wide">
+                    Research
+                  </h4>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {projectFields.map((field) => (
+                      <CapturedFieldChip
+                        key={field.key}
+                        field={field}
+                        onAsk={
+                          onAskAboutField
+                            ? () => onAskAboutField(field.key)
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All captured message */}
+              {capturedCount === totalCount && totalCount > 0 && (
+                <div className="flex items-center justify-center gap-1.5 rounded-md bg-emerald-50 py-1.5 dark:bg-emerald-950/30">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="font-medium text-emerald-700 text-xs dark:text-emerald-300">
+                    All context captured
+                  </span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Compact chip showing a single captured/uncaptured field
+ */
+function CapturedFieldChip({
+  field,
+  onAsk,
+}: {
+  field: CapturedField;
+  onAsk?: () => void;
+}) {
+  const hasCaptured = hasFieldValue(field.value);
+
+  if (hasCaptured) {
+    return (
+      <div className="flex items-start gap-1.5 rounded-md bg-card px-2 py-1.5 ring-1 ring-border/50">
+        <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-foreground text-[11px]">
+            {field.label}
+          </p>
+          <p className="truncate text-muted-foreground text-[10px]">
+            {formatFieldValue(field.value)}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onAsk}
+      className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-left ring-1 ring-border/30 transition-colors hover:bg-muted"
+    >
+      <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full border border-muted-foreground/30" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-foreground/70 text-[11px]">
+          {field.label}
+        </p>
+        {onAsk && (
+          <span className="flex items-center gap-0.5 text-primary text-[10px]">
+            <MessageCircle className="h-2.5 w-2.5" />
+            Ask
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 // Opening prompt for the onboarding conversation
 const OPENING_PROMPT = `I'll help you get insights from customer conversations.
 
@@ -201,6 +421,8 @@ interface ProjectSetupChatProps {
     assumptions?: string[];
     unknowns?: string[];
   };
+  /** Captured fields to show in collapsible footer */
+  capturedFields?: CapturedField[];
 }
 
 export function ProjectSetupChat({
@@ -211,8 +433,10 @@ export function ProjectSetupChat({
   initialMessage,
   onPathSelect,
   researchContext,
+  capturedFields,
 }: ProjectSetupChatProps) {
   const [input, setInput] = useState("");
+  const [capturedFooterExpanded, setCapturedFooterExpanded] = useState(false);
   const initialMessageSentRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const navigate = useNavigate();
@@ -555,6 +779,24 @@ export function ProjectSetupChat({
     [sendMessage],
   );
 
+  // Handle "ask about field" from captured footer
+  const handleAskAboutField = useCallback(
+    (fieldKey: string) => {
+      const field = capturedFields?.find((f) => f.key === fieldKey);
+      if (!field) return;
+
+      // Send a message asking about this field
+      const prompt = field.description
+        ? `Help me with ${field.label.toLowerCase()}. ${field.description}`
+        : `Help me fill in ${field.label.toLowerCase()}.`;
+      sendMessage({ text: prompt });
+
+      // Collapse the footer after asking
+      setCapturedFooterExpanded(false);
+    },
+    [capturedFields, sendMessage],
+  );
+
   const handleSuggestionClick = useCallback(
     (suggestion: string) => {
       // Check if this is an initial path-based suggestion
@@ -839,6 +1081,16 @@ export function ProjectSetupChat({
           </form>
         </div>
       </div>
+
+      {/* Captured context footer - collapsible at bottom of chat */}
+      {capturedFields && capturedFields.length > 0 && (
+        <CapturedFooter
+          fields={capturedFields}
+          expanded={capturedFooterExpanded}
+          onToggle={() => setCapturedFooterExpanded((prev) => !prev)}
+          onAskAboutField={handleAskAboutField}
+        />
+      )}
     </div>
   );
 }

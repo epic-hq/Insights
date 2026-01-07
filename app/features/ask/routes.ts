@@ -16,9 +16,18 @@ export default [
     ":listId/responses",
     "./features/research-links/pages/responses.$listId.tsx",
   ),
+  // /ask/:listId/responses/:responseId - view single response detail
+  route(
+    ":listId/responses/:responseId",
+    "./features/research-links/pages/response-detail.$responseId.tsx",
+  ),
   // API routes
   route(
     "api/generate-questions",
     "./features/research-links/api/generate-questions.tsx",
+  ),
+  route(
+    "api/analyze-responses",
+    "./features/research-links/api/analyze-responses.tsx",
   ),
 ] satisfies RouteConfig;

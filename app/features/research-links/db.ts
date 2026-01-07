@@ -69,6 +69,10 @@ export async function getResearchLinkById({
     .maybeSingle();
 }
 
+export type ResponseWithPerson = ResearchLinkResponse & {
+  person: { id: string; name: string | null } | null;
+};
+
 export async function getResearchLinkWithResponses({
   supabase,
   accountId,
@@ -83,7 +87,7 @@ export async function getResearchLinkWithResponses({
       .maybeSingle(),
     supabase
       .from("research_link_responses")
-      .select("*")
+      .select("*, person:people(id, name)")
       .eq("research_link_id", listId)
       .order("created_at", { ascending: false }),
   ]);
@@ -91,7 +95,7 @@ export async function getResearchLinkWithResponses({
   return {
     list: listResult.data as ResearchLink | null,
     listError: listResult.error,
-    responses: responsesResult.data as ResearchLinkResponse[] | null,
+    responses: responsesResult.data as ResponseWithPerson[] | null,
     responsesError: responsesResult.error,
   };
 }

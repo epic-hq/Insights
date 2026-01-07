@@ -301,6 +301,18 @@ const routes = [
     "api/research-links/:slug/chat",
     "./routes/api.research-links.$slug.chat.tsx",
   ),
+  route(
+    "api/research-links/:slug/upload-video",
+    "./features/research-links/api/upload-video.tsx",
+  ),
+  route(
+    "api/research-links/:listId/upload-walkthrough",
+    "./features/research-links/api/upload-walkthrough.tsx",
+  ),
+  route(
+    "api/research-links/:listId/delete-walkthrough",
+    "./features/research-links/api/delete-walkthrough.tsx",
+  ),
   route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
   route("api.livekit-token", "./routes/api.livekit-token.tsx"),
   route("api/process", "./routes/api.process.tsx"),

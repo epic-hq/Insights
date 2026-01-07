@@ -1,4 +1,4 @@
-import { ExternalLink, Link2, ListTodo, UsersRound } from "lucide-react";
+import { ExternalLink, Link2, ListTodo, UsersRound, Video } from "lucide-react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useLoaderData } from "react-router-dom";
 import { PageContainer } from "~/components/layout/PageContainer";
@@ -58,9 +58,11 @@ interface LoaderData {
     calendar_url: string | null;
     questions: unknown;
     allow_chat: boolean;
+    allow_video: boolean;
     default_response_mode: "form" | "chat";
     is_live: boolean;
     updated_at: string;
+    walkthrough_video_url: string | null;
     research_link_responses?: Array<{ count: number | null }>;
   }>;
 }
@@ -112,34 +114,47 @@ export default function ResearchLinksIndexPage() {
             return (
               <Card key={list.id} className="flex flex-col border-muted/70">
                 <CardHeader className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={list.is_live ? "default" : "secondary"}>
-                      {list.is_live ? "Live" : "Draft"}
-                    </Badge>
-                    <span className="text-muted-foreground text-xs">
-                      Last updated{" "}
-                      {new Date(list.updated_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-xl">{list.name}</h2>
-                    {list.description ? (
-                      <p className="mt-1 text-muted-foreground text-sm">
-                        {list.description}
-                      </p>
-                    ) : null}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-semibold text-xl">{list.name}</h2>
+                      {list.description ? (
+                        <p className="mt-1 text-muted-foreground text-sm">
+                          {list.description}
+                        </p>
+                      ) : null}
+                    </div>
+                    {list.walkthrough_video_url && (
+                      <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-md bg-muted/50">
+                        <Video className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col justify-between space-y-4">
-                  <div className="space-y-2 text-sm">
-                    <p className="flex items-center gap-2 text-muted-foreground">
-                      <UsersRound className="h-4 w-4" /> {responsesCount}{" "}
-                      {responsesCount === 1 ? "response" : "responses"}
-                    </p>
-                    <p className="flex items-center gap-2 text-muted-foreground">
-                      <ListTodo className="h-4 w-4" /> {questions.length}{" "}
-                      {questions.length === 1 ? "question" : "questions"}
-                    </p>
+                  <div className="space-y-3">
+                    {/* Responses row - count + View responses together */}
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <UsersRound className="h-4 w-4" /> {responsesCount}{" "}
+                        {responsesCount === 1 ? "response" : "responses"}
+                      </span>
+                      <Button asChild variant="secondary" size="sm">
+                        <Link to={routes.ask.responses(list.id)}>
+                          View responses
+                        </Link>
+                      </Button>
+                    </div>
+                    {/* Questions row - count + Edit together */}
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <ListTodo className="h-4 w-4" /> {questions.length}{" "}
+                        {questions.length === 1 ? "question" : "questions"}
+                      </span>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to={routes.ask.edit(list.id)}>Edit</Link>
+                      </Button>
+                    </div>
+                    {/* Public URL */}
                     <a
                       href={publicUrl}
                       target="_blank"
@@ -147,18 +162,20 @@ export default function ResearchLinksIndexPage() {
                       className="flex items-center gap-2 font-medium text-primary text-sm hover:underline"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      {publicUrl}
+                      <span className="truncate">{publicUrl}</span>
                     </a>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild variant="outline">
-                      <Link to={routes.ask.edit(list.id)}>Edit</Link>
-                    </Button>
-                    <Button asChild variant="secondary">
-                      <Link to={routes.ask.responses(list.id)}>
-                        View responses
-                      </Link>
-                    </Button>
+                  {/* Footer with badge and date */}
+                  <div className="flex items-center gap-2 border-t pt-3">
+                    <Badge
+                      variant={list.is_live ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {list.is_live ? "Live" : "Draft"}
+                    </Badge>
+                    <span className="text-muted-foreground text-xs">
+                      Updated {new Date(list.updated_at).toLocaleDateString()}
+                    </span>
                   </div>
                 </CardContent>
               </Card>

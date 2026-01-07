@@ -16,6 +16,8 @@ create table if not exists public.research_links (
     questions jsonb not null default '[]'::jsonb,
     allow_chat boolean not null default false,
     allow_voice boolean not null default false,
+    allow_video boolean not null default false,
+    walkthrough_video_url text,
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
     is_live boolean not null default false,
     created_at timestamptz not null default now(),
@@ -28,14 +30,20 @@ alter table public.research_links
 create table if not exists public.research_link_responses (
     id uuid primary key default gen_random_uuid(),
     research_link_id uuid not null references public.research_links (id) on delete cascade,
+    person_id uuid references public.people (id) on delete set null,
     email text not null,
     responses jsonb not null default '{}'::jsonb,
     response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
+    video_url text,
     completed boolean not null default false,
     evidence_id uuid references public.evidence (id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+-- Index for person lookups
+create index if not exists research_link_responses_person_id_idx
+    on public.research_link_responses (person_id);
 
 create unique index if not exists research_link_responses_unique_email
     on public.research_link_responses (research_link_id, lower(email));

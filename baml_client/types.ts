@@ -342,6 +342,19 @@ export interface ActionButton {
   
 }
 
+export interface AskLinkInsightsResponse {
+  executive_summary: string
+  total_responses: number
+  completion_rate: number
+  top_themes: ResponseTheme[]
+  question_insights: QuestionInsight[]
+  response_segments: SegmentPattern[]
+  recommended_followups: string[]
+  actionable_insights: string[]
+  data_quality_notes: string[]
+  
+}
+
 export interface AuthorityInfo {
   decision_maker_identified: boolean
   decision_maker_name?: string | null
@@ -1562,6 +1575,15 @@ export interface QuestionImprovement {
   
 }
 
+export interface QuestionInsight {
+  question: string
+  summary: string
+  key_findings: string[]
+  common_answers: string[]
+  notable_outliers: string[]
+  
+}
+
 export interface QuestionIssue {
   type: "leading" | "closed_ended" | "too_vague" | "compound" | "biased" | "jargon" | "assume_knowledge"
   description: string
@@ -1585,6 +1607,14 @@ export interface QuestionSet {
   questions: Question[]
   history: HistoryItem[]
   round: number
+  
+}
+
+export interface QuickResponseSummary {
+  summary: string
+  top_insights: string[]
+  sentiment_overview: string
+  suggested_actions: string[]
   
 }
 
@@ -1692,6 +1722,15 @@ export interface ResearchStructure {
   
 }
 
+export interface ResponseTheme {
+  theme: string
+  description: string
+  frequency: number
+  sentiment: string
+  example_quotes: string[]
+  
+}
+
 export interface SalesLensExtraction {
   budget: BudgetInfo
   authority: AuthorityInfo
@@ -1727,6 +1766,15 @@ export interface SectionSynthesis {
   section_name: string
   summary: string
   fields: FieldSynthesis[]
+  
+}
+
+export interface SegmentPattern {
+  segment_name: string
+  segment_description: string
+  respondent_count: number
+  key_characteristics: string[]
+  recommended_actions: string[]
   
 }
 

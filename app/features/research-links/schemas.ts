@@ -113,6 +113,7 @@ export const ResearchLinkPayloadSchema = z.object({
     }),
   allowChat: booleanFlag,
   allowVoice: booleanFlag,
+  allowVideo: booleanFlag,
   defaultResponseMode: z
     .union([
       z.literal("form"),

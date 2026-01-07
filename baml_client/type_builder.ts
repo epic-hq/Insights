@@ -29,6 +29,8 @@ export default class TypeBuilder {
     
     ActionButton: ClassViewer<'ActionButton', "label" | "action_type" | "parameters" | "priority">;
     
+    AskLinkInsightsResponse: ClassViewer<'AskLinkInsightsResponse', "executive_summary" | "total_responses" | "completion_rate" | "top_themes" | "question_insights" | "response_segments" | "recommended_followups" | "actionable_insights" | "data_quality_notes">;
+    
     AuthorityInfo: ClassViewer<'AuthorityInfo', "decision_maker_identified" | "decision_maker_name" | "decision_maker_role" | "approval_process" | "stakeholders_involved" | "blockers" | "political_dynamics" | "confidence" | "evidence_ids">;
     
     AutoGroupThemesResponse: ClassViewer<'AutoGroupThemesResponse', "themes">;
@@ -271,11 +273,15 @@ export default class TypeBuilder {
     
     QuestionImprovement: ClassViewer<'QuestionImprovement', "original_question" | "suggested_rewrite" | "explanation">;
     
+    QuestionInsight: ClassViewer<'QuestionInsight', "question" | "summary" | "key_findings" | "common_answers" | "notable_outliers">;
+    
     QuestionIssue: ClassViewer<'QuestionIssue', "type" | "description" | "severity">;
     
     QuestionPolicy: ClassViewer<'QuestionPolicy', "totalPerRound" | "perCategoryMin" | "perCategoryMax" | "dedupeWindowRounds" | "balanceBy">;
     
     QuestionSet: ClassViewer<'QuestionSet', "sessionId" | "policy" | "categories" | "questions" | "history" | "round">;
+    
+    QuickResponseSummary: ClassViewer<'QuickResponseSummary', "summary" | "top_insights" | "sentiment_overview" | "suggested_actions">;
     
     ResearchGoal: ClassViewer<'ResearchGoal', "goal" | "icp" | "role" | "questions">;
     
@@ -301,6 +307,8 @@ export default class TypeBuilder {
     
     ResearchStructure: ClassViewer<'ResearchStructure', "decision_questions" | "research_questions" | "interview_prompts">;
     
+    ResponseTheme: ClassViewer<'ResponseTheme', "theme" | "description" | "frequency" | "sentiment" | "example_quotes">;
+    
     SalesLensExtraction: ClassViewer<'SalesLensExtraction', "budget" | "authority" | "need" | "timeline" | "next_steps" | "stakeholders" | "deal_qualification" | "key_insights" | "risks_and_concerns">;
     
     Scene: ClassViewer<'Scene', "scene_id" | "start_index" | "end_index" | "topic" | "summary">;
@@ -308,6 +316,8 @@ export default class TypeBuilder {
     Scores: ClassViewer<'Scores', "goalMatch" | "novelty" | "importance" | "uncertainty">;
     
     SectionSynthesis: ClassViewer<'SectionSynthesis', "section_key" | "section_name" | "summary" | "fields">;
+    
+    SegmentPattern: ClassViewer<'SegmentPattern', "segment_name" | "segment_description" | "respondent_count" | "key_characteristics" | "recommended_actions">;
     
     Set: ClassViewer<'Set', "name" | "description" | "members">;
     
@@ -362,7 +372,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InferredPersonSegments","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","PersonSegmentInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","SalesLensExtraction","Scene","Scores","SectionSynthesis","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
+            "ActionButton","AskLinkInsightsResponse","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InferredPersonSegments","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","PersonSegmentInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionInsight","QuestionIssue","QuestionPolicy","QuestionSet","QuickResponseSummary","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","ResponseTheme","SalesLensExtraction","Scene","Scores","SectionSynthesis","SegmentPattern","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
             "BBValues","Emotions","InteractionContext","JobFunction","SeniorityLevel",
@@ -372,6 +382,10 @@ export default class TypeBuilder {
         
         this.ActionButton = this.tb.classViewer("ActionButton", [
           "label","action_type","parameters","priority",
+        ]);
+        
+        this.AskLinkInsightsResponse = this.tb.classViewer("AskLinkInsightsResponse", [
+          "executive_summary","total_responses","completion_rate","top_themes","question_insights","response_segments","recommended_followups","actionable_insights","data_quality_notes",
         ]);
         
         this.AuthorityInfo = this.tb.classViewer("AuthorityInfo", [
@@ -858,6 +872,10 @@ export default class TypeBuilder {
           "original_question","suggested_rewrite","explanation",
         ]);
         
+        this.QuestionInsight = this.tb.classViewer("QuestionInsight", [
+          "question","summary","key_findings","common_answers","notable_outliers",
+        ]);
+        
         this.QuestionIssue = this.tb.classViewer("QuestionIssue", [
           "type","description","severity",
         ]);
@@ -868,6 +886,10 @@ export default class TypeBuilder {
         
         this.QuestionSet = this.tb.classViewer("QuestionSet", [
           "sessionId","policy","categories","questions","history","round",
+        ]);
+        
+        this.QuickResponseSummary = this.tb.classViewer("QuickResponseSummary", [
+          "summary","top_insights","sentiment_overview","suggested_actions",
         ]);
         
         this.ResearchGoal = this.tb.classViewer("ResearchGoal", [
@@ -918,6 +940,10 @@ export default class TypeBuilder {
           "decision_questions","research_questions","interview_prompts",
         ]);
         
+        this.ResponseTheme = this.tb.classViewer("ResponseTheme", [
+          "theme","description","frequency","sentiment","example_quotes",
+        ]);
+        
         this.SalesLensExtraction = this.tb.classViewer("SalesLensExtraction", [
           "budget","authority","need","timeline","next_steps","stakeholders","deal_qualification","key_insights","risks_and_concerns",
         ]);
@@ -932,6 +958,10 @@ export default class TypeBuilder {
         
         this.SectionSynthesis = this.tb.classViewer("SectionSynthesis", [
           "section_key","section_name","summary","fields",
+        ]);
+        
+        this.SegmentPattern = this.tb.classViewer("SegmentPattern", [
+          "segment_name","segment_description","respondent_count","key_characteristics","recommended_actions",
         ]);
         
         this.Set = this.tb.classViewer("Set", [

@@ -4829,10 +4829,12 @@ export type Database = {
           email: string
           evidence_id: string | null
           id: string
+          person_id: string | null
           research_link_id: string
           response_mode: string
           responses: Json
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           completed?: boolean
@@ -4840,10 +4842,12 @@ export type Database = {
           email: string
           evidence_id?: string | null
           id?: string
+          person_id?: string | null
           research_link_id: string
           response_mode?: string
           responses?: Json
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           completed?: boolean
@@ -4851,10 +4855,12 @@ export type Database = {
           email?: string
           evidence_id?: string | null
           id?: string
+          person_id?: string | null
           research_link_id?: string
           response_mode?: string
           responses?: Json
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -4862,6 +4868,13 @@ export type Database = {
             columns: ["evidence_id"]
             isOneToOne: false
             referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_link_responses_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
@@ -4877,6 +4890,7 @@ export type Database = {
         Row: {
           account_id: string
           allow_chat: boolean
+          allow_video: boolean
           allow_voice: boolean
           calendar_url: string | null
           created_at: string
@@ -4894,10 +4908,12 @@ export type Database = {
           redirect_url: string | null
           slug: string
           updated_at: string
+          walkthrough_video_url: string | null
         }
         Insert: {
           account_id: string
           allow_chat?: boolean
+          allow_video?: boolean
           allow_voice?: boolean
           calendar_url?: string | null
           created_at?: string
@@ -4915,10 +4931,12 @@ export type Database = {
           redirect_url?: string | null
           slug: string
           updated_at?: string
+          walkthrough_video_url?: string | null
         }
         Update: {
           account_id?: string
           allow_chat?: boolean
+          allow_video?: boolean
           allow_voice?: boolean
           calendar_url?: string | null
           created_at?: string
@@ -4936,6 +4954,7 @@ export type Database = {
           redirect_url?: string | null
           slug?: string
           updated_at?: string
+          walkthrough_video_url?: string | null
         }
         Relationships: [
           {
