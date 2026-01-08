@@ -98,10 +98,9 @@ export async function transcribeAudioFromUrl(
         speech_model: "slam-1", // Latest high-accuracy speech model
         language_code: "en", // Default to English transcription
         speaker_labels: true,
-        // Hint AssemblyAI about expected speaker count to prevent over-segmentation.
-        // Most interviews are 2 people (interviewer + interviewee).
-        // Setting this explicitly prevents diarization from hallucinating extra speakers.
-        speakers_expected: 2,
+        // NOTE: speakers_expected can be set to improve diarization accuracy if known.
+        // We don't set it by default since we don't know speaker count upfront.
+        // If over-segmentation occurs, user can reprocess with explicit speaker count.
         // iab_categories: true,
         format_text: true,
         punctuate: true,
