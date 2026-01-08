@@ -173,9 +173,10 @@ export function ManagePeopleAssociations({
 
   // Format transcript key to a clean speaker label
   // Handles both AssemblyAI format ("A", "SPEAKER A") and BAML format ("participant-1", "interviewer-1")
-  const numberToLetter = (num: number) => {
-    if (Number.isNaN(num) || num < 1) return null;
-    if (num <= 26) return String.fromCharCode(64 + num); // 1 -> A, 2 -> B
+  const numberToLetter = (num: number, zeroBased = false) => {
+    const adjusted = zeroBased ? num + 1 : num; // 0-based: 0->A, 1->B; 1-based: 1->A, 2->B
+    if (Number.isNaN(adjusted) || adjusted < 1) return null;
+    if (adjusted <= 26) return String.fromCharCode(64 + adjusted);
     return null;
   };
   const nextAvailableLetter = (used: Set<string>) => {
@@ -190,7 +191,9 @@ export function ManagePeopleAssociations({
     idx: number,
   ): string => {
     if (!transcriptKey) {
-      return "Unassigned";
+      // Use idx as fallback for display (0-based -> Speaker A, B, C...)
+      const letter = numberToLetter(idx, true);
+      return letter ? `Speaker ${letter}` : `Speaker ${idx + 1}`;
     }
 
     // Single letter like "A", "B" -> "Speaker A", "Speaker B"
@@ -208,14 +211,14 @@ export function ManagePeopleAssociations({
       const letter = numberToLetter(num);
       return letter ? `Speaker ${letter}` : `Speaker ${num}`;
     }
-    // BAML format: "participant-1" / "interviewer-1" -> Speaker A/B
+    // BAML/fallback format: "participant-0" / "participant-1" -> Speaker A/B (0-based)
     if (
       /^(participant|interviewer|observer|moderator)-\d+$/i.test(transcriptKey)
     ) {
       const [, numStr] = transcriptKey.split("-");
       const num = Number.parseInt(numStr, 10);
-      const letter = numberToLetter(num);
-      return letter ? `Speaker ${letter}` : `Speaker ${num || ""}`.trim();
+      const letter = numberToLetter(num, true); // 0-based numbering
+      return letter ? `Speaker ${letter}` : `Speaker ${num + 1}`;
     }
     // Fallback - just use the key
     return transcriptKey;

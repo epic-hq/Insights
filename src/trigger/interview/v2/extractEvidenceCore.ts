@@ -1671,6 +1671,7 @@ export async function extractEvidenceAndPeopleCore({
   }
 
   if (!primaryPersonId) {
+    const fallbackKey = "participant-0";
     const fallback = await upsertPerson(generateFallbackPersonName(metadata));
     primaryPersonId = fallback.id;
     primaryPersonName = fallback.name;
@@ -1678,6 +1679,9 @@ export async function extractEvidenceAndPeopleCore({
     primaryPersonRole = primaryPersonRole ?? null;
     primaryPersonDescription = primaryPersonDescription ?? null;
     primaryPersonOrganization = primaryPersonOrganization ?? null;
+    // Ensure fallback person has proper mappings for transcript_key
+    personIdByKey.set(fallbackKey, fallback.id);
+    keyByPersonId.set(fallback.id, fallbackKey);
   }
 
   if (!primaryPersonId)
@@ -1694,7 +1698,11 @@ export async function extractEvidenceAndPeopleCore({
     const personKey = keyByPersonId.get(personId) ?? null;
     // Prefer speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key,
     // fall back to person_key (BAML format like "participant-1") if speaker_label not available
-    const transcriptKey = speakerLabelByPersonId.get(personId) ?? personKey;
+    // Never leave transcript_key null - use a default based on person order
+    const rawTranscriptKey = speakerLabelByPersonId.get(personId) ?? personKey;
+    const transcriptKey =
+      rawTranscriptKey ||
+      `participant-${Array.from(ensuredPersonIds).indexOf(personId)}`;
 
     consola.info(`🔗 Creating interview_people for person ${personId}:`, {
       personKey,
@@ -1833,6 +1841,25 @@ export async function extractEvidenceAndPeopleCore({
       consola.info(
         `🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`,
       );
+
+      // Limit placeholder speaker creation to prevent over-segmentation issues
+      // AssemblyAI/transcription services sometimes incorrectly detect too many speakers
+      // Most interviews have 2-4 participants; beyond that is likely mis-diarization
+      const MAX_PLACEHOLDER_SPEAKERS = 4;
+      if (missingSpeakers.length > MAX_PLACEHOLDER_SPEAKERS) {
+        consola.warn(
+          `⚠️  Transcript has ${missingSpeakers.length} unique speakers - this may indicate speaker diarization issues. ` +
+            `Only creating placeholder records for first ${MAX_PLACEHOLDER_SPEAKERS} speakers (A, B, C, D). ` +
+            `Users can manually link additional speakers if needed.`,
+        );
+        // Sort speakers alphabetically and take only the first few (A, B, C, D)
+        missingSpeakers.sort((a, b) => {
+          const aLetter = a.replace(/^SPEAKER\s*/i, "").toUpperCase();
+          const bLetter = b.replace(/^SPEAKER\s*/i, "").toUpperCase();
+          return aLetter.localeCompare(bLetter);
+        });
+        missingSpeakers.splice(MAX_PLACEHOLDER_SPEAKERS);
+      }
 
       if (internalPerson?.id && !internalPersonHasTranscriptKey) {
         const preferredInternalSpeaker =
