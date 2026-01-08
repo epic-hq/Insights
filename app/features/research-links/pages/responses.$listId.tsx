@@ -1,10 +1,9 @@
 import {
-  CheckCircle,
-  Clock,
   Download,
   ExternalLink,
   ListTodo,
   Loader2,
+  MessageSquare,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -15,19 +14,13 @@ import { PageContainer } from "~/components/layout/PageContainer";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
 import { getServerClient } from "~/lib/supabase/client.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 import { ResearchLinkResponsesDataTable } from "../components/ResearchLinkResponsesDataTable";
 import { getResearchLinkWithResponses } from "../db";
+import type { ResearchLinkQuestion } from "../schemas";
 import { ResearchLinkQuestionSchema } from "../schemas";
-import { buildResponsesCsv } from "../utils";
+import { buildResponsesCsv, extractAnswer } from "../utils";
 
 export const meta: MetaFunction = () => {
   return [
@@ -74,47 +67,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   };
 }
 
-// Type for analysis results
-interface QuickSummary {
+// Type for analysis results (matches BAML QuickResponseSummary)
+interface AnalysisResult {
   summary: string;
+  quality_responses_count: number;
+  total_responses_count: number;
   top_insights: string[];
   sentiment_overview: string;
   suggested_actions: string[];
+  /** Plain English warning when data quality is poor (>50% junk responses) */
+  data_quality_warning?: string;
 }
-
-interface DetailedAnalysis {
-  executive_summary: string;
-  total_responses: number;
-  completion_rate: number;
-  top_themes: Array<{
-    theme: string;
-    description: string;
-    frequency: number;
-    sentiment: string;
-    example_quotes: string[];
-  }>;
-  question_insights: Array<{
-    question: string;
-    summary: string;
-    key_findings: string[];
-    common_answers: string[];
-    notable_outliers: string[];
-  }>;
-  response_segments: Array<{
-    segment_name: string;
-    segment_description: string;
-    respondent_count: number;
-    key_characteristics: string[];
-    recommended_actions: string[];
-  }>;
-  recommended_followups: string[];
-  actionable_insights: string[];
-  data_quality_notes: string[];
-}
-
-type AnalysisResult =
-  | { mode: "quick"; result: QuickSummary }
-  | { mode: "detailed"; result: DetailedAnalysis };
 
 export default function ResearchLinkResponsesPage() {
   const { accountId, projectId, list, responses, questions, publicUrl } =
@@ -122,11 +85,14 @@ export default function ResearchLinkResponsesPage() {
   const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
   const basePath = `/a/${accountId}/${projectId}`;
 
-  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null,
   );
-  const analyzeFetcher = useFetcher<AnalysisResult | { error: string }>();
+  const [customInstructions, setCustomInstructions] = useState("");
+  const [showCustomInstructions, setShowCustomInstructions] = useState(false);
+  const analyzeFetcher = useFetcher<
+    { mode: string; result: AnalysisResult } | { error: string }
+  >();
 
   const isAnalyzing = analyzeFetcher.state !== "idle";
 
@@ -134,27 +100,25 @@ export default function ResearchLinkResponsesPage() {
   if (
     analyzeFetcher.data &&
     !("error" in analyzeFetcher.data) &&
-    analyzeFetcher.data !== analysisResult
+    analyzeFetcher.data.result !== analysisResult
   ) {
-    setAnalysisResult(analyzeFetcher.data);
-    setAnalysisOpen(true);
+    setAnalysisResult(analyzeFetcher.data.result);
   }
 
-  const handleAnalyze = (mode: "quick" | "detailed") => {
-    analyzeFetcher.submit(
-      { listId: list.id, mode },
-      { method: "POST", action: routes.ask.index() + "/api/analyze-responses" },
-    );
+  const handleAnalyze = (instructions?: string) => {
+    const payload: Record<string, string> = { listId: list.id, mode: "quick" };
+    if (instructions?.trim()) {
+      payload.customInstructions = instructions.trim();
+    }
+    analyzeFetcher.submit(payload, {
+      method: "POST",
+      action: routes.ask.index() + "/api/analyze-responses",
+    });
+    setShowCustomInstructions(false);
   };
 
   // Analytics
   const totalResponses = responses.length;
-  const completedResponses = responses.filter((r) => r.completed).length;
-  const inProgressResponses = totalResponses - completedResponses;
-  const completionRate =
-    totalResponses > 0
-      ? Math.round((completedResponses / totalResponses) * 100)
-      : 0;
 
   const handleExport = () => {
     const csv = buildResponsesCsv(questions, responses);
@@ -197,67 +161,11 @@ export default function ResearchLinkResponsesPage() {
           <Button asChild variant="outline">
             <Link to={routes.ask.edit(list.id)}>Edit link</Link>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleAnalyze("quick")}
-            disabled={responses.length === 0 || isAnalyzing}
-          >
-            {isAnalyzing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            Analyze
-          </Button>
           <Button onClick={handleExport} disabled={responses.length === 0}>
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
         </div>
       </div>
-
-      {/* Analytics Cards */}
-      {totalResponses > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-muted-foreground text-sm">Total Responses</p>
-                <p className="font-semibold text-2xl">{totalResponses}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-                <CheckCircle className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-muted-foreground text-sm">Completed</p>
-                <p className="font-semibold text-2xl">
-                  {completedResponses}{" "}
-                  <span className="font-normal text-muted-foreground text-sm">
-                    ({completionRate}%)
-                  </span>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
-                <Clock className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-muted-foreground text-sm">In Progress</p>
-                <p className="font-semibold text-2xl">{inProgressResponses}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {responses.length === 0 ? (
         <Card className="border-dashed bg-muted/30">
@@ -272,73 +180,32 @@ export default function ResearchLinkResponsesPage() {
           </CardContent>
         </Card>
       ) : (
-        <ResearchLinkResponsesDataTable
-          questions={questions}
-          responses={responses}
-          basePath={basePath}
-          listId={list.id}
-        />
-      )}
+        <>
+          {/* Stats Row - Just total responses */}
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            <span className="font-semibold text-lg">{totalResponses}</span>
+            <span className="text-muted-foreground text-sm">
+              {totalResponses === 1 ? "response" : "responses"}
+            </span>
+            <span className="text-muted-foreground text-sm">
+              · {questions.length} questions
+            </span>
+          </div>
 
-      {/* Analysis Results Sheet */}
-      <Sheet open={analysisOpen} onOpenChange={setAnalysisOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Response Analysis
-            </SheetTitle>
-            <SheetDescription>
-              AI-generated insights from {totalResponses} responses
-            </SheetDescription>
-          </SheetHeader>
-
-          {analysisResult && (
-            <div className="mt-6 space-y-6">
-              {analysisResult.mode === "quick" ? (
-                // Quick summary display
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="mb-2 font-medium text-sm">Summary</h3>
-                    <p className="text-muted-foreground text-sm">
-                      {analysisResult.result.summary}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 font-medium text-sm">
-                      Sentiment: {analysisResult.result.sentiment_overview}
-                    </h3>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 font-medium text-sm">Top Insights</h3>
-                    <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
-                      {analysisResult.result.top_insights.map(
-                        (insight, idx) => (
-                          <li key={idx}>{insight}</li>
-                        ),
-                      )}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 font-medium text-sm">
-                      Suggested Actions
-                    </h3>
-                    <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
-                      {analysisResult.result.suggested_actions.map(
-                        (action, idx) => (
-                          <li key={idx}>{action}</li>
-                        ),
-                      )}
-                    </ul>
-                  </div>
-
+          {/* AI Analysis Block (inline) */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4" />
+                  AI Analysis
+                </CardTitle>
+                {!analysisResult && (
                   <Button
                     variant="outline"
-                    className="w-full"
-                    onClick={() => handleAnalyze("detailed")}
+                    size="sm"
+                    onClick={handleAnalyze}
                     disabled={isAnalyzing}
                   >
                     {isAnalyzing ? (
@@ -346,81 +213,157 @@ export default function ResearchLinkResponsesPage() {
                     ) : (
                       <Sparkles className="mr-2 h-4 w-4" />
                     )}
-                    Run Detailed Analysis
+                    Generate
                   </Button>
-                </div>
-              ) : (
-                // Detailed analysis display
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="mb-2 font-medium">Executive Summary</h3>
-                    <p className="text-muted-foreground text-sm">
-                      {analysisResult.result.executive_summary}
-                    </p>
-                  </div>
-
-                  {analysisResult.result.top_themes.length > 0 && (
-                    <div>
-                      <h3 className="mb-3 font-medium">Top Themes</h3>
-                      <div className="space-y-3">
-                        {analysisResult.result.top_themes.map((theme, idx) => (
-                          <div
-                            key={idx}
-                            className="rounded-lg border bg-muted/30 p-3"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm">
-                                {theme.theme}
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {theme.sentiment}
-                              </Badge>
-                            </div>
-                            <p className="mt-1 text-muted-foreground text-xs">
-                              {theme.description}
-                            </p>
-                            <p className="mt-1 text-muted-foreground text-xs">
-                              Mentioned by {theme.frequency} respondents
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {analysisResult.result.actionable_insights.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 font-medium">Actionable Insights</h3>
-                      <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
-                        {analysisResult.result.actionable_insights.map(
-                          (insight, idx) => (
-                            <li key={idx}>{insight}</li>
-                          ),
-                        )}
-                      </ul>
-                    </div>
-                  )}
-
-                  {analysisResult.result.recommended_followups.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 font-medium">
-                        Recommended Follow-ups
-                      </h3>
-                      <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
-                        {analysisResult.result.recommended_followups.map(
-                          (followup, idx) => (
-                            <li key={idx}>{followup}</li>
-                          ),
-                        )}
-                      </ul>
-                    </div>
-                  )}
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isAnalyzing && !analysisResult && (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing responses...
                 </div>
               )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+              {!analysisResult && !isAnalyzing && (
+                <p className="text-muted-foreground text-sm">
+                  Click Generate to get AI insights from your responses.
+                </p>
+              )}
+              {analysisResult && (
+                <div className="space-y-4">
+                  {/* Data quality warning - shown prominently if present */}
+                  {analysisResult.data_quality_warning && (
+                    <div className="rounded-md bg-amber-500/10 p-3 text-amber-700 text-sm dark:text-amber-400">
+                      <strong>⚠️ Data quality:</strong>{" "}
+                      {analysisResult.data_quality_warning}
+                    </div>
+                  )}
+
+                  <p className="text-sm">{analysisResult.summary}</p>
+
+                  {/* Only show insights/actions if we have them */}
+                  {(analysisResult.top_insights.length > 0 ||
+                    analysisResult.suggested_actions.length > 0) && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {analysisResult.top_insights.length > 0 && (
+                        <div>
+                          <h4 className="mb-2 font-medium text-sm">
+                            Top Insights
+                          </h4>
+                          <ul className="space-y-1 text-muted-foreground text-sm">
+                            {analysisResult.top_insights.map((insight, idx) => (
+                              <li key={idx} className="flex gap-2">
+                                <span className="text-primary">•</span>
+                                {insight}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {analysisResult.suggested_actions.length > 0 && (
+                        <div>
+                          <h4 className="mb-2 font-medium text-sm">
+                            Suggested Actions
+                          </h4>
+                          <ul className="space-y-1 text-muted-foreground text-sm">
+                            {analysisResult.suggested_actions.map(
+                              (action, idx) => (
+                                <li key={idx} className="flex gap-2">
+                                  <span className="text-primary">•</span>
+                                  {action}
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-3 border-t pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-xs">
+                        Sentiment: {analysisResult.sentiment_overview}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setShowCustomInstructions(!showCustomInstructions)
+                          }
+                          className="text-xs"
+                        >
+                          {showCustomInstructions ? "Cancel" : "Custom prompt"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAnalyze()}
+                          disabled={isAnalyzing}
+                        >
+                          {isAnalyzing ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : null}
+                          Regenerate
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Custom instructions input */}
+                    {showCustomInstructions && (
+                      <div className="space-y-2">
+                        <textarea
+                          value={customInstructions}
+                          onChange={(e) =>
+                            setCustomInstructions(e.target.value)
+                          }
+                          placeholder="E.g., 'Focus on pricing feedback' or 'Compare responses by company size'"
+                          className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          rows={2}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowCustomInstructions(false);
+                              setCustomInstructions("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAnalyze(customInstructions)}
+                            disabled={isAnalyzing}
+                          >
+                            {isAnalyzing ? (
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="mr-2 h-3 w-3" />
+                            )}
+                            Analyze with instructions
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Data Table */}
+          <ResearchLinkResponsesDataTable
+            questions={questions}
+            responses={responses}
+            basePath={basePath}
+            listId={list.id}
+          />
+        </>
+      )}
     </PageContainer>
   );
 }

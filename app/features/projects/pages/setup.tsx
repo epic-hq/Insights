@@ -15,13 +15,14 @@
 // Soft import baml client (works even if new function not generated yet)
 import { b } from "baml_client";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import {
   useFetcher,
   useLoaderData,
   useNavigate,
   useOutletContext,
+  useRevalidator,
 } from "react-router";
 import type { AppLayoutOutletContext } from "~/components/layout/AppLayout";
 // NOTE: ProjectGoalsScreenRedesigned (accordion form) intentionally hidden
@@ -219,6 +220,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
     }
   }
 
+  // Get ui_preferences for mode persistence
+  const uiPreferences =
+    (ctx.user_settings?.ui_preferences as Record<string, unknown>) || {};
+
   return {
     project: projectResult.data,
     accountId,
@@ -228,6 +233,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
     initialSections,
     hasCompanyContext,
     accountData,
+    uiPreferences,
   };
 }
 
@@ -261,7 +267,6 @@ const CAPTURED_FIELD_DEFINITIONS: CapturedField[] = [
     label: "Industry",
     value: null,
     category: "company",
-    description: "Your company's industry",
   },
   {
     key: "customer_problem",
@@ -296,7 +301,6 @@ const CAPTURED_FIELD_DEFINITIONS: CapturedField[] = [
     label: "Competitors",
     value: null,
     category: "company",
-    description: "Who else solves this problem?",
   },
   // Project-level fields (stored in project_sections)
   {
@@ -307,13 +311,14 @@ const CAPTURED_FIELD_DEFINITIONS: CapturedField[] = [
     description: "What are you trying to learn?",
     required: true,
   },
-  {
-    key: "assumptions",
-    label: "Assumptions",
-    value: null,
-    category: "project",
-    description: "Hypotheses you want to test",
-  },
+  // Assumptions removed - found to be less actionable than Unknowns
+  // {
+  //   key: "assumptions",
+  //   label: "Assumptions",
+  //   value: null,
+  //   category: "project",
+  //   description: "Hypotheses you want to test",
+  // },
   {
     key: "unknowns",
     label: "Unknowns",
@@ -331,6 +336,7 @@ function SetupCapturedPane({
   localFields,
   accountData,
   onAskAboutField,
+  onEditField,
 }: {
   localFields: CapturedField[];
   accountData?: {
@@ -344,6 +350,7 @@ function SetupCapturedPane({
     competitors?: string[] | null;
   } | null;
   onAskAboutField?: (fieldKey: string) => void;
+  onEditField?: (fieldKey: string) => void;
 }) {
   const sections = useProjectSections();
 
@@ -388,7 +395,11 @@ function SetupCapturedPane({
   );
 
   return (
-    <CapturedPane fields={capturedFields} onAskAboutField={onAskAboutField} />
+    <CapturedPane
+      fields={capturedFields}
+      onAskAboutField={onAskAboutField}
+      onEditField={onEditField}
+    />
   );
 }
 
@@ -412,6 +423,14 @@ const COMPANY_QUESTIONS = [
     required: false,
     showSTT: true,
     skipIfPrefilled: true, // Skip if auto-filled from URL research
+  },
+  {
+    key: "industry",
+    question: "What industry are you in?",
+    description: "e.g., Healthcare, SaaS, Financial Services, Retail",
+    fieldType: "text" as const,
+    required: false,
+    skipIfPrefilled: true,
   },
   {
     key: "customer_problem",
@@ -454,6 +473,32 @@ const PROJECT_QUESTIONS = [
     showSTT: true,
     suggestionType: "decision_questions" as const,
   },
+  {
+    key: "research_goal_details",
+    question: "Any specific details or context to add?",
+    description:
+      "Help us understand your situation better - challenges, constraints, timeline, etc.",
+    fieldType: "textarea" as const,
+    required: false,
+    showSTT: true,
+  },
+  {
+    key: "decision_questions",
+    question: "What business decisions will this research inform?",
+    description: "List the key questions you need answered to make decisions.",
+    fieldType: "tags" as const,
+    required: false,
+    suggestionType: "decision_questions" as const,
+  },
+  {
+    key: "unknowns",
+    question: "What are the key unknowns you want to explore?",
+    description:
+      "What don't you know yet that you need to find out from customers?",
+    fieldType: "tags" as const,
+    required: false,
+    suggestionType: "unknowns" as const,
+  },
 ];
 
 // Legacy alias for compatibility
@@ -486,12 +531,15 @@ export default function ProjectSetupPage() {
     initialSections,
     hasCompanyContext,
     accountData,
+    uiPreferences,
   } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const revalidator = useRevalidator();
   const routes = useProjectRoutes(`/a/${accountId}/${projectId}`);
   const outletContext = useOutletContext<AppLayoutOutletContext | undefined>();
   const companyFetcher = useFetcher();
   const researchFetcher = useFetcher();
+  const preferencesFetcher = useFetcher();
 
   // Collapse sidebar during setup for cleaner experience
   // Extract the function reference to avoid re-running effect on every render
@@ -506,9 +554,28 @@ export default function ProjectSetupPage() {
   // Voice mode feature flag
   const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice");
 
-  // Mode: "chat" is now the default - we skip the entry screen per v2 spec
+  // Mode: default to saved preference or "chat" - skip entry screen per v2 spec
   // The conversation IS the onboarding, with tappable suggested responses
-  const [mode, setMode] = useState<SetupMode | null>("chat");
+  const savedMode = (uiPreferences?.setupMode as SetupMode) || "chat";
+  const [mode, setMode] = useState<SetupMode | null>(savedMode);
+
+  // Save mode preference when it changes
+  const handleModeChange = (newMode: SetupMode) => {
+    // Save current form data before switching modes
+    if (mode === "form") {
+      if (formPhase === "company") {
+        saveCompanyContext();
+      } else {
+        saveProjectSections();
+      }
+    }
+    setMode(newMode);
+    // Persist to user settings
+    preferencesFetcher.submit(
+      { key: "setupMode", value: JSON.stringify(newMode) },
+      { method: "POST", action: "/api/update-ui-preference" },
+    );
+  };
 
   // Form phase: "company" (if needed) then "project"
   const [formPhase, setFormPhase] = useState<"company" | "project">(
@@ -519,15 +586,45 @@ export default function ProjectSetupPage() {
   const [isResearching, setIsResearching] = useState(false);
 
   // Company context values (for new accounts)
+  // Initialize from accountData if available (for editing existing context)
   const [companyValues, setCompanyValues] = useState<
     Record<string, string | string[]>
   >({
-    website_url: "",
-    company_description: "",
-    customer_problem: "",
-    target_orgs: [],
-    target_roles: [],
+    website_url: accountData?.website_url || "",
+    company_description: accountData?.company_description || "",
+    industry: accountData?.industry || "",
+    customer_problem: accountData?.customer_problem || "",
+    target_orgs: accountData?.target_orgs || [],
+    target_roles: accountData?.target_roles || [],
   });
+
+  // Track last saved values to avoid unnecessary saves
+  const lastSavedCompanyRef = useRef<Record<string, string | string[]>>({
+    ...{
+      website_url: accountData?.website_url || "",
+      company_description: accountData?.company_description || "",
+      industry: accountData?.industry || "",
+      customer_problem: accountData?.customer_problem || "",
+      target_orgs: accountData?.target_orgs || [],
+      target_roles: accountData?.target_roles || [],
+    },
+  });
+
+  // Sync companyValues when accountData changes (after revalidation)
+  useEffect(() => {
+    if (accountData) {
+      setCompanyValues((prev) => ({
+        ...prev,
+        website_url: accountData.website_url || prev.website_url,
+        company_description:
+          accountData.company_description || prev.company_description,
+        industry: accountData.industry || prev.industry,
+        customer_problem: accountData.customer_problem || prev.customer_problem,
+        target_orgs: accountData.target_orgs || prev.target_orgs,
+        target_roles: accountData.target_roles || prev.target_roles,
+      }));
+    }
+  }, [accountData]);
 
   // Project values
   const [formValues, setFormValues] = useState<
@@ -555,6 +652,38 @@ export default function ProjectSetupPage() {
     return initial;
   });
 
+  // Track last saved project values
+  const lastSavedProjectRef = useRef<Record<string, string | string[]>>(
+    Object.fromEntries(
+      Object.entries(initialSections || {}).map(([k, v]) => [
+        k,
+        Array.isArray(v) ? v : String(v || ""),
+      ]),
+    ),
+  );
+
+  // Helper to check if values have changed
+  const hasValuesChanged = (
+    current: Record<string, string | string[]>,
+    saved: Record<string, string | string[]>,
+  ): boolean => {
+    for (const key of Object.keys(current)) {
+      const currentVal = current[key];
+      const savedVal = saved[key];
+      if (Array.isArray(currentVal) && Array.isArray(savedVal)) {
+        if (
+          currentVal.length !== savedVal.length ||
+          currentVal.some((v, i) => v !== savedVal[i])
+        ) {
+          return true;
+        }
+      } else if (currentVal !== savedVal) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // Get current questions based on phase
   const currentQuestions =
     formPhase === "company" ? COMPANY_QUESTIONS : PROJECT_QUESTIONS;
@@ -573,6 +702,7 @@ export default function ProjectSetupPage() {
           customer_problem?: string;
           offerings?: string[];
           target_orgs?: string[];
+          target_roles?: string[];
           industry?: string;
         };
       };
@@ -584,7 +714,9 @@ export default function ProjectSetupPage() {
             result.data?.description || prev.company_description,
           customer_problem:
             result.data?.customer_problem || prev.customer_problem,
+          industry: result.data?.industry || prev.industry,
           target_orgs: result.data?.target_orgs || prev.target_orgs,
+          target_roles: result.data?.target_roles || prev.target_roles,
         }));
       }
     }
@@ -603,8 +735,11 @@ export default function ProjectSetupPage() {
     });
   };
 
-  // Save company context to account
+  // Save company context to account (only if changed)
   const saveCompanyContext = () => {
+    if (!hasValuesChanged(companyValues, lastSavedCompanyRef.current)) {
+      return; // No changes, skip save
+    }
     const formData = new FormData();
     formData.append("intent", "update_company_context");
     formData.append(
@@ -612,6 +747,7 @@ export default function ProjectSetupPage() {
       JSON.stringify({
         website_url: companyValues.website_url || null,
         company_description: companyValues.company_description || null,
+        industry: companyValues.industry || null,
         customer_problem: companyValues.customer_problem || null,
         target_orgs: companyValues.target_orgs || null,
         target_roles: companyValues.target_roles || null,
@@ -621,15 +757,21 @@ export default function ProjectSetupPage() {
       method: "POST",
       action: `/a/${accountId}/settings`,
     });
+    // Update ref after save
+    lastSavedCompanyRef.current = { ...companyValues };
   };
 
-  // Save project sections to database
+  // Save project sections to database (only if changed)
   const saveProjectSections = async () => {
+    if (!hasValuesChanged(formValues, lastSavedProjectRef.current)) {
+      return; // No changes, skip save
+    }
+
     const sections = [
       { kind: "research_goal", data: formValues.research_goal },
       { kind: "research_goal_details", data: formValues.research_goal_details },
       { kind: "decision_questions", data: formValues.decision_questions },
-      { kind: "assumptions", data: formValues.assumptions },
+      // Assumptions removed - focus on Unknowns which are more actionable
       { kind: "unknowns", data: formValues.unknowns },
     ];
 
@@ -651,6 +793,9 @@ export default function ProjectSetupPage() {
         });
       }
     }
+
+    // Update ref after save
+    lastSavedProjectRef.current = { ...formValues };
   };
 
   // Captured panel state - temporarily disabled to simplify UI
@@ -685,7 +830,7 @@ export default function ProjectSetupPage() {
   };
 
   const handleModeSelect = (selectedMode: SetupMode) => {
-    setMode(selectedMode);
+    handleModeChange(selectedMode);
   };
 
   const handleFormNext = () => {
@@ -712,29 +857,42 @@ export default function ProjectSetupPage() {
 
     const nextStep = getNextStep(formStep);
 
+    // Save data on every Next click to ensure persistence
+    if (formPhase === "company") {
+      saveCompanyContext();
+    } else {
+      // Save project sections during project phase
+      saveProjectSections();
+    }
+
     if (nextStep < currentQuestions.length) {
       setFormDirection(1);
       setFormStep(nextStep);
     } else if (formPhase === "company") {
-      // Company phase done - save and move to project phase
-      saveCompanyContext();
+      // Company phase done - move to project phase
       setFormPhase("project");
       setFormStep(0);
       setFormDirection(1);
     } else {
-      // All questions done - save sections then go to questions generation
-      saveProjectSections().then(() => {
-        handleNext();
-      });
+      // All questions done - go to questions generation
+      handleNext();
     }
   };
 
   const handleFormBack = () => {
+    // Save current data if changed before navigating back
+    if (formPhase === "company") {
+      saveCompanyContext();
+    } else {
+      saveProjectSections();
+    }
+
     if (formStep > 0) {
       setFormDirection(-1);
       setFormStep((s) => s - 1);
-    } else if (formPhase === "project" && !hasCompanyContext) {
-      // Go back to company phase
+    } else if (formPhase === "project") {
+      // At first project question - go back to company phase if available
+      // Even if hasCompanyContext, user might want to review/edit company questions
       setFormPhase("company");
       setFormStep(COMPANY_QUESTIONS.length - 1);
       setFormDirection(-1);
@@ -768,19 +926,29 @@ export default function ProjectSetupPage() {
     formPhase === "company" ? formStep + 1 : companyStepCount + formStep + 1;
   const isUrlQuestion = currentQuestion?.key === "website_url";
 
-  // Build captured fields from local state for form mode fallback
-  // The SetupCapturedPane component below will merge with context data
+  // Build captured fields from local state for form mode
+  // These local values take priority over account/section data in SetupCapturedPane
   const localCapturedFields: CapturedField[] = [
+    // Company fields from companyValues state
     {
-      key: "research_goal",
-      label: "Research Goal",
-      value: formValues.research_goal as string | null,
-      required: true,
+      key: "website_url",
+      label: "Website",
+      value: companyValues.website_url as string | null,
     },
     {
-      key: "target_roles",
-      label: "Target Roles",
-      value: companyValues.target_roles as string[] | null,
+      key: "company_description",
+      label: "Company Description",
+      value: companyValues.company_description as string | null,
+    },
+    {
+      key: "industry",
+      label: "Industry",
+      value: companyValues.industry as string | null,
+    },
+    {
+      key: "customer_problem",
+      label: "Customer Problem",
+      value: companyValues.customer_problem as string | null,
     },
     {
       key: "target_orgs",
@@ -788,14 +956,21 @@ export default function ProjectSetupPage() {
       value: companyValues.target_orgs as string[] | null,
     },
     {
-      key: "assumptions",
-      label: "Assumptions",
-      value: null, // Will be filled from context
+      key: "target_roles",
+      label: "Target Roles",
+      value: companyValues.target_roles as string[] | null,
+    },
+    // Project fields from formValues state
+    {
+      key: "research_goal",
+      label: "Research Goal",
+      value: formValues.research_goal as string | null,
+      required: true,
     },
     {
       key: "unknowns",
       label: "Unknowns",
-      value: null, // Will be filled from context
+      value: formValues.unknowns as string[] | null,
     },
   ];
 
@@ -815,7 +990,7 @@ export default function ProjectSetupPage() {
           <SetupModeSelector
             onStartChat={(message) => {
               setInitialChatMessage(message);
-              setMode("chat");
+              handleModeChange("chat");
             }}
             onUpload={() => navigate(routes.interviews.upload())}
             onExplore={() => navigate(routes.dashboard())}
@@ -841,7 +1016,7 @@ export default function ProjectSetupPage() {
             <h1 className="font-semibold text-lg">Project Context</h1>
             <SetupModeToggle
               mode={mode}
-              onModeChange={(m) => setMode(m as SetupMode)}
+              onModeChange={handleModeChange}
               showVoice={isVoiceEnabled}
             />
           </div>
@@ -865,8 +1040,9 @@ export default function ProjectSetupPage() {
                     }
                     onNext={handleFormNext}
                     onBack={
-                      formStep > 0 ||
-                      (formPhase === "project" && !hasCompanyContext)
+                      // Show back button if not on very first question
+                      // Either within a phase (formStep > 0) or can go back to company phase
+                      formStep > 0 || formPhase === "project"
                         ? handleFormBack
                         : undefined
                     }
@@ -928,7 +1104,7 @@ export default function ProjectSetupPage() {
           <h1 className="font-semibold text-lg">Project Context</h1>
           <SetupModeToggle
             mode={mode}
-            onModeChange={(m) => setMode(m as SetupMode)}
+            onModeChange={handleModeChange}
             showVoice={isVoiceEnabled}
           />
         </div>
@@ -950,6 +1126,7 @@ export default function ProjectSetupPage() {
                 projectName={project?.name || "Project"}
                 onSetupComplete={handleSetupComplete}
                 initialMessage={initialChatMessage}
+                onDataChanged={() => revalidator.revalidate()}
               />
             )}
           </div>
@@ -958,19 +1135,141 @@ export default function ProjectSetupPage() {
     );
   };
 
-  // Handler for "Ask about this" button in CapturedPane
+  // Field-specific prompts that trigger helpful AI responses
+  const FIELD_PROMPTS: Record<string, string> = {
+    // Company fields
+    website_url:
+      "I'd like to add my company website so you can learn about us.",
+    company_description: "Help me describe what my company does.",
+    industry: "What industry should I categorize my company in?",
+    customer_problem:
+      "Help me articulate the main problem we solve for customers.",
+    offerings: "Help me list our main products or services.",
+    target_orgs:
+      "What types of organizations should I be targeting for research?",
+    target_roles: "Which job roles or titles should I focus on interviewing?",
+    competitors: "Who are my main competitors I should be aware of?",
+    // Project fields
+    research_goal:
+      "Help me define my research goal - what do I want to learn from customers?",
+    research_goal_details:
+      "Can you help me add more detail to my research objectives?",
+    decision_questions:
+      "What key business questions should this research help me answer?",
+    unknowns:
+      "What are the key unknowns or open questions I should explore in my research? Help me identify what I don't know yet.",
+  };
+
+  // Edit prompts - for updating existing values
+  const EDIT_FIELD_PROMPTS: Record<string, string> = {
+    website_url: "I'd like to update my company website.",
+    company_description: "I want to update my company description.",
+    industry: "I'd like to change my company's industry.",
+    customer_problem: "I want to refine the problem statement we solve.",
+    offerings: "I'd like to update our products/services list.",
+    target_orgs: "I want to change which organizations I'm targeting.",
+    target_roles: "I'd like to update the roles I'm targeting for research.",
+    competitors: "I want to update my list of competitors.",
+    research_goal: "I'd like to refine my research goal.",
+    research_goal_details:
+      "I want to update the details of my research objectives.",
+    decision_questions:
+      "I'd like to change the business questions I'm trying to answer.",
+    unknowns: "I want to update my list of unknowns to explore.",
+  };
+
+  // Handler for "Add now" button in CapturedPane
   const handleAskAboutField = (fieldKey: string) => {
-    // Get the field definition to create a helpful prompt
+    console.log(
+      "[handleAskAboutField] called with:",
+      fieldKey,
+      "current mode:",
+      mode,
+    );
+
+    // Get the field definition
     const fieldDef = CAPTURED_FIELD_DEFINITIONS.find((f) => f.key === fieldKey);
-    if (!fieldDef) return;
+    if (!fieldDef) {
+      console.log("[handleAskAboutField] field not found:", fieldKey);
+      return;
+    }
 
     // Switch to chat mode if not already there
     if (mode !== "chat") {
-      setMode("chat");
+      console.log("[handleAskAboutField] switching to chat mode");
+      handleModeChange("chat");
     }
 
-    // Create a prompt to ask about the field
-    const prompt = `Tell me about ${fieldDef.label.toLowerCase()}. ${fieldDef.description || ""}`;
+    // Use field-specific prompt, or fallback to generic
+    const prompt =
+      FIELD_PROMPTS[fieldKey] ||
+      `Help me fill in ${fieldDef.label.toLowerCase()}. ${fieldDef.description || ""}`;
+    console.log("[handleAskAboutField] setting initialChatMessage:", prompt);
+    setInitialChatMessage(prompt);
+  };
+
+  // Handler for "Edit" button in CapturedPane (for captured fields)
+  const handleEditField = (fieldKey: string) => {
+    console.log(
+      "[handleEditField] called with:",
+      fieldKey,
+      "current mode:",
+      mode,
+    );
+
+    const fieldDef = CAPTURED_FIELD_DEFINITIONS.find((f) => f.key === fieldKey);
+    if (!fieldDef) {
+      console.log("[handleEditField] field not found:", fieldKey);
+      return;
+    }
+
+    // If in form mode, try to navigate to that question instead of switching to chat
+    if (mode === "form") {
+      // Check if field is in company questions
+      const companyIndex = COMPANY_QUESTIONS.findIndex(
+        (q) => q.key === fieldKey,
+      );
+      if (companyIndex !== -1) {
+        console.log(
+          "[handleEditField] navigating to company question:",
+          companyIndex,
+        );
+        setFormPhase("company");
+        setFormStep(companyIndex);
+        setFormDirection(1);
+        return;
+      }
+
+      // Check if field is in project questions
+      const projectIndex = PROJECT_QUESTIONS.findIndex(
+        (q) => q.key === fieldKey,
+      );
+      if (projectIndex !== -1) {
+        console.log(
+          "[handleEditField] navigating to project question:",
+          projectIndex,
+        );
+        setFormPhase("project");
+        setFormStep(projectIndex);
+        setFormDirection(1);
+        return;
+      }
+
+      // Field not in form questions - fall through to chat
+      console.log("[handleEditField] field not in form, falling back to chat");
+    }
+
+    // For chat/voice mode or fields not in form: switch to chat
+    if (mode !== "chat") {
+      console.log("[handleEditField] switching to chat mode");
+      handleModeChange("chat");
+    }
+
+    // Use edit-specific prompt
+    const prompt =
+      EDIT_FIELD_PROMPTS[fieldKey] ||
+      `I'd like to update ${fieldDef.label.toLowerCase()}.`;
+    console.log("[handleEditField] setting initialChatMessage:", prompt);
     setInitialChatMessage(prompt);
   };
 
@@ -987,6 +1286,7 @@ export default function ProjectSetupPage() {
           localFields={localCapturedFields}
           accountData={accountData}
           onAskAboutField={handleAskAboutField}
+          onEditField={handleEditField}
         />
       )}
     </ProjectSetupProvider>

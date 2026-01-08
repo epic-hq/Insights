@@ -413,6 +413,8 @@ interface ProjectSetupChatProps {
   initialMessage?: string | null;
   /** Callback when user selects a path from initial suggestions */
   onPathSelect?: (path: "plan" | "analyze" | "record" | "explore") => void;
+  /** Callback when AI finishes a response that may have changed data (for refreshing UI) */
+  onDataChanged?: () => void;
   /** Research context for contextual suggestions */
   researchContext?: {
     research_goal?: string | null;
@@ -432,12 +434,13 @@ export function ProjectSetupChat({
   onSetupComplete,
   initialMessage,
   onPathSelect,
+  onDataChanged,
   researchContext,
   capturedFields,
 }: ProjectSetupChatProps) {
   const [input, setInput] = useState("");
   const [capturedFooterExpanded, setCapturedFooterExpanded] = useState(false);
-  const initialMessageSentRef = useRef(false);
+  // Removed: initialMessageSentRef - replaced by lastSentMessageRef in effect below
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const navigate = useNavigate();
 
@@ -611,15 +614,34 @@ export function ProjectSetupChat({
     }
   }, []);
 
-  // Auto-send initial message when chat opens (from entry screen)
+  // Track which message we've sent to avoid duplicates
+  const lastSentMessageRef = useRef<string | null>(null);
+
+  // Auto-send initial message when chat opens or when a new message is set
+  // Also clear stale suggestions when sending a new field prompt
   useEffect(() => {
+    consola.info("[ProjectSetupChat] initialMessage effect:", {
+      initialMessage,
+      lastSent: lastSentMessageRef.current,
+      status,
+      historyState: historyFetcher.state,
+      willSend:
+        initialMessage &&
+        initialMessage !== lastSentMessageRef.current &&
+        status === "ready" &&
+        historyFetcher.state === "idle",
+    });
+
     if (
       initialMessage &&
-      !initialMessageSentRef.current &&
-      status === "idle" &&
+      initialMessage !== lastSentMessageRef.current &&
+      status === "ready" &&
       historyFetcher.state === "idle"
     ) {
-      initialMessageSentRef.current = true;
+      consola.info("[ProjectSetupChat] SENDING message:", initialMessage);
+      lastSentMessageRef.current = initialMessage;
+      // Clear stale suggestions before sending - they'll regenerate from new response
+      setGeneratedSuggestions([]);
       sendMessage({ text: initialMessage });
     }
   }, [initialMessage, status, historyFetcher.state, sendMessage]);
@@ -716,6 +738,39 @@ export function ProjectSetupChat({
     projectId,
     projectName,
   ]);
+
+  // Track previous status to detect completion
+  const prevStatusRef = useRef(status);
+
+  // Notify parent when AI finishes a response with tool calls (data may have changed)
+  useEffect(() => {
+    const wasStreaming = prevStatusRef.current === "streaming";
+    const isNowReady = status === "ready";
+
+    // Update ref for next comparison
+    prevStatusRef.current = status;
+
+    // Only trigger on transition from streaming to ready
+    if (!wasStreaming || !isNowReady) return;
+
+    // Check if last message had data-modifying tool calls
+    const lastMsg = displayableMessages[displayableMessages.length - 1];
+    if (!lastMsg || lastMsg.role !== "assistant") return;
+
+    const hasDataTools = lastMsg.toolInvocations?.some((t) =>
+      [
+        "saveProjectSectionsData",
+        "updateProjectSectionMeta",
+        "saveAccountCompanyContext",
+        "researchCompanyWebsite",
+      ].includes(t.toolName),
+    );
+
+    if (hasDataTools && onDataChanged) {
+      consola.debug("[ProjectSetupChat] Data changed, triggering refresh");
+      onDataChanged();
+    }
+  }, [status, displayableMessages, onDataChanged]);
 
   const suggestions =
     toolSuggestions.length > 0 ? toolSuggestions : generatedSuggestions;

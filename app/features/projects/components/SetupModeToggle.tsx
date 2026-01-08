@@ -39,6 +39,7 @@ export function SetupModeToggle({
       role="tablist"
       aria-label="Setup mode"
     >
+      {/* Order: Chat (default) | Form (structured) | Voice (beta) */}
       <button
         onClick={() => onModeChange("chat")}
         role="tab"
@@ -53,6 +54,21 @@ export function SetupModeToggle({
       >
         <MessageSquare className="h-4 w-4" />
         <span>Chat</span>
+      </button>
+      <button
+        onClick={() => onModeChange("form")}
+        role="tab"
+        aria-selected={mode === "form"}
+        aria-controls="setup-content"
+        className={cn(
+          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-medium text-sm transition-all duration-200",
+          mode === "form"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <FileText className="h-4 w-4" />
+        <span>Form</span>
       </button>
       {showVoice && (
         <button
@@ -74,21 +90,6 @@ export function SetupModeToggle({
           </span>
         </button>
       )}
-      <button
-        onClick={() => onModeChange("form")}
-        role="tab"
-        aria-selected={mode === "form"}
-        aria-controls="setup-content"
-        className={cn(
-          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-medium text-sm transition-all duration-200",
-          mode === "form"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <FileText className="h-4 w-4" />
-        <span>Form</span>
-      </button>
     </div>
   );
 }

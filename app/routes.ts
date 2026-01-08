@@ -62,6 +62,10 @@ const routes = [
       "./routes/api.project-setup.website.tsx",
     ),
     route("api/skip-setup", "./routes/api.skip-setup.tsx"),
+    route(
+      "api/update-ui-preference",
+      "./features/users/api/update-ui-preference.tsx",
+    ),
 
     // Account-scoped routes
     route("a/:accountId", "./routes/_protected/accounts.tsx", [

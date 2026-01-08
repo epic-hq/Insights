@@ -1502,7 +1502,7 @@ export async function extractEvidenceAndPeopleCore({
       description: overrides.description ?? null,
       segment: overrides.segment ?? metadata.segment ?? null,
       contact_info: overrides.contact_info ?? null,
-      company: overrides.company ?? null,
+      company: overrides.company || "", // DB has NOT NULL default ''
       role: overrides.role ?? null,
     };
     if (peopleHooks?.upsertPerson) {
@@ -1602,7 +1602,7 @@ export async function extractEvidenceAndPeopleCore({
       const participantOverrides: Partial<PeopleInsert> = {
         description: participant.summary ?? null,
         segment: segments[0] || metadata.segment || null,
-        company: participant.organization ?? null,
+        company: participant.organization || "", // DB has NOT NULL default ''
         role: participant.role ?? null,
       };
       let personRecord: { id: string; name: string } | null = null;
@@ -2152,7 +2152,7 @@ async function ensureFallbackPerson(
     project_id: metadata.projectId,
     firstname: firstname || null,
     lastname: lastname || null,
-    company: metadata.participantOrganization ?? null,
+    company: metadata.participantOrganization || "", // DB has NOT NULL default ''
   };
   const { data, error } = await db
     .from("people")

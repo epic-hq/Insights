@@ -1060,9 +1060,12 @@ export namespace partial_types {
     }
     export interface QuickResponseSummary {
       summary?: string | null
+      quality_responses_count?: number | null
+      total_responses_count?: number | null
       top_insights: string[]
       sentiment_overview?: string | null
       suggested_actions: string[]
+      data_quality_warning?: string | null
     }
     export interface ResearchGoal {
       goal?: string | null

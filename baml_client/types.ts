@@ -1612,9 +1612,12 @@ export interface QuestionSet {
 
 export interface QuickResponseSummary {
   summary: string
+  quality_responses_count: number
+  total_responses_count: number
   top_insights: string[]
   sentiment_overview: string
   suggested_actions: string[]
+  data_quality_warning: string
   
 }
 

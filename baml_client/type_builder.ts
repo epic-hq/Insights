@@ -281,7 +281,7 @@ export default class TypeBuilder {
     
     QuestionSet: ClassViewer<'QuestionSet', "sessionId" | "policy" | "categories" | "questions" | "history" | "round">;
     
-    QuickResponseSummary: ClassViewer<'QuickResponseSummary', "summary" | "top_insights" | "sentiment_overview" | "suggested_actions">;
+    QuickResponseSummary: ClassViewer<'QuickResponseSummary', "summary" | "quality_responses_count" | "total_responses_count" | "top_insights" | "sentiment_overview" | "suggested_actions" | "data_quality_warning">;
     
     ResearchGoal: ClassViewer<'ResearchGoal', "goal" | "icp" | "role" | "questions">;
     
@@ -889,7 +889,7 @@ export default class TypeBuilder {
         ]);
         
         this.QuickResponseSummary = this.tb.classViewer("QuickResponseSummary", [
-          "summary","top_insights","sentiment_overview","suggested_actions",
+          "summary","quality_responses_count","total_responses_count","top_insights","sentiment_overview","suggested_actions","data_quality_warning",
         ]);
         
         this.ResearchGoal = this.tb.classViewer("ResearchGoal", [

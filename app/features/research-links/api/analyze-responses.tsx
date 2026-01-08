@@ -13,6 +13,7 @@ import { extractAnswer } from "../utils";
 const RequestSchema = z.object({
   listId: z.string().uuid(),
   mode: z.enum(["quick", "detailed"]).default("quick"),
+  customInstructions: z.string().optional(),
 });
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -30,6 +31,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const rawPayload = {
       listId: formData.get("listId") ?? "",
       mode: formData.get("mode") ?? "quick",
+      customInstructions: formData.get("customInstructions") ?? undefined,
     };
 
     const parsed = RequestSchema.safeParse(rawPayload);
@@ -40,7 +42,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       );
     }
 
-    const { listId, mode } = parsed.data;
+    const { listId, mode, customInstructions } = parsed.data;
     const { client: supabase } = getServerClient(request);
 
     // Fetch list and responses
@@ -96,7 +98,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       .join("\n");
 
     // Format responses for prompt
-    const responsesText = responses
+    let responsesText = responses
       .map((response, idx) => {
         const status = response.completed ? "Completed" : "In Progress";
         const answers = questions
@@ -108,6 +110,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return `## Response ${idx + 1} (${response.email}) - ${status}\n${answers}`;
       })
       .join("\n\n");
+
+    // Append custom instructions if provided
+    if (customInstructions?.trim()) {
+      responsesText += `\n\n## Additional Analysis Instructions\n${customInstructions.trim()}`;
+    }
 
     // Call BAML function
     if (mode === "quick") {

@@ -317,7 +317,7 @@ async function resolveStakeholdersToPeople({
           lastname: lastName,
           title: stakeholder.role || null,
           primary_email: stakeholder.email?.toLowerCase() || null,
-          company: stakeholder.organization || null,
+          company: stakeholder.organization || "", // DB has NOT NULL default ''
           contact_info: {
             stakeholder_labels: stakeholder.labels || [],
             influence: stakeholder.influence || null,

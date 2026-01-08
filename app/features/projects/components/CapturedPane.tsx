@@ -16,8 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   FolderKanban,
-  MessageCircle,
   Pencil,
+  Plus,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -114,21 +114,23 @@ function CapturedFieldCard({
   const isArray = Array.isArray(field.value);
 
   return (
-    <div className="group rounded-lg border border-border/50 bg-card p-3 transition-colors hover:border-border">
+    <div className="group rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 transition-colors hover:border-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/30 dark:hover:border-emerald-700">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2.5">
-          <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+          <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
             <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-foreground text-sm">{field.label}</p>
+            <p className="font-semibold text-foreground text-sm">
+              {field.label}
+            </p>
             <div className="mt-1.5">
               {isArray &&
               Array.isArray(field.value) &&
               field.value.length > 0 ? (
                 <TagList values={field.value} />
               ) : (
-                <p className="text-muted-foreground text-sm leading-relaxed">
+                <p className="text-foreground/90 text-sm leading-relaxed">
                   {formatValue(field.value)}
                 </p>
               )}
@@ -157,7 +159,7 @@ function CapturedFieldCard({
 }
 
 /**
- * Single uncaptured field prompt
+ * Single uncaptured field prompt - muted appearance to emphasize captured fields
  */
 function UncapturedFieldCard({
   field,
@@ -167,17 +169,17 @@ function UncapturedFieldCard({
   onAsk?: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-3">
+    <div className="rounded-lg border border-dashed border-border/40 bg-muted/20 p-3 opacity-70 transition-opacity hover:opacity-100">
       <div className="flex items-start gap-2.5">
-        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background">
-          <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border/40 bg-background">
+          <div className="h-2 w-2 rounded-full bg-muted-foreground/20" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground/80 text-sm">
+          <p className="font-medium text-muted-foreground text-sm">
             {field.label}
           </p>
           {field.description && (
-            <p className="mt-0.5 text-muted-foreground text-xs">
+            <p className="mt-0.5 text-muted-foreground/70 text-xs">
               {field.description}
             </p>
           )}
@@ -186,10 +188,10 @@ function UncapturedFieldCard({
               variant="ghost"
               size="sm"
               onClick={onAsk}
-              className="mt-2 h-7 gap-1.5 px-2 text-primary text-xs hover:bg-primary/10 hover:text-primary"
+              className="mt-2 h-7 gap-1.5 px-2 text-muted-foreground text-xs hover:bg-muted hover:text-foreground"
             >
-              <MessageCircle className="h-3 w-3" />
-              Ask about this
+              <Plus className="h-3 w-3" />
+              Add now
             </Button>
           )}
         </div>

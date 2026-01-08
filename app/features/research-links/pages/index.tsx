@@ -1,10 +1,31 @@
-import { ExternalLink, Link2, ListTodo, UsersRound, Video } from "lucide-react";
+import {
+  Copy,
+  ExternalLink,
+  Link2,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Video,
+} from "lucide-react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Link, useLoaderData } from "react-router-dom";
+import { useState } from "react";
 import { PageContainer } from "~/components/layout/PageContainer";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { getServerClient } from "~/lib/supabase/client.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 import { getResearchLinks } from "../db";
@@ -67,6 +88,128 @@ interface LoaderData {
   }>;
 }
 
+interface AskLinkCardProps {
+  list: LoaderData["lists"][0];
+  questions: Array<{ id: string; prompt: string }>;
+  responsesCount: number;
+  publicUrl: string;
+  routes: ReturnType<typeof createRouteDefinitions>;
+}
+
+function AskLinkCard({
+  list,
+  questions,
+  responsesCount,
+  publicUrl,
+  routes,
+}: AskLinkCardProps) {
+  const [copied, setCopied] = useState(false);
+
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card className="group relative flex flex-col transition-shadow hover:shadow-md">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{list.name}</CardTitle>
+              <Badge
+                variant={list.is_live ? "default" : "secondary"}
+                className="text-xs"
+              >
+                {list.is_live ? "Live" : "Draft"}
+              </Badge>
+            </div>
+            {list.description && (
+              <CardDescription className="line-clamp-2">
+                {list.description}
+              </CardDescription>
+            )}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to={routes.ask.edit(list.id)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copyUrl}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy link
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={publicUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open link
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex flex-1 flex-col justify-between pt-0">
+        {/* Stats row */}
+        <div className="flex items-center gap-4 text-muted-foreground text-sm">
+          <span className="flex items-center gap-1.5">
+            <MessageSquare className="h-4 w-4" />
+            {responsesCount} {responsesCount === 1 ? "response" : "responses"}
+          </span>
+          <span>·</span>
+          <span>{questions.length} questions</span>
+          {list.walkthrough_video_url && (
+            <>
+              <span>·</span>
+              <span className="flex items-center gap-1.5">
+                <Video className="h-4 w-4" />
+                Video
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* URL and actions */}
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={copyUrl}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+          >
+            <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate text-muted-foreground">
+              {copied ? "Copied!" : list.slug}
+            </span>
+          </button>
+          <Button asChild size="sm">
+            <Link to={routes.ask.responses(list.id)}>View responses</Link>
+          </Button>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-3 text-muted-foreground text-xs">
+          Updated {new Date(list.updated_at).toLocaleDateString()}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ResearchLinksIndexPage() {
   const { accountId, projectId, origin, lists } = useLoaderData<LoaderData>();
   const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
@@ -112,73 +255,14 @@ export default function ResearchLinksIndexPage() {
               list.research_link_responses?.[0]?.count ?? 0;
             const publicUrl = `${origin}${routes.ask.public(list.slug)}`;
             return (
-              <Card key={list.id} className="flex flex-col border-muted/70">
-                <CardHeader className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold text-xl">{list.name}</h2>
-                      {list.description ? (
-                        <p className="mt-1 text-muted-foreground text-sm">
-                          {list.description}
-                        </p>
-                      ) : null}
-                    </div>
-                    {list.walkthrough_video_url && (
-                      <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-md bg-muted/50">
-                        <Video className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col justify-between space-y-4">
-                  <div className="space-y-3">
-                    {/* Responses row - count + View responses together */}
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-muted-foreground text-sm">
-                        <UsersRound className="h-4 w-4" /> {responsesCount}{" "}
-                        {responsesCount === 1 ? "response" : "responses"}
-                      </span>
-                      <Button asChild variant="secondary" size="sm">
-                        <Link to={routes.ask.responses(list.id)}>
-                          View responses
-                        </Link>
-                      </Button>
-                    </div>
-                    {/* Questions row - count + Edit together */}
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-muted-foreground text-sm">
-                        <ListTodo className="h-4 w-4" /> {questions.length}{" "}
-                        {questions.length === 1 ? "question" : "questions"}
-                      </span>
-                      <Button asChild variant="outline" size="sm">
-                        <Link to={routes.ask.edit(list.id)}>Edit</Link>
-                      </Button>
-                    </div>
-                    {/* Public URL */}
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 font-medium text-primary text-sm hover:underline"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span className="truncate">{publicUrl}</span>
-                    </a>
-                  </div>
-                  {/* Footer with badge and date */}
-                  <div className="flex items-center gap-2 border-t pt-3">
-                    <Badge
-                      variant={list.is_live ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {list.is_live ? "Live" : "Draft"}
-                    </Badge>
-                    <span className="text-muted-foreground text-xs">
-                      Updated {new Date(list.updated_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+              <AskLinkCard
+                key={list.id}
+                list={list}
+                questions={questions}
+                responsesCount={responsesCount}
+                publicUrl={publicUrl}
+                routes={routes}
+              />
             );
           })}
         </div>

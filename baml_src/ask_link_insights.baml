@@ -100,10 +100,13 @@ function AnalyzeAskLinkResponses(
 
 // Quick summary function for smaller response sets
 class QuickResponseSummary {
-  summary string @description("2-3 sentence summary of key findings")
-  top_insights string[] @description("Top 3 insights from responses")
-  sentiment_overview string @description("Overall sentiment: Positive | Neutral | Negative | Mixed")
-  suggested_actions string[] @description("2-3 suggested next steps")
+  summary string @description("1-2 sentence summary. Be HONEST about sample size - if only 1-2 quality responses, say 'Based on limited data from X respondent(s)...'")
+  quality_responses_count int @description("Number of quality responses after filtering junk")
+  total_responses_count int @description("Total responses including junk")
+  top_insights string[] @description("1-3 BRIEF insights. If <3 quality responses, prefix with 'Limited data:' and keep very short. Empty array if insufficient data.")
+  sentiment_overview string @description("Overall sentiment: Positive | Neutral | Negative | Mixed | Insufficient data")
+  suggested_actions string[] @description("1-2 brief actions. If <3 quality responses, just say 'Collect more responses before drawing conclusions'. Empty if no actionable data.")
+  data_quality_warning string @description("Plain English warning like 'Only 1 of 3 responses contained meaningful answers - results are not statistically significant.' Empty if data quality is good (>50% quality).")
 }
 
 function SummarizeAskLinkResponses(
@@ -113,7 +116,7 @@ function SummarizeAskLinkResponses(
 ) -> QuickResponseSummary {
   client "CustomGPT4oMini"
   prompt #"
-    Analyze these survey responses and provide a quick summary.
+    Analyze these survey responses HONESTLY.
 
     ## Survey: {{ ask_link_name }}
 
@@ -123,13 +126,28 @@ function SummarizeAskLinkResponses(
     ## Responses
     {{ responses_data }}
 
-    Provide:
-    1. A 2-3 sentence summary of the key findings
-    2. Top 3 insights (specific and evidence-based)
-    3. Overall sentiment assessment
-    4. 2-3 suggested next steps
+    ## CRITICAL: Be Brutally Honest About Data Quality
 
-    Focus on what's actionable and valuable for the team.
+    STEP 1: Count quality vs junk responses
+    - Junk = gibberish ("asdf", "qwerty", random chars), test entries ("test", "123"), single characters, nonsense
+    - Quality = thoughtful answers that actually address the questions
+    - Report EXACT counts: quality_responses_count and total_responses_count
+
+    STEP 2: Adjust your analysis based on sample size
+    - If 0-1 quality responses: Say "Insufficient data to draw conclusions" - do NOT make up insights
+    - If 2 quality responses: Be very cautious, prefix everything with "Limited data suggests..."
+    - If 3+ quality responses: Can provide more confident insights, but still note sample size
+
+    STEP 3: Be plain about data quality issues
+    - If >50% responses were junk, put a clear warning in data_quality_warning
+    - Example: "Only 1 of 3 responses contained meaningful answers. These results are not representative."
+
+    ## Output Guidelines
+    - summary: Start with sample size context ("Based on 1 quality response out of 3 total...")
+    - top_insights: Keep VERY short (1 line each). If <3 quality responses, provide 1-2 max or empty array.
+    - suggested_actions: If insufficient data, just say "Collect more responses" - don't make up actions
+    - DO NOT pretend you have findings when you don't
+    - DO NOT pad insights to hit a number - quality over quantity
 
     {{ ctx.output_format }}
   "#

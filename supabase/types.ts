@@ -2487,6 +2487,7 @@ export type Database = {
           project_id: string
           recall_recording_id: string | null
           relevant_answers: string[] | null
+          research_link_id: string | null
           segment: string | null
           share_created_at: string | null
           share_enabled: boolean | null
@@ -2533,6 +2534,7 @@ export type Database = {
           project_id: string
           recall_recording_id?: string | null
           relevant_answers?: string[] | null
+          research_link_id?: string | null
           segment?: string | null
           share_created_at?: string | null
           share_enabled?: boolean | null
@@ -2579,6 +2581,7 @@ export type Database = {
           project_id?: string
           recall_recording_id?: string | null
           relevant_answers?: string[] | null
+          research_link_id?: string | null
           segment?: string | null
           share_created_at?: string | null
           share_enabled?: boolean | null
@@ -2607,6 +2610,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_research_link_id_fkey"
+            columns: ["research_link_id"]
+            isOneToOne: false
+            referencedRelation: "research_links"
             referencedColumns: ["id"]
           },
         ]
