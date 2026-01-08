@@ -1671,7 +1671,6 @@ export async function extractEvidenceAndPeopleCore({
   }
 
   if (!primaryPersonId) {
-    const fallbackKey = "participant-0";
     const fallback = await upsertPerson(generateFallbackPersonName(metadata));
     primaryPersonId = fallback.id;
     primaryPersonName = fallback.name;
@@ -1679,9 +1678,6 @@ export async function extractEvidenceAndPeopleCore({
     primaryPersonRole = primaryPersonRole ?? null;
     primaryPersonDescription = primaryPersonDescription ?? null;
     primaryPersonOrganization = primaryPersonOrganization ?? null;
-    // Ensure fallback person has proper mappings for transcript_key
-    personIdByKey.set(fallbackKey, fallback.id);
-    keyByPersonId.set(fallback.id, fallbackKey);
   }
 
   if (!primaryPersonId)
@@ -1696,13 +1692,9 @@ export async function extractEvidenceAndPeopleCore({
   for (const personId of ensuredPersonIds) {
     const role = personRoleById.get(personId) ?? null;
     const personKey = keyByPersonId.get(personId) ?? null;
-    // Prefer speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key,
-    // fall back to person_key (BAML format like "participant-1") if speaker_label not available
-    // Never leave transcript_key null - use a default based on person order
-    const rawTranscriptKey = speakerLabelByPersonId.get(personId) ?? personKey;
-    const transcriptKey =
-      rawTranscriptKey ||
-      `participant-${Array.from(ensuredPersonIds).indexOf(personId)}`;
+    // Prefer speaker_label (AssemblyAI format), fall back to person_key (BAML format)
+    // transcript_key can be null if we don't know which speaker this person is
+    const transcriptKey = speakerLabelByPersonId.get(personId) ?? personKey;
 
     consola.info(`🔗 Creating interview_people for person ${personId}:`, {
       personKey,
@@ -1842,25 +1834,7 @@ export async function extractEvidenceAndPeopleCore({
         `🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`,
       );
 
-      // Limit placeholder speaker creation to prevent over-segmentation issues
-      // AssemblyAI/transcription services sometimes incorrectly detect too many speakers
-      // Most interviews have 2-4 participants; beyond that is likely mis-diarization
-      const MAX_PLACEHOLDER_SPEAKERS = 4;
-      if (missingSpeakers.length > MAX_PLACEHOLDER_SPEAKERS) {
-        consola.warn(
-          `⚠️  Transcript has ${missingSpeakers.length} unique speakers - this may indicate speaker diarization issues. ` +
-            `Only creating placeholder records for first ${MAX_PLACEHOLDER_SPEAKERS} speakers (A, B, C, D). ` +
-            `Users can manually link additional speakers if needed.`,
-        );
-        // Sort speakers alphabetically and take only the first few (A, B, C, D)
-        missingSpeakers.sort((a, b) => {
-          const aLetter = a.replace(/^SPEAKER\s*/i, "").toUpperCase();
-          const bLetter = b.replace(/^SPEAKER\s*/i, "").toUpperCase();
-          return aLetter.localeCompare(bLetter);
-        });
-        missingSpeakers.splice(MAX_PLACEHOLDER_SPEAKERS);
-      }
-
+      // Link the internal person (current user/interviewer) to a speaker if not already linked
       if (internalPerson?.id && !internalPersonHasTranscriptKey) {
         const preferredInternalSpeaker =
           missingSpeakers.find((speaker) =>
@@ -1896,64 +1870,22 @@ export async function extractEvidenceAndPeopleCore({
           } else {
             internalPersonLinked = true;
             internalPersonHasTranscriptKey = true;
-            const index = missingSpeakers.indexOf(preferredInternalSpeaker);
-            if (index >= 0) {
-              missingSpeakers.splice(index, 1);
-            }
+            consola.info(
+              `  ✅ Linked internal person to speaker "${preferredInternalSpeaker}"`,
+            );
           }
         }
       }
 
-      for (const speakerLabel of missingSpeakers) {
-        // Create a placeholder person record for this speaker
-        // The user can later link them to a real person or the system can auto-link to the uploading user
-        const placeholderName = `Speaker ${speakerLabel.replace(/^SPEAKER\s*/i, "").toUpperCase()}`;
-        const { data: placeholderPerson, error: personErr } = await db
-          .from("people")
-          .insert({
-            account_id: metadata.accountId,
-            name: placeholderName,
-            source: "interview_upload",
-          })
-          .select("id, name")
-          .single();
-
-        if (personErr || !placeholderPerson) {
-          consola.warn(
-            `Failed to create placeholder person for speaker ${speakerLabel}:`,
-            personErr?.message,
-          );
-          continue;
-        }
-
-        // Determine role - if we already have a primary participant, this is likely the interviewer
-        const speakerRole =
-          primaryPersonId && ensuredPersonIds.size > 0 ? "interviewer" : null;
-
-        const linkPayload: InterviewPeopleInsert = {
-          interview_id: interviewRecord.id,
-          person_id: placeholderPerson.id,
-          project_id: metadata.projectId ?? null,
-          role: speakerRole,
-          transcript_key: speakerLabel.toUpperCase().startsWith("SPEAKER ")
-            ? speakerLabel
-            : `SPEAKER ${speakerLabel}`.toUpperCase(),
-          display_name: placeholderName,
-        };
-
-        const { error: linkErr } = await db
-          .from("interview_people")
-          .upsert(linkPayload, { onConflict: "interview_id,person_id" });
-        if (linkErr && !linkErr.message?.includes("duplicate")) {
-          consola.warn(
-            `Failed linking placeholder speaker ${speakerLabel} to interview:`,
-            linkErr.message,
-          );
-        } else {
-          consola.info(
-            `  ✅ Created interview_people record for speaker "${speakerLabel}" as ${speakerRole || "unknown role"}`,
-          );
-        }
+      // NOTE: We intentionally do NOT auto-create placeholder people records for
+      // unidentified transcript speakers. This prevents polluting the people table
+      // with generic "Speaker A", "Speaker B" entries when diarization over-segments.
+      // The transcript display shows raw speaker labels, and users can manually
+      // add participants via "Add Participant" in the UI when they know who's who.
+      if (missingSpeakers.length > 1) {
+        consola.info(
+          `🎙️  Remaining unlinked speakers: ${missingSpeakers.join(", ")}. Users can manually add via "Add Participant".`,
+        );
       }
     }
   }

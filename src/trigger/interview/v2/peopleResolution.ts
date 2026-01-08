@@ -81,50 +81,18 @@ export function parseFullName(fullName: string): {
 }
 
 /**
- * Check if a string looks like a date/timestamp that shouldn't be used as a name.
- * Examples: "Jan-08 07:45 pm", "2024-01-08", "January 8, 2024"
- */
-function looksLikeDateOrTimestamp(value: string): boolean {
-  const normalized = value.trim().toLowerCase();
-  // Date patterns: "jan-08", "jan 08", "january 8", "2024-01-08", "01/08/2024"
-  const datePatterns = [
-    /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\s\-]?\d{1,2}/i,
-    /^\d{4}[\-\/]\d{1,2}[\-\/]\d{1,2}/,
-    /^\d{1,2}[\-\/]\d{1,2}[\-\/]\d{2,4}/,
-    /\d{1,2}:\d{2}/, // Time patterns: "07:45", "7:45 pm"
-  ];
-  return datePatterns.some((pattern) => pattern.test(normalized));
-}
-
-/**
- * Generate a fallback person name from interview metadata.
- * Uses filename, title, or timestamp as fallback.
- * Avoids using date/timestamp strings as person names.
+ * Generate a fallback person name when BAML can't identify a participant.
+ * Only uses explicitly provided participant name, never interview titles or dates.
  */
 export function generateFallbackPersonName(
   metadata: InterviewMetadataForPeople,
 ): string {
-  if (metadata.fileName) {
-    const nameFromFile = metadata.fileName
-      .replace(/\.[^/.]+$/, "")
-      .replace(/[_-]/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase())
-      .trim();
-
-    // Don't use filename if it looks like a date/timestamp
-    if (nameFromFile.length > 0 && !looksLikeDateOrTimestamp(nameFromFile)) {
-      return nameFromFile;
-    }
+  // Only use explicitly provided participant name
+  if (metadata.participantName?.trim()) {
+    return metadata.participantName.trim();
   }
-  if (
-    metadata.interviewTitle &&
-    !metadata.interviewTitle.includes("Interview -") &&
-    !looksLikeDateOrTimestamp(metadata.interviewTitle)
-  ) {
-    return metadata.interviewTitle;
-  }
-  // Final fallback: generic participant name (not a date)
-  return `Participant ${new Date().toISOString().split("T")[0]}`;
+  // Generic fallback - never use interview title, filename, or dates as person names
+  return "Unknown Participant";
 }
 
 /**
