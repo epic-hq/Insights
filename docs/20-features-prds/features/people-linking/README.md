@@ -15,7 +15,7 @@ The people-linking system connects person records to interviews with support for
 1. **Upload-time linking** - Associate one or more people during media upload (multi-select)
 2. **Realtime recording** - Select people before recording, displayed during capture, linked on finalize
 3. **Speaker label mapping** - Map AssemblyAI speaker labels (Speaker A, B, etc.) to people
-4. **Post-upload linking** - Add or modify participant associations via inline UI
+4. **Post-upload linking** - Add or modify participant associations via search-first dialog (prioritizes existing people)
 5. **Note linking** - Link people to text notes and voice memos
 
 ## Data Model

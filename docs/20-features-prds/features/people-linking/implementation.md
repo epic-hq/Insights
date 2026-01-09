@@ -140,10 +140,26 @@ const participant = participants.find(
 
 Provides UI for:
 - Viewing current speaker-to-person mappings
-- Assigning speakers to existing people
-- Creating new people inline via "Create new person" option (always visible in dropdown)
-- Adding participants who weren't detected as speakers via "Add Participant" button
+- Assigning speakers to existing people via searchable dropdown
+- Creating new people inline via "Create new person..." option
+- Adding participants who weren't detected as speakers via search-first "Add Participant" dialog
 - Setting `transcript_key` for speaker mapping
+
+#### Add Participant Dialog (Search-First Pattern)
+
+The "Add Participant" button opens a dialog with search-first UX:
+
+1. **Search Mode (Default)**: Shows a searchable list of existing people in the project
+   - Type to filter people by name
+   - Click a person to add them as a participant
+   - "Create new person..." option at bottom to switch modes
+
+2. **Create Mode**: Form to create a new person
+   - Fields: First name, Last name, Organization, Title
+   - Voice input support for name entry
+   - "← Back to search" button to return to search mode
+
+This pattern prioritizes reusing existing people over creating duplicates.
 
 ### NoteViewer People Linking
 

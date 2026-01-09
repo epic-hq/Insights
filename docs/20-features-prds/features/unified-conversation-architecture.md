@@ -1,7 +1,7 @@
 # Unified Conversation Architecture
 
-> **Status:** Implementation in progress
-> **Updated:** 2025-01-07
+> **Status:** Phase 1 complete (schema), Phase 2 in progress
+> **Updated:** 2026-01-09
 > **Created:** 2024-12-26
 
 ## Overview
@@ -500,11 +500,14 @@ When an Ask response is completed:
 
 ## Migration Plan
 
-### Phase 1: Schema Consolidation
+### Phase 1: Schema Consolidation ✅
 
-- [ ] Add `research_link_id` column to interviews
-- [ ] Add unique constraint (research_link_id, person_id)
-- [ ] Update source_type documentation
+- [x] Add `research_link_id` column to interviews
+- [x] Add unique constraint (research_link_id, person_id)
+- [x] Add index for efficient Ask response lookups
+- [x] Update source_type enum to include `survey_form`, `survey_chat`, `survey_voice`
+
+**Completed:** 2026-01-07 via migration `20250107000000_interviews_research_link_support.sql`
 
 ### Phase 2: API Updates
 
