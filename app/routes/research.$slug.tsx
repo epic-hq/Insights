@@ -3,22 +3,8 @@
  */
 import { useChat } from "@ai-sdk/react"
 import { AnimatePresence, motion } from "framer-motion"
-import {
-	ArrowLeft,
-	ArrowRight,
-	CalendarDays,
-	Check,
-	CheckCircle2,
-	Copy,
-	Loader2,
-	MessageCircle,
-	Mic,
-	PencilLine,
-	Send,
-	Share2,
-	Video,
-} from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Copy, Loader2, Mic, Send, Share2, Video } from "lucide-react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
@@ -71,17 +57,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		throw new Response("Survey not found", { status: 404 })
 	}
 
-	let accountName: string | null = null
-	if (list.account_id) {
-		const { data: account } = await supabase
-			.schema("accounts")
-			.from("accounts")
-			.select("name")
-			.eq("id", list.account_id)
-			.maybeSingle()
-		accountName = account?.name ?? null
-	}
-
 	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
 
 	// Generate signed URL for walkthrough video if it exists
@@ -104,7 +79,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		slug,
 		list,
 		questions: questionsResult.success ? questionsResult.data : [],
-		accountName,
 		walkthroughSignedUrl,
 	}
 }
@@ -131,7 +105,6 @@ type LoaderData = {
 		account_id: string
 	}
 	questions: Array<ResearchLinkQuestion>
-	accountName: string | null
 	walkthroughSignedUrl: string | null
 }
 
@@ -177,7 +150,8 @@ async function saveProgress(
 }
 
 export default function ResearchLinkPage() {
-	const { slug, list, questions, accountName, walkthroughSignedUrl } = useLoaderData() as LoaderData
+	const { slug, list, questions, walkthroughSignedUrl } = useLoaderData() as LoaderData
+	const emailId = useId()
 	const storageKey = `research-link:${slug}`
 	const [stage, setStage] = useState<Stage>("email")
 	const [mode, setMode] = useState<Mode>(list.allow_chat ? (list.default_response_mode ?? "form") : "form")
@@ -207,7 +181,6 @@ export default function ResearchLinkPage() {
 	const [chatInput, setChatInput] = useState("")
 	const {
 		messages,
-		handleSubmit: handleChatSubmit,
 		isLoading: isChatLoading,
 		append,
 	} = useChat({
@@ -494,50 +467,10 @@ export default function ResearchLinkPage() {
 			<div className="mx-auto max-w-2xl px-4">
 				<Card className="overflow-hidden border-white/10 bg-black/30 backdrop-blur">
 					<CardHeader className="space-y-2 pb-3">
-						<div className="flex items-start justify-between gap-4">
-							<div className="space-y-1">
-								{accountName && <p className="text-white/50 text-xs">From {accountName}</p>}
-								<h1 className="font-semibold text-white text-xl">
-									{list.hero_title || list.name || "Share your feedback"}
-								</h1>
-							</div>
-							{/* Mode selector - compact */}
-							{stage !== "complete" && stage !== "video" && (
-								<div className="flex shrink-0 gap-1 text-xs">
-									<button
-										type="button"
-										onClick={() => setMode("form")}
-										className={cn(
-											"rounded-md px-2 py-1 transition",
-											resolvedMode === "form" ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60"
-										)}
-									>
-										<PencilLine className="h-3.5 w-3.5" />
-									</button>
-									{list.allow_chat && (
-										<button
-											type="button"
-											onClick={() => setMode("chat")}
-											className={cn(
-												"rounded-md px-2 py-1 transition",
-												resolvedMode === "chat" ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60"
-											)}
-										>
-											<MessageCircle className="h-3.5 w-3.5" />
-										</button>
-									)}
-									{list.calendar_url && (
-										<a
-											href={list.calendar_url}
-											target="_blank"
-											rel="noreferrer"
-											className="rounded-md px-2 py-1 text-white/40 transition hover:text-white/60"
-										>
-											<CalendarDays className="h-3.5 w-3.5" />
-										</a>
-									)}
-								</div>
-							)}
+						<div className="space-y-1">
+							<h1 className="font-semibold text-white text-xl">
+								{list.hero_title || list.name || "Share your feedback"}
+							</h1>
 						</div>
 					</CardHeader>
 
@@ -563,12 +496,18 @@ export default function ResearchLinkPage() {
 										<video src={walkthroughSignedUrl} className="aspect-video w-full bg-black" controls playsInline />
 									</div>
 								)}
+
+								{/* Description after video */}
+								{(list.hero_subtitle || list.description) && (
+									<p className="text-sm text-white/80 leading-relaxed">{list.hero_subtitle || list.description}</p>
+								)}
+
 								<div className="space-y-2">
-									<Label htmlFor="email" className="text-white/90">
+									<Label htmlFor={emailId} className="text-white/90">
 										Your Email
 									</Label>
 									<Input
-										id="email"
+										id={emailId}
 										type="email"
 										value={email}
 										onChange={(e) => setEmail(e.target.value)}
@@ -580,10 +519,12 @@ export default function ResearchLinkPage() {
 										{list.hero_cta_helper || "We'll only contact you about this study"}
 									</p>
 								</div>
-								<Button type="submit" disabled={isSaving} size="sm" className="bg-white text-black hover:bg-white/90">
-									{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
-									<ArrowRight className="ml-1.5 h-4 w-4" />
-								</Button>
+								<div className="flex justify-end">
+									<Button type="submit" disabled={isSaving} size="sm" className="bg-white text-black hover:bg-white/90">
+										{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+										<ArrowRight className="ml-1.5 h-4 w-4" />
+									</Button>
+								</div>
 							</motion.form>
 						)}
 
@@ -601,8 +542,8 @@ export default function ResearchLinkPage() {
 									<div className="rounded-xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-5">
 										<h2 className="mb-4 font-medium text-white">
 											{currentQuestion.prompt}
-											{!currentQuestion.required && (
-												<span className="ml-2 font-normal text-white/40 text-xs">optional</span>
+											{currentQuestion.required && (
+												<span className="ml-1 text-red-400">*</span>
 											)}
 										</h2>
 										<div className="max-w-md space-y-4">

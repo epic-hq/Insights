@@ -1,348 +1,317 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { Link2, Mic, UploadCloud } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate } from "react-router";
-import { PageContainer } from "~/components/layout/PageContainer";
-import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager";
-import { Button } from "~/components/ui/button";
-import { useCurrentProject } from "~/contexts/current-project-context";
-import type { CapturedField } from "~/features/projects/components/CapturedPane";
-import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat";
-import {
-  type SetupMode,
-  SetupModeToggle,
-} from "~/features/projects/components/SetupModeToggle";
-import { SetupVoiceChat } from "~/features/projects/components/SetupVoiceChat";
-import { getProjectContextGeneric } from "~/features/questions/db";
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
-import { useProjectRoutes } from "~/hooks/useProjectRoutes";
-import { useRecordNow } from "~/hooks/useRecordNow";
-import { getServerClient } from "~/lib/supabase/client.server";
+import { AnimatePresence, motion } from "framer-motion"
+import { Link2, Mic, UploadCloud } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
+import type { LoaderFunctionArgs } from "react-router"
+import { useLoaderData, useNavigate } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
+import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
+import { Button } from "~/components/ui/button"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import type { CapturedField } from "~/features/projects/components/CapturedPane"
+import { ProjectSetupChat } from "~/features/projects/components/ProjectSetupChat"
+import { type SetupMode, SetupModeToggle } from "~/features/projects/components/SetupModeToggle"
+import { SetupVoiceChat } from "~/features/projects/components/SetupVoiceChat"
+import { getProjectContextGeneric } from "~/features/questions/db"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useRecordNow } from "~/hooks/useRecordNow"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-  const { projectId } = params;
-  if (!projectId) {
-    return {
-      projectName: "Project",
-      research_goal: null,
-      target_roles: [],
-      target_orgs: [],
-      assumptions: [],
-      unknowns: [],
-      hasPrompts: false,
-      needsGeneration: false,
-    };
-  }
+	const { projectId } = params
+	if (!projectId) {
+		return {
+			projectName: "Project",
+			research_goal: null,
+			target_roles: [],
+			target_orgs: [],
+			assumptions: [],
+			unknowns: [],
+			hasPrompts: false,
+			needsGeneration: false,
+		}
+	}
 
-  const { client: supabase } = getServerClient(request);
+	const { client: supabase } = getServerClient(request)
 
-  // Load project name
-  const { data: project } = await supabase
-    .from("projects")
-    .select("name")
-    .eq("id", projectId)
-    .single();
+	// Load project name
+	const { data: project } = await supabase.from("projects").select("name").eq("id", projectId).single()
 
-  // Load full project context using the generic helper
-  const projectContext = await getProjectContextGeneric(supabase, projectId);
-  const merged = projectContext?.merged || {};
+	// Load full project context using the generic helper
+	const projectContext = await getProjectContextGeneric(supabase, projectId)
+	const merged = projectContext?.merged || {}
 
-  // Check if interview_prompts exist
-  const { data: prompts } = await supabase
-    .from("interview_prompts")
-    .select("id")
-    .eq("project_id", projectId)
-    .limit(1);
+	// Check if interview_prompts exist
+	const { data: prompts } = await supabase.from("interview_prompts").select("id").eq("project_id", projectId).limit(1)
 
-  const hasPrompts = (prompts?.length ?? 0) > 0;
+	const hasPrompts = (prompts?.length ?? 0) > 0
 
-  // Extract arrays safely
-  const toStringArray = (val: unknown): string[] => {
-    if (Array.isArray(val)) return val.filter((v) => typeof v === "string");
-    return [];
-  };
+	// Extract arrays safely
+	const toStringArray = (val: unknown): string[] => {
+		if (Array.isArray(val)) return val.filter((v) => typeof v === "string")
+		return []
+	}
 
-  const research_goal =
-    typeof merged.research_goal === "string" ? merged.research_goal : null;
-  const target_roles = toStringArray(merged.target_roles);
-  const target_orgs = toStringArray(merged.target_orgs);
-  const assumptions = toStringArray(merged.assumptions);
-  const unknowns = toStringArray(merged.unknowns);
+	const research_goal = typeof merged.research_goal === "string" ? merged.research_goal : null
+	const target_roles = toStringArray(merged.target_roles)
+	const target_orgs = toStringArray(merged.target_orgs)
+	const assumptions = toStringArray(merged.assumptions)
+	const unknowns = toStringArray(merged.unknowns)
 
-  // Determine if we need to auto-generate
-  const needsGeneration =
-    !hasPrompts && !!research_goal && target_roles.length > 0;
+	// Determine if we need to auto-generate
+	const needsGeneration = !hasPrompts && !!research_goal && target_roles.length > 0
 
-  return {
-    projectName: project?.name || "Project",
-    research_goal,
-    target_roles,
-    target_orgs,
-    assumptions,
-    unknowns,
-    hasPrompts,
-    needsGeneration,
-  };
+	return {
+		projectName: project?.name || "Project",
+		research_goal,
+		target_roles,
+		target_orgs,
+		assumptions,
+		unknowns,
+		hasPrompts,
+		needsGeneration,
+	}
 }
 
 // Hide the project status agent sidebar on this page
 export const handle = {
-  hideProjectStatusAgent: true,
-};
+	hideProjectStatusAgent: true,
+}
 
 export default function QuestionsIndex() {
-  const loaderData = useLoaderData<typeof loader>();
-  const { accountId, projectId, projectPath } = useCurrentProject();
-  const navigate = useNavigate();
-  const routes = useProjectRoutes(projectPath);
-  const { recordNow, isRecording } = useRecordNow();
+	const loaderData = useLoaderData<typeof loader>()
+	const { accountId, projectId, projectPath } = useCurrentProject()
+	const navigate = useNavigate()
+	const routes = useProjectRoutes(projectPath)
+	const { recordNow, isRecording } = useRecordNow()
 
-  // Mode state: form (default), chat, or voice
-  // Default to form mode - prompts always visible, chat/voice as overlays
-  const [mode, setMode] = useState<SetupMode>("form");
+	// Mode state: form (default), chat, or voice
+	// Default to form mode - prompts always visible, chat/voice as overlays
+	const [mode, setMode] = useState<SetupMode>("form")
 
-  // Voice mode feature flag
-  const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice");
+	// Voice mode feature flag
+	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice")
 
-  const handleRecordNow = useCallback(() => {
-    if (projectId) {
-      recordNow({ projectId });
-    }
-  }, [projectId, recordNow]);
+	const handleRecordNow = useCallback(() => {
+		if (projectId) {
+			recordNow({ projectId })
+		}
+	}, [projectId, recordNow])
 
-  if (!projectId) {
-    return (
-      <div className="mx-auto max-w-7xl p-4 sm:p-8">
-        <div className="text-center">
-          <p className="text-gray-500">Loading project...</p>
-        </div>
-      </div>
-    );
-  }
+	if (!projectId) {
+		return (
+			<div className="mx-auto max-w-7xl p-4 sm:p-8">
+				<div className="text-center">
+					<p className="text-gray-500">Loading project...</p>
+				</div>
+			</div>
+		)
+	}
 
-  // Context is complete when research_goal is set
-  const contextComplete = Boolean(loaderData.research_goal);
-  // Questions sub-step is complete when prompts are generated
-  const questionsComplete = loaderData.hasPrompts;
-  // Plan phase is complete when both are done
-  const planComplete = contextComplete && questionsComplete;
+	// Context is complete when research_goal is set
+	const contextComplete = Boolean(loaderData.research_goal)
+	// Questions sub-step is complete when prompts are generated
+	const questionsComplete = loaderData.hasPrompts
+	// Plan phase is complete when both are done
+	const planComplete = contextComplete && questionsComplete
 
-  // Build captured fields for the chat footer
-  const capturedFields: CapturedField[] = useMemo(
-    () => [
-      {
-        key: "research_goal",
-        label: "Research Goal",
-        value: loaderData.research_goal,
-        category: "project",
-        description: "What decision are you trying to make?",
-      },
-      {
-        key: "target_roles",
-        label: "Target Roles",
-        value: loaderData.target_roles,
-        category: "project",
-        description: "Who should you interview?",
-      },
-      {
-        key: "target_orgs",
-        label: "Target Organizations",
-        value: loaderData.target_orgs,
-        category: "project",
-        description: "What types of companies?",
-      },
-      {
-        key: "assumptions",
-        label: "Assumptions",
-        value: loaderData.assumptions,
-        category: "project",
-        description: "What do you believe to be true?",
-      },
-      {
-        key: "unknowns",
-        label: "Unknowns",
-        value: loaderData.unknowns,
-        category: "project",
-        description: "What questions need answers?",
-      },
-    ],
-    [loaderData],
-  );
+	// Build captured fields for the chat footer
+	const capturedFields: CapturedField[] = useMemo(
+		() => [
+			{
+				key: "research_goal",
+				label: "Research Goal",
+				value: loaderData.research_goal,
+				category: "project",
+				description: "What decision are you trying to make?",
+			},
+			{
+				key: "target_roles",
+				label: "Target Roles",
+				value: loaderData.target_roles,
+				category: "project",
+				description: "Who should you interview?",
+			},
+			{
+				key: "target_orgs",
+				label: "Target Organizations",
+				value: loaderData.target_orgs,
+				category: "project",
+				description: "What types of companies?",
+			},
+			{
+				key: "assumptions",
+				label: "Assumptions",
+				value: loaderData.assumptions,
+				category: "project",
+				description: "What do you believe to be true?",
+			},
+			{
+				key: "unknowns",
+				label: "Unknowns",
+				value: loaderData.unknowns,
+				category: "project",
+				description: "What questions need answers?",
+			},
+		],
+		[loaderData]
+	)
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      {/* Page header with inline mode toggle */}
-      <div className="flex items-center justify-between border-b px-6 py-3">
-        <h1 className="font-semibold text-lg">Interview Prompts</h1>
-        <SetupModeToggle
-          mode={mode}
-          onModeChange={setMode}
-          showVoice={isVoiceEnabled}
-        />
-      </div>
+	return (
+		<div className="flex min-h-screen flex-col">
+			{/* Page header with inline mode toggle */}
+			<div className="flex items-center justify-between border-b px-6 py-3">
+				<h1 className="font-semibold text-lg">Interview Prompts</h1>
+				<SetupModeToggle mode={mode} onModeChange={setMode} showVoice={isVoiceEnabled} />
+			</div>
 
-      {/* Main content area with optional sidebar/overlay */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main content - prompts list (always visible) */}
-        <div
-          className={`flex-1 overflow-y-auto ${mode === "chat" ? "lg:mr-96" : ""}`}
-        >
-          <PageContainer size="lg" className="py-6">
-            <InterviewQuestionsManager
-              projectId={projectId}
-              projectPath={projectPath}
-              research_goal={loaderData.research_goal || undefined}
-              target_roles={loaderData.target_roles}
-              target_orgs={loaderData.target_orgs}
-              assumptions={loaderData.assumptions}
-              unknowns={loaderData.unknowns}
-            />
+			{/* Main content area with optional sidebar/overlay */}
+			<div className="flex flex-1 overflow-hidden">
+				{/* Main content - prompts list (always visible) */}
+				<div className={`flex-1 overflow-y-auto ${mode === "chat" ? "lg:mr-96" : ""}`}>
+					<PageContainer size="lg" className="py-6">
+						<InterviewQuestionsManager
+							projectId={projectId}
+							projectPath={projectPath}
+							research_goal={loaderData.research_goal || undefined}
+							target_roles={loaderData.target_roles}
+							target_orgs={loaderData.target_orgs}
+							assumptions={loaderData.assumptions}
+							unknowns={loaderData.unknowns}
+						/>
 
-            {/* Ready to collect? CTA section */}
-            {questionsComplete && (
-              <div className="mt-8 rounded-lg border bg-muted/30 p-6 text-center">
-                <h3 className="mb-2 font-semibold text-lg">
-                  Ready to start collecting?
-                </h3>
-                <p className="mb-4 text-muted-foreground text-sm">
-                  Your questions are set. Now conduct interviews, upload
-                  recordings, or send a link.
-                </p>
-                <div className="flex flex-row flex-wrap justify-center gap-3">
-                  <Button
-                    onClick={handleRecordNow}
-                    variant="default"
-                    disabled={isRecording}
-                    className="gap-2"
-                  >
-                    <Mic className="h-4 w-4" />
-                    Record Live
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      if (routes) {
-                        navigate(routes.interviews.upload());
-                      }
-                    }}
-                    variant="outline"
-                    className="gap-2"
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    Upload Recording
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      if (routes) {
-                        navigate(routes.ask.index());
-                      }
-                    }}
-                    variant="outline"
-                    className="gap-2"
-                  >
-                    <Link2 className="h-4 w-4" />
-                    Send Ask Link
-                  </Button>
-                </div>
-              </div>
-            )}
-          </PageContainer>
-        </div>
+						{/* Ready to collect? CTA section */}
+						{questionsComplete && (
+							<div className="mt-8 rounded-lg border bg-muted/30 p-6 text-center">
+								<h3 className="mb-2 font-semibold text-lg">Ready to start collecting?</h3>
+								<p className="mb-4 text-muted-foreground text-sm">
+									Your questions are set. Now conduct interviews, upload recordings, or send a link.
+								</p>
+								<div className="flex flex-row flex-wrap justify-center gap-3">
+									<Button onClick={handleRecordNow} variant="default" disabled={isRecording} className="gap-2">
+										<Mic className="h-4 w-4" />
+										Record Live
+									</Button>
+									<Button
+										onClick={() => {
+											if (routes) {
+												navigate(routes.interviews.upload())
+											}
+										}}
+										variant="outline"
+										className="gap-2"
+									>
+										<UploadCloud className="h-4 w-4" />
+										Upload Recording
+									</Button>
+									<Button
+										onClick={() => {
+											if (routes) {
+												navigate(routes.ask.index())
+											}
+										}}
+										variant="outline"
+										className="gap-2"
+									>
+										<Link2 className="h-4 w-4" />
+										Send Ask Link
+									</Button>
+								</div>
+							</div>
+						)}
+					</PageContainer>
+				</div>
 
-        {/* Chat sidebar (right side, when chat mode active) */}
-        <AnimatePresence>
-          {mode === "chat" && (
-            <motion.div
-              initial={{ x: 384, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 384, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed top-[57px] right-0 bottom-0 z-40 hidden w-96 border-l bg-background lg:block"
-            >
-              <ProjectSetupChat
-                accountId={accountId}
-                projectId={projectId}
-                projectName={loaderData.projectName}
-                onSetupComplete={() => navigate(routes.dashboard())}
-                initialMessage="Help me create or refine interview prompts for this project."
-                researchContext={{
-                  research_goal: loaderData.research_goal,
-                  target_roles: loaderData.target_roles,
-                  target_orgs: loaderData.target_orgs,
-                  assumptions: loaderData.assumptions,
-                  unknowns: loaderData.unknowns,
-                }}
-                capturedFields={capturedFields}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+				{/* Chat sidebar (right side, when chat mode active) */}
+				<AnimatePresence>
+					{mode === "chat" && (
+						<motion.div
+							initial={{ x: 384, opacity: 0 }}
+							animate={{ x: 0, opacity: 1 }}
+							exit={{ x: 384, opacity: 0 }}
+							transition={{ duration: 0.2 }}
+							className="fixed top-[57px] right-0 bottom-0 z-40 hidden w-96 border-l bg-background lg:block"
+						>
+							<ProjectSetupChat
+								accountId={accountId}
+								projectId={projectId}
+								projectName={loaderData.projectName}
+								onSetupComplete={() => navigate(routes.dashboard())}
+								initialMessage="Help me create or refine interview prompts for this project."
+								researchContext={{
+									research_goal: loaderData.research_goal,
+									target_roles: loaderData.target_roles,
+									target_orgs: loaderData.target_orgs,
+									assumptions: loaderData.assumptions,
+									unknowns: loaderData.unknowns,
+								}}
+								capturedFields={capturedFields}
+							/>
+						</motion.div>
+					)}
+				</AnimatePresence>
 
-        {/* Voice orb (floating, when voice mode active) */}
-        <AnimatePresence>
-          {mode === "voice" && (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed right-6 bottom-6 z-50"
-            >
-              <div className="w-80 rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur-sm">
-                <SetupVoiceChat
-                  accountId={accountId}
-                  projectId={projectId}
-                  projectName={loaderData.projectName}
-                  onSetupComplete={() => navigate(routes.dashboard())}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+				{/* Voice orb (floating, when voice mode active) */}
+				<AnimatePresence>
+					{mode === "voice" && (
+						<motion.div
+							initial={{ scale: 0.8, opacity: 0 }}
+							animate={{ scale: 1, opacity: 1 }}
+							exit={{ scale: 0.8, opacity: 0 }}
+							transition={{ duration: 0.2 }}
+							className="fixed right-6 bottom-6 z-50"
+						>
+							<div className="w-80 rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur-sm">
+								<SetupVoiceChat
+									accountId={accountId}
+									projectId={projectId}
+									projectName={loaderData.projectName}
+									onSetupComplete={() => navigate(routes.dashboard())}
+								/>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
+			</div>
 
-      {/* Mobile: show chat/voice as full overlay on small screens */}
-      <AnimatePresence>
-        {mode === "chat" && (
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-background lg:hidden"
-          >
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <span className="font-medium">Chat</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMode("form")}
-                >
-                  Close
-                </Button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <ProjectSetupChat
-                  accountId={accountId}
-                  projectId={projectId}
-                  projectName={loaderData.projectName}
-                  onSetupComplete={() => navigate(routes.dashboard())}
-                  initialMessage="Help me create or refine interview prompts for this project."
-                  researchContext={{
-                    research_goal: loaderData.research_goal,
-                    target_roles: loaderData.target_roles,
-                    target_orgs: loaderData.target_orgs,
-                    assumptions: loaderData.assumptions,
-                    unknowns: loaderData.unknowns,
-                  }}
-                  capturedFields={capturedFields}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+			{/* Mobile: show chat/voice as full overlay on small screens */}
+			<AnimatePresence>
+				{mode === "chat" && (
+					<motion.div
+						initial={{ y: "100%" }}
+						animate={{ y: 0 }}
+						exit={{ y: "100%" }}
+						transition={{ duration: 0.2 }}
+						className="fixed inset-0 z-50 bg-background lg:hidden"
+					>
+						<div className="flex h-full flex-col">
+							<div className="flex items-center justify-between border-b px-4 py-3">
+								<span className="font-medium">Chat</span>
+								<Button variant="ghost" size="sm" onClick={() => setMode("form")}>
+									Close
+								</Button>
+							</div>
+							<div className="flex-1 overflow-hidden">
+								<ProjectSetupChat
+									accountId={accountId}
+									projectId={projectId}
+									projectName={loaderData.projectName}
+									onSetupComplete={() => navigate(routes.dashboard())}
+									initialMessage="Help me create or refine interview prompts for this project."
+									researchContext={{
+										research_goal: loaderData.research_goal,
+										target_roles: loaderData.target_roles,
+										target_orgs: loaderData.target_orgs,
+										assumptions: loaderData.assumptions,
+										unknowns: loaderData.unknowns,
+									}}
+									capturedFields={capturedFields}
+								/>
+							</div>
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</div>
+	)
 }
