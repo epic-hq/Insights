@@ -113,7 +113,7 @@ export const getAccountMembers = async ({
 const updateAccountUserRoleSchema = z.object({
 	account_id: z.string().uuid(),
 	user_id: z.string().uuid(),
-	role: z.enum(["owner", "member"]),
+	role: z.enum(["owner", "member", "viewer"]),
 })
 type UpdateAccountUserRoleRequest = z.infer<typeof updateAccountUserRoleSchema>
 

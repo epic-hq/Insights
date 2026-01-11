@@ -211,17 +211,26 @@ create or replace function public.lookup_invitation(lookup_invitation_token text
 as
 $$
 declare
-    name              text;
-    invitation_active boolean;
+    invitation_record RECORD;
 begin
-    select account_name,
-           case when id IS NOT NULL then true else false end as active
-    into name, invitation_active
+    select
+        account_id,
+        account_name,
+        account_role,
+        invited_by_user_id,
+        case when id IS NOT NULL then true else false end as active
+    into invitation_record
     from accounts.invitations
     where token = lookup_invitation_token
       and created_at > now() - interval '24 hours'
     limit 1;
-    return json_build_object('active', coalesce(invitation_active, false), 'account_name', name);
+    return json_build_object(
+        'active', coalesce(invitation_record.active, false),
+        'account_name', invitation_record.account_name,
+        'account_id', invitation_record.account_id,
+        'account_role', invitation_record.account_role,
+        'inviter_user_id', invitation_record.invited_by_user_id
+    );
 end;
 $$;
 

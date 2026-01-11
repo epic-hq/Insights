@@ -22,7 +22,7 @@ export const getAccountInvitations = async ({
 
 export const CreateInvitationSchema = z.object({
 	account_id: z.string().uuid(),
-	account_role: z.enum(["owner", "member"]).default("member"),
+	account_role: z.enum(["owner", "member", "viewer"]).default("member"),
 	invitation_type: z.enum(["one_time", "24_hour"]).default("one_time"),
 	invitee_email: z.string().email().optional(),
 })

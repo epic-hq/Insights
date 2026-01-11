@@ -286,10 +286,26 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			return data({ ok: false, errors: submission.error }, { status: 400 })
 		}
 		const { email, permission } = submission.value
+
+		// Check if email is already a member of this account
+		const { data: isMember, error: memberCheckError } = await client.rpc("is_email_account_member", {
+			check_account_id: accountId,
+			check_email: email,
+		})
+		if (memberCheckError) {
+			consola.warn("[INVITE] Failed to check existing membership", { error: memberCheckError })
+			// Continue anyway - the invitation will still work, just might be redundant
+		} else if (isMember === true) {
+			return data(
+				{ ok: false, message: "This person is already a member of this team." },
+				{ status: 400 }
+			)
+		}
+
 		const result = await dbCreateInvitation({
 			supabase: client,
 			account_id: accountId,
-			account_role: mapPermissionToAccountRoleForRpc(permission),
+			account_role: mapPermissionToAccountRole(permission),
 			invitation_type: "one_time",
 			invitee_email: email,
 		})
@@ -298,6 +314,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			typeof (result.data as { token?: unknown } | null)?.token === "string"
 				? (result.data as { token: string }).token
 				: undefined
+
+		// Track email send status to return to UI
+		let emailSent = false
+		let emailError: string | null = null
 
 		// Attempt to send invitation email if we have both email and token
 		if (email && token) {
@@ -333,7 +353,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 				const sendResult = await sendEmail({
 					to: email,
-					subject: `You’re invited to join ${teamName} on Upsight`,
+					subject: `You're invited to join ${teamName} on Upsight`,
 					send_intent: "transactional",
 					reply_to: user.email ?? undefined,
 					react: (
@@ -350,11 +370,41 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					to: email,
 					resultId: (sendResult as unknown as { id?: string })?.id,
 				})
+				emailSent = true
+
+				// Log successful email send to audit trail
+				try {
+					await client.rpc("log_invitation_audit", {
+						p_invitation_id: null,
+						p_account_id: accountId,
+						p_action: "email_sent",
+						p_invitee_email: email,
+						p_account_role: mapPermissionToAccountRole(permission),
+						p_details: { email_id: (sendResult as unknown as { id?: string })?.id },
+					})
+				} catch {
+					// Audit logging failure shouldn't block the main flow
+				}
 			} catch (err) {
 				consola.error("[INVITE] Failed to send invitation email", {
 					to: email,
 					error: err,
 				})
+				emailError = err instanceof Error ? err.message : "Failed to send email"
+
+				// Log failed email send to audit trail
+				try {
+					await client.rpc("log_invitation_audit", {
+						p_invitation_id: null,
+						p_account_id: accountId,
+						p_action: "email_failed",
+						p_invitee_email: email,
+						p_account_role: mapPermissionToAccountRole(permission),
+						p_details: { error: emailError },
+					})
+				} catch {
+					// Audit logging failure shouldn't block the main flow
+				}
 			}
 		}
 
@@ -368,8 +418,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					properties: {
 						account_id: accountId,
 						invitee_email: email,
-						role: mapPermissionToAccountRoleForRpc(permission),
+						role: mapPermissionToAccountRole(permission),
 						invitation_type: "one_time",
+						email_sent: emailSent,
 					},
 				})
 			}
@@ -377,7 +428,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			consola.warn("[INVITE] PostHog tracking failed:", trackingError)
 		}
 
-		return data({ ok: true, token, email })
+		return data({ ok: true, token, email, emailSent, emailError })
 	}
 
 	if (intent === "updateRole") {
@@ -390,7 +441,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			supabase: client,
 			account_id: accountId,
 			user_id: memberId,
-			role: mapPermissionToAccountRoleForRpc(permission),
+			role: mapPermissionToAccountRole(permission),
 		})
 		if (result.error) return data({ ok: false, message: result.error.message }, { status: 500 })
 		return data({ ok: true })
@@ -434,7 +485,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			}
 		} catch {}
 
-		// Create a new invitation (replaces the old one since invitee_email is unique per account)
+		// Create a new invitation (the trigger will replace the old one)
 		const result = await dbCreateInvitation({
 			supabase: client,
 			account_id: accountId,
@@ -448,6 +499,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			typeof (result.data as { token?: unknown } | null)?.token === "string"
 				? (result.data as { token: string }).token
 				: undefined
+
+		// Track email send status
+		let emailSent = false
+		let emailError: string | null = null
 
 		// Send the invitation email
 		if (token) {
@@ -472,12 +527,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					),
 				})
 				consola.success("[RESEND INVITE] Email sent", { to: email })
+				emailSent = true
 			} catch (err) {
 				consola.error("[RESEND INVITE] Failed to send email", { error: err })
+				emailError = err instanceof Error ? err.message : "Failed to send email"
 			}
 		}
 
-		return data({ ok: true, resent: true })
+		return data({ ok: true, resent: true, emailSent, emailError })
 	}
 
 	if (intent === "revokeShareLink") {
@@ -903,15 +960,17 @@ function mapAccountRoleToPermission(role: "owner" | "member" | "viewer"): Permis
 			return "can-view"
 	}
 }
-// For RPCs that only accept 'owner' | 'member'
-function mapPermissionToAccountRoleForRpc(permission: PermissionLevel): "owner" | "member" {
+// Map UI permission levels to database account roles
+function mapPermissionToAccountRole(permission: PermissionLevel): "owner" | "member" | "viewer" {
 	switch (permission) {
 		case "admin":
 			return "owner"
 		case "can-edit":
 			return "member"
+		case "can-view":
+			return "viewer"
 		default:
-			return "member" // fallback to member when 'viewer' is not supported in RPC type
+			return "member"
 	}
 }
 

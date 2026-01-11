@@ -51,6 +51,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		"A teammate"
 	const inviterEmail = typeof ctx.claims?.email === "string" ? ctx.claims.email : undefined
 
+	// Check if target email is already a member of this account
+	const { data: isMember, error: memberCheckError } = await supabase.rpc("is_email_account_member", {
+		check_account_id: accountId,
+		check_email: targetEmail,
+	})
+	if (memberCheckError) {
+		consola.warn("[share-invite] Failed to check existing membership", { error: memberCheckError })
+		// Continue anyway - the invitation will still work
+	} else if (isMember === true) {
+		return Response.json(
+			{ error: "This person is already a member of this team. They can access this resource directly." },
+			{ status: 400 }
+		)
+	}
+
 	try {
 		// Create a proper team invitation
 		const { data: inviteData, error: inviteError } = await createInvitation({
