@@ -1682,19 +1682,30 @@ export default function InterviewDetail({
   const _primaryParticipant = participants[0]?.people;
 
   // Calculate transcript speakers for the Manage Participants dialog
+  // Derive from transcript_formatted utterances since speaker_transcripts column was removed
   const transcriptSpeakers = useMemo(() => {
-    const speakerTranscripts = interview.speaker_transcripts as
-      | Array<{ speaker: string; text?: string }>
+    const transcriptData = interview.transcript_formatted as
+      | { utterances?: Array<{ speaker: string }> }
       | null
       | undefined;
 
-    if (!speakerTranscripts || !Array.isArray(speakerTranscripts)) {
+    if (
+      !transcriptData?.utterances ||
+      !Array.isArray(transcriptData.utterances)
+    ) {
       return [];
     }
 
+    // Extract unique speakers from utterances
+    const uniqueSpeakers = new Set<string>();
+    for (const utterance of transcriptData.utterances) {
+      if (utterance.speaker) {
+        uniqueSpeakers.add(utterance.speaker);
+      }
+    }
+
     // Convert to TranscriptSpeaker format with proper labels
-    return speakerTranscripts.map((st, idx) => {
-      const key = st.speaker;
+    return Array.from(uniqueSpeakers).map((key) => {
       // Generate a display label based on the speaker key format
       let label = key;
       // participant-0, participant-1 -> Speaker A, B
@@ -1714,7 +1725,7 @@ export default function InterviewDetail({
       }
       return { key, label };
     });
-  }, [interview.speaker_transcripts]);
+  }, [interview.transcript_formatted]);
   const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? [];
   const conversationUpdatedLabel =
     conversationAnalysis?.updatedAt &&

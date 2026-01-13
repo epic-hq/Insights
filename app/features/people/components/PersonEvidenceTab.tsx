@@ -71,6 +71,30 @@ interface SurveyResponse {
   }>;
 }
 
+interface ResearchLinkQuestion {
+  id: string;
+  prompt: string;
+  type: string;
+  options?: string[];
+  likertScale?: number;
+  likertLabels?: { low: string; high: string };
+}
+
+interface ResearchLinkResponse {
+  id: string;
+  email: string;
+  responses: Record<string, unknown> | null;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+  research_links: {
+    id: string;
+    name: string;
+    slug: string;
+    questions: ResearchLinkQuestion[] | null;
+  } | null;
+}
+
 interface PersonEvidenceTabProps {
   /** All interview/source links from interview_people */
   allInterviewLinks: InterviewLink[];
@@ -78,6 +102,8 @@ interface PersonEvidenceTabProps {
   relatedAssets: RelatedAsset[];
   /** Grouped survey Q&A responses from evidence_facet */
   surveyResponses: SurveyResponse[];
+  /** Research link responses from ask links */
+  researchLinkResponses: ResearchLinkResponse[];
   /** Route helpers */
   routes: {
     interviews: { detail: (id: string) => string };
@@ -148,6 +174,7 @@ export function PersonEvidenceTab({
   allInterviewLinks,
   relatedAssets,
   surveyResponses,
+  researchLinkResponses,
   routes,
 }: PersonEvidenceTabProps) {
   const [filter, setFilter] = useState<SourceFilter>("all");
@@ -230,9 +257,10 @@ export function PersonEvidenceTab({
 
   // Check if we have any imported data to show
   const hasImportedData = surveyResponses.length > 0;
+  const hasAskLinkResponses = researchLinkResponses.length > 0;
 
   // Empty state
-  if (allEvidence.length === 0 && !hasImportedData) {
+  if (allEvidence.length === 0 && !hasImportedData && !hasAskLinkResponses) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground/50" />
@@ -373,41 +401,120 @@ export function PersonEvidenceTab({
 
       {/* Imported Data Section */}
       {hasImportedData && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ClipboardList className="h-4 w-4" />
-              Imported Data
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {surveyResponses.map((survey) => (
-              <div key={survey.interviewId} className="space-y-3">
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-medium text-base">
+            <ClipboardList className="h-4 w-4" />
+            Imported Data
+          </h3>
+          {surveyResponses.map((survey) => (
+            <Card key={survey.interviewId}>
+              <CardHeader className="pb-2">
                 <Link
                   to={routes.interviews.detail(survey.interviewId)}
                   className="font-medium text-sm transition-colors hover:text-primary"
                 >
                   {survey.interviewTitle}
                 </Link>
-                <div className="space-y-2">
-                  {survey.responses.map((response) => (
-                    <div
-                      key={response.id}
-                      className="rounded-lg border-l-2 border-muted-foreground/20 bg-muted/30 py-2 pl-4 pr-3"
-                    >
-                      <p className="font-medium text-foreground text-sm">
-                        Q: {response.question}
-                      </p>
-                      <p className="mt-1 text-muted-foreground text-sm">
-                        A: "{response.answer}"
-                      </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {survey.responses.map((response) => (
+                  <div key={response.id} className="space-y-1">
+                    <p className="text-muted-foreground text-sm">
+                      {response.question}
+                    </p>
+                    <p className="text-foreground text-sm">{response.answer}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Ask Link Responses Section */}
+      {hasAskLinkResponses && (
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 font-medium text-base">
+            <MessageCircle className="h-4 w-4" />
+            Ask Link Responses
+          </h3>
+          {researchLinkResponses.map((response) => {
+            const responsesData = response.responses as Record<
+              string,
+              unknown
+            > | null;
+            const questions = response.research_links?.questions ?? [];
+
+            // Get answered questions in order
+            const answeredQuestions = questions.filter(
+              (q) =>
+                responsesData?.[q.id] !== undefined &&
+                responsesData?.[q.id] !== null &&
+                responsesData?.[q.id] !== "",
+            );
+
+            return (
+              <Card key={response.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">
+                      {response.research_links?.name || "Ask Link"}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={response.completed ? "default" : "secondary"}
+                      >
+                        {response.completed ? "Completed" : "In Progress"}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        {new Date(response.created_at).toLocaleDateString(
+                          undefined,
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {answeredQuestions.length > 0 ? (
+                    answeredQuestions.map((question) => {
+                      const answer = responsesData?.[question.id];
+                      const formattedAnswer =
+                        typeof answer === "string"
+                          ? answer
+                          : Array.isArray(answer)
+                            ? answer.join(", ")
+                            : typeof answer === "number"
+                              ? question.type === "likert"
+                                ? `${answer}/${question.likertScale || 5}`
+                                : String(answer)
+                              : JSON.stringify(answer);
+
+                      return (
+                        <div key={question.id} className="space-y-1">
+                          <p className="text-muted-foreground text-sm">
+                            {question.prompt}
+                          </p>
+                          <p className="text-foreground text-sm">
+                            {formattedAnswer}
+                          </p>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      No responses recorded
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -126,6 +126,29 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       .order("created_at", { ascending: false })
       .limit(20);
 
+    // Fetch research link responses for this person
+    const { data: researchLinkResponses } = await supabase
+      .from("research_link_responses")
+      .select(
+        `
+				id,
+				email,
+				responses,
+				completed,
+				created_at,
+				updated_at,
+				research_links (
+					id,
+					name,
+					slug,
+					questions
+				)
+			`,
+      )
+      .eq("person_id", personId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
     const relatedAssets = (linkedAssets || [])
       .filter((link) => link.project_assets)
       .map((link) => ({
@@ -313,6 +336,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       assetsCount: relatedAssets.length,
       surveyResponsesCount: surveyResponsesList.length,
       themesCount: personThemes.length,
+      researchLinkResponsesCount: researchLinkResponses?.length ?? 0,
     });
     return {
       person: personWithFacetSummaries,
@@ -321,6 +345,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       relatedAssets,
       surveyResponses: surveyResponsesList,
       personThemes,
+      researchLinkResponses: researchLinkResponses ?? [],
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -674,6 +699,7 @@ export default function PersonDetail() {
     relatedAssets,
     surveyResponses,
     personThemes,
+    researchLinkResponses,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const _organizationActionData = actionData?.organization;
@@ -1103,6 +1129,7 @@ export default function PersonDetail() {
               allInterviewLinks={allInterviewLinks}
               relatedAssets={relatedAssets}
               surveyResponses={surveyResponses}
+              researchLinkResponses={researchLinkResponses}
               routes={routes}
             />
           </TabsContent>

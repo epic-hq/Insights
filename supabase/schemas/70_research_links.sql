@@ -32,6 +32,8 @@ create table if not exists public.research_link_responses (
     research_link_id uuid not null references public.research_links (id) on delete cascade,
     person_id uuid references public.people (id) on delete set null,
     email text not null,
+    first_name text,
+    last_name text,
     responses jsonb not null default '{}'::jsonb,
     response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
     video_url text,

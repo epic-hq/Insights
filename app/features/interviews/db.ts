@@ -142,7 +142,8 @@ export const getInterviewById = async ({
 			share_token,
 			share_enabled,
 			share_expires_at,
-			speaker_transcripts
+			transcript_formatted,
+			conversation_analysis
 		`,
     )
     .eq("project_id", projectId)
