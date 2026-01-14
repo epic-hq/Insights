@@ -32,6 +32,13 @@ See `docs/20-features-prds/features/onboarding/sidebar-ux-analysis.md`
 
 ## Recently Completed
 
+### Research Links Chat Mode Fixes (Jan 2025) ✅
+- Fixed tool signatures to use `execute: async (input)` pattern with responseId/slug as input params
+- Created shared db functions in `app/features/research-links/db.ts` (saveResearchLinkAnswer, markResearchLinkComplete)
+- Fixed agent repeating itself by sending full message history (no memory system)
+- Added signup CTA in chat completion encouraging getupsight.com/sign-up
+- Added "Review your answers" button on form completion stage
+
 ### Task System (Nov 2024) ✅
 - Database schema: `tasks`, `task_activity`, `agent_task_runs`
 - Full CRUD in `app/features/tasks/db.ts`
