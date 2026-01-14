@@ -2,7 +2,8 @@ import type { ActionFunctionArgs } from "react-router"
 import { getServerEnv } from "~/env.server"
 import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server"
 
-const { RECALL_API_KEY } = getServerEnv()
+const { RECALL_API_KEY, RECALL_API_URL } = getServerEnv()
+const DEFAULT_RECALL_API_URL = "https://api.recall.ai"
 
 /**
  * POST /api/desktop/recall-token
@@ -53,8 +54,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Recall.ai integration not configured" }, { status: 500 })
 		}
 
+		const baseUrl = (RECALL_API_URL || DEFAULT_RECALL_API_URL).replace(/\/+$/, "")
+		const endpointUrl = `${baseUrl}/api/v1/sdk_upload/`
+
 		// Generate upload token from Recall.ai
-		const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/desktop-sdk-uploads/", {
+		const recallResponse = await fetch(endpointUrl, {
 			method: "POST",
 			headers: {
 				Authorization: `Token ${RECALL_API_KEY}`,
@@ -71,8 +75,22 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (!recallResponse.ok) {
 			const errorText = await recallResponse.text()
-			console.error("Recall.ai token generation failed:", errorText)
-			return Response.json({ error: "Failed to generate upload token" }, { status: 502 })
+			console.error("Recall.ai token generation failed:", {
+				status: recallResponse.status,
+				url: endpointUrl,
+				body: errorText,
+			})
+			return Response.json(
+				{
+					error: "Failed to generate upload token",
+					recall: {
+						status: recallResponse.status,
+						url: endpointUrl,
+						body: errorText,
+					},
+				},
+				{ status: 502 }
+			)
 		}
 
 		const recallData = await recallResponse.json()

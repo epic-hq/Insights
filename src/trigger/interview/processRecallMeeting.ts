@@ -40,14 +40,24 @@ interface ProcessRecallMeetingPayload {
   transcriptUrl: string | null;
 }
 
-async function downloadRecallTranscript(
-  url: string,
-): Promise<RecallTranscriptEntry[]> {
+async function downloadRecallTranscript(url: string): Promise<{
+  rawText: string;
+  parsed?: RecallTranscriptEntry[];
+}> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to download transcript: ${response.status}`);
   }
-  return response.json();
+  const rawText = await response.text();
+  try {
+    const parsed = JSON.parse(rawText);
+    if (Array.isArray(parsed)) {
+      return { rawText, parsed: parsed as RecallTranscriptEntry[] };
+    }
+  } catch {
+    // Fall back to raw text transcript
+  }
+  return { rawText };
 }
 
 function transformRecallTranscript(
@@ -135,20 +145,39 @@ export const processRecallMeetingTask = task({
           `[ProcessRecallMeeting] Downloading transcript from Recall.ai`,
         );
         const recallTranscript = await downloadRecallTranscript(transcriptUrl);
-        transcriptData = transformRecallTranscript(recallTranscript);
 
-        consola.info(
-          `[ProcessRecallMeeting] Transformed ${recallTranscript.length} entries to ${transcriptData.utterances.length} utterances`,
+        if (recallTranscript.parsed) {
+          transcriptData = transformRecallTranscript(recallTranscript.parsed);
+
+          consola.info(
+            `[ProcessRecallMeeting] Transformed ${recallTranscript.parsed.length} entries to ${transcriptData.utterances.length} utterances`,
+          );
+
+          // Update interview with transcript
+          await client
+            .from("interviews")
+            .update({
+              transcript: transcriptData.full_transcript,
+              duration_sec: Math.round(transcriptData.audio_duration),
+            })
+            .eq("id", interviewId);
+        } else if (recallTranscript.rawText.trim().length > 0) {
+          consola.warn(
+            `[ProcessRecallMeeting] Recall transcript was not JSON; saving raw text`,
+          );
+          await client
+            .from("interviews")
+            .update({ transcript: recallTranscript.rawText })
+            .eq("id", interviewId);
+        } else {
+          consola.warn(
+            `[ProcessRecallMeeting] Recall transcript was empty`,
+          );
+        }
+      } else {
+        consola.warn(
+          `[ProcessRecallMeeting] No transcript URL provided for recording ${recordingId}`,
         );
-
-        // Update interview with transcript
-        await client
-          .from("interviews")
-          .update({
-            transcript: transcriptData.full_transcript,
-            duration_sec: Math.round(transcriptData.audio_duration),
-          })
-          .eq("id", interviewId);
       }
 
       metadata.set("stageLabel", "Processing media");

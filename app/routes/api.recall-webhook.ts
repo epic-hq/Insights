@@ -102,9 +102,26 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ received: true, interview_id: existing.id })
 		}
 
-		// Get video and transcript URLs
-		const videoUrl = media_shortcuts?.video_mixed?.data?.download_url
-		const transcriptUrl = media_shortcuts?.transcript?.data?.download_url
+		// Get video and transcript URLs (allow minor payload shape variations)
+		const videoUrl =
+			media_shortcuts?.video_mixed?.data?.download_url ??
+			media_shortcuts?.video_mixed?.data?.url ??
+			media_shortcuts?.video_mixed?.download_url ??
+			null
+		const transcriptUrl =
+			media_shortcuts?.transcript?.data?.download_url ??
+			media_shortcuts?.transcript?.data?.url ??
+			media_shortcuts?.transcript?.download_url ??
+			(webhook.data as { transcript?: { download_url?: string } })?.transcript?.download_url ??
+			null
+
+		if (!transcriptUrl) {
+			console.warn("Recall webhook missing transcript URL", {
+				recordingId,
+				event: webhook.event,
+				media_shortcuts: media_shortcuts?.transcript?.status?.code,
+			})
+		}
 
 		// Create interview record
 		const { data: interview, error: createError } = await supabase

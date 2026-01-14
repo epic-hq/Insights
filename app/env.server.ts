@@ -48,6 +48,7 @@ const envSchema = z.object({
 
 	// Recall.ai Desktop SDK
 	RECALL_API_KEY: z.string().optional(),
+	RECALL_API_URL: z.string().optional(),
 	RECALL_WEBHOOK_SECRET: z.string().optional(),
 
 	// Payload CMS
@@ -80,6 +81,8 @@ function initEnv() {
 		// or the previously used DEFAULT_EMAIL_FROM / DEFAULT_EMAIL_FROM_NAME
 		DEFAULT_FROM_EMAIL: process.env.DEFAULT_FROM_EMAIL ?? process.env.DEFAULT_EMAIL_FROM,
 		DEFAULT_FROM_EMAIL_NAME: process.env.DEFAULT_FROM_EMAIL_NAME ?? process.env.DEFAULT_EMAIL_FROM_NAME,
+		// Backward-compatibility: allow legacy RECALLAI_API_KEY
+		RECALL_API_KEY: process.env.RECALL_API_KEY ?? process.env.RECALLAI_API_KEY,
 	}
 
 	const envData = envSchema.safeParse(rawEnv)
