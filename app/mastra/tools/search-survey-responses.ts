@@ -214,14 +214,14 @@ export const searchSurveyResponsesTool = createTool({
       let responsesQuery = supabase
         .from("research_link_responses")
         .select(
-          "id, research_link_id, responses, completed_at, person_id, person:people(id, name)",
+          "id, research_link_id, responses, completed, person_id, person:people(id, name)",
         )
         .in("research_link_id", linkIds)
         .order("created_at", { ascending: false })
         .limit(input.limit ?? 20);
 
       if (input.completedOnly) {
-        responsesQuery = responsesQuery.not("completed_at", "is", null);
+        responsesQuery = responsesQuery.eq("completed", true);
       }
 
       if (input.personId) {
@@ -253,9 +253,7 @@ export const searchSurveyResponsesTool = createTool({
         if (linkResponses.length === 0) continue;
 
         totalResponses += linkResponses.length;
-        const completedCount = linkResponses.filter(
-          (r) => r.completed_at,
-        ).length;
+        const completedCount = linkResponses.filter((r) => r.completed).length;
 
         // Parse questions
         const questions = (link.questions as QuestionDefinition[]) ?? [];
