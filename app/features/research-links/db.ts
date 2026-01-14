@@ -166,7 +166,7 @@ export async function saveResearchLinkAnswer({
 }
 
 /**
- * Mark a research link response as complete
+ * Mark a research link response as complete and trigger evidence extraction
  */
 export async function markResearchLinkComplete({
   supabase,
@@ -182,6 +182,19 @@ export async function markResearchLinkComplete({
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Trigger background task to extract evidence from text responses
+  try {
+    const { extractSurveyEvidenceTask } =
+      await import("~/../src/trigger/survey/extractSurveyEvidence");
+    await extractSurveyEvidenceTask.trigger({ responseId });
+  } catch (triggerError) {
+    // Log but don't fail - the response is marked complete
+    console.error(
+      `[markResearchLinkComplete] Failed to trigger evidence extraction:`,
+      triggerError,
+    );
   }
 
   return { success: true };
