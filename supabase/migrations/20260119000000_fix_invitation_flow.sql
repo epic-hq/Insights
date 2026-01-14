@@ -42,7 +42,7 @@ BEGIN
     FROM accounts.invitations i
     WHERE i.invitee_email IS NOT NULL
       AND lower(i.invitee_email) = lower(current_email)
-      AND i.created_at > now() - interval '24 hours'  -- Only show non-expired invitations
+      AND i.created_at > now() - interval '3 days'  -- Only show non-expired invitations
   );
 END;
 $$;
@@ -59,7 +59,7 @@ TO authenticated
 USING (
   invitee_email IS NOT NULL
   AND lower(invitee_email) = lower(auth.jwt() ->> 'email')
-  AND created_at > now() - interval '24 hours'  -- Only show non-expired invitations
+  AND created_at > now() - interval '3 days'  -- Only show non-expired invitations
 );
 
 -- ============================================================================
@@ -83,7 +83,7 @@ BEGIN
     INTO invitation_record
     FROM accounts.invitations
     WHERE token = lookup_invitation_token
-      AND created_at > now() - interval '24 hours'
+      AND created_at > now() - interval '3 days'
     LIMIT 1;
 
     RETURN json_build_object(
@@ -114,14 +114,14 @@ BEGIN
             SELECT 1 FROM accounts.invitations
             WHERE account_id = NEW.account_id
               AND lower(invitee_email) = lower(NEW.invitee_email)
-              AND created_at > now() - interval '24 hours'
+              AND created_at > now() - interval '3 days'
               AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid)
         ) THEN
             -- Delete the old invitation and allow the new one (effectively "replace")
             DELETE FROM accounts.invitations
             WHERE account_id = NEW.account_id
               AND lower(invitee_email) = lower(NEW.invitee_email)
-              AND created_at > now() - interval '24 hours'
+              AND created_at > now() - interval '3 days'
               AND id != COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid);
         END IF;
     END IF;
@@ -148,7 +148,7 @@ BEGIN
     SELECT COUNT(*) INTO invitation_count
     FROM accounts.invitations
     WHERE account_id = NEW.account_id
-      AND created_at > now() - interval '24 hours';
+      AND created_at > now() - interval '3 days';
 
     IF invitation_count >= rate_limit THEN
         RAISE EXCEPTION 'Rate limit exceeded: Maximum % invitations per day per account', rate_limit;
@@ -249,12 +249,12 @@ BEGIN
     INSERT INTO accounts.invitation_audit (invitation_id, account_id, action, invitee_email, account_role)
     SELECT id, account_id, 'expired', invitee_email, account_role
     FROM accounts.invitations
-    WHERE created_at <= now() - interval '24 hours';
+    WHERE created_at <= now() - interval '3 days';
 
     -- Delete expired invitations
     WITH deleted AS (
         DELETE FROM accounts.invitations
-        WHERE created_at <= now() - interval '24 hours'
+        WHERE created_at <= now() - interval '3 days'
         RETURNING *
     )
     SELECT COUNT(*) INTO deleted_count FROM deleted;

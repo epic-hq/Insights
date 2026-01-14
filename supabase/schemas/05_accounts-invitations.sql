@@ -80,7 +80,7 @@ alter table accounts.invitations
     for select
     to authenticated
     using (
-            created_at > (now() - interval '24 hours')
+            created_at > (now() - interval '3 days')
         and
             accounts.has_role_on_account(account_id, 'owner') = true
     );
@@ -146,7 +146,7 @@ BEGIN
                        )
             from accounts.invitations i
             where i.account_id = get_account_invitations.account_id
-              and i.created_at > now() - interval '24 hours'
+              and i.created_at > now() - interval '3 days'
             limit coalesce(get_account_invitations.results_limit, 25) offset coalesce(get_account_invitations.results_offset, 0));
 END;
 $$;
@@ -175,7 +175,7 @@ begin
     from accounts.invitations i
              join accounts.accounts a on a.id = i.account_id
     where i.token = lookup_invitation_token
-      and i.created_at > now() - interval '24 hours';
+      and i.created_at > now() - interval '3 days';
 
     if lookup_account_id IS NULL then
         raise exception 'Invitation not found';
@@ -222,7 +222,7 @@ begin
     into invitation_record
     from accounts.invitations
     where token = lookup_invitation_token
-      and created_at > now() - interval '24 hours'
+      and created_at > now() - interval '3 days'
     limit 1;
     return json_build_object(
         'active', coalesce(invitation_record.active, false),

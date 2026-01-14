@@ -8,7 +8,7 @@ TO authenticated
 USING (
   invitee_email IS NOT NULL
   AND lower(invitee_email) = lower(auth.jwt() ->> 'email')
-  AND created_at > now() - interval '24 hours'  -- Only show non-expired invitations
+  AND created_at > now() - interval '3 days'  -- Only show non-expired invitations
 );
 
 -- List pending invitations for the currently authenticated user's email
@@ -45,7 +45,7 @@ BEGIN
     FROM accounts.invitations i
     WHERE i.invitee_email IS NOT NULL
       AND lower(i.invitee_email) = lower(current_email)
-      AND i.created_at > now() - interval '24 hours'  -- Only show non-expired invitations
+      AND i.created_at > now() - interval '3 days'  -- Only show non-expired invitations
   );
 END;
 $$;
