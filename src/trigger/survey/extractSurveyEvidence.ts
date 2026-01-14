@@ -40,49 +40,47 @@ export const extractSurveyEvidenceTask = schemaTask({
       `[extractSurveyEvidence] Starting for response: ${responseId}`,
     );
 
-    // 1. Load the response with its research link (for questions) and person
+    // 1. Load the response first
     const { data: response, error: responseError } = await db
       .from("research_link_responses")
       .select(
-        `
-        id,
-        research_link_id,
-        person_id,
-        email,
-        first_name,
-        last_name,
-        responses,
-        research_link:research_links (
-          id,
-          account_id,
-          project_id,
-          name,
-          questions
-        )
-      `,
+        "id, research_link_id, person_id, email, first_name, last_name, responses",
       )
       .eq("id", responseId)
       .single();
 
-    if (responseError || !response) {
+    if (responseError) {
+      consola.error(
+        `[extractSurveyEvidence] Supabase error for ${responseId}:`,
+        responseError,
+      );
+      throw new Error(
+        `Failed to fetch response ${responseId}: ${responseError.message}`,
+      );
+    }
+
+    if (!response) {
       throw new Error(`Response not found: ${responseId}`);
     }
 
-    const researchLink = response.research_link as {
-      id: string;
-      account_id: string;
-      project_id: string | null;
-      name: string;
-      questions: unknown;
-    } | null;
+    // 2. Load the research link separately
+    const { data: researchLinkData, error: linkError } = await db
+      .from("research_links")
+      .select("id, account_id, project_id, name, questions")
+      .eq("id", response.research_link_id)
+      .single();
 
-    if (!researchLink) {
+    if (linkError || !researchLinkData) {
+      consola.error(
+        `[extractSurveyEvidence] Failed to fetch research link:`,
+        linkError,
+      );
       throw new Error(`Research link not found for response: ${responseId}`);
     }
 
-    const { account_id, project_id, name: surveyName } = researchLink;
-    const questions = Array.isArray(researchLink.questions)
-      ? (researchLink.questions as Array<{
+    const { account_id, project_id, name: surveyName } = researchLinkData;
+    const questions = Array.isArray(researchLinkData.questions)
+      ? (researchLinkData.questions as Array<{
           id: string;
           prompt: string;
           type: string;
