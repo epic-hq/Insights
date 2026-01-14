@@ -43,9 +43,7 @@ export const extractSurveyEvidenceTask = schemaTask({
     // 1. Load the response first
     const { data: response, error: responseError } = await db
       .from("research_link_responses")
-      .select(
-        "id, research_link_id, person_id, email, first_name, last_name, responses",
-      )
+      .select("id, research_link_id, person_id, email, responses")
       .eq("id", responseId)
       .single();
 
