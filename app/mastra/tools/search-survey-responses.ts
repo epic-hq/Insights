@@ -64,6 +64,12 @@ export const searchSurveyResponsesTool = createTool({
   description:
     "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback from research links. Returns statistics for likert/select questions and ALL text answers for open-ended questions. This searches the actual survey response data, not evidence records.",
   inputSchema: z.object({
+    projectId: z
+      .string()
+      .uuid()
+      .optional()
+      .nullable()
+      .describe("Project ID to search within (defaults to runtime context)"),
     query: z
       .string()
       .optional()
@@ -149,10 +155,16 @@ export const searchSurveyResponsesTool = createTool({
   execute: async (input, context?) => {
     const supabase = supabaseAdmin as SupabaseClient<Database>;
     const runtimeProjectId = context?.requestContext?.get?.("project_id");
-    const projectId = runtimeProjectId ? String(runtimeProjectId).trim() : null;
+    // Allow input.projectId to override runtime context; handle empty strings properly
+    const runtimeProjectIdStr = runtimeProjectId
+      ? String(runtimeProjectId).trim()
+      : undefined;
+    const projectId = input.projectId ?? (runtimeProjectIdStr || null);
 
     consola.info("search-survey-responses: execute start", {
-      projectId,
+      inputProjectId: input.projectId,
+      runtimeProjectId: runtimeProjectIdStr,
+      resolvedProjectId: projectId,
       query: input.query,
       researchLinkId: input.researchLinkId,
       personId: input.personId,
@@ -164,7 +176,8 @@ export const searchSurveyResponsesTool = createTool({
     if (!projectId) {
       return {
         success: false,
-        message: "Missing project context. Ensure project_id is available.",
+        message:
+          "Missing project context. Pass projectId parameter or ensure x-projectid header is set.",
         surveys: [],
         totalResponses: 0,
       };
@@ -256,7 +269,8 @@ export const searchSurveyResponsesTool = createTool({
         const completedCount = linkResponses.filter((r) => r.completed).length;
 
         // Parse questions
-        const questions = (link.questions as QuestionDefinition[]) ?? [];
+        const questions =
+          (link.questions as unknown as QuestionDefinition[]) ?? [];
         const filteredQuestions = input.questionTypes
           ? questions.filter((q) => input.questionTypes?.includes(q.type))
           : questions;
@@ -266,7 +280,7 @@ export const searchSurveyResponsesTool = createTool({
         for (const question of filteredQuestions) {
           const summary = aggregateQuestionResponses(
             question,
-            linkResponses as ResponseRow[],
+            linkResponses as unknown as ResponseRow[],
             input.includeTextResponses ?? true,
           );
           questionSummaries.push(summary);

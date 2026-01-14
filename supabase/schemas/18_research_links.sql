@@ -21,9 +21,13 @@ create table if not exists public.research_links (
     walkthrough_video_url text,
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
     is_live boolean not null default false,
+    statistics jsonb default null,
+    stats_updated_at timestamptz default null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+comment on column public.research_links.statistics is 'Computed aggregate statistics from survey responses. Structure: { computedAt: timestamp, responseCount: number, completedCount: number, questions: [{ questionId, prompt, type, responseCount, stats: { average?, distribution?, percentages? }, topResponses?: [] }] }';
 
 alter table public.research_links
     add constraint research_links_slug_key unique (slug);

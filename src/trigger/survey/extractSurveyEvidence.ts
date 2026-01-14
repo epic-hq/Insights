@@ -203,6 +203,23 @@ export const extractSurveyEvidenceTask = schemaTask({
       `[extractSurveyEvidence] Complete for response ${responseId}: ${insertedIds.length} evidence records`,
     );
 
+    // 6. Trigger stats recomputation for this survey
+    try {
+      const { computeSurveyStatsTask } = await import("./computeSurveyStats");
+      await computeSurveyStatsTask.trigger({
+        researchLinkId: response.research_link_id,
+      });
+      consola.info(
+        `[extractSurveyEvidence] Triggered stats recomputation for ${response.research_link_id}`,
+      );
+    } catch (statsError) {
+      // Non-fatal: stats can be recomputed later
+      consola.warn(
+        `[extractSurveyEvidence] Failed to trigger stats computation:`,
+        statsError,
+      );
+    }
+
     return {
       success: true,
       evidenceCount: insertedIds.length,
