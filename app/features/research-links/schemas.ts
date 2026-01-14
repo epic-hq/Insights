@@ -103,6 +103,7 @@ export const ResearchLinkPayloadSchema = z.object({
   description: textField,
   heroTitle: textField,
   heroSubtitle: textField,
+  instructions: textField,
   heroCtaLabel: textField,
   heroCtaHelper: textField,
   calendarUrl: z
@@ -193,6 +194,7 @@ export const ResearchLinkResponseSaveSchema = z.object({
     .optional()
     .default({}),
   completed: z.boolean().optional(),
+  merge: z.boolean().optional().default(false), // If true, merge responses with existing instead of replacing
 });
 
 export type ResearchLinkResponsePayload = z.infer<

@@ -48,10 +48,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     );
   }
 
-  const { responseId, responses, completed } = parsed.data;
+  const { responseId, responses, completed, merge } = parsed.data;
   const { data: existing, error: existingError } = await supabase
     .from("research_link_responses")
-    .select("id, email, evidence_id")
+    .select("id, email, evidence_id, responses")
     .eq("id", responseId)
     .eq("research_link_id", list.id)
     .maybeSingle();
@@ -64,7 +64,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return Response.json({ message: "Response not found" }, { status: 404 });
   }
 
-  const nextResponses = responses ?? {};
+  // If merge is true, combine with existing responses instead of replacing
+  let nextResponses = responses ?? {};
+  if (merge && existing.responses) {
+    const existingResponses =
+      (existing.responses as Record<string, unknown>) ?? {};
+    nextResponses = { ...existingResponses, ...responses };
+  }
   const { error: updateError } = await supabase
     .from("research_link_responses")
     .update({

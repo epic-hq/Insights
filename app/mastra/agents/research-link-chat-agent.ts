@@ -1,62 +1,102 @@
 /**
  * Mastra agent for conversational survey experience
  */
-import { anthropic } from "@ai-sdk/anthropic"
-import { Agent } from "@mastra/core/agent"
-import { z } from "zod"
-import { markSurveyCompleteTool, saveResearchResponseTool } from "../tools/save-research-response"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { anthropic } from "@ai-sdk/anthropic";
+import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
+import {
+  markSurveyCompleteTool,
+  saveResearchResponseTool,
+} from "../tools/save-research-response";
+// import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const researchLinkChatAgent = new Agent({
-	id: "research-link-chat-agent",
-	name: "researchLinkChatAgent",
-	instructions: async ({ requestContext }) => {
-		const surveyName = requestContext?.get("survey_name") ?? "Survey"
-		const surveyContext = requestContext?.get("survey_context") ?? ""
-		const accountName = requestContext?.get("account_name") ?? "the team"
-		const questionsJson = requestContext?.get("questions") ?? "[]"
-		const answeredJson = requestContext?.get("answered_questions") ?? "[]"
-		const nextQuestion = requestContext?.get("next_question") ?? ""
+  id: "research-link-chat-agent",
+  name: "researchLinkChatAgent",
+  instructions: async ({ requestContext }) => {
+    const surveyName = requestContext?.get("survey_name") ?? "Survey";
+    const surveyContext = requestContext?.get("survey_context") ?? "";
+    const surveyInstructions = requestContext?.get("survey_instructions") ?? "";
+    const accountName = requestContext?.get("account_name") ?? "the team";
+    const questionsJson = requestContext?.get("questions") ?? "[]";
+    const answeredJson = requestContext?.get("answered_questions") ?? "[]";
+    const nextQuestionJson = requestContext?.get("next_question_full") ?? "";
+    const hasMessageHistory =
+      requestContext?.get("has_message_history") === "true";
+    const responseId = requestContext?.get("response_id") ?? "";
+    const slug = requestContext?.get("slug") ?? "";
 
-		let questions: Array<{ id: string; prompt: string; required: boolean }> = []
-		let answered: Array<{ id: string; prompt: string; answer: string }> = []
+    let questions: Array<{
+      id: string;
+      prompt: string;
+      type: string;
+      required: boolean;
+    }> = [];
+    let answered: Array<{ id: string; prompt: string; answer: string }> = [];
+    let nextQuestion: { id: string; prompt: string; type: string } | null =
+      null;
 
-		try {
-			questions = JSON.parse(String(questionsJson))
-			answered = JSON.parse(String(answeredJson))
-		} catch {
-			// ignore parse errors
-		}
+    try {
+      questions = JSON.parse(String(questionsJson));
+      answered = JSON.parse(String(answeredJson));
+      if (nextQuestionJson) {
+        nextQuestion = JSON.parse(String(nextQuestionJson));
+      }
+    } catch {
+      // ignore parse errors
+    }
 
-		return `You are a friendly research assistant helping ${accountName} gather feedback through a conversational survey.
+    // Only show START instruction if no message history AND no answered questions
+    const isFirstMessage = answered.length === 0 && !hasMessageHistory;
+
+    // Format question with type hints
+    const formatQuestion = (q: { prompt: string; type: string }) => {
+      if (q.type === "likert") {
+        return `${q.prompt} (ask for 1-5 rating)`;
+      }
+      if (q.type === "multiselect") {
+        return `${q.prompt} (can list multiple)`;
+      }
+      return q.prompt;
+    };
+
+    return `You are a research assistant for ${accountName}. Keep responses ULTRA brief.
 
 Survey: "${surveyName}"
 ${surveyContext ? `Context: ${surveyContext}` : ""}
+${surveyInstructions ? `\nNote: ${surveyInstructions}` : ""}
 
-Your job is to:
-1. Ask survey questions one at a time in a natural, conversational way
-2. After each user response, IMMEDIATELY call save-research-response with the questionId and answer
-3. Acknowledge answers briefly (1 sentence) then ask the next question
-4. When all questions are answered, call mark-survey-complete and thank them
+SESSION INFO (ALWAYS include in tool calls):
+- responseId: "${responseId}"
+- slug: "${slug}"
 
-Questions to ask (in order):
-${questions.map((q, i) => `${i + 1}. [ID: ${q.id}] ${q.prompt}${q.required ? " (required)" : " (optional)"}`).join("\n")}
+WORKFLOW:
+1. When user answers, call save-research-response with: questionId, answer, responseId, slug
+2. Give a 3-5 word acknowledgment + ask next question
+3. When all done, call mark-survey-complete with: responseId, slug
 
-Current progress:
-- Answered: ${answered.length}/${questions.length}
-${answered.map((q) => `  ✓ "${q.prompt}": "${q.answer}"`).join("\n")}
-${nextQuestion ? `- Next question: "${nextQuestion}"` : "- All questions answered! Call mark-survey-complete."}
+Questions (in order):
+${questions.map((q, i) => `${i + 1}. [ID: ${q.id}] [TYPE: ${q.type}] ${q.prompt}`).join("\n")}
 
-CRITICAL RULES:
-- ALWAYS call save-research-response immediately after user answers (don't wait)
-- Use the exact question ID from the list above
-- Keep responses short - 1-2 sentences max
-- Don't number questions or make it feel like a form
-- Be warm but efficient`
-	},
-	model: anthropic("claude-sonnet-4-20250514"),
-	tools: wrapToolsWithStatusEvents({
-		"save-research-response": saveResearchResponseTool,
-		"mark-survey-complete": markSurveyCompleteTool,
-	}),
-})
+Progress: ${answered.length}/${questions.length} answered
+${answered.length > 0 ? answered.map((q) => `✓ ${q.prompt}: "${q.answer}"`).join("\n") : ""}
+
+${nextQuestion ? `NEXT: [ID: ${nextQuestion.id}] ${formatQuestion(nextQuestion)}` : "ALL DONE - call mark-survey-complete, thank them, and mention: 'Want insights from your own conversations? Create a free account at https://getupsight.com/sign-up'"}
+
+${isFirstMessage ? `START: Brief greeting then ask: "${nextQuestion ? formatQuestion(nextQuestion) : ""}"` : "CONTINUE: Process the user's latest message. Do NOT repeat greetings or previous questions."}
+
+RULES:
+- ALWAYS include responseId and slug when calling tools
+- Max 2 sentences total per response
+- For likert: ask for 1-5 rating
+- NEVER repeat questions
+- NEVER restart the survey
+- When complete, mention the signup link`;
+  },
+  model: anthropic("claude-sonnet-4-20250514"),
+  // Temporarily remove wrapper to debug context passing
+  tools: {
+    "save-research-response": saveResearchResponseTool,
+    "mark-survey-complete": markSurveyCompleteTool,
+  },
+});

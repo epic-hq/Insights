@@ -2,14 +2,18 @@
  * Public survey page with both form and AI chat modes
  */
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
+  Calendar,
   Check,
   CheckCircle2,
+  ClipboardList,
   Copy,
   Loader2,
+  MessageSquare,
   Mic,
   Send,
   Share2,
@@ -25,6 +29,8 @@ import {
 } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import { useLoaderData } from "react-router-dom";
+import { Streamdown } from "streamdown";
+import { Logo } from "~/components/branding";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
@@ -49,9 +55,303 @@ import {
   ResearchLinkQuestionSchema,
 } from "~/features/research-links/schemas";
 import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { z } from "zod";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { cn } from "~/lib/utils";
 import { createR2PresignedUrl } from "~/utils/r2.server";
+
+const emailSchema = z.string().email();
+
+// Type definitions used by ChatSection (moved before component)
+type ResponseValue = string | string[] | boolean | null;
+type ResponseRecord = Record<string, ResponseValue>;
+
+/**
+ * Chat section component - isolated to ensure useChat is initialized with valid responseId
+ */
+function ChatSection({
+  slug,
+  responseId,
+  responses,
+  questions,
+  allowVideo,
+  onComplete,
+  onVideoStage,
+  renderModeSwitcher,
+}: {
+  slug: string;
+  responseId: string;
+  responses: ResponseRecord;
+  questions: ResearchLinkQuestion[];
+  allowVideo: boolean;
+  onComplete: () => void;
+  onVideoStage: () => void;
+  renderModeSwitcher: () => React.ReactNode;
+}) {
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const [chatInput, setChatInput] = useState("");
+  const hasStartedChat = useRef(false);
+
+  // Create transport with body that gets refreshed with current responses
+  const transport = useMemo(() => {
+    return new DefaultChatTransport({
+      api: `/api/research-links/${slug}/chat`,
+      body: {
+        responseId,
+        currentResponses: responses,
+      },
+    });
+  }, [slug, responseId, responses]);
+
+  const {
+    messages,
+    sendMessage,
+    status,
+    error: chatError,
+  } = useChat({
+    id: `research-chat-${responseId}`,
+    transport,
+  });
+
+  const isChatLoading = status === "streaming" || status === "submitted";
+
+  // Voice input for chat
+  const handleChatVoiceTranscription = useCallback((text: string) => {
+    setChatInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+  }, []);
+
+  const {
+    isRecording: isChatVoiceRecording,
+    isTranscribing: isChatTranscribing,
+    error: chatVoiceError,
+    toggleRecording: toggleChatRecording,
+    isSupported: isVoiceSupported,
+  } = useSpeechToText({ onTranscription: handleChatVoiceTranscription });
+
+  const chatVoiceButtonState: VoiceButtonState = chatVoiceError
+    ? "error"
+    : isChatTranscribing
+      ? "processing"
+      : isChatVoiceRecording
+        ? "recording"
+        : "idle";
+
+  // Auto-scroll chat
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Auto-focus chat input
+  useEffect(() => {
+    if (chatInputRef.current && !isChatLoading) {
+      chatInputRef.current.focus();
+    }
+  }, [isChatLoading]);
+
+  // Helper to extract text content from message parts
+  const getMessageText = useCallback(
+    (message: (typeof messages)[0]): string => {
+      if (!message.parts) return "";
+      return message.parts
+        .filter((p) => p.type === "text")
+        .map((p) => (p as { type: "text"; text: string }).text)
+        .join("")
+        .trim();
+    },
+    [],
+  );
+
+  // Auto-start chat when component mounts
+  useEffect(() => {
+    console.log("[research-link-chat] ChatSection mounted, auto-starting", {
+      messagesLength: messages.length,
+      hasStartedChat: hasStartedChat.current,
+      status,
+    });
+
+    if (
+      messages.length === 0 &&
+      !hasStartedChat.current &&
+      status === "ready"
+    ) {
+      console.log("[research-link-chat] sending initial message");
+      hasStartedChat.current = true;
+      sendMessage({
+        text: "Hi, I'm ready to share my feedback. Please start with your first question.",
+      });
+    }
+  }, [messages.length, status, sendMessage]);
+
+  // Check if survey is complete after each message
+  useEffect(() => {
+    if (messages.length === 0 || status === "streaming") return;
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role !== "assistant") return;
+
+    const text = getMessageText(lastMessage).toLowerCase();
+    const isComplete = text.includes("thank you") && text.includes("response");
+    if (isComplete) {
+      saveProgress(slug, { responseId, responses, completed: true }).then(
+        () => {
+          if (allowVideo) {
+            onVideoStage();
+          } else {
+            onComplete();
+          }
+        },
+      );
+    }
+  }, [
+    messages,
+    status,
+    getMessageText,
+    slug,
+    responseId,
+    responses,
+    allowVideo,
+    onVideoStage,
+    onComplete,
+  ]);
+
+  return (
+    <div className="space-y-4">
+      {/* Chat messages */}
+      <div
+        ref={chatContainerRef}
+        className="h-[350px] space-y-3 overflow-y-auto pr-2"
+      >
+        {/* Show error if any */}
+        {chatError && (
+          <div className="rounded-lg bg-red-500/20 border border-red-500/30 px-3 py-2 text-sm text-red-200">
+            Something went wrong. Please try again or switch to form mode.
+          </div>
+        )}
+        {/* Show initial loading state before first message arrives */}
+        {messages.length === 0 && !chatError && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-white/10 px-4 py-2.5 text-sm text-white/90">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Starting conversation...</span>
+              </div>
+            </div>
+          </div>
+        )}
+        {messages
+          .filter((m, i) => {
+            const text = getMessageText(m);
+            return !(
+              i === 0 &&
+              m.role === "user" &&
+              text.includes("I'm ready to share my feedback")
+            );
+          })
+          .map((message) => {
+            const text = getMessageText(message);
+            if (!text && message.role === "assistant") {
+              // Show loading for empty assistant message
+              return (
+                <div key={message.id} className="flex justify-start">
+                  <div className="rounded-2xl rounded-bl-md bg-white/10 px-4 py-2.5">
+                    <Loader2 className="h-4 w-4 animate-spin text-white/50" />
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div
+                key={message.id}
+                className={cn(
+                  "flex",
+                  message.role === "user" ? "justify-end" : "justify-start",
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
+                    message.role === "user"
+                      ? "rounded-br-md bg-white text-black"
+                      : "rounded-bl-md bg-white/10 text-white/90",
+                  )}
+                >
+                  {text}
+                </div>
+              </div>
+            );
+          })}
+        {/* Only show trailing spinner if the last message has text (not an empty streaming message) */}
+        {isChatLoading &&
+          messages.length > 0 &&
+          getMessageText(messages[messages.length - 1]) !== "" && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl rounded-bl-md bg-white/10 px-4 py-2.5">
+                <Loader2 className="h-4 w-4 animate-spin text-white/50" />
+              </div>
+            </div>
+          )}
+      </div>
+
+      {/* Chat input */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!chatInput.trim() || isChatLoading) return;
+          sendMessage({ text: chatInput.trim() });
+          setChatInput("");
+        }}
+        className="flex items-end gap-2"
+      >
+        <div className="relative flex-1">
+          <Textarea
+            ref={chatInputRef}
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (chatInput.trim() && !isChatLoading) {
+                  sendMessage({ text: chatInput.trim() });
+                  setChatInput("");
+                }
+              }
+            }}
+            placeholder="Type your response..."
+            rows={3}
+            className="resize-none border-white/10 bg-black/40 pr-12 text-white placeholder:text-white/40"
+            disabled={isChatLoading}
+          />
+          {isVoiceSupported && (
+            <div className="-translate-y-1/2 absolute top-1/2 right-2">
+              <VoiceButton
+                size="icon"
+                variant="ghost"
+                state={chatVoiceButtonState}
+                onPress={toggleChatRecording}
+                icon={<Mic className="h-4 w-4" />}
+                className="h-8 w-8 text-white/50 hover:bg-white/10 hover:text-white"
+              />
+            </div>
+          )}
+        </div>
+        <Button
+          type="submit"
+          size="icon"
+          disabled={isChatLoading || !chatInput.trim()}
+          className="h-10 w-10 shrink-0 bg-white text-black hover:bg-white/90"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
+
+      {/* Mode switcher at bottom */}
+      {renderModeSwitcher()}
+    </div>
+  );
+}
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) {
@@ -75,7 +375,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const { data: list, error } = await supabase
     .from("research_links")
     .select(
-      "id, name, slug, description, hero_title, hero_subtitle, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id",
+      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -129,12 +429,14 @@ type LoaderData = {
     description: string | null;
     hero_title: string | null;
     hero_subtitle: string | null;
+    instructions: string | null;
     hero_cta_label: string | null;
     hero_cta_helper: string | null;
     redirect_url: string | null;
     calendar_url: string | null;
     questions: unknown;
     allow_chat: boolean;
+    allow_voice: boolean;
     allow_video: boolean;
     walkthrough_video_url: string | null;
     default_response_mode: "form" | "chat" | "voice" | null;
@@ -146,9 +448,7 @@ type LoaderData = {
 };
 
 type Stage = "email" | "name" | "survey" | "video" | "complete";
-type Mode = "form" | "chat";
-type ResponseValue = string | string[] | boolean | null;
-type ResponseRecord = Record<string, ResponseValue>;
+type Mode = "form" | "chat" | "voice";
 
 type StartSignupResult = {
   responseId: string;
@@ -218,8 +518,129 @@ export default function ResearchLinkPage() {
   const [error, setError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(
+    null,
+  );
+  const [isReviewing, setIsReviewing] = useState(false);
 
   const resolvedMode = list.allow_chat ? mode : "form";
+  const hasMultipleModes = list.allow_chat || list.allow_voice;
+  const isEmailValid = emailSchema.safeParse(email).success;
+
+  // Handle mode switch with response refresh
+  const handleModeSwitch = useCallback(
+    async (newMode: Mode) => {
+      if (newMode === mode) return;
+
+      // If we have a responseId and are in survey stage, refresh responses from DB
+      if (responseId && stage === "survey" && email) {
+        try {
+          const result = await startSignup(slug, {
+            email,
+            responseId,
+            responseMode: newMode,
+          });
+          setResponses(result.responses || {});
+          // Update current answer if in form mode
+          if (newMode === "form") {
+            const existingValue =
+              result.responses?.[questions[currentIndex]?.id];
+            setCurrentAnswer(existingValue ?? "");
+          }
+        } catch {
+          // If refresh fails, just switch mode anyway
+        }
+      }
+      setMode(newMode);
+    },
+    [mode, responseId, stage, email, slug, questions, currentIndex],
+  );
+
+  // Mode switcher component for survey stages
+  const renderModeSwitcher = () => {
+    if (!hasMultipleModes) return null;
+    return (
+      <div className="flex items-center justify-center gap-1 py-2">
+        <button
+          type="button"
+          onClick={() => void handleModeSwitch("form")}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all",
+            resolvedMode === "form"
+              ? "bg-white/20 text-white"
+              : "text-white/50 hover:text-white/80",
+          )}
+        >
+          <ClipboardList className="h-3.5 w-3.5" />
+          Form
+        </button>
+        {list.allow_chat && (
+          <button
+            type="button"
+            onClick={() => void handleModeSwitch("chat")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all",
+              resolvedMode === "chat"
+                ? "bg-white/20 text-white"
+                : "text-white/50 hover:text-white/80",
+            )}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Chat
+          </button>
+        )}
+        {list.allow_voice && (
+          <button
+            type="button"
+            onClick={() => void handleModeSwitch("voice")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all",
+              resolvedMode === "voice"
+                ? "bg-violet-500/30 text-white"
+                : "text-white/50 hover:text-white/80",
+            )}
+          >
+            <Mic className="h-3.5 w-3.5" />
+            Voice
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  // Countdown timer for redirect
+  useEffect(() => {
+    if (redirectCountdown === null || redirectCountdown <= 0) return;
+    const timer = setTimeout(() => {
+      setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [redirectCountdown]);
+
+  // Redirect when countdown reaches 0
+  useEffect(() => {
+    if (redirectCountdown === 0 && list.redirect_url) {
+      window.location.href = list.redirect_url;
+    }
+  }, [redirectCountdown, list.redirect_url]);
+
+  const cancelRedirect = useCallback(() => {
+    setRedirectCountdown(null);
+  }, []);
+
+  const handleStartOver = useCallback(() => {
+    window.localStorage.removeItem(storageKey);
+    setStage("email");
+    setEmail("");
+    setFirstName("");
+    setLastName("");
+    setResponseId(null);
+    setResponses({});
+    setCurrentIndex(0);
+    setCurrentAnswer("");
+    setRedirectCountdown(null);
+    setError(null);
+  }, [storageKey]);
 
   // Get the current page URL for sharing
   const shareUrl =
@@ -230,38 +651,6 @@ export default function ResearchLinkPage() {
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   }, [shareUrl]);
-
-  // Chat mode state
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const [chatInput, setChatInput] = useState("");
-  const {
-    messages,
-    isLoading: isChatLoading,
-    append,
-  } = useChat({
-    api: `/api/research-links/${slug}/chat`,
-    body: {
-      responseId,
-      currentResponses: responses,
-    },
-    onFinish: async (message) => {
-      // After AI responds, try to extract and save any answers from the conversation
-      await extractAndSaveAnswers(message.content);
-    },
-  });
-
-  // Voice input for chat
-  const handleChatVoiceTranscription = useCallback((text: string) => {
-    setChatInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
-  }, []);
-
-  const {
-    isRecording: isChatVoiceRecording,
-    isTranscribing: isChatTranscribing,
-    error: chatVoiceError,
-    toggleRecording: toggleChatRecording,
-    isSupported: isVoiceSupported,
-  } = useSpeechToText({ onTranscription: handleChatVoiceTranscription });
 
   // Voice input for form mode
   const handleFormVoiceTranscription = useCallback((text: string) => {
@@ -276,16 +665,8 @@ export default function ResearchLinkPage() {
     isTranscribing: isFormTranscribing,
     error: formVoiceError,
     toggleRecording: toggleFormRecording,
+    isSupported: isVoiceSupported,
   } = useSpeechToText({ onTranscription: handleFormVoiceTranscription });
-
-  // Chat voice button state
-  const chatVoiceButtonState: VoiceButtonState = chatVoiceError
-    ? "error"
-    : isChatTranscribing
-      ? "processing"
-      : isChatVoiceRecording
-        ? "recording"
-        : "idle";
 
   // Form voice button state
   const formVoiceButtonState: VoiceButtonState = formVoiceError
@@ -295,65 +676,6 @@ export default function ResearchLinkPage() {
       : isFormVoiceRecording
         ? "recording"
         : "idle";
-
-  // Auto-scroll chat
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Extract answers from chat conversation and save them
-  const extractAndSaveAnswers = useCallback(
-    async (aiResponse: string) => {
-      // This is a simple extraction - in production you might want the AI to return structured data
-      // For now, we'll just save the conversation and let the backend handle extraction later
-      if (!responseId) return;
-
-      // Check if all questions have been asked (AI will mention completion)
-      const isComplete =
-        aiResponse.toLowerCase().includes("thank you") &&
-        aiResponse.toLowerCase().includes("responses");
-
-      if (isComplete) {
-        // Mark as complete
-        await saveProgress(slug, {
-          responseId,
-          responses,
-          completed: true,
-        });
-        // If video is enabled, go to video stage first
-        if (list.allow_video) {
-          setStage("video");
-        } else {
-          setStage("complete");
-        }
-      }
-    },
-    [responseId, responses, slug, list.allow_video],
-  );
-
-  // Start chat with initial AI message when entering chat mode
-  const hasStartedChat = useRef(false);
-  useEffect(() => {
-    if (
-      stage === "survey" &&
-      resolvedMode === "chat" &&
-      messages.length === 0 &&
-      responseId &&
-      !hasStartedChat.current &&
-      typeof append === "function"
-    ) {
-      hasStartedChat.current = true;
-      // Trigger initial AI message using append
-      append({
-        role: "user",
-        content: "Hi, I'm ready to share my feedback.",
-      });
-    }
-  }, [stage, resolvedMode, messages.length, responseId, append]);
 
   useEffect(() => {
     if (!list.allow_chat && mode === "chat") {
@@ -552,9 +874,7 @@ export default function ResearchLinkPage() {
         } else {
           setStage("complete");
           if (list.redirect_url) {
-            setTimeout(() => {
-              window.location.href = list.redirect_url;
-            }, 3000);
+            setRedirectCountdown(7);
           }
         }
       } else {
@@ -575,6 +895,18 @@ export default function ResearchLinkPage() {
       const prevIndex = currentIndex - 1;
       setCurrentIndex(prevIndex);
       setCurrentAnswer(responses[questions[prevIndex]?.id] ?? "");
+    }
+  }
+
+  function handleJumpToQuestion(targetIndex: number) {
+    if (targetIndex < 0 || targetIndex >= questions.length) return;
+    // Allow jumping to any answered question or current question
+    const isAnswered = hasResponseValue(responses[questions[targetIndex]?.id]);
+    const isCurrent = targetIndex === currentIndex;
+    const isPrevious = targetIndex < currentIndex;
+    if (isAnswered || isCurrent || isPrevious) {
+      setCurrentIndex(targetIndex);
+      setCurrentAnswer(responses[questions[targetIndex]?.id] ?? "");
     }
   }
 
@@ -636,6 +968,81 @@ export default function ResearchLinkPage() {
                   </p>
                 )}
 
+                {/* Instructions (optional detailed guidance) */}
+                {list.instructions && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 prose prose-sm prose-invert prose-p:text-white/60 prose-p:text-xs prose-p:leading-relaxed prose-ul:text-white/60 prose-ul:text-xs prose-li:text-white/60 prose-li:text-xs max-w-none">
+                    <Streamdown>{list.instructions}</Streamdown>
+                  </div>
+                )}
+
+                {/* Mode selector - show when multiple modes available */}
+                {(list.allow_chat || list.allow_voice || list.calendar_url) && (
+                  <div className="space-y-2">
+                    <p className="text-white/60 text-xs">
+                      How would you like to respond?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMode("form")}
+                        className={cn(
+                          "flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+                          mode === "form"
+                            ? "border-white bg-white/10 text-white"
+                            : "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80",
+                        )}
+                      >
+                        <ClipboardList className="h-5 w-5" />
+                        <span className="text-xs font-medium">Form</span>
+                      </button>
+                      {list.allow_chat && (
+                        <button
+                          type="button"
+                          onClick={() => setMode("chat")}
+                          className={cn(
+                            "flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all",
+                            mode === "chat"
+                              ? "border-white bg-white/10 text-white"
+                              : "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80",
+                          )}
+                        >
+                          <MessageSquare className="h-5 w-5" />
+                          <span className="text-xs font-medium">Chat</span>
+                        </button>
+                      )}
+                      {list.allow_voice && (
+                        <button
+                          type="button"
+                          onClick={() => setMode("voice")}
+                          className={cn(
+                            "flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 transition-all relative",
+                            mode === "voice"
+                              ? "border-violet-400 bg-violet-500/20 text-white"
+                              : "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80",
+                          )}
+                        >
+                          <Mic className="h-5 w-5" />
+                          <span className="text-xs font-medium">Voice</span>
+                          <span className="absolute -top-1 -right-1 rounded bg-violet-500 px-1 py-0.5 text-[8px] font-bold text-white">
+                            NEW
+                          </span>
+                        </button>
+                      )}
+                      {list.calendar_url && (
+                        <a
+                          href={list.calendar_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
+                        >
+                          <Calendar className="h-5 w-5" />
+                          <span className="text-xs font-medium">Call</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Email field */}
                 <div className="space-y-2">
                   <Label htmlFor={emailId} className="text-white/90">
@@ -658,9 +1065,9 @@ export default function ResearchLinkPage() {
                 <div className="flex justify-end">
                   <Button
                     type="submit"
-                    disabled={isSaving}
+                    disabled={isSaving || !isEmailValid}
                     size="sm"
-                    className="bg-white text-black hover:bg-white/90"
+                    className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
                   >
                     {isSaving ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -755,8 +1162,8 @@ export default function ResearchLinkPage() {
                     transition={{ duration: 0.2 }}
                     className="space-y-3"
                   >
-                    <div className="rounded-xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-5">
-                      <h2 className="mb-1 font-medium text-white">
+                    <div className="rounded-xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-4 sm:p-5">
+                      <h2 className="mb-1 font-medium text-base text-white sm:text-lg">
                         {currentQuestion.prompt}
                         {currentQuestion.required && (
                           <span className="ml-1 text-red-400">*</span>
@@ -769,7 +1176,7 @@ export default function ResearchLinkPage() {
                       )}
                       <div
                         className={cn(
-                          "max-w-md space-y-6",
+                          "space-y-6",
                           !currentQuestion.helperText && "mt-4",
                         )}
                       >
@@ -793,158 +1200,115 @@ export default function ResearchLinkPage() {
                             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
                             Back
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() =>
-                              void handleAnswerSubmit(currentAnswer)
-                            }
-                            disabled={isSaving}
-                            className="bg-white text-black hover:bg-white/90"
-                          >
-                            {isSaving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : currentIndex === questions.length - 1 ? (
-                              "Submit"
-                            ) : (
-                              "Next"
-                            )}
-                            <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                          </Button>
+                          {isReviewing ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => {
+                                if (currentIndex === questions.length - 1) {
+                                  setIsReviewing(false);
+                                  setStage("complete");
+                                } else {
+                                  setCurrentIndex(currentIndex + 1);
+                                  setCurrentAnswer(
+                                    responses[
+                                      questions[currentIndex + 1]?.id
+                                    ] ?? "",
+                                  );
+                                }
+                              }}
+                              className="bg-white text-black hover:bg-white/90"
+                            >
+                              {currentIndex === questions.length - 1
+                                ? "Done"
+                                : "Next"}
+                              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() =>
+                                void handleAnswerSubmit(currentAnswer)
+                              }
+                              disabled={
+                                isSaving || !hasResponseValue(currentAnswer)
+                              }
+                              className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : currentIndex === questions.length - 1 ? (
+                                "Submit"
+                              ) : (
+                                "Next"
+                              )}
+                              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Progress dots */}
-                    <div className="flex items-center justify-center gap-1.5 pt-2">
-                      {questions.map((question, idx) => (
-                        <div
-                          key={question.id}
-                          className={cn(
-                            "h-2 w-2 rounded-full transition-all duration-300",
-                            idx < currentIndex
-                              ? "bg-emerald-400"
-                              : idx === currentIndex
-                                ? "bg-emerald-400 ring-2 ring-emerald-400/30"
-                                : "bg-white/20",
-                          )}
-                        />
-                      ))}
+                    {/* Progress indicator - clickable numbers */}
+                    <div className="flex items-center justify-center gap-1.5 pt-3">
+                      {questions.map((q, idx) => {
+                        const isAnswered = hasResponseValue(responses[q.id]);
+                        const isCurrent = idx === currentIndex;
+                        const canJump =
+                          isAnswered || isCurrent || idx < currentIndex;
+                        return (
+                          <button
+                            key={q.id}
+                            type="button"
+                            onClick={() => handleJumpToQuestion(idx)}
+                            disabled={!canJump}
+                            className={cn(
+                              "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-all",
+                              isCurrent
+                                ? "bg-white text-black ring-2 ring-white/30"
+                                : isAnswered
+                                  ? "bg-emerald-500/80 text-white hover:bg-emerald-500"
+                                  : "bg-white/10 text-white/40",
+                              canJump && !isCurrent && "cursor-pointer",
+                              !canJump && "cursor-not-allowed opacity-50",
+                            )}
+                            title={
+                              isCurrent
+                                ? "Current question"
+                                : isAnswered
+                                  ? `Jump to question ${idx + 1}`
+                                  : `Question ${idx + 1} (not yet answered)`
+                            }
+                          >
+                            {idx + 1}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {/* Mode switcher */}
+                    {renderModeSwitcher()}
                   </motion.div>
                 </AnimatePresence>
               )}
 
             {/* Survey stage - Chat mode */}
-            {stage === "survey" && resolvedMode === "chat" && (
-              <div className="space-y-4">
-                {/* Chat messages */}
-                <div
-                  ref={chatContainerRef}
-                  className="h-[400px] space-y-3 overflow-y-auto pr-2"
-                >
-                  {messages
-                    .filter(
-                      (m, i) =>
-                        !(
-                          i === 0 &&
-                          m.content === "Hi, I'm ready to share my feedback."
-                        ),
-                    )
-                    .map((message) => (
-                      <div
-                        key={message.id}
-                        className={cn(
-                          "flex",
-                          message.role === "user"
-                            ? "justify-end"
-                            : "justify-start",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
-                            message.role === "user"
-                              ? "rounded-br-md bg-white text-black"
-                              : "rounded-bl-md bg-white/10 text-white/90",
-                          )}
-                        >
-                          {message.content}
-                        </div>
-                      </div>
-                    ))}
-                  {isChatLoading && (
-                    <div className="flex justify-start">
-                      <div className="rounded-2xl rounded-bl-md bg-white/10 px-4 py-2.5">
-                        <Loader2 className="h-4 w-4 animate-spin text-white/50" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Chat input */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (
-                      !chatInput.trim() ||
-                      isChatLoading ||
-                      typeof append !== "function"
-                    )
-                      return;
-                    append({ role: "user", content: chatInput.trim() });
-                    setChatInput("");
-                  }}
-                  className="flex items-end gap-2"
-                >
-                  <div className="relative flex-1">
-                    <Textarea
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          if (
-                            chatInput.trim() &&
-                            !isChatLoading &&
-                            typeof append === "function"
-                          ) {
-                            append({
-                              role: "user",
-                              content: chatInput.trim(),
-                            });
-                            setChatInput("");
-                          }
-                        }
-                      }}
-                      placeholder="Type your response..."
-                      rows={2}
-                      className="resize-none border-white/10 bg-black/40 pr-12 text-white placeholder:text-white/40"
-                      disabled={isChatLoading}
-                    />
-                    {isVoiceSupported && (
-                      <div className="-translate-y-1/2 absolute top-1/2 right-2">
-                        <VoiceButton
-                          size="icon"
-                          variant="ghost"
-                          state={chatVoiceButtonState}
-                          onPress={toggleChatRecording}
-                          icon={<Mic className="h-4 w-4" />}
-                          className="h-8 w-8 text-white/50 hover:bg-white/10 hover:text-white"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={isChatLoading || !chatInput.trim()}
-                    className="h-10 w-10 shrink-0 bg-white text-black hover:bg-white/90"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-              </div>
+            {stage === "survey" && resolvedMode === "chat" && responseId && (
+              <ChatSection
+                slug={slug}
+                responseId={responseId}
+                responses={responses}
+                questions={questions}
+                allowVideo={list.allow_video}
+                onComplete={() => {
+                  setStage("complete");
+                  if (list.redirect_url) {
+                    setRedirectCountdown(7);
+                  }
+                }}
+                onVideoStage={() => setStage("video")}
+                renderModeSwitcher={renderModeSwitcher}
+              />
             )}
 
             {/* Video stage */}
@@ -968,17 +1332,13 @@ export default function ResearchLinkPage() {
                   onComplete={() => {
                     setStage("complete");
                     if (list.redirect_url) {
-                      setTimeout(() => {
-                        window.location.href = list.redirect_url;
-                      }, 3000);
+                      setRedirectCountdown(7);
                     }
                   }}
                   onSkip={() => {
                     setStage("complete");
                     if (list.redirect_url) {
-                      setTimeout(() => {
-                        window.location.href = list.redirect_url;
-                      }, 3000);
+                      setRedirectCountdown(7);
                     }
                   }}
                 />
@@ -999,6 +1359,29 @@ export default function ResearchLinkPage() {
                     Your responses have been saved.
                   </p>
                 </div>
+
+                {/* Calendar booking */}
+                {list.calendar_url && (
+                  <div className="w-full space-y-3 border-white/10 border-t pt-4">
+                    <div className="flex items-center justify-center gap-2 text-sm text-white/60">
+                      <Calendar className="h-4 w-4" />
+                      Want to discuss your feedback?
+                    </div>
+                    <Button
+                      asChild
+                      className="w-full gap-2 bg-white text-black hover:bg-white/90"
+                    >
+                      <a
+                        href={list.calendar_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        Book a call
+                      </a>
+                    </Button>
+                  </div>
+                )}
 
                 {/* Share section */}
                 <div className="w-full space-y-3 border-white/10 border-t pt-4">
@@ -1025,9 +1408,44 @@ export default function ResearchLinkPage() {
                   </Button>
                 </div>
 
-                {list.redirect_url && (
-                  <p className="text-white/40 text-xs">Redirecting...</p>
+                {list.redirect_url && redirectCountdown !== null && (
+                  <div className="flex items-center gap-3">
+                    <p className="text-white/40 text-xs">
+                      Redirecting in {redirectCountdown}s...
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelRedirect}
+                      className="h-6 px-2 text-white/40 text-xs hover:bg-white/10 hover:text-white"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 )}
+
+                {/* Review answers option */}
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setCurrentIndex(0);
+                    setIsReviewing(true);
+                    setStage("survey");
+                  }}
+                  className="w-full gap-2 text-white/60 hover:bg-white/10 hover:text-white"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  Review your answers
+                </Button>
+
+                {/* Start over option */}
+                <button
+                  type="button"
+                  onClick={handleStartOver}
+                  className="text-white/40 text-xs underline-offset-2 hover:text-white/60 hover:underline"
+                >
+                  Start over with a different email
+                </button>
               </motion.div>
             )}
           </CardContent>
@@ -1041,33 +1459,22 @@ export default function ResearchLinkPage() {
             rel="noreferrer"
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-white/40 text-xs transition hover:text-white/60"
           >
-            <svg
-              className="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Logo size={5} />
             Powered by UpSight
           </a>
         </div>
 
         {/* Growth CTA */}
         <p className="mt-3 text-center text-sm text-white/60">
-          Need answers to your own questions?{" "}
+          {/* Need answers to your own questions?{" "} */}
           <a
             href="https://getupsight.com/sign-up"
             target="_blank"
             rel="noreferrer"
             className="font-medium text-white hover:text-white"
           >
-            Get them when you Ask with a free account
+            Get answers to your questions
+            <div>with a free account</div>
           </a>
         </p>
       </div>
@@ -1184,7 +1591,7 @@ function renderQuestionInput({
               type="button"
               onClick={() => onChange(String(point))}
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-medium transition-all",
+                "flex h-10 w-10 items-center justify-center rounded-lg border font-medium text-sm transition-all",
                 selectedValue === String(point)
                   ? "border-white bg-white text-black"
                   : "border-white/20 bg-white/5 text-white/70 hover:border-white/40 hover:bg-white/10 hover:text-white",
@@ -1195,7 +1602,7 @@ function renderQuestionInput({
           ))}
         </div>
         {(resolved.labels.low || resolved.labels.high) && (
-          <div className="flex justify-between text-xs text-white/50">
+          <div className="flex justify-between text-white/50 text-xs">
             <span>{resolved.labels.low}</span>
             <span>{resolved.labels.high}</span>
           </div>
@@ -1235,7 +1642,7 @@ function renderQuestionInput({
             >
               <span
                 className={cn(
-                  "text-sm font-medium",
+                  "font-medium text-sm",
                   selectedValue === option.label
                     ? "text-black"
                     : "text-white/90",
@@ -1257,13 +1664,13 @@ function renderQuestionInput({
 
   if (resolved.kind === "textarea") {
     return (
-      <div className="relative">
+      <div className="relative w-full">
         <Textarea
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(event.target.value)}
           placeholder="Share your thoughts..."
           rows={4}
-          className="border-white/10 bg-black/30 pr-12 text-white placeholder:text-white/40"
+          className="w-full border-white/10 bg-black/30 pr-12 text-white placeholder:text-white/40"
         />
         {voiceSupported && toggleRecording && voiceButtonState && (
           <div className="absolute top-2 right-2">
