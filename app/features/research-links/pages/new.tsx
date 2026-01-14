@@ -192,7 +192,7 @@ export default function NewResearchLinkPage() {
 	const [heroSubtitle, setHeroSubtitle] = useState(actionData?.values?.heroSubtitle ?? "")
 	const [heroCtaLabel, setHeroCtaLabel] = useState(actionData?.values?.heroCtaLabel ?? "Continue")
 	const [heroCtaHelper, setHeroCtaHelper] = useState(
-		actionData?.values?.heroCtaHelper ?? "We’ll only contact you about this study"
+		actionData?.values?.heroCtaHelper ?? "Let's get started"
 	)
 	const [calendarUrl, setCalendarUrl] = useState(actionData?.values?.calendarUrl ?? "")
 	const [redirectUrl, setRedirectUrl] = useState(actionData?.values?.redirectUrl ?? "")

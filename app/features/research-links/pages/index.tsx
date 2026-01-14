@@ -16,7 +16,7 @@ import { ResearchLinkQuestionSchema } from "../schemas"
 
 export const meta: MetaFunction = () => {
 	return [
-		{ title: "Ask" },
+		{ title: "Surveys" },
 		{
 			name: "description",
 			content: "Create shareable links to collect responses from participants.",
@@ -176,9 +176,14 @@ function AskLinkCard({ list, questions, responsesCount, publicUrl, routes }: Ask
 							<Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
 							<span className="truncate text-muted-foreground">{copied ? "Copied!" : list.slug}</span>
 						</button>
-						<Button asChild size="sm">
-							<Link to={routes.ask.responses(list.id)}>View responses</Link>
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button asChild size="sm" variant="outline">
+								<Link to={routes.ask.edit(list.id)}>Edit</Link>
+							</Button>
+							<Button asChild size="sm">
+								<Link to={routes.ask.responses(list.id)}>View responses</Link>
+							</Button>
+						</div>
 					</div>
 
 					{/* Footer */}
@@ -206,25 +211,25 @@ export default function ResearchLinksIndexPage() {
 		<PageContainer className="space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-2">
-					<h1 className="font-semibold text-3xl">Asks</h1>
+					<h1 className="font-semibold text-3xl">Surveys</h1>
 					<p className="max-w-2xl text-muted-foreground text-sm">
 						Create shareable links to collect responses from participants using your interview prompts.
 					</p>
 				</div>
 				<Button asChild>
-					<Link to={routes.ask.new()}>New Ask link</Link>
+					<Link to={routes.ask.new()}>New survey</Link>
 				</Button>
 			</div>
 
 			{lists.length === 0 ? (
 				<div className="rounded-lg border border-dashed bg-muted/40 p-12 text-center">
 					<Link2 className="mx-auto h-10 w-10 text-muted-foreground" />
-					<h2 className="mt-4 font-semibold text-xl">Create your first Ask link</h2>
+					<h2 className="mt-4 font-semibold text-xl">Create your first survey</h2>
 					<p className="mx-auto mt-2 max-w-lg text-muted-foreground text-sm">
 						Define the headline, select questions from your prompts, and share the link to start collecting responses.
 					</p>
 					<Button asChild className="mt-4">
-						<Link to={routes.ask.new()}>Create Ask link</Link>
+						<Link to={routes.ask.new()}>Create survey</Link>
 					</Button>
 				</div>
 			) : (

@@ -1,7 +1,7 @@
-export const Logo = () => {
+export const Logo = ({ size = 8 }: { size?: number }) => {
 	return (
 		<svg
-			className="lucide lucide-scan-eye-icon h-8 w-8 text-brand"
+			className={`lucide lucide-scan-eye-icon h-${size} w-${size} text-brand`}
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke="currentColor"
@@ -16,7 +16,7 @@ export const Logo = () => {
 			<path d="M7 21H5a2 2 0 0 1-2-2v-2" />
 			<circle cx="12" cy="12" r="1" />
 			<path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0" />
-		</svg>
+		</svg >
 	)
 }
 

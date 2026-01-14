@@ -58,7 +58,7 @@ create table if not exists interviews (
   processing_metadata jsonb default '{}'::jsonb, -- processing state and progress tracking
   -- Survey/Ask link support (unified conversation architecture)
   draft_responses jsonb default '{}'::jsonb, -- in-progress survey answers saved in real-time
-  research_link_id uuid references public.research_links(id) on delete set null, -- FK to Ask link config
+  research_link_id uuid, -- FK to Ask link config (added later via ALTER to avoid circular deps)
   created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now(),
 	created_by uuid references auth.users (id),

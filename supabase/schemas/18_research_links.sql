@@ -9,6 +9,7 @@ create table if not exists public.research_links (
     description text,
     hero_title text,
     hero_subtitle text,
+    instructions text,
     hero_cta_label text default 'Start the survey',
     hero_cta_helper text,
     redirect_url text,
@@ -38,7 +39,7 @@ create table if not exists public.research_link_responses (
     response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
     video_url text,
     completed boolean not null default false,
-    evidence_id uuid references public.evidence (id) on delete set null,
+    evidence_id uuid, -- FK to evidence (added later via ALTER to avoid circular deps)
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );

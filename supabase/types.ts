@@ -1329,6 +1329,7 @@ export type Database = {
           personas: string[] | null
           project_answer_id: string | null
           project_id: string | null
+          research_link_response_id: string | null
           says: string[] | null
           segments: string[] | null
           source_type: string | null
@@ -1368,6 +1369,7 @@ export type Database = {
           personas?: string[] | null
           project_answer_id?: string | null
           project_id?: string | null
+          research_link_response_id?: string | null
           says?: string[] | null
           segments?: string[] | null
           source_type?: string | null
@@ -1407,6 +1409,7 @@ export type Database = {
           personas?: string[] | null
           project_answer_id?: string | null
           project_id?: string | null
+          research_link_response_id?: string | null
           says?: string[] | null
           segments?: string[] | null
           source_type?: string | null
@@ -1453,6 +1456,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_research_link_response_id_fkey"
+            columns: ["research_link_response_id"]
+            isOneToOne: false
+            referencedRelation: "research_link_responses"
             referencedColumns: ["id"]
           },
         ]
@@ -4911,6 +4921,7 @@ export type Database = {
           hero_subtitle: string | null
           hero_title: string | null
           id: string
+          instructions: string | null
           is_live: boolean
           name: string
           project_id: string | null
@@ -4934,6 +4945,7 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
+          instructions?: string | null
           is_live?: boolean
           name: string
           project_id?: string | null
@@ -4957,6 +4969,7 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
+          instructions?: string | null
           is_live?: boolean
           name?: string
           project_id?: string | null

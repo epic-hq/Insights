@@ -280,20 +280,22 @@ export function AppSidebar({ forceSidebarCollapsed = false }: AppSidebarProps) {
 		| "personas"
 		| "themes"
 		| "insights"
-		| "content"
-		| "people"
-		| "organizations"
-		| "accounts"
-		| "deals"
-		| "contacts"
-		| "opportunities"
-		| "highPriorityTasks"
-	> = {
+	| "content"
+	| "people"
+	| "organizations"
+	| "accounts"
+	| "deals"
+	| "contacts"
+	| "opportunities"
+	| "highPriorityTasks"
+	| "surveyResponses"
+> = {
 		// Main navigation
 		conversations: "encounters", // Conversations = encounters/interviews count
 		insights: "insights",
 		content: "content", // Content = conversations + notes + files
 		tasks: "highPriorityTasks", // Tasks = high priority tasks count
+		ask: "surveyResponses",
 
 		relationships: "people",
 

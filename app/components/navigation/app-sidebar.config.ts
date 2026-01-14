@@ -49,7 +49,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			},
 			{
 				key: "ask",
-				title: "Ask",
+				title: "Surveys",
 				description: "Send shareable links to collect responses.",
 				icon: Link2,
 				to: (routes) => routes.ask.index(),
