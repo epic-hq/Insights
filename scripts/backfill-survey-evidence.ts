@@ -9,11 +9,9 @@
  *   TRIGGER_SECRET_KEY=tr_prod_xxx pnpm tsx scripts/backfill-survey-evidence.ts
  *
  * Options (via environment variables):
- *   ACCOUNT_ID     - Filter to specific account
- *   PROJECT_ID     - Filter to specific project
+ *   PROJECT_ID       - Filter to specific project
  *   RESEARCH_LINK_ID - Filter to specific survey
- *   LIMIT          - Max responses to process (default: all)
- *   SKIP_EXISTING  - Skip responses with existing evidence (default: true)
+ *   FORCE            - Reprocess even if evidence exists (default: false)
  */
 
 import { tasks } from "@trigger.dev/sdk";
@@ -35,28 +33,22 @@ async function main() {
   );
 
   // Parse optional filters from environment
-  const accountId = process.env.ACCOUNT_ID || undefined;
   const projectId = process.env.PROJECT_ID || undefined;
   const researchLinkId = process.env.RESEARCH_LINK_ID || undefined;
-  const limit = process.env.LIMIT ? parseInt(process.env.LIMIT, 10) : undefined;
-  const skipExisting = process.env.SKIP_EXISTING !== "false";
+  const force = process.env.FORCE === "true";
 
   consola.start("Triggering survey evidence backfill task");
-  consola.info("Filters:", {
-    accountId: accountId || "(all)",
+  consola.info("Options:", {
     projectId: projectId || "(all)",
     researchLinkId: researchLinkId || "(all)",
-    limit: limit || "(no limit)",
-    skipExisting,
+    force,
   });
 
   try {
     const handle = await tasks.trigger("survey.backfill-evidence", {
-      accountId,
       projectId,
       researchLinkId,
-      limit,
-      skipExisting,
+      force,
     });
 
     consola.success(`Backfill task triggered: ${handle.id}`);

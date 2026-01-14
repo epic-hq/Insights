@@ -1,13 +1,11 @@
 /**
  * Backfill Survey Evidence Task
  *
- * Finds all completed survey responses and triggers evidence extraction
- * for each one. Use this to process existing data that was completed
- * before the extraction pipeline was added.
+ * Processes all existing completed survey responses that don't yet
+ * have evidence records. Can be run from Trigger.dev dashboard anytime.
  *
- * Can be triggered via:
- * - Script: `pnpm tsx scripts/backfill-survey-evidence.ts`
- * - Trigger.dev dashboard: manually trigger with optional filters
+ * Triggers extractSurveyEvidenceTask for each response, so individual
+ * responses are processed independently with their own retries.
  */
 
 import { schemaTask } from "@trigger.dev/sdk";
@@ -19,32 +17,27 @@ import { extractSurveyEvidenceTask } from "./extractSurveyEvidence";
 export const backfillSurveyEvidenceTask = schemaTask({
   id: "survey.backfill-evidence",
   schema: z.object({
-    // Optional filters
-    accountId: z.string().uuid().optional(),
+    /** If true, reprocess all responses even if they already have evidence */
+    force: z.boolean().default(false),
+    /** Optional: limit to specific project */
     projectId: z.string().uuid().optional(),
+    /** Optional: limit to specific research link */
     researchLinkId: z.string().uuid().optional(),
-    // Limit for testing
-    limit: z.number().min(1).max(1000).optional(),
-    // Skip responses that already have evidence
-    skipExisting: z.boolean().default(true),
   }),
   retry: {
-    maxAttempts: 1, // Don't retry the backfill itself
+    maxAttempts: 1, // Don't retry the backfill itself, individual tasks have retries
   },
   run: async (payload) => {
-    const { accountId, projectId, researchLinkId, limit, skipExisting } =
-      payload;
+    const { force, projectId, researchLinkId } = payload;
     const db = createSupabaseAdminClient();
 
     consola.info(`[backfillSurveyEvidence] Starting backfill`, {
-      accountId,
+      force,
       projectId,
       researchLinkId,
-      limit,
-      skipExisting,
     });
 
-    // Build query for completed responses
+    // 1. Find completed responses
     let query = db
       .from("research_link_responses")
       .select(
@@ -52,28 +45,18 @@ export const backfillSurveyEvidenceTask = schemaTask({
         id,
         research_link_id,
         research_link:research_links!inner (
-          id,
-          account_id,
           project_id
         )
       `,
       )
       .eq("completed", true);
 
-    // Apply optional filters
     if (researchLinkId) {
       query = query.eq("research_link_id", researchLinkId);
     }
-    if (accountId) {
-      query = query.eq("research_link.account_id", accountId);
-    }
+
     if (projectId) {
       query = query.eq("research_link.project_id", projectId);
-    }
-
-    // Apply limit
-    if (limit) {
-      query = query.limit(limit);
     }
 
     const { data: responses, error: queryError } = await query;
@@ -86,9 +69,9 @@ export const backfillSurveyEvidenceTask = schemaTask({
       consola.info(`[backfillSurveyEvidence] No completed responses found`);
       return {
         success: true,
-        total: 0,
-        triggered: 0,
+        processed: 0,
         skipped: 0,
+        message: "No completed responses found",
       };
     }
 
@@ -96,74 +79,54 @@ export const backfillSurveyEvidenceTask = schemaTask({
       `[backfillSurveyEvidence] Found ${responses.length} completed responses`,
     );
 
-    // If skipExisting, check which responses already have evidence
-    let responseIdsToProcess = responses.map((r) => r.id);
+    // 2. If not forcing, filter out responses that already have evidence
+    let responsesToProcess = responses;
 
-    if (skipExisting) {
+    if (!force) {
+      const responseIds = responses.map((r) => r.id);
+
       const { data: existingEvidence } = await db
         .from("evidence")
         .select("research_link_response_id")
-        .in("research_link_response_id", responseIdsToProcess)
-        .not("research_link_response_id", "is", null);
+        .in("research_link_response_id", responseIds);
 
-      const existingIds = new Set(
+      const hasEvidence = new Set(
         (existingEvidence ?? []).map((e) => e.research_link_response_id),
       );
 
-      const beforeCount = responseIdsToProcess.length;
-      responseIdsToProcess = responseIdsToProcess.filter(
-        (id) => !existingIds.has(id),
-      );
+      responsesToProcess = responses.filter((r) => !hasEvidence.has(r.id));
 
       consola.info(
-        `[backfillSurveyEvidence] Skipping ${beforeCount - responseIdsToProcess.length} responses with existing evidence`,
+        `[backfillSurveyEvidence] ${responses.length - responsesToProcess.length} responses already have evidence, ${responsesToProcess.length} to process`,
       );
     }
 
-    if (responseIdsToProcess.length === 0) {
-      consola.info(
-        `[backfillSurveyEvidence] All responses already have evidence`,
-      );
-      return {
-        success: true,
-        total: responses.length,
-        triggered: 0,
-        skipped: responses.length,
-      };
-    }
-
-    // Trigger extraction for each response
+    // 3. Trigger extraction for each response
     let triggered = 0;
     const errors: string[] = [];
 
-    for (const responseId of responseIdsToProcess) {
+    for (const response of responsesToProcess) {
       try {
-        await extractSurveyEvidenceTask.trigger({ responseId });
+        await extractSurveyEvidenceTask.trigger({
+          responseId: response.id,
+        });
         triggered++;
-        consola.debug(
-          `[backfillSurveyEvidence] Triggered extraction for ${responseId}`,
-        );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`${responseId}: ${msg}`);
-        consola.error(
-          `[backfillSurveyEvidence] Failed to trigger for ${responseId}:`,
-          msg,
-        );
+        const msg = `Failed to trigger for ${response.id}: ${err}`;
+        consola.error(`[backfillSurveyEvidence] ${msg}`);
+        errors.push(msg);
       }
     }
 
-    const skipped = responses.length - responseIdsToProcess.length;
-
     consola.success(
-      `[backfillSurveyEvidence] Complete: triggered=${triggered}, skipped=${skipped}, errors=${errors.length}`,
+      `[backfillSurveyEvidence] Complete: triggered ${triggered}/${responsesToProcess.length} tasks`,
     );
 
     return {
       success: errors.length === 0,
       total: responses.length,
+      skipped: responses.length - responsesToProcess.length,
       triggered,
-      skipped,
       errors: errors.length > 0 ? errors : undefined,
     };
   },
