@@ -131,7 +131,8 @@ Insights/
 │       │   └── v2/                     # V2 interview pipeline
 │       ├── lens/                       # Lens application tasks
 │       ├── persona/                    # Persona extraction tasks
-│       └── sales/                      # Sales-related tasks
+│       ├── sales/                      # Sales-related tasks
+│       └── survey/                     # Survey stats and evidence extraction
 │
 ├── baml_src/                           # BAML prompt definitions
 │   ├── clients.baml                    # LLM client configurations
