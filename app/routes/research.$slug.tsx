@@ -769,8 +769,8 @@ export default function ResearchLinkPage() {
                       )}
                       <div
                         className={cn(
-                          "max-w-md space-y-4",
-                          !currentQuestion.helperText && "mt-3",
+                          "max-w-md space-y-6",
+                          !currentQuestion.helperText && "mt-4",
                         )}
                       >
                         {renderQuestionInput({
@@ -781,7 +781,7 @@ export default function ResearchLinkPage() {
                           voiceButtonState: formVoiceButtonState,
                           toggleRecording: toggleFormRecording,
                         })}
-                        <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center justify-between pt-4">
                           <Button
                             type="button"
                             variant="ghost"
@@ -793,38 +793,24 @@ export default function ResearchLinkPage() {
                             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
                             Back
                           </Button>
-                          <div className="flex gap-2">
-                            {!currentQuestion.required && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => void handleAnswerSubmit(null)}
-                                disabled={isSaving}
-                                className="text-white/50 hover:bg-white/10 hover:text-white"
-                              >
-                                Skip
-                              </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              void handleAnswerSubmit(currentAnswer)
+                            }
+                            disabled={isSaving}
+                            className="bg-white text-black hover:bg-white/90"
+                          >
+                            {isSaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : currentIndex === questions.length - 1 ? (
+                              "Submit"
+                            ) : (
+                              "Next"
                             )}
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() =>
-                                void handleAnswerSubmit(currentAnswer)
-                              }
-                              disabled={isSaving}
-                              className="bg-white text-black hover:bg-white/90"
-                            >
-                              {isSaving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : currentIndex === questions.length - 1 ? (
-                                "Submit"
-                              ) : (
-                                "Next"
-                              )}
-                              <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+                            <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </div>

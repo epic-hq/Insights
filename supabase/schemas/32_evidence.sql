@@ -7,6 +7,7 @@ create table if not exists evidence (
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   project_id uuid references projects (id) on delete cascade,
   interview_id uuid references interviews (id) on delete cascade,
+  research_link_response_id uuid references research_link_responses(id) on delete cascade,
   project_answer_id uuid references public.project_answers(id) on delete set null,
 
   -- provenance
@@ -57,6 +58,7 @@ comment on table evidence is 'Normalized evidence snippets (verbatim + anchors) 
 comment on column evidence.account_id   is 'Owning account (tenant). Cascades on delete.';
 comment on column evidence.project_id   is 'Owning project.';
 comment on column evidence.interview_id is 'Source interview if applicable.';
+comment on column evidence.research_link_response_id is 'Source survey response if applicable. Either interview_id OR research_link_response_id should be set, not both.';
 comment on column evidence.topic        is 'Optional thematic label for the evidence chunk.';
 comment on column evidence.verbatim     is 'Quoted text or descriptive evidence.';
 comment on column evidence.chunk        is 'Multi-sentence excerpt capturing the participants full thought.';
@@ -70,6 +72,7 @@ comment on column evidence.is_question is 'TRUE if this evidence contains a ques
 create index if not exists idx_evidence_account_id   on public.evidence(account_id);
 create index if not exists idx_evidence_project_id   on public.evidence(project_id);
 create index if not exists idx_evidence_interview_id on public.evidence(interview_id);
+create index if not exists idx_evidence_research_link_response_id on public.evidence(research_link_response_id) where research_link_response_id is not null;
 create index if not exists idx_evidence_project_answer on public.evidence(project_answer_id);
 create index if not exists idx_evidence_created_at   on public.evidence(created_at desc);
 create index if not exists idx_evidence_anchors_gin  on public.evidence using gin (anchors jsonb_path_ops);

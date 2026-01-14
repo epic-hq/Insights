@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
@@ -63,11 +64,26 @@ export function WalkthroughRecorder({
     existingVideoUrl ? "complete" : "idle",
   );
   const [error, setError] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [position, setPosition] = useState({ x: 20, y: 20 });
+
+  // Use fetcher for delete action
+  const deleteFetcher = useFetcher<{ success?: boolean; error?: string }>();
+  const isDeleting = deleteFetcher.state !== "idle";
+
+  // Handle delete response
+  useEffect(() => {
+    if (deleteFetcher.state === "idle" && deleteFetcher.data) {
+      if (deleteFetcher.data.success) {
+        setState("idle");
+        onDelete?.();
+      } else if (deleteFetcher.data.error) {
+        setError(deleteFetcher.data.error);
+      }
+    }
+  }, [deleteFetcher.state, deleteFetcher.data, onDelete]);
 
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const videoPlaybackRef = useRef<HTMLVideoElement>(null);
@@ -258,30 +274,16 @@ export function WalkthroughRecorder({
     }
   }, [videoUrl, listId, onUploadComplete]);
 
-  const handleDelete = useCallback(async () => {
-    setIsDeleting(true);
+  const handleDelete = useCallback(() => {
     setError(null);
-    try {
-      const response = await fetch(
-        `/api/research-links/${listId}/delete-walkthrough`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Delete failed");
-      }
-
-      setState("idle");
-      onDelete?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [listId, onDelete]);
+    deleteFetcher.submit(
+      { intent: "delete" },
+      {
+        method: "POST",
+        action: `/api/research-links/${listId}/delete-walkthrough`,
+      },
+    );
+  }, [listId, deleteFetcher]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

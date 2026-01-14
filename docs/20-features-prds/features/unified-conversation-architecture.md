@@ -1007,3 +1007,368 @@ Text analysis produces themes at two levels:
 2. **Overall synthesis:** "Across all questions, users want faster, cheaper solutions"
 
 Both are captured in the Survey Statistics Lens output.
+
+
+## Respondent → User Conversion
+
+> **Status:** Spec draft
+> **Priority:** P2 (growth lever)
+
+### Problem Statement
+
+Survey respondents provide valuable feedback but have no ongoing relationship with UpSight. Meanwhile, they might be curious about:
+- What happened with their feedback
+- How their responses compared to others
+- Their history of survey participation
+
+### Value Proposition
+
+| For Respondents | For UpSight |
+|-----------------|-------------|
+| See their survey response history | Convert respondents into users |
+| Transparency into how feedback was used | Network effects (respondents invite others) |
+| Build a "feedback profile" | Reduce CAC (warm leads) |
+
+### User Journey
+
+```text
+1. Respondent completes survey at /ask/:slug
+   ↓
+2. Thank you screen shows:
+   "Want to save your responses? Create a free account →"
+   ↓
+3. Sign up with SAME EMAIL used in survey
+   ↓
+4. System auto-links person record to new user
+   ↓
+5. Dashboard shows "My Responses" with their history
+```
+
+### Where Responses Appear
+
+**Option A: Dedicated "My Responses" Section (Recommended)**
+
+```text
+Sidebar:
+├── Dashboard
+├── Projects
+├── Conversations
+├── Insights
+├── My Responses  ← NEW (only if user has any)
+│   ├── Survey: Product Feedback (Acme Corp) - Jan 10
+│   ├── Survey: UX Research (Beta Inc) - Dec 15
+│   └── Survey: NPS Survey (Acme Corp) - Nov 3
+└── Settings
+```
+
+**Why this approach:**
+- Clear separation from their own research work
+- Doesn't pollute "Conversations" (which are interviews they conducted)
+- Only visible if they have responses (no empty states)
+
+**What they see per response:**
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ Product Feedback Survey                                          │
+│ From: Acme Corp • Submitted: Jan 10, 2026                        │
+├─────────────────────────────────────────────────────────────────┤
+│ Q1: How satisfied are you with our product?                      │
+│ Your answer: 4/5                                                 │
+│                                                                  │
+│ Q2: What features would you like to see?                         │
+│ Your answer: "Better mobile experience and dark mode"            │
+│                                                                  │
+│ Q3: How did you hear about us?                                   │
+│ Your answer: Word of mouth                                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Technical Implementation
+
+#### Linking Logic
+
+```typescript
+// On user signup, check for existing person record with same email
+async function linkRespondentToUser(userId: string, email: string) {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Find person record(s) with this email
+  const { data: people } = await supabase
+    .from('people')
+    .select('id, account_id')
+    .eq('primary_email', normalizedEmail);
+
+  if (people?.length) {
+    // Link user to their person records
+    for (const person of people) {
+      await supabase
+        .from('people')
+        .update({ user_id: userId })
+        .eq('id', person.id);
+    }
+  }
+}
+```
+
+#### Schema Changes
+
+```sql
+-- Add user_id to people table for respondent-to-user linking
+ALTER TABLE people ADD COLUMN IF NOT EXISTS
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+-- Index for finding user's person records
+CREATE INDEX IF NOT EXISTS idx_people_user_id
+  ON people(user_id) WHERE user_id IS NOT NULL;
+```
+
+#### Query: Get User's Responses
+
+```sql
+-- Get all survey responses for a user (via their person records)
+SELECT
+  rlr.id,
+  rlr.responses,
+  rlr.completed,
+  rlr.created_at,
+  rl.name as survey_name,
+  rl.questions,
+  a.name as account_name
+FROM research_link_responses rlr
+JOIN research_links rl ON rl.id = rlr.research_link_id
+JOIN accounts.accounts a ON a.id = rl.account_id
+JOIN people p ON p.id = rlr.person_id
+WHERE p.user_id = :current_user_id
+  AND rlr.completed = true
+ORDER BY rlr.created_at DESC;
+```
+
+### Privacy & Access Control
+
+| What | Respondent Can See | Respondent Cannot See |
+|------|-------------------|----------------------|
+| Their answers | ✅ Yes | |
+| Survey questions | ✅ Yes | |
+| Survey name | ✅ Yes | |
+| Company that sent survey | ✅ Yes | |
+| Aggregate results | ❌ No | Other people's answers |
+| Insights derived | ❌ No | Theme analysis |
+| Researcher identity | ❌ No | Who created the survey |
+
+**Key Principle:** Respondents see only their own submissions, never the analysis or other responses.
+
+### Growth Mechanics
+
+#### 1. Post-Survey CTA
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ ✓ Thanks for sharing!                                           │
+│                                                                  │
+│ Your responses have been saved.                                  │
+│                                                                  │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 📋 Want to save your responses?                              │ │
+│ │                                                              │ │
+│ │ Create a free UpSight account to:                           │ │
+│ │ • Keep a record of all your survey responses                │ │
+│ │ • Get your own link to collect feedback                     │ │
+│ │                                                              │ │
+│ │ [Create Free Account]                                        │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│ Know someone else who should share? [Copy link]                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 2. Email Follow-Up (Optional)
+
+If researcher enables "Send response copy to participants":
+
+```text
+Subject: Your feedback was received
+
+Hi [Name],
+
+Thanks for sharing your thoughts on [Survey Name].
+
+Your responses have been saved. Want to run your own AI-driven surveys
+and keep a record of all your survey responses in one place?
+
+[Create Your Free UpSight Account →]
+
+---
+Powered by UpSight
+```
+
+### Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| User exists with different email | No auto-link; they can manually claim via settings |
+| Same email, multiple person records | Link all of them (one person per account they responded to) |
+| User deletes account | Keep person record, unlink user_id |
+| Respondent wants to delete response | Not supported initially (their data, researcher's property) |
+| Email changed on user account | Re-run linking check on email change |
+
+### Implementation Phases
+
+#### Phase 1: Foundation
+- [ ] Add `user_id` column to `people` table
+- [ ] Run linking on signup (check for existing person records)
+- [ ] Add "My Responses" nav item (conditional)
+- [ ] Build read-only response history page
+
+#### Phase 2: Growth
+- [ ] Add post-survey CTA in thank you screen
+- [ ] A/B test CTA placement and copy
+- [ ] Track conversion: respondent → signup
+
+#### Phase 3: Engagement
+- [ ] Email copy of responses (opt-in by researcher)
+- [ ] Notification when survey they responded to closes
+- [ ] "Your feedback helped shape..." update (if researcher enables)
+
+### Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Respondent → Signup conversion | 5-10% of respondents |
+| My Responses page visits | Weekly active by 20% of converted users |
+| Time to first own survey created | < 7 days from signup |
+
+### Open Questions
+
+1. **Should respondents see if insights were generated from their feedback?**
+   Pro: Transparency, feels valuable. Con: Privacy concerns, sets expectations.
+	 answer: No
+
+2. **Can respondents edit past responses?**
+   Recommendation: No. The response is a point-in-time snapshot. Editing would complicate analysis.
+	 answer: they should be able to go back as long as the survey is open/live.
+
+3. **Should we show "X others also responded"?**
+   Recommendation: No. Avoids comparison and protects response privacy.
+	 answer: no.
+
+4. **What if researcher deletes the survey?**
+   Keep the response visible to respondent with "Survey no longer active" badge.
+	 Answer: that seems technically problematic. i would say no.
+
+5. **NEW from Owner: responses should be available to chat agents**
+		Mastra and livekit agetns should be able to see/find these responses, whether text or likert,
+		and use them in chat. ✅ Resolved - see "Agent Access to Survey Responses" section below.
+
+---
+
+## Agent Access to Survey Responses
+
+> **Status:** Implementing
+> **Priority:** P1 (enables agents to synthesize all user research)
+
+### Problem
+
+Chat agents (Mastra's `projectStatusAgent`, LiveKit voice agents) can search `evidence` via `semanticSearchEvidence`, but:
+- Only **text question** responses create evidence records
+- **Likert ratings, single-select, multi-select** responses are stored only in JSONB and invisible to agents
+- Agents cannot answer questions like "What's our NPS score?" or "How many respondents chose option A?"
+
+### Solution: `searchSurveyResponses` Tool
+
+Create a new Mastra tool that searches `research_link_responses` directly, returning both structured (likert/select) and text responses in a format agents can use.
+
+### Tool Design
+
+```typescript
+searchSurveyResponses({
+  // Search parameters (all optional - defaults to project scope)
+  query?: string,              // Natural language or keyword search
+  researchLinkId?: string,     // Filter to specific survey
+  personId?: string,           // Filter to specific respondent
+  questionTypes?: string[],    // Filter: ['likert', 'single_select', 'text', ...]
+  completedOnly?: boolean,     // Default: true
+  limit?: number,              // Default: 20
+})
+```
+
+### Return Schema
+
+```typescript
+{
+  success: boolean,
+  message: string,
+  surveys: [{
+    surveyId: string,
+    surveyName: string,
+    responseCount: number,
+    questions: [{
+      questionId: string,
+      prompt: string,
+      type: 'likert' | 'single_select' | 'multi_select' | 'text' | 'short_text',
+      // For structured questions:
+      stats?: {
+        average?: number,        // likert only
+        distribution?: Record<string, number>,  // count per option
+        percentages?: Record<string, number>,   // % per option
+      },
+      // For text questions:
+      responses?: [{
+        answer: string,
+        personName?: string,
+        personId?: string,
+      }],
+    }],
+  }],
+  totalResponses: number,
+}
+```
+
+### Use Cases
+
+| Agent Query | Tool Behavior |
+|-------------|---------------|
+| "What's our average satisfaction score?" | Returns likert question stats with average |
+| "How did people answer the budget question?" | Returns distribution/percentages for select |
+| "What did Sarah say in her survey?" | Filters by person, returns all her answers |
+| "Show me all NPS responses" | Searches for NPS-like questions, returns data |
+| "Summarize survey feedback" | Returns all questions with stats + sample text |
+
+### Integration with Existing Tools
+
+The new tool complements existing tools:
+
+| Tool | Searches | Best For |
+|------|----------|----------|
+| `semanticSearchEvidence` | evidence table (embeddings) | Finding quotes, insights, themes |
+| `searchSurveyResponses` | research_link_responses JSONB | Survey stats, structured data |
+| `fetchPeopleDetails` | people table | Person profiles, demographics |
+
+### Agent Instructions Addition
+
+Add to `projectStatusAgent` instructions:
+
+```
+**Survey Data** (searchSurveyResponses):
+- Use when user asks about survey responses, ratings, or structured feedback
+- Returns aggregate statistics for likert/select questions
+- Returns text responses for open-ended questions
+- Can filter by specific survey, person, or question type
+- Example queries: "What's our NPS?", "How did respondents rate feature X?", "What did survey participants say about pricing?"
+```
+
+### Implementation Phases
+
+#### Phase 1: Core Tool ✅ (current)
+- [x] Create `searchSurveyResponses` tool
+- [x] Add to `projectStatusAgent` tools
+- [x] Update agent instructions
+
+#### Phase 2: Enhanced Search
+- [ ] Add embedding-based search across text responses
+- [ ] Cross-survey aggregation ("NPS across all surveys")
+- [ ] Person-level summary ("All of Sarah's survey responses")
+
+#### Phase 3: LiveKit Integration
+- [ ] Add tool to LiveKit voice agent
+- [ ] Voice-optimized response formatting build out a tool for agents to use.
