@@ -97,17 +97,10 @@ END;
 $$;
 
 -- ============================================================================
--- 4. Add unique partial index for (account_id, invitee_email) on active invitations
--- This prevents duplicate invitations to the same email for the same account
--- while allowing re-inviting after expiration
+-- 4. Enforce uniqueness for active invitations via trigger
+-- Note: A partial index with now() won't work because it uses a volatile expression.
+-- Instead, we use a trigger-based approach to enforce uniqueness for active invitations.
 -- ============================================================================
-CREATE UNIQUE INDEX IF NOT EXISTS invitations_unique_active_email
-ON accounts.invitations (account_id, lower(invitee_email))
-WHERE invitee_email IS NOT NULL
-  AND created_at > now() - interval '24 hours';
-
--- Note: The above index won't work as expected because it uses a volatile expression.
--- Instead, we'll use a trigger-based approach to enforce uniqueness for active invitations.
 DROP INDEX IF EXISTS accounts.invitations_unique_active_email;
 
 -- Create a function to check for duplicate active invitations
