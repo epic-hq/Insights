@@ -1336,8 +1336,38 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Update avatar if user has one (from Google OAuth)
       const avatarUrl =
         user.user_metadata?.avatar_url || user.user_metadata?.picture;
-      if (avatarUrl && dropdownAvatar) {
-        dropdownAvatar.innerHTML = `<img src="${avatarUrl}" alt="Avatar" />`;
+      if (dropdownAvatar) {
+        if (avatarUrl) {
+          // Get initials for fallback
+          const name =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email ||
+            "";
+          const initials =
+            name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2) || "?";
+          dropdownAvatar.innerHTML = `<img src="${avatarUrl}" alt="${initials}" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<span style=\\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#e5e7eb;color:#374151;font-weight:500;font-size:14px;\\'>${initials}</span>'" />`;
+        } else {
+          // No avatar URL - show initials
+          const name =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email ||
+            "";
+          const initials =
+            name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2) || "?";
+          dropdownAvatar.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#e5e7eb;color:#374151;font-weight:500;font-size:14px;">${initials}</span>`;
+        }
       }
     }
   } catch (error) {

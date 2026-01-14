@@ -23,7 +23,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		}
 
 		// Get projects for each account
-		const accountIds = (accounts || []).map((a: { account_id: string }) => a.account_id)
+		const accountsArray = (Array.isArray(accounts) ? accounts : []) as Array<{
+			account_id: string
+			name: string
+			personal_account: boolean
+		}>
+		const accountIds = accountsArray.map((a) => a.account_id)
 		const { data: projects, error: projectsError } = await supabase
 			.from("projects")
 			.select("id, name, slug, account_id, created_at")
@@ -48,7 +53,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				email: user.email,
 				name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
 			},
-			accounts: (accounts || []).map((a: any) => ({
+			accounts: accountsArray.map((a) => ({
 				id: a.account_id,
 				name: a.name,
 				personal: a.personal_account,
