@@ -240,6 +240,42 @@ export type Database = {
         }
         Relationships: []
       }
+      invitation_audit: {
+        Row: {
+          account_id: string
+          account_role: Database["accounts"]["Enums"]["account_role"] | null
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          invitation_id: string | null
+          invitee_email: string | null
+        }
+        Insert: {
+          account_id: string
+          account_role?: Database["accounts"]["Enums"]["account_role"] | null
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          invitation_id?: string | null
+          invitee_email?: string | null
+        }
+        Update: {
+          account_id?: string
+          account_role?: Database["accounts"]["Enums"]["account_role"] | null
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          invitation_id?: string | null
+          invitee_email?: string | null
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           account_id: string
@@ -6404,6 +6440,7 @@ export type Database = {
         Args: { p_insight_id: string }
         Returns: undefined
       }
+      cleanup_expired_invitations: { Args: never; Returns: number }
       create_account: { Args: { name?: string; slug?: string }; Returns: Json }
       create_account_id: {
         Args: { name?: string; primary_owner_user_id?: string; slug?: string }
@@ -6722,7 +6759,22 @@ export type Database = {
         Args: { func_name: string; payload: Json }
         Returns: undefined
       }
+      is_email_account_member: {
+        Args: { check_account_id: string; check_email: string }
+        Returns: boolean
+      }
       list_invitations_for_current_user: { Args: never; Returns: Json }
+      log_invitation_audit: {
+        Args: {
+          p_account_id: string
+          p_account_role?: Database["accounts"]["Enums"]["account_role"]
+          p_action: string
+          p_details?: Json
+          p_invitation_id: string
+          p_invitee_email?: string
+        }
+        Returns: undefined
+      }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
         Returns: Json
