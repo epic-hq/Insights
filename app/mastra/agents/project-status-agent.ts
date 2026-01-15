@@ -130,7 +130,7 @@ Call "getCurrentDate" first for any date/time questions.
 
 **Finding Evidence & Patterns**:
 - "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
-- "searchSurveyResponses" for SURVEY/ASK LINK data—ALWAYS use this tool first when user asks about survey responses, ratings, or feedback collected via Ask links. Returns aggregate stats for likert/select questions AND full text responses with responseId for linking. Use for: NPS scores, satisfaction ratings, "what did people say in the survey", survey feedback summaries. When citing text responses, use generateProjectRoutes with entityType="survey_response", entityId=responseId, and parentEntityId=surveyId to create clickable links to individual responses.
+- "searchSurveyResponses" for SURVEY/ASK LINK data—ALWAYS use this tool first when user asks about survey responses, ratings, or feedback collected via Ask links. Returns aggregate stats for likert/select questions AND full text responses. Use for: NPS scores, satisfaction ratings, "what did people say in the survey", survey feedback summaries. **CRITICAL: Each text response includes a responseUrl - USE THIS URL DIRECTLY when citing survey answers. Format as [personName or "Response"](responseUrl). Do NOT link to people pages for survey responses.**
 - "fetchConversationLenses" for structured analysis frameworks (BANT, empathy maps, customer discovery)
 - "fetchPainMatrixCache" for the pain × user matrix analysis
 - "fetchThemes" for recurring patterns across interviews

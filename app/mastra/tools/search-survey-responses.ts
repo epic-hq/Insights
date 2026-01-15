@@ -39,8 +39,8 @@ interface QuestionStats {
 interface TextResponse {
   answer: string;
   responseId: string;
+  responseUrl: string;
   personName: string | null;
-  personId: string | null;
 }
 
 interface QuestionSummary {
@@ -55,6 +55,7 @@ interface QuestionSummary {
 interface SurveySummary {
   surveyId: string;
   surveyName: string;
+  responsesUrl: string;
   responseCount: number;
   completedCount: number;
   questions: QuestionSummary[];
@@ -63,7 +64,7 @@ interface SurveySummary {
 export const searchSurveyResponsesTool = createTool({
   id: "search-survey-responses",
   description:
-    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback from research links. Returns statistics for likert/select questions and ALL text answers for open-ended questions. For linking to responses, use the pattern: /ask/{surveyId}/responses/{responseId} - each text response includes responseId for direct linking. This searches the actual survey response data, not evidence records.",
+    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback from research links. Returns statistics for likert/select questions and ALL text answers for open-ended questions. Each survey includes responsesUrl for linking to all responses. Each text response includes responseUrl for linking to that specific response - USE THESE URLs when citing survey answers.",
   inputSchema: z.object({
     projectId: z
       .string()
@@ -120,6 +121,9 @@ export const searchSurveyResponsesTool = createTool({
       z.object({
         surveyId: z.string(),
         surveyName: z.string(),
+        responsesUrl: z
+          .string()
+          .describe("URL to view all responses for this survey"),
         responseCount: z.number(),
         completedCount: z.number(),
         questions: z.array(
@@ -140,8 +144,10 @@ export const searchSurveyResponsesTool = createTool({
                 z.object({
                   answer: z.string(),
                   responseId: z.string(),
+                  responseUrl: z
+                    .string()
+                    .describe("URL to view this specific response"),
                   personName: z.string().nullable(),
-                  personId: z.string().nullable(),
                 }),
               )
               .optional(),
@@ -154,11 +160,20 @@ export const searchSurveyResponsesTool = createTool({
   execute: async (input, context?) => {
     const supabase = supabaseAdmin as SupabaseClient<Database>;
     const runtimeProjectId = context?.requestContext?.get?.("project_id");
+    const runtimeAccountId = context?.requestContext?.get?.("account_id");
     // Allow input.projectId to override runtime context; handle empty strings properly
     const runtimeProjectIdStr = runtimeProjectId
       ? String(runtimeProjectId).trim()
       : undefined;
+    const runtimeAccountIdStr = runtimeAccountId
+      ? String(runtimeAccountId).trim()
+      : undefined;
     const projectId = input.projectId ?? (runtimeProjectIdStr || null);
+    const accountId = runtimeAccountIdStr || null;
+
+    // Build project path for URLs
+    const projectPath =
+      accountId && projectId ? `/a/${accountId}/${projectId}` : "";
 
     consola.info("search-survey-responses: execute start", {
       inputProjectId: input.projectId,
@@ -281,6 +296,8 @@ export const searchSurveyResponsesTool = createTool({
             question,
             linkResponses as unknown as ResponseRow[],
             input.includeTextResponses ?? true,
+            projectPath,
+            link.id,
           );
           questionSummaries.push(summary);
         }
@@ -288,6 +305,9 @@ export const searchSurveyResponsesTool = createTool({
         surveys.push({
           surveyId: link.id,
           surveyName: link.name,
+          responsesUrl: projectPath
+            ? `${projectPath}/ask/${link.id}/responses`
+            : `/ask/${link.id}/responses`,
           responseCount: linkResponses.length,
           completedCount,
           questions: questionSummaries,
@@ -340,12 +360,13 @@ function aggregateQuestionResponses(
   question: QuestionDefinition,
   responses: ResponseRow[],
   includeText: boolean,
+  projectPath: string,
+  surveyId: string,
 ): QuestionSummary {
   const questionId = question.id;
   const answers: Array<{
     value: unknown;
     responseId: string;
-    personId: string | null;
     personName: string | null;
   }> = [];
 
@@ -355,7 +376,6 @@ function aggregateQuestionResponses(
       answers.push({
         value: responseData[questionId],
         responseId: response.id,
-        personId: response.person?.id ?? response.person_id,
         personName: response.person?.name ?? null,
       });
     }
@@ -473,8 +493,10 @@ function aggregateQuestionResponses(
           .map((a) => ({
             answer: String(a.value),
             responseId: a.responseId,
+            responseUrl: projectPath
+              ? `${projectPath}/ask/${surveyId}/responses/${a.responseId}`
+              : `/ask/${surveyId}/responses/${a.responseId}`,
             personName: a.personName,
-            personId: a.personId,
           }));
 
         if (textResponses.length > 0) {
