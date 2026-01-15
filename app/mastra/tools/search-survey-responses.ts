@@ -38,6 +38,7 @@ interface QuestionStats {
 
 interface TextResponse {
   answer: string;
+  responseId: string;
   personName: string | null;
   personId: string | null;
 }
@@ -62,7 +63,7 @@ interface SurveySummary {
 export const searchSurveyResponsesTool = createTool({
   id: "search-survey-responses",
   description:
-    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback from research links. Returns statistics for likert/select questions and ALL text answers for open-ended questions. This searches the actual survey response data, not evidence records.",
+    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback from research links. Returns statistics for likert/select questions and ALL text answers for open-ended questions. For linking to responses, use the pattern: /ask/{surveyId}/responses/{responseId} - each text response includes responseId for direct linking. This searches the actual survey response data, not evidence records.",
   inputSchema: z.object({
     projectId: z
       .string()
@@ -138,6 +139,7 @@ export const searchSurveyResponsesTool = createTool({
               .array(
                 z.object({
                   answer: z.string(),
+                  responseId: z.string(),
                   personName: z.string().nullable(),
                   personId: z.string().nullable(),
                 }),
@@ -342,6 +344,7 @@ function aggregateQuestionResponses(
   const questionId = question.id;
   const answers: Array<{
     value: unknown;
+    responseId: string;
     personId: string | null;
     personName: string | null;
   }> = [];
@@ -351,6 +354,7 @@ function aggregateQuestionResponses(
     if (questionId in responseData) {
       answers.push({
         value: responseData[questionId],
+        responseId: response.id,
         personId: response.person?.id ?? response.person_id,
         personName: response.person?.name ?? null,
       });
@@ -468,6 +472,7 @@ function aggregateQuestionResponses(
           .filter((a) => a.value && String(a.value).trim().length > 0)
           .map((a) => ({
             answer: String(a.value),
+            responseId: a.responseId,
             personName: a.personName,
             personId: a.personId,
           }));
