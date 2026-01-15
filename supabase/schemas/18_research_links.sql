@@ -23,11 +23,15 @@ create table if not exists public.research_links (
     is_live boolean not null default false,
     statistics jsonb default null,
     stats_updated_at timestamptz default null,
+    ai_analysis jsonb default null,
+    ai_analysis_updated_at timestamptz default null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
 
 comment on column public.research_links.statistics is 'Computed aggregate statistics from survey responses. Structure: { computedAt: timestamp, responseCount: number, completedCount: number, questions: [{ questionId, prompt, type, responseCount, stats: { average?, distribution?, percentages? }, topResponses?: [] }] }';
+
+comment on column public.research_links.ai_analysis is 'AI-generated analysis of survey responses. Structure: { mode: "quick"|"detailed", updatedAt: timestamp, result: AnalysisResult|DetailedAnalysisResult }';
 
 alter table public.research_links
     add constraint research_links_slug_key unique (slug);

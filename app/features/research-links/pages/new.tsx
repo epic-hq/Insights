@@ -191,9 +191,7 @@ export default function NewResearchLinkPage() {
 	const [heroTitle, setHeroTitle] = useState(actionData?.values?.heroTitle ?? "")
 	const [heroSubtitle, setHeroSubtitle] = useState(actionData?.values?.heroSubtitle ?? "")
 	const [heroCtaLabel, setHeroCtaLabel] = useState(actionData?.values?.heroCtaLabel ?? "Continue")
-	const [heroCtaHelper, setHeroCtaHelper] = useState(
-		actionData?.values?.heroCtaHelper ?? "Let's get started"
-	)
+	const [heroCtaHelper, setHeroCtaHelper] = useState(actionData?.values?.heroCtaHelper ?? "Let's get started")
 	const [calendarUrl, setCalendarUrl] = useState(actionData?.values?.calendarUrl ?? "")
 	const [redirectUrl, setRedirectUrl] = useState(actionData?.values?.redirectUrl ?? "")
 	const [allowChat, setAllowChat] = useState(actionData?.values?.allowChat ?? false)

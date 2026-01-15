@@ -93,6 +93,14 @@ interface PrecomputedStats {
   }>;
 }
 
+/** Saved AI analysis stored in research_links.ai_analysis JSONB */
+interface SavedAiAnalysis {
+  mode: "quick" | "detailed";
+  updatedAt: string;
+  customInstructions?: string | null;
+  result: AnalysisResult | DetailedAnalysisResult;
+}
+
 /** Map question type string to effective display type */
 function mapQuestionType(
   type: string,
@@ -289,11 +297,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const questions = questionsResult.success ? questionsResult.data : [];
   const origin = new URL(request.url).origin;
 
-  // Use pre-computed statistics if available, otherwise compute inline
+  // Always use inline computation to include partial responses
+  // Pre-computed stats from trigger task may be stale
   let questionStats: QuestionStats[];
   const precomputedStats = list.statistics as PrecomputedStats | null;
+  const totalResponseCount = responses?.length ?? 0;
 
-  if (precomputedStats?.questions?.length) {
+  // TODO: Re-enable pre-computed stats after trigger task is deployed with fix
+  // For now, always compute inline to ensure partial responses are included
+  const usePrecomputedStats = false;
+
+  if (precomputedStats?.questions?.length && usePrecomputedStats) {
     // Convert pre-computed stats to the expected format
     questionStats = precomputedStats.questions.map((q) => {
       const question = questions.find((qDef) => qDef.id === q.questionId);
@@ -305,7 +319,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
         questionType: q.type,
         effectiveType,
         responseCount: q.responseCount,
-        totalResponses: precomputedStats.completedCount,
+        totalResponses: precomputedStats.responseCount,
       };
 
       if (q.stats) {
@@ -379,6 +393,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return { ...response, signed_video_url: presigned?.url ?? null };
   });
 
+  // Load saved AI analysis if available
+  // Note: ai_analysis column may not exist until migration is applied
+  const savedAnalysis = (list as { ai_analysis?: unknown }).ai_analysis as
+    | SavedAiAnalysis
+    | null
+    | undefined;
+
   return {
     accountId,
     projectId,
@@ -387,6 +408,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     questions,
     questionStats,
     publicUrl: `${origin}/ask/${list.slug}`,
+    savedAnalysis,
   };
 }
 
@@ -666,15 +688,26 @@ export default function ResearchLinkResponsesPage() {
     questions,
     questionStats,
     publicUrl,
+    savedAnalysis,
   } = useLoaderData<typeof loader>();
   const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
   const basePath = `/a/${accountId}/${projectId}`;
 
+  // Initialize state with saved analysis if available
+  const initialQuickAnalysis =
+    savedAnalysis?.mode === "quick"
+      ? (savedAnalysis.result as AnalysisResult)
+      : null;
+  const initialDetailedAnalysis =
+    savedAnalysis?.mode === "detailed"
+      ? (savedAnalysis.result as DetailedAnalysisResult)
+      : null;
+
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
-    null,
+    initialQuickAnalysis,
   );
   const [detailedResult, setDetailedResult] =
-    useState<DetailedAnalysisResult | null>(null);
+    useState<DetailedAnalysisResult | null>(initialDetailedAnalysis);
   const [customInstructions, setCustomInstructions] = useState("");
   const [showCustomInstructions, setShowCustomInstructions] = useState(false);
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);

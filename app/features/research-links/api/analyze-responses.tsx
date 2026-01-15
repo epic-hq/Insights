@@ -121,22 +121,43 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     // Call BAML function
+    let result: unknown;
     if (mode === "quick") {
-      const result = await b.SummarizeAskLinkResponses(
+      result = await b.SummarizeAskLinkResponses(
         list.name,
         questionsText,
         responsesText,
       );
-      return Response.json({ mode: "quick", result });
+    } else {
+      result = await b.AnalyzeAskLinkResponses(
+        list.name,
+        questionsText,
+        responsesText,
+        list.description || "No additional context provided.",
+      );
     }
 
-    const result = await b.AnalyzeAskLinkResponses(
-      list.name,
-      questionsText,
-      responsesText,
-      list.description || "No additional context provided.",
-    );
-    return Response.json({ mode: "detailed", result });
+    // Save analysis to database
+    const aiAnalysis = {
+      mode,
+      updatedAt: new Date().toISOString(),
+      customInstructions: customInstructions || null,
+      result,
+    };
+    const { error: updateError } = await supabase
+      .from("research_links")
+      .update({
+        ai_analysis: aiAnalysis,
+        ai_analysis_updated_at: new Date().toISOString(),
+      })
+      .eq("id", listId);
+
+    if (updateError) {
+      consola.warn("Failed to save AI analysis:", updateError);
+      // Still return the result even if save fails
+    }
+
+    return Response.json({ mode, result });
   } catch (error) {
     consola.error("Failed to analyze responses:", error);
     return Response.json(

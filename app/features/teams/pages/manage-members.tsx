@@ -296,10 +296,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			consola.warn("[INVITE] Failed to check existing membership", { error: memberCheckError })
 			// Continue anyway - the invitation will still work, just might be redundant
 		} else if (isMember === true) {
-			return data(
-				{ ok: false, message: "This person is already a member of this team." },
-				{ status: 400 }
-			)
+			return data({ ok: false, message: "This person is already a member of this team." }, { status: 400 })
 		}
 
 		const result = await dbCreateInvitation({

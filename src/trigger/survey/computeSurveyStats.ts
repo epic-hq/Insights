@@ -1,12 +1,13 @@
 /**
  * Compute Survey Statistics Task
  *
- * Aggregates all completed responses for a survey and stores computed
- * statistics in the research_links.statistics JSONB column. This enables
- * efficient retrieval of survey results without recomputing from scratch.
+ * Aggregates ALL responses (including partial) for a survey and stores
+ * computed statistics in the research_links.statistics JSONB column.
+ * Each question counts responses that have data for that specific question,
+ * so partial responses contribute to stats for questions they answered.
  *
  * Triggered after:
- * - A survey response is completed
+ * - A survey response is submitted (completed or partial)
  * - Manual backfill request
  */
 
@@ -114,21 +115,20 @@ export const computeSurveyStatsTask = schemaTask({
     const responseCount = allResponses?.length ?? 0;
     const completedCount = allResponses?.filter((r) => r.completed).length ?? 0;
 
-    // 3. Load completed responses with their answers
-    const { data: completedResponses, error: completedError } = await db
+    // 3. Load ALL responses with their answers (including partial)
+    // Each question counts responses that have data for that specific question,
+    // so partial responses contribute to stats for questions they answered
+    const { data: responsesWithAnswers, error: responsesError } = await db
       .from("research_link_responses")
       .select("id, responses, person_id")
-      .eq("research_link_id", researchLinkId)
-      .eq("completed", true);
+      .eq("research_link_id", researchLinkId);
 
-    if (completedError) {
+    if (responsesError) {
       consola.error(
-        `[computeSurveyStats] Failed to fetch completed responses:`,
-        completedError,
+        `[computeSurveyStats] Failed to fetch responses:`,
+        responsesError,
       );
-      throw new Error(
-        `Failed to fetch completed responses: ${completedError.message}`,
-      );
+      throw new Error(`Failed to fetch responses: ${responsesError.message}`);
     }
 
     consola.info(
@@ -141,7 +141,7 @@ export const computeSurveyStatsTask = schemaTask({
     for (const question of questions) {
       const summary = aggregateQuestionResponses(
         question,
-        completedResponses ?? [],
+        responsesWithAnswers ?? [],
       );
       questionSummaries.push(summary);
     }
@@ -172,7 +172,7 @@ export const computeSurveyStatsTask = schemaTask({
     }
 
     consola.success(
-      `[computeSurveyStats] Complete for ${researchLink.name}: ${completedCount} responses, ${questionSummaries.length} questions`,
+      `[computeSurveyStats] Complete for ${researchLink.name}: ${responseCount} total responses (${completedCount} completed), ${questionSummaries.length} questions`,
     );
 
     return {

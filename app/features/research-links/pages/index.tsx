@@ -108,10 +108,7 @@ function AskLinkCard({ list, questions, responsesCount, publicUrl, routes }: Ask
 							{list.description && <CardDescription className="line-clamp-2">{list.description}</CardDescription>}
 						</div>
 						<div className="flex items-center gap-1">
-							<QRCodeButton
-								url={publicUrl}
-								onClick={openQRModal}
-							/>
+							<QRCodeButton url={publicUrl} onClick={openQRModal} />
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<Button
@@ -193,12 +190,7 @@ function AskLinkCard({ list, questions, responsesCount, publicUrl, routes }: Ask
 				</CardContent>
 			</Card>
 
-			<QRCodeModal
-				isOpen={isQRModalOpen}
-				onClose={() => setIsQRModalOpen(false)}
-				url={publicUrl}
-				title={list.name}
-			/>
+			<QRCodeModal isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} url={publicUrl} title={list.name} />
 		</>
 	)
 }

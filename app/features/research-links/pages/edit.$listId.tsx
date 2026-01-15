@@ -106,23 +106,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	const formData = await request.formData()
 	const rawPayload = {
-			name: formData.get("name") ?? "",
-			slug: formData.get("slug") ?? "",
-			description: formData.get("description") ?? undefined,
-			heroTitle: formData.get("hero_title") ?? undefined,
-			heroSubtitle: formData.get("hero_subtitle") ?? undefined,
-			instructions: formData.get("instructions") ?? undefined,
-			heroCtaLabel: formData.get("hero_cta_label") ?? undefined,
-			heroCtaHelper: formData.get("hero_cta_helper") ?? undefined,
-			calendarUrl: formData.get("calendar_url") ?? undefined,
-			redirectUrl: formData.get("redirect_url") ?? undefined,
-			allowChat: formData.get("allow_chat"),
-			allowVoice: formData.get("allow_voice"),
-			allowVideo: formData.get("allow_video"),
-			defaultResponseMode: formData.get("default_response_mode"),
-			isLive: formData.get("is_live"),
-			questions: formData.get("questions") ?? "[]",
-		}
+		name: formData.get("name") ?? "",
+		slug: formData.get("slug") ?? "",
+		description: formData.get("description") ?? undefined,
+		heroTitle: formData.get("hero_title") ?? undefined,
+		heroSubtitle: formData.get("hero_subtitle") ?? undefined,
+		instructions: formData.get("instructions") ?? undefined,
+		heroCtaLabel: formData.get("hero_cta_label") ?? undefined,
+		heroCtaHelper: formData.get("hero_cta_helper") ?? undefined,
+		calendarUrl: formData.get("calendar_url") ?? undefined,
+		redirectUrl: formData.get("redirect_url") ?? undefined,
+		allowChat: formData.get("allow_chat"),
+		allowVoice: formData.get("allow_voice"),
+		allowVideo: formData.get("allow_video"),
+		defaultResponseMode: formData.get("default_response_mode"),
+		isLive: formData.get("is_live"),
+		questions: formData.get("questions") ?? "[]",
+	}
 
 	let fallbackQuestions: ResearchLinkQuestion[] = []
 	try {
@@ -419,7 +419,7 @@ export default function EditResearchLinkPage() {
 							<TabsTrigger value="options">Options</TabsTrigger>
 						</TabsList>
 
-            <TabsContent value="landing" className="space-y-1.5">
+						<TabsContent value="landing" className="space-y-1.5">
 							<h3 className="font-medium text-foreground/80 text-sm">Landing Page</h3>
 							<Card>
 								<CardContent className="space-y-3 py-3">
@@ -490,12 +490,11 @@ export default function EditResearchLinkPage() {
 											/>
 										</div>
 									</div>
-
 								</CardContent>
 							</Card>
 						</TabsContent>
 
-            <TabsContent value="video" className="space-y-1.5">
+						<TabsContent value="video" className="space-y-1.5">
 							<h3 className="font-medium text-foreground/80 text-sm">Walkthrough Video</h3>
 							<WalkthroughRecorder
 								listId={list.id}
@@ -505,7 +504,7 @@ export default function EditResearchLinkPage() {
 							/>
 						</TabsContent>
 
-            <TabsContent value="questions" className="space-y-1.5">
+						<TabsContent value="questions" className="space-y-1.5">
 							<h3 className="font-medium text-foreground/80 text-sm">Questions</h3>
 							<Card>
 								<CardContent className="py-3">
@@ -517,7 +516,7 @@ export default function EditResearchLinkPage() {
 							</Card>
 						</TabsContent>
 
-            <TabsContent value="options" className="space-y-1.5">
+						<TabsContent value="options" className="space-y-1.5">
 							<h3 className="font-medium text-foreground/80 text-sm">Options</h3>
 							<Card>
 								<CardContent className="space-y-2 py-3">

@@ -52,67 +52,74 @@ interface QuestionSummary {
   textResponses?: TextResponse[];
 }
 
+/** Individual response with link to view it */
+interface ResponseSummary {
+  responseId: string;
+  responseUrl: string;
+  personName: string | null;
+  email: string | null;
+  completed: boolean;
+}
+
 interface SurveySummary {
   surveyId: string;
   surveyName: string;
   responsesUrl: string;
   responseCount: number;
   completedCount: number;
+  /** Individual responses with direct URLs - USE THESE when citing specific answers */
+  responses: ResponseSummary[];
   questions: QuestionSummary[];
 }
 
 export const searchSurveyResponsesTool = createTool({
   id: "search-survey-responses",
   description:
-    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback from research links. Returns statistics for likert/select questions and ALL text answers for open-ended questions. Each survey includes responsesUrl for linking to all responses. Each text response includes responseUrl for linking to that specific response - USE THESE URLs when citing survey answers.",
+    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback. Returns: (1) 'responses' array with each person's responseUrl - ALWAYS link to these URLs when citing answers, (2) aggregate stats for likert/select questions, (3) text answers with responseUrl for open-ended questions. CRITICAL: When citing ANY survey answer, use the responseUrl from the responses array to link directly to that person's submission.",
   inputSchema: z.object({
     projectId: z
       .string()
-      .optional()
-      .nullable()
+      .nullish()
       .describe("Project ID to search within (defaults to runtime context)"),
     query: z
       .string()
-      .optional()
-      .nullable()
+      .nullish()
       .describe(
         "Natural language search query to filter surveys by name or question text",
       ),
     researchLinkId: z
       .string()
-      .optional()
-      .nullable()
+      .nullish()
       .describe("Filter to a specific survey by ID"),
     personId: z
       .string()
-      .optional()
-      .nullable()
+      .nullish()
       .describe("Filter to responses from a specific person"),
     questionTypes: z
       .array(QuestionTypeEnum)
-      .optional()
-      .nullable()
+      .nullish()
       .describe(
         "Filter to specific question types: likert, single_select, multi_select, short_text, long_text",
       ),
     completedOnly: z
       .boolean()
-      .optional()
-      .default(true)
-      .describe("Only include completed responses (default: true)"),
+      .nullish()
+      .describe(
+        "Only include completed responses. Set to true to exclude partial responses. Default is false (includes all).",
+      ),
     limit: z
       .number()
       .int()
       .min(1)
       .max(100)
-      .optional()
-      .default(20)
-      .describe("Maximum number of responses to analyze"),
+      .nullish()
+      .describe("Maximum number of responses to analyze (default: 20)"),
     includeTextResponses: z
       .boolean()
-      .optional()
-      .default(true)
-      .describe("Include individual text responses for open-ended questions"),
+      .nullish()
+      .describe(
+        "Include individual text responses for open-ended questions (default: true)",
+      ),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -126,6 +133,23 @@ export const searchSurveyResponsesTool = createTool({
           .describe("URL to view all responses for this survey"),
         responseCount: z.number(),
         completedCount: z.number(),
+        responses: z
+          .array(
+            z.object({
+              responseId: z.string(),
+              responseUrl: z
+                .string()
+                .describe(
+                  "Direct URL to this response - USE THIS when citing answers from this person",
+                ),
+              personName: z.string().nullable(),
+              email: z.string().nullable(),
+              completed: z.boolean(),
+            }),
+          )
+          .describe(
+            "Individual responses with direct URLs - ALWAYS use responseUrl when citing specific answers",
+          ),
         questions: z.array(
           z.object({
             questionId: z.string(),
@@ -241,13 +265,15 @@ export const searchSurveyResponsesTool = createTool({
       let responsesQuery = supabase
         .from("research_link_responses")
         .select(
-          "id, research_link_id, responses, completed, person_id, person:people(id, name)",
+          "id, research_link_id, email, responses, completed, person_id, person:people(id, name)",
         )
         .in("research_link_id", linkIds)
         .order("created_at", { ascending: false })
         .limit(input.limit ?? 20);
 
-      if (input.completedOnly) {
+      // Default to including all responses (completedOnly: false) to show partial responses too
+      // Only filter for completed if explicitly set to true
+      if (input.completedOnly === true) {
         responsesQuery = responsesQuery.eq("completed", true);
       }
 
@@ -302,6 +328,20 @@ export const searchSurveyResponsesTool = createTool({
           questionSummaries.push(summary);
         }
 
+        // Build individual response summaries with direct URLs
+        const responseSummaries: ResponseSummary[] = linkResponses.map((r) => {
+          const response = r as unknown as ResponseRow;
+          return {
+            responseId: response.id,
+            responseUrl: projectPath
+              ? `${projectPath}/ask/${link.id}/responses/${response.id}`
+              : `/ask/${link.id}/responses/${response.id}`,
+            personName: response.person?.name ?? null,
+            email: response.email ?? null,
+            completed: response.completed,
+          };
+        });
+
         surveys.push({
           surveyId: link.id,
           surveyName: link.name,
@@ -310,6 +350,7 @@ export const searchSurveyResponsesTool = createTool({
             : `/ask/${link.id}/responses`,
           responseCount: linkResponses.length,
           completedCount,
+          responses: responseSummaries,
           questions: questionSummaries,
         });
       }
@@ -351,7 +392,9 @@ export const searchSurveyResponsesTool = createTool({
 
 interface ResponseRow {
   id: string;
+  email: string | null;
   responses: Record<string, unknown> | null;
+  completed: boolean;
   person_id: string | null;
   person: { id: string; name: string | null } | null;
 }
