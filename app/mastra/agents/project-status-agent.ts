@@ -53,8 +53,8 @@ import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
 import { researchOrganizationTool } from "../tools/research-organization";
 import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
-import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
 import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
+import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people";
 import { suggestionTool } from "../tools/suggestion-tool";
@@ -130,7 +130,7 @@ Call "getCurrentDate" first for any date/time questions.
 
 **Finding Evidence & Patterns**:
 - "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
-- "searchSurveyResponses" for SURVEY/ASK LINK data—ALWAYS use this tool first when user asks about survey responses, ratings, or feedback collected via Ask links. Returns aggregate stats for likert/select questions AND full text responses. Use for: NPS scores, satisfaction ratings, "what did people say in the survey", survey feedback summaries. This tool searches the actual survey JSONB, not just evidence records.
+- "searchSurveyResponses" for SURVEY/ASK LINK data—ALWAYS use this tool first when user asks about survey responses, ratings, or feedback collected via Ask links. Returns aggregate stats for likert/select questions AND full text responses with responseId for linking. Use for: NPS scores, satisfaction ratings, "what did people say in the survey", survey feedback summaries. When citing text responses, use generateProjectRoutes with entityType="survey_response", entityId=responseId, and parentEntityId=surveyId to create clickable links to individual responses.
 - "fetchConversationLenses" for structured analysis frameworks (BANT, empathy maps, customer discovery)
 - "fetchPainMatrixCache" for the pain × user matrix analysis
 - "fetchThemes" for recurring patterns across interviews
