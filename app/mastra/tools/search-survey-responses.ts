@@ -66,7 +66,6 @@ export const searchSurveyResponsesTool = createTool({
   inputSchema: z.object({
     projectId: z
       .string()
-      .uuid()
       .optional()
       .nullable()
       .describe("Project ID to search within (defaults to runtime context)"),
@@ -79,13 +78,11 @@ export const searchSurveyResponsesTool = createTool({
       ),
     researchLinkId: z
       .string()
-      .uuid()
       .optional()
       .nullable()
       .describe("Filter to a specific survey by ID"),
     personId: z
       .string()
-      .uuid()
       .optional()
       .nullable()
       .describe("Filter to responses from a specific person"),
