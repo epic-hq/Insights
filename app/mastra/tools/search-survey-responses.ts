@@ -74,8 +74,18 @@ interface SurveySummary {
 
 export const searchSurveyResponsesTool = createTool({
   id: "search-survey-responses",
-  description:
-    "Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback. Returns: (1) 'responses' array with each person's responseUrl - ALWAYS link to these URLs when citing answers, (2) aggregate stats for likert/select questions, (3) text answers with responseUrl for open-ended questions. CRITICAL: When citing ANY survey answer, use the responseUrl from the responses array to link directly to that person's submission.",
+  description: `Search and aggregate survey (Ask link) responses. ALWAYS use this tool FIRST when user asks about surveys, Ask links, survey responses, ratings, NPS scores, what people said in surveys, or any structured feedback.
+
+RETURNED DATA STRUCTURE:
+- surveys[].responses[] = individual submissions with { responseId, responseUrl, personName, email }
+- surveys[].questions[].textResponses[] = text answers with { answer, responseUrl, personName }
+
+MANDATORY LINKING RULES:
+1. When quoting a text answer, use the responseUrl from that textResponse: [personName](responseUrl): "their quote"
+2. When mentioning someone's overall submission, use responseUrl from responses array
+3. EVERY quote or citation MUST include a markdown link to responseUrl
+4. Format: [Name](responseUrl) or [View response](responseUrl)
+5. NEVER fabricate URLs - only use responseUrl values from tool output`,
   inputSchema: z.object({
     projectId: z
       .string()

@@ -77,6 +77,18 @@ create policy "Members can read research links"
     for select
     using (account_id in (select accounts.get_accounts_with_role()));
 
+create policy "Users can read research links they responded to"
+    on public.research_links
+    for select
+    to authenticated
+    using (
+        id in (
+            select research_link_id
+            from public.research_link_responses
+            where lower(email) = lower(auth.jwt() ->> 'email')
+        )
+    );
+
 create policy "Members can insert research links"
     on public.research_links
     for insert to authenticated
@@ -103,4 +115,12 @@ create policy "Members can read research link responses"
             select id from public.research_links
             where account_id in (select accounts.get_accounts_with_role())
         )
+    );
+
+create policy "Users can read own responses by email"
+    on public.research_link_responses
+    for select
+    to authenticated
+    using (
+        lower(email) = lower(auth.jwt() ->> 'email')
     );
