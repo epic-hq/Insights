@@ -1,6 +1,6 @@
 /**
  * Enhanced data table for Ask link responses
- * Features: search, sort, column fitting, text wrap, person links, video playback, delete
+ * Features: search, sort, column fitting, text wrap, person links, video playback, delete, multi-select
  */
 import {
   type ColumnDef,
@@ -9,6 +9,7 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -36,6 +37,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +84,7 @@ export function ResearchLinkResponsesDataTable({
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [videoModal, setVideoModal] = useState<{
     open: boolean;
     url: string | null;
@@ -89,26 +92,91 @@ export function ResearchLinkResponsesDataTable({
   }>({ open: false, url: null, email: "" });
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
+    mode: "single" | "bulk";
     responseId: string | null;
+    responseIds: string[];
     email: string;
-  }>({ open: false, responseId: null, email: "" });
+  }>({
+    open: false,
+    mode: "single",
+    responseId: null,
+    responseIds: [],
+    email: "",
+  });
 
   const deleteFetcher = useFetcher();
   const revalidator = useRevalidator();
   const isDeleting = deleteFetcher.state !== "idle";
 
-  const handleDelete = (responseId: string) => {
+  const handleDeleteSingle = (responseId: string) => {
     deleteFetcher.submit(null, {
       method: "DELETE",
       action: `/api/research-links/${listId}/responses/${responseId}/delete`,
     });
-    setDeleteConfirm({ open: false, responseId: null, email: "" });
-    // Revalidate to refresh the data after deletion
+    setDeleteConfirm({
+      open: false,
+      mode: "single",
+      responseId: null,
+      responseIds: [],
+      email: "",
+    });
     setTimeout(() => revalidator.revalidate(), 100);
   };
 
+  const handleDeleteBulk = (responseIds: string[]) => {
+    deleteFetcher.submit(
+      { responseIds },
+      {
+        method: "POST",
+        action: `/api/research-links/${listId}/responses/delete`,
+        encType: "application/json",
+      },
+    );
+    setDeleteConfirm({
+      open: false,
+      mode: "single",
+      responseId: null,
+      responseIds: [],
+      email: "",
+    });
+    setRowSelection({});
+    setTimeout(() => revalidator.revalidate(), 100);
+  };
+
+  const selectedRows = Object.keys(rowSelection).filter(
+    (key) => rowSelection[key],
+  );
+  const selectedCount = selectedRows.length;
+
   const columns = useMemo<ColumnDef<ResponseWithSignedVideo>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+            className="translate-y-[2px]"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+            className="translate-y-[2px]"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+      },
       {
         accessorKey: "email",
         header: ({ column }) => (
@@ -182,7 +250,6 @@ export function ResearchLinkResponsesDataTable({
           if (!answer) {
             return <span className="text-muted-foreground text-xs">—</span>;
           }
-          // Truncate long answers with tooltip
           const isLong = answer.length > 100;
           return (
             <Tooltip>
@@ -329,7 +396,9 @@ export function ResearchLinkResponsesDataTable({
                   onClick={() =>
                     setDeleteConfirm({
                       open: true,
+                      mode: "single",
                       responseId: row.original.id,
+                      responseIds: [],
                       email: row.original.email,
                     })
                   }
@@ -351,19 +420,34 @@ export function ResearchLinkResponsesDataTable({
   const table = useReactTable({
     data: responses,
     columns,
-    state: { sorting, columnFilters, globalFilter },
+    state: { sorting, columnFilters, globalFilter, rowSelection },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: "includesString",
+    getRowId: (row) => row.id,
   });
+
+  const handleBulkDeleteClick = () => {
+    const selectedIds = table
+      .getSelectedRowModel()
+      .rows.map((row) => row.original.id);
+    setDeleteConfirm({
+      open: true,
+      mode: "bulk",
+      responseId: null,
+      responseIds: selectedIds,
+      email: "",
+    });
+  };
 
   return (
     <div className="space-y-4">
-      {/* Search */}
+      {/* Search and Actions */}
       <div className="flex items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
@@ -374,10 +458,28 @@ export function ResearchLinkResponsesDataTable({
             className="pl-9"
           />
         </div>
-        <p className="text-muted-foreground text-sm">
-          {table.getFilteredRowModel().rows.length} of {responses.length}{" "}
-          responses
-        </p>
+        <div className="flex items-center gap-2">
+          {selectedCount > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDeleteClick}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete {selectedCount} selected
+            </Button>
+          )}
+          <p className="text-muted-foreground text-sm">
+            {selectedCount > 0
+              ? `${selectedCount} selected`
+              : `${table.getFilteredRowModel().rows.length} of ${responses.length} responses`}
+          </p>
+        </div>
       </div>
 
       {/* Table */}
@@ -420,7 +522,11 @@ export function ResearchLinkResponsesDataTable({
                 </TableRow>
               ) : (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-muted/50">
+                  <TableRow
+                    key={row.id}
+                    className="hover:bg-muted/50"
+                    data-state={row.getIsSelected() && "selected"}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
@@ -475,20 +581,39 @@ export function ResearchLinkResponsesDataTable({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete response?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteConfirm.mode === "bulk"
+                ? `Delete ${deleteConfirm.responseIds.length} responses?`
+                : "Delete response?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the response from{" "}
-              <span className="font-medium">{deleteConfirm.email}</span>. This
-              action cannot be undone.
+              {deleteConfirm.mode === "bulk" ? (
+                <>
+                  This will permanently delete{" "}
+                  <span className="font-medium">
+                    {deleteConfirm.responseIds.length} responses
+                  </span>
+                  . This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  This will permanently delete the response from{" "}
+                  <span className="font-medium">{deleteConfirm.email}</span>.
+                  This action cannot be undone.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                deleteConfirm.responseId &&
-                handleDelete(deleteConfirm.responseId)
-              }
+              onClick={() => {
+                if (deleteConfirm.mode === "bulk") {
+                  handleDeleteBulk(deleteConfirm.responseIds);
+                } else if (deleteConfirm.responseId) {
+                  handleDeleteSingle(deleteConfirm.responseId);
+                }
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >
