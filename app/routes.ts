@@ -321,6 +321,10 @@ const routes = [
     "api/research-links/:listId/upload-question-video",
     "./features/research-links/api/upload-question-video.tsx",
   ),
+  route(
+    "api/research-links/:listId/responses/:responseId/delete",
+    "./features/research-links/api/delete-response.tsx",
+  ),
   route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
   route("api.livekit-token", "./routes/api.livekit-token.tsx"),
   route("api/process", "./routes/api.process.tsx"),
