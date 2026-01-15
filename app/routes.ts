@@ -322,11 +322,11 @@ const routes = [
     "./features/research-links/api/upload-question-video.tsx",
   ),
   route(
-    "api/research-links/:listId/responses/:responseId/delete",
+    "api/research-links/:listId/responses/delete",
     "./features/research-links/api/delete-response.tsx",
   ),
   route(
-    "api/research-links/:listId/responses/delete",
+    "api/research-links/:listId/responses/:responseId/delete",
     "./features/research-links/api/delete-response.tsx",
   ),
   route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
