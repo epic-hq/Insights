@@ -50,7 +50,7 @@ primary_region = 'sjc'
 # release_command = 'echo "Release command placeholder"'
 
 [processes]
-web   = '/usr/local/bin/dotenvx run -- node ./build/server/index.js'
+web   = '/usr/local/bin/dotenvx run -- pnpm start'
 mastra = '/usr/local/bin/dotenvx run -- npx mastra dev --dir app/mastra --port 4111'
 
 #  app = '/usr/local/bin/dotenvx run -- pnpm start'
