@@ -323,7 +323,7 @@ const routes = [
   ),
   route(
     "api/research-links/:listId/responses/delete",
-    "./features/research-links/api/delete-response.tsx",
+    "./features/research-links/api/delete-responses-bulk.tsx",
   ),
   route(
     "api/research-links/:listId/responses/:responseId/delete",
