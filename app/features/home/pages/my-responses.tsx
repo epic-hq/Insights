@@ -2,7 +2,6 @@
  * My Responses page - shows survey responses for the logged-in user
  * Users can see their past survey submissions even if they're not part of the project
  */
-import consola from "consola";
 import { formatDistanceToNow } from "date-fns";
 import { Calendar, CheckCircle2, ClipboardList, Inbox } from "lucide-react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
@@ -40,11 +39,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  consola.info("[my-responses] User:", user?.email, "ID:", user?.id);
-
   if (!user || !user.email) {
-    consola.warn("[my-responses] No user or email, returning empty");
-    return { responses: [], debug: { reason: "no_user" } };
+    return { responses: [] };
   }
 
   // Query responses with research_links (accounts is in a different schema, so we fetch it separately)
@@ -70,7 +66,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .order("created_at", { ascending: false });
 
   if (queryError) {
-    consola.error("[my-responses] Query error:", queryError);
     return { responses: [] };
   }
 
@@ -92,8 +87,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .in("id", accountIds);
 
   const accountMap = new Map(accountsData?.map((a) => [a.id, a.name]) ?? []);
-
-  consola.info("[my-responses] Found responses:", rawResponses?.length);
 
   const responses: ResponseItem[] = (rawResponses ?? []).map((r) => {
     const link = r.research_links as unknown as {
