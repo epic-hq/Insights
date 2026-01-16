@@ -1,0 +1,158 @@
+/**
+ * Tool for recommending next actions based on project state.
+ * Use proactively when user asks "what should I do next?" or seems stuck.
+ */
+
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import {
+  getProjectResearchContext,
+  type ProjectResearchContext,
+} from "~/features/research-links/db";
+import {
+  generateRecommendations,
+  determineProjectStage,
+  type Recommendation,
+  type ProjectStage,
+} from "~/features/research-links/utils/recommendation-rules";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
+
+const RecommendationSchema = z.object({
+  id: z.string(),
+  priority: z.number(),
+  title: z.string(),
+  description: z.string(),
+  reasoning: z.string(),
+  actionType: z.enum([
+    "setup",
+    "interview",
+    "survey",
+    "validate",
+    "deep_dive",
+    "analyze",
+    "decide",
+  ]),
+  focusTheme: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+    })
+    .optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+const ProjectStateSchema = z.object({
+  stage: z.enum(["setup", "discovery", "gathering", "validation", "synthesis"]),
+  interviewCount: z.number(),
+  surveyCount: z.number(),
+  themeCount: z.number(),
+  hasGoals: z.boolean(),
+});
+
+export const recommendNextActionsTool = createTool({
+  id: "recommend-next-actions",
+  description: `Get personalized recommendations for what the user should do next in their research project.
+Returns 1-3 actionable suggestions based on current project state (themes, evidence, interviews, surveys).
+
+Use this tool proactively when:
+- User asks "what should I do next?" or "what's the next step?"
+- User seems unsure how to proceed
+- User asks for guidance or recommendations
+- Starting a conversation to orient the user
+
+The recommendations are based on:
+- Whether project goals are set
+- Number of interviews and surveys completed
+- Theme evidence levels (low = needs validation, high = ready for deep dive)
+- Pricing themes (special handling)
+- Recency of surveys (NPS check if stale)`,
+  inputSchema: z.object({
+    reason: z
+      .string()
+      .optional()
+      .describe("Why you are fetching recommendations (for logging)"),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    message: z.string(),
+    recommendations: z.array(RecommendationSchema),
+    projectState: ProjectStateSchema,
+  }),
+  execute: async (input, context?) => {
+    const supabase = supabaseAdmin as SupabaseClient<Database>;
+    const projectId = context?.requestContext?.get?.("project_id");
+    const accountId = context?.requestContext?.get?.("account_id");
+
+    consola.debug("recommend-next-actions: execute start", {
+      projectId,
+      accountId,
+      reason: input.reason,
+    });
+
+    if (!projectId) {
+      consola.warn("recommend-next-actions: missing projectId");
+      return {
+        success: false,
+        message:
+          "Missing projectId. Ensure the runtime context sets project_id.",
+        recommendations: [],
+        projectState: {
+          stage: "setup" as ProjectStage,
+          interviewCount: 0,
+          surveyCount: 0,
+          themeCount: 0,
+          hasGoals: false,
+        },
+      };
+    }
+
+    try {
+      // Fetch comprehensive project context
+      const projectContext = await getProjectResearchContext({
+        supabase,
+        projectId,
+      });
+
+      // Generate recommendations using rule engine
+      const recommendations = generateRecommendations(projectContext);
+      const stage = determineProjectStage(projectContext);
+
+      consola.debug("recommend-next-actions: generated recommendations", {
+        projectId,
+        stage,
+        recommendationCount: recommendations.length,
+        recommendationIds: recommendations.map((r) => r.id),
+      });
+
+      return {
+        success: true,
+        message: `Found ${recommendations.length} recommendations for your project.`,
+        recommendations,
+        projectState: {
+          stage,
+          interviewCount: projectContext.interviewCount,
+          surveyCount: projectContext.surveyCount,
+          themeCount: projectContext.themes.length,
+          hasGoals: projectContext.hasGoals,
+        },
+      };
+    } catch (error) {
+      consola.error("recommend-next-actions: unexpected error", error);
+      return {
+        success: false,
+        message: "Unexpected error generating recommendations.",
+        recommendations: [],
+        projectState: {
+          stage: "setup" as ProjectStage,
+          interviewCount: 0,
+          surveyCount: 0,
+          themeCount: 0,
+          hasGoals: false,
+        },
+      };
+    }
+  },
+});

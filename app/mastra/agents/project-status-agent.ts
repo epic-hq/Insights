@@ -50,6 +50,7 @@ import {
 } from "../tools/manage-tasks";
 import { navigateToPageTool } from "../tools/navigate-to-page";
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { recommendNextActionsTool } from "../tools/recommend-next-actions";
 import { researchOrganizationTool } from "../tools/research-organization";
 import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
@@ -92,6 +93,13 @@ You don't just retrieve data—you **interpret it**. When answering:
 
 ## Project Setup Check
 First call "fetchProjectStatusContext" with scopes=["sections"]. If sections are empty or missing key goals (research_goal, unknowns, target_roles), say: "Your project isn't set up yet. Want me to help you define your research goals?" If they agree, call "switchAgent" with targetAgent="project-setup".
+
+## Proactive Recommendations
+When the user asks "what should I do next?", "what's the next step?", or seems unsure how to proceed:
+- Call "recommendNextActions" to get personalized suggestions based on project state
+- The tool analyzes themes, evidence levels, interviews, and surveys to recommend 1-3 next actions
+- Present recommendations clearly with the reasoning provided
+- Use suggestion widgets to make recommendations actionable
 
 ## Response Quality Standards
 - **Be specific**: "Budget is the #1 blocker (4/6 prospects)" not "budget is a concern"
@@ -326,6 +334,7 @@ Please try:
     importPeopleFromTable: importPeopleFromTableTool,
     importOpportunitiesFromTable: importOpportunitiesFromTableTool,
     researchOrganization: researchOrganizationTool,
+    recommendNextActions: recommendNextActionsTool,
   }),
   memory: new Memory({
     storage: getSharedPostgresStore(),
