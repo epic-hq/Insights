@@ -64,6 +64,13 @@ type ToolExecutionContext = {
 };
 
 function ensureContext(context?: ToolExecutionContext) {
+  consola.debug("[manage-tasks] ensureContext called with context:", {
+    hasContext: !!context,
+    hasRequestContext: !!context?.requestContext,
+    hasGet: !!context?.requestContext?.get,
+    contextKeys: context ? Object.keys(context) : [],
+  });
+
   const accountId = context?.requestContext?.get?.("account_id") as
     | string
     | undefined;
@@ -73,6 +80,13 @@ function ensureContext(context?: ToolExecutionContext) {
   const userId = context?.requestContext?.get?.("user_id") as
     | string
     | undefined;
+
+  consola.debug("[manage-tasks] ensureContext values:", {
+    accountId: accountId || "(empty)",
+    projectId: projectId || "(empty)",
+    userId: userId || "(empty)",
+  });
+
   if (!accountId || !projectId) {
     throw new Error("Missing accountId or projectId in runtime context");
   }
