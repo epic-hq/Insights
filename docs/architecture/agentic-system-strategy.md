@@ -629,144 +629,17 @@ Compact (lower priority):
 
 ---
 
-## Deep Dive: Competitive Analysis
+## Competitive Context
 
-### Dovetail (Direct Competitor)
+See full analysis: [`docs/competitive/`](../competitive/)
 
-**What they launched (Fall 2025):**
-- AI Agents (closed beta) - automated VoC summaries, issue flagging, Slack alerts
-- AI Dashboards - qualitative → quantitative visualization
-- AI Docs - auto-generate PRDs, research reports
-- AI Chat (GA) - surface insights, answer questions
-- Integrations: Linear, Salesforce, Gong, Alloy
+**Key takeaways:**
+- Dovetail has AI Agents in closed beta, but no true state-aware orchestration
+- OpenAI SDK offers elegant session memory, but no domain knowledge
+- Our advantage: research journey awareness + proactive recommendations
 
-**Their architecture (4-stage cycle):**
-1. **Assemble**: Centralize customer signals (sales calls, support, surveys, app reviews)
-2. **Analyze**: AI classification, dashboards, segment comparison, sentiment tracking
-3. **Uncover**: AI Chat for insights, question answering, document generation
-4. **Act**: Linear tickets, Slack alerts, automated reports, prototypes
-
-**Their strengths:**
-- Deep integrations (Gong, Salesforce, Linear)
-- Strong enterprise presence (Atlassian, Shopify, Canva)
-- Fast AI feature shipping (2-week cycles via Bedrock)
-- Mature data pipeline (transcription, highlights, redaction)
-
-**Their gaps (our opportunity):**
-- Agents are in closed beta, not generally available
-- No true state-aware orchestration (still feature-based)
-- No proactive guidance ("what should I do next?")
-- Manual workflow assembly (Assemble → Analyze → Uncover → Act requires user driving)
-
-### OpenAI Agents SDK (Platform Competitor)
-
-**What they offer:**
-- Session-based memory (automatic history management)
-- Storage options: SQLite, SQLAlchemy, Dapr, encrypted sessions
-- Minimal primitives: Agent, Tool, Handoff, Guardrail
-- Built-in context length management
-
-**Their architecture pattern:**
-```
-Session → Memory Object → run() repeatedly
-            ↓
-   SDK handles history, continuity, context length
-```
-
-**Their strengths:**
-- Elegant API (just call `session.run()`)
-- Multiple storage backends
-- Context management built-in
-- Low learning curve
-
-**Their gaps:**
-- No domain knowledge (generic platform)
-- Long-term memory is external responsibility
-- No project state awareness
-- No specialized research intelligence
-
-### Anthropic/Claude (Platform + Product)
-
-**What they offer:**
-- 200K-1M token context windows
-- Memory tool (file-based CLAUDE.md approach)
-- Context editing (84% token reduction in 100-turn workflows)
-- Project-scoped memory (isolation between contexts)
-
-**Their innovation (Sept 2025):**
-```
-Memory as transparent Markdown files
-├── Hierarchical organization
-├── User-editable
-├── Version-controllable
-└── No vector DB complexity
-```
-
-**Their strengths:**
-- Massive context windows
-- Transparent memory (not black box)
-- Context editing for long workflows
-- Strong reasoning capabilities
-
-**Their gaps:**
-- General purpose (not research-specific)
-- No integrations with research tools
-- No multi-agent orchestration
-- No domain workflows
-
-### LangGraph (Framework Competitor)
-
-**What they offer:**
-- Thread-scoped checkpointing
-- Cross-session namespaced memory
-- LangMem toolkit (procedural, episodic, semantic)
-- Multi-agent coordination patterns
-
-**Their memory pattern:**
-```
-Short-term: Thread-scoped checkpoints (working memory)
-Long-term: Namespaced stores (cross-session)
-           ├── Semantic (facts)
-           ├── Episodic (experiences)
-           └── Procedural (rules)
-```
-
-**Their strengths:**
-- Comprehensive memory taxonomy
-- Production-ready persistence (Postgres, Redis, MongoDB)
-- Background memory extraction patterns
-- Multi-agent state sharing
-
-**Their gaps:**
-- Framework, not product
-- Requires significant engineering
-- No domain specialization
-- Complex for simple use cases
-
-### Competitive Positioning Matrix
-
-| Capability | Dovetail | OpenAI SDK | Claude | LangGraph | **Upsight** |
-|------------|----------|------------|--------|-----------|-------------|
-| Research domain knowledge | ★★★★★ | ☆☆☆☆☆ | ★☆☆☆☆ | ☆☆☆☆☆ | ★★★★★ |
-| State-aware guidance | ★★☆☆☆ | ☆☆☆☆☆ | ☆☆☆☆☆ | ★★☆☆☆ | ★★★★☆ |
-| Proactive recommendations | ★★☆☆☆ | ☆☆☆☆☆ | ☆☆☆☆☆ | ☆☆☆☆☆ | ★★★★★ |
-| Memory/learning | ★★★☆☆ | ★★★☆☆ | ★★★★☆ | ★★★★★ | ★★★☆☆ |
-| Multi-agent orchestration | ★★☆☆☆ | ★★★☆☆ | ★★☆☆☆ | ★★★★★ | ★★☆☆☆ |
-| Enterprise integrations | ★★★★★ | ★★☆☆☆ | ★★☆☆☆ | ★★★☆☆ | ★★☆☆☆ |
-| Ease of use | ★★★★☆ | ★★★★★ | ★★★★☆ | ★★☆☆☆ | ★★★☆☆ |
-
-### Where We Win
-
-1. **Research journey awareness**: We know where users are in discovery → validation → decision
-2. **Proactive intelligence**: Suggest what to do, not just answer questions
-3. **End-to-end execution**: "Create a survey" actually creates it
-4. **Evidence grounding**: Recommendations tied to real interview data
-
-### Where We Need Investment
-
-1. **Memory sophistication**: Move beyond thread-scoped to cross-session learning
-2. **Enterprise integrations**: Gong, Salesforce, Linear connections
-3. **Agent reliability**: Evaluation coverage, error handling, graceful degradation
+**Where we win:** Research journey awareness, proactive intelligence, end-to-end execution
+**Where we invest:** Memory sophistication, enterprise integrations, agent reliability
 
 ---
 
@@ -964,24 +837,6 @@ Before building, decide:
 
 ---
 
-## Research Sources
+## Sources
 
-### Memory & Agent Architecture
-- [OpenAI Agents SDK: Session Memory](https://cookbook.openai.com/examples/agents_sdk/session_memory)
-- [OpenAI Agents SDK: Long-Term Memory](https://cookbook.openai.com/examples/agents_sdk/context_personalization)
-- [Anthropic: Context Management](https://www.anthropic.com/news/context-management)
-- [Anthropic: Memory Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool)
-- [Anthropic: Context Engineering for AI Agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
-- [LangChain: Memory Overview](https://docs.langchain.com/oss/python/langgraph/memory)
-- [LangGraph & Redis: Memory Persistence](https://redis.io/blog/langgraph-redis-build-smarter-ai-agents-with-memory-persistence/)
-- [Practical Memory Patterns for Agent Workflows](https://www.ais.com/practical-memory-patterns-for-reliable-longer-horizon-agent-workflows/)
-- [It's Not Magic, It's Memory (Jit)](https://www.jit.io/resources/ai-security/its-not-magic-its-memory-how-to-architect-short-term-memory-for-agentic-ai)
-
-### Competitive Intelligence
-- [Dovetail: Fall 2025 Launch](https://dovetail.com/blog/2025-fall-launch/)
-- [Dovetail: Spring 2025 Launch](https://dovetail.com/blog/dovetail-2025-spring-launch/)
-- [Dovetail: AI Vision](https://dovetail.com/blog/ai-vision/)
-- [Dovetail: Customer Intelligence Platform](https://dovetail.com/blog/dovetail-launches-customer-intelligence-platform/)
-- [OpenAI Agents SDK Review (mem0)](https://mem0.ai/blog/openai-agents-sdk-review)
-- [Top AI Tools for User Research](https://www.usehubble.io/blog/top-ai-tools-for-user-research)
-- [AI Transforming UX Research 2025](https://www.looppanel.com/blog/ai-uxresearch-10-powerful-tools)
+See [`docs/competitive/`](../competitive/) for full research sources.
