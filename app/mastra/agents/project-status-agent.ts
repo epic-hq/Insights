@@ -96,7 +96,7 @@ First call "fetchProjectStatusContext" with scopes=["sections"]. If sections are
 
 ## Proactive Recommendations
 When the user asks "what should I do next?", "what's the next step?", or seems unsure how to proceed:
-- Call "recommendNextActions" to get personalized suggestions based on project state
+- Call "recommendNextActions" with projectId parameter to get personalized suggestions
 - The tool analyzes themes, evidence levels, interviews, and surveys to recommend 1-3 next actions
 - Present recommendations clearly with the reasoning provided
 - Use suggestion widgets to make recommendations actionable

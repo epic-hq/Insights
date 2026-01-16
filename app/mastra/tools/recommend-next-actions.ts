@@ -70,6 +70,12 @@ The recommendations are based on:
 - Pricing themes (special handling)
 - Recency of surveys (NPS check if stale)`,
   inputSchema: z.object({
+    projectId: z
+      .string()
+      .optional()
+      .describe(
+        "Project ID to get recommendations for. If not provided, uses runtime context.",
+      ),
     reason: z
       .string()
       .optional()
@@ -83,21 +89,28 @@ The recommendations are based on:
   }),
   execute: async (input, context?) => {
     const supabase = supabaseAdmin as SupabaseClient<Database>;
-    const projectId = context?.requestContext?.get?.("project_id");
+    // Prefer explicit input, fall back to runtime context
+    const runtimeProjectId = context?.requestContext?.get?.("project_id");
+    const projectId = input.projectId ?? runtimeProjectId;
     const accountId = context?.requestContext?.get?.("account_id");
 
     consola.debug("recommend-next-actions: execute start", {
-      projectId,
+      inputProjectId: input.projectId,
+      runtimeProjectId,
+      resolvedProjectId: projectId,
       accountId,
       reason: input.reason,
     });
 
     if (!projectId) {
-      consola.warn("recommend-next-actions: missing projectId");
+      consola.warn("recommend-next-actions: missing projectId", {
+        hasContext: !!context,
+        hasRequestContext: !!context?.requestContext,
+      });
       return {
         success: false,
         message:
-          "Missing projectId. Ensure the runtime context sets project_id.",
+          "Missing projectId. Pass projectId parameter or ensure runtime context sets project_id.",
         recommendations: [],
         projectState: {
           stage: "setup" as ProjectStage,
