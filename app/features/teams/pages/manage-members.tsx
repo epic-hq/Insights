@@ -53,11 +53,9 @@ import {
   updateAccountUserRole as dbUpdateAccountUserRole,
 } from "../db/accounts";
 import {
-  acceptInvitation as dbAcceptInvitation,
   createInvitation as dbCreateInvitation,
   deleteInvitation as dbDeleteInvitation,
   getAccountInvitations as dbGetAccountInvitations,
-  lookupInvitation as dbLookupInvitation,
 } from "../db/invitations";
 
 type MembersRow = {
@@ -115,82 +113,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const inviteToken = url.searchParams.get("invite_token")?.trim() || null;
   let inviteAcceptance: InvitationAcceptanceState = { status: "idle" };
 
+  // Redirect to /accept-invite for proper invitation handling
+  // This ensures the user gets a proper acceptance flow with fresh account data
   if (inviteToken) {
-    const { data: lookupData, error: lookupError } = await dbLookupInvitation({
-      supabase: client,
-      lookup_invitation_token: inviteToken,
-    });
-    if (lookupError) {
-      inviteAcceptance = {
-        status: "error",
-        message: lookupError.message || "We couldn't validate this invitation.",
-      };
-    } else {
-      const lookup = (lookupData as Record<string, unknown> | null) ?? null;
-      const lookupAccountId =
-        (lookup?.account_id as string | undefined) ?? null;
-      const isActive = Boolean(lookup?.active);
-
-      if (!lookupAccountId || lookupAccountId !== accountId) {
-        inviteAcceptance = {
-          status: "error",
-          message: "This invitation doesn't match the selected team.",
-        };
-      } else if (!isActive) {
-        inviteAcceptance = {
-          status: "inactive",
-          message: "This invitation has already been used or has expired.",
-        };
-      } else {
-        const { error: acceptError } = await dbAcceptInvitation({
-          supabase: client,
-          lookup_invitation_token: inviteToken,
-        });
-        if (acceptError) {
-          inviteAcceptance = {
-            status: "error",
-            message:
-              acceptError.message || "We couldn't accept this invitation.",
-          };
-        } else {
-          inviteAcceptance = {
-            status: "accepted",
-            message: "Invitation accepted. You're now on this team.",
-          };
-
-          // Capture invite_accepted event
-          try {
-            const inviterUserId =
-              (lookup?.inviter_user_id as string | undefined) ?? null;
-            const role =
-              (lookup?.account_role as
-                | "owner"
-                | "member"
-                | "viewer"
-                | undefined) ?? "member";
-
-            const posthogServer = getPostHogServerClient();
-            if (posthogServer) {
-              posthogServer.capture({
-                distinctId: user.sub,
-                event: "invite_accepted",
-                properties: {
-                  account_id: accountId,
-                  inviter_user_id: inviterUserId,
-                  role,
-                  $set: {
-                    team_member: true,
-                    last_team_joined_at: new Date().toISOString(),
-                  },
-                },
-              });
-            }
-          } catch (trackingError) {
-            consola.warn("[INVITE] PostHog tracking failed:", trackingError);
-          }
-        }
-      }
-    }
+    throw redirect(
+      `/accept-invite?invite_token=${encodeURIComponent(inviteToken)}`,
+    );
   }
 
   const { data: account, error: accountError } = await dbGetAccount({
