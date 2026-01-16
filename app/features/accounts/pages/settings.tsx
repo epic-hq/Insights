@@ -1,7 +1,7 @@
 import { ArrowRight, Globe, GripVertical, Loader2, Sparkles, Trash2, X } from "lucide-react"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { useActionData, useFetcher, useLoaderData, useLocation, useNavigate } from "react-router"
+import { redirect, useActionData, useFetcher, useLoaderData, useLocation, useNavigate } from "react-router"
 import { toast } from "sonner"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -183,7 +183,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		industry: account?.industry ?? null,
 	}
 
-	// Get default project for redirect after onboarding
+	// Redirect onboarding mode to the project setup chat flow
 	let defaultProjectId: string | null = null
 	if (isOnboarding) {
 		const { data: userSettings } = await supabase
@@ -192,6 +192,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.eq("user_id", ctx.claims?.sub)
 			.single()
 		defaultProjectId = userSettings?.last_used_project_id ?? null
+		if (defaultProjectId) {
+			return redirect(`/a/${accountId}/${defaultProjectId}/setup?onboarding=1`)
+		}
+		return redirect(`/a/${accountId}/home`)
 	}
 
 	return {
