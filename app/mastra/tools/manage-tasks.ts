@@ -346,7 +346,7 @@ function mapTask(task: Task, projectPath: string) {
 export const fetchTasksTool = createTool({
   id: "fetch-tasks",
   description:
-    "List tasks in the current project. Use this to find tasks by title, status, cluster, or priority. Shows task details including title, description, status, priority, impact, stage, and who it's assigned to.",
+    "List tasks in the current project. Use this to find tasks by title, status, category, or priority. Shows task details including title, description, status, priority, impact, stage, and who it's assigned to.",
   inputSchema: z.object({
     search: z
       .string()
@@ -366,7 +366,7 @@ export const fetchTasksTool = createTool({
       )
       .optional()
       .describe("Filter by task status (can specify multiple)"),
-    cluster: z.string().optional().describe("Filter by cluster/category"),
+    cluster: z.string().optional().describe("Filter by category"),
     priority: z
       .number()
       .int()
@@ -582,108 +582,135 @@ export const fetchFocusTasksTool = createTool({
 export const createTaskTool = createTool({
   id: "create-task",
   description:
-    "Create a new task in the current project. Requires a title and either a priority or a due date. Defaults: assign to current user, status backlog, priority 2 (medium), cluster 'General'.",
-  inputSchema: z
-    .object({
-      title: z.string().min(1).describe("Task title (required)"),
-      description: z
-        .string()
-        .optional()
-        .describe("Detailed description of the task"),
-      cluster: z
-        .string()
-        .nullish()
-        .describe("Cluster/category for grouping (defaults to 'General')"),
-      status: z
-        .enum([
-          "backlog",
-          "todo",
-          "in_progress",
-          "blocked",
-          "review",
-          "done",
-          "archived",
-        ])
-        .optional()
-        .describe("Task status (defaults to 'backlog')"),
-      priority: z
-        .number()
-        .int()
-        .min(1)
-        .max(3)
-        .optional()
-        .describe("Priority: 1=Now, 2=Next, 3=Later (defaults to 2)"),
-      benefit: z.string().optional().describe("Benefit or value proposition"),
-      segments: z.string().optional().describe("Target user segments"),
-      impact: z
-        .number()
-        .int()
-        .min(1)
-        .max(3)
-        .optional()
-        .describe("Impact level: 1=Low, 2=Medium, 3=High"),
-      stage: z
-        .string()
-        .optional()
-        .describe("Product stage (e.g., activation, onboarding, retention)"),
-      reason: z
-        .string()
-        .optional()
-        .describe("Rationale or reasoning for this task"),
-      tags: z.array(z.string()).optional().describe("Tags for categorization"),
-      dueDate: z.string().optional().describe("Due date in ISO format"),
-      estimatedEffort: z
-        .enum(["S", "M", "L", "XL"])
-        .optional()
-        .describe("Estimated effort (S/M/L/XL)"),
-      parentTaskId: z
-        .string()
-        .optional()
-        .describe("Optional parent task ID for subtasks"),
-      dependsOnTaskIds: z
-        .array(z.string())
-        .optional()
-        .describe("Other task IDs this task depends on"),
-      blocksTaskIds: z
-        .array(z.string())
-        .optional()
-        .describe("Task IDs that this task blocks"),
-      source: z
-        .object({
-          entityType: taskLinkEntityTypeSchema.describe(
-            "Entity type to link as the origin/source of the task",
-          ),
-          entityId: z.string().min(1).describe("Entity ID (uuid)"),
+    "Create a new task. Requires title. Pass projectId and userId from your context. Defaults: status=backlog, priority=3 (Later), assigned to creator, category from account settings.",
+  inputSchema: z.object({
+    projectId: z
+      .string()
+      .nullish()
+      .describe("Project ID (use projectId from your context)"),
+    userId: z
+      .string()
+      .nullish()
+      .describe("User ID creating the task (use user_id from your context)"),
+    title: z.string().min(1).describe("Task title (required)"),
+    description: z
+      .string()
+      .optional()
+      .describe("Detailed description of the task"),
+    cluster: z
+      .string()
+      .nullish()
+      .describe(
+        "Category for grouping (defaults to first category in account settings)",
+      ),
+    status: z
+      .enum([
+        "backlog",
+        "todo",
+        "in_progress",
+        "blocked",
+        "review",
+        "done",
+        "archived",
+      ])
+      .optional()
+      .describe("Task status (defaults to 'backlog')"),
+    priority: z
+      .number()
+      .int()
+      .min(1)
+      .max(3)
+      .optional()
+      .describe("Priority: 1=Now, 2=Next, 3=Later (defaults to 3=Later)"),
+    benefit: z.string().optional().describe("Benefit or value proposition"),
+    segments: z.string().optional().describe("Target user segments"),
+    impact: z
+      .number()
+      .int()
+      .min(1)
+      .max(3)
+      .optional()
+      .describe("Impact level: 1=Low, 2=Medium, 3=High"),
+    stage: z
+      .string()
+      .optional()
+      .describe("Product stage (e.g., activation, onboarding, retention)"),
+    reason: z
+      .string()
+      .optional()
+      .describe("Rationale or reasoning for this task"),
+    tags: z.array(z.string()).optional().describe("Tags for categorization"),
+    dueDate: z.string().optional().describe("Due date in ISO format"),
+    estimatedEffort: z
+      .enum(["S", "M", "L", "XL"])
+      .optional()
+      .describe("Estimated effort (S/M/L/XL)"),
+    parentTaskId: z
+      .string()
+      .optional()
+      .describe("Optional parent task ID for subtasks"),
+    dependsOnTaskIds: z
+      .array(z.string())
+      .optional()
+      .describe("Other task IDs this task depends on"),
+    blocksTaskIds: z
+      .array(z.string())
+      .optional()
+      .describe("Task IDs that this task blocks"),
+    source: z
+      .object({
+        entityType: taskLinkEntityTypeSchema.describe(
+          "Entity type to link as the origin/source of the task",
+        ),
+        entityId: z.string().min(1).describe("Entity ID (uuid)"),
+        linkType: taskLinkTypeSchema
+          .optional()
+          .describe("Link type (defaults to 'source')"),
+        description: z
+          .string()
+          .optional()
+          .describe("Optional description of why this entity is linked"),
+      })
+      .optional()
+      .describe(
+        "Optional source/origin entity for this task (creates task_links row)",
+      ),
+    links: z
+      .array(
+        z.object({
+          entityType: taskLinkEntityTypeSchema.describe("Linked entity type"),
+          entityId: z.string().min(1).describe("Linked entity ID (uuid)"),
           linkType: taskLinkTypeSchema
             .optional()
-            .describe("Link type (defaults to 'source')"),
+            .describe("Link type (defaults to 'supports')"),
           description: z
             .string()
             .optional()
-            .describe("Optional description of why this entity is linked"),
-        })
-        .optional()
-        .describe(
-          "Optional source/origin entity for this task (creates task_links row)",
-        ),
-      links: z
-        .array(
-          z.object({
-            entityType: taskLinkEntityTypeSchema.describe("Linked entity type"),
-            entityId: z.string().min(1).describe("Linked entity ID (uuid)"),
-            linkType: taskLinkTypeSchema
-              .optional()
-              .describe("Link type (defaults to 'supports')"),
-            description: z
-              .string()
-              .optional()
-              .describe("Optional description of the relationship"),
-          }),
-        )
-        .optional()
-        .describe("Additional entity links to create for this task"),
-      assignee: z
-        .object({
+            .describe("Optional description of the relationship"),
+        }),
+      )
+      .optional()
+      .describe("Additional entity links to create for this task"),
+    assignee: z
+      .object({
+        userId: z.string().optional(),
+        email: z.string().email().optional(),
+        name: z.string().optional(),
+        personId: z.string().optional().describe("Project person id"),
+        personName: z.string().optional().describe("Project person name"),
+        personCompany: z
+          .string()
+          .optional()
+          .describe("Project person company (disambiguation)"),
+        agentType: z
+          .enum(["code-generation", "research", "testing", "documentation"])
+          .optional(),
+      })
+      .optional()
+      .describe("Single assignee (alias for assignees[0])"),
+    assignees: z
+      .array(
+        z.object({
           userId: z.string().optional(),
           email: z.string().email().optional(),
           name: z.string().optional(),
@@ -696,33 +723,11 @@ export const createTaskTool = createTool({
           agentType: z
             .enum(["code-generation", "research", "testing", "documentation"])
             .optional(),
-        })
-        .optional()
-        .describe("Single assignee (alias for assignees[0])"),
-      assignees: z
-        .array(
-          z.object({
-            userId: z.string().optional(),
-            email: z.string().email().optional(),
-            name: z.string().optional(),
-            personId: z.string().optional().describe("Project person id"),
-            personName: z.string().optional().describe("Project person name"),
-            personCompany: z
-              .string()
-              .optional()
-              .describe("Project person company (disambiguation)"),
-            agentType: z
-              .enum(["code-generation", "research", "testing", "documentation"])
-              .optional(),
-          }),
-        )
-        .optional()
-        .describe("People or agents to assign (defaults to current user)"),
-    })
-    .refine((v) => v.priority !== undefined || v.dueDate !== undefined, {
-      message: "Provide either priority or dueDate",
-      path: ["priority"],
-    }),
+        }),
+      )
+      .optional()
+      .describe("People or agents to assign (defaults to creator)"),
+  }),
   outputSchema: z.object({
     success: z.boolean(),
     message: z.string(),
@@ -732,7 +737,48 @@ export const createTaskTool = createTool({
   execute: async (input, context?) => {
     try {
       const supabase = supabaseAdmin as SupabaseClient<Database>;
-      const { accountId, projectId, userId } = ensureContext(context);
+
+      // Get context values with input overrides (like other tools)
+      const runtimeProjectId = context?.requestContext?.get?.("project_id") as
+        | string
+        | undefined;
+      const runtimeAccountId = context?.requestContext?.get?.("account_id") as
+        | string
+        | undefined;
+      const runtimeUserId = context?.requestContext?.get?.("user_id") as
+        | string
+        | undefined;
+
+      const projectId = input.projectId?.trim() || runtimeProjectId;
+      const userId = input.userId?.trim() || runtimeUserId;
+
+      // Get accountId from project if we have projectId
+      let accountId = runtimeAccountId;
+      if (projectId && !accountId) {
+        const { data: project } = await supabase
+          .from("projects")
+          .select("account_id")
+          .eq("id", projectId)
+          .single();
+        accountId = project?.account_id;
+      }
+
+      if (!projectId || !accountId) {
+        return {
+          success: false,
+          message:
+            "Missing projectId. Pass projectId parameter (use projectId from your context).",
+        };
+      }
+
+      if (!userId) {
+        return {
+          success: false,
+          message:
+            "Missing userId. Pass userId parameter (use user_id from your context).",
+        };
+      }
+
       const projectPath = buildProjectPath(accountId, projectId);
       const assigneesInput =
         input.assignees && input.assignees.length > 0
@@ -751,6 +797,36 @@ export const createTaskTool = createTool({
       const source_theme_id =
         input.source?.entityType === "insight" ? input.source.entityId : null;
 
+      // Fetch available clusters from account settings
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("metadata")
+        .eq("id", accountId)
+        .single();
+
+      const priorityClusters = (account?.metadata as Record<string, unknown>)
+        ?.priority_clusters as Array<{ id: string; label: string }> | undefined;
+      const availableClusters = priorityClusters?.map((c) => c.label) ?? [];
+      const defaultCluster = availableClusters[0] || "General";
+
+      // Validate cluster - use provided value if valid, otherwise use default
+      let cluster = input.cluster?.trim() || defaultCluster;
+      if (
+        availableClusters.length > 0 &&
+        !availableClusters.includes(cluster)
+      ) {
+        // Try case-insensitive match
+        const match = availableClusters.find(
+          (c) => c.toLowerCase() === cluster.toLowerCase(),
+        );
+        cluster = match || defaultCluster;
+        if (!match) {
+          warnings.push(
+            `Category "${input.cluster}" not found. Using "${cluster}". Available: ${availableClusters.join(", ")}`,
+          );
+        }
+      }
+
       const task = await createTask({
         supabase,
         accountId,
@@ -759,10 +835,10 @@ export const createTaskTool = createTool({
         data: {
           title: input.title,
           description: input.description ?? null,
-          cluster: input.cluster ?? "General",
+          cluster,
           parent_task_id: input.parentTaskId ?? null,
           status: input.status ?? "backlog",
-          priority: (input.priority ?? 2) as 1 | 2 | 3,
+          priority: (input.priority ?? 3) as 1 | 2 | 3,
           benefit: input.benefit ?? null,
           segments: input.segments ?? null,
           impact: input.impact ? (input.impact as 1 | 2 | 3) : null,
@@ -841,7 +917,7 @@ export const updateTaskTool = createTool({
     taskId: z.string().min(1).describe("ID of the task to update (required)"),
     title: z.string().optional().describe("New task title"),
     description: z.string().optional().describe("New description"),
-    cluster: z.string().optional().describe("New cluster/category"),
+    cluster: z.string().optional().describe("New category"),
     status: z
       .enum([
         "backlog",

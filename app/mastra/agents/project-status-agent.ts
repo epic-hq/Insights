@@ -79,10 +79,11 @@ export const projectStatusAgent = new Agent({
     try {
       const projectId = requestContext.get("project_id");
       const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
       return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
-project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}
+project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
 
 ## Your Differentiators
 You don't just retrieve data—you **interpret it**. When answering:
@@ -176,7 +177,7 @@ Call "getCurrentDate" first for any date/time questions.
 - Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope/guardrails
 - Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
 - Annotations: "manageAnnotations" for entity-level notes and reminders
-- Tasks: "fetchTasks", "createTask", "updateTask", "deleteTask"
+- Tasks: "fetchTasks", "createTask" (pass projectId=${projectId}, userId=${userId}), "updateTask", "deleteTask"
 - **User-pasted tabular data**: use "parseSpreadsheet" to parse CSV/TSV - it saves to project_assets and shows in Files tab
 - **Agent-generated tables**: use "saveTableToAssets" when YOU generate a table/matrix (competitive analysis, feature comparison)
 - Interview prompts: use interview prompt tools only
