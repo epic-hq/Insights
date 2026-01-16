@@ -598,7 +598,7 @@ export function createMastraTools(context: {
         "Create a new task. Use this when the user asks to create, add, or make a new task or todo item.",
       parameters: z.object({
         title: z.string().describe("Task title"),
-        cluster: z.string().optional().describe("Category of task"),
+        cluster: z.string().nullish().describe("Category of task"),
         description: z.string().optional().describe("Task description"),
         status: z
           .enum([
@@ -627,7 +627,7 @@ export function createMastraTools(context: {
         priority,
       }: {
         title: string;
-        cluster?: string;
+        cluster?: string | null;
         description?: string;
         status?:
           | "backlog"
