@@ -465,7 +465,8 @@ async function computeManagePathFromToken({
   const accountId = (lookup?.account_id as string | undefined) ?? null;
   if (!accountId) return null;
 
-  return `/a/${accountId}/team/manage?invite_token=${encodeURIComponent(token)}`;
+  // Send to accept-invite page, not team/manage (user isn't a member yet)
+  return `/accept-invite?invite_token=${encodeURIComponent(token)}`;
 }
 
 function extractInviteToken(next: string, origin: string): string | null {
