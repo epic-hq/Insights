@@ -50,6 +50,7 @@ import {
 } from "../tools/manage-tasks";
 import { navigateToPageTool } from "../tools/navigate-to-page";
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { createSurveyTool } from "../tools/create-survey";
 import { recommendNextActionsTool } from "../tools/recommend-next-actions";
 import { researchOrganizationTool } from "../tools/research-organization";
 import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
@@ -180,12 +181,14 @@ Call "getCurrentDate" first for any date/time questions.
 - **Agent-generated tables**: use "saveTableToAssets" when YOU generate a table/matrix (competitive analysis, feature comparison)
 - Interview prompts: use interview prompt tools only
 
-**Creating Surveys/Ask Links** (IMPORTANT):
-- You CANNOT create surveys directly - there is no tool for this
-- When user asks to create a survey, navigate them to the survey creator: call "navigateToPage" with path="/ask/new"
-- Say: "I'll take you to the survey creator where you can build this out."
-- Do NOT save survey questions to project_sections - that's the wrong place
-- Do NOT improvise by creating markdown documents with survey questions
+**Creating Surveys/Ask Links** (createSurvey):
+- Use "createSurvey" to create surveys with pre-populated questions
+- Pass name, description, and questions array
+- Question types: "auto" (default), "short_text", "long_text", "single_select", "multi_select", "likert"
+- For select questions, include options array. For likert, include likertScale (3-10) and optionally likertLabels
+- After creating, ALWAYS call "navigateToPage" with the returned editUrl to take user there
+- The survey is saved to database and immediately visible in the UI
+- Do NOT save survey questions to project_sections - use createSurvey instead
 
 **URL Pasted into chat**
 - When user provides a URL, it could be content to fetch and process, or a video/audio URL to import as a conversation/interview
@@ -343,6 +346,7 @@ Please try:
     importOpportunitiesFromTable: importOpportunitiesFromTableTool,
     researchOrganization: researchOrganizationTool,
     recommendNextActions: recommendNextActionsTool,
+    createSurvey: createSurveyTool,
   }),
   memory: new Memory({
     storage: getSharedPostgresStore(),
