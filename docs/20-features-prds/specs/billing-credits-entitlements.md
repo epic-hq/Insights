@@ -274,10 +274,20 @@ Entitlements should be resolved through a central module:
 
 *Fair use policy applies
 
-### 6.7 Soft Cap Notifications
+### 6.7 Soft Cap Strategy
+
+**Phase 1 (Launch - Month 3): Alerts to Team, Not Users**
+- **60% threshold:** Log internally
+- **80% threshold:** Slack alert to team
+- **100%+ threshold:** Manual review queue
+- **Do not auto-throttle.** Watch and learn usage patterns first.
+
+**Phase 2 (Month 3+): User-Facing Notifications**
 - **80% warning:** "You're approaching your plan limits" (subtle banner)
 - **100% prompt:** "You've reached your plan's fair use limit" (upgrade CTA)
 - **120% throttle:** "Please upgrade to continue" (blocks new analyses)
+
+See [Billing Margin Operations Guide](./billing-margin-operations.md) for detailed operational framework.
 
 ### 6.8 Discounts & Promotions
 - Discount codes can apply up to **100%** of monthly price.
@@ -383,12 +393,21 @@ Sources: OpenAI API pricing (standard) https://platform.openai.com/docs/pricing,
 ---
 
 ## 11) Next Steps
+
+### Implementation
 - Confirm pricing tiers ($15/$30/$25 per seat).
 - Implement `usage_events` + credit ledger schema.
 - Build user-facing limit display (analyses, voice minutes).
 - Build internal credit tracking (hidden from UI).
-- Implement soft cap warnings and upgrade prompts.
 - Wire billing webhooks to update subscriptions + credit grants.
+
+### Operations (Phased)
+1. **Launch:** Instrument all AI calls with cost tracking
+2. **Month 1-3:** Alert team on soft cap hits (no user-facing throttling)
+3. **Month 3+:** Add user-facing warnings and upgrade prompts
+4. **At 100 users:** Review margin distribution, adjust if >10% unprofitable
+
+See [Billing Margin Operations Guide](./billing-margin-operations.md) for detailed margin math and operational playbook.
 
 ---
 
