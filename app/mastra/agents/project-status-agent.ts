@@ -182,10 +182,11 @@ Call "getCurrentDate" first for any date/time questions.
 - Interview prompts: use interview prompt tools only
 
 **Creating Surveys/Ask Links** (createSurvey):
-- Use "createSurvey" to create surveys with pre-populated questions
-- Pass name, description, and questions array
+- Use "createSurvey" with projectId=${projectId} to create surveys with pre-populated questions
+- REQUIRED: Always pass projectId, name, and questions array
 - Question types: "auto" (default), "short_text", "long_text", "single_select", "multi_select", "likert"
 - For select questions, include options array. For likert, include likertScale (3-10) and optionally likertLabels
+- To update existing survey, pass surveyId parameter
 - After creating, ALWAYS call "navigateToPage" with the returned editUrl to take user there
 - The survey is saved to database and immediately visible in the UI
 - Do NOT save survey questions to project_sections - use createSurvey instead
