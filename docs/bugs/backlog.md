@@ -9,3 +9,16 @@
 
 **When:** After smart suggestions is solid
 
+---
+
+## Deferred: Voice Response Recording Option
+
+**What:** Allow survey respondents to record audio-only responses
+- Add "Voice" option alongside current video recording
+- Audio-only uploads (smaller files, easier for respondents)
+- Transcription for searchability
+
+**Why deferred:** Video recording works, voice is enhancement
+
+**When:** When video adoption shows need for lighter-weight option
+
