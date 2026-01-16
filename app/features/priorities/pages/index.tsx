@@ -233,6 +233,8 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		const cluster = formData.get("cluster") as string
 		const priority = Number.parseInt(formData.get("priority") as string, 10) || 3
 		const sourceThemeId = formData.get("source_theme_id") as string | null
+		const dueDateRaw = formData.get("due_date") as string | null
+		const dueDate = dueDateRaw && dueDateRaw.trim() !== "" ? dueDateRaw : null
 
 		if (!title) {
 			return { success: false, error: "Title is required" }
@@ -260,6 +262,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 					cluster: cluster || "Product",
 					priority: priority as 1 | 2 | 3,
 					source_theme_id: sourceThemeId || null,
+					due_date: dueDate,
 				},
 			})
 
