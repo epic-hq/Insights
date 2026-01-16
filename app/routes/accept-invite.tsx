@@ -21,7 +21,8 @@ type LoaderData =
       accountName: string;
       accountSlug: string | null;
       accountRole: string;
-      destination: string;
+      projectDestination: string | null;
+      projectName: string | null;
     }
   | {
       status: "error";
@@ -32,7 +33,8 @@ type LoaderData =
       accountId: string;
       accountName: string;
       accountSlug: string | null;
-      destination: string;
+      projectDestination: string | null;
+      projectName: string | null;
     };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -132,17 +134,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
     slug?: string;
   } | null;
 
-  // Determine destination
-  let destination = "/home";
-  if (acceptedData?.slug) {
-    destination = `/a/${acceptedData.slug}`;
-  } else if (acceptedData?.account_id) {
-    destination = `/a/${acceptedData.account_id}`;
-  }
+  const accountId = acceptedData?.account_id ?? lookupData?.account_id ?? "";
 
-  // Override with explicit redirect if provided
-  if (redirectTo && redirectTo.startsWith("/")) {
-    destination = redirectTo;
+  // Fetch a project from the invited account to navigate to
+  let projectDestination: string | null = null;
+  let projectName: string | null = null;
+
+  if (accountId) {
+    const { data: projects } = await supabase
+      .from("projects")
+      .select("id, name")
+      .eq("account_id", accountId)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (projects && projects.length > 0) {
+      const project = projects[0];
+      projectDestination = `/a/${accountId}/${project.id}`;
+      projectName = project.name;
+    } else {
+      // No projects yet, go to account home
+      projectDestination = `/a/${accountId}/home`;
+    }
   }
 
   if (acceptError) {
@@ -153,10 +166,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (msg.includes("already a member")) {
       return {
         status: "already_member",
-        accountId: lookupData?.account_id ?? "",
+        accountId,
         accountName: lookupData?.account_name ?? "the team",
         accountSlug: acceptedData?.slug ?? null,
-        destination,
+        projectDestination,
+        projectName,
       } satisfies LoaderData;
     }
 
@@ -168,11 +182,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return {
     status: "success",
-    accountId: acceptedData?.account_id ?? "",
+    accountId,
     accountName: lookupData?.account_name ?? "the team",
     accountSlug: acceptedData?.slug ?? null,
     accountRole: acceptedData?.account_role ?? "member",
-    destination,
+    projectDestination,
+    projectName,
   } satisfies LoaderData;
 }
 
@@ -181,10 +196,23 @@ export default function AcceptInvite() {
   const navigate = useNavigate();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  const handleContinue = () => {
+  const handleGoToTeam = () => {
     if (data.status === "success" || data.status === "already_member") {
       setIsNavigating(true);
-      navigate(data.destination);
+      if (data.projectDestination) {
+        navigate(data.projectDestination);
+      } else {
+        navigate("/home");
+      }
+    }
+  };
+
+  const handleStayHere = () => {
+    // Go back to where they were, or home if no history
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/home");
     }
   };
 
@@ -253,22 +281,38 @@ export default function AcceptInvite() {
           )}
         </CardContent>
 
-        <CardFooter className="flex justify-center gap-3 pt-2">
+        <CardFooter className="flex flex-col gap-3 pt-2">
           {(data.status === "success" || data.status === "already_member") && (
-            <Button
-              onClick={handleContinue}
-              disabled={isNavigating}
-              className="min-w-32"
-            >
-              {isNavigating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                "Continue to Dashboard"
-              )}
-            </Button>
+            <>
+              <Button
+                onClick={handleGoToTeam}
+                disabled={isNavigating}
+                className="w-full"
+              >
+                {isNavigating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Go to {data.accountName}
+                    {data.projectName && (
+                      <span className="ml-1 text-white/70">
+                        ({data.projectName})
+                      </span>
+                    )}
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleStayHere}
+                variant="ghost"
+                className="w-full text-white/70 hover:text-white"
+              >
+                Stay in current project
+              </Button>
+            </>
           )}
 
           {data.status === "error" && (
