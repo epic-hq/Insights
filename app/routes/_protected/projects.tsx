@@ -14,13 +14,11 @@ import {
   redirect,
   useLoaderData,
   useMatches,
-  useOutletContext,
   useParams,
 } from "react-router";
 import type { Database as ProjectsDatabase } from "supabase/types";
 import { z } from "zod";
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
-import type { AppLayoutOutletContext } from "~/components/layout/AppLayout";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -179,9 +177,6 @@ function ProjectLayout({
   userProfileContext?: string | null;
 }) {
   const { isMobile } = useDeviceDetection();
-  const appLayoutContext = useOutletContext<
-    AppLayoutOutletContext | undefined
-  >();
   const params = useParams();
   const accountId = params.accountId || "";
   const projectId = params.projectId || "";
@@ -208,25 +203,10 @@ function ProjectLayout({
     return handle.hideProjectStatusAgent;
   });
 
-  useEffect(() => {
-    if (!appLayoutContext) return;
-    if (isMobile) {
-      appLayoutContext.setForceSidebarCollapsed(false);
-      return;
-    }
-    const shouldForce =
-      !hideProjectStatusAgent && isExpanded && !isChatCollapsed;
-    appLayoutContext.setForceSidebarCollapsed(shouldForce);
-    return () => {
-      appLayoutContext.setForceSidebarCollapsed(false);
-    };
-  }, [
-    appLayoutContext,
-    hideProjectStatusAgent,
-    isChatCollapsed,
-    isExpanded,
-    isMobile,
-  ]);
+  // NOTE: We no longer force-collapse the sidebar when the chat is open.
+  // Both the AppSidebar and chat panel can now coexist simultaneously.
+  // The previous behavior was removed to improve UX - users reported frustration
+  // that they couldn't have navigation and chat visible at the same time.
 
   useEffect(() => {
     // Skip panel management on mobile
