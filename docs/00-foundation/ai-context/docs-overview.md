@@ -61,6 +61,8 @@ This project has extensive documentation organized by purpose. AI agents should 
 | [Interview Processing](/docs/interview-processing-explained.md) | Core transcription/analysis pipeline |
 | [Interview Processing Flows](/docs/interview-processing-flows.md) | Detailed pipeline diagrams |
 | [User Flow](/docs/user-flow.md) | End-to-end user journeys |
+| [Agentic System Strategy](/docs/architecture/agentic-system-strategy.md) | Agent orchestration strategy |
+| [Agentic System Planning Guide](/docs/architecture/agentic-system-planning-guide.md) | Production planning checklist |
 
 ### Feature-Specific Architecture
 | Document | Feature |
@@ -79,6 +81,7 @@ This project has extensive documentation organized by purpose. AI agents should 
 |---------|-----|------------------|
 | **Conversation Lenses** | [PRD](/docs/features/conversation-lenses/PRD.md) | [Technical](/docs/features/conversation-lenses/technical-design.md) |
 | **Task System** | [Proposal](/docs/features/task-system-proposal.md) | [Design](/docs/features/task-system-technical-design.md) |
+| **Task Planning Workflows** | - | [Design](/docs/20-features-prds/features/task-planning-workflows.md) |
 | **BANT Lens** | [User Guide](/docs/features/bant-lens-user-guide.md) | [Technical](/docs/features/bant-lens-technical-design.md) |
 | **Onboarding** | [Flow](/docs/features/onboarding-flow.md) | [Storyboard](/docs/features/onboarding-storyboard.md) |
 | **People Linking** | [Overview](/docs/features/people-linking/README.md) | [Implementation](/docs/features/people-linking/implementation.md) |
@@ -99,10 +102,10 @@ This project has extensive documentation organized by purpose. AI agents should 
 ### AI Agents
 | Document | Purpose |
 |----------|---------|
-| [Agents Vision](/docs/agents/vision.md) | Agent system goals |
-| [Agents Planning](/docs/agents/planning.md) | Agent roadmap |
-| [Agents Implementation](/docs/agents/implementation.md) | Current implementation |
-| [Agentic Workflow](/docs/features/agentic-workflow.md) | Workflow patterns |
+| [Agents Implementation](/docs/00-foundation/agents/implementation.md) | Current implementation patterns |
+| [Mastra Project Agents](/docs/00-foundation/agents/mastra-project-agents.md) | Project status + setup agents |
+| [Agent Evaluation Checklist](/docs/00-foundation/agents/evaluation-checklist.md) | Pre-ship evaluation |
+| [Mastra Tool Contracts](/docs/30-howtos/mastra-tools/tool-contracts.md) | Tool contract standard |
 
 ---
 

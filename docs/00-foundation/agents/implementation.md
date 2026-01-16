@@ -208,6 +208,11 @@ This is the authoritative, efficient playbook for building and operating feature
 - `docs/supabase-howto.md` – best practices for migrations, manual SQL, and type generation
 - `docs/_information_architecture.md` – keep the evidence → themes → insights mental model when designing new agents
 - `docs/deploy-howto.md` – release checklist for schema/view changes so agents know when to re-run tests/rollouts
+- `docs/00-foundation/agents/mastra-project-agents.md` – how projectStatusAgent and projectSetupAgent work in practice
+- `docs/architecture/agentic-system-strategy.md` – orchestration strategy and system-level decisions
+- `docs/architecture/agentic-system-planning-guide.md` – production planning checklist and best practices
+- `docs/00-foundation/agents/evaluation-checklist.md` – pre-ship evaluation checklist
+- `docs/30-howtos/mastra-tools/tool-contracts.md` – tool contract standard
 
 ## Last Notes
 - If confidence < 90% on a design choice, list 1–2 viable alternatives and the fastest spike to evaluate them

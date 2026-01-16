@@ -29,6 +29,8 @@ export interface Recommendation {
     | "deep_dive"
     | "analyze"
     | "decide";
+  /** Optional: relative path to navigate to (e.g., "/setup", "/ask/new") */
+  navigateTo?: string;
   /** Optional: theme this recommendation focuses on */
   focusTheme?: {
     id: string;
@@ -94,6 +96,7 @@ export function generateRecommendations(
         "Define your research goals to get personalized guidance and recommendations.",
       reasoning: "Project goals help me suggest the right next steps for you.",
       actionType: "setup",
+      navigateTo: "/setup",
     });
   }
 
@@ -107,6 +110,7 @@ export function generateRecommendations(
         "Run discovery interviews or create a survey to learn about your customers.",
       reasoning: "You have no research data yet - time to start learning!",
       actionType: "interview",
+      navigateTo: "/ask/new",
       metadata: {
         suggestedOptions: ["interviews", "survey"],
       },
@@ -124,6 +128,7 @@ export function generateRecommendations(
       description: `This theme needs more evidence to be confident. Create a survey or interview more customers.`,
       reasoning: `Only ${topTheme.evidence_count} piece${topTheme.evidence_count === 1 ? "" : "s"} of evidence - need at least 3 to validate.`,
       actionType: "validate",
+      navigateTo: "/ask/new",
       focusTheme: {
         id: topTheme.id,
         name: topTheme.name,
@@ -144,6 +149,7 @@ export function generateRecommendations(
       description: `This theme has strong evidence. Explore specific aspects or test assumptions.`,
       reasoning: `${topTheme.evidence_count} pieces of evidence - ready for deeper exploration.`,
       actionType: "deep_dive",
+      navigateTo: `/themes/${topTheme.id}`,
       focusTheme: {
         id: topTheme.id,
         name: topTheme.name,
@@ -169,6 +175,7 @@ export function generateRecommendations(
         "Understand willingness to pay and pricing sensitivity with a focused survey.",
       reasoning: "Pricing-related themes detected - validate before decisions.",
       actionType: "survey",
+      navigateTo: "/ask/new",
       focusTheme: {
         id: pricingTheme.id,
         name: pricingTheme.name,
@@ -200,6 +207,7 @@ export function generateRecommendations(
         "Measure customer satisfaction and loyalty with a quick NPS survey.",
       reasoning: "No recent satisfaction surveys - time for a check-in.",
       actionType: "survey",
+      navigateTo: "/ask/new",
       metadata: {
         surveyType: "nps",
       },
@@ -220,6 +228,7 @@ export function generateRecommendations(
         "You have enough data to draw conclusions. Review themes and make decisions.",
       reasoning: `${context.themes.length} themes from ${context.interviewCount} interviews - ready for synthesis.`,
       actionType: "analyze",
+      navigateTo: "/themes",
     });
   }
 
@@ -256,6 +265,7 @@ export function getSurveyRecommendations(
         reasoning:
           "Start with open-ended questions to identify themes and patterns.",
         actionType: "survey",
+        navigateTo: "/ask/new",
         metadata: {
           surveyType: "discovery",
         },

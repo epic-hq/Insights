@@ -89,7 +89,14 @@ export async function getProjectResearchContext({
       .from("project_sections")
       .select("kind, content_md")
       .eq("project_id", projectId)
-      .in("kind", ["goal", "target_roles", "target_orgs", "customer_problem"]),
+      .in("kind", [
+        "goal",
+        "research_goal",
+        "research_goal_details",
+        "target_roles",
+        "target_orgs",
+        "customer_problem",
+      ]),
 
     // Get themes with evidence counts
     supabase
@@ -162,11 +169,14 @@ export async function getProjectResearchContext({
     }
   }
 
-  // Determine if project has goals set
+  // Determine if project has goals set (check multiple goal-related sections)
+  const goalKinds = ["goal", "research_goal", "research_goal_details"];
   const hasGoals =
     sectionsResult.data?.some(
       (s) =>
-        s.kind === "goal" && s.content_md && s.content_md.trim().length > 0,
+        goalKinds.includes(s.kind) &&
+        s.content_md &&
+        s.content_md.trim().length > 0,
     ) ?? false;
 
   // Build account context from joined data

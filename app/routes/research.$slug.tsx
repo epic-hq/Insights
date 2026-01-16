@@ -1058,8 +1058,7 @@ export default function ResearchLinkPage() {
                     required
                   />
                   <p className="text-right text-white/50 text-xs">
-                    {list.hero_cta_helper ||
-                      "We'll only contact you about this study"}
+                    {list.hero_cta_helper || ""}
                   </p>
                 </div>
                 <div className="flex justify-end">
@@ -1163,11 +1162,16 @@ export default function ResearchLinkPage() {
                     className="space-y-3"
                   >
                     <div className="rounded-xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-4 sm:p-5">
-                      <h2 className="mb-1 font-medium text-base text-white sm:text-lg">
-                        {currentQuestion.prompt}
-                        {currentQuestion.required && (
-                          <span className="ml-1 text-red-400">*</span>
-                        )}
+                      <h2 className="mb-1 flex items-start gap-2 font-medium text-base text-white sm:text-lg">
+                        <span className="shrink-0 text-white/50">
+                          {currentIndex + 1}.
+                        </span>
+                        <span>
+                          {currentQuestion.prompt}
+                          {currentQuestion.required && (
+                            <span className="ml-1 text-red-400">*</span>
+                          )}
+                        </span>
                       </h2>
                       {/* Question video prompt */}
                       {currentQuestion.videoUrl && (
@@ -1370,9 +1374,17 @@ export default function ResearchLinkPage() {
                 <CheckCircle2 className="h-12 w-12 text-emerald-300" />
                 <div className="space-y-2">
                   <h2 className="font-semibold text-xl">Thanks for sharing!</h2>
-                  <p className="text-sm text-white/70">
-                    Your responses have been saved.
-                  </p>
+                  {/* <p className="text-sm text-white/70">Your responses have been saved.</p> */}
+                  <div className="flex items-center justify-center gap-2">
+                    <a
+                      href="https://getupsight.com/sign-up"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium"
+                    >
+                      Create a free account to see and chat with your responses.
+                    </a>
+                  </div>
                 </div>
 
                 {/* Calendar booking */}
@@ -1400,10 +1412,6 @@ export default function ResearchLinkPage() {
 
                 {/* Share section */}
                 <div className="w-full space-y-3 border-white/10 border-t pt-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-white/60">
-                    <Share2 className="h-4 w-4" />
-                    Know someone who might want to share too?
-                  </div>
                   <Button
                     onClick={handleCopyLink}
                     variant="outline"
@@ -1480,13 +1488,13 @@ export default function ResearchLinkPage() {
         </div>
 
         {/* Growth CTA */}
-        <p className="mt-3 text-center text-sm text-white/60">
+        <p className="mt-3 text-center text-sm">
           {/* Need answers to your own questions?{" "} */}
           <a
             href="https://getupsight.com/sign-up"
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-white hover:text-white"
+            className="font-medium text-muted-foreground hover:text-foreground"
           >
             Get answers to your questions
             <span className="block">with a free account</span>

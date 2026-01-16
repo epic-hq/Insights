@@ -3,6 +3,9 @@
 ## Overview
 Based on feedback, we're implementing a **unified task model** where "features" and "tasks" are the same entity. Tasks are hierarchically organized under clusters and can be updated via voice/text chat through the Assistant.
 
+For planning workflows (long-term, weekly, daily, and follow-ups), see:
+`docs/20-features-prds/features/task-planning-workflows.md`.
+
 ## Core Design Principles
 1. **Unified Model**: One table, multiple views - no distinction between "features" and "tasks"
 2. **Hierarchical Organization**: Tasks belong to clusters (like our current grouping)

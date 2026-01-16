@@ -35,6 +35,10 @@ const RecommendationSchema = z.object({
     "analyze",
     "decide",
   ]),
+  navigateTo: z
+    .string()
+    .optional()
+    .describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
   focusTheme: z
     .object({
       id: z.string(),

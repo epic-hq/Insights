@@ -41,7 +41,7 @@ export function ResearchLinkPreview({
 								readOnly
 								className="h-8 border-white/20 bg-white/10 text-white/70 text-xs"
 							/>
-							<p className="text-[10px] text-white/40">{heroCtaHelper || "We'll only contact you about this study"}</p>
+							<p className="text-[10px] text-white/40">{heroCtaHelper || ""}</p>
 						</div>
 
 						<Button disabled size="sm" className="h-8 w-full bg-white text-black text-xs">

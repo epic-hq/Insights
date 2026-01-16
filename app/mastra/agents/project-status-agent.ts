@@ -96,10 +96,11 @@ First call "fetchProjectStatusContext" with scopes=["sections"]. If sections are
 
 ## Proactive Recommendations
 When the user asks "what should I do next?", "what's the next step?", or seems unsure how to proceed:
-- Call "recommendNextActions" with projectId parameter to get personalized suggestions
+- Call "recommendNextActions" with projectId=${projectId} to get personalized suggestions
 - The tool analyzes themes, evidence levels, interviews, and surveys to recommend 1-3 next actions
+- Each recommendation includes a "navigateTo" path - use this to create clickable links AND call "navigateToPage" to take the user there
+- Example: If recommendation has navigateTo="/setup", link it like **[Complete project setup](/a/{accountId}/{projectId}/setup)** and then call navigateToPage({path: "/setup"})
 - Present recommendations clearly with the reasoning provided
-- Use suggestion widgets to make recommendations actionable
 
 ## Response Quality Standards
 - **Be specific**: "Budget is the #1 blocker (4/6 prospects)" not "budget is a concern"
