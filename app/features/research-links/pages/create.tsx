@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ClipboardList,
   Copy,
   Lightbulb,
   Loader2,
@@ -475,75 +474,73 @@ export default function CreateResearchLinkPage() {
           >
             <Card className="shadow-lg">
               <CardContent className="p-8">
-                <div className="mb-6 flex items-start justify-between gap-4">
-                  <div>
-                    <h1 className="mb-2 font-bold text-2xl">Add questions</h1>
-                    <p className="text-muted-foreground">
-                      What do you want to ask?
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleImportPrompts}
-                      disabled={interviewPrompts.length === 0}
-                      className="gap-2"
-                      title={
-                        interviewPrompts.length === 0
-                          ? "No interview prompts available"
-                          : undefined
-                      }
-                    >
-                      <ClipboardList className="h-4 w-4" />
-                      {interviewPrompts.length > 0
-                        ? `Import (${interviewPrompts.length})`
-                        : "Import"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerate}
-                      disabled={isGenerating || !name}
-                      className="gap-2"
-                    >
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 text-violet-500" />
-                      )}
-                      {isGenerating ? "Generating..." : "AI Suggest"}
-                    </Button>
-                  </div>
+                <div className="mb-6">
+                  <h1 className="mb-2 font-bold text-2xl">Add questions</h1>
+                  <p className="text-muted-foreground">
+                    What do you want to ask?
+                  </p>
                 </div>
 
                 <div className="space-y-6">
-                  {/* Show paste area if no questions yet */}
+                  {/* Primary CTA: Generate with AI when no questions */}
                   {questions.length === 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {/* Main action: Generate with AI */}
+                      <Button
+                        type="button"
+                        onClick={handleGenerate}
+                        disabled={isGenerating || !name}
+                        size="lg"
+                        className="w-full gap-2"
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-5 w-5" />
+                        )}
+                        {isGenerating
+                          ? "Generating questions..."
+                          : "Generate questions with AI"}
+                      </Button>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">
+                            or write your own
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Secondary: paste/type */}
                       <Textarea
                         value={bulkText}
                         onChange={(e) => setBulkText(e.target.value)}
-                        placeholder={`Paste or type your questions, one per line:
-
-What's your biggest challenge right now?
-How do you currently solve this problem?
-What would make you switch to a new solution?`}
-                        rows={6}
-                        className="font-mono text-sm"
-                        autoFocus
+                        placeholder="Type questions here, one per line..."
+                        rows={4}
+                        className="text-sm"
                       />
-                      <Button
-                        type="button"
-                        onClick={handleBulkSubmit}
-                        disabled={!bulkText.trim()}
-                        variant="secondary"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Questions
-                      </Button>
+                      {bulkText.trim() && (
+                        <Button
+                          type="button"
+                          onClick={handleBulkSubmit}
+                          variant="secondary"
+                          className="w-full"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add{" "}
+                          {
+                            bulkText.split("\n").filter((l) => l.trim()).length
+                          }{" "}
+                          question
+                          {bulkText.split("\n").filter((l) => l.trim())
+                            .length !== 1
+                            ? "s"
+                            : ""}
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -585,17 +582,34 @@ What would make you switch to a new solution?`}
                         ))}
                       </div>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          setQuestions([...questions, createEmptyQuestion()])
-                        }
-                        className="w-full"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add another question
-                      </Button>
+                      {/* Add more options */}
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            setQuestions([...questions, createEmptyQuestion()])
+                          }
+                          className="flex-1"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add question
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={handleGenerate}
+                          disabled={isGenerating}
+                          className="gap-2"
+                        >
+                          {isGenerating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 text-violet-500" />
+                          )}
+                          More AI
+                        </Button>
+                      </div>
                     </>
                   )}
 
