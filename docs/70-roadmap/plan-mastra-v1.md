@@ -4,16 +4,17 @@
 
 Migration from Mastra 0.24.x to v1 (beta). This is a significant upgrade that requires Node.js 22.13.0+ and includes breaking changes to tool signatures, imports, memory configuration, and various API renames.
 
-**Current Versions:**
-- `@mastra/core`: 0.24.8
-- `@mastra/ai-sdk`: 0.3.3
-- `@mastra/memory`: 0.15.13
-- `@mastra/pg`: 0.17.10
-- `@mastra/libsql`: 0.16.3
-- `@mastra/loggers`: 0.10.19
-- `mastra` CLI: 0.18.6
+**Current Versions (stable, in use):**
+- `@mastra/core`: 1.0.0-beta.17
+- `@mastra/ai-sdk`: 1.0.0-beta.10
 
-**Target:** All packages at `@beta` (v1)
+**Target:** Upgrade to latest beta when stable
+
+> **Warning (2026-01-16):** Attempted upgrade to beta.23 caused critical issues:
+> 1. `requestContext` not forwarded to tools (tools couldn't access user_id, project_id)
+> 2. Stricter input validation breaking tools when LLM passes `null` for optional fields
+>
+> Rolled back to beta.17/beta.10. See `docs/bugs/backlog.md` for test checklist before re-attempting upgrade.
 
 ---
 
