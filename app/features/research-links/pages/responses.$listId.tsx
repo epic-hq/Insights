@@ -1,3 +1,4 @@
+import consola from "consola";
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,7 +27,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { getServerClient } from "~/lib/supabase/client.server";
-import { createR2PresignedUrl } from "~/utils/r2.server";
+import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
 import { createRouteDefinitions } from "~/utils/route-definitions";
 import { ResearchLinkResponsesDataTable } from "../components/ResearchLinkResponsesDataTable";
 import { getResearchLinkWithResponses } from "../db";
@@ -379,7 +380,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     if (!response.video_url) {
       return { ...response, signed_video_url: null };
     }
-    const key = response.video_url;
+    // Extract the R2 key from the public URL
+    const key = getR2KeyFromPublicUrl(response.video_url);
+    if (!key) {
+      consola.warn("Could not extract R2 key from video URL", {
+        video_url: response.video_url,
+      });
+      return { ...response, signed_video_url: null };
+    }
     const ext = key.split(".").pop()?.toLowerCase();
     const contentType =
       ext === "mp4"
@@ -934,20 +942,35 @@ export default function ResearchLinkResponsesPage() {
               <Sparkles className="h-5 w-5" />
               AI Analysis
             </h2>
-            {!analysisResult && !detailedResult && (
-              <Button
-                size="sm"
-                onClick={() => handleAnalyze("detailed")}
-                disabled={isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Analyze
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {!analysisResult && !detailedResult && (
+                <Button
+                  size="sm"
+                  onClick={() => handleAnalyze("detailed")}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Analyze
+                </Button>
+              )}
+              {detailedResult && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setActiveAnalysisCard(0);
+                    setShowAiAnalysisModal(true);
+                  }}
+                >
+                  <Maximize2 className="mr-2 h-4 w-4" />
+                  Full screen
+                </Button>
+              )}
+            </div>
           </div>
           <Card>
             <CardContent className="pt-6">
@@ -1125,17 +1148,6 @@ export default function ResearchLinkResponsesPage() {
                       {detailedResult.completion_rate}% completion
                     </span>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setActiveAnalysisCard(0);
-                          setShowAiAnalysisModal(true);
-                        }}
-                      >
-                        <Maximize2 className="mr-2 h-3 w-3" />
-                        View full analysis
-                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

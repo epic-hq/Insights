@@ -1036,7 +1036,9 @@ export default function ResearchLinkPage() {
                           className="flex flex-1 flex-col items-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-white/60 transition-all hover:border-white/40 hover:text-white/80"
                         >
                           <Calendar className="h-5 w-5" />
-                          <span className="font-medium text-xs">Call</span>
+                          <span className="font-medium text-xs">
+                            Book Call / Meet
+                          </span>
                         </a>
                       )}
                     </div>
@@ -1376,14 +1378,19 @@ export default function ResearchLinkPage() {
                   <h2 className="font-semibold text-xl">Thanks for sharing!</h2>
                   {/* <p className="text-sm text-white/70">Your responses have been saved.</p> */}
                   <div className="flex items-center justify-center gap-2">
-                    <a
-                      href="https://getupsight.com/sign-up"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium"
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="border-white/30 bg-transparent text-white hover:border-white/50 hover:bg-white/10 hover:text-white"
                     >
-                      Create a free account to see and chat with your responses.
-                    </a>
+                      <a
+                        href="https://getupsight.com/sign-up"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Create a free account to see your responses
+                      </a>
+                    </Button>
                   </div>
                 </div>
 
@@ -1494,7 +1501,7 @@ export default function ResearchLinkPage() {
             href="https://getupsight.com/sign-up"
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-muted-foreground hover:text-foreground"
+            className="font-medium text-white/50 transition-colors hover:text-white/80"
           >
             Get answers to your questions
             <span className="block">with a free account</span>
