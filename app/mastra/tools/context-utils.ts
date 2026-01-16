@@ -35,8 +35,23 @@ export async function resolveProjectContext(
 	context: Map<string, unknown> | any,
 	toolName: string
 ): Promise<ResolvedContext> {
+	// Debug: Log the entire context structure to understand what Mastra passes
+	consola.debug(`[${toolName}] resolveProjectContext received context:`, {
+		hasContext: !!context,
+		contextType: typeof context,
+		contextKeys: context ? Object.keys(context) : [],
+		hasRequestContext: !!context?.requestContext,
+		requestContextType: typeof context?.requestContext,
+		requestContextHasGet: typeof context?.requestContext?.get === "function",
+	})
+
 	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
 	const userId = (context?.requestContext?.get?.("user_id") as string | undefined) || null
+
+	consola.debug(`[${toolName}] extracted from context:`, {
+		projectId: projectId || "(empty)",
+		userId: userId || "(empty)",
+	})
 
 	if (!projectId) {
 		consola.error(`[${toolName}] Missing required project_id in context`)
