@@ -94,6 +94,21 @@ function ThinkingWave({ progressMessage }: { progressMessage?: string | null }) 
 	)
 }
 
+function extractNetworkStatus(message: UpsightMessage): string | null {
+	if (!message.parts) return null
+	for (const part of message.parts) {
+		const anyPart = part as { type: string; data?: unknown }
+		if (anyPart.type === "data" && anyPart.data) {
+			const data = anyPart.data as Record<string, unknown>
+			// Check for network routing status: { type: "status", status: "thinking", message: "Thinking..." }
+			if (data?.type === "status" && data?.message) {
+				return data.message as string
+			}
+		}
+	}
+	return null
+}
+
 function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
 	if (!message.parts) return null
 	for (const part of message.parts) {
@@ -785,6 +800,7 @@ export function ProjectStatusAgentChat({
 															) : !isUser ? (
 																<ThinkingWave
 																	progressMessage={
+																		extractNetworkStatus(message) ||
 																		extractToolProgress(message)?.message ||
 																		extractActiveToolCall(message) ||
 																		extractReasoningText(message)
