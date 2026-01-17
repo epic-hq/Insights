@@ -54,6 +54,7 @@ import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { updateTableAssetTool } from "../tools/update-table-asset"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
+import { taskAgent } from "./task-agent"
 
 const ProjectStatusMemoryState = z.object({
 	lastProjectId: z.string().optional(),
