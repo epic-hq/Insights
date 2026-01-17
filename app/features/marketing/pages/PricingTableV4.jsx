@@ -11,7 +11,7 @@ const PricingTable = () => {
       price: { monthly: 0, annual: 0 },
       highlight: false,
       cta: "Start Free",
-      ctaLink: "/sign-up",
+      ctaLink: "/sign-up?plan=free",
       ctaStyle: "secondary",
       sections: [
         {
@@ -60,7 +60,7 @@ const PricingTable = () => {
       price: { monthly: 15, annual: 12 },
       highlight: false,
       cta: "Get Started",
-      ctaLink: "/signup?plan=starter",
+      ctaLink: "/sign-up?plan=starter",
       ctaStyle: "secondary",
       sections: [
         {
@@ -119,7 +119,7 @@ const PricingTable = () => {
       highlight: true,
       badge: "Most Popular",
       cta: "Go Pro",
-      ctaLink: "/signup?plan=pro",
+      ctaLink: "/sign-up?plan=pro",
       ctaStyle: "primary",
       sections: [
         {
