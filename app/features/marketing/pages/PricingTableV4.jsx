@@ -11,7 +11,7 @@ const PricingTable = () => {
       price: { monthly: 0, annual: 0 },
       highlight: false,
       cta: "Start Free",
-      ctaLink: "/signup",
+      ctaLink: "/sign-up",
       ctaStyle: "secondary",
       sections: [
         {
@@ -566,7 +566,7 @@ const PricingTable = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="/signup"
+              href="/sign-up"
               className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-stone-900 font-semibold rounded-lg transition-colors"
             >
               Start Free Trial
