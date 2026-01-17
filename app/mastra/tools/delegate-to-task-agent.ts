@@ -33,6 +33,7 @@ export const delegateToTaskAgentTool = createTool({
 				message: input.userMessage.substring(0, 100),
 			})
 
+			consola.info("Calling taskAgent.generate...")
 			const result = await taskAgent.generate(input.userMessage, {
 				requestContext: new Map([
 					["project_id", projectId],
@@ -40,6 +41,7 @@ export const delegateToTaskAgentTool = createTool({
 					["user_id", userId],
 				]),
 			})
+			consola.info("Task agent completed", { responseLength: result.text?.length })
 
 			return {
 				success: true,
