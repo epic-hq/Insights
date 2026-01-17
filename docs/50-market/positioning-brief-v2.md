@@ -134,6 +134,58 @@ Just clarity. Just evidence. Just action.
 
 ---
 
+## The Wow
+
+### State it. Own it. Deliver it.
+
+**The Core Wow:**
+> **Thirty minutes to see patterns you'd never find yourself.**
+
+You upload five conversations. In less than 33 minutes, you're looking at a synthesis that would have taken you two weeks—and it shows you exactly where each insight came from.
+
+That's the moment. That's the wow.
+
+---
+
+### The Paths to Wow
+
+**Path 1: The Receipts Moment**
+*"Wait, I can click this and hear exactly when they said it?"*
+
+Click any insight. See the speaker. See the timestamp. Play the audio. Verify instantly.
+
+Most tools give you summaries you have to trust. We give you proof you can verify. The moment a user clicks through to the source—that's the wow.
+
+**Path 2: The Pattern Reveal**
+*"I had no idea three of my enterprise customers mentioned the same thing."*
+
+Individual conversations are noise. Cross-conversation synthesis is signal. When a user sees "3 of 5 enterprise users mentioned security concerns" with links to each quote—that's the wow.
+
+**Path 3: The Team Unlock**
+*"So Sales knew this and Product didn't? And we could have seen this the whole time?"*
+
+The first time a PM clicks an insight and realizes the sales team recorded the answer to their burning question six weeks ago—that's the wow.
+
+**Path 4: The Speed Shock**
+*"This would have taken me two weeks. It took thirty minutes?"*
+
+Synthesis is expensive. Manually reviewing calls, tagging quotes, finding themes—it's slow. When users realize the time delta, they don't just appreciate it. They can't go back.
+
+---
+
+### How We Deliver Wow
+
+| Touch Point | Wow to Deliver | How We Measure |
+|-------------|----------------|----------------|
+| **First upload** | Extraction completes, themes emerge | < 10 min to first evidence |
+| **First synthesis** | Cross-conversation patterns visible | < 33 min to synthesis view |
+| **First click-through** | Receipts are real—audio plays | 100% traceability maintained |
+| **First share** | Team sees same truth, no context loss | "Would you show this to your team?" |
+
+**The compounding wow:** Each path reinforces the others. Receipts make patterns credible. Patterns make speed valuable. Speed makes team sharing practical. Team sharing reveals patterns they'd never find alone.
+
+---
+
 ## The Differentiator
 
 ### Everyone else gives you summaries. We give you proof.
