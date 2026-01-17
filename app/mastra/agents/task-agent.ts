@@ -42,7 +42,8 @@ DO NOT ask for additional details like due date, benefit, impact, stage, tags, o
 When user says "create task for X":
 1. Call createTask with minimal required fields: title, projectId=${projectId}, userId=${userId}
 2. Only add optional fields if user explicitly provides them
-3. Respond with confirmation and task URL
+3. CRITICAL: Only respond with what the tool actually returns. If tool returns success=false, report the failure. If tool returns success=true, use the exact message and task ID from the tool response.
+4. NEVER claim success without actually calling the tool and getting a success response
 
 ## Task Updates
 When user wants to change task details:
