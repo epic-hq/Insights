@@ -282,7 +282,43 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const uiMessageStream = createUIMessageStream({
 		execute: async ({ writer }) => {
 			try {
-				const transformedStream = toAISdkStream(stream, toAISdkOptions)
+				// Create async generator to intercept network events and emit status updates
+				async function* interceptStream() {
+					for await (const chunk of stream) {
+						// Emit status updates for network routing events
+						if (chunk.type === "routing-agent-start") {
+							writer.writeData({
+								type: "status",
+								status: "thinking",
+								message: "Thinking...",
+							})
+						} else if (chunk.type === "routing-agent-end") {
+							writer.writeData({
+								type: "status",
+								status: "routing",
+								message: "Routing...",
+							})
+						} else if (chunk.type === "agent-execution-start") {
+							const agentName = (chunk as any).payload?.agentName || "specialist"
+							const displayName = agentName === "taskAgent" ? "Task Agent" : agentName
+							writer.writeData({
+								type: "status",
+								status: "executing",
+								message: displayName,
+							})
+						} else if (chunk.type === "agent-execution-end") {
+							writer.writeData({
+								type: "status",
+								status: "complete",
+								message: "Done",
+							})
+						}
+						// Yield chunk for transformation
+						yield chunk
+					}
+				}
+
+				const transformedStream = toAISdkStream(interceptStream(), toAISdkOptions)
 				if (transformedStream) {
 					for await (const part of transformedStream) {
 						writer.write(part)
