@@ -17,6 +17,7 @@ const TaskAgentMemoryState = z.object({
 export const taskAgent = new Agent({
 	id: "task-agent",
 	name: "taskAgent",
+	description: "Specialized agent for task management operations. Handles creating, updating, completing, deleting, and querying tasks. Use when user wants to manage tasks, mark tasks complete, or query task status.",
 	instructions: async ({ requestContext }) => {
 		const projectId = requestContext.get("project_id")
 		const accountId = requestContext.get("account_id")
