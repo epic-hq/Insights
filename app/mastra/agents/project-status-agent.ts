@@ -2,7 +2,6 @@ import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
 import consola from "consola"
-import { z } from "zod"
 import { openai } from "~/lib/billing/instrumented-openai.server"
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
@@ -55,12 +54,6 @@ import { updateTableAssetTool } from "../tools/update-table-asset"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
 import { taskAgent } from "./task-agent"
-
-const ProjectStatusMemoryState = z.object({
-	lastProjectId: z.string().optional(),
-	lastSummary: z.string().optional(),
-	lastUpdatedAt: z.string().optional(),
-})
 
 export const projectStatusAgent = new Agent({
 	id: "project-status-agent",
@@ -340,9 +333,6 @@ Please try:
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
-		options: {
-			workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
-		},
 	}),
 	// TokenLimiterProcessor prevents context window overflow
 	// Note: Using number format for Zod v4 compatibility
