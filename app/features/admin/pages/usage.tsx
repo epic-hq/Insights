@@ -5,13 +5,20 @@
  * Shows per-account usage, daily trends, and feature breakdowns.
  */
 
-import { Building2, Calendar, TrendingUp, Users, Zap } from "lucide-react";
+import {
+  Building2,
+  Calendar,
+  TrendingUp,
+  User,
+  Users,
+  Zap,
+} from "lucide-react";
 import { useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect, useLoaderData } from "react-router";
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -73,6 +80,16 @@ type FeatureUsage = {
   total_credits: number;
 };
 
+type UserUsage = {
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  event_count: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  total_credits: number;
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const { user } = await getAuthenticatedUser(request);
   if (!user) {
@@ -98,28 +115,37 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const range = url.searchParams.get("range") || "30";
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - parseInt(range));
+  startDate.setDate(startDate.getDate() - Number.parseInt(range));
 
-  // Fetch admin usage data
-  const [accountUsageResult, dailyUsageResult, featureUsageResult] =
-    await Promise.all([
-      supabase.rpc("get_admin_usage_by_account", {
-        p_start_date: startDate.toISOString(),
-        p_end_date: new Date().toISOString(),
-      }),
-      supabase.rpc("get_admin_daily_usage", {
-        p_start_date: startDate.toISOString(),
-        p_end_date: new Date().toISOString(),
-      }),
-      supabase.rpc("get_admin_usage_by_feature", {
-        p_start_date: startDate.toISOString(),
-        p_end_date: new Date().toISOString(),
-      }),
-    ]);
+  // Fetch admin usage data via public wrapper functions
+  const [
+    accountUsageResult,
+    dailyUsageResult,
+    featureUsageResult,
+    userUsageResult,
+  ] = await Promise.all([
+    supabase.rpc("get_admin_usage_by_account", {
+      p_start_date: startDate.toISOString(),
+      p_end_date: new Date().toISOString(),
+    }),
+    supabase.rpc("get_admin_daily_usage", {
+      p_start_date: startDate.toISOString(),
+      p_end_date: new Date().toISOString(),
+    }),
+    supabase.rpc("get_admin_usage_by_feature", {
+      p_start_date: startDate.toISOString(),
+      p_end_date: new Date().toISOString(),
+    }),
+    supabase.rpc("get_admin_usage_by_user", {
+      p_start_date: startDate.toISOString(),
+      p_end_date: new Date().toISOString(),
+    }),
+  ]);
 
   const accountUsage = (accountUsageResult.data as AccountUsage[]) || [];
   const dailyUsage = (dailyUsageResult.data as DailyUsage[]) || [];
   const featureUsage = (featureUsageResult.data as FeatureUsage[]) || [];
+  const userUsage = (userUsageResult.data as UserUsage[]) || [];
 
   // Calculate totals
   const totals = {
@@ -134,6 +160,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     accountUsage,
     dailyUsage,
     featureUsage,
+    userUsage,
     totals,
     range,
   };
@@ -155,7 +182,7 @@ function formatFeatureSource(source: string): string {
 }
 
 export default function AdminUsagePage() {
-  const { accountUsage, dailyUsage, featureUsage, totals, range } =
+  const { accountUsage, dailyUsage, featureUsage, userUsage, totals, range } =
     useLoaderData<typeof loader>();
   const [selectedRange, setSelectedRange] = useState(range);
 
@@ -165,15 +192,21 @@ export default function AdminUsagePage() {
   };
 
   // Format daily data for chart
-  const chartData = dailyUsage.map((d) => ({
-    date: new Date(d.usage_date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
-    credits: d.total_credits ?? 0,
-    cost: d.total_cost_usd ?? 0,
-    accounts: d.unique_accounts ?? 0,
-  }));
+  // Parse dates treating them as local dates (not UTC) to avoid timezone shift
+  const chartData = dailyUsage.map((d) => {
+    // usage_date comes as 'YYYY-MM-DD', parse as local date
+    const [year, month, day] = d.usage_date.split("-").map(Number);
+    const localDate = new Date(year, month - 1, day);
+    return {
+      date: localDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      credits: d.total_credits ?? 0,
+      cost: d.total_cost_usd ?? 0,
+      accounts: d.unique_accounts ?? 0,
+    };
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
@@ -260,22 +293,8 @@ export default function AdminUsagePage() {
         </CardHeader>
         <CardContent>
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorCredits" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="hsl(var(--primary))"
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="hsl(var(--primary))"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="date"
@@ -293,18 +312,16 @@ export default function AdminUsagePage() {
                     borderRadius: "8px",
                   }}
                 />
-                <Area
-                  type="monotone"
+                <Bar
                   dataKey="credits"
-                  stroke="hsl(var(--primary))"
-                  fillOpacity={1}
-                  fill="url(#colorCredits)"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
                   name="Credits"
                 />
-              </AreaChart>
+              </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+            <div className="flex h-[200px] items-center justify-center text-muted-foreground">
               No usage data for this period
             </div>
           )}
@@ -412,6 +429,63 @@ export default function AdminUsagePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Usage by User */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Usage by User
+          </CardTitle>
+          <CardDescription>Top users by credit consumption</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {userUsage.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Events</TableHead>
+                  <TableHead className="text-right">Tokens</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="text-right">Credits</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {userUsage.slice(0, 20).map((user) => (
+                  <TableRow key={user.user_id}>
+                    <TableCell className="font-medium">
+                      {user.user_name || "Unknown"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user.user_email || user.user_id.slice(0, 8)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(user.event_count ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(user.total_tokens ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${(user.total_cost_usd ?? 0).toFixed(4)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant="secondary">
+                        {(user.total_credits ?? 0).toLocaleString()}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              No user usage data
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
