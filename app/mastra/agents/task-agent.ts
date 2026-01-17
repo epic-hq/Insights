@@ -2,11 +2,11 @@ import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
 import { z } from "zod"
-import { getSharedPostgresStore } from "~/app/mastra/memory"
-import { getCurrentDateTool } from "~/app/mastra/tools/get-current-date"
-import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "~/app/mastra/tools/manage-tasks"
-import { markTaskCompleteTool } from "~/app/mastra/tools/mark-task-complete"
 import { openai } from "~/lib/billing/instrumented-openai.server"
+import { getSharedPostgresStore } from "../storage/postgres-singleton"
+import { getCurrentDateTool } from "../tools/get-current-date"
+import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
+import { markTaskCompleteTool } from "../tools/mark-task-complete"
 
 const TaskAgentMemoryState = z.object({
 	recentTasks: z.array(z.string()).optional().describe("Recently accessed task IDs for quick reference"),
