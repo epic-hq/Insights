@@ -2,9 +2,9 @@ import { createTool } from "@mastra/core/tools"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
-import type { Database } from "~/app/database.types"
-import { updateTask } from "~/app/features/tasks/db"
+import { updateTask } from "~/features/tasks/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import type { Database } from "~/types"
 
 const ensureContext = (context?: { requestContext?: Map<string, unknown> }) => {
 	const accountId = context?.requestContext?.get("account_id") as string | undefined
