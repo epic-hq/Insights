@@ -12,14 +12,14 @@
  * Required for all instrumented calls - TypeScript enforces this.
  */
 export interface BillingContext {
-  /** Account to bill (required) */
-  accountId: string;
-  /** User who triggered the action (null for system/background tasks) */
-  userId: string | null;
-  /** Project context if applicable */
-  projectId?: string;
-  /** Feature source for categorization (e.g., 'interview_analysis') */
-  featureSource: FeatureSource;
+	/** Account to bill (required) */
+	accountId: string
+	/** User who triggered the action (null for system/background tasks) */
+	userId: string | null
+	/** Project context if applicable */
+	projectId?: string
+	/** Feature source for categorization (e.g., 'interview_analysis') */
+	featureSource: FeatureSource
 }
 
 /**
@@ -27,54 +27,55 @@ export interface BillingContext {
  * Used for analytics and understanding cost drivers.
  */
 export const FEATURE_SOURCES = [
-  // Interview processing
-  "interview_analysis",
-  "interview_extraction",
-  "interview_insights",
-  "interview_personas",
-  "interview_transcription",
+	// Interview processing
+	"interview_analysis",
+	"interview_extraction",
+	"interview_insights",
+	"interview_personas",
+	"interview_transcription",
+	"persona_synthesis",
 
-  // Lens analysis
-  "lens_application",
-  "lens_synthesis",
-  "lens_qa",
+	// Lens analysis
+	"lens_application",
+	"lens_synthesis",
+	"lens_qa",
 
-  // Survey processing
-  "survey_analysis",
-  "survey_responses",
+	// Survey processing
+	"survey_analysis",
+	"survey_responses",
 
-  // Agent interactions
-  "project_status_agent",
-  "project_setup_agent",
-  "interview_agent",
-  "signup_agent",
-  "research_agent",
+	// Agent interactions
+	"project_status_agent",
+	"project_setup_agent",
+	"interview_agent",
+	"signup_agent",
+	"research_agent",
 
-  // Search and embeddings
-  "semantic_search",
-  "embedding_generation",
-  "web_research",
+	// Search and embeddings
+	"semantic_search",
+	"embedding_generation",
+	"web_research",
 
-  // Other
-  "question_improvement",
-  "theme_consolidation",
-  "persona_summary",
-  "auto_insights",
-  "voice_chat",
-] as const;
+	// Other
+	"question_improvement",
+	"theme_consolidation",
+	"persona_summary",
+	"auto_insights",
+	"voice_chat",
+] as const
 
-export type FeatureSource = (typeof FEATURE_SOURCES)[number];
+export type FeatureSource = (typeof FEATURE_SOURCES)[number]
 
 /**
  * Validate that a billing context is complete
  */
 export function validateBillingContext(ctx: BillingContext): void {
-  if (!ctx.accountId) {
-    throw new Error("BillingContext.accountId is required");
-  }
-  if (!ctx.featureSource) {
-    throw new Error("BillingContext.featureSource is required");
-  }
+	if (!ctx.accountId) {
+		throw new Error("BillingContext.accountId is required")
+	}
+	if (!ctx.featureSource) {
+		throw new Error("BillingContext.featureSource is required")
+	}
 }
 
 /**
@@ -82,16 +83,16 @@ export function validateBillingContext(ctx: BillingContext): void {
  * Use this when there's no specific user triggering the action.
  */
 export function systemBillingContext(
-  accountId: string,
-  featureSource: FeatureSource,
-  projectId?: string,
+	accountId: string,
+	featureSource: FeatureSource,
+	projectId?: string
 ): BillingContext {
-  return {
-    accountId,
-    userId: null,
-    projectId,
-    featureSource,
-  };
+	return {
+		accountId,
+		userId: null,
+		projectId,
+		featureSource,
+	}
 }
 
 /**
@@ -99,15 +100,15 @@ export function systemBillingContext(
  * Use this in API routes and user-triggered actions.
  */
 export function userBillingContext(params: {
-  accountId: string;
-  userId: string;
-  featureSource: FeatureSource;
-  projectId?: string;
+	accountId: string
+	userId: string
+	featureSource: FeatureSource
+	projectId?: string
 }): BillingContext {
-  return {
-    accountId: params.accountId,
-    userId: params.userId,
-    projectId: params.projectId,
-    featureSource: params.featureSource,
-  };
+	return {
+		accountId: params.accountId,
+		userId: params.userId,
+		projectId: params.projectId,
+		featureSource: params.featureSource,
+	}
 }

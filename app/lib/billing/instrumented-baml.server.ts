@@ -20,40 +20,40 @@
  * ```
  */
 
-import consola from "consola";
-import type { BamlUsageSummary } from "~/lib/baml/collector.server";
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server";
-import type { BillingContext } from "./context";
-import { recordUsageAndSpendCredits, type UsageResult } from "./usage.server";
+import consola from "consola"
+import type { BamlUsageSummary } from "~/lib/baml/collector.server"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import type { BillingContext } from "./context"
+import { recordUsageAndSpendCredits, type UsageResult } from "./usage.server"
 
 // Re-export for convenience
-export type { BillingContext } from "./context";
-export { userBillingContext, systemBillingContext } from "./context";
+export type { BillingContext } from "./context"
+export { systemBillingContext, userBillingContext } from "./context"
 
 /**
  * Options for BAML calls (matches runBamlWithTracing)
  */
 interface BamlCallOptions<TResult> {
-  functionName: string;
-  traceName?: string;
-  input?: Record<string, unknown> | string | null;
-  metadata?: Record<string, unknown>;
-  bamlCall: (client: any) => Promise<TResult>;
-  costEnvPrefix?: string;
-  logUsageLabel?: string;
-  model?: string;
-  /** Resource being processed (for tracking) */
-  resourceType?: string;
-  resourceId?: string;
+	functionName: string
+	traceName?: string
+	input?: Record<string, unknown> | string | null
+	metadata?: Record<string, unknown>
+	bamlCall: (client: any) => Promise<TResult>
+	costEnvPrefix?: string
+	logUsageLabel?: string
+	model?: string
+	/** Resource being processed (for tracking) */
+	resourceType?: string
+	resourceId?: string
 }
 
 /**
  * Result from instrumented BAML call
  */
 interface BamlWithBillingResult<TResult> {
-  result: TResult;
-  usage?: BamlUsageSummary | null;
-  billing: UsageResult;
+	result: TResult
+	usage?: BamlUsageSummary | null
+	billing: UsageResult
 }
 
 /**
@@ -70,57 +70,52 @@ interface BamlWithBillingResult<TResult> {
  * @returns Result with billing status
  */
 export async function runBamlWithBilling<TResult>(
-  ctx: BillingContext,
-  opts: BamlCallOptions<TResult>,
-  idempotencyKey: string,
+	ctx: BillingContext,
+	opts: BamlCallOptions<TResult>,
+	idempotencyKey: string
 ): Promise<BamlWithBillingResult<TResult>> {
-  // Run the BAML call with existing tracing
-  const { result, usage } = await runBamlWithTracing({
-    ...opts,
-    metadata: {
-      ...opts.metadata,
-      accountId: ctx.accountId,
-      userId: ctx.userId,
-      projectId: ctx.projectId,
-      featureSource: ctx.featureSource,
-    },
-  });
+	// Run the BAML call with existing tracing
+	const { result, usage } = await runBamlWithTracing({
+		...opts,
+		metadata: {
+			...opts.metadata,
+			accountId: ctx.accountId,
+			userId: ctx.userId,
+			projectId: ctx.projectId,
+			featureSource: ctx.featureSource,
+		},
+	})
 
-  // Record usage and spend credits
-  let billing: UsageResult = {
-    success: true,
-    usageEventId: null,
-    creditsCharged: 0,
-    limitStatus: "ok",
-  };
+	// Record usage and spend credits
+	let billing: UsageResult = {
+		success: true,
+		usageEventId: null,
+		creditsCharged: 0,
+		limitStatus: "ok",
+	}
 
-  if (usage?.totalCostUsd && usage.totalCostUsd > 0) {
-    billing = await recordUsageAndSpendCredits(
-      ctx,
-      {
-        provider: inferProvider(opts.model),
-        model: opts.model || process.env.BAML_DEFAULT_MODEL || "unknown",
-        inputTokens: usage.promptTokens || 0,
-        outputTokens: usage.completionTokens || 0,
-        estimatedCostUsd: usage.totalCostUsd,
-        resourceType: opts.resourceType,
-        resourceId: opts.resourceId,
-      },
-      idempotencyKey,
-    );
+	if (usage?.totalCostUsd && usage.totalCostUsd > 0) {
+		billing = await recordUsageAndSpendCredits(
+			ctx,
+			{
+				provider: inferProvider(opts.model),
+				model: opts.model || process.env.BAML_DEFAULT_MODEL || "unknown",
+				inputTokens: usage.inputTokens || 0,
+				outputTokens: usage.outputTokens || 0,
+				estimatedCostUsd: usage.totalCostUsd,
+				resourceType: opts.resourceType,
+				resourceId: opts.resourceId,
+			},
+			idempotencyKey
+		)
 
-    // Log billing status for monitoring
-    if (
-      billing.limitStatus !== "ok" &&
-      billing.limitStatus !== "duplicate_ignored"
-    ) {
-      consola.warn(
-        `[billing:baml] ${opts.functionName} - Account ${ctx.accountId}: ${billing.limitStatus}`,
-      );
-    }
-  }
+		// Log billing status for monitoring
+		if (billing.limitStatus !== "ok" && billing.limitStatus !== "duplicate_ignored") {
+			consola.warn(`[billing:baml] ${opts.functionName} - Account ${ctx.accountId}: ${billing.limitStatus}`)
+		}
+	}
 
-  return { result, usage, billing };
+	return { result, usage, billing }
 }
 
 /**
@@ -128,50 +123,43 @@ export async function runBamlWithBilling<TResult>(
  * Use for operations that should be blocked when limits are hit.
  */
 export async function runBamlWithBillingOrThrow<TResult>(
-  ctx: BillingContext,
-  opts: BamlCallOptions<TResult>,
-  idempotencyKey: string,
+	ctx: BillingContext,
+	opts: BamlCallOptions<TResult>,
+	idempotencyKey: string
 ): Promise<BamlWithBillingResult<TResult>> {
-  const result = await runBamlWithBilling(ctx, opts, idempotencyKey);
+	const result = await runBamlWithBilling(ctx, opts, idempotencyKey)
 
-  if (result.billing.limitStatus === "hard_limit_exceeded") {
-    throw new UsageLimitError(
-      `Account ${ctx.accountId} has exceeded usage limits for ${ctx.featureSource}`,
-      result.billing,
-    );
-  }
+	if (result.billing.limitStatus === "hard_limit_exceeded") {
+		throw new UsageLimitError(
+			`Account ${ctx.accountId} has exceeded usage limits for ${ctx.featureSource}`,
+			result.billing
+		)
+	}
 
-  return result;
+	return result
 }
 
 /**
  * Error thrown when usage limits are exceeded
  */
 export class UsageLimitError extends Error {
-  constructor(
-    message: string,
-    public readonly billing: UsageResult,
-  ) {
-    super(message);
-    this.name = "UsageLimitError";
-  }
+	constructor(
+		message: string,
+		public readonly billing: UsageResult
+	) {
+		super(message)
+		this.name = "UsageLimitError"
+	}
 }
 
 /**
  * Infer provider from model name
  */
 function inferProvider(model?: string): string {
-  if (!model) return "unknown";
-  const m = model.toLowerCase();
-  if (m.includes("gpt") || m.includes("o1") || m.includes("o3"))
-    return "openai";
-  if (
-    m.includes("claude") ||
-    m.includes("sonnet") ||
-    m.includes("opus") ||
-    m.includes("haiku")
-  )
-    return "anthropic";
-  if (m.includes("gemini")) return "google";
-  return "unknown";
+	if (!model) return "unknown"
+	const m = model.toLowerCase()
+	if (m.includes("gpt") || m.includes("o1") || m.includes("o3")) return "openai"
+	if (m.includes("claude") || m.includes("sonnet") || m.includes("opus") || m.includes("haiku")) return "anthropic"
+	if (m.includes("gemini")) return "google"
+	return "unknown"
 }
