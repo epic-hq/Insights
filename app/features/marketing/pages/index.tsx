@@ -247,14 +247,14 @@ export default function LandingPage() {
 			<footer className="flex w-full shrink-0 flex-col items-center gap-2 border-t bg-white px-4 py-6 text-gray-600 sm:flex-row md:px-6">
 				<p className="text-xs">&copy; 2025 DeepLight. All rights reserved.</p>
 				<nav className="flex gap-4 sm:ml-auto sm:gap-6">
-					<Link href="#" className="text-xs underline-offset-4 hover:underline" prefetch={false}>
+					<Link to="/terms" className="text-xs underline-offset-4 hover:underline">
 						Terms of Service
 					</Link>
-					<Link href="#" className="text-xs underline-offset-4 hover:underline" prefetch={false}>
+					<Link to="/privacy" className="text-xs underline-offset-4 hover:underline">
 						Privacy
 					</Link>
-					<Link href="#" className="text-xs underline-offset-4 hover:underline" prefetch={false}>
-						Contact
+					<Link to="/about" className="text-xs underline-offset-4 hover:underline">
+						About
 					</Link>
 				</nav>
 			</footer>
