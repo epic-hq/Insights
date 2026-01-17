@@ -150,8 +150,9 @@ export default function Personas() {
               </p>
             </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {personas.length > 0 ? (
+          {/* Only show header actions when personas exist */}
+          {personas.length > 0 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <ToggleGroup
                 type="single"
                 value={viewMode}
@@ -169,44 +170,26 @@ export default function Personas() {
                   <TableIcon className="h-4 w-4" />
                 </ToggleGroupItem>
               </ToggleGroup>
-            ) : null}
-            <div className="flex w-full gap-2 sm:w-auto">
-              <GeneratePersonasButton planId={currentPlan} />
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-none"
-              >
-                <Link to={routes.personas.new()}>Add Persona</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {personas.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
-            <div className="mx-auto max-w-md space-y-4">
-              <div className="flex justify-center">
-                <div className="rounded-full bg-background p-6 shadow-sm">
-                  <Users className="h-10 w-10 text-muted-foreground" />
-                </div>
-              </div>
-              <h3 className="font-semibold text-foreground text-xl">
-                No personas yet
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                Get started by generating AI-powered persona recommendations
-                from your research data or create personas manually.
-              </p>
-              <div className="flex justify-center gap-3">
+              <div className="flex w-full gap-2 sm:w-auto">
                 <GeneratePersonasButton planId={currentPlan} />
-                <Button asChild variant="outline">
-                  <Link to={routes.personas.new()}>Create Manually</Link>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                >
+                  <Link to={routes.personas.new()}>Add Persona</Link>
                 </Button>
               </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        {personas.length === 0 ? (
+          <EmptyPersonasState
+            planId={currentPlan}
+            newPersonaUrl={routes.personas.new()}
+          />
         ) : viewMode === "cards" ? (
           <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
             {sortedPersonas.map((persona: PersonaRow) => (
@@ -282,5 +265,62 @@ function GeneratePersonasButton({ planId }: { planId: PlanId }) {
       <Sparkle className="mr-2 h-4 w-4" />
       {isGenerating ? "Generating..." : "Generate Personas"}
     </Button>
+  );
+}
+
+function EmptyPersonasState({
+  planId,
+  newPersonaUrl,
+}: {
+  planId: PlanId;
+  newPersonaUrl: string;
+}) {
+  const { isEnabled } = useFeatureGate("smart_personas", planId);
+
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
+      <div className="mx-auto max-w-md space-y-4">
+        <div className="flex justify-center">
+          <div className="rounded-full bg-background p-6 shadow-sm">
+            <Users className="h-10 w-10 text-muted-foreground" />
+          </div>
+        </div>
+        <h3 className="font-semibold text-foreground text-xl">
+          No personas yet
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          {isEnabled
+            ? "Get started by generating AI-powered persona recommendations from your research data or create personas manually."
+            : "Create personas manually, or upgrade to generate AI-powered recommendations from your research data."}
+        </p>
+
+        <div className="flex flex-col items-center gap-4">
+          {/* Primary action - AI generation (gated) */}
+          {isEnabled ? (
+            <GeneratePersonasButton planId={planId} />
+          ) : (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400">
+                <Sparkle className="h-5 w-5" />
+                <span className="font-medium">AI Persona Generation</span>
+              </div>
+              <p className="mt-2 text-muted-foreground text-sm">
+                Automatically identify personas from your interviews
+              </p>
+              <Link to="/pricing?feature=smart_personas" className="mt-3 block">
+                <Button size="sm" className="w-full">
+                  Upgrade to Starter
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Secondary action - manual creation */}
+          <Button asChild variant="outline">
+            <Link to={newPersonaUrl}>Create Manually</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
