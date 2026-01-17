@@ -1,18 +1,9 @@
 import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { Memory } from "@mastra/memory"
-import { z } from "zod"
 import { openai } from "~/lib/billing/instrumented-openai.server"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { getCurrentDateTool } from "../tools/get-current-date"
 import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { markTaskCompleteTool } from "../tools/mark-task-complete"
-
-const TaskAgentMemoryState = z.object({
-	recentTasks: z.array(z.string()).optional().describe("Recently accessed task IDs for quick reference"),
-	lastAction: z.string().optional().describe("Last action performed (create/update/complete/delete)"),
-	lastUpdatedAt: z.string().optional().describe("Timestamp of last memory update"),
-})
 
 export const taskAgent = new Agent({
 	id: "task-agent",
@@ -87,12 +78,5 @@ Remember: You are a specialist. Do your job efficiently and return control.`
 		deleteTask: deleteTaskTool,
 		getCurrentDate: getCurrentDateTool,
 	},
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-		options: {
-			generateTitle: false,
-			workingMemory: { enabled: true, schema: TaskAgentMemoryState },
-		},
-	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
 })
