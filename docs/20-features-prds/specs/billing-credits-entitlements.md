@@ -1,9 +1,16 @@
-# Billing, Credits, and Entitlements Spec (Draft)
+# Billing, Credits, and Entitlements Spec (v2)
 
 ## 0) Spec-First Summary
 This spec defines a **hybrid billing model** that combines simple user-facing messaging ("Unlimited AI") with robust internal usage tracking (credits). The system uses Polar.sh (Stripe backend), a unified usage credits ledger for internal accounting, and a feature-entitlement layer that gates premium functionality by tier.
 
 **Key insight:** Users see simple counts and "unlimited" messaging (like Fathom/Grain). Internally, we track everything via credits for cost control and abuse prevention.
+
+**Architecture principles:**
+- **Single source of truth:** Plan definitions live in `app/config/plans.ts`, imported everywhere
+- **Idempotent operations:** All credit grants/spends use idempotency keys to prevent duplicates
+- **Atomic checks:** Credit spend operations use database-level atomic check-and-spend
+- **Audit trail:** All ledger events include `created_by` and `metadata` for compliance
+- **Temporal entitlements:** Feature access includes `valid_from`/`valid_until` for promos
 
 ---
 
@@ -16,6 +23,9 @@ This spec defines a **hybrid billing model** that combines simple user-facing me
 - Add **tier-based entitlements** (feature gating and upgrade prompts).
 - Centralize **usage metering** for LLM calls and other costly operations.
 - Provide a **modular architecture** so billing, credits, and entitlements are cleanly integrated.
+- **Ensure idempotency** for all credit operations (prevent double-grants on webhook retries).
+- **Atomic credit checks** to prevent race conditions on parallel requests.
+- **Full audit trail** for compliance and debugging.
 
 ### Non-Goals (for initial phase)
 - No full UI implementation of billing flows.
@@ -69,14 +79,59 @@ We evaluated three approaches:
 
 **Default rule:** All current features are included in the base tier unless explicitly listed as premium.
 
-### 2.4 Credits (Internal Only)
+### 2.4 Single Source of Truth: Plan Configuration
+
+**Critical DRY requirement:** All plan definitions MUST be imported from a single config file.
+
+```typescript
+// app/config/plans.ts - THE ONLY PLACE PLANS ARE DEFINED
+export const PLAN_IDS = ['free', 'starter', 'pro', 'team'] as const;
+export type PlanId = typeof PLAN_IDS[number];
+
+export const PLANS: Record<PlanId, PlanConfig> = {
+  free: {
+    id: 'free',
+    name: 'Free',
+    price: { monthly: 0, annual: 0 },
+    // User-facing limits (shown in UI)
+    limits: {
+      ai_analyses: 5,
+      voice_minutes: 0,
+      survey_responses: 50,
+      projects: 1,
+    },
+    // Internal credit allocation (hidden from users)
+    credits: {
+      monthly: 500,
+      softCapEnabled: false, // Hard limit for free tier
+    },
+    // Feature entitlements
+    features: {
+      survey_ai_analysis: false,
+      team_workspace: false,
+      sso: false,
+    },
+  },
+  starter: { /* ... */ },
+  pro: { /* ... */ },
+  team: { /* ... */ },
+} as const;
+```
+
+**Import this everywhere:**
+- `PricingTableV4.jsx` → marketing pricing display
+- `billing/pages/index.tsx` → billing dashboard
+- `lib/entitlements/` → feature gating logic
+- `lib/credits/` → credit allocation logic
+
+### 2.5 Credits (Internal Only)
 Credits are **internal accounting only**—never shown to users in the UI.
 
 - **1 credit = $0.01 USD** of actual provider cost
 - Credits map to estimated_cost_usd from usage events
 - Users see "analyses used" or "voice minutes remaining," not credits
 
-### 2.5 Entitlements
+### 2.6 Entitlements
 An entitlement is a named feature flag that can be enabled at:
 - **Account level** (individual or team)
 - **User level** (rare, but useful for internal overrides)
@@ -114,21 +169,173 @@ In Polar:
 
 ### 4.1 Ledger Events
 Implement an immutable ledger with event types:
-- `credit_grant` (monthly plan credits, promo bonuses, manual credits)
-- `credit_purchase` (add-on purchases)
-- `credit_spend` (usage consumption)
-- `credit_expire` (for expiring plan credits)
+- `grant` (monthly plan credits, promo bonuses, manual credits)
+- `purchase` (add-on purchases)
+- `spend` (usage consumption)
+- `expire` (for expiring plan credits)
+- `refund` (reversals for failed operations)
 
 ### 4.2 Credit Balance Calculation
-- Balance = sum(grants + purchases − spends − expirations)
+- Balance = sum(grants + purchases + refunds − spends − expirations)
 - Always compute from ledger, never store as a mutable number.
 
-### 4.3 Plan Credit Grants
+### 4.3 Idempotency (Critical)
+
+**Problem:** Webhook retries and task retries can cause duplicate credit operations.
+
+**Solution:** Every ledger event requires an `idempotency_key`:
+
+```sql
+-- Unique constraint prevents duplicate operations
+CREATE UNIQUE INDEX credit_ledger_idempotency_idx
+  ON billing.credit_ledger(idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+```
+
+**Idempotency key patterns:**
+- Webhook grant: `webhook:{event_id}:{subscription_id}`
+- Task spend: `task:{task_run_id}:{step_name}`
+- Manual adjustment: `manual:{admin_user_id}:{timestamp}`
+
+```typescript
+// Example: Idempotent credit grant
+async function grantCredits(params: {
+  accountId: string;
+  amount: number;
+  source: 'plan' | 'purchase' | 'promo' | 'manual';
+  idempotencyKey: string;
+  expiresAt?: Date;
+  metadata?: Record<string, unknown>;
+  createdBy?: string;
+}) {
+  // Upsert with ON CONFLICT DO NOTHING
+  const { data, error } = await supabase
+    .from('credit_ledger')
+    .upsert({
+      account_id: params.accountId,
+      event_type: 'grant',
+      amount: params.amount,
+      source: params.source,
+      idempotency_key: params.idempotencyKey,
+      expires_at: params.expiresAt,
+      metadata: params.metadata,
+      created_by: params.createdBy,
+    }, {
+      onConflict: 'idempotency_key',
+      ignoreDuplicates: true,
+    });
+
+  return { data, isDuplicate: !data };
+}
+```
+
+### 4.4 Atomic Credit Spend (Race Condition Prevention)
+
+**Problem:** Parallel requests can pass soft cap check before any spend is recorded.
+
+**Solution:** Database-level atomic check-and-spend function:
+
+```sql
+-- Atomic credit spend with limit check
+CREATE OR REPLACE FUNCTION billing.spend_credits_atomic(
+  p_account_id UUID,
+  p_amount INTEGER,
+  p_soft_limit INTEGER,
+  p_hard_limit INTEGER,
+  p_idempotency_key TEXT,
+  p_usage_event_id UUID,
+  p_feature_source TEXT,
+  p_metadata JSONB DEFAULT NULL
+) RETURNS TABLE(
+  success BOOLEAN,
+  new_balance INTEGER,
+  limit_status TEXT -- 'ok', 'soft_cap_warning', 'soft_cap_exceeded', 'hard_limit_exceeded'
+) AS $$
+DECLARE
+  v_current_balance INTEGER;
+  v_new_balance INTEGER;
+  v_status TEXT;
+BEGIN
+  -- Lock account row to prevent concurrent spends
+  PERFORM 1 FROM accounts.accounts WHERE id = p_account_id FOR UPDATE;
+
+  -- Calculate current balance (grants - spends - expires + refunds)
+  SELECT COALESCE(SUM(
+    CASE WHEN event_type IN ('grant', 'purchase', 'refund') THEN amount
+         WHEN event_type IN ('spend', 'expire') THEN -amount
+         ELSE 0 END
+  ), 0) INTO v_current_balance
+  FROM billing.credit_ledger
+  WHERE account_id = p_account_id
+    AND (expires_at IS NULL OR expires_at > NOW());
+
+  v_new_balance := v_current_balance - p_amount;
+
+  -- Check limits
+  IF v_new_balance < -p_hard_limit THEN
+    v_status := 'hard_limit_exceeded';
+    RETURN QUERY SELECT FALSE, v_current_balance, v_status;
+    RETURN;
+  END IF;
+
+  -- Insert spend event (idempotent)
+  INSERT INTO billing.credit_ledger (
+    account_id, event_type, amount, idempotency_key,
+    usage_event_id, feature_source, metadata
+  ) VALUES (
+    p_account_id, 'spend', p_amount, p_idempotency_key,
+    p_usage_event_id, p_feature_source, p_metadata
+  ) ON CONFLICT (idempotency_key) DO NOTHING;
+
+  -- Determine status
+  IF v_new_balance < 0 THEN
+    v_status := 'soft_cap_exceeded';
+  ELSIF v_current_balance - p_amount < p_soft_limit * 0.8 THEN
+    v_status := 'soft_cap_warning';
+  ELSE
+    v_status := 'ok';
+  END IF;
+
+  RETURN QUERY SELECT TRUE, v_new_balance, v_status;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 4.5 Plan Credit Grants
 - On subscription renewal (invoice paid), grant monthly credits.
 - If subscription is canceled, do not grant credits for that cycle.
+- **Billing cycle:** Use `current_period_start` and `current_period_end` from `billing_subscriptions` table (synced from Polar/Stripe).
 - **Expiration:** all credits expire. Plan-included credits expire at the end of each billing cycle; purchased add-on credits expire 12 months after grant; promo credits default to 90 days (override per campaign).
 
-### 4.4 Internal Credit Allocations
+### 4.6 Refunds and Reversals
+
+**Policy for failed operations:**
+- **Full refund:** If task fails before producing any user-visible output
+- **No refund:** If task produced partial results visible to user
+- **Manual review:** Edge cases flagged for admin decision
+
+```typescript
+// Refund on task failure
+async function refundCreditsOnFailure(params: {
+  accountId: string;
+  originalSpendId: string;
+  amount: number;
+  reason: string;
+}) {
+  await supabase.from('credit_ledger').insert({
+    account_id: params.accountId,
+    event_type: 'refund',
+    amount: params.amount,
+    idempotency_key: `refund:${params.originalSpendId}`,
+    metadata: {
+      original_spend_id: params.originalSpendId,
+      reason: params.reason,
+    },
+  });
+}
+```
+
+### 4.7 Internal Credit Allocations
 
 | Tier | Internal Credits/Month | Soft Cap Threshold |
 |------|------------------------|-------------------|
@@ -137,18 +344,87 @@ Implement an immutable ledger with event types:
 | Pro | 5,000 | 80% warn, 100% prompt, 120% throttle |
 | Team | 4,000/user (pooled) | 80% warn, 100% prompt, 120% throttle |
 
+### 4.8 Team Pooled Credits (Clarified)
+
+**Definition:** Team credits are **truly pooled** across all team members.
+
+```typescript
+// Team of 5 users on Team plan
+const teamCredits = seatCount * 4000; // 5 * 4000 = 20,000 credits shared
+
+// Any team member can use from the pool
+// No per-user allocation within team
+```
+
+**Guardrails:**
+- Track `user_id` on each spend for visibility into individual usage
+- Alert if single user consumes >50% of team pool (potential abuse)
+- No automatic per-user throttling (team admins manage internally)
+
+### 4.9 Audit Trail
+
+All ledger events include:
+- `created_by`: UUID of user/system that initiated the action
+- `metadata`: JSONB for context (reason, approval, source event, etc.)
+
+```sql
+-- Required for compliance and debugging
+ALTER TABLE billing.credit_ledger ADD COLUMN
+  created_by UUID REFERENCES auth.users(id),
+  metadata JSONB DEFAULT '{}';
+```
+
 ---
 
 ## 5) Usage Metering
 
 ### 5.1 Usage Events
 Create a `usage_events` table to record metering events for each LLM call:
+- `id` (UUID, primary key)
 - `account_id`, `project_id`, `user_id`
 - `provider`, `model`
 - `input_tokens`, `output_tokens`, `total_tokens`
-- `estimated_cost_usd`
+- `estimated_cost_usd` (decimal)
+- `credits_charged` (integer, derived from cost)
 - `feature_source` (e.g., interview_analysis, project_status_agent, survey_analysis)
+- `resource_type`, `resource_id` (what was being processed)
+- `idempotency_key` (for linking to credit ledger)
 - `created_at`
+
+```sql
+-- Full schema in supabase/schemas/04_billing_usage.sql
+CREATE TABLE billing.usage_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES accounts.accounts(id),
+  project_id UUID REFERENCES public.projects(id),
+  user_id UUID REFERENCES auth.users(id),
+
+  -- LLM call details
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER GENERATED ALWAYS AS (input_tokens + output_tokens) STORED,
+
+  -- Cost tracking
+  estimated_cost_usd DECIMAL(10,6) NOT NULL,
+  credits_charged INTEGER NOT NULL, -- floor(estimated_cost_usd * 100)
+
+  -- Context
+  feature_source TEXT NOT NULL,
+  resource_type TEXT, -- 'interview', 'survey_response', 'chat_message'
+  resource_id UUID,
+
+  -- Idempotency
+  idempotency_key TEXT UNIQUE,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Index for account usage queries
+CREATE INDEX usage_events_account_created_idx
+  ON billing.usage_events(account_id, created_at DESC);
+```
 
 ### 5.2 Usage to Credits
 **Decision:** Use a **cost-based bridge** so tokenization differences don't matter.
@@ -177,6 +453,88 @@ If a provider does not return cost, compute it from tokens and model pricing.
 | Survey response analysis | ~5-10 | Included in response count |
 | Project chat message | ~2-5 | Unlimited (within soft cap) |
 | Realtime voice (per minute) | ~1-2 | "X minutes remaining" |
+
+### 5.6 Integration Pattern: Trigger.dev Tasks
+
+**Every LLM call in Trigger.dev tasks must record usage and spend credits.**
+
+```typescript
+// src/trigger/interview/v2/extractEvidenceCore.ts
+import { recordUsageAndSpendCredits } from "~/lib/billing/usage";
+
+export const extractEvidenceCore = schemaTask({
+  id: "extract-evidence-core",
+  // ...
+  run: async (payload, { ctx }) => {
+    const { projectId, interviewId, accountId } = payload;
+
+    // Get BAML collector for token tracking
+    const collector = createBamlCollector();
+
+    try {
+      // Execute LLM call
+      const result = await b.ExtractEvidence(transcript, { collector });
+
+      // Record usage and spend credits (atomic)
+      const usageResult = await recordUsageAndSpendCredits({
+        accountId,
+        projectId,
+        userId: null, // System task
+        provider: 'anthropic',
+        model: 'claude-sonnet-4',
+        inputTokens: collector.inputTokens,
+        outputTokens: collector.outputTokens,
+        estimatedCostUsd: collector.estimatedCost,
+        featureSource: 'interview_analysis',
+        resourceType: 'interview',
+        resourceId: interviewId,
+        idempotencyKey: `task:${ctx.run.id}:extract-evidence`,
+      });
+
+      if (usageResult.limitStatus === 'hard_limit_exceeded') {
+        throw new Error('Account has exceeded usage limits');
+      }
+
+      return result;
+    } catch (error) {
+      // Refund on failure if credits were spent
+      // (handled by recordUsageAndSpendCredits internally)
+      throw error;
+    }
+  },
+});
+```
+
+### 5.7 Integration Pattern: Mastra Agents
+
+```typescript
+// app/mastra/agents/project-status-agent.ts
+import { recordUsageAndSpendCredits } from "~/lib/billing/usage";
+
+// After each agent turn that uses LLM
+async function onAgentResponse(params: {
+  accountId: string;
+  projectId: string;
+  userId: string;
+  usage: { inputTokens: number; outputTokens: number; cost: number };
+  turnId: string;
+}) {
+  await recordUsageAndSpendCredits({
+    accountId: params.accountId,
+    projectId: params.projectId,
+    userId: params.userId,
+    provider: 'openai',
+    model: 'gpt-4o',
+    inputTokens: params.usage.inputTokens,
+    outputTokens: params.usage.outputTokens,
+    estimatedCostUsd: params.usage.cost,
+    featureSource: 'project_status_agent',
+    resourceType: 'chat_message',
+    resourceId: null,
+    idempotencyKey: `agent:${params.turnId}`,
+  });
+}
+```
 
 ---
 
@@ -243,13 +601,50 @@ async function checkUsageLimit(accountId: string, feature: string) {
 }
 ```
 
-### 6.3 Entitlements Table
-Create a `feature_entitlements` table:
-- `account_id`
-- `feature_key`
-- `enabled` (boolean)
-- `source` (plan, add-on, override)
-- `metadata` (optional JSON, e.g., usage caps)
+### 6.3 Entitlements Table (with Temporal Support)
+Create a `feature_entitlements` table with time-bounded access:
+
+```sql
+CREATE TABLE billing.feature_entitlements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES accounts.accounts(id),
+  feature_key TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  source TEXT NOT NULL, -- 'plan', 'addon', 'promo', 'override'
+
+  -- Temporal bounds (for promos, trials, time-limited access)
+  valid_from TIMESTAMPTZ NOT NULL DEFAULT now(),
+  valid_until TIMESTAMPTZ, -- NULL = forever
+
+  -- Limits (if feature has quantity limit)
+  quantity_limit INTEGER, -- e.g., voice_minutes: 60
+  quantity_used INTEGER DEFAULT 0,
+
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id),
+  metadata JSONB DEFAULT '{}',
+
+  -- Unique per account/feature/valid_from (allows history)
+  UNIQUE(account_id, feature_key, valid_from)
+);
+
+-- Query for currently active entitlements
+CREATE INDEX entitlements_active_idx ON billing.feature_entitlements(
+  account_id, feature_key
+) WHERE enabled = true
+  AND valid_from <= now()
+  AND (valid_until IS NULL OR valid_until > now());
+```
+
+**Key fields:**
+- `account_id`: The account with this entitlement
+- `feature_key`: Feature identifier (e.g., `voice_chat`, `sso`, `team_workspace`)
+- `enabled`: Whether currently enabled
+- `source`: How this entitlement was granted (plan, add-on, promo, manual override)
+- `valid_from`/`valid_until`: Time bounds for promos or trials
+- `quantity_limit`/`quantity_used`: For metered features like voice minutes
+- `metadata`: Additional context (promo code, admin notes, etc.)
 
 ### 6.4 Entitlement Resolution
 Entitlements should be resolved through a central module:
@@ -486,6 +881,72 @@ If **tokens/minute ≈ 400–800** and **$0.003–$0.01 per 1k tokens**:
 | Starter | 60 | "47 minutes remaining" |
 | Pro | 180 | "156 minutes remaining" |
 | Team | 300/user | "Team: 892 minutes remaining" |
+
+### 14.5 Real-Time Voice Tracking Strategy
+
+**Challenge:** Voice usage must be tracked in real-time during calls, not async after.
+
+**Integration with LiveKit:**
+
+```typescript
+// On room.participant.connected
+async function onVoiceSessionStart(params: {
+  accountId: string;
+  userId: string;
+  roomId: string;
+}) {
+  // Check remaining minutes before allowing connection
+  const entitlement = await getActiveEntitlement(
+    params.accountId,
+    'voice_chat'
+  );
+
+  if (!entitlement || entitlement.quantity_used >= entitlement.quantity_limit) {
+    throw new Error('No voice minutes remaining');
+  }
+
+  // Store session start time
+  await redis.set(`voice:session:${params.roomId}`, {
+    accountId: params.accountId,
+    userId: params.userId,
+    startedAt: Date.now(),
+  });
+}
+
+// On room.participant.disconnected (or periodic heartbeat)
+async function onVoiceSessionEnd(roomId: string) {
+  const session = await redis.get(`voice:session:${roomId}`);
+  if (!session) return;
+
+  const durationMinutes = Math.ceil(
+    (Date.now() - session.startedAt) / 60000
+  );
+
+  // Update entitlement quantity_used
+  await supabase.rpc('increment_voice_minutes', {
+    p_account_id: session.accountId,
+    p_minutes: durationMinutes,
+  });
+
+  // Also record in usage_events for cost tracking
+  await recordUsageEvent({
+    accountId: session.accountId,
+    userId: session.userId,
+    featureSource: 'voice_chat',
+    resourceType: 'voice_session',
+    resourceId: roomId,
+    // Voice cost calculated separately
+  });
+
+  await redis.del(`voice:session:${roomId}`);
+}
+```
+
+**Guardrails:**
+- **30-second grace:** Don't hard-cut at exactly 0 minutes; allow 30s buffer
+- **Periodic sync:** Every 60 seconds during call, sync used minutes to DB
+- **Disconnect recovery:** If connection drops, use last heartbeat to calculate duration
+- **Prevent abuse:** Max session duration = remaining minutes + 5 minute grace
 
 ---
 
