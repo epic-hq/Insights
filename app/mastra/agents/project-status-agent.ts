@@ -1,14 +1,15 @@
-import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
 import consola from "consola"
 import { z } from "zod"
+import { openai } from "~/lib/billing/instrumented-openai.server"
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { capabilityLookupTool } from "../tools/capability-lookup"
 import { createSurveyTool } from "../tools/create-survey"
+import { delegateToTaskAgentTool } from "../tools/delegate-to-task-agent"
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
@@ -38,13 +39,6 @@ import { manageInterviewsTool } from "../tools/manage-interviews"
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { managePeopleTool } from "../tools/manage-people"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
-import {
-	createTaskTool,
-	deleteTaskTool,
-	fetchFocusTasksTool,
-	fetchTasksTool,
-	updateTaskTool,
-} from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
 import { recommendNextActionsTool } from "../tools/recommend-next-actions"
@@ -173,7 +167,12 @@ Call "getCurrentDate" first for any date/time questions.
 - Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope/guardrails
 - Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
 - Annotations: "manageAnnotations" for entity-level notes and reminders
-- Tasks: "fetchTasks", "createTask" (pass projectId=${projectId}, userId=${userId}), "updateTask", "deleteTask"
+- **Tasks**: For ALL task operations (create, update, complete, delete, query), delegate to the task agent:
+  - Call "delegateToTaskAgent" with the user's task-related message
+  - The task agent is a specialist that handles task management efficiently
+  - Examples: "I completed getting papers to Kathy", "create a task for X", "show me my high priority tasks"
+  - The task agent will handle the operation and return the result to you
+  - Simply pass through the task agent's response to the user
 - **User-pasted tabular data**: use "parseSpreadsheet" to parse CSV/TSV - it saves to project_assets and shows in Files tab
 - **Agent-generated tables**: use "saveTableToAssets" when YOU generate a table/matrix (competitive analysis, feature comparison)
 - Interview prompts: use interview prompt tools only
@@ -317,11 +316,7 @@ Please try:
 		createInterviewPrompt: createInterviewPromptTool,
 		updateInterviewPrompt: updateInterviewPromptTool,
 		deleteInterviewPrompt: deleteInterviewPromptTool,
-		fetchTasks: fetchTasksTool,
-		fetchFocusTasks: fetchFocusTasksTool,
-		createTask: createTaskTool,
-		updateTask: updateTaskTool,
-		deleteTask: deleteTaskTool,
+		delegateToTaskAgent: delegateToTaskAgentTool,
 		navigateToPage: navigateToPageTool,
 		importVideoFromUrl: importVideoFromUrlTool,
 		fetchWebContent: fetchWebContentTool,

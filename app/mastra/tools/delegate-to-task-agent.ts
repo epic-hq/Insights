@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
-import { taskAgent } from "~/app/mastra/agents/task-agent"
+import { taskAgent } from "../agents/task-agent"
 
 export const delegateToTaskAgentTool = createTool({
 	id: "delegate-to-task-agent",
