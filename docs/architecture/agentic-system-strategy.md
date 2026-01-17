@@ -34,16 +34,20 @@ DECISION RULE:
 This is the operating stance for Upsight right now. It is intentionally restrictive.
 
 ### We will do this
+
 - **Workflow-first orchestration** for any predictable path (setup, enrichment, data updates).
 - **Single orchestrator** (projectStatusAgent) with capability tools for most user intents.
+- **Agent networks using Mastra v1 pattern** - routing agent includes sub-agents via `agents` property, LLM routes based on descriptions.
+- **Dedicated specialist agents** (taskAgent, etc.) for focused domains with <20 tools, cheaper models, smaller token limits.
 - **Dedicated setup agent** (projectSetupAgent) for guided goal capture only.
 - **Capability tools over new agents** unless a domain needs a distinct memory, prompt, and tool set.
 - **Trigger.dev for long-running work**, not in-chat loops.
 - **Tool contracts required** for all new tools (see `docs/30-howtos/mastra-tools/tool-contracts.md`).
 - **BAML contracts for LLM I/O** whenever outputs are used by code.
 
-### We will not do this (yet)
-- **No agent swarm / agent-to-agent delegation** until we have audited tool contracts, traceability, and explicit handoff routing.
+### We will not do this
+
+- **No tool-based delegation** - use Mastra v1 agent networks (`agents` property) instead.
 - **No direct agent writes to core DB tables** outside vetted tools.
 - **No adding tools without response_format + output schema** for new work.
 
