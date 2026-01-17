@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION billing.grant_credits(UUID, INTEGER, billing.credit_source, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, UUID, JSONB) TO service_role;
