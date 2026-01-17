@@ -20,9 +20,11 @@ import consola from "consola";
 import { task } from "@trigger.dev/sdk";
 import type { SupabaseClient } from "~/types";
 import {
-  generateEmbedding,
-  SIMILARITY_THRESHOLDS,
-} from "~/lib/embeddings/openai.server";
+  generateEmbeddingWithBilling,
+  systemBillingContext,
+  type BillingContext,
+} from "~/lib/billing";
+import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server";
 import { searchEvidenceForTheme } from "~/lib/evidence/semantic-search.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { workflowRetryConfig } from "./config";
@@ -42,12 +44,19 @@ async function findSemanticallySimilarTheme(
   supabase: SupabaseClient,
   projectId: string,
   themeText: string,
+  billingCtx: BillingContext,
   matchThreshold = SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION,
 ): Promise<{ id: string; name: string; similarity: number } | null> {
   try {
-    const embedding = await generateEmbedding(themeText, {
-      label: "theme-dedup",
-    });
+    const embedding = await generateEmbeddingWithBilling(
+      billingCtx,
+      themeText,
+      {
+        idempotencyKey: `theme-dedup:${projectId}:${themeText.slice(0, 50)}`,
+        resourceType: "theme",
+        label: "theme-dedup",
+      },
+    );
     if (!embedding) return null;
 
     const { data, error } = await supabase.rpc("find_similar_themes", {
@@ -143,6 +152,13 @@ export const generateInsightsTaskV2 = task({
         );
       }
 
+      // Create billing context for embedding operations
+      const billingCtx = systemBillingContext(
+        interview.account_id,
+        "embedding_generation",
+        interview.project_id,
+      );
+
       // Step 1: Call BAML to generate insights from evidence
       const insights = await generateInterviewInsightsFromEvidenceCore({
         evidenceUnits,
@@ -203,6 +219,7 @@ export const generateInsightsTaskV2 = task({
           client,
           interview.project_id,
           searchText,
+          billingCtx,
           // Uses SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION by default
         );
 
@@ -247,9 +264,15 @@ export const generateInsightsTaskV2 = task({
         }
 
         // 3. No exact or semantic match - create new theme with embedding
-        const embedding = await generateEmbedding(searchText, {
-          label: `theme:${insight.name}`,
-        });
+        const embedding = await generateEmbeddingWithBilling(
+          billingCtx,
+          searchText,
+          {
+            idempotencyKey: `theme:${interview.project_id}:${insight.name}`,
+            resourceType: "theme",
+            label: `theme:${insight.name}`,
+          },
+        );
 
         const insertData: any = {
           account_id: interview.account_id,

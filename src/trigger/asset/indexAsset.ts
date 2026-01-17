@@ -8,7 +8,10 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import { generateEmbedding } from "~/lib/embeddings/openai.server";
+import {
+  generateEmbeddingWithBilling,
+  systemBillingContext,
+} from "~/lib/billing";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 /**
@@ -101,8 +104,22 @@ export const indexAssetTask = schemaTask({
       `[indexAsset] Generating embedding for ${asset.asset_type}, text length: ${textToEmbed.length}`,
     );
 
-    // 3. Generate embedding
-    const embedding = await generateEmbedding(textToEmbed);
+    // 3. Generate embedding with billing
+    const billingCtx = systemBillingContext(
+      asset.account_id,
+      "embedding_generation",
+      asset.project_id,
+    );
+
+    const embedding = await generateEmbeddingWithBilling(
+      billingCtx,
+      textToEmbed,
+      {
+        idempotencyKey: `asset:${assetId}:embed`,
+        resourceType: "project_asset",
+        resourceId: assetId,
+      },
+    );
 
     if (!embedding) {
       return {
