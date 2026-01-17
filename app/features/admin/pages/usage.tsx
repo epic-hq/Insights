@@ -8,6 +8,7 @@
 import {
   Building2,
   Calendar,
+  DollarSign,
   TrendingUp,
   User,
   Users,
@@ -20,6 +21,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -90,6 +92,15 @@ type UserUsage = {
   total_credits: number;
 };
 
+type DailyUsageByFeature = {
+  usage_date: string;
+  feature_source: string;
+  event_count: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  total_credits: number;
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const { user } = await getAuthenticatedUser(request);
   if (!user) {
@@ -123,6 +134,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     dailyUsageResult,
     featureUsageResult,
     userUsageResult,
+    dailyByFeatureResult,
   ] = await Promise.all([
     supabase.rpc("get_admin_usage_by_account", {
       p_start_date: startDate.toISOString(),
@@ -140,12 +152,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
       p_start_date: startDate.toISOString(),
       p_end_date: new Date().toISOString(),
     }),
+    supabase.rpc("get_admin_daily_usage_by_feature", {
+      p_start_date: startDate.toISOString(),
+      p_end_date: new Date().toISOString(),
+    }),
   ]);
 
   const accountUsage = (accountUsageResult.data as AccountUsage[]) || [];
   const dailyUsage = (dailyUsageResult.data as DailyUsage[]) || [];
   const featureUsage = (featureUsageResult.data as FeatureUsage[]) || [];
   const userUsage = (userUsageResult.data as UserUsage[]) || [];
+  const dailyByFeature =
+    (dailyByFeatureResult.data as DailyUsageByFeature[]) || [];
 
   // Calculate totals
   const totals = {
@@ -156,12 +174,29 @@ export async function loader({ request }: LoaderFunctionArgs) {
     accounts: accountUsage.length,
   };
 
+  // Calculate cost metrics
+  const daysInRange = Number.parseInt(range);
+  const weeksInRange = daysInRange / 7;
+  const monthsInRange = daysInRange / 30;
+  const uniqueUsers = userUsage.length;
+
+  const costMetrics = {
+    perDay: totals.cost / daysInRange,
+    perWeek: totals.cost / weeksInRange,
+    perMonth: totals.cost / monthsInRange,
+    perUser: uniqueUsers > 0 ? totals.cost / uniqueUsers : 0,
+    perUserPerDay:
+      uniqueUsers > 0 ? totals.cost / uniqueUsers / daysInRange : 0,
+  };
+
   return {
     accountUsage,
     dailyUsage,
+    dailyByFeature,
     featureUsage,
     userUsage,
     totals,
+    costMetrics,
     range,
   };
 }
@@ -174,6 +209,7 @@ function formatFeatureSource(source: string): string {
     survey_analysis: "Survey Analysis",
     lens_analysis: "Lens Analysis",
     chat_completion: "Chat Messages",
+    transcription: "Audio Transcription",
   };
   return (
     labels[source] ??
@@ -181,9 +217,28 @@ function formatFeatureSource(source: string): string {
   );
 }
 
+// Feature colors for stacked chart
+const FEATURE_COLORS: Record<string, string> = {
+  interview_analysis: "hsl(262, 83%, 58%)", // purple
+  project_status_agent: "hsl(221, 83%, 53%)", // blue
+  voice_chat: "hsl(142, 71%, 45%)", // green
+  survey_analysis: "hsl(38, 92%, 50%)", // amber
+  lens_analysis: "hsl(340, 82%, 52%)", // pink
+  chat_completion: "hsl(199, 89%, 48%)", // cyan
+  transcription: "hsl(25, 95%, 53%)", // orange
+};
+
 export default function AdminUsagePage() {
-  const { accountUsage, dailyUsage, featureUsage, userUsage, totals, range } =
-    useLoaderData<typeof loader>();
+  const {
+    accountUsage,
+    dailyUsage,
+    dailyByFeature,
+    featureUsage,
+    userUsage,
+    totals,
+    costMetrics,
+    range,
+  } = useLoaderData<typeof loader>();
   const [selectedRange, setSelectedRange] = useState(range);
 
   const handleRangeChange = (value: string) => {
@@ -191,22 +246,50 @@ export default function AdminUsagePage() {
     window.location.href = `/admin/usage?range=${value}`;
   };
 
-  // Format daily data for chart
-  // Parse dates treating them as local dates (not UTC) to avoid timezone shift
-  const chartData = dailyUsage.map((d) => {
-    // usage_date comes as 'YYYY-MM-DD', parse as local date
-    const [year, month, day] = d.usage_date.split("-").map(Number);
-    const localDate = new Date(year, month - 1, day);
-    return {
-      date: localDate.toLocaleDateString("en-US", {
+  // Get unique feature sources for stacked bars
+  const featureSources = [
+    ...new Set(dailyByFeature.map((d) => d.feature_source)),
+  ];
+
+  // Transform daily by feature data into stacked chart format
+  // Group by date, with each feature as a separate key
+  const stackedChartData = (() => {
+    const byDate = new Map<string, Record<string, number | string>>();
+
+    for (const d of dailyByFeature) {
+      const [year, month, day] = d.usage_date.split("-").map(Number);
+      const localDate = new Date(year, month - 1, day);
+      const dateKey = localDate.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
-      }),
-      credits: d.total_credits ?? 0,
-      cost: d.total_cost_usd ?? 0,
-      accounts: d.unique_accounts ?? 0,
-    };
-  });
+      });
+
+      if (!byDate.has(dateKey)) {
+        byDate.set(dateKey, { date: dateKey });
+      }
+
+      const entry = byDate.get(dateKey)!;
+      entry[d.feature_source] = d.total_credits ?? 0;
+    }
+
+    return Array.from(byDate.values());
+  })();
+
+  // Fallback to simple chart if no stacked data
+  const chartData =
+    stackedChartData.length > 0
+      ? stackedChartData
+      : dailyUsage.map((d) => {
+          const [year, month, day] = d.usage_date.split("-").map(Number);
+          const localDate = new Date(year, month - 1, day);
+          return {
+            date: localDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }),
+            credits: d.total_credits ?? 0,
+          };
+        });
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
@@ -285,15 +368,79 @@ export default function AdminUsagePage() {
         </Card>
       </div>
 
-      {/* Daily Trend Chart */}
+      {/* Cost Metrics */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="font-medium text-sm">Avg Cost/Day</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="font-bold text-2xl">
+              ${costMetrics.perDay.toFixed(4)}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Average daily LLM spend
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="font-medium text-sm">Avg Cost/Week</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="font-bold text-2xl">
+              ${costMetrics.perWeek.toFixed(2)}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Average weekly LLM spend
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="font-medium text-sm">
+              Avg Cost/Month
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="font-bold text-2xl">
+              ${costMetrics.perMonth.toFixed(2)}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Average monthly LLM spend
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="font-medium text-sm">Avg Cost/User</CardTitle>
+            <User className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="font-bold text-2xl">
+              ${costMetrics.perUser.toFixed(4)}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Average cost per active user
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Daily Trend Chart - Stacked by Feature */}
       <Card>
         <CardHeader>
-          <CardTitle>Usage Trend</CardTitle>
-          <CardDescription>Daily credits and cost over time</CardDescription>
+          <CardTitle>Usage by Feature</CardTitle>
+          <CardDescription>
+            Daily credits by feature (stacked bar chart)
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
@@ -311,17 +458,37 @@ export default function AdminUsagePage() {
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                   }}
+                  formatter={(value: number, name: string) => [
+                    value,
+                    formatFeatureSource(name),
+                  ]}
                 />
-                <Bar
-                  dataKey="credits"
-                  fill="hsl(var(--primary))"
-                  radius={[4, 4, 0, 0]}
-                  name="Credits"
+                <Legend
+                  formatter={(value) => formatFeatureSource(value)}
+                  wrapperStyle={{ fontSize: "12px" }}
                 />
+                {featureSources.length > 0 ? (
+                  featureSources.map((feature) => (
+                    <Bar
+                      key={feature}
+                      dataKey={feature}
+                      stackId="stack"
+                      fill={FEATURE_COLORS[feature] || "hsl(var(--primary))"}
+                      name={feature}
+                    />
+                  ))
+                ) : (
+                  <Bar
+                    dataKey="credits"
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
+                    name="Credits"
+                  />
+                )}
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+            <div className="flex h-[280px] items-center justify-center text-muted-foreground">
               No usage data for this period
             </div>
           )}
