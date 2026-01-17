@@ -79,17 +79,5 @@ function findMinimumPlanForFeature(feature: FeatureKey): PlanId {
   return "team"; // Default to highest tier if not found
 }
 
-/**
- * Get a human-readable name for a feature.
- */
-export function getFeatureDisplayName(feature: FeatureKey): string {
-  const names: Record<FeatureKey, string> = {
-    survey_ai_analysis: "Survey AI Analysis",
-    team_workspace: "Team Workspace",
-    sso: "Single Sign-On",
-    interview_guide: "Interview Guide",
-    smart_personas: "Smart Personas",
-    ai_crm: "AI CRM",
-  };
-  return names[feature] ?? String(feature);
-}
+// Re-export getFeatureDisplayName for server use
+export { getFeatureDisplayName } from "./display-names";

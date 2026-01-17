@@ -1,27 +1,14 @@
 /**
  * Feature Gate Module
  *
- * Server-side feature gating based on plan entitlements.
- * Use in API routes to enforce feature and limit access.
- *
- * @example
- * import { requireFeatureAccess, checkLimitAccess, FeatureGateError } from "~/lib/feature-gate"
- *
- * // In API route
- * try {
- *   await requireFeatureAccess(ctx, "smart_personas")
- *   // Feature is available, proceed
- * } catch (error) {
- *   if (error instanceof FeatureGateError) {
- *     return json(error.toJSON(), { status: 403 })
- *   }
- *   throw error
- * }
+ * Client-safe exports only. Server-only code must be imported directly:
+ * - import { checkFeatureAccess } from "~/lib/feature-gate/check-feature.server"
+ * - import { checkLimitAccess } from "~/lib/feature-gate/check-limit.server"
  *
  * @see docs/20-features-prds/specs/feature-gating-implementation.md
  */
 
-// Types
+// Types (client-safe)
 export type {
   FeatureCheckResult,
   FeatureGateContext,
@@ -30,15 +17,12 @@ export type {
   LimitKey,
 } from "./types";
 
-// Boolean feature checks
-export {
-  checkFeatureAccess,
-  getFeatureDisplayName,
-  requireFeatureAccess,
-} from "./check-feature.server";
+// Client-safe utilities
+export { getFeatureDisplayName } from "./display-names";
 
-// Usage limit checks
-export { checkLimitAccess, requireLimitAccess } from "./check-limit.server";
-
-// Errors
+// Errors (client-safe)
 export { FeatureGateError } from "./errors";
+
+// NOTE: Server-only exports must be imported directly:
+// import { checkFeatureAccess, requireFeatureAccess } from "~/lib/feature-gate/check-feature.server"
+// import { checkLimitAccess, requireLimitAccess } from "~/lib/feature-gate/check-limit.server"
