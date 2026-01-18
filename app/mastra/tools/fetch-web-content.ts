@@ -169,6 +169,29 @@ export const fetchWebContentTool = createTool({
 			.default(MAX_CONTENT_LENGTH)
 			.describe(`Maximum length of text content to return. Default: ${MAX_CONTENT_LENGTH}`),
 	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		url: z.string(),
+		metadata: z.record(z.string(), z.string().nullable()).nullable(),
+		textContent: z.string().nullable(),
+		links: z
+			.array(
+				z.object({
+					href: z.string(),
+					text: z.string(),
+				})
+			)
+			.nullable(),
+		media: z
+			.array(
+				z.object({
+					type: z.string(),
+					url: z.string(),
+				})
+			)
+			.nullable(),
+		error: z.string().optional(),
+	}),
 	execute: async (input) => {
 		const { url, includeLinks = false, includeMedia = false, maxContentLength = MAX_CONTENT_LENGTH } = input
 

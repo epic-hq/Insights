@@ -12,4 +12,9 @@ export const navigateToPageTool = createTool({
 	inputSchema: z.object({
 		path: z.string().describe("Relative path to navigate to (must start with /a/ or another valid in-app route)"),
 	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		path: z.string().optional(),
+		error: z.string().optional(),
+	}),
 })

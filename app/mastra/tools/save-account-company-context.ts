@@ -38,6 +38,11 @@ Fields to save:
 		competitors: z.array(z.string()).optional().nullable(),
 		industry: z.string().optional().nullable(),
 	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		error: z.string().optional(),
+		savedFields: z.array(z.string()).optional(),
+	}),
 
 	execute: async (input, context?) => {
 		let accountId: string | undefined

@@ -330,6 +330,21 @@ export const researchCompanyWebsiteTool = createTool({
 	inputSchema: z.object({
 		website_url: z.string().describe("The company website URL to research (can be with or without https://)"),
 	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		error: z.string().optional(),
+		data: z
+			.object({
+				customer_problem: z.string().optional(),
+				offerings: z.array(z.string()).optional(),
+				competitors: z.array(z.string()).optional(),
+				target_orgs: z.array(z.string()).optional(),
+				target_roles: z.array(z.string()).optional(),
+				description: z.string().optional(),
+				industry: z.string().optional(),
+			})
+			.optional(),
+	}),
 	execute: async ({ website_url }) => {
 		return researchCompanyWebsite(website_url)
 	},

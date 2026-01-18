@@ -730,7 +730,7 @@ export const createTaskTool = createTool({
 export const updateTaskTool = createTool({
 	id: "update-task",
 	description:
-		"Update an existing task. Use this when the user asks to modify, change, or update a task. Can update any field including title, status, priority, description, etc. You must provide the taskId.",
+		"Update an existing task. IMPORTANT: For simple completions when user says 'I completed X', call with ONLY {taskId: 'abc', status: 'done'}. Do NOT ask for benefit, impact, stage, tags, or estimatedEffort - these are optional metadata fields only needed when explicitly changing them. Examples: Complete task → {taskId, status:'done'}. Change priority → {taskId, priority:1}. Reassign → {taskId, assignees:[...]}.",
 	inputSchema: z.object({
 		taskId: z.string().min(1).describe("ID of the task to update (required)"),
 		title: z.string().optional().describe("New task title"),
@@ -739,16 +739,16 @@ export const updateTaskTool = createTool({
 		status: z
 			.enum(["backlog", "todo", "in_progress", "blocked", "review", "done", "archived"])
 			.optional()
-			.describe("New status"),
+			.describe("New status. For simple completions, just pass 'done' - no other fields needed."),
 		priority: z.number().int().min(1).max(3).optional().describe("New priority (1=Now, 2=Next, 3=Later)"),
-		benefit: z.string().optional().describe("New benefit description"),
-		segments: z.string().optional().describe("New target segments"),
-		impact: z.number().int().min(1).max(3).optional().describe("New impact level (1-3)"),
-		stage: z.string().optional().describe("New product stage"),
-		reason: z.string().optional().describe("New reasoning"),
-		tags: z.array(z.string()).optional().describe("New tags array"),
-		dueDate: z.string().optional().describe("New due date in ISO format"),
-		estimatedEffort: z.enum(["S", "M", "L", "XL"]).optional().describe("New estimated effort"),
+		benefit: z.string().optional().describe("(Optional) New benefit description"),
+		segments: z.string().optional().describe("(Optional) New target segments"),
+		impact: z.number().int().min(1).max(3).optional().describe("(Optional) New impact level (1-3)"),
+		stage: z.string().optional().describe("(Optional) New product stage"),
+		reason: z.string().optional().describe("(Optional) New reasoning"),
+		tags: z.array(z.string()).optional().describe("(Optional) New tags array"),
+		dueDate: z.string().optional().describe("(Optional) New due date in ISO format"),
+		estimatedEffort: z.enum(["S", "M", "L", "XL"]).optional().describe("(Optional) New estimated effort"),
 		parentTaskId: z.string().nullable().optional().describe("Set or clear parent task"),
 		dependsOnTaskIds: z.array(z.string()).optional().describe("Other task IDs this depends on"),
 		blocksTaskIds: z.array(z.string()).optional().describe("Tasks this task blocks"),

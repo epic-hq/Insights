@@ -13,4 +13,10 @@ export const switchAgentTool = createTool({
 		targetAgent: z.enum(["project-setup", "project-status"]).describe("The agent to switch to"),
 		reason: z.string().optional().describe("Brief explanation for why switching agents (shown to user)"),
 	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		targetAgent: z.enum(["project-setup", "project-status"]).optional(),
+		message: z.string().optional(),
+		error: z.string().optional(),
+	}),
 })

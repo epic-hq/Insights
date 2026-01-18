@@ -50,6 +50,32 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 			.describe("Segment for the participant (e.g., 'customer', 'prospect', 'churned_user')."),
 		customInstructions: z.string().optional().describe("Optional custom instructions to guide analysis."),
 	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		message: z.string(),
+		needsUserChoice: z.boolean().optional(),
+		availableAssets: z
+			.array(
+				z.object({
+					index: z.number(),
+					type: z.string(),
+					format: z.string(),
+					url: z.string(),
+				})
+			)
+			.optional(),
+		recommendedAsset: z
+			.object({
+				type: z.string(),
+				format: z.string(),
+				url: z.string(),
+			})
+			.nullable()
+			.optional(),
+		interviewId: z.string().nullable(),
+		triggerRunId: z.string().nullable(),
+		publicRunToken: z.string().nullable(),
+	}),
 	execute: async (input, context?) => {
 		const { videoUrl: inputUrl, title, participantName, participantOrganization, participantSegment } = input
 		const { accountId, projectId, userId } = await resolveProjectContext(context, "importVideoFromUrl")
@@ -88,10 +114,10 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 					availableAssets: options,
 					recommendedAsset: extractionResult.recommended
 						? {
-								type: extractionResult.recommended.type,
-								format: extractionResult.recommended.format,
-								url: extractionResult.recommended.url,
-							}
+							type: extractionResult.recommended.type,
+							format: extractionResult.recommended.format,
+							url: extractionResult.recommended.url,
+						}
 						: null,
 					interviewId: null,
 					triggerRunId: null,
