@@ -1,4 +1,4 @@
-import { ChevronsUpDown, ClipboardList, CreditCard, LogOut, Settings, User, Users } from "lucide-react"
+import { BarChart3, ChevronsUpDown, ClipboardList, CreditCard, LogOut, Settings, User, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -37,7 +37,7 @@ interface UserProfileProps {
 
 export function UserProfile({ collapsed: collapsedProp, className }: UserProfileProps) {
 	const [open, setOpen] = useState(false)
-	const { user, signOut } = useAuth()
+	const { user, signOut, user_settings } = useAuth()
 	const { projectPath, accountId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 	const { state } = useSidebar()
@@ -154,6 +154,22 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
+						{user_settings?.is_platform_admin && (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuLabel className="text-muted-foreground text-xs uppercase tracking-wide">
+									Admin
+								</DropdownMenuLabel>
+								<DropdownMenuGroup>
+									<DropdownMenuItem asChild>
+										<Link to="/admin/usage" className="flex items-center gap-2">
+											<BarChart3 className="h-4 w-4" />
+											<span>Usage Dashboard</span>
+										</Link>
+									</DropdownMenuItem>
+								</DropdownMenuGroup>
+							</>
+						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
