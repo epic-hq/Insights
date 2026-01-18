@@ -3,7 +3,7 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } fro
 import consola from "consola"
 import { ChevronRight, Mic, Plus, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { useFetcher, useLocation, useNavigate } from "react-router"
+import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-router"
 import { useStickToBottom } from "use-stick-to-bottom"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
@@ -142,6 +142,52 @@ function extractReasoningText(message: UpsightMessage): string | null {
 		// AI SDK v5 reasoning parts have type="reasoning" with reasoning property
 		if (anyPart.type === "reasoning" && anyPart.reasoning) {
 			return anyPart.reasoning
+		}
+	}
+	return null
+}
+
+function isNetworkDebugText(text: string): boolean {
+	const trimmed = text.trim()
+	if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return false
+	try {
+		const parsed = JSON.parse(trimmed) as { isNetwork?: boolean }
+		return parsed?.isNetwork === true
+	} catch {
+		return false
+	}
+}
+
+function extractToolResultText(message: UpsightMessage): string | null {
+	if (message.role !== "tool" || !message.parts) return null
+	for (const part of message.parts) {
+		const anyPart = part as {
+			type: string
+			toolName?: string
+			result?: { message?: string; task?: { id?: string } }
+			toolResult?: { message?: string }
+			data?: { message?: string }
+		}
+		if (anyPart.type === "tool-result") {
+			return anyPart.result?.message || anyPart.toolResult?.message || null
+		}
+		if (anyPart.type === "data" && anyPart.data?.message) {
+			return anyPart.data.message
+		}
+	}
+	return null
+}
+
+function extractToolResultTaskId(message: UpsightMessage): string | null {
+	if (message.role !== "tool" || !message.parts) return null
+	for (const part of message.parts) {
+		const anyPart = part as {
+			type: string
+			toolName?: string
+			result?: { task?: { id?: string } }
+		}
+		if (anyPart.type === "tool-result" && anyPart.toolName === "createTask") {
+			return anyPart.result?.task?.id || null
 		}
 	}
 	return null
@@ -306,6 +352,7 @@ export function ProjectStatusAgentChat({
 	}, [forceExpandChat, setForceExpandChat])
 
 	const navigate = useNavigate()
+	const revalidator = useRevalidator()
 
 	const currentPageContext = useMemo(() => {
 		return describeCurrentProjectView({
@@ -507,9 +554,16 @@ export function ProjectStatusAgentChat({
 		if (!messages) return []
 		const lastMessage = messages[messages.length - 1]
 		return messages.filter((message) => {
+			if (message.role === "tool") {
+				return Boolean(extractToolResultText(message))
+			}
 			if (message.role !== "assistant") return true
 			const hasContent = message.parts?.some(
-				(part) => part.type === "text" && typeof part.text === "string" && part.text.trim() !== ""
+				(part) =>
+					part.type === "text" &&
+					typeof part.text === "string" &&
+					part.text.trim() !== "" &&
+					!isNetworkDebugText(part.text)
 			)
 			const isLatestAssistantPlaceholder = awaitingAssistant && message === lastMessage
 			return hasContent || isLatestAssistantPlaceholder
@@ -532,6 +586,7 @@ export function ProjectStatusAgentChat({
 	// State for LLM-generated suggestions (fallback)
 	const [generatedSuggestions, setGeneratedSuggestions] = useState<string[]>([])
 	const lastProcessedMessageId = useRef<string | null>(null)
+	const lastCreatedTaskIdRef = useRef<string | null>(null)
 
 	// Extract suggestions from assistant's response via tool invocations
 	const toolSuggestions = useMemo(() => {
@@ -615,6 +670,15 @@ export function ProjectStatusAgentChat({
 			})
 			.catch((err) => console.error("Failed to generate suggestions:", err))
 	}, [displayableMessages, toolSuggestions, status, accountId, projectId, currentPageContext])
+
+	useEffect(() => {
+		const lastMsg = displayableMessages[displayableMessages.length - 1]
+		if (!lastMsg) return
+		const taskId = extractToolResultTaskId(lastMsg)
+		if (!taskId || lastCreatedTaskIdRef.current === taskId) return
+		lastCreatedTaskIdRef.current = taskId
+		revalidator.revalidate()
+	}, [displayableMessages, revalidator])
 
 	const suggestions = toolSuggestions.length > 0 ? toolSuggestions : generatedSuggestions
 
@@ -773,9 +837,15 @@ export function ProjectStatusAgentChat({
 										{visibleMessages.map((message, index) => {
 											const key = message.id || `${message.role}-${index}`
 											const isUser = message.role === "user"
+											const isTool = message.role === "tool"
 											const textParts =
 												message.parts?.filter((part) => part.type === "text").map((part) => part.text) ?? []
-											const messageText = textParts.filter(Boolean).join("\n").trim()
+											const filteredTextParts = textParts.filter(
+												(part) => typeof part === "string" && !isNetworkDebugText(part)
+											)
+											const messageText =
+												(isTool ? extractToolResultText(message) : null) ||
+												filteredTextParts.filter(Boolean).join("\n").trim()
 											return (
 												<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
 													<div className="max-w-[85%]">

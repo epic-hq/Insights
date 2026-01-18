@@ -21,9 +21,9 @@ const taskOutputSchema = z.object({
 	id: z.string(),
 	title: z.string(),
 	description: z.string().nullable().optional(),
-	cluster: z.string(),
-	status: z.string(),
-	priority: z.number(),
+	cluster: z.string().nullable().optional(),
+	status: z.string().nullable().optional(),
+	priority: z.number().nullable().optional(),
 	benefit: z.string().nullable().optional(),
 	segments: z.string().nullable().optional(),
 	impact: z.number().nullable().optional(),
@@ -40,8 +40,9 @@ const taskOutputSchema = z.object({
 				agent_type: z.string().optional(),
 			})
 		)
+		.nullable()
 		.optional(),
-	tags: z.array(z.string()).optional(),
+	tags: z.array(z.string()).nullable().optional(),
 	dueDate: z.string().nullable().optional(),
 	estimatedEffort: z.string().nullable().optional(),
 	createdAt: z.string(),
@@ -308,7 +309,7 @@ function mapTask(task: Task, projectPath: string) {
 		createdAt: task.created_at,
 		updatedAt: task.updated_at,
 		completedAt: task.completed_at ?? null,
-		detailRoute: `${HOST}${routes.priorities}?taskId=${task.id}`,
+		detailRoute: `${HOST}${routes.tasks.detail(task.id)}`,
 	}
 }
 
@@ -676,13 +677,13 @@ export const createTaskTool = createTool({
 			const link_specs = [
 				...(input.source
 					? [
-							{
-								entityType: input.source.entityType,
-								entityId: input.source.entityId,
-								linkType: input.source.linkType ?? "source",
-								description: input.source.description,
-							},
-						]
+						{
+							entityType: input.source.entityType,
+							entityId: input.source.entityId,
+							linkType: input.source.linkType ?? "source",
+							description: input.source.description,
+						},
+					]
 					: []),
 				...(input.links ?? []),
 			]
@@ -707,10 +708,13 @@ export const createTaskTool = createTool({
 				}
 			}
 
+			const mappedTask = mapTask(task, projectPath)
+			const taskLink = mappedTask.detailRoute ? `[View task](${mappedTask.detailRoute})` : "View task"
+
 			return {
 				success: true,
-				message: `Created task "${task.title}" with ID ${task.id}`,
-				task: mapTask(task, projectPath),
+				message: `Created task "${task.title}" with ID ${task.id}. ${taskLink}`,
+				task: mappedTask,
 				warnings: warnings.length > 0 ? warnings : undefined,
 			}
 		} catch (error) {

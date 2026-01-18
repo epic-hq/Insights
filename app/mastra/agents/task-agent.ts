@@ -34,7 +34,8 @@ When user says "create task for X":
 1. Call createTask with minimal required fields: title, projectId=${projectId}, userId=${userId}
 2. Only add optional fields if user explicitly provides them
 3. CRITICAL: Only respond with what the tool actually returns. If tool returns success=false, report the failure. If tool returns success=true, use the exact message and task ID from the tool response.
-4. NEVER claim success without actually calling the tool and getting a success response
+4. If the tool returns task.detailRoute, include a markdown link using that URL (e.g., "[View task](\${task.detailRoute})").
+5. NEVER claim success without actually calling the tool and getting a success response
 
 ## Task Updates
 When user wants to change task details:

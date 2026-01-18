@@ -4,7 +4,9 @@ import consola from "consola"
 import { z } from "zod"
 import { updateTask } from "~/features/tasks/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { HOST } from "~/paths"
 import type { Database } from "~/types"
+import { createRouteDefinitions } from "~/utils/route-definitions"
 
 const ensureContext = (context?: { requestContext?: Map<string, unknown> }) => {
 	const accountId = context?.requestContext?.get("account_id") as string | undefined
@@ -19,7 +21,7 @@ const ensureContext = (context?: { requestContext?: Map<string, unknown> }) => {
 }
 
 const buildProjectPath = (accountId: string, projectId: string) => {
-	return `/accounts/${accountId}/projects/${projectId}`
+	return `/a/${accountId}/${projectId}`
 }
 
 const taskOutputSchema = z.object({
@@ -49,6 +51,8 @@ const taskOutputSchema = z.object({
 })
 
 const mapTask = (task: Database["public"]["Tables"]["tasks"]["Row"], projectPath: string) => {
+	const routes = createRouteDefinitions(projectPath)
+	const priorities = routes.priorities()
 	return {
 		id: task.id,
 		title: task.title,
@@ -71,8 +75,8 @@ const mapTask = (task: Database["public"]["Tables"]["tasks"]["Row"], projectPath
 		blocksTaskIds: task.blocks_task_ids,
 		createdAt: task.created_at,
 		updatedAt: task.updated_at,
-		projectUrl: `${projectPath}/tasks`,
-		taskUrl: `${projectPath}/tasks/${task.id}`,
+		projectUrl: `${HOST}${priorities}`,
+		taskUrl: `${HOST}${routes.tasks.detail(task.id)}`,
 	}
 }
 
