@@ -2,7 +2,7 @@ import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
 import consola from "consola"
-import { openai } from "~/lib/billing/instrumented-openai.server"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"

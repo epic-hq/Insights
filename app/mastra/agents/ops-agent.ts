@@ -4,7 +4,7 @@
 import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import consola from "consola"
-import { openai } from "~/lib/billing/instrumented-openai.server"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { researchOrganizationTool } from "../tools/research-organization"
@@ -30,8 +30,10 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 
 # Opportunities
 - ALWAYS call fetchOpportunities first for any question about closing, pipeline status, or deal guidance.
+- Use responseFormat="concise" unless the user asks for full details.
 - If no matching opportunities are found, say so and ask which opportunity to focus on. Do not give generic sales advice unless the user explicitly asks for general guidance.
 - When giving guidance, cite specific opportunities (stage, amount, close date) and include links.
+- Provide at most 2-3 specific suggestions.
 - Use createOpportunity/updateOpportunity for pipeline changes.
 
 # Organizations

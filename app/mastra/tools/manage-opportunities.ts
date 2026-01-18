@@ -82,12 +82,17 @@ export const fetchOpportunitiesTool = createTool({
 		stage: z.string().optional().describe("Filter by sales stage"),
 		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of opportunities to return"),
 		opportunityIds: z.array(z.string()).optional().describe("Specific opportunity IDs to retrieve"),
+		responseFormat: z
+			.enum(["concise", "detailed"])
+			.optional()
+			.describe("Use concise for short lists (id/title/stage/status/amount/closeDate)."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		message: z.string(),
 		total: z.number().optional(),
 		opportunities: z.array(opportunityOutputSchema).optional(),
+		responseFormat: z.enum(["concise", "detailed"]).optional(),
 	}),
 	execute: async (input, context?) => {
 		try {
@@ -95,7 +100,8 @@ export const fetchOpportunitiesTool = createTool({
 			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 			const sanitizedSearch = input?.search?.trim()
-			const limit = input?.limit ?? 25
+			const responseFormat = input?.responseFormat ?? "detailed"
+			const limit = input?.limit ?? (responseFormat === "concise" ? 5 : 25)
 			const opportunityIds = input?.opportunityIds ?? []
 
 			let query = supabase
@@ -131,12 +137,25 @@ export const fetchOpportunitiesTool = createTool({
 			}
 
 			const mapped = (data ?? []).map((row) => mapOpportunity(row as RawOpportunity, projectPath))
+			const opportunities =
+				responseFormat === "concise"
+					? mapped.map((row) => ({
+						id: row.id,
+						title: row.title ?? null,
+						stage: row.stage ?? null,
+						status: row.status ?? null,
+						amount: row.amount ?? null,
+						closeDate: row.closeDate ?? null,
+						detailRoute: row.detailRoute ?? null,
+					}))
+					: mapped
 
 			return {
 				success: true,
 				message: mapped.length ? `Found ${mapped.length} opportunities` : "No opportunities found",
 				total: typeof count === "number" ? count : mapped.length,
-				opportunities: mapped,
+				opportunities,
+				responseFormat,
 			}
 		} catch (error) {
 			consola.error("fetch-opportunities: unexpected error", error)

@@ -4,7 +4,7 @@
 import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import consola from "consola"
-import { openai } from "~/lib/billing/instrumented-openai.server"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 import { createSurveyTool } from "../tools/create-survey"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import {
