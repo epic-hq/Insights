@@ -82,10 +82,13 @@ export function wrapToolWithStatusEvents<T extends ToolLike>(tool: T, tool_name:
 	if (!tool?.execute) return tool
 
 	const original_execute = tool.execute.bind(tool)
+	const wrapped = Object.create(Object.getPrototypeOf(tool)) as T
+	Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(tool))
 
-	const wrapped: ToolLike = {
-		...tool,
-		execute: async (input: unknown, context?: unknown) => {
+	Object.defineProperty(wrapped, "execute", {
+		configurable: true,
+		writable: true,
+		value: async (input: unknown, context?: unknown) => {
 			consola.debug("[tool-wrapper] execute called", {
 				tool: tool_name,
 				hasContext: !!context,
@@ -110,9 +113,9 @@ export function wrapToolWithStatusEvents<T extends ToolLike>(tool: T, tool_name:
 				throw error
 			}
 		},
-	}
+	})
 
-	return wrapped as T
+	return wrapped
 }
 
 export function wrapToolsWithStatusEvents<T extends Record<string, unknown>>(tools: T): T {
