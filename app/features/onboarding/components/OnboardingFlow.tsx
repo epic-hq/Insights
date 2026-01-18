@@ -33,6 +33,70 @@ export interface OnboardingData {
 	personId?: string
 }
 
+type UploadResponse<T> =
+	| {
+			ok: true
+			status: number
+			data: T
+	  }
+	| {
+			ok: false
+			status: number
+			error: string
+	  }
+
+function postFormDataWithProgress<T>({
+	url,
+	formData,
+	onProgress,
+}: {
+	url: string
+	formData: FormData
+	onProgress?: (progress: number) => void
+}): Promise<UploadResponse<T>> {
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest()
+		xhr.open("POST", url)
+		xhr.responseType = "json"
+
+		xhr.upload.onprogress = (event) => {
+			if (!event.lengthComputable) return
+			const percent = Math.round((event.loaded / event.total) * 100)
+			onProgress?.(percent)
+		}
+
+		xhr.onload = () => {
+			const status = xhr.status
+			const responseBody =
+				xhr.response ??
+				(() => {
+					try {
+						return xhr.responseText ? JSON.parse(xhr.responseText) : null
+					} catch {
+						return null
+					}
+				})()
+
+			if (status >= 200 && status < 300) {
+				resolve({ ok: true, status, data: responseBody as T })
+				return
+			}
+
+			const errorMessage =
+				(responseBody && typeof responseBody === "object" && "error" in responseBody
+					? String((responseBody as { error?: string }).error)
+					: xhr.statusText) || "Upload failed"
+			resolve({ ok: false, status, error: errorMessage })
+		}
+
+		xhr.onerror = () => {
+			reject(new Error("Upload failed"))
+		}
+
+		xhr.send(formData)
+	})
+}
+
 interface OnboardingFlowProps {
 	onComplete: (data: OnboardingData) => void
 	onAddMoreInterviews: () => void
@@ -89,6 +153,8 @@ export default function OnboardingFlow({
 		triggerAccessToken: null,
 		personId: preselectedPersonId,
 	})
+	const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+	const [isUploading, setIsUploading] = useState(false)
 
 	const handleWelcomeNext = useCallback(
 		async (welcomeData: {
@@ -142,6 +208,8 @@ export default function OnboardingFlow({
 			}
 			setData(updatedData)
 			setCurrentStep("processing")
+			setIsUploading(true)
+			setUploadProgress(0)
 
 			try {
 				// Create FormData for the API call
@@ -185,17 +253,19 @@ export default function OnboardingFlow({
 				}
 
 				// Call the new onboarding-start API
-				const response = await fetch("/api/onboarding-start", {
-					method: "POST",
-					body: formData,
+				const response = await postFormDataWithProgress<Record<string, any>>({
+					url: "/api/onboarding-start",
+					formData,
+					onProgress: (percent) => setUploadProgress(percent),
 				})
 
 				if (!response.ok) {
-					const errorData = await response.json()
-					throw new Error(errorData.error || "Upload failed")
+					throw new Error(response.error || "Upload failed")
 				}
 
-				const result = await response.json()
+				const result = response.data
+				setIsUploading(false)
+				setUploadProgress(null)
 
 				// Redirect to interview page immediately after upload completes
 				// Processing will continue in the background via Trigger.dev
@@ -264,6 +334,8 @@ export default function OnboardingFlow({
 			} catch (error) {
 				// Handle error - show error message and return to upload screen
 				const errorMessage = error instanceof Error ? error.message : "Upload failed"
+				setIsUploading(false)
+				setUploadProgress(null)
 				setData((prev) => ({ ...prev, error: errorMessage }))
 				setCurrentStep("upload") // Return to upload screen so user can retry
 			}
@@ -439,6 +511,8 @@ export default function OnboardingFlow({
 						interviewId={data.interviewId}
 						triggerRunId={data.triggerRunId}
 						triggerAccessToken={data.triggerAccessToken ?? undefined}
+						uploadProgress={uploadProgress ?? undefined}
+						isUploading={isUploading}
 					/>
 				)
 

@@ -9,6 +9,8 @@ interface ProcessingScreenProps {
 	interviewId?: string
 	triggerRunId?: string
 	triggerAccessToken?: string
+	uploadProgress?: number
+	isUploading?: boolean
 }
 
 export default function ProcessingScreen({
@@ -17,6 +19,8 @@ export default function ProcessingScreen({
 	interviewId,
 	triggerRunId,
 	triggerAccessToken,
+	uploadProgress,
+	isUploading,
 }: ProcessingScreenProps) {
 	const [pollingAttempted, setPollingAttempted] = useState(false)
 	const stuckTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -32,6 +36,9 @@ export default function ProcessingScreen({
 		accessToken: triggerAccessToken,
 	})
 	const { progress, label: processingStage, isComplete, hasError, status } = progressInfo
+	const showUploadProgress = isUploading && typeof uploadProgress === "number"
+	const displayProgress = showUploadProgress ? uploadProgress : progress
+	const displayStage = showUploadProgress ? "Uploading file..." : processingStage
 
 	// Polling fallback: if stuck in transcription without Trigger.dev, poll AssemblyAI
 	const checkStuckTranscription = useCallback(async () => {
@@ -102,6 +109,7 @@ export default function ProcessingScreen({
 
 	// Derive display status
 	const getStatusText = () => {
+		if (showUploadProgress) return "Uploading"
 		if (hasError) return "Error"
 		if (isComplete) return "Complete"
 		if (isRealtime) return "Connected"
@@ -122,17 +130,20 @@ export default function ProcessingScreen({
 
 				{/* Status */}
 				<div className="space-y-2">
-					<h1 className="font-medium text-foreground text-xl">{processingStage}</h1>
+					<h1 className="font-medium text-foreground text-xl">{displayStage}</h1>
 					<p className="text-muted-foreground text-sm">{fileName}</p>
 				</div>
 
 				{/* Progress bar */}
 				<div className="space-y-2">
 					<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-						<div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+						<div
+							className="h-full bg-primary transition-all duration-500 ease-out"
+							style={{ width: `${displayProgress}%` }}
+						/>
 					</div>
 					<div className="flex justify-between text-muted-foreground text-xs">
-						<span>{Math.round(progress)}%</span>
+						<span>{Math.round(displayProgress)}%</span>
 						<span>{getStatusText()}</span>
 					</div>
 				</div>
