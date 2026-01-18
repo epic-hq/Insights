@@ -68,6 +68,11 @@ import {
   mapUsageToLangfuse,
   summarizeCollectorUsage,
 } from "~/lib/baml/collector.server";
+import {
+  recordUsageOnly,
+  userBillingContext,
+  type BillingContext,
+} from "~/lib/billing";
 import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema";
 import {
   FacetResolver,
@@ -550,6 +555,31 @@ export async function extractEvidenceAndPeopleCore({
         "[BAML usage] ExtractEvidenceFromTranscriptV2:",
         usageSummary,
       );
+
+      // Record usage for billing tracking (Phase 1: tracking only, no credit spending)
+      if (metadata.accountId && metadata.userId && usageSummary.totalCostUsd) {
+        const billingCtx = userBillingContext({
+          accountId: metadata.accountId,
+          userId: metadata.userId,
+          featureSource: "interview_extraction",
+          projectId: metadata.projectId,
+        });
+        recordUsageOnly(
+          billingCtx,
+          {
+            provider: "anthropic",
+            model: process.env.BAML_EXTRACT_EVIDENCE_MODEL || "claude-sonnet",
+            inputTokens: usageSummary.inputTokens || 0,
+            outputTokens: usageSummary.outputTokens || 0,
+            estimatedCostUsd: usageSummary.totalCostUsd,
+            resourceType: "interview",
+            resourceId: interviewRecord.id,
+          },
+          `interview:${interviewRecord.id}:extract-evidence`,
+        ).catch((err) => {
+          consola.warn("[billing] Failed to record extraction usage:", err);
+        });
+      }
     }
     langfuseUsage = mapUsageToLangfuse(usageSummary);
 
@@ -745,6 +775,35 @@ export async function extractEvidenceAndPeopleCore({
         "[BAML usage] DerivePersonaFacetsFromEvidence:",
         synthesisUsage,
       );
+
+      // Record usage for billing tracking (Phase 1: tracking only, no credit spending)
+      if (
+        metadata.accountId &&
+        metadata.userId &&
+        synthesisUsage.totalCostUsd
+      ) {
+        const billingCtx = userBillingContext({
+          accountId: metadata.accountId,
+          userId: metadata.userId,
+          featureSource: "persona_synthesis",
+          projectId: metadata.projectId,
+        });
+        recordUsageOnly(
+          billingCtx,
+          {
+            provider: "anthropic",
+            model: process.env.BAML_PERSONA_SYNTHESIS_MODEL || "claude-sonnet",
+            inputTokens: synthesisUsage.inputTokens || 0,
+            outputTokens: synthesisUsage.outputTokens || 0,
+            estimatedCostUsd: synthesisUsage.totalCostUsd,
+            resourceType: "interview",
+            resourceId: interviewRecord.id,
+          },
+          `interview:${interviewRecord.id}:persona-synthesis`,
+        ).catch((err) => {
+          consola.warn("[billing] Failed to record synthesis usage:", err);
+        });
+      }
     }
     const synthesisLangfuseUsage = mapUsageToLangfuse(synthesisUsage);
 
