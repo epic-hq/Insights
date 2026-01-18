@@ -370,19 +370,8 @@ create policy "Accounts are viewable by primary owner" on accounts.accounts
     primary_owner_user_id = auth.uid()
     );
 
--- Allow users to read accounts if they have responded to a survey from that account
--- This enables the "My Responses" feature to show "From [Account Name]"
-create policy "Users can read accounts they responded to" on accounts.accounts
-    for select
-    to authenticated
-    using (
-        id in (
-            select rl.account_id
-            from public.research_links rl
-            inner join public.research_link_responses rlr on rlr.research_link_id = rl.id
-            where lower(rlr.email) = lower(auth.jwt() ->> 'email')
-        )
-    );
+-- NOTE: "Users can read accounts they responded to" policy moved to 18_research_links.sql
+-- to avoid circular dependency (research_links references accounts, but this policy references research_links)
 
 create policy "Team accounts can be created by any user" on accounts.accounts
     for insert

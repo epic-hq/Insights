@@ -135,3 +135,17 @@ create policy "Members can delete research link responses"
             where account_id in (select accounts.get_accounts_with_role())
         )
     );
+
+-- Cross-file policy: Allow users to read accounts if they have responded to a survey
+-- Moved here from 02_accounts.sql to resolve circular dependency
+create policy "Users can read accounts they responded to" on accounts.accounts
+    for select
+    to authenticated
+    using (
+        id in (
+            select rl.account_id
+            from public.research_links rl
+            inner join public.research_link_responses rlr on rlr.research_link_id = rl.id
+            where lower(rlr.email) = lower(auth.jwt() ->> 'email')
+        )
+    );
