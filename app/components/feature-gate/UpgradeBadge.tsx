@@ -2,18 +2,22 @@
  * Upgrade Badge Component
  *
  * Small inline badge that indicates a feature requires an upgrade.
- * Links to pricing page with the feature highlighted.
+ * Links directly to checkout for the required plan.
  */
 
 import { Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import { Badge } from "~/components/ui/badge";
+import type { PlanId } from "~/config/plans";
+import { useFeatureGate } from "~/hooks/useFeatureGate";
 import { getFeatureDisplayName } from "~/lib/feature-gate";
 import type { FeatureKey, LimitKey } from "~/lib/feature-gate/types";
 
 interface UpgradeBadgeProps {
   /** Feature or limit key */
   feature: FeatureKey | LimitKey;
+  /** Current plan ID (used to determine upgrade URL) */
+  planId?: PlanId;
   /** Size variant */
   size?: "sm" | "md";
   /** Optional custom label */
@@ -24,19 +28,21 @@ interface UpgradeBadgeProps {
  * Displays a small badge indicating upgrade is required.
  *
  * @example
- * <UpgradeBadge feature="smart_personas" />
- * <UpgradeBadge feature="smart_personas" size="md" />
+ * <UpgradeBadge feature="smart_personas" planId="free" />
+ * <UpgradeBadge feature="smart_personas" planId="free" size="md" />
  */
 export function UpgradeBadge({
   feature,
+  planId = "free",
   size = "sm",
   label,
 }: UpgradeBadgeProps) {
+  const { upgradeUrl } = useFeatureGate(feature as FeatureKey, planId);
   const displayLabel =
     label ?? (size === "md" ? "Upgrade to unlock" : "Upgrade");
 
   return (
-    <Link to={`/pricing?highlight=${String(feature)}`}>
+    <Link to={upgradeUrl ?? "/pricing"}>
       <Badge
         variant="outline"
         className="gap-1 border-amber-500/50 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"

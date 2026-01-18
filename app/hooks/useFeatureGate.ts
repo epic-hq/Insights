@@ -55,7 +55,8 @@ export function useFeatureGate(
 
     return {
       isEnabled: false,
-      upgradeUrl: `/pricing?highlight=${requiredPlan}&feature=${String(feature)}`,
+      // Go directly to checkout - user has already decided they want this feature
+      upgradeUrl: `/api/billing/checkout?plan=${requiredPlan}`,
       requiredPlan,
     };
   }, [planId, feature]);

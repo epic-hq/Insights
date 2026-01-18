@@ -300,8 +300,12 @@ function EmptyPersonasCard({
           {isEnabled ? (
             <GeneratePersonasButton planId={planId} />
           ) : (
-            <Button asChild>
-              <Link to={`/pricing?plan=${requiredPlan}&feature=smart_personas`}>
+            <Button
+              asChild
+              className="border-amber-500/50 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+              variant="outline"
+            >
+              <Link to={`/api/billing/checkout?plan=${requiredPlan}`}>
                 <Sparkle className="mr-2 h-4 w-4" />
                 Upgrade to {requiredPlan === "starter" ? "Starter" : "Pro"}
               </Link>
