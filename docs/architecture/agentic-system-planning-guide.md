@@ -335,3 +335,48 @@ PLANNING CHECKLIST:
 - **Workflows**: deterministic orchestration lives in `app/mastra/workflows/*`.
 - **Async tasks**: long-running work should use Trigger.dev (`src/trigger/*`).
 - **Observability**: Langfuse tracing is used in `app/routes/api.chat.*` handlers.
+
+---
+
+## Current Audit: projectStatusAgent (Jan 2025)
+
+**Snapshot**
+- Tool count is 47, exceeding the soft limit (<20) and mixing retrieval, CRUD, ingestion, and web research.
+- The orchestrator is doing both planning and execution, increasing context size and cost.
+- Several tools should be delegated to specialists or moved into deterministic workflows.
+
+**Primary Issues**
+- Overloaded prompt and tool surface violate the consolidation principle.
+- Tool outputs are inconsistent on `response_format` and some actions are too granular.
+- Read vs write responsibilities are not separated at the agent level.
+
+**Target Tool Budget (Lean Orchestrator)**
+- Orchestrator tools (keep ~9):
+  - `fetchProjectStatusContext`, `recommendNextActions`
+  - `semanticSearchEvidence`, `searchSurveyResponses`
+  - `generateProjectRoutes`, `navigateToPage`
+  - `capabilityLookup`, `suggestNextSteps`, `getCurrentDate`
+
+**Delegation Plan (Specialists)**
+- PeopleAgent: `fetchPeopleDetails`, `semanticSearchPeople`, `upsertPerson`, `upsertPersonFacets`, `managePeople`, `managePersonOrganizations`, `fetchPersonas`
+- ResearchAgent: `fetchEvidence`, `fetchThemes`, `fetchSegments`, `fetchPainMatrixCache`, `fetchConversationLenses`, `fetchProjectGoals`
+- DocsAndDataAgent: `manageDocuments`, `generateDocumentLink`, `saveTableToAssets`, `updateTableAsset`, `parseSpreadsheet`, `importPeopleFromTable`, `importOpportunitiesFromTable`
+- WebResearchAgent: `fetchWebContent`, `webResearch`, `findSimilarPages`, `researchOrganization`
+- OpsAgent: `manageInterviews`, interview prompts, `manageAnnotations`, `createOpportunity`, `updateOpportunity`, `fetchOpportunities`, `createSurvey`
+- TaskAgent: task tools as-is
+
+**Workflow vs Agent Decisions**
+- Workflow (deterministic):
+  - Spreadsheet import: parse -> confirm mapping -> import -> summarize
+  - Survey creation: draft -> createSurvey -> navigate -> summarize
+  - Deletions: list candidates -> dry-run -> confirm -> execute
+  - URL ingest: classify URL -> fetch/import -> save -> summarize
+- Agent (flexible):
+  - “What should I do next?” synthesis over project state
+  - Evidence synthesis and theme prioritization
+  - Exploration queries across evidence/people/segments
+
+**Expected Outcomes**
+- Smaller prompts and tool sets for faster routing and lower cost.
+- Clear separation of read vs write responsibilities.
+- Safer execution with deterministic workflows for high-risk paths.

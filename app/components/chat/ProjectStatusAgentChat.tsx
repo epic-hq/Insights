@@ -58,6 +58,41 @@ interface ToolProgressData {
 	progress?: number
 }
 
+const ROTATING_STATUS_MESSAGES = [
+	"Thinking...",
+	"Cogitating...",
+	"Planning...",
+	"Delegating...",
+	"Hustling...",
+	"Bustling...",
+	"Checking...",
+]
+
+const GENERIC_PROGRESS_LABELS = new Set(["thinking", "thinking...", "routing", "routing...", "working", "working..."])
+
+function normalizeProgressMessage(message: string): string {
+	return message.replace(/\u2026/g, "...").trim().toLowerCase()
+}
+
+function useRotatingStatus(enabled: boolean): string {
+	const [index, setIndex] = useState(0)
+
+	useEffect(() => {
+		if (!enabled) {
+			setIndex(0)
+			return
+		}
+
+		const timer = window.setInterval(() => {
+			setIndex((current) => (current + 1) % ROTATING_STATUS_MESSAGES.length)
+		}, 1200)
+
+		return () => window.clearInterval(timer)
+	}, [enabled])
+
+	return ROTATING_STATUS_MESSAGES[index]
+}
+
 function ThinkingWave({ progressMessage }: { progressMessage?: string | null }) {
 	const gradientId = useId()
 	const bars = [
@@ -66,10 +101,15 @@ function ThinkingWave({ progressMessage }: { progressMessage?: string | null }) 
 		{ delay: 0.3, x: 24 },
 		{ delay: 0.45, x: 36 },
 	]
+	const normalizedMessage = progressMessage ? normalizeProgressMessage(progressMessage) : ""
+	const shouldRotate =
+		!progressMessage || GENERIC_PROGRESS_LABELS.has(normalizedMessage) || normalizedMessage.startsWith("routing")
+	const rotatingMessage = useRotatingStatus(shouldRotate)
+	const displayMessage = shouldRotate ? rotatingMessage : progressMessage
 
 	return (
 		<span className="flex items-center gap-2 font-medium text-[11px] text-foreground/70 italic" aria-live="polite">
-			<span>{progressMessage || "Thinking"}</span>
+			<span>{displayMessage || "Thinking..."}</span>
 			<svg
 				className="h-4 w-10 text-foreground/50"
 				viewBox="0 0 48 16"
@@ -104,9 +144,56 @@ function extractNetworkStatus(message: UpsightMessage): string | null {
 			if (data?.type === "status" && data?.message) {
 				return data.message as string
 			}
+			// Handle wrapped network progress: { type: "data-network", data: { steps: [...] } }
+			if (data?.type === "data-network" && typeof data?.data === "object") {
+				const networkData = data.data as { steps?: Array<{ name?: string; status?: string }> }
+				const activeStep = networkData.steps?.findLast((step) => step.status === "running")
+				if (activeStep?.name) {
+					return `Working: ${formatProgressLabel(activeStep.name)}`
+				}
+			}
+		}
+		// Direct network progress: { type: "data-network", data: { steps: [...] } }
+		if (anyPart.type === "data-network" && anyPart.data) {
+			const networkData = anyPart.data as { steps?: Array<{ name?: string; status?: string }> }
+			const activeStep = networkData.steps?.findLast((step) => step.status === "running")
+			if (activeStep?.name) {
+				return `Working: ${formatProgressLabel(activeStep.name)}`
+			}
 		}
 	}
 	return null
+}
+
+function formatProgressLabel(name: string): string {
+	return name
+		.replace(/([A-Z])/g, " $1")
+		.replace(/^./, (str: string) => str.toUpperCase())
+		.trim()
+}
+
+type NetworkStep = {
+	name?: string
+	status?: string
+}
+
+function extractNetworkSteps(message: UpsightMessage): NetworkStep[] {
+	if (!message.parts) return []
+	for (const part of message.parts) {
+		const anyPart = part as { type: string; data?: unknown }
+		if (anyPart.type === "data-network" && anyPart.data) {
+			const networkData = anyPart.data as { steps?: NetworkStep[] }
+			return Array.isArray(networkData.steps) ? networkData.steps : []
+		}
+		if (anyPart.type === "data" && anyPart.data) {
+			const data = anyPart.data as Record<string, unknown>
+			if (data?.type === "data-network" && typeof data?.data === "object") {
+				const networkData = data.data as { steps?: NetworkStep[] }
+				return Array.isArray(networkData.steps) ? networkData.steps : []
+			}
+		}
+	}
+	return []
 }
 
 function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
@@ -846,6 +933,7 @@ export function ProjectStatusAgentChat({
 											const messageText =
 												(isTool ? extractToolResultText(message) : null) ||
 												filteredTextParts.filter(Boolean).join("\n").trim()
+											const networkSteps = extractNetworkSteps(message)
 											return (
 												<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
 													<div className="max-w-[85%]">
@@ -868,14 +956,31 @@ export function ProjectStatusAgentChat({
 																	<AiResponse key={key}>{messageText}</AiResponse>
 																)
 															) : !isUser ? (
-																<ThinkingWave
-																	progressMessage={
-																		extractNetworkStatus(message) ||
-																		extractToolProgress(message)?.message ||
-																		extractActiveToolCall(message) ||
-																		extractReasoningText(message)
-																	}
-																/>
+																<div className="space-y-2">
+																	<ThinkingWave
+																		progressMessage={
+																			extractNetworkStatus(message) ||
+																			extractToolProgress(message)?.message ||
+																			extractActiveToolCall(message) ||
+																			extractReasoningText(message)
+																		}
+																	/>
+																	{networkSteps.length > 0 && (
+																		<div className="rounded-md bg-muted/40 px-2 py-1 text-[11px] text-foreground/70">
+																			{networkSteps.map((step, index) => {
+																				const label = step.name ? formatProgressLabel(step.name) : "Step"
+																				const status = step.status || "running"
+																				const statusLabel = status === "running" ? "running" : "done"
+																				return (
+																					<div key={`${label}-${index}`} className="flex items-center gap-2">
+																						<span className="font-medium">{label}</span>
+																						<span className="text-foreground/50">{statusLabel}</span>
+																					</div>
+																				)
+																			})}
+																		</div>
+																	)}
+																</div>
 															) : (
 																<span className="text-foreground/70">(No text response)</span>
 															)}
