@@ -359,6 +359,290 @@ export type Database = {
       [_ in never]: never
     }
   }
+  billing: {
+    Tables: {
+      credit_ledger: {
+        Row: {
+          account_id: string
+          amount: number
+          billing_period_end: string | null
+          billing_period_start: string | null
+          created_at: string
+          created_by: string | null
+          event_type: Database["billing"]["Enums"]["credit_event_type"]
+          expires_at: string | null
+          feature_source: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json | null
+          source: Database["billing"]["Enums"]["credit_source"] | null
+          usage_event_id: string | null
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_type: Database["billing"]["Enums"]["credit_event_type"]
+          expires_at?: string | null
+          feature_source?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          source?: Database["billing"]["Enums"]["credit_source"] | null
+          usage_event_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_type?: Database["billing"]["Enums"]["credit_event_type"]
+          expires_at?: string | null
+          feature_source?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          source?: Database["billing"]["Enums"]["credit_source"] | null
+          usage_event_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_usage_event_id_fkey"
+            columns: ["usage_event_id"]
+            isOneToOne: false
+            referencedRelation: "usage_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_entitlements: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          feature_key: string
+          id: string
+          metadata: Json | null
+          quantity_limit: number | null
+          quantity_used: number | null
+          source: Database["billing"]["Enums"]["entitlement_source"]
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          metadata?: Json | null
+          quantity_limit?: number | null
+          quantity_used?: number | null
+          source: Database["billing"]["Enums"]["entitlement_source"]
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          metadata?: Json | null
+          quantity_limit?: number | null
+          quantity_used?: number | null
+          source?: Database["billing"]["Enums"]["entitlement_source"]
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      usage_events: {
+        Row: {
+          account_id: string
+          created_at: string
+          credits_charged: number
+          estimated_cost_usd: number
+          feature_source: string
+          id: string
+          idempotency_key: string | null
+          input_tokens: number
+          model: string
+          output_tokens: number
+          project_id: string | null
+          provider: string
+          resource_id: string | null
+          resource_type: string | null
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credits_charged: number
+          estimated_cost_usd: number
+          feature_source: string
+          id?: string
+          idempotency_key?: string | null
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          project_id?: string | null
+          provider: string
+          resource_id?: string | null
+          resource_type?: string | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credits_charged?: number
+          estimated_cost_usd?: number
+          feature_source?: string
+          id?: string
+          idempotency_key?: string | null
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          project_id?: string | null
+          provider?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_active_entitlement: {
+        Args: { p_account_id: string; p_feature_key: string }
+        Returns: {
+          enabled: boolean
+          id: string
+          quantity_limit: number
+          quantity_remaining: number
+          quantity_used: number
+          source: Database["billing"]["Enums"]["entitlement_source"]
+          valid_until: string
+        }[]
+      }
+      get_admin_daily_usage: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          event_count: number
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+          unique_accounts: number
+          usage_date: string
+        }[]
+      }
+      get_admin_usage_by_account: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          account_id: string
+          account_name: string
+          event_count: number
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+        }[]
+      }
+      get_admin_usage_by_feature: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          event_count: number
+          feature_source: string
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+        }[]
+      }
+      get_credit_balance: {
+        Args: { p_account_id: string }
+        Returns: {
+          balance: number
+          expires_in_7_days: number
+          grants_total: number
+          spends_total: number
+        }[]
+      }
+      get_monthly_usage_summary: {
+        Args: { p_account_id: string; p_month_start?: string }
+        Returns: {
+          event_count: number
+          feature_source: string
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+        }[]
+      }
+      grant_credits: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_billing_period_end?: string
+          p_billing_period_start?: string
+          p_created_by?: string
+          p_expires_at?: string
+          p_idempotency_key: string
+          p_metadata?: Json
+          p_source: Database["billing"]["Enums"]["credit_source"]
+        }
+        Returns: {
+          is_duplicate: boolean
+          ledger_id: string
+          success: boolean
+        }[]
+      }
+      increment_voice_minutes: {
+        Args: { p_account_id: string; p_minutes: number }
+        Returns: {
+          new_quantity_used: number
+          quantity_remaining: number
+          success: boolean
+        }[]
+      }
+      spend_credits_atomic: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_feature_source?: string
+          p_hard_limit: number
+          p_idempotency_key: string
+          p_metadata?: Json
+          p_soft_limit: number
+          p_usage_event_id?: string
+        }
+        Returns: {
+          limit_status: string
+          new_balance: number
+          success: boolean
+        }[]
+      }
+    }
+    Enums: {
+      credit_event_type: "grant" | "purchase" | "spend" | "expire" | "refund"
+      credit_source: "plan" | "purchase" | "promo" | "manual"
+      entitlement_source: "plan" | "addon" | "promo" | "override"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -5983,6 +6267,7 @@ export type Database = {
           id: string
           image_url: string | null
           industry: string | null
+          is_platform_admin: boolean
           language: string | null
           last_name: string | null
           last_used_account_id: string | null
@@ -6012,6 +6297,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           industry?: string | null
+          is_platform_admin?: boolean
           language?: string | null
           last_name?: string | null
           last_used_account_id?: string | null
@@ -6041,6 +6327,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           industry?: string | null
+          is_platform_admin?: boolean
           language?: string | null
           last_name?: string | null
           last_used_account_id?: string | null
@@ -6678,7 +6965,40 @@ export type Database = {
         }
         Returns: Json
       }
+      get_account_research_link_ids: { Args: never; Returns: string[] }
       get_accounts: { Args: never; Returns: Json }
+      get_admin_daily_usage: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          event_count: number
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+          unique_accounts: number
+          usage_date: string
+        }[]
+      }
+      get_admin_usage_by_account: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          account_id: string
+          account_name: string
+          event_count: number
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+        }[]
+      }
+      get_admin_usage_by_feature: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          event_count: number
+          feature_source: string
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+        }[]
+      }
       get_annotation_counts: {
         Args: {
           p_entity_id: string
@@ -6713,6 +7033,16 @@ export type Database = {
           similarity: number
         }[]
       }
+      get_monthly_usage_summary: {
+        Args: { p_account_id: string }
+        Returns: {
+          event_count: number
+          feature_source: string
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+        }[]
+      }
       get_personal_account: { Args: never; Returns: Json }
       get_research_link_response_counts: {
         Args: { link_ids: string[] }
@@ -6734,6 +7064,8 @@ export type Database = {
           metadata: Json
         }[]
       }
+      get_user_response_account_ids: { Args: never; Returns: string[] }
+      get_user_response_link_ids: { Args: never; Returns: string[] }
       get_user_vote: {
         Args: {
           p_entity_id: string
@@ -6775,6 +7107,8 @@ export type Database = {
         Args: { check_account_id: string; check_email: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: never; Returns: boolean }
+      leave_account: { Args: { account_id: string }; Returns: undefined }
       list_invitations_for_current_user: { Args: never; Returns: Json }
       log_invitation_audit: {
         Args: {
@@ -6882,6 +7216,10 @@ export type Database = {
       upsert_signup_data: {
         Args: { p_signup_data: Json; p_user_id: string }
         Returns: undefined
+      }
+      user_has_response_for_link: {
+        Args: { link_id: string }
+        Returns: boolean
       }
     }
     Enums: {
@@ -7054,6 +7392,13 @@ export const Constants = {
         "past_due",
         "unpaid",
       ],
+    },
+  },
+  billing: {
+    Enums: {
+      credit_event_type: ["grant", "purchase", "spend", "expire", "refund"],
+      credit_source: ["plan", "purchase", "promo", "manual"],
+      entitlement_source: ["plan", "addon", "promo", "override"],
     },
   },
   public: {
