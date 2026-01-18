@@ -186,7 +186,7 @@ export default function Personas() {
         </div>
 
         {personas.length === 0 ? (
-          <EmptyPersonasState
+          <EmptyPersonasCard
             planId={currentPlan}
             newPersonaUrl={routes.personas.new()}
           />
@@ -268,54 +268,45 @@ function GeneratePersonasButton({ planId }: { planId: PlanId }) {
   );
 }
 
-function EmptyPersonasState({
+function EmptyPersonasCard({
   planId,
   newPersonaUrl,
 }: {
   planId: PlanId;
   newPersonaUrl: string;
 }) {
-  const { isEnabled } = useFeatureGate("smart_personas", planId);
+  const { isEnabled, requiredPlan } = useFeatureGate("smart_personas", planId);
 
   return (
     <div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
-      <div className="mx-auto max-w-md space-y-4">
+      <div className="mx-auto max-w-md space-y-6">
         <div className="flex justify-center">
           <div className="rounded-full bg-background p-6 shadow-sm">
             <Users className="h-10 w-10 text-muted-foreground" />
           </div>
         </div>
-        <h3 className="font-semibold text-foreground text-xl">
-          No personas yet
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          {isEnabled
-            ? "Get started by generating AI-powered persona recommendations from your research data or create personas manually."
-            : "Create personas manually, or upgrade to generate AI-powered recommendations from your research data."}
-        </p>
+        <div>
+          <h3 className="font-semibold text-foreground text-xl">
+            No personas yet
+          </h3>
+          <p className="mt-2 text-muted-foreground text-sm">
+            {isEnabled
+              ? "Generate AI-powered persona recommendations from your research data."
+              : "Upgrade to generate AI-powered personas, or create them manually."}
+          </p>
+        </div>
 
-        <div className="flex flex-col items-center gap-4">
-          {/* Primary action - AI generation (gated) */}
+        <div className="flex justify-center gap-3">
           {isEnabled ? (
             <GeneratePersonasButton planId={planId} />
           ) : (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400">
-                <Sparkle className="h-5 w-5" />
-                <span className="font-medium">AI Persona Generation</span>
-              </div>
-              <p className="mt-2 text-muted-foreground text-sm">
-                Automatically identify personas from your interviews
-              </p>
-              <Link to="/pricing?feature=smart_personas" className="mt-3 block">
-                <Button size="sm" className="w-full">
-                  Upgrade to Starter
-                </Button>
+            <Button asChild>
+              <Link to={`/pricing?plan=${requiredPlan}&feature=smart_personas`}>
+                <Sparkle className="mr-2 h-4 w-4" />
+                Upgrade to {requiredPlan === "starter" ? "Starter" : "Pro"}
               </Link>
-            </div>
+            </Button>
           )}
-
-          {/* Secondary action - manual creation */}
           <Button asChild variant="outline">
             <Link to={newPersonaUrl}>Create Manually</Link>
           </Button>
