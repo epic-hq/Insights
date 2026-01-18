@@ -7,7 +7,11 @@ const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SE
 export const getServerClient = (request: Request) => {
 	const headers = new Headers()
 	const requestUrl = new URL(request.url)
-	const isProduction = requestUrl.hostname === "getupsight.com" || requestUrl.hostname.endsWith(".getupsight.com")
+	// Use x-forwarded-host (from reverse proxy) or host header to get the actual hostname
+	// request.url contains internal hostname (localhost/0.0.0.0) when behind Fly.io/proxies
+	const actualHost =
+		request.headers.get("x-forwarded-host") || request.headers.get("host") || requestUrl.hostname
+	const isProduction = actualHost === "getupsight.com" || actualHost.endsWith(".getupsight.com")
 
 	const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
