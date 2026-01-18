@@ -10,22 +10,26 @@ import { getProjects } from "~/features/projects/db"
 import { userContext } from "~/server/user-context"
 import type { Project, Project_Section } from "~/types"
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	if (!ctx) {
 		consola.error("home loader context not found")
 		// If middleware didn't populate context (e.g., session not yet visible), send user to login
 		return redirect("/login")
 	}
-	const { supabase, account_id } = ctx // account_id is now team account from middleware
+	const { supabase } = ctx
 	const user_settings = ctx.user_settings
-	if (!supabase || !account_id) {
-		consola.error("home loader database or account_id not found")
+
+	// CRITICAL: Use accountId from URL params, not from userContext
+	// This ensures we show projects for the account in the URL
+	const accountId = params.accountId
+
+	if (!supabase || !accountId) {
+		consola.error("home loader database or accountId not found")
 		return redirect("/login")
 	}
 
-	// Use account_id from middleware (already resolved to team account)
-	consola.log("home loader account_id:", account_id)
+	consola.log("home loader accountId from URL:", accountId)
 
 	const _signup_completed = user_settings?.signup_data?.completed ?? false
 	// if (!signup_completed) {
@@ -40,7 +44,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	// 	return redirect("/onboarding")
 	// }
 
-	if (!account_id) {
+	if (!accountId) {
 		return {
 			projects: [],
 			latest_sections: [],
@@ -49,7 +53,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	// TODO make helper for getProjects from user_id
 	const { data: projects } = await getProjects({
 		supabase,
-		accountId: account_id,
+		accountId,
 	})
 
 	// Don't redirect if no projects - let user choose their path
