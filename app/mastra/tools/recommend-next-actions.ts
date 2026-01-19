@@ -3,48 +3,70 @@
  * Use proactively when user asks "what should I do next?" or seems stuck.
  */
 
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getProjectResearchContext, type ProjectResearchContext } from "~/features/research-links/db"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
 import {
-	determineProjectStage,
-	generateRecommendations,
-	type ProjectStage,
-	type Recommendation,
-} from "~/features/research-links/utils/recommendation-rules"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+  getProjectResearchContext,
+  type ProjectResearchContext,
+} from "~/features/research-links/db";
+import {
+  determineProjectStage,
+  generateRecommendations,
+  type ProjectStage,
+  type Recommendation,
+} from "~/features/research-links/utils/recommendation-rules";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 const RecommendationSchema = z.object({
-	id: z.string(),
-	priority: z.number(),
-	title: z.string(),
-	description: z.string(),
-	reasoning: z.string(),
-	actionType: z.enum(["setup", "interview", "survey", "validate", "deep_dive", "analyze", "decide"]),
-	navigateTo: z.string().nullish().describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
-	focusTheme: z
-		.object({
-			id: z.string(),
-			name: z.string(),
-		})
-		.optional(),
-	metadata: z.record(z.unknown()).optional(),
-})
+  id: z.string(),
+  priority: z.number(),
+  title: z.string(),
+  description: z.string(),
+  reasoning: z.string(),
+  actionType: z.enum([
+    "setup",
+    "interview",
+    "survey",
+    "validate",
+    "deep_dive",
+    "analyze",
+    "decide",
+    "data_quality",
+  ]),
+  navigateTo: z
+    .string()
+    .nullish()
+    .describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
+  focusTheme: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+    })
+    .optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
 
 const ProjectStateSchema = z.object({
-	stage: z.enum(["setup", "discovery", "gathering", "validation", "synthesis"]),
-	interviewCount: z.number(),
-	surveyCount: z.number(),
-	themeCount: z.number(),
-	hasGoals: z.boolean(),
-})
+  stage: z.enum(["setup", "discovery", "gathering", "validation", "synthesis"]),
+  interviewCount: z.number(),
+  surveyCount: z.number(),
+  themeCount: z.number(),
+  hasGoals: z.boolean(),
+  dataQuality: z
+    .object({
+      peopleNeedingSegments: z.number(),
+      totalPeople: z.number(),
+      peopleWithoutTitles: z.number(),
+    })
+    .optional(),
+});
 
 export const recommendNextActionsTool = createTool({
-	id: "recommend-next-actions",
-	description: `Get personalized recommendations for what the user should do next in their research project.
+  id: "recommend-next-actions",
+  description: `Get personalized recommendations for what the user should do next in their research project.
 Returns 1-3 actionable suggestions based on current project state (themes, evidence, interviews, surveys).
 
 Use this tool proactively when:
@@ -59,97 +81,104 @@ The recommendations are based on:
 - Theme evidence levels (low = needs validation, high = ready for deep dive)
 - Pricing themes (special handling)
 - Recency of surveys (NPS check if stale)`,
-	inputSchema: z.object({
-		projectId: z
-			.string()
-			.nullish()
-			.describe("Project ID to get recommendations for. If not provided, uses runtime context."),
-		reason: z.string().nullish().describe("Why you are fetching recommendations (for logging)"),
-	}),
-	outputSchema: z.object({
-		success: z.boolean(),
-		message: z.string(),
-		recommendations: z.array(RecommendationSchema),
-		projectState: ProjectStateSchema,
-	}),
-	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		// Prefer explicit input, fall back to runtime context
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const projectId = input.projectId ?? runtimeProjectId
-		const accountId = context?.requestContext?.get?.("account_id")
+  inputSchema: z.object({
+    projectId: z
+      .string()
+      .nullish()
+      .describe(
+        "Project ID to get recommendations for. If not provided, uses runtime context.",
+      ),
+    reason: z
+      .string()
+      .nullish()
+      .describe("Why you are fetching recommendations (for logging)"),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    message: z.string(),
+    recommendations: z.array(RecommendationSchema),
+    projectState: ProjectStateSchema,
+  }),
+  execute: async (input, context?) => {
+    const supabase = supabaseAdmin as SupabaseClient<Database>;
+    // Prefer explicit input, fall back to runtime context
+    const runtimeProjectId = context?.requestContext?.get?.("project_id");
+    const projectId = input.projectId ?? runtimeProjectId;
+    const accountId = context?.requestContext?.get?.("account_id");
 
-		consola.debug("recommend-next-actions: execute start", {
-			inputProjectId: input.projectId,
-			runtimeProjectId,
-			resolvedProjectId: projectId,
-			accountId,
-			reason: input.reason,
-		})
+    consola.debug("recommend-next-actions: execute start", {
+      inputProjectId: input.projectId,
+      runtimeProjectId,
+      resolvedProjectId: projectId,
+      accountId,
+      reason: input.reason,
+    });
 
-		if (!projectId) {
-			consola.warn("recommend-next-actions: missing projectId", {
-				hasContext: !!context,
-				hasRequestContext: !!context?.requestContext,
-			})
-			return {
-				success: false,
-				message: "Missing projectId. Pass projectId parameter or ensure runtime context sets project_id.",
-				recommendations: [],
-				projectState: {
-					stage: "setup" as ProjectStage,
-					interviewCount: 0,
-					surveyCount: 0,
-					themeCount: 0,
-					hasGoals: false,
-				},
-			}
-		}
+    if (!projectId) {
+      consola.warn("recommend-next-actions: missing projectId", {
+        hasContext: !!context,
+        hasRequestContext: !!context?.requestContext,
+      });
+      return {
+        success: false,
+        message:
+          "Missing projectId. Pass projectId parameter or ensure runtime context sets project_id.",
+        recommendations: [],
+        projectState: {
+          stage: "setup" as ProjectStage,
+          interviewCount: 0,
+          surveyCount: 0,
+          themeCount: 0,
+          hasGoals: false,
+        },
+      };
+    }
 
-		try {
-			// Fetch comprehensive project context
-			const projectContext = await getProjectResearchContext({
-				supabase,
-				projectId,
-			})
+    try {
+      // Fetch comprehensive project context
+      const projectContext = await getProjectResearchContext({
+        supabase,
+        projectId,
+      });
 
-			// Generate recommendations using rule engine
-			const recommendations = generateRecommendations(projectContext)
-			const stage = determineProjectStage(projectContext)
+      // Generate recommendations using rule engine
+      const recommendations = generateRecommendations(projectContext);
+      const stage = determineProjectStage(projectContext);
 
-			consola.debug("recommend-next-actions: generated recommendations", {
-				projectId,
-				stage,
-				recommendationCount: recommendations.length,
-				recommendationIds: recommendations.map((r) => r.id),
-			})
+      consola.debug("recommend-next-actions: generated recommendations", {
+        projectId,
+        stage,
+        recommendationCount: recommendations.length,
+        recommendationIds: recommendations.map((r) => r.id),
+      });
 
-			return {
-				success: true,
-				message: `Found ${recommendations.length} recommendations for your project.`,
-				recommendations,
-				projectState: {
-					stage,
-					interviewCount: projectContext.interviewCount,
-					surveyCount: projectContext.surveyCount,
-					themeCount: projectContext.themes.length,
-					hasGoals: projectContext.hasGoals,
-				},
-			}
-		} catch (error) {
-			consola.error("recommend-next-actions: unexpected error", error)
-			return {
-				success: false,
-				message: "Unexpected error generating recommendations.",
-				recommendations: [],
-				projectState: {
-					stage: "setup" as ProjectStage,
-					interviewCount: 0,
-					surveyCount: 0,
-					themeCount: 0,
-					hasGoals: false,
-				},
-			}
-		}
-	},
-})
+      return {
+        success: true,
+        message: `Found ${recommendations.length} recommendations for your project.`,
+        recommendations,
+        projectState: {
+          stage,
+          interviewCount: projectContext.interviewCount,
+          surveyCount: projectContext.surveyCount,
+          themeCount: projectContext.themes.length,
+          hasGoals: projectContext.hasGoals,
+          dataQuality: projectContext.dataQuality,
+        },
+      };
+    } catch (error) {
+      consola.error("recommend-next-actions: unexpected error", error);
+      return {
+        success: false,
+        message: "Unexpected error generating recommendations.",
+        recommendations: [],
+        projectState: {
+          stage: "setup" as ProjectStage,
+          interviewCount: 0,
+          surveyCount: 0,
+          themeCount: 0,
+          hasGoals: false,
+        },
+      };
+    }
+  },
+});

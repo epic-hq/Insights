@@ -8,6 +8,7 @@ import { interviewStatusAgent } from "./agents/interview-status-agent"
 import { mainAgent } from "./agents/main-agent"
 import { projectSetupAgent } from "./agents/project-setup-agent"
 import { projectStatusAgent } from "./agents/project-status-agent"
+import { chiefOfStaffAgent } from "./agents/chief-of-staff-agent"
 import { peopleAgent } from "./agents/people-agent"
 import { researchAgent } from "./agents/research-agent"
 import { opsAgent } from "./agents/ops-agent"
@@ -39,6 +40,7 @@ const agents = {
 	signupAgent,
 	projectSetupAgent,
 	projectStatusAgent,
+	chiefOfStaffAgent,
 	peopleAgent,
 	researchAgent,
 	opsAgent,

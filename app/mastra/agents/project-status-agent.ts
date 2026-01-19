@@ -31,6 +31,7 @@ import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
 import { suggestionTool } from "../tools/suggestion-tool"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { updateTableAssetTool } from "../tools/update-table-asset"
+import { chiefOfStaffAgent } from "./chief-of-staff-agent"
 import { opsAgent } from "./ops-agent"
 import { peopleAgent } from "./people-agent"
 import { researchAgent } from "./research-agent"
@@ -304,6 +305,9 @@ Ask brief clarifying questions when the request is ambiguous.
 
 ## Suggestions
 Do NOT add a "Next steps" section in the text response. Rely on the suggestion widgets only: call "suggestNextSteps" with 2-3 brief, imperative commands that match your response. Keep them aligned with what you just delivered; no extra or conflicting steps.
+
+## Chief of Staff
+For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
 `
 		} catch (error) {
 			consola.error("Error in project status agent instructions:", error)
@@ -323,6 +327,7 @@ Please try:
 		peopleAgent,
 		researchAgent,
 		opsAgent,
+		chiefOfStaffAgent,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
