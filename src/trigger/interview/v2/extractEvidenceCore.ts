@@ -69,10 +69,10 @@ import {
   summarizeCollectorUsage,
 } from "~/lib/baml/collector.server";
 import {
-  recordUsageOnly,
-  userBillingContext,
-  type BillingContext,
-} from "~/lib/billing";
+  createTaskBillingContext,
+  inferProvider,
+  recordTaskUsage,
+} from "../../lib/billing";
 import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema";
 import {
   FacetResolver,
@@ -556,19 +556,19 @@ export async function extractEvidenceAndPeopleCore({
         usageSummary,
       );
 
-      // Record usage for billing tracking (Phase 1: tracking only, no credit spending)
-      if (metadata.accountId && metadata.userId && usageSummary.totalCostUsd) {
-        const billingCtx = userBillingContext({
-          accountId: metadata.accountId,
-          userId: metadata.userId,
-          featureSource: "interview_extraction",
-          projectId: metadata.projectId,
-        });
-        recordUsageOnly(
+      // Record usage and spend credits for billing
+      if (metadata.accountId && usageSummary.totalCostUsd) {
+        const billingCtx = createTaskBillingContext(
+          metadata,
+          "interview_extraction",
+        );
+        const model =
+          process.env.BAML_EXTRACT_EVIDENCE_MODEL || "claude-sonnet";
+        recordTaskUsage(
           billingCtx,
           {
-            provider: "anthropic",
-            model: process.env.BAML_EXTRACT_EVIDENCE_MODEL || "claude-sonnet",
+            provider: inferProvider(model),
+            model,
             inputTokens: usageSummary.inputTokens || 0,
             outputTokens: usageSummary.outputTokens || 0,
             estimatedCostUsd: usageSummary.totalCostUsd,
@@ -776,23 +776,19 @@ export async function extractEvidenceAndPeopleCore({
         synthesisUsage,
       );
 
-      // Record usage for billing tracking (Phase 1: tracking only, no credit spending)
-      if (
-        metadata.accountId &&
-        metadata.userId &&
-        synthesisUsage.totalCostUsd
-      ) {
-        const billingCtx = userBillingContext({
-          accountId: metadata.accountId,
-          userId: metadata.userId,
-          featureSource: "persona_synthesis",
-          projectId: metadata.projectId,
-        });
-        recordUsageOnly(
+      // Record usage and spend credits for billing
+      if (metadata.accountId && synthesisUsage.totalCostUsd) {
+        const billingCtx = createTaskBillingContext(
+          metadata,
+          "persona_synthesis",
+        );
+        const model =
+          process.env.BAML_PERSONA_SYNTHESIS_MODEL || "claude-sonnet";
+        recordTaskUsage(
           billingCtx,
           {
-            provider: "anthropic",
-            model: process.env.BAML_PERSONA_SYNTHESIS_MODEL || "claude-sonnet",
+            provider: inferProvider(model),
+            model,
             inputTokens: synthesisUsage.inputTokens || 0,
             outputTokens: synthesisUsage.outputTokens || 0,
             estimatedCostUsd: synthesisUsage.totalCostUsd,

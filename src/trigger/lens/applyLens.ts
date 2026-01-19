@@ -11,7 +11,10 @@ import { metadata, task } from "@trigger.dev/sdk";
 import consola from "consola";
 
 import { createTask } from "~/features/tasks/db";
-import { runBaml } from "../lib/baml-tracing";
+import {
+  runBamlWithBilling,
+  systemBillingContext,
+} from "~/lib/billing/instrumented-baml.server";
 import type { TaskStatus } from "~/features/tasks/types";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { workflowRetryConfig } from "~/utils/processInterview.server";
@@ -546,30 +549,41 @@ export const applyLensTask = task({
       consola.info(
         `[applyLens] Calling ApplyConversationLens for ${template.template_name}`,
       );
-      const { result } = await runBaml({
-        functionName: "ApplyConversationLens",
-        traceName: `lens.${templateKey}`,
-        input: {
-          templateName: template.template_name,
-          evidenceCount: evidence.length,
-          interviewContext,
-          hasCustomInstructions: !!customInstructions,
-        },
-        metadata: {
-          interviewId,
-          templateKey,
-          accountId,
-          projectId,
-        },
-        bamlCall: (client) =>
-          client.ApplyConversationLens(
-            templateDefinition,
-            template.template_name,
-            evidenceJson,
+      const billingCtx = systemBillingContext(
+        accountId,
+        "lens_application",
+        projectId || undefined,
+      );
+      const { result } = await runBamlWithBilling(
+        billingCtx,
+        {
+          functionName: "ApplyConversationLens",
+          traceName: `lens.${templateKey}`,
+          input: {
+            templateName: template.template_name,
+            evidenceCount: evidence.length,
             interviewContext,
-            customInstructions || null,
-          ),
-      });
+            hasCustomInstructions: !!customInstructions,
+          },
+          metadata: {
+            interviewId,
+            templateKey,
+            accountId,
+            projectId,
+          },
+          resourceType: "lens_analysis",
+          resourceId: `${interviewId}:${templateKey}`,
+          bamlCall: (client) =>
+            client.ApplyConversationLens(
+              templateDefinition,
+              template.template_name,
+              evidenceJson,
+              interviewContext,
+              customInstructions || null,
+            ),
+        },
+        `lens:${interviewId}:${templateKey}`,
+      );
       extraction = result;
     } catch (error) {
       consola.error(
