@@ -1,9 +1,10 @@
-# Mastra Project Agents (Project Status + Project Setup)
+# Mastra Project Agents
 
-This document explains how the two core Mastra agents work in this repo:
+This document explains how the core Mastra agents work in this repo:
 
 - `projectStatusAgent` (Uppy) - project-wide status, insights, CRM actions
 - `projectSetupAgent` - guided setup to collect project goals and generate research structure
+- `chiefOfStaffAgent` - strategic guidance and data quality oversight
 
 It covers the conceptual architecture, how each agent runs in practice, and the established patterns we rely on when extending them.
 
@@ -85,7 +86,51 @@ It covers the conceptual architecture, how each agent runs in practice, and the 
 - **Company context first**: if missing, use `researchCompanyWebsite` then `saveAccountCompanyContext`.
 - **Suggestions**: call `suggestNextSteps` with examples that match the question asked.
 
-## Established Working Patterns (Both Agents)
+## Chief of Staff Agent (chiefOfStaffAgent)
+
+### What it does
+
+- Reviews current project status and tasks to recommend concrete next actions.
+- Provides data quality oversight (e.g., detecting people needing segment inference).
+- Returns 2-3 prioritized recommendations based on real project data.
+- Uses deterministic recommendation rules, not LLM generation, for consistency.
+
+### Where it lives
+
+- Agent definition: `app/mastra/agents/chief-of-staff-agent.ts`
+- Recommendation engine: `app/features/research-links/utils/recommendation-rules.ts`
+- Data context: `app/features/research-links/db.ts` (`getProjectResearchContext`)
+
+### Runtime behavior
+
+- **Context-driven**: Uses `RequestContext` for `project_id`, `account_id`, `user_id`.
+- **Rule-based recommendations**: Calls `recommendNextActions` tool which uses deterministic rules.
+- **Data quality metrics**: Tracks `peopleNeedingSegments`, `totalPeople`, `peopleWithoutTitles`.
+- **Token cap**: `TokenLimiterProcessor(20_000)` for concise responses.
+
+### Recommendation rules
+
+The recommendation engine generates suggestions based on project state:
+
+| Rule | Trigger | Recommendation |
+|------|---------|----------------|
+| Setup incomplete | No project goals | Complete project setup |
+| No research data | 0 interviews + 0 surveys | Start gathering insights |
+| Low evidence themes | Themes with <3 evidence | Validate specific theme |
+| High evidence themes | Themes with 5+ evidence | Go deeper on theme |
+| Pricing themes | Pricing-related themes detected | Pricing validation survey |
+| Stale surveys | No surveys in 30 days | NPS & satisfaction check |
+| Ready for synthesis | 5+ themes, 5+ interviews | Synthesize findings |
+| Data quality | 5+ people needing segments | Enrich contact segmentation |
+
+### Tooling patterns
+
+- **Data-driven**: All recommendations grounded in fetched project data.
+- **Concise output**: Max 2-3 recommendations per call.
+- **Links included**: Uses `generateProjectRoutes` for navigation links.
+- **Action types**: `setup`, `interview`, `survey`, `validate`, `deep_dive`, `analyze`, `decide`, `data_quality`.
+
+## Established Working Patterns (All Agents)
 
 - **Account resolution**: always derive `account_id` from the project record.
 - **Thread reuse**: list threads by `resourceId`, reuse the latest, or create a new thread if missing.
@@ -93,6 +138,7 @@ It covers the conceptual architecture, how each agent runs in practice, and the 
 - **Streaming**: use `toAISdkStream` with `sendReasoning` and `sendSources` for UI.
 - **Minimal message payloads**: only send new turns, rely on memory for history.
 - **Prompt discipline**: behavior rules live in the agent instructions and are enforced by tools.
+- **Data quality awareness**: agents surface data quality issues (missing segments, incomplete profiles) as actionable recommendations.
 
 ## Adding or Updating Agent Behavior
 
@@ -112,3 +158,6 @@ It covers the conceptual architecture, how each agent runs in practice, and the 
 - `docs/30-howtos/mastra-tools/tool-contracts.md` (tool contract standard)
 - `app/mastra/tools/context-utils.ts` (account safety)
 - `app/mastra/tools/tool-status-events.ts` (status streaming)
+- `app/mastra/tools/recommend-next-actions.ts` (recommendation tool)
+- `app/features/research-links/utils/recommendation-rules.ts` (rule engine)
+- `app/features/research-links/db.ts` (project research context)
