@@ -1,6 +1,6 @@
-import { handleNetworkStream } from "@mastra/ai-sdk";
+import { toAISdkStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
-import { createUIMessageStreamResponse } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import {
@@ -14,6 +14,8 @@ import { getLangfuseClient } from "~/lib/langfuse.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
+import { switchAgentTool } from "~/mastra/tools/switch-agent";
 import { userContext } from "~/server/user-context";
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -126,76 +128,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     `agent:project-status:${userId}:${projectId}`,
   );
 
-  const buildAgentParams = (useThreadId: string) => ({
-    messages: runtimeMessages,
-    maxSteps: 10, // Prevent infinite tool loops (default is 5)
-    memory: {
-      thread: useThreadId,
-      resource: resourceId,
-    },
-    requestContext,
-    context: system
-      ? [
-          {
-            role: "system",
-            content: `## Context from the client's UI:\n${system}`,
-          },
-        ]
-      : undefined,
-    onFinish: async (data: {
-      usage?: { inputTokens?: number; outputTokens?: number };
-      finishReason?: string;
-      toolCalls?: unknown[];
-      text?: string;
-      steps?: unknown[];
-    }) => {
-      const usage = data.usage;
-      if (
-        usage &&
-        (usage.inputTokens || usage.outputTokens) &&
-        billingCtx.accountId
-      ) {
-        const model = "gpt-4o"; // Default model for agents
-        const inputTokens = usage.inputTokens || 0;
-        const outputTokens = usage.outputTokens || 0;
-        const costUsd = estimateOpenAICost(model, inputTokens, outputTokens);
-
-        consola.debug("project-status: billing", {
-          inputTokens,
-          outputTokens,
-          costUsd,
-        });
-
-        await recordUsageOnly(
-          billingCtx,
-          {
-            provider: "openai",
-            model,
-            inputTokens,
-            outputTokens,
-            estimatedCostUsd: costUsd,
-          },
-          `agent:project-status:${userId}:${projectId}:${Date.now()}`,
-        ).catch((err) => {
-          consola.error("[billing] Failed to record agent usage:", err);
-        });
-      }
-
-      clearActiveBillingContext();
-
-      consola.debug("project-status: finished", {
-        steps: data.steps?.length || 0,
-      });
-      const langfuse = getLangfuseClient();
-      const lfTrace = langfuse.trace?.({ name: "api.chat.project-status" });
-      const gen = lfTrace?.generation?.({
-        name: "api.chat.project-status",
-        input: messages,
-        output: data,
-      });
-      gen?.end?.();
-    },
-  });
+  const agent = mastra.getAgent("projectStatusAgent");
 
   // Helper to handle corrupted thread recovery
   const handleCorruptedThread = async (
@@ -232,13 +165,83 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     return freshThread.id;
   };
 
-  let stream: Awaited<ReturnType<typeof handleNetworkStream>> | undefined;
+  const buildStreamOptions = (useThreadId: string) => ({
+    maxSteps: 10, // Prevent infinite tool loops (default is 5)
+    clientTools: {
+      navigateToPage: navigateToPageTool,
+      switchAgent: switchAgentTool,
+    },
+    memory: {
+      thread: useThreadId,
+      resource: resourceId,
+    },
+    requestContext,
+    context: system
+      ? [
+          {
+            role: "system" as const,
+            content: `## Context from the client's UI:\n${system}`,
+          },
+        ]
+      : undefined,
+    onFinish: async (data: {
+      usage?: { inputTokens?: number; outputTokens?: number };
+      finishReason?: string;
+      toolCalls?: unknown[];
+      text?: string;
+      steps?: unknown[];
+    }) => {
+      const usage = data.usage;
+      if (
+        usage &&
+        (usage.inputTokens || usage.outputTokens) &&
+        billingCtx.accountId
+      ) {
+        const model = "gpt-4o"; // Default model for agents
+        const inputTokens = usage.inputTokens || 0;
+        const outputTokens = usage.outputTokens || 0;
+        const costUsd = estimateOpenAICost(model, inputTokens, outputTokens);
+
+        consola.info("project-status: billing", {
+          inputTokens,
+          outputTokens,
+          costUsd,
+        });
+
+        await recordUsageOnly(
+          billingCtx,
+          {
+            provider: "openai",
+            model,
+            inputTokens,
+            outputTokens,
+            estimatedCostUsd: costUsd,
+          },
+          `agent:project-status:${userId}:${projectId}:${Date.now()}`,
+        ).catch((err) => {
+          consola.error("[billing] Failed to record agent usage:", err);
+        });
+      }
+
+      clearActiveBillingContext();
+
+      consola.debug("project-status: finished", {
+        steps: data.steps?.length || 0,
+      });
+      const langfuse = getLangfuseClient();
+      const lfTrace = langfuse.trace?.({ name: "api.chat.project-status" });
+      const gen = lfTrace?.generation?.({
+        name: "api.chat.project-status",
+        input: messages,
+        output: data,
+      });
+      gen?.end?.();
+    },
+  });
+
+  let result;
   try {
-    stream = await handleNetworkStream({
-      mastra,
-      agentId: "projectStatusAgent",
-      params: buildAgentParams(threadId),
-    });
+    result = await agent.stream(runtimeMessages, buildStreamOptions(threadId));
   } catch (error) {
     // Check if this is the "No tool call found" error from corrupted memory
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -247,14 +250,37 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
       errorMessage.includes("function call output")
     ) {
       threadId = await handleCorruptedThread(threadId, errorMessage);
-      stream = await handleNetworkStream({
-        mastra,
-        agentId: "projectStatusAgent",
-        params: buildAgentParams(threadId),
-      });
+      result = await agent.stream(
+        runtimeMessages,
+        buildStreamOptions(threadId),
+      );
     } else {
       throw error;
     }
   }
-  return createUIMessageStreamResponse({ stream });
+
+  const uiMessageStream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      try {
+        const transformedStream = toAISdkStream(result, {
+          from: "agent" as const,
+          sendReasoning: true,
+          sendSources: true,
+        });
+
+        if (!transformedStream) return;
+
+        for await (const part of transformedStream) {
+          writer.write(part);
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        consola.error("project-status stream error", { errorMessage });
+        throw error;
+      }
+    },
+  });
+
+  return createUIMessageStreamResponse({ stream: uiMessageStream });
 }

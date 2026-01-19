@@ -149,6 +149,7 @@ function extractNetworkStatus(message: UpsightMessage): string | null {
 				const networkData = data.data as { steps?: Array<{ name?: string; status?: string }> }
 				const activeStep = networkData.steps?.findLast((step) => step.status === "running")
 				if (activeStep?.name) {
+					if (isRoutingAgentStep(activeStep.name)) return "Routing..."
 					return `Working: ${formatProgressLabel(activeStep.name)}`
 				}
 			}
@@ -158,11 +159,16 @@ function extractNetworkStatus(message: UpsightMessage): string | null {
 			const networkData = anyPart.data as { steps?: Array<{ name?: string; status?: string }> }
 			const activeStep = networkData.steps?.findLast((step) => step.status === "running")
 			if (activeStep?.name) {
+				if (isRoutingAgentStep(activeStep.name)) return "Routing..."
 				return `Working: ${formatProgressLabel(activeStep.name)}`
 			}
 		}
 	}
 	return null
+}
+
+function isRoutingAgentStep(name: string): boolean {
+	return name.toLowerCase() === "routing-agent"
 }
 
 function formatProgressLabel(name: string): string {
@@ -194,6 +200,12 @@ function extractNetworkSteps(message: UpsightMessage): NetworkStep[] {
 		}
 	}
 	return []
+}
+
+function formatNetworkStepLabel(name?: string): string {
+	if (!name) return "Step"
+	if (isRoutingAgentStep(name)) return "Coordinator"
+	return formatProgressLabel(name)
 }
 
 function extractToolProgress(message: UpsightMessage): ToolProgressData | null {
@@ -968,7 +980,7 @@ export function ProjectStatusAgentChat({
 																	{networkSteps.length > 0 && (
 																		<div className="rounded-md bg-muted/40 px-2 py-1 text-[11px] text-foreground/70">
 																			{networkSteps.map((step, index) => {
-																				const label = step.name ? formatProgressLabel(step.name) : "Step"
+																				const label = formatNetworkStepLabel(step.name)
 																				const status = step.status || "running"
 																				const statusLabel = status === "running" ? "running" : "done"
 																				return (

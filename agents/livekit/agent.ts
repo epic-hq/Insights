@@ -14,7 +14,93 @@ import * as livekit from "@livekit/agents-plugin-livekit";
 import * as deepgram from "@livekit/agents-plugin-deepgram";
 import * as openai from "@livekit/agents-plugin-openai";
 import * as silero from "@livekit/agents-plugin-silero";
+import { createClient } from "@supabase/supabase-js";
 import { createMastraTools } from "./mastra-integration";
+
+/**
+ * Record voice chat usage to billing system.
+ * Called on agent shutdown with collected metrics.
+ */
+async function recordVoiceChatUsage(
+  accountId: string,
+  userId: string,
+  projectId: string,
+  summary: ReturnType<metrics.UsageCollector["getSummary"]>,
+): Promise<void> {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    consola.warn(
+      "[billing] Missing Supabase credentials, skipping voice chat billing",
+    );
+    return;
+  }
+
+  const client = createClient(supabaseUrl, supabaseKey);
+
+  // Calculate costs based on usage
+  // gpt-4o-mini: $0.15/1M input, $0.60/1M output
+  // Deepgram STT nova-2: ~$0.0043/minute (we don't have duration, estimate from tokens)
+  // Deepgram TTS aura: ~$0.0135/1000 chars
+
+  const llmInputTokens = summary.llmPromptTokens || 0;
+  const llmOutputTokens = summary.llmCompletionTokens || 0;
+  const llmCost = (llmInputTokens * 0.15 + llmOutputTokens * 0.6) / 1_000_000;
+
+  // STT cost estimate (use TTF - time to first token as proxy for speech duration)
+  const sttCost = summary.sttAudioDuration
+    ? (summary.sttAudioDuration / 60) * 0.0043
+    : 0;
+
+  // TTS cost estimate (characters spoken)
+  const ttsCharacters = summary.ttsCharactersCount || 0;
+  const ttsCost = (ttsCharacters / 1000) * 0.0135;
+
+  const totalCost = llmCost + sttCost + ttsCost;
+  const totalInputTokens = llmInputTokens;
+  const totalOutputTokens = llmOutputTokens;
+
+  consola.info("[billing] Recording voice chat usage", {
+    accountId,
+    userId,
+    projectId,
+    llmInputTokens,
+    llmOutputTokens,
+    llmCost: llmCost.toFixed(6),
+    sttCost: sttCost.toFixed(6),
+    ttsCost: ttsCost.toFixed(6),
+    totalCost: totalCost.toFixed(6),
+  });
+
+  try {
+    const { data, error } = await client.rpc("record_usage_event", {
+      p_account_id: accountId,
+      p_project_id: projectId,
+      p_user_id: userId,
+      p_provider: "voice_chat",
+      p_model: "gpt-4o-mini+deepgram",
+      p_input_tokens: totalInputTokens,
+      p_output_tokens: totalOutputTokens,
+      p_estimated_cost_usd: totalCost,
+      p_credits_charged: Math.ceil(totalCost * 100),
+      p_feature_source: "voice_chat",
+      p_resource_type: null,
+      p_resource_id: null,
+      p_idempotency_key: `voice_chat:${accountId}:${projectId}:${Date.now()}`,
+    });
+
+    if (error) {
+      consola.error("[billing] Failed to record voice chat usage:", error);
+    } else {
+      consola.success("[billing] Voice chat usage recorded", {
+        usageEventId: data,
+      });
+    }
+  } catch (err) {
+    consola.error("[billing] Error recording voice chat usage:", err);
+  }
+}
 
 const resolvedLivekitUrl = process.env.LIVEKIT_SFU_URL;
 
@@ -199,9 +285,25 @@ export default defineAgent({
         usageCollector.collect(event.metrics);
       });
 
-      ctx.addShutdownCallback(() => {
+      ctx.addShutdownCallback(async () => {
         const summary = usageCollector.getSummary();
         consola.info("LiveKit agent usage", summary);
+
+        // Record usage to billing system
+        if (assistant.accountId && assistant.userId && assistant.projectId) {
+          await recordVoiceChatUsage(
+            assistant.accountId,
+            assistant.userId,
+            assistant.projectId,
+            summary,
+          );
+        } else {
+          consola.warn("[billing] Missing context for voice chat billing", {
+            hasAccountId: !!assistant.accountId,
+            hasUserId: !!assistant.userId,
+            hasProjectId: !!assistant.projectId,
+          });
+        }
       });
 
       ctx.room.on("disconnected", () => {

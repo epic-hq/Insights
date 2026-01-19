@@ -980,7 +980,9 @@ export function createMastraTools(context: {
           ),
         existingItems: z
           .array(z.string())
+          .nullable()
           .optional()
+          .transform((val) => val ?? [])
           .describe("Items already added, to avoid duplicates."),
         count: z
           .number()
