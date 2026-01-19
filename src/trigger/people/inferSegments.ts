@@ -8,8 +8,11 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import { b } from "~/../baml_client";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import {
+  runBamlWithBilling,
+  systemBillingContext,
+} from "~/lib/billing/instrumented-baml.server";
 
 const payloadSchema = z.object({
   projectId: z.string(),
@@ -221,12 +224,37 @@ export const inferSegmentsTask = schemaTask({
       }
 
       try {
-        // Call BAML function
-        const inference = await b.InferPersonSegments({
-          title: effectiveTitle,
-          role: null,
-          company: person.company,
-        });
+        // Call BAML function with billing
+        const billingCtx = systemBillingContext(
+          accountId,
+          "person_segment_inference",
+          projectId,
+        );
+        const { result: inference } = await runBamlWithBilling(
+          billingCtx,
+          {
+            functionName: "InferPersonSegments",
+            traceName: "people.infer-segments",
+            input: {
+              title: effectiveTitle,
+              hasCompany: !!person.company,
+            },
+            metadata: {
+              personId: person.id,
+              accountId,
+              projectId,
+            },
+            resourceType: "person",
+            resourceId: person.id,
+            bamlCall: (client) =>
+              client.InferPersonSegments({
+                title: effectiveTitle,
+                role: null,
+                company: person.company,
+              }),
+          },
+          `person:${person.id}:infer-segments`,
+        );
 
         const jobFunction = JOB_FUNCTION_MAP[inference.job_function] || null;
         const seniority = SENIORITY_MAP[inference.seniority_level] || null;
