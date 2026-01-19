@@ -16,6 +16,7 @@ import { Textarea } from "~/components/ui/textarea"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { createR2PresignedUrl } from "~/utils/r2.server"
 import { createRouteDefinitions } from "~/utils/route-definitions"
+import { EmbedCodeGenerator } from "../components/EmbedCodeGenerator"
 import { QuestionListEditor } from "../components/QuestionListEditor"
 import { ResearchLinkPreview } from "../components/ResearchLinkPreview"
 import { WalkthroughRecorder } from "../components/WalkthroughRecorder"
@@ -418,6 +419,7 @@ export default function EditResearchLinkPage() {
 							<TabsTrigger value="video">Intro video</TabsTrigger>
 							<TabsTrigger value="questions">Questions</TabsTrigger>
 							<TabsTrigger value="options">Options</TabsTrigger>
+							<TabsTrigger value="embed">Embed</TabsTrigger>
 						</TabsList>
 
 						<TabsContent value="landing" className="space-y-1.5">
@@ -633,6 +635,18 @@ export default function EditResearchLinkPage() {
 									</div>
 								</CardContent>
 							</Card>
+						</TabsContent>
+
+						<TabsContent value="embed" className="space-y-1.5">
+							<h3 className="font-medium text-foreground/80 text-sm">Embed on Your Website</h3>
+							<p className="text-muted-foreground text-xs">
+								Add this form to your website for waitlists, feedback collection, or lead capture.
+							</p>
+							<EmbedCodeGenerator
+								slug={slug}
+								heroTitle={heroTitle}
+								heroCtaLabel={heroCtaLabel}
+							/>
 						</TabsContent>
 					</Tabs>
 
