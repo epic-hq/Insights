@@ -45,7 +45,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		projectId && accountId
 			? `p_${projectId}_a_${accountId}_u_${user.sub}_${randomUUID()}`
 			: `u_${user.sub}_${randomUUID()}`
-	const ttlSeconds = Number.isFinite(Number(LIVEKIT_TTL_SECONDS)) ? Math.min(Number(LIVEKIT_TTL_SECONDS), 3600) : 300
+	const maxTtlSeconds = 600
+	const ttlSeconds = Number.isFinite(Number(LIVEKIT_TTL_SECONDS))
+		? Math.min(Number(LIVEKIT_TTL_SECONDS), maxTtlSeconds)
+		: maxTtlSeconds
 
 	const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
 		identity: user.sub,

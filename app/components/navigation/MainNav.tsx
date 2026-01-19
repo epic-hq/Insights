@@ -30,7 +30,8 @@ export default function MainNav() {
 	const isAboutPage = pathname === "/about"
 	const isBlogPage = pathname.startsWith("/blog")
 	const isCaseStudiesPage = pathname.startsWith("/case-studies")
-	const isMarketingPage = !user || isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage
+	const isPricingPage = pathname === "/pricing"
+	const isMarketingPage = !user || isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage
 
 	if (user && !isMarketingPage) {
 		return <AppSidebar />
@@ -44,7 +45,7 @@ export default function MainNav() {
 						<LogoBrand />
 					</Link>
 
-					{(isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage) && !user && (
+					{(isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage) && !user && (
 						<>
 							{/* Desktop Navigation */}
 							<div className="hidden md:flex md:space-x-8">
@@ -96,7 +97,9 @@ export default function MainNav() {
 				</div>
 
 				{/* Mobile Menu Overlay */}
-				{mobileMenuOpen && (isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage) && !user && (
+				{mobileMenuOpen &&
+					(isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage) &&
+					!user && (
 					<div className="fixed inset-0 z-50 md:hidden">
 						{/* Backdrop */}
 						<div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
