@@ -19,10 +19,10 @@ See `docs/20-features-prds/features/onboarding/sidebar-ux-analysis.md`
 
 ## Next
 
-- [ ] **Public Link Sharing** - Enable unauthenticated access via unique tokens. See `docs/20-features-prds/features/sharing/public-link-sharing-plan.md`
-- [ ] **Custom Lenses v1** - User-created lenses. See `docs/20-features-prds/features/conversation-lenses/custom-lenses-v1-plan.md`
+- [x] **Public Link Sharing** - Enable unauthenticated access via unique tokens ✅
+- [x] **Custom Lenses v1** - User-created lenses ✅
+- [x] LiveKit agent + token generator for projectStatusAgent voice ✅
 - [ ] Persona Facet Summaries - summarize facet group takeaways atop an accordion
-- [ ] LiveKit agent + token generator for projectStatusAgent voice
 
 ## Later / Refactoring
 

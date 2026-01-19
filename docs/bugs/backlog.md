@@ -37,9 +37,9 @@
    - Symptom: `created_by` null errors, "Missing userId in runtime context" errors
    - Workaround attempted: Pass userId/projectId through agent instructions as tool input params
 
-2. **Stricter input validation** - Tools fail when LLM passes `null` for optional fields
-   - Symptom: `themeSearch: Expected string, received null`
-   - Fix needed: Change `.optional()` to `.nullish()` in all tool input schemas
+2. ~~**Stricter input validation** - Tools fail when LLM passes `null` for optional fields~~ ✅ FIXED (2026-01-18)
+   - Changed `.optional()` to `.nullish()` across all 47 tool files
+   - See `docs/bugs/mastra-nullish-postmortem.md` for details
 
 **Before upgrading again, test:**
 - [ ] createTask tool - verify created_by is populated
