@@ -81,13 +81,13 @@ export const fetchInterviewPromptsTool = createTool({
 	description:
 		"List interview prompts for the current project. Use to inspect, sort, or filter questions before editing or selecting.",
 	inputSchema: z.object({
-		search: z.string().optional().describe("Case-insensitive search in prompt text or rationale"),
-		status: z.array(statusEnum).optional().describe("Filter by prompt status"),
-		category: z.string().optional().describe("Filter by category"),
-		isMustHave: z.boolean().optional().describe("Filter must-have prompts"),
-		isSelected: z.boolean().optional().describe("Filter selected prompts"),
-		ids: z.array(z.string()).optional().describe("Specific prompt IDs to fetch"),
-		limit: z.number().int().min(1).max(200).optional().describe("Maximum number of prompts to return"),
+		search: z.string().nullish().describe("Case-insensitive search in prompt text or rationale"),
+		status: z.array(statusEnum).nullish().describe("Filter by prompt status"),
+		category: z.string().nullish().describe("Filter by category"),
+		isMustHave: z.boolean().nullish().describe("Filter must-have prompts"),
+		isSelected: z.boolean().nullish().describe("Filter selected prompts"),
+		ids: z.array(z.string()).nullish().describe("Specific prompt IDs to fetch"),
+		limit: z.number().int().min(1).max(200).nullish().describe("Maximum number of prompts to return"),
 	}),
 	outputSchema: baseOutput.extend({
 		total: z.number().optional(),
@@ -265,7 +265,7 @@ export const updateInterviewPromptTool = createTool({
 		scores: z.record(z.string(), z.any()).optional(),
 		mergeScores: z
 			.boolean()
-			.optional()
+			.nullish()
 			.default(false)
 			.describe("If true, merge new scores with existing scores instead of replacing"),
 	}),

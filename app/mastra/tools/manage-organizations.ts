@@ -20,10 +20,10 @@ const organizationSchema = z.object({
 
 const toolInputSchema = z.object({
 	action: z.enum(["create", "update", "delete", "get", "list"]),
-	organizationId: z.string().optional().describe("Required for update, delete, and get actions"),
+	organizationId: z.string().nullish().describe("Required for update, delete, and get actions"),
 	accountId: z.string().optional(),
 	projectId: z.string().optional(),
-	data: organizationSchema.partial().optional().describe("Organization data for create/update actions"),
+	data: organizationSchema.partial().nullish().describe("Organization data for create/update actions"),
 })
 
 const toolOutputSchema = z.object({

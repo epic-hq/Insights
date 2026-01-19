@@ -52,21 +52,21 @@ const toolInputSchema = z
 		personId: z.string().describe("ID of the person record to update."),
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project context for the facet rows. Defaults to the runtime or person record project."),
-		accountId: z.string().optional().describe("Account context. Defaults to runtime headers or the person record."),
+		accountId: z.string().nullish().describe("Account context. Defaults to runtime headers or the person record."),
 		transcript: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Free-form text or transcript describing the person. Used when explicit facets are not provided."),
-		facts: z.array(manualFacetSchema).optional().describe("Optional structured facet facts to apply directly."),
-		source: z.string().optional().describe("Source label to store on person_facet rows. Defaults to 'voice_note'."),
+		facts: z.array(manualFacetSchema).nullish().describe("Optional structured facet facts to apply directly."),
+		source: z.string().nullish().describe("Source label to store on person_facet rows. Defaults to 'voice_note'."),
 		mode: z
 			.enum(["merge", "replace"])
-			.optional()
+			.nullish()
 			.describe("Merge keeps existing facets; replace removes unspecified ones after applying the new set."),
-		confidence: z.number().min(0).max(1).optional().describe("Override default confidence for added facets."),
-		dryRun: z.boolean().optional().describe("When true, returns the plan without writing to the database."),
+		confidence: z.number().min(0).max(1).nullish().describe("Override default confidence for added facets."),
+		dryRun: z.boolean().nullish().describe("When true, returns the plan without writing to the database."),
 	})
 	.refine(
 		(value) => {

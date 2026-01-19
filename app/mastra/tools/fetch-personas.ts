@@ -16,13 +16,13 @@ export const fetchPersonasTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to fetch personas from. Defaults to the current project in context."),
 		personasSearch: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Case-insensitive search string to match persona names or descriptions."),
-		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of personas to return."),
+		limit: z.number().int().min(1).max(100).nullish().describe("Maximum number of personas to return."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

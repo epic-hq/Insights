@@ -82,15 +82,15 @@ WRONG (missing rows - WILL FAIL):
 			.describe(
 				"THE DATA ROWS (REQUIRED!) - Array of objects where each object has keys matching headers. Example: [{'Tool': 'Notion', 'Use Case': 'Notes', 'Price': '$10'}]"
 			),
-		description: z.string().optional().describe("Optional description of the table contents"),
-		kind: z.string().optional().describe("Optional category (e.g., 'competitive_matrix')"),
+		description: z.string().nullish().describe("Optional description of the table contents"),
+		kind: z.string().nullish().describe("Optional category (e.g., 'competitive_matrix')"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		message: z.string(),
-		assetId: z.string().uuid().optional().describe("ID of the created asset"),
-		assetUrl: z.string().optional().describe("URL to view/edit the table"),
-		markdownTable: z.string().optional().describe("Markdown preview of the table (first 20 rows)"),
+		assetId: z.string().uuid().nullish().describe("ID of the created asset"),
+		assetUrl: z.string().nullish().describe("URL to view/edit the table"),
+		markdownTable: z.string().nullish().describe("Markdown preview of the table (first 20 rows)"),
 		error: z.string().optional(),
 	}),
 	execute: async (input, context?) => {

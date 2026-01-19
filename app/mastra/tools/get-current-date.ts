@@ -9,7 +9,7 @@ export const getCurrentDateTool = createTool({
 	inputSchema: z.object({
 		timezone: z
 			.string()
-			.optional()
+			.nullish()
 			.describe(
 				"Optional timezone override (e.g., 'America/New_York', 'Europe/London'). If not provided, uses the user's browser timezone from context."
 			),

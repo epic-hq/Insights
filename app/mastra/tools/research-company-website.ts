@@ -15,29 +15,29 @@ const EXA_API_URL = "https://api.exa.ai"
  * Schema for LLM extraction output
  */
 const CompanyExtractionSchema = z.object({
-	description: z.string().optional().describe("A 1-2 sentence description of what the company does"),
-	customer_problem: z.string().optional().describe("The main problem or pain point the company solves for customers"),
+	description: z.string().nullish().describe("A 1-2 sentence description of what the company does"),
+	customer_problem: z.string().nullish().describe("The main problem or pain point the company solves for customers"),
 	offerings: z
 		.array(z.string())
-		.optional()
+		.nullish()
 		.describe("List of main products or services offered (2-5 items, be specific)"),
 	target_customers: z
 		.array(z.string())
-		.optional()
+		.nullish()
 		.describe(
 			"Types of companies or organizations they serve (e.g., 'Enterprise software companies', 'Healthcare providers')"
 		),
 	target_roles: z
 		.array(z.string())
-		.optional()
+		.nullish()
 		.describe("Job roles or personas they target (e.g., 'Product Managers', 'Engineering Leaders', 'CTOs')"),
 	competitors: z
 		.array(z.string())
-		.optional()
+		.nullish()
 		.describe("Known competitors or alternative solutions mentioned on the site"),
 	industry: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("The industry or sector (e.g., 'Healthcare Technology', 'B2B SaaS', 'Fintech')"),
 })
 

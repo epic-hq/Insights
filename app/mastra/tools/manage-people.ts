@@ -7,16 +7,16 @@ import type { Database } from "~/types"
 
 const toolInputSchema = z.object({
 	action: z.enum(["get", "list", "delete"]),
-	personId: z.string().optional().describe("Required for get and delete actions"),
+	personId: z.string().nullish().describe("Required for get and delete actions"),
 	accountId: z.string().optional(),
 	projectId: z.string().optional(),
-	nameSearch: z.string().optional().describe("Optional case-insensitive name search for list"),
-	limit: z.number().int().min(1).max(200).optional().describe("Max rows for list (default 50)"),
-	dryRun: z.boolean().optional().describe("For delete: return what would be deleted without mutating"),
-	force: z.boolean().optional().describe("For delete: proceed even if linked records exist"),
+	nameSearch: z.string().nullish().describe("Optional case-insensitive name search for list"),
+	limit: z.number().int().min(1).max(200).nullish().describe("Max rows for list (default 50)"),
+	dryRun: z.boolean().nullish().describe("For delete: return what would be deleted without mutating"),
+	force: z.boolean().nullish().describe("For delete: proceed even if linked records exist"),
 	confirmName: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("For delete (non-dryRun): must match the person's current name exactly (case-insensitive)"),
 })
 

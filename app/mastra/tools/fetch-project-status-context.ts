@@ -344,32 +344,32 @@ export const fetchProjectStatusContextTool = createTool({
 	description:
 		"Load project status context, including research sections, insights, evidence, people, and personas for accessible projects.",
 	inputSchema: z.object({
-		projectId: z.string().optional().describe("Project ID to load. Defaults to the current project in context."),
-		scopes: z.array(z.enum(detailScopes)).optional().describe("Optional list of data groups to fetch."),
-		insightLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of insights to return."),
-		evidenceLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of evidence items to return."),
-		themeLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of themes to return."),
-		peopleLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of people to return."),
-		personaLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of personas to return."),
-		interviewLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of interviews to return."),
+		projectId: z.string().nullish().describe("Project ID to load. Defaults to the current project in context."),
+		scopes: z.array(z.enum(detailScopes)).nullish().describe("Optional list of data groups to fetch."),
+		insightLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of insights to return."),
+		evidenceLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of evidence items to return."),
+		themeLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of themes to return."),
+		peopleLimit: z.number().int().min(1).max(100).nullish().describe("Maximum number of people to return."),
+		personaLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of personas to return."),
+		interviewLimit: z.number().int().min(1).max(100).nullish().describe("Maximum number of interviews to return."),
 		peopleSearch: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Optional case-insensitive search string to match people by name or display name."),
 		includePersonEvidence: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("When true, include recent evidence snippets linked to the matched people."),
 		personEvidenceLimit: z
 			.number()
 			.int()
 			.min(1)
 			.max(50)
-			.optional()
+			.nullish()
 			.describe("Maximum number of evidence snippets to include per person when includePersonEvidence is true."),
 		includeEvidence: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("Set to false to omit detailed evidence and focus on higher-level insights and personas."),
 	}),
 	outputSchema: z.object({

@@ -15,7 +15,7 @@ const QuestionInputSchema = z.object({
 	prompt: z.string().describe("The question text"),
 	type: z
 		.enum(["auto", "short_text", "long_text", "single_select", "multi_select", "likert"])
-		.optional()
+		.nullish()
 		.default("auto")
 		.describe("Question type - use 'auto' to let respondent choose"),
 	required: z.boolean().optional().default(false),
@@ -26,7 +26,7 @@ const QuestionInputSchema = z.object({
 			low: z.string().optional(),
 			high: z.string().optional(),
 		})
-		.optional()
+		.nullish()
 		.nullable()
 		.describe("Labels for low/high ends of likert scale"),
 })
@@ -50,7 +50,7 @@ Question types:
 		projectId: z.string().describe("Project ID - REQUIRED, get from context: project_id"),
 		surveyId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Survey ID - if provided, updates existing survey instead of creating new"),
 		name: z.string().describe("Survey name/title"),
 		description: z.string().optional().nullable().describe("Brief description of the survey purpose"),
@@ -61,8 +61,8 @@ Question types:
 		success: z.boolean(),
 		message: z.string(),
 		surveyId: z.string().optional(),
-		editUrl: z.string().optional().describe("Relative URL to edit the survey - use with navigateToPage"),
-		publicUrl: z.string().optional().describe("Public URL where respondents can take the survey"),
+		editUrl: z.string().nullish().describe("Relative URL to edit the survey - use with navigateToPage"),
+		publicUrl: z.string().nullish().describe("Public URL where respondents can take the survey"),
 		error: z
 			.object({
 				code: z.string(),

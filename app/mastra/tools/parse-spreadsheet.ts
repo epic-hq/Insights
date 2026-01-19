@@ -183,24 +183,24 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		content: z.string().describe("The raw tabular data content (CSV, TSV, or pipe-delimited)"),
 		delimiter: z
 			.enum([",", "\t", ";", "|"])
-			.optional()
+			.nullish()
 			.describe("Force a specific delimiter. If not provided, auto-detects."),
 		maxDisplayRows: z
 			.number()
 			.int()
 			.min(1)
 			.max(100)
-			.optional()
+			.nullish()
 			.default(20)
 			.describe("Maximum rows to show in the markdown table (default: 20)"),
 		includeStats: z.boolean().optional().default(true).describe("Include summary statistics for numeric columns"),
 		saveToAssets: z
 			.boolean()
-			.optional()
+			.nullish()
 			.default(true)
 			.describe("Save the parsed table to project_assets for future reference"),
-		title: z.string().optional().describe("Optional title for the saved asset. Auto-generated if not provided."),
-		description: z.string().optional().describe("Description of the table contents. Auto-generated if not provided."),
+		title: z.string().nullish().describe("Optional title for the saved asset. Auto-generated if not provided."),
+		description: z.string().nullish().describe("Description of the table contents. Auto-generated if not provided."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -209,52 +209,52 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 		headers: z.array(z.string()).describe("Column headers"),
 		rowCount: z.number().describe("Total number of data rows"),
 		columnCount: z.number().describe("Number of columns"),
-		stats: z.record(z.string(), z.any()).optional().describe("Summary statistics for numeric columns"),
-		sampleRows: z.array(z.record(z.string(), z.any())).optional().describe("First few rows as structured data"),
-		assetId: z.string().uuid().optional().describe("ID of the saved project_asset, if saved"),
-		assetUrl: z.string().optional().describe("Full URL to view/edit the asset (use this for links, not assetId)"),
-		assetSaved: z.boolean().optional().describe("Whether the asset was saved to project_assets"),
-		looksLikeContacts: z.boolean().optional().describe("Whether the data appears to be contact/people data"),
-		contactColumns: z.array(z.string()).optional().describe("Detected contact-related column names"),
-		looksLikeOpportunities: z.boolean().optional().describe("Whether the data appears to be opportunity/deal data"),
-		opportunityColumns: z.array(z.string()).optional().describe("Detected opportunity-related column names"),
+		stats: z.record(z.string(), z.any()).nullish().describe("Summary statistics for numeric columns"),
+		sampleRows: z.array(z.record(z.string(), z.any())).nullish().describe("First few rows as structured data"),
+		assetId: z.string().uuid().nullish().describe("ID of the saved project_asset, if saved"),
+		assetUrl: z.string().nullish().describe("Full URL to view/edit the asset (use this for links, not assetId)"),
+		assetSaved: z.boolean().nullish().describe("Whether the asset was saved to project_assets"),
+		looksLikeContacts: z.boolean().nullish().describe("Whether the data appears to be contact/people data"),
+		contactColumns: z.array(z.string()).nullish().describe("Detected contact-related column names"),
+		looksLikeOpportunities: z.boolean().nullish().describe("Whether the data appears to be opportunity/deal data"),
+		opportunityColumns: z.array(z.string()).nullish().describe("Detected opportunity-related column names"),
 		// LLM-analyzed column mapping for accurate imports
 		columnMapping: z
 			.object({
 				// Name fields
-				name: z.string().nullable().optional().describe("Column with full name"),
-				firstname: z.string().nullable().optional().describe("Column with first name only"),
-				lastname: z.string().nullable().optional().describe("Column with last name only"),
+				name: z.string().nullable().nullish().describe("Column with full name"),
+				firstname: z.string().nullable().nullish().describe("Column with first name only"),
+				lastname: z.string().nullable().nullish().describe("Column with last name only"),
 				// Primary contact
-				email: z.string().nullable().optional().describe("Column with email"),
-				phone: z.string().nullable().optional().describe("Column with phone"),
-				website: z.string().nullable().optional().describe("Column with website URL"),
-				address: z.string().nullable().optional().describe("Column with full address"),
+				email: z.string().nullable().nullish().describe("Column with email"),
+				phone: z.string().nullable().nullish().describe("Column with phone"),
+				website: z.string().nullable().nullish().describe("Column with website URL"),
+				address: z.string().nullable().nullish().describe("Column with full address"),
 				// Social profiles
-				linkedin: z.string().nullable().optional().describe("Column with LinkedIn"),
-				twitter: z.string().nullable().optional().describe("Column with Twitter/X"),
-				instagram: z.string().nullable().optional().describe("Column with Instagram"),
-				tiktok: z.string().nullable().optional().describe("Column with TikTok"),
+				linkedin: z.string().nullable().nullish().describe("Column with LinkedIn"),
+				twitter: z.string().nullable().nullish().describe("Column with Twitter/X"),
+				instagram: z.string().nullable().nullish().describe("Column with Instagram"),
+				tiktok: z.string().nullable().nullish().describe("Column with TikTok"),
 				// Professional info
-				title: z.string().nullable().optional().describe("Column with job title"),
-				company: z.string().nullable().optional().describe("Column with company name"),
-				role: z.string().nullable().optional().describe("Column with role/function"),
-				industry: z.string().nullable().optional().describe("Column with industry"),
-				location: z.string().nullable().optional().describe("Column with city/region"),
+				title: z.string().nullable().nullish().describe("Column with job title"),
+				company: z.string().nullable().nullish().describe("Column with company name"),
+				role: z.string().nullable().nullish().describe("Column with role/function"),
+				industry: z.string().nullable().nullish().describe("Column with industry"),
+				location: z.string().nullable().nullish().describe("Column with city/region"),
 				// Company context
-				company_stage: z.string().nullable().optional().describe("Column with company stage"),
-				company_size: z.string().nullable().optional().describe("Column with company size"),
+				company_stage: z.string().nullable().nullish().describe("Column with company stage"),
+				company_size: z.string().nullable().nullish().describe("Column with company size"),
 				// Company metrics (all optional - not required for import)
-				company_url: z.string().nullable().optional().describe("Column with company website URL"),
-				annual_revenue: z.string().nullable().optional().describe("Column with annual revenue"),
-				market_cap: z.string().nullable().optional().describe("Column with market capitalization"),
-				funding_stage: z.string().nullable().optional().describe("Column with funding stage (Seed, Series A, etc.)"),
-				total_funding: z.string().nullable().optional().describe("Column with total funding amount"),
+				company_url: z.string().nullable().nullish().describe("Column with company website URL"),
+				annual_revenue: z.string().nullable().nullish().describe("Column with annual revenue"),
+				market_cap: z.string().nullable().nullish().describe("Column with market capitalization"),
+				funding_stage: z.string().nullable().nullish().describe("Column with funding stage (Seed, Series A, etc.)"),
+				total_funding: z.string().nullable().nullish().describe("Column with total funding amount"),
 				// Segmentation
-				segment: z.string().nullable().optional().describe("Column with segment"),
-				lifecycle_stage: z.string().nullable().optional().describe("Column with lifecycle stage"),
+				segment: z.string().nullable().nullish().describe("Column with segment"),
+				lifecycle_stage: z.string().nullable().nullish().describe("Column with lifecycle stage"),
 			})
-			.optional()
+			.nullish()
 			.describe(
 				"LLM-analyzed column mapping for CRM import. ONLY contains fields that were detected in the spreadsheet - unmapped fields are OMITTED (not set to null). Pass this directly to importPeopleFromTable."
 			),
@@ -263,14 +263,14 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				z.object({
 					column: z.string().describe("Column name from spreadsheet"),
 					facetKind: z.string().describe("Suggested facet kind slug"),
-					sampleValues: z.array(z.string()).optional().describe("Example values from column"),
+					sampleValues: z.array(z.string()).nullish().describe("Example values from column"),
 					reason: z.string().describe("Why this should be a facet"),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("Suggested facet mappings for unmapped columns (event signups, survey answers, etc.)"),
-		mappingConfidence: z.number().optional().describe("Confidence score 0-1 for the column mapping"),
-		mappingWarnings: z.array(z.string()).optional().describe("Warnings about the data or mapping"),
+		mappingConfidence: z.number().nullish().describe("Confidence score 0-1 for the column mapping"),
+		mappingWarnings: z.array(z.string()).nullish().describe("Warnings about the data or mapping"),
 		// Duplicate detection for contacts
 		duplicateCheck: z
 			.object({
@@ -279,7 +279,7 @@ Input can be raw CSV/TSV text. The first row is treated as headers.`,
 				newEmails: z.number().describe("Number of new emails that would be created"),
 				duplicatePercentage: z.number().describe("Percentage of emails that are duplicates (0-100)"),
 			})
-			.optional()
+			.nullish()
 			.describe("Duplicate detection results - helps decide between create vs upsert mode"),
 		error: z.string().optional(),
 	}),

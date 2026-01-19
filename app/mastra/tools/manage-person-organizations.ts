@@ -28,12 +28,12 @@ const toolInputSchema = z
 		projectId: z.string().optional(),
 		transcript: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Natural language text describing one or more organization relationships."),
 		relationships: z.array(relationshipSchema).optional(),
 		defaultIsPrimary: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("Fallback flag applied when a relationship omits isPrimary (defaults to false)."),
 		dryRun: z.boolean().optional(),
 	})

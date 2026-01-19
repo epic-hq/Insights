@@ -24,7 +24,7 @@ const RecommendationSchema = z.object({
 	description: z.string(),
 	reasoning: z.string(),
 	actionType: z.enum(["setup", "interview", "survey", "validate", "deep_dive", "analyze", "decide"]),
-	navigateTo: z.string().optional().describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
+	navigateTo: z.string().nullish().describe("Relative path to navigate user to (e.g., /setup, /ask/new)"),
 	focusTheme: z
 		.object({
 			id: z.string(),
@@ -62,9 +62,9 @@ The recommendations are based on:
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to get recommendations for. If not provided, uses runtime context."),
-		reason: z.string().optional().describe("Why you are fetching recommendations (for logging)"),
+		reason: z.string().nullish().describe("Why you are fetching recommendations (for logging)"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

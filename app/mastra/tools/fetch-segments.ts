@@ -31,23 +31,23 @@ export const fetchSegmentsTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to fetch segments for. Defaults to the current project in runtime context."),
 		summaryOnly: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe(
 				"Set to true to only return segment kind summaries (e.g., how many personas, job functions, etc.). Defaults to false to return detailed segment data."
 			),
 		kind: z
 			.string()
-			.optional()
+			.nullish()
 			.describe(
 				"Filter segments by kind slug (persona, job_function, seniority_level, title, industry, life_stage, age_range)"
 			),
 		minBullseyeScore: z
 			.number()
-			.optional()
+			.nullish()
 			.describe("Minimum bullseye score (0-100) to filter segments. Higher scores indicate better fit."),
 	}),
 	outputSchema: z.object({

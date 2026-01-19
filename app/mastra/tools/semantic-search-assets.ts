@@ -27,17 +27,17 @@ export const semanticSearchAssetsTool = createTool({
 			),
 		assetType: z
 			.enum(["table", "pdf", "document", "image", "audio", "video", "link"])
-			.optional()
+			.nullish()
 			.describe("Optional: Filter by asset type"),
 		matchThreshold: z
 			.number()
 			.min(0)
 			.max(1)
-			.optional()
+			.nullish()
 			.describe(
 				"Similarity threshold (0-1). Default: 0.35. DO NOT override unless specifically needed - asset embeddings have lower similarity scores than text."
 			),
-		matchCount: z.number().int().min(1).max(50).optional().describe("Maximum number of results to return. Default: 10"),
+		matchCount: z.number().int().min(1).max(50).nullish().describe("Maximum number of results to return. Default: 10"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

@@ -27,8 +27,8 @@ Fields to save:
 - industry: e.g., "B2B SaaS"`,
 
 	inputSchema: z.object({
-		account_id: z.string().optional().describe("Account ID to save context to. Use 'current' to use runtime context."),
-		project_id: z.string().optional().describe("Project ID to resolve account from (if account_id not provided)."),
+		account_id: z.string().nullish().describe("Account ID to save context to. Use 'current' to use runtime context."),
+		project_id: z.string().nullish().describe("Project ID to resolve account from (if account_id not provided)."),
 		website_url: z.string().optional().nullable(),
 		company_description: z.string().optional().nullable(),
 		customer_problem: z.string().optional().nullable(),

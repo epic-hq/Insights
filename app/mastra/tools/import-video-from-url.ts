@@ -35,20 +35,20 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 			.string()
 			.url()
 			.describe("URL to import - can be a direct media link or a webpage containing video/audio."),
-		title: z.string().optional().describe("Optional title to use for the new interview."),
+		title: z.string().nullish().describe("Optional title to use for the new interview."),
 		participantName: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Name of the participant in the conversation. Will create a new person record if provided."),
 		participantOrganization: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Organization/company name for the participant. Will be created if it doesn't exist."),
 		participantSegment: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Segment for the participant (e.g., 'customer', 'prospect', 'churned_user')."),
-		customInstructions: z.string().optional().describe("Optional custom instructions to guide analysis."),
+		customInstructions: z.string().nullish().describe("Optional custom instructions to guide analysis."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
