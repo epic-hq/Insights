@@ -19,6 +19,32 @@ import {
 } from "~/features/research-links/utils/recommendation-rules";
 import { supabaseAdmin } from "~/lib/supabase/client.server";
 import type { Database } from "~/types";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+
+function buildProjectPath(accountId: string, projectId: string) {
+  return `/a/${accountId}/${projectId}`;
+}
+
+function resolveNavigateTo(
+  projectPath: string,
+  navigateTo?: string,
+  focusThemeId?: string,
+): string | undefined {
+  if (!navigateTo) return undefined;
+  const routes = createRouteDefinitions(projectPath);
+
+  if (navigateTo === "/setup") return routes.setup();
+  if (navigateTo === "/ask/new") return routes.ask.new();
+  if (navigateTo === "/themes") return routes.themes.index();
+  if (navigateTo === "/people") return routes.people.index();
+
+  if (navigateTo.startsWith("/themes/")) {
+    const themeId = navigateTo.split("/")[2] || focusThemeId;
+    if (themeId) return routes.themes.detail(themeId);
+  }
+
+  return navigateTo.startsWith(projectPath) ? navigateTo : undefined;
+}
 
 const RecommendationSchema = z.object({
   id: z.string(),
@@ -143,6 +169,18 @@ The recommendations are based on:
 
       // Generate recommendations using rule engine
       const recommendations = generateRecommendations(projectContext);
+      const projectPath =
+        accountId && projectId ? buildProjectPath(accountId, projectId) : null;
+      const resolvedRecommendations = projectPath
+        ? recommendations.map((rec) => ({
+            ...rec,
+            navigateTo: resolveNavigateTo(
+              projectPath,
+              rec.navigateTo,
+              rec.focusTheme?.id,
+            ),
+          }))
+        : recommendations;
       const stage = determineProjectStage(projectContext);
 
       consola.debug("recommend-next-actions: generated recommendations", {
@@ -155,7 +193,7 @@ The recommendations are based on:
       return {
         success: true,
         message: `Found ${recommendations.length} recommendations for your project.`,
-        recommendations,
+        recommendations: resolvedRecommendations,
         projectState: {
           stage,
           interviewCount: projectContext.interviewCount,

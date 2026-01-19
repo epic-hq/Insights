@@ -1,6 +1,6 @@
-import { toAISdkStream } from "@mastra/ai-sdk";
+import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { createUIMessageStreamResponse } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import {
@@ -17,6 +17,41 @@ import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
 import { userContext } from "~/server/user-context";
+
+function getLastUserText(messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role !== "user") continue;
+    if (typeof message.content === "string") return message.content;
+    if (Array.isArray(message.parts)) {
+      const textPart = message.parts.find(
+        (part) => (part as { type?: string })?.type === "text",
+      ) as { text?: unknown } | undefined;
+      if (textPart && typeof textPart.text === "string") return textPart.text;
+    }
+  }
+  return "";
+}
+
+function isChiefOfStaffPrompt(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  if (!normalized) return false;
+  const triggers = [
+    "what should i do next",
+    "what's next",
+    "whats next",
+    "next steps",
+    "what should we focus on",
+    "where should we focus",
+    "prioritize",
+    "priority",
+    "roadmap",
+    "plan",
+    "what to do now",
+    "chief of staff",
+  ];
+  return triggers.some((trigger) => normalized.includes(trigger));
+}
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
   if (request.method !== "POST") {
@@ -83,6 +118,19 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
       ? sanitizedMessages.slice(lastUserIndex)
       : sanitizedMessages;
 
+  const lastUserText = getLastUserText(sanitizedMessages);
+  const shouldUseChiefOfStaff = isChiefOfStaffPrompt(lastUserText);
+  const targetAgentId = shouldUseChiefOfStaff
+    ? "chiefOfStaffAgent"
+    : "projectStatusAgent";
+
+  if (shouldUseChiefOfStaff) {
+    consola.info("project-status: routing override", {
+      targetAgentId,
+      lastUserText,
+    });
+  }
+
   const resourceId = `projectStatusAgent-${userId}-${projectId}`;
 
   const threads = await memory.listThreadsByResourceId({
@@ -128,8 +176,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     `agent:project-status:${userId}:${projectId}`,
   );
 
-  const agent = mastra.getAgent("projectStatusAgent");
-
   // Helper to handle corrupted thread recovery
   const handleCorruptedThread = async (
     corruptedThreadId: string,
@@ -165,7 +211,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     return freshThread.id;
   };
 
-  const buildStreamOptions = (useThreadId: string) => ({
+  const buildAgentParams = (useThreadId: string) => ({
+    messages: runtimeMessages,
     maxSteps: 10, // Prevent infinite tool loops (default is 5)
     clientTools: {
       navigateToPage: navigateToPageTool,
@@ -239,9 +286,25 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     },
   });
 
-  let result;
+  let stream:
+    | Awaited<ReturnType<typeof handleNetworkStream>>
+    | Awaited<ReturnType<typeof handleChatStream>>
+    | undefined;
   try {
-    result = await agent.stream(runtimeMessages, buildStreamOptions(threadId));
+    stream =
+      targetAgentId === "projectStatusAgent"
+        ? await handleNetworkStream({
+            mastra,
+            agentId: targetAgentId,
+            params: buildAgentParams(threadId),
+          })
+        : await handleChatStream({
+            mastra,
+            agentId: targetAgentId,
+            params: buildAgentParams(threadId),
+            sendReasoning: true,
+            sendSources: true,
+          });
   } catch (error) {
     // Check if this is the "No tool call found" error from corrupted memory
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -250,37 +313,24 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
       errorMessage.includes("function call output")
     ) {
       threadId = await handleCorruptedThread(threadId, errorMessage);
-      result = await agent.stream(
-        runtimeMessages,
-        buildStreamOptions(threadId),
-      );
+      stream =
+        targetAgentId === "projectStatusAgent"
+          ? await handleNetworkStream({
+              mastra,
+              agentId: targetAgentId,
+              params: buildAgentParams(threadId),
+            })
+          : await handleChatStream({
+              mastra,
+              agentId: targetAgentId,
+              params: buildAgentParams(threadId),
+              sendReasoning: true,
+              sendSources: true,
+            });
     } else {
       throw error;
     }
   }
 
-  const uiMessageStream = createUIMessageStream({
-    execute: async ({ writer }) => {
-      try {
-        const transformedStream = toAISdkStream(result, {
-          from: "agent" as const,
-          sendReasoning: true,
-          sendSources: true,
-        });
-
-        if (!transformedStream) return;
-
-        for await (const part of transformedStream) {
-          writer.write(part);
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        consola.error("project-status stream error", { errorMessage });
-        throw error;
-      }
-    },
-  });
-
-  return createUIMessageStreamResponse({ stream: uiMessageStream });
+  return createUIMessageStreamResponse({ stream });
 }

@@ -3,6 +3,7 @@
  */
 import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
+import { Memory } from "@mastra/memory"
 import consola from "consola"
 import { openai } from "../../lib/billing/instrumented-openai.server"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
@@ -10,6 +11,7 @@ import { fetchTasksTool } from "../tools/manage-tasks"
 import { recommendNextActionsTool } from "../tools/recommend-next-actions"
 import { suggestionTool } from "../tools/suggestion-tool"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { getSharedPostgresStore } from "../storage/postgres-singleton"
 
 export const chiefOfStaffAgent = new Agent({
 	id: "chief-of-staff-agent",
@@ -29,7 +31,7 @@ You are the Chief of Staff for project ${projectId}. Your job is to orient the u
 - ALWAYS ground recommendations in fetched data. Do not give generic advice.
 - First call fetchProjectStatusContext with scopes=["status","sections"] and includeEvidence=false, and small limits.
 - Call fetchTasks with limit<=10 to see current backlog.
-- Use recommendNextActions if the user asks what to do next or seems unsure.
+- ALWAYS call recommendNextActions when the user asks what to do next or seems unsure.
 - Provide at most 2-3 recommendations, each tied to a specific project gap or task.
 - Include links when referencing records.
 
@@ -40,9 +42,14 @@ You are the Chief of Staff for project ${projectId}. Your job is to orient the u
 - Project setup incomplete: recommend finishing setup before analysis work.
 
 # Output Style
-- Short status snapshot (1-2 sentences max).
-- 2-3 action recommendations, each starting with a strong verb.
-- Ask a single clarifying question only if the data is missing or ambiguous.
+- Use this exact structure, no headings:
+  Status: <1 sentence grounded in data with counts>.
+  Next:
+  1) <Verb> <specific target> — <why> [link if available]
+  2) ...
+  3) ... (only if needed)
+- Each list item must be a single line (no wrapped lines).
+- Ask one clarifying question only if data is missing or ambiguous.
 
 # Tools
 - fetchProjectStatusContext
@@ -66,6 +73,9 @@ You are the Chief of Staff for project ${projectId}. Your job is to orient the u
 		fetchTasks: fetchTasksTool,
 		recommendNextActions: recommendNextActionsTool,
 		suggestNextSteps: suggestionTool,
+	}),
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
 })
