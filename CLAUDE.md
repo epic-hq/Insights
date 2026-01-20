@@ -89,6 +89,22 @@ function MyComponent({ projectPath }: { projectPath: string }) {
 - **Mastra**: Complex agent workflows in `app/mastra/`
 - **Streaming**: Use Vercel AI SDK patterns with `useChat`
 
+### Mastra Tools (IMPORTANT)
+- **No static `~/` imports**: Mastra's bundler doesn't resolve path aliases at top level
+- **Use dynamic imports** inside `execute()` function:
+  ```typescript
+  // ❌ WRONG - breaks Mastra bundling
+  import { supabaseAdmin } from "~/lib/supabase/client.server";
+
+  // ✅ CORRECT - use dynamic import inside execute()
+  execute: async (input, context?) => {
+    const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+    const supabase = createSupabaseAdminClient();
+  }
+  ```
+- External packages (`@mastra/core`, `zod`, `consola`) can use static imports
+- Relative imports within `app/mastra/` are fine (e.g., `./context-utils`)
+
 ### Trigger.dev Tasks
 - **Always use v4 SDK** (`@trigger.dev/sdk`), never v2 patterns
 - **Schema validation**: Use `schemaTask` with Zod for type-safe payloads
