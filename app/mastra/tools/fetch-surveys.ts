@@ -3,11 +3,8 @@
  * Enables chat agents to view available surveys in a project
  */
 import { createTool } from "@mastra/core/tools";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
 import { resolveProjectContext } from "./context-utils";
 
 const SurveyOutputSchema = z.object({
@@ -85,7 +82,9 @@ Returns survey metadata including:
     total: z.number(),
   }),
   execute: async (input, context?) => {
-    const supabase = supabaseAdmin as SupabaseClient<Database>;
+    const { createSupabaseAdminClient } =
+      await import("~/lib/supabase/client.server");
+    const supabase = createSupabaseAdminClient();
 
     // Resolve project context
     let accountId: string;

@@ -3,11 +3,8 @@
  * Supports soft delete (archive) or hard delete
  */
 import { createTool } from "@mastra/core/tools";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { z } from "zod";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
-import type { Database } from "~/types";
 import { resolveProjectContext } from "./context-utils";
 
 export const deleteSurveyTool = createTool({
@@ -50,7 +47,9 @@ Use hardDelete=true only when explicitly requested to permanently remove the sur
       .describe("Number of responses that were affected"),
   }),
   execute: async (input, context?) => {
-    const supabase = supabaseAdmin as SupabaseClient<Database>;
+    const { createSupabaseAdminClient } =
+      await import("~/lib/supabase/client.server");
+    const supabase = createSupabaseAdminClient();
 
     // Resolve project context
     let projectId: string;
