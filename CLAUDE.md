@@ -31,6 +31,7 @@ Insights is a conversation intelligence platform that helps teams extract action
 | [Deploy Guide](docs/deploy-howto.md) | Deployment to Fly.io |
 | [Trigger.dev Deploy](docs/trigger-dev-deployment.md) | Background task deployment |
 | [Testing Guide](docs/testing-howto.md) | Unit and integration testing |
+| [TDD Guide](docs/30-howtos/testing-tdd-guide.md) | Test-driven development workflow |
 | [Storybook Guide](docs/storybook-guide.md) | Component development |
 
 ## Coding Conventions
@@ -93,6 +94,77 @@ function MyComponent({ projectPath }: { projectPath: string }) {
 - **Schema validation**: Use `schemaTask` with Zod for type-safe payloads
 - **Error handling**: Check `result.ok` before accessing `result.output`
 - See detailed patterns below
+
+---
+
+## Testing Requirements (CRITICAL)
+
+**All code changes MUST be validated with tests.** This ensures stability and prevents regressions when AI agents make changes.
+
+### Testing Workflow (TDD)
+
+1. **BEFORE writing code**: Write a failing test that describes expected behavior
+2. **AFTER writing code**: Run tests to verify implementation
+3. **BEFORE committing**: Run full test suite to ensure no regressions
+
+```bash
+# Run tests after changes
+pnpm test                      # Unit tests (fast)
+pnpm test:integration          # Integration tests (requires DB)
+pnpm test:all                  # All tests
+
+# Run stability validation
+./scripts/validate-stability.sh --quick    # Quick check
+./scripts/validate-stability.sh            # Full validation
+```
+
+### Test Requirements by Change Type
+
+| Change Type | Required Tests |
+|-------------|----------------|
+| New utility function | Unit test with happy path + edge cases |
+| New API route | API route test with mock context |
+| Database operation | Integration test in `app/test/integration/` |
+| Bug fix | Regression test that fails before fix |
+| New feature | Tests covering main workflow |
+
+### Test File Locations
+
+| Source File | Test File |
+|-------------|-----------|
+| `app/utils/foo.ts` | `app/utils/foo.test.ts` |
+| `app/features/X/db.ts` | `app/features/X/__tests__/db.test.ts` |
+| `app/routes/api.foo.tsx` | `app/routes/api.foo.test.ts` |
+| Integration workflows | `app/test/integration/*.integration.test.ts` |
+
+### Test Templates
+
+Use templates in `app/test/templates/` as starting points:
+- `unit-test.template.ts` - Pure function tests
+- `db-test.template.ts` - Database operation tests
+- `api-route-test.template.ts` - API route tests
+- `integration-test.template.ts` - End-to-end workflow tests
+
+### Critical Paths (Must Have Test Coverage)
+
+1. **Billing/Credits** - `app/lib/billing/__tests__/`
+2. **Interview Processing** - `src/trigger/interview/v2/`
+3. **People Management** - `app/features/people/__tests__/`
+4. **Insights/Themes** - `app/features/insights/__tests__/`
+5. **Evidence Extraction** - Database integrity tests
+
+### For AI Agents
+
+When making changes:
+1. **Read existing tests** for the feature area first
+2. **Update tests** if changing existing behavior
+3. **Add new tests** for new functionality
+4. **Run tests** before committing: `pnpm test:all`
+5. **Never skip tests** - if tests fail, fix the code or update the tests
+
+See full guide: [Testing TDD Guide](docs/30-howtos/testing-tdd-guide.md)
+
+---
 
 ## Key Documentation
 
