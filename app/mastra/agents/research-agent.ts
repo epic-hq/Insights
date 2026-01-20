@@ -6,7 +6,9 @@ import { TokenLimiterProcessor } from "@mastra/core/processors";
 import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
 import { createSurveyTool } from "../tools/create-survey";
+import { deleteSurveyTool } from "../tools/delete-survey";
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
+import { fetchSurveysTool } from "../tools/fetch-surveys";
 import {
   createInterviewPromptTool,
   deleteInterviewPromptTool,
@@ -59,9 +61,11 @@ For BETA SIGNUPS:
 
 3. After creating, ALWAYS call navigateToPage with the returned editUrl to take user to the survey editor
 
-# Survey Response Analysis
+# Survey Management
+- Use fetchSurveys to list all surveys in a project, search by name, or get a specific survey
 - Use searchSurveyResponses to analyze existing survey responses
 - Quote specific responses and link to the person who gave them
+- Use deleteSurvey to archive or permanently delete a survey (default is soft delete/archive)
 
 # Interviews & Prompts
 - Use manageInterviews for interview CRUD operations
@@ -86,8 +90,10 @@ For BETA SIGNUPS:
     createInterviewPrompt: createInterviewPromptTool,
     updateInterviewPrompt: updateInterviewPromptTool,
     deleteInterviewPrompt: deleteInterviewPromptTool,
+    fetchSurveys: fetchSurveysTool,
     searchSurveyResponses: searchSurveyResponsesTool,
     createSurvey: createSurveyTool,
+    deleteSurvey: deleteSurveyTool,
     navigateToPage: navigateToPageTool,
   }),
   outputProcessors: [new TokenLimiterProcessor(20_000)],
