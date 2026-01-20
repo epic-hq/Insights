@@ -399,6 +399,7 @@ const routes = [
 
   // Public ask routes (shareable project prompts)
   route("ask/:slug", "./routes/research.$slug.tsx"), // Public URL for collecting responses
+  route("embed/:slug", "./routes/embed.$slug.tsx"), // Embeddable widget version
 ] satisfies RouteConfig;
 
 export default routes;

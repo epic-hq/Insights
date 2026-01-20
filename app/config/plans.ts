@@ -45,6 +45,8 @@ export interface PlanFeatures {
   smart_personas: boolean;
   /** AI-native CRM */
   ai_crm: boolean;
+  /** Remove "Powered by UpSight" branding from embeds */
+  white_label: boolean;
 }
 
 export interface PlanConfig {
@@ -102,6 +104,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       interview_guide: false,
       smart_personas: false,
       ai_crm: false,
+      white_label: false,
     },
     cta: {
       label: "Start Free",
@@ -133,6 +136,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       interview_guide: true,
       smart_personas: true,
       ai_crm: true,
+      white_label: true,
     },
     cta: {
       label: "Get Started",
@@ -164,6 +168,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       interview_guide: true,
       smart_personas: true,
       ai_crm: true,
+      white_label: true,
     },
     cta: {
       label: "Go Pro",
@@ -196,6 +201,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       interview_guide: true,
       smart_personas: true,
       ai_crm: true,
+      white_label: true,
     },
     cta: {
       label: "Contact Sales",
@@ -271,6 +277,7 @@ export const FEATURE_KEYS = [
   "interview_guide",
   "smart_personas",
   "ai_crm",
+  "white_label",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
