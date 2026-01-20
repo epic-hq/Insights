@@ -11,6 +11,7 @@ import {
   Copy,
   Lightbulb,
   Loader2,
+  Pencil,
   Plus,
   Sparkles,
   X,
@@ -35,6 +36,11 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { getServerClient } from "~/lib/supabase/client.server";
@@ -224,6 +230,10 @@ export default function CreateResearchLinkPage() {
   // Bulk paste state for step 2
   const [bulkText, setBulkText] = useState("");
 
+  // AI edit state
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
+
   // LLM generation
   const generateFetcher = useFetcher();
   const isGenerating = generateFetcher.state !== "idle";
@@ -291,18 +301,23 @@ export default function CreateResearchLinkPage() {
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = (customPrompt?: string) => {
     generateFetcher.submit(
       {
         surveyName: name,
         surveyDescription: description,
         existingQuestions: JSON.stringify(questions.map((q) => q.prompt)),
+        customPrompt: customPrompt ?? "",
       },
       {
         method: "POST",
         action: `/a/${accountId}/${projectId}/ask/api/generate-questions`,
       },
     );
+    if (customPrompt) {
+      setAiPrompt("");
+      setAiPopoverOpen(false);
+    }
   };
 
   const handleImportPrompts = () => {
@@ -566,7 +581,7 @@ export default function CreateResearchLinkPage() {
                             <span className="mt-2.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary text-xs">
                               {index + 1}
                             </span>
-                            <Input
+                            <Textarea
                               value={question.prompt}
                               onChange={(e) => {
                                 setQuestions(
@@ -578,7 +593,13 @@ export default function CreateResearchLinkPage() {
                                 );
                               }}
                               placeholder="Enter your question..."
-                              className="flex-1"
+                              className="min-h-[40px] flex-1 resize-none py-2"
+                              rows={1}
+                              onInput={(e) => {
+                                const target = e.target as HTMLTextAreaElement;
+                                target.style.height = "auto";
+                                target.style.height = `${target.scrollHeight}px`;
+                              }}
                             />
                             <Button
                               type="button"
@@ -610,20 +631,78 @@ export default function CreateResearchLinkPage() {
                           <Plus className="mr-2 h-4 w-4" />
                           Add question
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={handleGenerate}
-                          disabled={isGenerating}
-                          className="gap-2"
+                        <Popover
+                          open={aiPopoverOpen}
+                          onOpenChange={setAiPopoverOpen}
                         >
-                          {isGenerating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4 text-violet-500" />
-                          )}
-                          More AI
-                        </Button>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={isGenerating}
+                              className="gap-2"
+                            >
+                              {isGenerating ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Pencil className="h-4 w-4 text-violet-500" />
+                              )}
+                              Edit with AI
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-80"
+                            align="end"
+                            side="top"
+                          >
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <h4 className="font-medium text-sm">
+                                  Edit with AI
+                                </h4>
+                                <p className="text-muted-foreground text-xs">
+                                  Describe what questions you want to add or
+                                  change.
+                                </p>
+                              </div>
+                              <Textarea
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                placeholder="e.g., Add qualifying questions for a waitlist, Focus on pricing sensitivity, Add a question about their current solution..."
+                                rows={3}
+                                className="text-sm"
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleGenerate(aiPrompt)}
+                                  disabled={isGenerating || !aiPrompt.trim()}
+                                  className="flex-1 gap-2"
+                                >
+                                  {isGenerating ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                  )}
+                                  Generate
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleGenerate()}
+                                  disabled={isGenerating}
+                                  className="gap-2"
+                                >
+                                  <Sparkles className="h-3.5 w-3.5" />
+                                  Auto
+                                </Button>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </>
                   )}

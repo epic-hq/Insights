@@ -18,7 +18,9 @@ import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
 import { userContext } from "~/server/user-context";
 
-function getLastUserText(messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>): string {
+function getLastUserText(
+  messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>,
+): string {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
     if (message?.role !== "user") continue;
@@ -51,6 +53,38 @@ function isChiefOfStaffPrompt(text: string): boolean {
     "chief of staff",
   ];
   return triggers.some((trigger) => normalized.includes(trigger));
+}
+
+function isSurveyCreationPrompt(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  if (!normalized) return false;
+  // Must include creation intent AND survey/waitlist concept
+  const creationTriggers = [
+    "create",
+    "make",
+    "build",
+    "set up",
+    "setup",
+    "start",
+    "new",
+    "launch",
+  ];
+  const surveyTriggers = [
+    "survey",
+    "waitlist",
+    "wait list",
+    "ask link",
+    "signup",
+    "sign up",
+    "feedback form",
+    "qualifying questions",
+    "lead capture",
+    "beta signup",
+    "interest form",
+  ];
+  const hasCreation = creationTriggers.some((t) => normalized.includes(t));
+  const hasSurvey = surveyTriggers.some((t) => normalized.includes(t));
+  return hasCreation && hasSurvey;
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -120,11 +154,14 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
   const lastUserText = getLastUserText(sanitizedMessages);
   const shouldUseChiefOfStaff = isChiefOfStaffPrompt(lastUserText);
+  const shouldUseSurveyAgent = isSurveyCreationPrompt(lastUserText);
   const targetAgentId = shouldUseChiefOfStaff
     ? "chiefOfStaffAgent"
-    : "projectStatusAgent";
+    : shouldUseSurveyAgent
+      ? "researchAgent"
+      : "projectStatusAgent";
 
-  if (shouldUseChiefOfStaff) {
+  if (shouldUseChiefOfStaff || shouldUseSurveyAgent) {
     consola.info("project-status: routing override", {
       targetAgentId,
       lastUserText,
