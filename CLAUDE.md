@@ -1,13 +1,14 @@
-# Insights Project - AI Context
+# UpSight Project - AI Context
 
 ## Project Overview
 
-Insights is a conversation intelligence platform that helps teams extract actionable insights from interviews through AI-powered analysis. Key features include:
+UpSight is an AI-native CRM and conversation intelligence platform that helps teams better understand and serve their customers by extracting actionable insights from all types of communications (from interviews, meetings, notes, surveys and more) through AI-powered analysis. Key features include:
 
 - **Conversation Lenses**: Apply structured analytical frameworks (Sales BANT, Empathy Maps, etc.) to extract specific insights
 - **Evidence Extraction**: AI-identified quotes and moments with timestamps
 - **People & Personas**: Track individuals mentioned across interviews
 - **Themes & Insights**: Clustered topics and AI-generated insights
+- **Persona generator**: Detect personas
 - **Voice Chat**: Real-time voice conversations with AI agents (LiveKit)
 - **Task System**: Project prioritization and execution tracking
 
