@@ -19,6 +19,7 @@ import { Logo } from "~/components/branding"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { hasFeature, PLANS, type PlanId } from "~/config/plans"
 import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { cn } from "~/lib/utils"
@@ -27,7 +28,7 @@ import { createR2PresignedUrl } from "~/utils/r2.server"
 const emailSchema = z.string().email()
 
 // Layout options for the embed
-type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact"
+type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact" | "video-first"
 type EmbedTheme = "dark" | "light" | "auto"
 
 // Embed configuration from URL params
@@ -106,17 +107,47 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		walkthroughSignedUrl = presigned?.url ?? null
 	}
 
+	// Check account's plan for white_label feature
+	// Free tier always shows branding regardless of config
+	let planId: PlanId = "free"
+	const { data: subscription } = await supabase
+		.from("billing_subscriptions")
+		.select("plan_name, status")
+		.eq("account_id", list.account_id)
+		.in("status", ["active", "trialing"])
+		.order("created", { ascending: false })
+		.limit(1)
+		.maybeSingle()
+
+	if (subscription?.plan_name) {
+		// Map plan_name to PlanId (handle variations like "Pro", "pro", "PRO")
+		const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId
+		if (normalizedPlan in PLANS) {
+			planId = normalizedPlan
+		}
+	}
+
+	// Enforce branding for accounts without white_label feature
+	const canRemoveBranding = hasFeature(planId, "white_label")
+	const finalConfig: EmbedConfig = {
+		...config,
+		// Override showBranding: if they don't have white_label, always show branding
+		showBranding: canRemoveBranding ? config.showBranding : true,
+	}
+
 	return {
 		slug,
 		list,
 		questions: questionsResult.success ? questionsResult.data : [],
 		walkthroughSignedUrl,
-		config,
+		config: finalConfig,
+		canRemoveBranding,
 	}
 }
 
 type LoaderData = {
 	slug: string
+	canRemoveBranding: boolean
 	list: {
 		id: string
 		name: string
@@ -815,6 +846,171 @@ export default function EmbedPage() {
 						>
 							<CheckCircle2 className="h-12 w-12 text-emerald-400" />
 							<p className={cn("font-medium text-lg", themeClasses.text)}>{config.successMessage}</p>
+							{list.redirect_url && (
+								<a
+									href={list.redirect_url}
+									className={cn("text-sm underline", themeClasses.textMuted)}
+								>
+									Continue
+								</a>
+							)}
+						</motion.div>
+					)}
+				</AnimatePresence>
+
+				{config.showBranding && (
+					<div className="mt-4 flex justify-center">
+						<a
+							href="https://getupsight.com"
+							target="_blank"
+							rel="noreferrer"
+							className={cn("flex items-center gap-1.5 text-[10px]", themeClasses.textMuted, "hover:opacity-80")}
+						>
+							<Logo size={3} />
+							Powered by UpSight
+						</a>
+					</div>
+				)}
+			</div>
+		)
+	}
+
+	// Render video-first layout (video prominent, email below - best conversion)
+	function renderVideoFirst() {
+		return (
+			<div ref={containerRef} className={cn("p-4", themeClasses.bg)} style={customStyles}>
+				<AnimatePresence mode="wait">
+					{stage === "initial" && (
+						<motion.div
+							key="video-first"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="space-y-4"
+						>
+							{/* Video - prominent position with autoplay */}
+							{walkthroughSignedUrl && (
+								<div
+									className="overflow-hidden rounded-lg"
+									style={{ borderRadius: `var(--border-radius)` }}
+								>
+									<video
+										src={walkthroughSignedUrl}
+										className="aspect-video w-full bg-black"
+										controls
+										autoPlay
+										muted
+										playsInline
+									/>
+								</div>
+							)}
+
+							{/* Title below video */}
+							{list.hero_title && (
+								<h2 className={cn("font-semibold text-lg", themeClasses.text)}>{list.hero_title}</h2>
+							)}
+							{list.hero_subtitle && <p className={cn("text-sm", themeClasses.textMuted)}>{list.hero_subtitle}</p>}
+
+							{/* Email capture form */}
+							<form onSubmit={handleEmailSubmit} className="space-y-3">
+								<div className="flex gap-2">
+									<Input
+										id={emailId}
+										type="email"
+										value={email}
+										onChange={(e) => setEmail(e.target.value)}
+										placeholder={config.placeholder}
+										className={cn("flex-1", themeClasses.input)}
+										style={{ borderRadius: `var(--border-radius)` }}
+										required
+									/>
+									<Button
+										type="submit"
+										disabled={isSaving || !isEmailValid}
+										className={cn(themeClasses.button, "shrink-0")}
+										style={{ borderRadius: `var(--border-radius)` }}
+									>
+										{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : buttonText}
+									</Button>
+								</div>
+								{list.hero_cta_helper && (
+									<p className={cn("text-center text-xs", themeClasses.textMuted)}>{list.hero_cta_helper}</p>
+								)}
+								{error && <p className="text-center text-red-500 text-xs">{error}</p>}
+							</form>
+						</motion.div>
+					)}
+
+					{stage === "form" && needsName && (
+						<motion.form
+							key="name-form"
+							onSubmit={handleNameSubmit}
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="space-y-4"
+						>
+							<p className={cn("text-sm", themeClasses.textMuted)}>
+								One more step! Enter your name to continue.
+							</p>
+
+							<div className="grid grid-cols-2 gap-3">
+								<div className="space-y-1.5">
+									<Label className={themeClasses.textMuted}>First Name *</Label>
+									<Input
+										type="text"
+										value={firstName}
+										onChange={(e) => setFirstName(e.target.value)}
+										placeholder="Jane"
+										className={themeClasses.input}
+										style={{ borderRadius: `var(--border-radius)` }}
+										required
+										autoFocus
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<Label className={themeClasses.textMuted}>Last Name</Label>
+									<Input
+										type="text"
+										value={lastName}
+										onChange={(e) => setLastName(e.target.value)}
+										placeholder="Doe"
+										className={themeClasses.input}
+										style={{ borderRadius: `var(--border-radius)` }}
+									/>
+								</div>
+							</div>
+
+							<Button
+								type="submit"
+								disabled={isSaving || !firstName.trim()}
+								className={cn("w-full", themeClasses.button)}
+								style={{ borderRadius: `var(--border-radius)` }}
+							>
+								{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+								Continue
+							</Button>
+
+							{error && <p className="text-center text-red-500 text-xs">{error}</p>}
+						</motion.form>
+					)}
+
+					{stage === "complete" && (
+						<motion.div
+							key="complete"
+							initial={{ opacity: 0, scale: 0.95 }}
+							animate={{ opacity: 1, scale: 1 }}
+							className="flex flex-col items-center gap-3 py-6 text-center"
+						>
+							<CheckCircle2 className="h-12 w-12 text-emerald-400" />
+							<p className={cn("font-medium text-lg", themeClasses.text)}>{config.successMessage}</p>
+							{list.redirect_url && (
+								<a
+									href={list.redirect_url}
+									className={cn("text-sm underline", themeClasses.textMuted)}
+								>
+									Continue
+								</a>
+							)}
 						</motion.div>
 					)}
 				</AnimatePresence>
@@ -844,6 +1040,8 @@ export default function EmbedPage() {
 			return renderEmailFirst()
 		case "inline-full":
 			return renderInlineFull()
+		case "video-first":
+			return renderVideoFirst()
 		case "inline-email":
 		default:
 			return renderInlineEmail()

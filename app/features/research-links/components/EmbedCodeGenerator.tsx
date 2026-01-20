@@ -15,7 +15,7 @@ import { Switch } from "~/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { cn } from "~/lib/utils"
 
-type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact"
+type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact" | "video-first"
 type EmbedTheme = "dark" | "light"
 
 interface EmbedConfig {
@@ -47,9 +47,14 @@ const LAYOUT_OPTIONS: { value: EmbedLayout; label: string; description: string }
 		description: "Email field with optional video thumbnail",
 	},
 	{
+		value: "video-first",
+		label: "Video First (Recommended)",
+		description: "Video plays first, then email capture below",
+	},
+	{
 		value: "email-first",
 		label: "Email First",
-		description: "Email capture that reveals more after submission",
+		description: "Email capture that reveals video after submission",
 	},
 	{
 		value: "inline-full",
@@ -59,6 +64,15 @@ const LAYOUT_OPTIONS: { value: EmbedLayout; label: string; description: string }
 ]
 
 const USE_CASE_PRESETS: { label: string; config: Partial<EmbedConfig> }[] = [
+	{
+		label: "Video Intro",
+		config: {
+			layout: "video-first",
+			buttonText: "Get Started",
+			successMessage: "Thanks! Check your inbox.",
+			placeholder: "you@company.com",
+		},
+	},
 	{
 		label: "Waitlist",
 		config: {
@@ -161,7 +175,9 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
 					? "200"
 					: config.layout === "email-first"
 						? "280"
-						: "400"
+						: config.layout === "video-first"
+							? "420"
+							: "400"
 
 		return `<iframe
   src="${embedUrl}"
@@ -383,7 +399,9 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
 											? "200px"
 											: config.layout === "email-first"
 												? "280px"
-												: "400px",
+												: config.layout === "video-first"
+													? "420px"
+													: "400px",
 							}}
 							title="Embed Preview"
 						/>

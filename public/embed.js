@@ -109,6 +109,7 @@
 				compact: "60px",
 				"inline-email": "200px",
 				"email-first": "280px",
+				"video-first": "420px",
 				"inline-full": "400px",
 			};
 			iframe.style.height = initialHeight[config.layout] || "200px";
