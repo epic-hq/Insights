@@ -228,36 +228,14 @@ async function handleCreatePersonAndContinue(
       : (list.default_response_mode ?? "form");
 
   // Check if person already exists by email (race condition check)
-  const { data: existingByEmail } = await supabase
+  const { data: existingPerson } = await supabase
     .from("people")
     .select("id")
     .eq("account_id", list.account_id)
     .eq("primary_email", normalizedEmail)
     .maybeSingle();
 
-  let personId = existingByEmail?.id;
-
-  // If not found by email, check by name (to handle existing people with different/no email)
-  if (!personId) {
-    const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-    const { data: existingByName } = await supabase
-      .from("people")
-      .select("id, primary_email")
-      .eq("account_id", list.account_id)
-      .eq("name", fullName)
-      .maybeSingle();
-
-    if (existingByName) {
-      personId = existingByName.id;
-      // Update their email if they didn't have one
-      if (!existingByName.primary_email && normalizedEmail) {
-        await supabase
-          .from("people")
-          .update({ primary_email: normalizedEmail })
-          .eq("id", personId);
-      }
-    }
-  }
+  let personId = existingPerson?.id;
 
   if (!personId) {
     // Create the person record (name is auto-generated from firstname/lastname)
