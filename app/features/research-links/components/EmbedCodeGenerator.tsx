@@ -477,15 +477,15 @@ export function EmbedCodeGenerator({
       </Card>
 
       {/* Embed Codes */}
-      <Card>
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Code2 className="h-4 w-4" />
             Embed Code
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="html" className="w-full">
+        <CardContent className="min-w-0 overflow-hidden">
+          <Tabs defaultValue="html" className="min-w-0 w-full overflow-hidden">
             <TabsList className="w-full justify-start">
               <TabsTrigger value="html" className="text-xs">
                 HTML + Script
