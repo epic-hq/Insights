@@ -925,6 +925,11 @@ export default function ResearchLinkPage() {
       setResponses(nextResponses);
       if (isComplete) {
         // If video is enabled, go to video stage first
+        console.log(
+          "[survey] Survey complete, allow_video:",
+          list.allow_video,
+          typeof list.allow_video,
+        );
         if (list.allow_video) {
           setStage("video");
         } else {
