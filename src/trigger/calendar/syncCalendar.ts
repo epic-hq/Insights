@@ -5,7 +5,7 @@
  * Handles token refresh, event fetching, and meeting classification.
  */
 
-import { schemaTask } from "@trigger.dev/sdk";
+import { schedules, schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
 import {
@@ -273,6 +273,32 @@ export const syncAllCalendarsTask = schemaTask({
       connectionCount: connections.length,
       triggeredCount: successCount,
       results,
+    };
+  },
+});
+
+/**
+ * Hourly scheduled task to sync all active calendar connections
+ * Runs at the top of every hour
+ */
+export const hourlyCalendarSync = schedules.task({
+  id: "calendar.sync-hourly",
+  cron: "0 * * * *", // Every hour at minute 0
+  run: async () => {
+    consola.info("[calendar.sync-hourly] Starting hourly calendar sync");
+
+    const handle = await syncAllCalendarsTask.trigger({
+      daysAhead: 14,
+      daysBehind: 1,
+    });
+
+    consola.info("[calendar.sync-hourly] Triggered sync-all task", {
+      taskId: handle.id,
+    });
+
+    return {
+      triggered: true,
+      taskId: handle.id,
     };
   },
 });

@@ -4,4 +4,8 @@
  * Background jobs for syncing Google Calendar events.
  */
 
-export { syncCalendarTask, syncAllCalendarsTask } from "./syncCalendar";
+export {
+  syncCalendarTask,
+  syncAllCalendarsTask,
+  hourlyCalendarSync,
+} from "./syncCalendar";
