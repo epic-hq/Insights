@@ -52,6 +52,7 @@ interface EmbedConfig {
   buttonText: string;
   placeholder: string;
   successMessage: string;
+  emailPreviewImageUrl: string;
 }
 
 interface EmbedCodeGeneratorProps {
@@ -148,6 +149,7 @@ export function EmbedCodeGenerator({
   const [copiedHtml, setCopiedHtml] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [copiedIframe, setCopiedIframe] = useState(false);
+  const [copiedEmailPreview, setCopiedEmailPreview] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">(
     "desktop",
   );
@@ -162,6 +164,7 @@ export function EmbedCodeGenerator({
     buttonText: heroCtaLabel || "Get Started",
     placeholder: "you@company.com",
     successMessage: "Thanks for signing up!",
+    emailPreviewImageUrl: "",
   });
 
   // Generate the embed URL
@@ -182,6 +185,14 @@ export function EmbedCodeGenerator({
     url.searchParams.set("success", config.successMessage);
     return url.toString();
   }, [slug, config]);
+
+  const publicUrl = useMemo(() => {
+    const base =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://getupsight.com";
+    return `${base}/ask/${slug}`;
+  }, [slug]);
 
   // Generate HTML embed code
   const htmlCode = useMemo(() => {
@@ -204,6 +215,65 @@ export function EmbedCodeGenerator({
 <div ${attrs.join("\n     ")}></div>
 <script src="https://getupsight.com/embed.js" async></script>`;
   }, [slug, config]);
+
+  const emailPreviewCode = useMemo(() => {
+    const headline = heroTitle || "Share your feedback";
+    const buttonLabel = heroCtaLabel || config.buttonText || "Open survey";
+    const imageUrl = config.emailPreviewImageUrl.trim();
+    const imageBlock = imageUrl
+      ? `<tr>
+      <td align="center" style="padding: 0 24px 16px;">
+        <a href="${publicUrl}" target="_blank" rel="noreferrer">
+          <img
+            src="${imageUrl}"
+            width="600"
+            alt="${headline}"
+            style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;"
+          />
+        </a>
+      </td>
+    </tr>`
+      : "";
+
+    return `<!-- UpSight Email Preview -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+  <tr>
+    <td align="center" style="padding: 24px;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width: 100%; max-width: 600px;">
+        <tr>
+          <td align="center" style="font-family: Arial, sans-serif; font-size: 18px; font-weight: 600; color: #111827; padding: 0 24px 16px;">
+            ${headline}
+          </td>
+        </tr>
+        ${imageBlock}
+        <tr>
+          <td align="center" style="padding: 0 24px 20px;">
+            <a
+              href="${publicUrl}"
+              target="_blank"
+              rel="noreferrer"
+              style="display: inline-block; padding: 12px 22px; background: #111827; color: #ffffff; text-decoration: none; border-radius: 6px; font-family: Arial, sans-serif; font-size: 14px;"
+            >
+              ${buttonLabel}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="font-family: Arial, sans-serif; font-size: 12px; color: #6b7280; padding: 0 24px;">
+            If the button doesn't work, copy this link: ${publicUrl}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
+  }, [
+    config.buttonText,
+    config.emailPreviewImageUrl,
+    heroCtaLabel,
+    heroTitle,
+    publicUrl,
+  ]);
 
   // Generate iframe code
   const iframeCode = useMemo(() => {
@@ -404,6 +474,23 @@ export function EmbedCodeGenerator({
           />
         </div>
 
+        <div className="space-y-2 sm:col-span-2">
+          <Label className="text-muted-foreground text-xs">
+            Email preview image URL (optional)
+          </Label>
+          <Input
+            value={config.emailPreviewImageUrl}
+            onChange={(e) =>
+              setConfig((prev) => ({
+                ...prev,
+                emailPreviewImageUrl: e.target.value,
+              }))
+            }
+            placeholder="https://..."
+            className="h-9"
+          />
+        </div>
+
         <div className="flex items-center justify-between rounded-md border px-3 py-2 sm:col-span-2">
           <div>
             <p className="font-medium text-sm">Show branding</p>
@@ -495,6 +582,9 @@ export function EmbedCodeGenerator({
               <TabsTrigger value="iframe" className="text-xs">
                 iFrame
               </TabsTrigger>
+              <TabsTrigger value="email" className="text-xs">
+                Email Preview
+              </TabsTrigger>
               <TabsTrigger value="advanced" className="text-xs">
                 Advanced
               </TabsTrigger>
@@ -547,6 +637,38 @@ export function EmbedCodeGenerator({
                   onClick={() => handleCopy(iframeCode, setCopiedIframe)}
                 >
                   {copiedIframe ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="email" className="min-w-0 space-y-2">
+              <p className="text-muted-foreground text-xs">
+                Email clients block embeds. Use this linked preview instead.
+              </p>
+              <div className="relative min-w-0 overflow-hidden">
+                <pre className="max-h-[240px] overflow-auto rounded-lg bg-muted p-3 font-mono text-xs">
+                  {emailPreviewCode}
+                </pre>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="absolute top-2 right-2 h-7 gap-1.5"
+                  onClick={() =>
+                    handleCopy(emailPreviewCode, setCopiedEmailPreview)
+                  }
+                >
+                  {copiedEmailPreview ? (
                     <>
                       <Check className="h-3.5 w-3.5" />
                       Copied

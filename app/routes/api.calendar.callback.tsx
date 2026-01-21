@@ -5,12 +5,13 @@
  * Handles OAuth callback from Google Calendar via Pica
  */
 
+import consola from "consola";
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import consola from "consola";
 import { upsertCalendarConnection } from "~/lib/integrations/calendar.server";
 import { exchangeCodeForTokens } from "~/lib/integrations/pica.server";
-import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { syncCalendarTask } from "src/trigger/calendar";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -48,6 +49,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Build redirect URI (must match what was used in authorization)
   const redirectUri = `${url.origin}/api/calendar/callback`;
 
+  const supabase = createSupabaseAdminClient();
+
   try {
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens({
@@ -56,7 +59,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
 
     // Save connection to database (using admin client since we don't have user session in callback)
-    await upsertCalendarConnection(supabaseAdmin, {
+    const connection = await upsertCalendarConnection(supabase, {
       user_id: userId,
       account_id: accountId,
       provider: "google",
@@ -72,6 +75,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
       accountId,
       email: tokens.email,
     });
+
+    // Trigger initial calendar sync in background
+    try {
+      await syncCalendarTask.trigger({
+        connectionId: connection.id,
+        daysAhead: 14,
+        daysBehind: 1,
+      });
+      consola.info("[calendar] Initial sync triggered", {
+        connectionId: connection.id,
+      });
+    } catch (syncErr) {
+      // Don't fail the callback if sync trigger fails
+      consola.warn("[calendar] Failed to trigger initial sync:", syncErr);
+    }
 
     // Redirect back to settings with success
     return redirect(`/a/${accountId}/settings?calendar_connected=1`);
