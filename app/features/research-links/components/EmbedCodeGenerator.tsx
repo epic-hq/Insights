@@ -41,7 +41,7 @@ type EmbedLayout =
   | "email-first"
   | "compact"
   | "video-first";
-type EmbedTheme = "dark" | "light";
+type EmbedTheme = "dark" | "light" | "transparent";
 
 interface EmbedConfig {
   layout: EmbedLayout;
@@ -106,7 +106,7 @@ const USE_CASE_PRESETS: { label: string; config: Partial<EmbedConfig> }[] = [
     label: "Waitlist",
     config: {
       layout: "inline-email",
-      buttonText: "Join Waitlist",
+      buttonText: "Join",
       successMessage: "You're on the list!",
       placeholder: "you@company.com",
     },
@@ -155,7 +155,7 @@ export function EmbedCodeGenerator({
   // Embed configuration state
   const [config, setConfig] = useState<EmbedConfig>({
     layout: "inline-email",
-    theme: "dark",
+    theme: "transparent",
     accentColor: "#ffffff",
     borderRadius: 12,
     showBranding: true,
@@ -224,7 +224,8 @@ export function EmbedCodeGenerator({
   height="${height}"
   frameborder="0"
   scrolling="no"
-  style="border: none; overflow: hidden;"
+  allowtransparency="true"
+  style="border: none; overflow: hidden; background: transparent;"
   allow="camera; microphone"
   title="${heroTitle || "UpSight Form"}"
 ></iframe>`;
@@ -337,6 +338,7 @@ export function EmbedCodeGenerator({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="transparent">Transparent (Default)</SelectItem>
               <SelectItem value="dark">Dark</SelectItem>
               <SelectItem value="light">Light</SelectItem>
             </SelectContent>

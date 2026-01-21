@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Embed Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+    }
+    h2 { color: white; margin-bottom: 20px; }
+    .embed-container {
+      max-width: 600px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>iframe embed (transparent theme)</h2>
+  <div class="embed-container">
+    <iframe
+      src="/embed/waitlist-for-up-sight-4c091vls?theme=transparent&layout=inline-email&buttonText=Join"
+      width="100%"
+      height="200"
+      frameborder="0"
+      style="border: none; background: transparent;"
+      allowtransparency="true"
+    ></iframe>
+  </div>
+
+  <h2>HTML embed (uses local embed.js)</h2>
+  <div class="embed-container">
+    <div id="upsight-form"
+         data-upsight-slug="waitlist-for-up-sight-4c091vls"
+         data-upsight-layout="inline-email"
+         data-upsight-theme="transparent"
+         data-upsight-button-text="Join"></div>
+    <script src="/embed.js" async></script>
+  </div>
+</body>
+</html>
