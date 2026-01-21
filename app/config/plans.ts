@@ -47,6 +47,8 @@ export interface PlanFeatures {
   ai_crm: boolean;
   /** Remove "Powered by UpSight" branding from embeds */
   white_label: boolean;
+  /** Calendar sync for meeting intelligence */
+  calendar_sync: boolean;
 }
 
 export interface PlanConfig {
@@ -105,6 +107,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       smart_personas: false,
       ai_crm: false,
       white_label: false,
+      calendar_sync: false,
     },
     cta: {
       label: "Start Free",
@@ -137,6 +140,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       smart_personas: true,
       ai_crm: true,
       white_label: true,
+      calendar_sync: false,
     },
     cta: {
       label: "Get Started",
@@ -169,6 +173,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       smart_personas: true,
       ai_crm: true,
       white_label: true,
+      calendar_sync: true,
     },
     cta: {
       label: "Go Pro",
@@ -202,6 +207,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       smart_personas: true,
       ai_crm: true,
       white_label: true,
+      calendar_sync: true,
     },
     cta: {
       label: "Contact Sales",
@@ -278,6 +284,7 @@ export const FEATURE_KEYS = [
   "smart_personas",
   "ai_crm",
   "white_label",
+  "calendar_sync",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];

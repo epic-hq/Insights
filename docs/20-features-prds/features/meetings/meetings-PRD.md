@@ -35,6 +35,65 @@ Meeting Intelligence is the wedge for UpSight. Every customer-facing team has me
 
 ---
 
+## Value Calculator
+
+### Time Saved Per User
+
+| Activity | Without UpSight | With UpSight | Savings |
+|----------|-----------------|--------------|---------|
+| Meeting prep | 15 min | 2 min | **13 min** |
+| Finding past context | 10 min | 0 min (in brief) | **10 min** |
+| Writing follow-up | 12 min | 3 min (edit draft) | **9 min** |
+| Tracking action items | 5 min | 1 min (auto-extracted) | **4 min** |
+| **Total per meeting** | **42 min** | **6 min** | **36 min** |
+
+### Weekly Impact (Assumes 8 customer meetings/week)
+
+| Metric | Calculation | Value |
+|--------|-------------|-------|
+| Time saved/week | 36 min × 8 meetings | **4.8 hours** |
+| Time saved/month | 4.8 hours × 4 weeks | **19.2 hours** |
+| Time saved/year | 19.2 hours × 12 months | **230 hours** |
+
+### Dollar Value
+
+| Role | Hourly Cost | Annual Time Saved | Annual Value |
+|------|-------------|-------------------|--------------|
+| AE/Sales Rep | $75/hr | 230 hours | **$17,250** |
+| Customer Success | $60/hr | 230 hours | **$13,800** |
+| Founder/Exec | $150/hr | 230 hours | **$34,500** |
+
+**Per-seat ROI at $50/month subscription:**
+- Cost: $600/year
+- Value: $13,800-$34,500/year
+- **ROI: 23x - 57x**
+
+### Revenue Impact (Harder to measure, higher value)
+
+| Outcome | Mechanism | Estimated Impact |
+|---------|-----------|------------------|
+| Deals closed faster | Better prep = more relevant conversations | +5-10% close rate |
+| Churn prevented | Follow-ups don't fall through cracks | -2-5% churn |
+| Expansion revenue | Know when to upsell (from context) | +10-15% expansion |
+| Time to first value | Faster onboarding (context from day 1) | -30% ramp time |
+
+**Example: 10-person sales team**
+- Base quota: $500K/rep/year = $5M total
+- +5% close rate = **$250K additional revenue**
+- Tool cost: $6K/year (10 seats × $50/month)
+- **ROI: 41x on revenue impact alone**
+
+### Qualitative Value
+
+| Benefit | Who Cares | Why It Matters |
+|---------|-----------|----------------|
+| Never walk in cold | Sales, CS | Confidence, professionalism |
+| No dropped balls | Everyone | Trust, reliability |
+| Institutional memory | Org | Knowledge doesn't leave with people |
+| Faster onboarding | Managers | New hires productive faster |
+
+---
+
 ## The Problem
 
 | Pain Point | Frequency | Who Feels It |
