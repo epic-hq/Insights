@@ -8,7 +8,7 @@ import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-rout
 import { useStickToBottom } from "use-stick-to-bottom"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
-import { InlineFeedbackForm, type FeedbackType } from "~/components/chat/InlineFeedbackForm"
+import { FeedbackConfirmationCard, type FeedbackType } from "~/components/chat/FeedbackConfirmationCard"
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
@@ -334,6 +334,58 @@ function extractActiveToolCall(message: UpsightMessage): string | null {
 	return null
 }
 
+/**
+ * Extract feedback confirmation data from a message's tool results.
+ * Returns the data needed to render a FeedbackConfirmationCard if feedback was captured.
+ */
+function extractFeedbackConfirmation(message: UpsightMessage): {
+	type: FeedbackType
+	summary: string
+	affectedFeature?: string
+} | null {
+	if (!message.parts) return null
+
+	for (const part of message.parts) {
+		const anyPart = part as {
+			type: string
+			toolInvocation?: {
+				toolName: string
+				state: string
+				result?: {
+					captured?: boolean
+					feedbackType?: string
+					summary?: string
+					affectedFeature?: string
+				}
+			}
+			toolName?: string
+			state?: string
+			result?: {
+				captured?: boolean
+				feedbackType?: string
+				summary?: string
+				affectedFeature?: string
+			}
+		}
+
+		if (anyPart.type === "tool-invocation" || anyPart.toolInvocation) {
+			const toolData = anyPart.toolInvocation || anyPart
+			if (
+				toolData.toolName === "showFeedbackWidget" &&
+				toolData.state === "output-available" &&
+				toolData.result?.captured
+			) {
+				return {
+					type: (toolData.result.feedbackType as FeedbackType) || "general",
+					summary: toolData.result.summary || "Feedback received",
+					affectedFeature: toolData.result.affectedFeature,
+				}
+			}
+		}
+	}
+	return null
+}
+
 interface ProjectStatusAgentChatProps {
 	accountId: string
 	projectId: string
@@ -407,14 +459,6 @@ export function ProjectStatusAgentChat({
 		return localStorage.getItem("project-chat-collapsed") === "true"
 	})
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-
-	// Feedback form state - shown inline when agent detects feedback intent
-	const [feedbackFormState, setFeedbackFormState] = useState<{
-		isVisible: boolean
-		initialType?: FeedbackType
-		initialSummary?: string
-		affectedFeature?: string
-	}>({ isVisible: false })
 
 	// Use stick-to-bottom for auto-scrolling chat messages
 	const { scrollRef, contentRef, scrollToBottom } = useStickToBottom()
@@ -565,7 +609,7 @@ export function ProjectStatusAgentChat({
 				}
 			}
 
-			// Handle feedback widget display - show inline form in chat
+			// Handle feedback capture - log directly and return data for card display
 			if (toolCall.toolName === "showFeedbackWidget") {
 				const input = toolCall.input as {
 					feedbackType?: "bug" | "feature_request" | "general" | "compliment"
@@ -575,31 +619,31 @@ export function ProjectStatusAgentChat({
 					urgency?: "low" | "medium" | "high"
 				}
 
-				consola.info("showFeedbackWidget tool called:", input)
+				consola.info("showFeedbackWidget - capturing feedback:", input)
 
-				// Capture analytics event
-				posthog?.capture("feedback_widget_shown", {
-					feedbackType: input.feedbackType,
-					affectedFeature: input.affectedFeature,
+				// Capture feedback directly to PostHog
+				posthog?.capture("product_feedback_submitted", {
+					feedback_type: input.feedbackType || "general",
+					feedback_message: input.summary || "",
+					affected_feature: input.affectedFeature,
 					sentiment: input.sentiment,
 					urgency: input.urgency,
 					source: "agent_chat",
+					current_page: location.pathname,
+					project_id: projectId,
+					account_id: accountId,
 				})
 
-				// Show the inline feedback form with pre-filled values
-				setFeedbackFormState({
-					isVisible: true,
-					initialType: input.feedbackType,
-					initialSummary: input.summary,
-					affectedFeature: input.affectedFeature,
-				})
-
+				// Return captured data - will be rendered as FeedbackConfirmationCard
 				addToolResult({
 					tool: "showFeedbackWidget",
 					toolCallId: toolCall.toolCallId,
 					output: {
 						success: true,
-						message: "Feedback form is now visible. Please share your thoughts!",
+						captured: true,
+						feedbackType: input.feedbackType || "general",
+						summary: input.summary || "Feedback received",
+						affectedFeature: input.affectedFeature,
 					},
 				})
 			}
@@ -996,9 +1040,10 @@ export function ProjectStatusAgentChat({
 												(isTool ? extractToolResultText(message) : null) ||
 												filteredTextParts.filter(Boolean).join("\n").trim()
 											const networkSteps = extractNetworkSteps(message)
+											const feedbackConfirmation = extractFeedbackConfirmation(message)
 											return (
 												<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-													<div className="max-w-[85%]">
+													<div className="max-w-[85%] space-y-2">
 														<div className="mb-1 text-[10px] text-foreground/60 uppercase tracking-wide">
 															{isUser ? "You" : "Uppy Assistant"}
 														</div>
@@ -1047,6 +1092,14 @@ export function ProjectStatusAgentChat({
 																<span className="text-foreground/70">(No text response)</span>
 															)}
 														</div>
+														{/* Feedback confirmation card - shows when feedback was captured */}
+														{feedbackConfirmation && (
+															<FeedbackConfirmationCard
+																type={feedbackConfirmation.type}
+																summary={feedbackConfirmation.summary}
+																affectedFeature={feedbackConfirmation.affectedFeature}
+															/>
+														)}
 													</div>
 												</div>
 											)
@@ -1069,29 +1122,6 @@ export function ProjectStatusAgentChat({
 										/>
 									))}
 								</Suggestions>
-							)}
-
-							{/* Inline Feedback Form - shown when agent detects feedback intent */}
-							{feedbackFormState.isVisible && (
-								<div className="mb-3">
-									<InlineFeedbackForm
-										initialType={feedbackFormState.initialType}
-										initialSummary={feedbackFormState.initialSummary}
-										affectedFeature={feedbackFormState.affectedFeature}
-										onSubmit={() => {
-											// Form handles its own success state, just hide after a delay
-											setTimeout(() => {
-												setFeedbackFormState({ isVisible: false })
-											}, 3000)
-										}}
-										onDismiss={() => setFeedbackFormState({ isVisible: false })}
-										context={{
-											currentPage: location.pathname,
-											projectId,
-											accountId,
-										}}
-									/>
-								</div>
 							)}
 
 							<form onSubmit={handleSubmit} className="space-y-2">

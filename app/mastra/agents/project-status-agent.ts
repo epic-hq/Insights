@@ -312,11 +312,12 @@ Do NOT add a "Next steps" section in the text response. Rely on the suggestion w
 For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
 
 ## Product Feedback
-When users want to give feedback about the product, report bugs, request features, or express frustration:
-- Call "showFeedbackWidget" to open the feedback form
-- Extract any details they've already mentioned (what's broken, what they wish existed, which feature)
-- Pre-fill the form with: feedbackType, summary, affectedFeature, sentiment, urgency
-- This lets users submit feedback without repeating themselves
+When users mention feedback, bugs, feature requests, or frustration:
+- Call "showFeedbackWidget" to capture and log the feedback automatically
+- Extract: feedbackType (bug/feature_request/compliment/general), summary (what they said), affectedFeature, sentiment, urgency
+- The feedback is captured immediately - no form required
+- A confirmation card will display showing what was logged
+- After capturing, ask if they want to add more detail or continue conversationally
 - Trigger phrases: "give feedback", "report a bug", "feature request", "I wish...", "this is frustrating"
 `
 		} catch (error) {
