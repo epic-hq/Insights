@@ -28,6 +28,7 @@ import { findSimilarPagesTool, webResearchTool } from "../tools/research-web"
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
+import { showFeedbackWidgetTool } from "../tools/show-feedback-widget"
 import { suggestionTool } from "../tools/suggestion-tool"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { updateTableAssetTool } from "../tools/update-table-asset"
@@ -116,6 +117,7 @@ const project_status_agent_tools = {
 	importPeopleFromTable: importPeopleFromTableTool,
 	importOpportunitiesFromTable: importOpportunitiesFromTableTool,
 	recommendNextActions: recommendNextActionsTool,
+	showFeedbackWidget: showFeedbackWidgetTool,
 }
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools)
@@ -308,6 +310,14 @@ Do NOT add a "Next steps" section in the text response. Rely on the suggestion w
 
 ## Chief of Staff
 For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
+
+## Product Feedback
+When users want to give feedback about the product, report bugs, request features, or express frustration:
+- Call "showFeedbackWidget" to open the feedback form
+- Extract any details they've already mentioned (what's broken, what they wish existed, which feature)
+- Pre-fill the form with: feedbackType, summary, affectedFeature, sentiment, urgency
+- This lets users submit feedback without repeating themselves
+- Trigger phrases: "give feedback", "report a bug", "feature request", "I wish...", "this is frustrating"
 `
 		} catch (error) {
 			consola.error("Error in project status agent instructions:", error)

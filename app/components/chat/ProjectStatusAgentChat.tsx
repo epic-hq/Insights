@@ -2,11 +2,13 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { ChevronRight, Mic, Plus, Send, Square } from "lucide-react"
+import { usePostHog } from "posthog-js/react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-router"
 import { useStickToBottom } from "use-stick-to-bottom"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
+import { InlineFeedbackForm, type FeedbackType } from "~/components/chat/InlineFeedbackForm"
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
@@ -406,6 +408,14 @@ export function ProjectStatusAgentChat({
 	})
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
+	// Feedback form state - shown inline when agent detects feedback intent
+	const [feedbackFormState, setFeedbackFormState] = useState<{
+		isVisible: boolean
+		initialType?: FeedbackType
+		initialSummary?: string
+		affectedFeature?: string
+	}>({ isVisible: false })
+
 	// Use stick-to-bottom for auto-scrolling chat messages
 	const { scrollRef, contentRef, scrollToBottom } = useStickToBottom()
 	const location = useLocation()
@@ -418,6 +428,7 @@ export function ProjectStatusAgentChat({
 		setForceExpandChat,
 	} = useProjectStatusAgent()
 	const { isEnabled: isVoiceEnabled } = usePostHogFeatureFlag("ffVoice")
+	const posthog = usePostHog()
 
 	// Load chat history from the server for display
 	// The history is loaded for UI display only - when sending new messages,
@@ -552,6 +563,45 @@ export function ProjectStatusAgentChat({
 						},
 					})
 				}
+			}
+
+			// Handle feedback widget display - show inline form in chat
+			if (toolCall.toolName === "showFeedbackWidget") {
+				const input = toolCall.input as {
+					feedbackType?: "bug" | "feature_request" | "general" | "compliment"
+					summary?: string
+					affectedFeature?: string
+					sentiment?: "positive" | "neutral" | "negative"
+					urgency?: "low" | "medium" | "high"
+				}
+
+				consola.info("showFeedbackWidget tool called:", input)
+
+				// Capture analytics event
+				posthog?.capture("feedback_widget_shown", {
+					feedbackType: input.feedbackType,
+					affectedFeature: input.affectedFeature,
+					sentiment: input.sentiment,
+					urgency: input.urgency,
+					source: "agent_chat",
+				})
+
+				// Show the inline feedback form with pre-filled values
+				setFeedbackFormState({
+					isVisible: true,
+					initialType: input.feedbackType,
+					initialSummary: input.summary,
+					affectedFeature: input.affectedFeature,
+				})
+
+				addToolResult({
+					tool: "showFeedbackWidget",
+					toolCallId: toolCall.toolCallId,
+					output: {
+						success: true,
+						message: "Feedback form is now visible. Please share your thoughts!",
+					},
+				})
 			}
 		},
 	})
@@ -1020,6 +1070,30 @@ export function ProjectStatusAgentChat({
 									))}
 								</Suggestions>
 							)}
+
+							{/* Inline Feedback Form - shown when agent detects feedback intent */}
+							{feedbackFormState.isVisible && (
+								<div className="mb-3">
+									<InlineFeedbackForm
+										initialType={feedbackFormState.initialType}
+										initialSummary={feedbackFormState.initialSummary}
+										affectedFeature={feedbackFormState.affectedFeature}
+										onSubmit={() => {
+											// Form handles its own success state, just hide after a delay
+											setTimeout(() => {
+												setFeedbackFormState({ isVisible: false })
+											}, 3000)
+										}}
+										onDismiss={() => setFeedbackFormState({ isVisible: false })}
+										context={{
+											currentPage: location.pathname,
+											projectId,
+											accountId,
+										}}
+									/>
+								</div>
+							)}
+
 							<form onSubmit={handleSubmit} className="space-y-2">
 								<div className="relative">
 									<Textarea
