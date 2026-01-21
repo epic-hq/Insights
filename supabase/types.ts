@@ -6978,6 +6978,17 @@ export type Database = {
           usage_date: string
         }[]
       }
+      get_admin_daily_usage_by_feature: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          event_count: number
+          feature_source: string
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+          usage_date: string
+        }[]
+      }
       get_admin_usage_by_account: {
         Args: { p_end_date?: string; p_start_date?: string }
         Returns: {
@@ -6997,6 +7008,18 @@ export type Database = {
           total_cost_usd: number
           total_credits: number
           total_tokens: number
+        }[]
+      }
+      get_admin_usage_by_user: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          event_count: number
+          total_cost_usd: number
+          total_credits: number
+          total_tokens: number
+          user_email: string
+          user_id: string
+          user_name: string
         }[]
       }
       get_annotation_counts: {
@@ -7129,6 +7152,24 @@ export type Database = {
       process_facet_embedding_queue: { Args: never; Returns: string }
       process_person_facet_embedding_queue: { Args: never; Returns: string }
       process_transcribe_queue: { Args: never; Returns: string }
+      record_usage_event: {
+        Args: {
+          p_account_id: string
+          p_credits_charged: number
+          p_estimated_cost_usd: number
+          p_feature_source: string
+          p_idempotency_key?: string
+          p_input_tokens: number
+          p_model: string
+          p_output_tokens: number
+          p_project_id: string
+          p_provider: string
+          p_resource_id?: string
+          p_resource_type?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
         Returns: undefined
