@@ -1,184 +1,85 @@
 /**
  * Pica Integration Client
  *
- * Handles OAuth connections to Google Calendar (and future integrations) via Pica.
- * @see https://picaos.com/docs
+ * Uses Pica's Passthrough API to make authenticated API calls through stored connections.
+ * OAuth is handled by AuthKit on the frontend - this file only handles API calls.
+ * @see https://docs.picaos.com
  */
 
 import consola from "consola";
 
 // Environment variables
-const PICA_API_KEY = process.env.PICA_API_KEY;
+const PICA_SECRET_KEY = process.env.PICA_SECRET_KEY || process.env.PICA_API_KEY;
 const PICA_API_URL = process.env.PICA_API_URL || "https://api.picaos.com";
 
-if (!PICA_API_KEY) {
-  consola.warn("[pica] PICA_API_KEY not set - calendar integration disabled");
+if (!PICA_SECRET_KEY) {
+  consola.warn(
+    "[pica] PICA_SECRET_KEY not set - calendar integration disabled",
+  );
 }
 
 /**
  * Check if Pica integration is configured
  */
 export function isPicaConfigured(): boolean {
-  return Boolean(PICA_API_KEY);
-}
-
-/**
- * Generate OAuth authorization URL for Google Calendar
- */
-export async function getGoogleCalendarAuthUrl(params: {
-  userId: string;
-  accountId: string;
-  redirectUri: string;
-}): Promise<string> {
-  if (!PICA_API_KEY) {
-    throw new Error("Pica API key not configured");
-  }
-
-  const response = await fetch(
-    `${PICA_API_URL}/v1/connections/google-calendar/authorize`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${PICA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        redirect_uri: params.redirectUri,
-        state: JSON.stringify({
-          user_id: params.userId,
-          account_id: params.accountId,
-        }),
-        scopes: [
-          "https://www.googleapis.com/auth/calendar.readonly",
-          "https://www.googleapis.com/auth/calendar.events.readonly",
-        ],
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    consola.error("[pica] Failed to get auth URL:", error);
-    throw new Error("Failed to initiate Google Calendar connection");
-  }
-
-  const data = await response.json();
-  return data.authorization_url;
-}
-
-/**
- * Exchange authorization code for tokens
- */
-export async function exchangeCodeForTokens(params: {
-  code: string;
-  redirectUri: string;
-}): Promise<{
-  access_token: string;
-  refresh_token: string | null;
-  expires_at: string | null;
-  email: string | null;
-  provider_account_id: string | null;
-}> {
-  if (!PICA_API_KEY) {
-    throw new Error("Pica API key not configured");
-  }
-
-  const response = await fetch(
-    `${PICA_API_URL}/v1/connections/google-calendar/token`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${PICA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        code: params.code,
-        redirect_uri: params.redirectUri,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    consola.error("[pica] Failed to exchange code:", error);
-    throw new Error("Failed to complete Google Calendar connection");
-  }
-
-  const data = await response.json();
-  return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token || null,
-    expires_at: data.expires_at || null,
-    email: data.email || null,
-    provider_account_id: data.provider_account_id || null,
-  };
-}
-
-/**
- * Refresh an expired access token
- */
-export async function refreshAccessToken(refreshToken: string): Promise<{
-  access_token: string;
-  expires_at: string | null;
-}> {
-  if (!PICA_API_KEY) {
-    throw new Error("Pica API key not configured");
-  }
-
-  const response = await fetch(
-    `${PICA_API_URL}/v1/connections/google-calendar/refresh`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${PICA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        refresh_token: refreshToken,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    consola.error("[pica] Failed to refresh token:", error);
-    throw new Error("Failed to refresh calendar access");
-  }
-
-  const data = await response.json();
-  return {
-    access_token: data.access_token,
-    expires_at: data.expires_at || null,
-  };
-}
-
-/**
- * Revoke calendar connection
- */
-export async function revokeConnection(accessToken: string): Promise<void> {
-  if (!PICA_API_KEY) {
-    throw new Error("Pica API key not configured");
-  }
-
-  try {
-    await fetch(`${PICA_API_URL}/v1/connections/google-calendar/revoke`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${PICA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        access_token: accessToken,
-      }),
-    });
-  } catch (error) {
-    consola.warn("[pica] Failed to revoke connection:", error);
-    // Don't throw - we'll delete from our DB anyway
-  }
+  return Boolean(PICA_SECRET_KEY);
 }
 
 // -----------------------------------------------------------------------------
-// Google Calendar API (using stored tokens)
+// Pica Passthrough API
+// -----------------------------------------------------------------------------
+
+interface PassthroughRequest {
+  method: string;
+  path: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  queryParams?: Record<string, string>;
+}
+
+interface PassthroughResponse<T = unknown> {
+  status: number;
+  headers: Record<string, string>;
+  data: T;
+}
+
+/**
+ * Make an API call through Pica's Passthrough API
+ * @see https://docs.picaos.com/passthrough-api
+ */
+export async function picaPassthrough<T = unknown>(
+  connectionKey: string,
+  platform: string,
+  request: PassthroughRequest,
+): Promise<PassthroughResponse<T>> {
+  if (!PICA_SECRET_KEY) {
+    throw new Error("Pica secret key not configured");
+  }
+
+  const response = await fetch(`${PICA_API_URL}/v1/passthrough`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-pica-secret": PICA_SECRET_KEY,
+      "x-pica-connection-key": connectionKey,
+    },
+    body: JSON.stringify({
+      platform,
+      ...request,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    consola.error("[pica] Passthrough API error:", error);
+    throw new Error(`Pica passthrough failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// -----------------------------------------------------------------------------
+// Google Calendar API (via Passthrough)
 // -----------------------------------------------------------------------------
 
 interface GoogleCalendarEvent {
@@ -211,9 +112,45 @@ interface GoogleCalendarListResponse {
 }
 
 /**
- * Fetch calendar events from Google Calendar API
+ * Fetch calendar events using Pica Passthrough API
  */
 export async function fetchCalendarEvents(params: {
+  connectionKey: string;
+  calendarId?: string;
+  timeMin: Date;
+  timeMax: Date;
+  maxResults?: number;
+}): Promise<GoogleCalendarEvent[]> {
+  const calendarId = params.calendarId || "primary";
+  const maxResults = params.maxResults || 100;
+
+  // Build query params for Google Calendar API
+  const queryParams = {
+    timeMin: params.timeMin.toISOString(),
+    timeMax: params.timeMax.toISOString(),
+    maxResults: String(maxResults),
+    singleEvents: "true",
+    orderBy: "startTime",
+  };
+
+  const response = await picaPassthrough<GoogleCalendarListResponse>(
+    params.connectionKey,
+    "google-calendar",
+    {
+      method: "GET",
+      path: `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+      queryParams,
+    },
+  );
+
+  return response.data.items || [];
+}
+
+/**
+ * Fetch calendar events using direct Google API (legacy - for connections with stored tokens)
+ * @deprecated Use fetchCalendarEvents with connectionKey instead
+ */
+export async function fetchCalendarEventsDirect(params: {
   accessToken: string;
   calendarId?: string;
   timeMin: Date;

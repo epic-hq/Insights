@@ -19,9 +19,13 @@ export interface CalendarConnection {
   provider: "google" | "outlook";
   provider_account_id: string | null;
   provider_email: string | null;
-  access_token: string;
+  // OAuth tokens (legacy direct connections)
+  access_token: string | null;
   refresh_token: string | null;
   token_expires_at: string | null;
+  // Pica AuthKit connection (preferred)
+  pica_connection_id: string | null;
+  pica_connection_key: string | null;
   calendar_id: string;
   sync_enabled: boolean;
   last_synced_at: string | null;

@@ -2,7 +2,8 @@
  * Calendar Sync Task
  *
  * Syncs calendar events from Google Calendar for a specific user connection.
- * Handles token refresh, event fetching, and meeting classification.
+ * Uses Pica Passthrough API for connections with pica_connection_key,
+ * or falls back to direct API for legacy connections with stored tokens.
  */
 
 import { schedules, schemaTask } from "@trigger.dev/sdk";
@@ -12,14 +13,13 @@ import {
   type CalendarConnection,
   markSyncCompleted,
   markSyncFailed,
-  updateConnectionTokens,
   upsertCalendarEvents,
 } from "~/lib/integrations/calendar.server";
 import {
   classifyMeeting,
   extractMeetingUrl,
   fetchCalendarEvents,
-  refreshAccessToken,
+  fetchCalendarEventsDirect,
 } from "~/lib/integrations/pica.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
@@ -64,62 +64,44 @@ export const syncCalendarTask = schemaTask({
       return { success: false, reason: "sync_disabled", eventCount: 0 };
     }
 
-    let accessToken = conn.access_token;
-
-    // 2. Check if token needs refresh
-    if (conn.token_expires_at) {
-      const expiresAt = new Date(conn.token_expires_at);
-      const now = new Date();
-      const fiveMinutes = 5 * 60 * 1000;
-
-      if (expiresAt.getTime() - now.getTime() < fiveMinutes) {
-        consola.info(
-          `[calendar.sync] Token expired or expiring soon, refreshing...`,
-        );
-
-        if (!conn.refresh_token) {
-          await markSyncFailed(db, connectionId, "No refresh token available");
-          throw new Error(
-            "No refresh token available for expired access token",
-          );
-        }
-
-        try {
-          const newTokens = await refreshAccessToken(conn.refresh_token);
-          accessToken = newTokens.access_token;
-
-          await updateConnectionTokens(db, connectionId, {
-            access_token: newTokens.access_token,
-            token_expires_at: newTokens.expires_at,
-          });
-
-          consola.info(`[calendar.sync] Token refreshed successfully`);
-        } catch (refreshError) {
-          await markSyncFailed(
-            db,
-            connectionId,
-            "Failed to refresh access token",
-          );
-          throw refreshError;
-        }
-      }
-    }
-
-    // 3. Calculate time range
+    // 2. Calculate time range
     const now = new Date();
     const timeMin = new Date(now.getTime() - daysBehind * 24 * 60 * 60 * 1000);
     const timeMax = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
 
-    // 4. Fetch calendar events
+    // 3. Fetch calendar events - use Pica Passthrough if available, otherwise direct
     let googleEvents;
     try {
-      googleEvents = await fetchCalendarEvents({
-        accessToken,
-        calendarId: conn.calendar_id || "primary",
-        timeMin,
-        timeMax,
-        maxResults: 250,
-      });
+      if (conn.pica_connection_key) {
+        // Use Pica Passthrough API
+        consola.info(`[calendar.sync] Using Pica Passthrough API`);
+        googleEvents = await fetchCalendarEvents({
+          connectionKey: conn.pica_connection_key,
+          calendarId: conn.calendar_id || "primary",
+          timeMin,
+          timeMax,
+          maxResults: 250,
+        });
+      } else if (conn.access_token) {
+        // Legacy: direct Google API with stored token
+        consola.info(`[calendar.sync] Using direct Google API (legacy)`);
+        googleEvents = await fetchCalendarEventsDirect({
+          accessToken: conn.access_token,
+          calendarId: conn.calendar_id || "primary",
+          timeMin,
+          timeMax,
+          maxResults: 250,
+        });
+      } else {
+        await markSyncFailed(
+          db,
+          connectionId,
+          "No connection credentials available",
+        );
+        throw new Error(
+          "Connection has neither pica_connection_key nor access_token",
+        );
+      }
     } catch (fetchError) {
       const errorMessage =
         fetchError instanceof Error
@@ -133,7 +115,7 @@ export const syncCalendarTask = schemaTask({
       `[calendar.sync] Fetched ${googleEvents.length} events from Google Calendar`,
     );
 
-    // 5. Transform and classify events
+    // 4. Transform and classify events
     const userEmail = conn.provider_email || "";
     const events = googleEvents.map((event) => {
       const { isCustomerMeeting, meetingType } = classifyMeeting(
@@ -161,12 +143,12 @@ export const syncCalendarTask = schemaTask({
       };
     });
 
-    // 6. Upsert events to database
+    // 5. Upsert events to database
     if (events.length > 0) {
       await upsertCalendarEvents(db, events);
     }
 
-    // 7. Mark sync as completed
+    // 6. Mark sync as completed
     await markSyncCompleted(db, connectionId);
 
     const customerMeetings = events.filter((e) => e.is_customer_meeting).length;

@@ -47,6 +47,19 @@ const routes = [
   layout("./routes/_ProtectedLayout.tsx", [
     // Home dashboard for logged-in users
     ...homeRoutes,
+
+    // Pica AuthKit token endpoint (protected)
+    route("api/authkit/token", "./routes/api.authkit.token.tsx"),
+
+    // Calendar integration routes (protected, need user context)
+    route("api/calendar/connect", "./routes/api.calendar.connect.tsx"),
+    route(
+      "api/calendar/save-connection",
+      "./routes/api.calendar.save-connection.tsx",
+    ),
+    route("api/calendar/disconnect", "./routes/api.calendar.disconnect.tsx"),
+    route("api/calendar/sync", "./routes/api.calendar.sync.tsx"),
+
     ...teamsRoutes,
     ...docsRoutes,
 
@@ -76,6 +89,8 @@ const routes = [
       route("home", "./features/home/pages/index.tsx"),
       route("settings", "./features/accounts/pages/settings.tsx"),
       route("billing", "./features/billing/pages/index.tsx"),
+      // Post-upgrade welcome page
+      route("welcome-upgrade", "./routes/welcome-upgrade.tsx"),
       // Projects under account - REMOVED duplicate layout
       ...projectsRoutes,
       // DEPRECATED: research-links routes removed - functionality integrated into projects
@@ -379,6 +394,9 @@ const routes = [
   route("api/billing/checkout", "./routes/api.billing.checkout.tsx"),
   route("api/billing/portal", "./routes/api.billing.portal.tsx"),
   route("api/webhooks/polar", "./routes/api.webhooks.polar.tsx"),
+
+  // Calendar OAuth callback (public - redirected from Google OAuth)
+  route("api/calendar/callback", "./routes/api.calendar.callback.tsx"),
 
   // Resource routes
   route("/link", "./routes/link.tsx"),

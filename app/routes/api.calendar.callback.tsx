@@ -19,31 +19,46 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const stateParam = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
+  // Helper to build settings redirect with optional accountId
+  const settingsRedirect = (accountId: string | null, errorCode: string) => {
+    if (accountId) {
+      return redirect(`/a/${accountId}/settings?calendar_error=${errorCode}`);
+    }
+    return redirect(`/home?calendar_error=${errorCode}`);
+  };
+
+  // Try to parse state early to get accountId for error redirects
+  let parsedState: { user_id?: string; account_id?: string } | null = null;
+  if (stateParam) {
+    try {
+      parsedState = JSON.parse(stateParam);
+    } catch {
+      // Will handle below
+    }
+  }
+  const accountIdFromState = parsedState?.account_id || null;
+
   // Handle OAuth errors
   if (error) {
     consola.error("[calendar] OAuth error:", error);
-    return redirect("/settings?calendar_error=oauth_denied");
+    return settingsRedirect(accountIdFromState, "oauth_denied");
   }
 
   if (!code || !stateParam) {
     consola.error("[calendar] Missing code or state");
-    return redirect("/settings?calendar_error=invalid_callback");
+    return settingsRedirect(accountIdFromState, "invalid_callback");
   }
 
-  // Parse state to get user and account IDs
-  let state: { user_id: string; account_id: string };
-  try {
-    state = JSON.parse(stateParam);
-  } catch {
+  if (!parsedState) {
     consola.error("[calendar] Invalid state param");
-    return redirect("/settings?calendar_error=invalid_state");
+    return settingsRedirect(null, "invalid_state");
   }
 
-  const { user_id: userId, account_id: accountId } = state;
+  const { user_id: userId, account_id: accountId } = parsedState;
 
   if (!userId || !accountId) {
     consola.error("[calendar] Missing user_id or account_id in state");
-    return redirect("/settings?calendar_error=invalid_state");
+    return settingsRedirect(accountIdFromState, "invalid_state");
   }
 
   // Build redirect URI (must match what was used in authorization)

@@ -5,7 +5,7 @@
  * Redirects user to Google Calendar OAuth authorization
  */
 
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
 import { hasFeature } from "~/config/plans";
 import {
@@ -13,6 +13,14 @@ import {
   isPicaConfigured,
 } from "~/lib/integrations/pica.server";
 import { userContext } from "~/server/user-context";
+
+/**
+ * GET requests should redirect - this endpoint requires POST with accountId
+ */
+export async function loader({ request }: LoaderFunctionArgs) {
+  // Redirect GET requests back to home - this is a POST-only endpoint
+  return redirect("/home");
+}
 
 export async function action({ context, request }: ActionFunctionArgs) {
   const ctx = context.get(userContext);
@@ -51,7 +59,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
   if (!hasFeature(planId, "calendar_sync")) {
     return Response.json(
-      { error: "Calendar sync requires Pro plan or higher" },
+      { error: "Calendar sync requires a paid plan" },
       { status: 403 },
     );
   }

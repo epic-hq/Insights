@@ -13,9 +13,14 @@ CREATE TABLE IF NOT EXISTS public.calendar_connections (
     provider_email TEXT, -- Email associated with the calendar
 
     -- OAuth tokens (encrypted at rest by Supabase)
-    access_token TEXT NOT NULL,
+    -- Nullable because Pica manages tokens when using AuthKit
+    access_token TEXT,
     refresh_token TEXT,
     token_expires_at TIMESTAMPTZ,
+
+    -- Pica AuthKit connection (alternative to direct OAuth)
+    pica_connection_id TEXT,
+    pica_connection_key TEXT,
 
     -- Sync settings
     calendar_id TEXT DEFAULT 'primary', -- Which calendar to sync (default = primary)

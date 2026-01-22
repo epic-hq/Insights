@@ -54,19 +54,19 @@ importers:
         version: 1.0.6(@hono/node-server@1.19.5(hono@4.9.9))(hono@4.9.9)
       '@livekit/agents':
         specifier: latest
-        version: 1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76)
+        version: 1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76)
       '@livekit/agents-plugin-deepgram':
         specifier: latest
-        version: 1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)
+        version: 1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)
       '@livekit/agents-plugin-livekit':
         specifier: latest
-        version: 1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))
+        version: 1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))
       '@livekit/agents-plugin-openai':
         specifier: latest
-        version: 1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)(zod@3.25.76)
+        version: 1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)(zod@3.25.76)
       '@livekit/agents-plugin-silero':
         specifier: latest
-        version: 1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)
+        version: 1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)
       '@livekit/components-react':
         specifier: latest
         version: 2.9.19(livekit-client@2.17.0(@types/dom-mediacapture-record@1.0.22))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tslib@2.8.1)
@@ -100,6 +100,12 @@ importers:
       '@paper-design/shaders-react':
         specifier: 0.0.55
         version: 0.0.55(@types/react@19.2.7)(react@19.2.3)
+      '@picahq/authkit':
+        specifier: 1.0.5
+        version: 1.0.5
+      '@picahq/authkit-token':
+        specifier: 1.0.4
+        version: 1.0.4
       '@polar-sh/hono':
         specifier: 0.5.3
         version: 0.5.3(hono@4.9.9)
@@ -2373,31 +2379,31 @@ packages:
     peerDependencies:
       '@inquirer/prompts': '>= 3 < 8'
 
-  '@livekit/agents-plugin-deepgram@1.0.36':
-    resolution: {integrity: sha512-63SjeBGFxUq5D3MehPuemeI4AN5JcvxhOvqJWRa8/9dMDWf3Cx25xZjsHml9cFIdv/D/1ahYnupOsrNwp1I/dg==}
+  '@livekit/agents-plugin-deepgram@1.0.37':
+    resolution: {integrity: sha512-Bposvlj+iUpZHvfnhICjFqmBOh1XHtujIRUfcUJ4PrKuQVjx0lwzzIdJTTp4niH8nff5dCp+oDu/VsGunkdFHg==}
     peerDependencies:
-      '@livekit/agents': 1.0.36
+      '@livekit/agents': 1.0.37
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents-plugin-livekit@1.0.36':
-    resolution: {integrity: sha512-S5gNyhNksNHVOct+ANiHZp8YIJYeWNgkqEWpIK1puPIMGoDUs3+PXkdf3NOE47gIw0tStlC2G5lydxSdG5nlBQ==}
+  '@livekit/agents-plugin-livekit@1.0.37':
+    resolution: {integrity: sha512-l0baJJiknqSZouI6XqXx24AGKkZ2ZpAhGSweV36vWtjXiAKb71ei6sfwXaTk9PB+rW4vbpQzUL4Y9jBXFcEyWw==}
     peerDependencies:
-      '@livekit/agents': 1.0.36
+      '@livekit/agents': 1.0.37
 
-  '@livekit/agents-plugin-openai@1.0.36':
-    resolution: {integrity: sha512-mIZMyHeH7pzuoRMt28ao+D6y9MwDLlqnsU+HtaQNjyX4BSG+IVhr+rQZUoD4lfOcqvI4e/h9SusxPGiroVyOIw==}
+  '@livekit/agents-plugin-openai@1.0.37':
+    resolution: {integrity: sha512-G0fe8Z9uUyIcepGTcO9mgp43rnImpIn4l+e1W0TWlyIUxNwyU9i6Hco+aupx5ZAdRa0qj0dxX9lRaeJRBUIZjg==}
     peerDependencies:
-      '@livekit/agents': 1.0.36
+      '@livekit/agents': 1.0.37
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents-plugin-silero@1.0.36':
-    resolution: {integrity: sha512-3i7WnJMAjgn7kuqcxApPOkcX8APsK8TqYYa8PB/8kQe0dU7Wobjx6Q3a5xmnW3l1j87ZXeLCNHhMKvTIEmZ/KQ==}
+  '@livekit/agents-plugin-silero@1.0.37':
+    resolution: {integrity: sha512-fRqOxzJLVJTQsB+8wkqRDK139McRYNNsab7JdX6qR53BfgODKtLXRW3giD6y0totNevVNB+uYR8r3dwOWjbX6A==}
     peerDependencies:
-      '@livekit/agents': 1.0.36
+      '@livekit/agents': 1.0.37
       '@livekit/rtc-node': ^0.13.24
 
-  '@livekit/agents@1.0.36':
-    resolution: {integrity: sha512-A14T/mcU9kFrB6vZmknzpsN1tKIjUAw/RzYmRYbhiRDfAE+LqJQb+tL2tGEAYtiDklxj24Os2iuCObIcxdfLbg==}
+  '@livekit/agents@1.0.37':
+    resolution: {integrity: sha512-xQ8+k6KV+G0G4xRu1/KxnXJLRC7IcZB9CUt790zCFIUXDhdgC+c46bNJsiqnjABZNeA0/RWvTfcpOpYwps2Oxg==}
     peerDependencies:
       '@livekit/rtc-node': ^0.13.24
       zod: ^3.25.76 || ^4.1.8
@@ -3045,6 +3051,12 @@ packages:
 
   '@paper-design/shaders@0.0.55':
     resolution: {integrity: sha512-9Qrt54v4bOvPsfC2o8s4dBDZJfhIsX3lCfsu/CkySbvLSTqV3x+POO51x5sEd4AFUj8DwhkF/Ai+z4hl4HGtQw==}
+
+  '@picahq/authkit-token@1.0.4':
+    resolution: {integrity: sha512-UBy/gu2w6EZtVbkZboRvGj7DABzDY2Ohu1tKdRzzOuHRpdxyB/FZc4/T2NsKC+RI8cjLa70Ox2/J1u/aovfumQ==}
+
+  '@picahq/authkit@1.0.5':
+    resolution: {integrity: sha512-2GOiAgmOU9Guud+mki6bKiKVoEdPvbWtjfPdBsTZhoN31O5Kfw0P8WF+FdQ4a5GT6Fgcz1CisdZjG5cBPQmiWg==}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -5210,6 +5222,9 @@ packages:
   '@types/qs@6.14.0':
     resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
 
+  '@types/ramda@0.28.25':
+    resolution: {integrity: sha512-HrQNqQAGcITpn9HAJFamDxm7iZeeXiP/95pN5OMbNniDjzCCeOHbBKNGmUy8NRi0fhYS+/cXeo91MFC+06gbow==}
+
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
 
@@ -5890,6 +5905,9 @@ packages:
 
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
+
+  buffer-equal-constant-time@1.0.1:
+    resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
 
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
@@ -6902,6 +6920,9 @@ packages:
 
   easymde@2.20.0:
     resolution: {integrity: sha512-V1Z5f92TfR42Na852OWnIZMbM7zotWQYTddNaLYZFVKj7APBbyZ3FYJ27gBw2grMW3R6Qdv9J8n5Ij7XRSIgXQ==}
+
+  ecdsa-sig-formatter@1.0.11:
+    resolution: {integrity: sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ==}
 
   eciesjs@0.4.16:
     resolution: {integrity: sha512-dS5cbA9rA2VR4Ybuvhg6jvdmp46ubLn3E+px8cG/35aEDNclrqoCjg6mt0HYZ/M+OoESS3jSkCrqk1kWAEhWAw==}
@@ -8455,9 +8476,22 @@ packages:
     resolution: {integrity: sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==}
     engines: {node: '>=0.10.0'}
 
+  jsonwebtoken@9.0.3:
+    resolution: {integrity: sha512-MT/xP0CrubFRNLNKvxJ2BYfy53Zkm++5bX9dtuPbqAeQpTVe0MQTFhao8+Cp//EmJp244xt6Drw/GVEGCUj40g==}
+    engines: {node: '>=12', npm: '>=6'}
+
   junk@3.1.0:
     resolution: {integrity: sha512-pBxcB3LFc8QVgdggvZWyeys+hnrNWg4OcZIU/1X59k5jQdLBlCsYGRQaz234SqoRLTCgMH00fY0xRJH+F9METQ==}
     engines: {node: '>=8'}
+
+  jwa@2.0.1:
+    resolution: {integrity: sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==}
+
+  jws@4.0.1:
+    resolution: {integrity: sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA==}
+
+  jwt-decode@3.1.2:
+    resolution: {integrity: sha512-UfpWE/VZn0iP50d8cz9NrZLM9lSWhcJ+0Gt/nm4by88UL+J1SiKN8/5dkjMmbEzwL2CAe+67GsegCbIKtbp75A==}
 
   katex@0.16.27:
     resolution: {integrity: sha512-aeQoDkuRWSqQN6nSvVCEFvfXdqo1OQiCmmW1kc9xSdjutPv7BGO7pqY9sQRJpMOGrEdfDgF2TfRXe5eUAD2Waw==}
@@ -8705,6 +8739,33 @@ packages:
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
     deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
+
+  lodash.includes@4.3.0:
+    resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
+
+  lodash.isboolean@3.0.3:
+    resolution: {integrity: sha512-Bz5mupy2SVbPHURB98VAcw+aHh4vRV5IPNhILUCsOzRmsTmSQ17jIuqopAentWoehktxGd9e/hbIXq980/1QJg==}
+
+  lodash.isinteger@4.0.4:
+    resolution: {integrity: sha512-DBwtEWN2caHQ9/imiNeEA5ys1JoRtRfY3d7V9wkqtbycnAmTvRRmbHKDV4a0EYc678/dia0jrte4tjYwVBaZUA==}
+
+  lodash.ismatch@4.4.0:
+    resolution: {integrity: sha512-fPMfXjGQEV9Xsq/8MTSgUf255gawYRbjwMyDbcvDhXgV7enSZA0hynz6vMPnpAb5iONEzBHBPsT+0zes5Z301g==}
+
+  lodash.isnumber@3.0.3:
+    resolution: {integrity: sha512-QYqzpfwO3/CWf3XP+Z+tkQsfaLL/EnUlXWVkIk5FUPc4sBdTehEqZONuyRt2P67PXAk+NXmTBcc97zw9t1FQrw==}
+
+  lodash.isplainobject@4.0.6:
+    resolution: {integrity: sha512-oSXzaWypCMHkPC3NvBEaPHf0KsA5mvPrOPgQWDsbg8n7orZ290M0BmC/jgRZ4vcJ6DTAhjrsSYgdsW/F+MFOBA==}
+
+  lodash.isstring@4.0.1:
+    resolution: {integrity: sha512-0wJxfxH1wgO3GrbuP+dTTk7op+6L41QCXbGINEmD+ny/G/eCqGzxyCsh7159S+mgDDcoarnBw6PC1PS5+wUGgw==}
+
+  lodash.memoize@4.1.2:
+    resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==}
+
+  lodash.once@4.1.1:
+    resolution: {integrity: sha512-Sb487aTOCr9drQVL8pIxOzVhafOjZN9UU54hiN8PU3uAiSV7lx1yYNpbNmex2PK6dSJoNTSJUUswT651yww3Mg==}
 
   lodash@4.17.21:
     resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
@@ -10213,6 +10274,9 @@ packages:
   raf-schd@4.0.3:
     resolution: {integrity: sha512-tQkJl2GRWh83ui2DiPTJz9wEiMN20syf+5oKfB03yYP7ioZcJwsIK8FjrtLwH1m7C7e+Tt2yYBlrOpdT+dyeIQ==}
 
+  ramda@0.28.0:
+    resolution: {integrity: sha512-9QnLuG/kPVgWvMQ4aODhsBUFKOUmnbUnsSXACv+NCQZcHbeb+v8Lodp8OVxtRULN1/xOyYLLaL6npE6dMq5QTA==}
+
   random-path@0.1.2:
     resolution: {integrity: sha512-4jY0yoEaQ5v9StCl5kZbNIQlg1QheIDBrdkDn53EynpPb9FgO6//p3X/tgMnrC45XN6QZCzU1Xz/+pSSsJBpRw==}
 
@@ -11588,6 +11652,9 @@ packages:
   ts-dedent@2.2.0:
     resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==}
     engines: {node: '>=6.10'}
+
+  ts-toolbelt@6.15.5:
+    resolution: {integrity: sha512-FZIXf1ksVyLcfr7M317jbB67XFJhOO1YqdTcuGaq9q5jLUoTikukZ+98TPjKiP2jC5CgmYdWWYs0s2nLSU0/1A==}
 
   tsafe@1.8.12:
     resolution: {integrity: sha512-nFRqW0ttu/2o6XTXsHiVZWJBCOaxhVqZLg7dgs3coZNsCMPXPfwz+zPHAQA+70fNnVJLAPg1EgGIqK9Q84tvAw==}
@@ -14910,25 +14977,25 @@ snapshots:
       '@inquirer/prompts': 6.0.1
       '@inquirer/type': 1.5.5
 
-  '@livekit/agents-plugin-deepgram@1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)':
+  '@livekit/agents-plugin-deepgram@1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)':
     dependencies:
-      '@livekit/agents': 1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76)
+      '@livekit/agents': 1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76)
       '@livekit/rtc-node': 0.13.22
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@livekit/agents-plugin-livekit@1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))':
+  '@livekit/agents-plugin-livekit@1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))':
     dependencies:
       '@huggingface/hub': 2.4.1
       '@huggingface/transformers': 3.7.2
-      '@livekit/agents': 1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76)
+      '@livekit/agents': 1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76)
       onnxruntime-node: 1.21.0
 
-  '@livekit/agents-plugin-openai@1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)(zod@3.25.76)':
+  '@livekit/agents-plugin-openai@1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)(zod@3.25.76)':
     dependencies:
-      '@livekit/agents': 1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76)
+      '@livekit/agents': 1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76)
       '@livekit/mutex': 1.1.1
       '@livekit/rtc-node': 0.13.22
       openai: 6.10.0(ws@8.18.3)(zod@3.25.76)
@@ -14938,9 +15005,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@livekit/agents-plugin-silero@1.0.36(@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)':
+  '@livekit/agents-plugin-silero@1.0.37(@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76))(@livekit/rtc-node@0.13.22)':
     dependencies:
-      '@livekit/agents': 1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76)
+      '@livekit/agents': 1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76)
       '@livekit/rtc-node': 0.13.22
       onnxruntime-node: 1.21.0
       ws: 8.18.3
@@ -14948,7 +15015,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@livekit/agents@1.0.36(@livekit/rtc-node@0.13.22)(zod@3.25.76)':
+  '@livekit/agents@1.0.37(@livekit/rtc-node@0.13.22)(zod@3.25.76)':
     dependencies:
       '@ffmpeg-installer/ffmpeg': 1.1.0
       '@livekit/mutex': 1.1.1
@@ -15760,6 +15827,21 @@ snapshots:
       '@types/react': 19.2.7
 
   '@paper-design/shaders@0.0.55': {}
+
+  '@picahq/authkit-token@1.0.4':
+    dependencies:
+      '@types/ramda': 0.28.25
+      axios: 1.13.2
+      jsonwebtoken: 9.0.3
+      jwt-decode: 3.1.2
+      lodash.ismatch: 4.4.0
+      lodash.memoize: 4.1.2
+      ramda: 0.28.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - debug
+
+  '@picahq/authkit@1.0.5': {}
 
   '@pinojs/redact@0.4.0': {}
 
@@ -18128,6 +18210,10 @@ snapshots:
 
   '@types/qs@6.14.0': {}
 
+  '@types/ramda@0.28.25':
+    dependencies:
+      ts-toolbelt: 6.15.5
+
   '@types/range-parser@1.2.7': {}
 
   '@types/react-dom@18.3.7(@types/react@19.2.7)':
@@ -18969,6 +19055,8 @@ snapshots:
       update-browserslist-db: 1.2.2(browserslist@4.28.1)
 
   buffer-crc32@0.2.13: {}
+
+  buffer-equal-constant-time@1.0.1: {}
 
   buffer-from@1.1.2: {}
 
@@ -20037,6 +20125,10 @@ snapshots:
       codemirror: 5.65.20
       codemirror-spell-checker: 1.1.2
       marked: 4.3.0
+
+  ecdsa-sig-formatter@1.0.11:
+    dependencies:
+      safe-buffer: 5.2.1
 
   eciesjs@0.4.16:
     dependencies:
@@ -21885,7 +21977,33 @@ snapshots:
   jsonpointer@5.0.1:
     optional: true
 
+  jsonwebtoken@9.0.3:
+    dependencies:
+      jws: 4.0.1
+      lodash.includes: 4.3.0
+      lodash.isboolean: 3.0.3
+      lodash.isinteger: 4.0.4
+      lodash.isnumber: 3.0.3
+      lodash.isplainobject: 4.0.6
+      lodash.isstring: 4.0.1
+      lodash.once: 4.1.1
+      ms: 2.1.3
+      semver: 7.7.3
+
   junk@3.1.0: {}
+
+  jwa@2.0.1:
+    dependencies:
+      buffer-equal-constant-time: 1.0.1
+      ecdsa-sig-formatter: 1.0.11
+      safe-buffer: 5.2.1
+
+  jws@4.0.1:
+    dependencies:
+      jwa: 2.0.1
+      safe-buffer: 5.2.1
+
+  jwt-decode@3.1.2: {}
 
   katex@0.16.27:
     dependencies:
@@ -22145,6 +22263,24 @@ snapshots:
   lodash.debounce@4.0.8: {}
 
   lodash.get@4.4.2: {}
+
+  lodash.includes@4.3.0: {}
+
+  lodash.isboolean@3.0.3: {}
+
+  lodash.isinteger@4.0.4: {}
+
+  lodash.ismatch@4.4.0: {}
+
+  lodash.isnumber@3.0.3: {}
+
+  lodash.isplainobject@4.0.6: {}
+
+  lodash.isstring@4.0.1: {}
+
+  lodash.memoize@4.1.2: {}
+
+  lodash.once@4.1.1: {}
 
   lodash@4.17.21: {}
 
@@ -23933,6 +24069,8 @@ snapshots:
   radash@12.1.1: {}
 
   raf-schd@4.0.3: {}
+
+  ramda@0.28.0: {}
 
   random-path@0.1.2:
     dependencies:
@@ -25766,6 +25904,8 @@ snapshots:
   ts-debounce@4.0.0: {}
 
   ts-dedent@2.2.0: {}
+
+  ts-toolbelt@6.15.5: {}
 
   tsafe@1.8.12: {}
 
