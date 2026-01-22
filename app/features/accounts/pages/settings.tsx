@@ -20,6 +20,7 @@ import {
   useSearchParams,
 } from "react-router";
 import { toast } from "sonner";
+import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -75,6 +76,7 @@ interface CompanyContext {
 
 type LoaderData = {
   accountId: string;
+  userId: string;
   accountName: string | null;
   metadata: AccountSettingsMetadata;
   companyContext: CompanyContext;
@@ -288,6 +290,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
   return {
     accountId,
+    userId: userId ?? "",
     accountName: account?.name ?? null,
     metadata,
     companyContext,
@@ -722,10 +725,12 @@ function CompanyContextSection({
  */
 function CalendarIntegrationSection({
   accountId,
+  userId,
   connection,
   hasFeature,
 }: {
   accountId: string;
+  userId: string;
   connection: LoaderData["calendarConnection"];
   hasFeature: boolean;
 }) {
@@ -824,20 +829,27 @@ function CalendarIntegrationSection({
               </Button>
             </div>
           ) : (
-            <form action="/api/calendar/connect" method="POST">
-              <input type="hidden" name="accountId" value={accountId} />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm">Connect Google Calendar</p>
-                  <p className="text-muted-foreground text-xs">
-                    We&apos;ll only read your calendar events (not modify them).
-                  </p>
-                </div>
-                <Button type="submit" size="sm">
-                  Connect Calendar
-                </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Connect Google Calendar</p>
+                <p className="text-muted-foreground text-xs">
+                  We&apos;ll only read your calendar events (not modify them).
+                </p>
               </div>
-            </form>
+              <PicaConnectButton
+                userId={userId}
+                accountId={accountId}
+                platform="google-calendar"
+                onSuccess={() => {
+                  toast.success("Google Calendar connected");
+                  window.location.reload();
+                }}
+                onError={(err) => toast.error(err)}
+                size="sm"
+              >
+                Connect Calendar
+              </PicaConnectButton>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1080,6 +1092,7 @@ function EditableList({
 export default function AccountSettingsPage() {
   const {
     accountId,
+    userId,
     accountName,
     metadata,
     companyContext,
@@ -1515,6 +1528,7 @@ export default function AccountSettingsPage() {
         {/* Calendar Integration - Pro feature */}
         <CalendarIntegrationSection
           accountId={accountId}
+          userId={userId}
           connection={calendarConnection}
           hasFeature={hasCalendarFeature}
         />
