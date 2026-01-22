@@ -140,7 +140,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       smart_personas: true,
       ai_crm: true,
       white_label: true,
-      calendar_sync: false,
+      calendar_sync: true,
     },
     cta: {
       label: "Get Started",
