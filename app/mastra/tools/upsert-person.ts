@@ -123,7 +123,7 @@ async function upsertPersonOrganizationLink(
 export const upsertPersonTool = createTool({
 	id: "upsert-person",
 	description:
-		"Create or update a person's basic information including contact details (email, phone), demographics, and title. If company is provided, this tool will ensure an organization record exists and link the person to it.",
+		"Create or update a person's basic information including contact details (email, phone), demographics, and title. If company is provided, this tool will ensure an organization record exists and link the person to it. Use this to add contacts you meet at events or networking.",
 	inputSchema: z.object({
 		personId: z.string().nullish().describe("Person ID if updating an existing person"),
 		name: z.string().nullish().describe("Full name of the person"),
@@ -141,6 +141,8 @@ export const upsertPersonTool = createTool({
 		timezone: z.string().nullish().describe("Timezone"),
 		pronouns: z.string().nullish().describe("Preferred pronouns"),
 		lifecycleStage: z.string().nullish().describe("Lifecycle stage (e.g., lead, customer, etc.)"),
+		whereMet: z.string().nullish().describe("Where you met this person (e.g., 'North County Mixer', 'TechCrunch Disrupt')"),
+		whenMet: z.string().nullish().describe("When you met this person (ISO date string or natural language date)"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -161,7 +163,6 @@ export const upsertPersonTool = createTool({
 		const runtimeProjectId = context?.requestContext?.get?.("project_id")
 		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
-		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const {
 			personId,
 			name,
@@ -179,7 +180,9 @@ export const upsertPersonTool = createTool({
 			timezone,
 			pronouns,
 			lifecycleStage,
-		} = (input as any) || {}
+			whereMet,
+			whenMet,
+		} = input || {}
 
 		const projectId = (runtimeProjectId as string) || null
 		const accountId = (runtimeAccountId as string) || null
@@ -225,6 +228,18 @@ export const upsertPersonTool = createTool({
 			if (timezone !== undefined) updateData.timezone = timezone
 			if (pronouns !== undefined) updateData.pronouns = pronouns
 			if (lifecycleStage !== undefined) updateData.lifecycle_stage = lifecycleStage
+			if (whereMet !== undefined) updateData.where_met = whereMet
+			if (whenMet !== undefined) {
+				// Try to parse the date - accept ISO strings or natural language
+				try {
+					const parsedDate = new Date(whenMet)
+					if (!Number.isNaN(parsedDate.getTime())) {
+						updateData.when_met = parsedDate.toISOString()
+					}
+				} catch {
+					consola.warn("upsert-person: failed to parse whenMet date", whenMet)
+				}
+			}
 
 			if (Object.keys(updateData).length === 0 && !personId) {
 				return {
@@ -273,18 +288,26 @@ export const upsertPersonTool = createTool({
 					}
 				}
 
+				// Use upsert to handle duplicates gracefully
+				// The unique constraint is on (account_id, name_hash, company, primary_email)
 				const { data, error } = await supabase
 					.from("people")
-					.insert({
-						...updateData,
-						account_id: accountId,
-						project_id: projectId,
-					})
+					.upsert(
+						{
+							...updateData,
+							account_id: accountId,
+							project_id: projectId,
+						},
+						{
+							onConflict: "account_id,name_hash,COALESCE(lower(company), ''),COALESCE(lower(primary_email), '')",
+							ignoredDuplicates: false,
+						}
+					)
 					.select("id, name, title, company, primary_email, primary_phone")
 					.single()
 
 				if (error) {
-					consola.error("upsert-person: error creating person", error)
+					consola.error("upsert-person: error creating/updating person", error)
 					throw error
 				}
 
