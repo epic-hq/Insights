@@ -19,6 +19,7 @@ create table if not exists public.research_links (
     allow_voice boolean not null default false,
     allow_video boolean not null default false,
     walkthrough_video_url text,
+    walkthrough_thumbnail_url text,
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
     is_live boolean not null default false,
     statistics jsonb default null,

@@ -5,7 +5,7 @@
  * Supports multiple layout options and customization.
  */
 import { Check, Code2, Copy, ExternalLink, Eye, Laptop, Smartphone } from "lucide-react"
-import { useCallback, useId, useMemo, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
@@ -35,6 +35,7 @@ interface EmbedCodeGeneratorProps {
 	heroTitle?: string | null
 	heroCtaLabel?: string | null
 	walkthroughVideoUrl?: string | null
+	walkthroughThumbnailUrl?: string | null
 }
 
 const LAYOUT_OPTIONS: {
@@ -116,7 +117,13 @@ const USE_CASE_PRESETS: { label: string; config: Partial<EmbedConfig> }[] = [
 	},
 ]
 
-export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel, walkthroughVideoUrl }: EmbedCodeGeneratorProps) {
+export function EmbedCodeGenerator({
+	slug,
+	heroTitle,
+	heroCtaLabel,
+	walkthroughVideoUrl,
+	walkthroughThumbnailUrl,
+}: EmbedCodeGeneratorProps) {
 	const previewId = useId()
 	const [copiedHtml, setCopiedHtml] = useState(false)
 	const [copiedScript, setCopiedScript] = useState(false)
@@ -134,8 +141,20 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel, walkthroughV
 		buttonText: heroCtaLabel || "Get Started",
 		placeholder: "you@company.com",
 		successMessage: "Thanks for signing up!",
-		emailPreviewImageUrl: "",
+		emailPreviewImageUrl: walkthroughThumbnailUrl ?? "",
 	})
+
+	useEffect(() => {
+		if (!walkthroughThumbnailUrl) return
+		setConfig((prev) =>
+			prev.emailPreviewImageUrl
+				? prev
+				: {
+						...prev,
+						emailPreviewImageUrl: walkthroughThumbnailUrl,
+					}
+		)
+	}, [walkthroughThumbnailUrl])
 
 	// Generate the embed URL
   const embedUrl = useMemo(() => {

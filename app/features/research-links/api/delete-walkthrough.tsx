@@ -33,7 +33,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		// Fetch the research link to get the video URL
 		const { data: link, error: linkError } = await supabase
 			.from("research_links")
-			.select("id, walkthrough_video_url")
+			.select("id, walkthrough_video_url, walkthrough_thumbnail_url")
 			.eq("id", listId)
 			.maybeSingle()
 
@@ -62,10 +62,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			}
 		}
 
+		if (link.walkthrough_thumbnail_url) {
+			const deleteResult = await deleteFromR2(link.walkthrough_thumbnail_url)
+			if (!deleteResult.success) {
+				consola.warn("Failed to delete walkthrough thumbnail from R2, continuing anyway", {
+					key: link.walkthrough_thumbnail_url,
+					error: deleteResult.error,
+				})
+			}
+		}
+
 		// Clear the walkthrough video URL in the database
 		const { error: updateError } = await supabase
 			.from("research_links")
-			.update({ walkthrough_video_url: null })
+			.update({ walkthrough_video_url: null, walkthrough_thumbnail_url: null })
 			.eq("id", listId)
 
 		if (updateError) {

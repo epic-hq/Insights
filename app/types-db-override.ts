@@ -30,6 +30,8 @@ export type Database = MergeDeep<
 						hero_cta_helper: string | null
 						redirect_url: string | null
 						calendar_url: string | null
+						walkthrough_video_url: string | null
+						walkthrough_thumbnail_url: string | null
 						questions: Json
 						allow_chat: boolean
 						default_response_mode: "form" | "chat"
@@ -50,6 +52,8 @@ export type Database = MergeDeep<
 						hero_cta_helper?: string | null
 						redirect_url?: string | null
 						calendar_url?: string | null
+						walkthrough_video_url?: string | null
+						walkthrough_thumbnail_url?: string | null
 						questions?: Json
 						allow_chat?: boolean
 						default_response_mode?: "form" | "chat"
@@ -70,6 +74,8 @@ export type Database = MergeDeep<
 						hero_cta_helper?: string | null
 						redirect_url?: string | null
 						calendar_url?: string | null
+						walkthrough_video_url?: string | null
+						walkthrough_thumbnail_url?: string | null
 						questions?: Json
 						allow_chat?: boolean
 						default_response_mode?: "form" | "chat"

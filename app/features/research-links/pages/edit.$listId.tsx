@@ -51,8 +51,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 	}
 	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(data.questions)
 
-	// Generate signed URL for walkthrough video if it exists
+	// Generate signed URLs for walkthrough video + thumbnail if they exist
 	let walkthroughSignedUrl: string | null = null
+	let walkthroughThumbnailUrl: string | null = null
 	if (data.walkthrough_video_url) {
 		const key = data.walkthrough_video_url
 		const ext = key.split(".").pop()?.toLowerCase()
@@ -64,6 +65,16 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		})
 		walkthroughSignedUrl = presigned?.url ?? null
 	}
+	if (data.walkthrough_thumbnail_url) {
+		const presigned = createR2PresignedUrl({
+			key: data.walkthrough_thumbnail_url,
+			expiresInSeconds: 3600,
+			responseContentType: "image/jpeg",
+		})
+		const origin = new URL(request.url).origin
+		const publicUrl = data.is_live ? `${origin}/ask/${data.slug}/thumbnail` : null
+		walkthroughThumbnailUrl = publicUrl ?? presigned?.url ?? null
+	}
 
 	return {
 		accountId,
@@ -72,6 +83,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		list: data,
 		questions: questionsResult.success ? questionsResult.data : [],
 		walkthroughSignedUrl,
+		walkthroughThumbnailUrl,
 	}
 }
 
@@ -240,6 +252,7 @@ export default function EditResearchLinkPage() {
 		list,
 		questions: initialQuestions,
 		walkthroughSignedUrl: initialWalkthroughUrl,
+		walkthroughThumbnailUrl: initialWalkthroughThumbnailUrl,
 	} = useLoaderData<typeof loader>()
 	const actionData = useActionData<EditActionData>()
 	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
@@ -264,6 +277,9 @@ export default function EditResearchLinkPage() {
 	)
 	const [isLive, setIsLive] = useState(Boolean(list.is_live))
 	const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(initialWalkthroughUrl ?? null)
+	const [walkthroughThumbnailUrl, setWalkthroughThumbnailUrl] = useState<string | null>(
+		initialWalkthroughThumbnailUrl ?? null
+	)
 	const [copiedLink, setCopiedLink] = useState(false)
 	const [questions, setQuestions] = useState<ResearchLinkQuestion[]>(() => {
 		if (initialQuestions.length > 0) return initialQuestions
@@ -502,8 +518,14 @@ export default function EditResearchLinkPage() {
 							<WalkthroughRecorder
 								listId={list.id}
 								existingVideoUrl={walkthroughVideoUrl}
-								onUploadComplete={(url) => setWalkthroughVideoUrl(url)}
-								onDelete={() => setWalkthroughVideoUrl(null)}
+								onUploadComplete={(url) => {
+									setWalkthroughVideoUrl(url)
+									setWalkthroughThumbnailUrl(null)
+								}}
+								onDelete={() => {
+									setWalkthroughVideoUrl(null)
+									setWalkthroughThumbnailUrl(null)
+								}}
 							/>
 						</TabsContent>
 
@@ -647,6 +669,7 @@ export default function EditResearchLinkPage() {
 								heroTitle={heroTitle}
 								heroCtaLabel={heroCtaLabel}
 								walkthroughVideoUrl={walkthroughVideoUrl}
+								walkthroughThumbnailUrl={walkthroughThumbnailUrl}
 							/>
 						</TabsContent>
 					</Tabs>

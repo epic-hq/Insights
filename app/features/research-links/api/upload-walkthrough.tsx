@@ -2,8 +2,10 @@
  * API endpoint for uploading walkthrough videos to R2
  * POST /api/research-links/:listId/upload-walkthrough
  */
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import type { generateWalkthroughThumbnail } from "~/../../src/trigger/generate-walkthrough-thumbnail"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { createR2PresignedUrl, uploadToR2 } from "~/utils/r2.server"
 
@@ -107,7 +109,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		// Store the R2 key (not public URL) - signed URLs will be generated on access
 		const { error: updateError } = await supabase
 			.from("research_links")
-			.update({ walkthrough_video_url: key })
+			.update({ walkthrough_video_url: key, walkthrough_thumbnail_url: null })
 			.eq("id", listId)
 
 		if (updateError) {
@@ -119,6 +121,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			listId,
 			key,
 		})
+
+		try {
+			const handle = await tasks.trigger<typeof generateWalkthroughThumbnail>("generate-walkthrough-thumbnail", {
+				mediaKey: key,
+				linkId: listId,
+				accountId: link.account_id,
+			})
+
+			consola.info("Triggered walkthrough thumbnail generation", {
+				listId,
+				runId: handle.id,
+			})
+		} catch (thumbnailError) {
+			consola.warn("Failed to trigger walkthrough thumbnail generation", {
+				listId,
+				error: thumbnailError,
+			})
+		}
 
 		// Generate signed URL for immediate playback
 		const presigned = createR2PresignedUrl({

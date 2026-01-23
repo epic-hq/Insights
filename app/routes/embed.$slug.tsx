@@ -219,6 +219,7 @@ export default function EmbedPage() {
 
 	const isEmailValid = emailSchema.safeParse(email).success
 	const containerRef = useRef<HTMLDivElement>(null)
+	const containerWidthClass = "mx-auto w-full max-w-2xl"
 
 	// Communicate height to parent window for iframe resizing
 	useEffect(() => {
@@ -429,7 +430,7 @@ export default function EmbedPage() {
 	// Render inline email layout (waitlist style)
 	function renderInlineEmail() {
 		return (
-			<div ref={containerRef} className={cn("p-4", themeClasses.bg)} style={customStyles}>
+			<div ref={containerRef} className={cn("p-4", themeClasses.bg, containerWidthClass)} style={customStyles}>
 				<AnimatePresence mode="wait">
 					{stage === "initial" && (
 						<motion.form
@@ -547,7 +548,7 @@ export default function EmbedPage() {
 	// Render compact layout (minimal, single line)
 	function renderCompact() {
 		return (
-			<div ref={containerRef} className={cn("p-3", themeClasses.bg)} style={customStyles}>
+			<div ref={containerRef} className={cn("p-3", themeClasses.bg, containerWidthClass)} style={customStyles}>
 				<AnimatePresence mode="wait">
 					{stage === "initial" && (
 						<motion.form
@@ -599,7 +600,7 @@ export default function EmbedPage() {
 	// Render email-first layout (reveals more after email submission)
 	function renderEmailFirst() {
 		return (
-			<div ref={containerRef} className={cn("p-4", themeClasses.bg)} style={customStyles}>
+			<div ref={containerRef} className={cn("p-4", themeClasses.bg, containerWidthClass)} style={customStyles}>
 				<AnimatePresence mode="wait">
 					{stage === "initial" && (
 						<motion.form
@@ -746,7 +747,7 @@ export default function EmbedPage() {
 	// Render full inline layout
 	function renderInlineFull() {
 		return (
-			<div ref={containerRef} className={cn("p-4", themeClasses.bg)} style={customStyles}>
+			<div ref={containerRef} className={cn("p-4", themeClasses.bg, containerWidthClass)} style={customStyles}>
 				<AnimatePresence mode="wait">
 					{stage === "initial" && (
 						<motion.form
@@ -893,7 +894,7 @@ export default function EmbedPage() {
 	// Render video-first layout (video prominent, email below - best conversion)
 	function renderVideoFirst() {
 		return (
-			<div ref={containerRef} className={cn("p-4", themeClasses.bg)} style={customStyles}>
+			<div ref={containerRef} className={cn("p-4", themeClasses.bg, containerWidthClass)} style={customStyles}>
 				<AnimatePresence mode="wait">
 					{stage === "initial" && (
 						<motion.div

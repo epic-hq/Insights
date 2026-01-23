@@ -282,6 +282,7 @@ const routes = [
 	route("timeline", "./components/ui/timeline.tsx"),
 
 	// Public ask routes (shareable project prompts)
+	route("ask/:slug/thumbnail", "./routes/ask.$slug.thumbnail.tsx"),
 	route("ask/:slug", "./routes/research.$slug.tsx"), // Public URL for collecting responses
 	route("embed/:slug", "./routes/embed.$slug.tsx"), // Embeddable widget version
 ] satisfies RouteConfig
