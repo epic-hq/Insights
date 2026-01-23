@@ -1,12 +1,13 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { ChevronRight, Mic, Plus, Send, Square } from "lucide-react"
+import { ChevronRight, Mic, Paperclip, Plus, Send, Square } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate, useRevalidator } from "react-router"
 import { useStickToBottom } from "use-stick-to-bottom"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Suggestion, Suggestions } from "~/components/ai-elements/suggestion"
+import { FileUploadButton } from "~/components/chat/FileUploadButton"
 import { ProjectStatusVoiceChat } from "~/components/chat/ProjectStatusVoiceChat"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
@@ -616,6 +617,16 @@ export function ProjectStatusAgentChat({
 		[sendMessage]
 	)
 
+	// Handle file upload - sends CSV content to agent for parsing and import
+	const handleFileUpload = useCallback(
+		(content: string, fileName: string, fileType: string) => {
+			// Construct a message that tells the agent to parse and potentially import the data
+			const message = `I'm uploading a ${fileType.toUpperCase()} file named "${fileName}" with contact data. Please parse it and help me import the contacts:\n\n\`\`\`${fileType}\n${content}\n\`\`\``
+			sendMessage({ text: message })
+		},
+		[sendMessage]
+	)
+
 	// Clear chat and allow history to be re-applied if user navigates back
 	const handleClearChat = useCallback(() => {
 		setMessages([])
@@ -1066,6 +1077,7 @@ export function ProjectStatusAgentChat({
 										</span>
 									)}
 									<div className="flex items-center gap-2">
+										<FileUploadButton onFileContent={handleFileUpload} disabled={isBusy} />
 										{isVoiceEnabled && <ProjectStatusVoiceChat accountId={accountId} projectId={projectId} />}
 										{isBusy ? (
 											<button
