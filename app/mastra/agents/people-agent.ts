@@ -10,9 +10,9 @@ import { fetchPersonasTool } from "../tools/fetch-personas"
 import { managePeopleTool } from "../tools/manage-people"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 
 export const peopleAgent = new Agent({
 	id: "people-agent",

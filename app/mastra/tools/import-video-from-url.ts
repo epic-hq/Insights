@@ -114,10 +114,10 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 					availableAssets: options,
 					recommendedAsset: extractionResult.recommended
 						? {
-							type: extractionResult.recommended.type,
-							format: extractionResult.recommended.format,
-							url: extractionResult.recommended.url,
-						}
+								type: extractionResult.recommended.type,
+								format: extractionResult.recommended.format,
+								url: extractionResult.recommended.url,
+							}
 						: null,
 					interviewId: null,
 					triggerRunId: null,

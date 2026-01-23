@@ -6,12 +6,12 @@ import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
 import consola from "consola"
 import { openai } from "../../lib/billing/instrumented-openai.server"
+import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
 import { fetchTasksTool } from "../tools/manage-tasks"
 import { recommendNextActionsTool } from "../tools/recommend-next-actions"
 import { suggestionTool } from "../tools/suggestion-tool"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
 
 export const chiefOfStaffAgent = new Agent({
 	id: "chief-of-staff-agent",

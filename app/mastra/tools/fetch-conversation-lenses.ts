@@ -71,10 +71,7 @@ export const fetchConversationLensesTool = createTool({
 			.describe(
 				"What to fetch: 'templates' (available lens frameworks), 'analyses' (applied lens results), or 'both'. Default: 'both'"
 			),
-		projectId: z
-			.string()
-			.nullish()
-			.describe("Project ID to scope the search. Defaults to current project in context."),
+		projectId: z.string().nullish().describe("Project ID to scope the search. Defaults to current project in context."),
 		interviewId: z
 			.string()
 			.nullish()

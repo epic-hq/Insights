@@ -48,10 +48,7 @@ Question types:
 - "likert": Rating scale (use likertScale for size, likertLabels for endpoints)`,
 	inputSchema: z.object({
 		projectId: z.string().describe("Project ID - REQUIRED, get from context: project_id"),
-		surveyId: z
-			.string()
-			.nullish()
-			.describe("Survey ID - if provided, updates existing survey instead of creating new"),
+		surveyId: z.string().nullish().describe("Survey ID - if provided, updates existing survey instead of creating new"),
 		name: z.string().describe("Survey name/title"),
 		description: z.string().optional().nullable().describe("Brief description of the survey purpose"),
 		questions: z.array(QuestionInputSchema).min(1).describe("Array of questions to include"),

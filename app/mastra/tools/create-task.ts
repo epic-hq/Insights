@@ -56,17 +56,8 @@ export const createTaskTool = createTool({
 		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 		const runtimeUserId = context?.requestContext?.get?.("user_id")
 
-		const {
-			title,
-			description,
-			cluster,
-			status,
-			priority,
-			dueDate,
-			estimatedEffort,
-			tags,
-			relatedPersonIds,
-		} = input || {}
+		const { title, description, cluster, status, priority, dueDate, estimatedEffort, tags, relatedPersonIds } =
+			input || {}
 
 		const projectId = (runtimeProjectId as string) || null
 		const accountId = (runtimeAccountId as string) || null

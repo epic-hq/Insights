@@ -141,7 +141,10 @@ export const upsertPersonTool = createTool({
 		timezone: z.string().nullish().describe("Timezone"),
 		pronouns: z.string().nullish().describe("Preferred pronouns"),
 		lifecycleStage: z.string().nullish().describe("Lifecycle stage (e.g., lead, customer, etc.)"),
-		whereMet: z.string().nullish().describe("Where you met this person (e.g., 'North County Mixer', 'TechCrunch Disrupt')"),
+		whereMet: z
+			.string()
+			.nullish()
+			.describe("Where you met this person (e.g., 'North County Mixer', 'TechCrunch Disrupt')"),
 		whenMet: z.string().nullish().describe("When you met this person (ISO date string or natural language date)"),
 	}),
 	outputSchema: z.object({

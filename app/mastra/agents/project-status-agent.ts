@@ -54,8 +54,10 @@ function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
 
 			const input_schema = (tool as any).inputSchema
 			const output_schema = (tool as any).outputSchema
-			const input_is_zod = !!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function"
-			const output_is_zod = !!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function"
+			const input_is_zod =
+				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function"
+			const output_is_zod =
+				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function"
 
 			if (!has_input_schema || !input_is_zod) {
 				issues.push({
