@@ -184,13 +184,16 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel, walkthroughV
 <script src="https://getupsight.com/embed.js" async></script>`
   }, [slug, config])
 
-  const emailPreviewCode = useMemo(() => {
-    const imageBlock = emailPreviewImageUrl
-      ? `<tr>
+	const emailPreviewCode = useMemo(() => {
+		const emailPreviewPlaceholder = "IMAGE_URL_HERE"
+		const hasThumbnail = Boolean(emailPreviewImageUrl)
+		const emailPreviewImageSrc = hasThumbnail ? emailPreviewImageUrl : emailPreviewPlaceholder
+		const imageBlock = `<tr>
       <td align="center" style="padding: 0 24px 16px;">
         <a href="${publicUrl}" target="_blank" rel="noreferrer">
+          ${hasThumbnail ? "" : "<!-- Replace IMAGE_URL_HERE with a thumbnail or GIF of your video -->\n          "}
           <img
-            src="${emailPreviewImageUrl}"
+            src="${emailPreviewImageSrc}"
             width="600"
             alt="${emailPreviewHeadline}"
             style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;"
@@ -198,7 +201,6 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel, walkthroughV
         </a>
       </td>
     </tr>`
-			: ""
 
 		return `<!-- UpSight Email Preview -->
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -434,7 +436,8 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel, walkthroughV
 						className="h-9"
 					/>
 					<p className="text-muted-foreground text-xs">
-						Email clients can’t play video. Use a thumbnail or GIF that links to your survey.
+						Email clients can’t play video. Use a thumbnail or GIF that links to your survey. If you leave this
+						empty, the HTML uses a placeholder you should replace.
 					</p>
 				</div>
 
