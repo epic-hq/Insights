@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, Briefcase, CheckSquare, File, Glasses, Home, Link2, Settings, Sparkles, Users } from "lucide-react"
+import { BookOpen, Briefcase, CheckSquare, File, Glasses, Home, Link2, Sparkles, Users } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface AppSidebarNavItem {
@@ -88,13 +88,6 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 
 /** Footer / global utilities (Directory removed to avoid duplication) */
 export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
-	{
-		key: "project-context",
-		title: "Project Context",
-		description: "Research goals, target audience, and background.",
-		icon: Settings,
-		to: (routes) => routes.projects.setup(),
-	},
 	{
 		key: "docs",
 		title: "Docs",
