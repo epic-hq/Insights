@@ -998,6 +998,13 @@ export default function ManageTeamMembers() {
                 billing will be prorated automatically.
               </p>
             )}
+            <div className="mt-3">
+              <Button variant="outline" size="sm" asChild>
+                <a href={`/a/${account?.account_id}/billing`}>
+                  Manage Seats & Billing
+                </a>
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}

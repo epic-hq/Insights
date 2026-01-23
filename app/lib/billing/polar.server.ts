@@ -7,9 +7,27 @@
  * @see https://polar.sh/docs/integrate/sdk/adapters/hono
  */
 
+import { Polar } from "@polar-sh/sdk";
 import consola from "consola";
 import { PLANS, type PlanId } from "~/config/plans";
+import { getServerEnv } from "~/env.server";
 import { supabaseAdmin } from "~/lib/supabase/client.server";
+
+/**
+ * Get a configured Polar SDK client
+ */
+function getPolarClient() {
+  const env = getServerEnv();
+  const accessToken = env.POLAR_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error("POLAR_ACCESS_TOKEN not configured");
+  }
+  const server = env.APP_ENV === "production" ? "production" : "sandbox";
+  return new Polar({
+    accessToken,
+    server: server === "sandbox" ? "sandbox" : "production",
+  });
+}
 
 /**
  * Map Polar product IDs to internal plan IDs.
@@ -561,4 +579,159 @@ export async function provisionLegacyTrial(params: {
     planName: plan.name,
     trialEnd: trialEnd.toISOString(),
   };
+}
+
+/**
+ * Update subscription seat quantity via Polar API.
+ * Called when team membership changes (invite accepted, member removed).
+ *
+ * Only applies to subscriptions managed by Polar (not legacy trials).
+ *
+ * @returns Updated subscription info, or null if not applicable
+ */
+export async function updateSubscriptionQuantity(params: {
+  accountId: string;
+  newQuantity: number;
+}): Promise<{ success: boolean; quantity: number } | null> {
+  const { accountId, newQuantity } = params;
+
+  // Find the active Polar subscription for this account
+  const { data: subscription, error: subError } = await supabaseAdmin
+    .schema("accounts")
+    .from("billing_subscriptions")
+    .select("id, provider, quantity, plan_name")
+    .eq("account_id", accountId)
+    .eq("provider", "polar")
+    .in("status", ["active", "trialing"])
+    .maybeSingle();
+
+  if (subError) {
+    consola.error("[polar] Failed to fetch subscription for seat update", {
+      accountId,
+      error: subError,
+    });
+    throw subError;
+  }
+
+  if (!subscription) {
+    consola.debug("[polar] No Polar subscription found for seat update", {
+      accountId,
+    });
+    return null;
+  }
+
+  // Check if this is a per-user plan (Team plan)
+  const planId = Object.entries(POLAR_PRODUCT_MAP).find(
+    ([_, name]) => PLANS[name]?.name === subscription.plan_name,
+  )?.[1];
+
+  const plan = planId ? PLANS[planId] : null;
+  if (!plan?.perUser) {
+    consola.debug("[polar] Plan is not per-user, skipping seat update", {
+      accountId,
+      planName: subscription.plan_name,
+    });
+    return null;
+  }
+
+  // Don't update if quantity hasn't changed
+  if (subscription.quantity === newQuantity) {
+    consola.debug("[polar] Seat quantity unchanged", {
+      accountId,
+      quantity: newQuantity,
+    });
+    return { success: true, quantity: newQuantity };
+  }
+
+  consola.info("[polar] Updating subscription seat quantity", {
+    accountId,
+    subscriptionId: subscription.id,
+    oldQuantity: subscription.quantity,
+    newQuantity,
+  });
+
+  try {
+    const polar = getPolarClient();
+
+    // Update subscription seat count via Polar API
+    // Polar handles proration automatically
+    await polar.subscriptions.update({
+      id: subscription.id,
+      subscriptionUpdate: {
+        seats: newQuantity,
+      },
+    });
+
+    // The Polar webhook (subscription.updated) will sync the new quantity back
+    // But we also update locally for immediate UI consistency
+
+    const { error: updateError } = await supabaseAdmin
+      .schema("accounts")
+      .from("billing_subscriptions")
+      .update({ quantity: newQuantity })
+      .eq("id", subscription.id);
+
+    if (updateError) {
+      consola.error("[polar] Failed to update local subscription quantity", {
+        accountId,
+        error: updateError,
+      });
+      // Don't throw - the Polar webhook will eventually sync this
+    }
+
+    consola.info("[polar] Subscription seat quantity updated", {
+      accountId,
+      quantity: newQuantity,
+    });
+
+    return { success: true, quantity: newQuantity };
+  } catch (error) {
+    consola.error("[polar] Failed to update Polar subscription", {
+      accountId,
+      subscriptionId: subscription.id,
+      error,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Auto-provision a seat when a team invite is accepted.
+ * Checks if the account has a per-user plan and updates quantity accordingly.
+ *
+ * @returns true if seat was provisioned, false if not applicable
+ */
+export async function provisionSeatOnInviteAccept(params: {
+  accountId: string;
+}): Promise<boolean> {
+  const { accountId } = params;
+
+  // Count current team members
+  const { count, error: countError } = await supabaseAdmin
+    .schema("accounts")
+    .from("account_user")
+    .select("*", { count: "exact", head: true })
+    .eq("account_id", accountId);
+
+  if (countError) {
+    consola.error("[polar] Failed to count team members", {
+      accountId,
+      error: countError,
+    });
+    throw countError;
+  }
+
+  const memberCount = count ?? 1;
+
+  consola.info("[polar] Provisioning seat for new team member", {
+    accountId,
+    memberCount,
+  });
+
+  const result = await updateSubscriptionQuantity({
+    accountId,
+    newQuantity: memberCount,
+  });
+
+  return result !== null;
 }
