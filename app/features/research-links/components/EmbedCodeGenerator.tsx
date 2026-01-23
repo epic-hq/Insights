@@ -34,6 +34,7 @@ interface EmbedCodeGeneratorProps {
 	slug: string
 	heroTitle?: string | null
 	heroCtaLabel?: string | null
+	walkthroughVideoUrl?: string | null
 }
 
 const LAYOUT_OPTIONS: {
@@ -115,7 +116,7 @@ const USE_CASE_PRESETS: { label: string; config: Partial<EmbedConfig> }[] = [
 	},
 ]
 
-export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeGeneratorProps) {
+export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel, walkthroughVideoUrl }: EmbedCodeGeneratorProps) {
 	const previewId = useId()
 	const [copiedHtml, setCopiedHtml] = useState(false)
 	const [copiedScript, setCopiedScript] = useState(false)
@@ -156,9 +157,10 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
     return `${base}/ask/${slug}`
   }, [slug])
 
-  const emailPreviewHeadline = heroTitle || "Share your feedback"
-  const emailPreviewButtonLabel = heroCtaLabel || config.buttonText || "Open survey"
-  const emailPreviewImageUrl = config.emailPreviewImageUrl.trim()
+	const emailPreviewHeadline = heroTitle || "Share your feedback"
+	const emailPreviewButtonLabel = heroCtaLabel || config.buttonText || "Open survey"
+	const emailPreviewImageUrl = config.emailPreviewImageUrl.trim()
+	const emailPreviewFallbackVideoUrl = walkthroughVideoUrl || null
 
   // Generate HTML embed code
   const htmlCode = useMemo(() => {
@@ -221,15 +223,17 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
             </a>
           </td>
         </tr>
-        <tr>
-          <td align="center" style="font-family: Arial, sans-serif; font-size: 12px; color: #6b7280; padding: 0 24px;">
-            Watch the video + respond here:
-            <br />
-            <a href="${publicUrl}" target="_blank" rel="noreferrer" style="color: #111827; text-decoration: underline;">
-              ${publicUrl}
-            </a>
-          </td>
-        </tr>
+		<tr>
+			<td align="center" style="font-family: Arial, sans-serif; font-size: 12px; color: #6b7280; padding: 0 24px;">
+				Watch the video + respond here:
+				<br />
+				<a href="${publicUrl}" target="_blank" rel="noreferrer" style="color: #111827; text-decoration: underline;">
+					Open the video survey
+				</a>
+				<br />
+				<span style="color: #9ca3af; font-size: 11px;">${publicUrl}</span>
+			</td>
+		</tr>
       </table>
     </td>
   </tr>
@@ -416,22 +420,23 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
 					/>
 				</div>
 
-        <div className="space-y-2 sm:col-span-2">
-          <Label className="text-muted-foreground text-xs">
-            Email thumbnail image URL (optional)
-          </Label>
-          <Input
-            value={config.emailPreviewImageUrl}
-            onChange={(e) =>
-              setConfig((prev) => ({
-                ...prev,
-                emailPreviewImageUrl: e.target.value,
-              }))
-            }
-            placeholder="https://... (PNG/JPG/GIF with a play button)"
-            className="h-9"
-          />
-        </div>
+				<div className="space-y-2 sm:col-span-2">
+					<Label className="text-muted-foreground text-xs">Email thumbnail image URL (optional)</Label>
+					<Input
+						value={config.emailPreviewImageUrl}
+						onChange={(e) =>
+							setConfig((prev) => ({
+								...prev,
+								emailPreviewImageUrl: e.target.value,
+							}))
+						}
+						placeholder="https://... (PNG/JPG/GIF with a play button)"
+						className="h-9"
+					/>
+					<p className="text-muted-foreground text-xs">
+						Email clients can’t play video. Use a thumbnail or GIF that links to your survey.
+					</p>
+				</div>
 
 				<div className="flex items-center justify-between rounded-md border px-3 py-2 sm:col-span-2">
 					<div>
@@ -593,20 +598,24 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
             <p className="text-muted-foreground text-[11px] uppercase tracking-wide">
               Email preview
             </p>
-            <div className="mt-2 overflow-hidden rounded-md border bg-muted/30">
-              {emailPreviewImageUrl ? (
-                <img
-                  src={emailPreviewImageUrl}
-                  alt={emailPreviewHeadline}
-                  className="h-auto w-full"
-                />
-              ) : (
-                <div className="flex items-center justify-center gap-2 px-4 py-10 text-muted-foreground text-xs">
-                  <Eye className="h-4 w-4" />
-                  Add a thumbnail image to personalize this preview
-                </div>
-              )}
-            </div>
+							<div className="mt-2 overflow-hidden rounded-md border bg-muted/30">
+								{emailPreviewImageUrl ? (
+									<img src={emailPreviewImageUrl} alt={emailPreviewHeadline} className="h-auto w-full" />
+								) : emailPreviewFallbackVideoUrl ? (
+									<video
+										src={emailPreviewFallbackVideoUrl}
+										className="h-auto w-full"
+										controls
+										playsInline
+										preload="metadata"
+									/>
+								) : (
+									<div className="flex items-center justify-center gap-2 px-4 py-10 text-muted-foreground text-xs">
+										<Eye className="h-4 w-4" />
+										Add a thumbnail image to personalize this preview
+									</div>
+								)}
+							</div>
             <div className="mt-3 text-center">
               <p className="font-medium text-sm text-foreground">
                 {emailPreviewHeadline}
@@ -616,6 +625,9 @@ export function EmbedCodeGenerator({ slug, heroTitle, heroCtaLabel }: EmbedCodeG
               </div>
               <p className="mt-2 text-muted-foreground text-xs">
                 Watch the video + respond:
+              </p>
+              <p className="text-[11px] font-medium text-foreground">
+                Open the video survey
               </p>
               <p className="break-all font-mono text-[11px] text-muted-foreground">
                 {publicUrl}

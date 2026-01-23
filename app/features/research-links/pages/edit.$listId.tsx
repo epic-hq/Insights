@@ -642,7 +642,12 @@ export default function EditResearchLinkPage() {
 							<p className="text-muted-foreground text-xs">
 								Add this form to your website for waitlists, feedback collection, or lead capture.
 							</p>
-							<EmbedCodeGenerator slug={slug} heroTitle={heroTitle} heroCtaLabel={heroCtaLabel} />
+							<EmbedCodeGenerator
+								slug={slug}
+								heroTitle={heroTitle}
+								heroCtaLabel={heroCtaLabel}
+								walkthroughVideoUrl={walkthroughVideoUrl}
+							/>
 						</TabsContent>
 					</Tabs>
 
