@@ -97,29 +97,29 @@ export function TrialBanner({ trial }: TrialBannerProps) {
     );
   }
 
-  // Normal trial state - subtle banner
+  // Normal trial state - subtle, centered banner
   return (
-    <div className="border-blue-200 bg-blue-50 px-4 py-2 dark:border-blue-800 dark:bg-blue-950/50">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-blue-800 text-sm dark:text-blue-200">
-          <Sparkles className="h-4 w-4" />
-          <span>
-            You're on a <strong>{trial.planName}</strong> trial &middot;{" "}
-            {formatDistanceToNow(trialEndDate, { addSuffix: false })} left
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/a/${trial.accountId}/billing`}>View Plans</Link>
-          </Button>
-          <button
-            type="button"
-            onClick={() => setDismissed(true)}
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <div className="bg-blue-50/80 px-4 py-1.5 dark:bg-blue-950/30">
+      <div className="relative mx-auto flex max-w-7xl items-center justify-center gap-1.5 text-blue-700 text-xs dark:text-blue-300">
+        <Sparkles className="h-3 w-3" />
+        <span>
+          <strong>{trial.planName}</strong> trial &middot;{" "}
+          {formatDistanceToNow(trialEndDate, { addSuffix: false })} left
+        </span>
+        <span className="mx-1">&middot;</span>
+        <Link
+          to={`/a/${trial.accountId}/billing`}
+          className="font-medium underline underline-offset-2 hover:text-blue-900 dark:hover:text-blue-100"
+        >
+          View Plans
+        </Link>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="absolute right-0 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
