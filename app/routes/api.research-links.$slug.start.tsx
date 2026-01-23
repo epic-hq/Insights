@@ -35,7 +35,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const { data: list, error: listError } = await supabase
     .from("research_links")
     .select(
-      "id, is_live, allow_chat, default_response_mode, account_id, project_id",
+      "id, is_live, allow_chat, default_response_mode, account_id, project_id, email_required",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -73,7 +73,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
     );
   }
 
-  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  // Check if email is required
+  const emailRequired = list.email_required !== false;
+  const emailProvided = parsed.data.email && parsed.data.email.trim().length > 0;
+
+  if (emailRequired && !emailProvided) {
+    return Response.json(
+      { message: "Email is required" },
+      { status: 400 },
+    );
+  }
+
+  // Handle anonymous responses (email not required and not provided)
+  if (!emailProvided) {
+    return handleAnonymousResponse(supabase, list, parsed.data);
+  }
+
+  const normalizedEmail = parsed.data.email!.trim().toLowerCase();
   const existingResponseId = parsed.data.responseId;
   const responseMode =
     list.allow_chat && parsed.data.responseMode
@@ -286,5 +302,81 @@ async function handleCreatePersonAndContinue(
     responses: response.responses ?? {},
     completed: response.completed ?? false,
     personId,
+  });
+}
+
+/**
+ * Handle anonymous responses (when email is not required and not provided)
+ */
+async function handleAnonymousResponse(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  list: {
+    id: string;
+    account_id: string;
+    project_id: string | null;
+    allow_chat: boolean;
+    default_response_mode: string | null;
+  },
+  data: {
+    responseId?: string | null;
+    responseMode?: "form" | "chat";
+  },
+) {
+  const responseMode =
+    list.allow_chat && data.responseMode
+      ? data.responseMode
+      : (list.default_response_mode ?? "form");
+
+  // If we have an existing response ID, try to resume it
+  if (data.responseId) {
+    const { data: existingById } = await supabase
+      .from("research_link_responses")
+      .select("id, responses, completed, person_id")
+      .eq("id", data.responseId)
+      .eq("research_link_id", list.id)
+      .maybeSingle();
+
+    if (existingById) {
+      await supabase
+        .from("research_link_responses")
+        .update({ response_mode: responseMode })
+        .eq("id", existingById.id);
+
+      return Response.json({
+        responseId: existingById.id,
+        responses: existingById.responses ?? {},
+        completed: existingById.completed ?? false,
+        personId: existingById.person_id,
+        anonymous: true,
+      });
+    }
+  }
+
+  // Create a new anonymous response (no email, no person)
+  const { data: inserted, error: insertError } = await supabase
+    .from("research_link_responses")
+    .insert({
+      research_link_id: list.id,
+      email: null,
+      responses: {},
+      completed: false,
+      response_mode: responseMode,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (insertError || !inserted) {
+    return Response.json(
+      { message: insertError?.message ?? "Unable to start response" },
+      { status: 500 },
+    );
+  }
+
+  return Response.json({
+    responseId: inserted.id,
+    responses: {},
+    completed: false,
+    personId: null,
+    anonymous: true,
   });
 }

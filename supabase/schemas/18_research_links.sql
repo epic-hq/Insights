@@ -20,6 +20,7 @@ create table if not exists public.research_links (
     allow_video boolean not null default false,
     walkthrough_video_url text,
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
+    email_required boolean not null default true,
     is_live boolean not null default false,
     statistics jsonb default null,
     stats_updated_at timestamptz default null,
@@ -33,6 +34,8 @@ comment on column public.research_links.statistics is 'Computed aggregate statis
 
 comment on column public.research_links.ai_analysis is 'AI-generated analysis of survey responses. Structure: { mode: "quick"|"detailed", updatedAt: timestamp, result: AnalysisResult|DetailedAnalysisResult }';
 
+comment on column public.research_links.email_required is 'When false, respondents can submit anonymous responses without providing an email';
+
 alter table public.research_links
     add constraint research_links_slug_key unique (slug);
 
@@ -40,7 +43,7 @@ create table if not exists public.research_link_responses (
     id uuid primary key default gen_random_uuid(),
     research_link_id uuid not null references public.research_links (id) on delete cascade,
     person_id uuid references public.people (id) on delete set null,
-    email text not null,
+    email text,
     first_name text,
     last_name text,
     responses jsonb not null default '{}'::jsonb,
@@ -57,7 +60,8 @@ create index if not exists research_link_responses_person_id_idx
     on public.research_link_responses (person_id);
 
 create unique index if not exists research_link_responses_unique_email
-    on public.research_link_responses (research_link_id, lower(email));
+    on public.research_link_responses (research_link_id, lower(email))
+    where email is not null;
 
 create index if not exists research_link_responses_list_id_idx
     on public.research_link_responses (research_link_id);

@@ -137,6 +137,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     allowChat: false,
     defaultResponseMode: "form",
     isLive: formData.get("is_live") === "true",
+    emailRequired: formData.get("email_required") !== "false",
     questions: formData.get("questions") ?? "[]",
   };
 
@@ -176,6 +177,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       allow_chat: payload.allowChat,
       default_response_mode: payload.defaultResponseMode,
       is_live: payload.isLive,
+      email_required: payload.emailRequired,
     })
     .select("id")
     .maybeSingle();
@@ -225,6 +227,7 @@ export default function CreateResearchLinkPage() {
   const [slug] = useState(() => generateSlug());
   const [questions, setQuestions] = useState<ResearchLinkQuestion[]>([]);
   const [isLive, setIsLive] = useState(true);
+  const [emailRequired, setEmailRequired] = useState(true);
   const [copied, setCopied] = useState(false);
 
   // Bulk paste state for step 2
@@ -745,6 +748,11 @@ export default function CreateResearchLinkPage() {
             <input type="hidden" name="hero_subtitle" value={description} />
             <input type="hidden" name="questions" value={questionsJson} />
             <input type="hidden" name="is_live" value={String(isLive)} />
+            <input
+              type="hidden"
+              name="email_required"
+              value={String(emailRequired)}
+            />
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -788,6 +796,19 @@ export default function CreateResearchLinkPage() {
                         {copied ? "Copied!" : "Copy"}
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                      <p className="font-medium">Require email</p>
+                      <p className="text-muted-foreground text-sm">
+                        Respondents must provide their email to submit
+                      </p>
+                    </div>
+                    <Switch
+                      checked={emailRequired}
+                      onCheckedChange={setEmailRequired}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between rounded-lg border p-4">

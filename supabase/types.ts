@@ -5166,7 +5166,7 @@ export type Database = {
         Row: {
           completed: boolean
           created_at: string
-          email: string
+          email: string | null
           evidence_id: string | null
           id: string
           person_id: string | null
@@ -5179,7 +5179,7 @@ export type Database = {
         Insert: {
           completed?: boolean
           created_at?: string
-          email: string
+          email?: string | null
           evidence_id?: string | null
           id?: string
           person_id?: string | null
@@ -5192,7 +5192,7 @@ export type Database = {
         Update: {
           completed?: boolean
           created_at?: string
-          email?: string
+          email?: string | null
           evidence_id?: string | null
           id?: string
           person_id?: string | null
@@ -5238,6 +5238,7 @@ export type Database = {
           created_at: string
           default_response_mode: string
           description: string | null
+          email_required: boolean
           hero_cta_helper: string | null
           hero_cta_label: string | null
           hero_subtitle: string | null
@@ -5266,6 +5267,7 @@ export type Database = {
           created_at?: string
           default_response_mode?: string
           description?: string | null
+          email_required?: boolean
           hero_cta_helper?: string | null
           hero_cta_label?: string | null
           hero_subtitle?: string | null
@@ -5294,6 +5296,7 @@ export type Database = {
           created_at?: string
           default_response_mode?: string
           description?: string | null
+          email_required?: boolean
           hero_cta_helper?: string | null
           hero_cta_label?: string | null
           hero_subtitle?: string | null

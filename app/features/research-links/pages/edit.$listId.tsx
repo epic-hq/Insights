@@ -113,6 +113,7 @@ interface EditActionData {
     allowVideo?: boolean;
     defaultResponseMode?: "form" | "chat" | "voice";
     isLive?: boolean;
+    emailRequired?: boolean;
     questions?: ResearchLinkQuestion[];
   };
   ok?: boolean;
@@ -142,6 +143,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     allowVideo: formData.get("allow_video"),
     defaultResponseMode: formData.get("default_response_mode"),
     isLive: formData.get("is_live"),
+    emailRequired: formData.get("email_required"),
     questions: formData.get("questions") ?? "[]",
   };
 
@@ -226,6 +228,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (formData.has("default_response_mode"))
     updatePayload.default_response_mode = payload.defaultResponseMode;
   if (formData.has("is_live")) updatePayload.is_live = payload.isLive;
+  if (formData.has("email_required"))
+    updatePayload.email_required = payload.emailRequired;
 
   const { data, error } = await supabase
     .from("research_links")
@@ -304,6 +308,9 @@ export default function EditResearchLinkPage() {
     "form" | "chat" | "voice"
   >((list.default_response_mode as "form" | "chat" | "voice") ?? "form");
   const [isLive, setIsLive] = useState(Boolean(list.is_live));
+  const [emailRequired, setEmailRequired] = useState(
+    list.email_required !== false,
+  );
   const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(
     initialWalkthroughUrl ?? null,
   );
@@ -373,6 +380,8 @@ export default function EditResearchLinkPage() {
       }
       if (typeof actionData.values.isLive === "boolean")
         setIsLive(actionData.values.isLive);
+      if (typeof actionData.values.emailRequired === "boolean")
+        setEmailRequired(actionData.values.emailRequired);
     }
   }, [actionData?.ok, actionData?.values]);
 
@@ -749,6 +758,23 @@ export default function EditResearchLinkPage() {
                       type="hidden"
                       name="default_response_mode"
                       value={defaultResponseMode}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">Require email</p>
+                      <p className="truncate text-muted-foreground text-xs">
+                        Respondents must provide their email
+                      </p>
+                    </div>
+                    <Switch
+                      checked={emailRequired}
+                      onCheckedChange={setEmailRequired}
+                    />
+                    <input
+                      type="hidden"
+                      name="email_required"
+                      value={String(emailRequired)}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">

@@ -375,7 +375,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const { data: list, error } = await supabase
     .from("research_links")
     .select(
-      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id",
+      "id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, email_required",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -442,6 +442,7 @@ type LoaderData = {
     default_response_mode: "form" | "chat" | "voice" | null;
     is_live: boolean;
     account_id: string;
+    email_required: boolean;
   };
   questions: Array<ResearchLinkQuestion>;
   walkthroughSignedUrl: string | null;
@@ -461,12 +462,13 @@ type StartSignupResult = {
   responses: ResponseRecord;
   completed: boolean;
   personId: string | null;
+  anonymous?: boolean;
 };
 
 async function startSignup(
   slug: string,
   payload: {
-    email: string;
+    email?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     responseId?: string | null;
@@ -532,6 +534,8 @@ export default function ResearchLinkPage() {
   const resolvedMode = list.allow_chat ? mode : "form";
   const hasMultipleModes = list.allow_chat || list.allow_voice;
   const isEmailValid = emailSchema.safeParse(email).success;
+  const emailRequired = list.email_required !== false;
+  const canContinue = isEmailValid || (!emailRequired && !email.trim());
 
   // Handle mode switch with response refresh
   const handleModeSwitch = useCallback(
@@ -750,15 +754,20 @@ export default function ResearchLinkPage() {
       const parsed = JSON.parse(stored) as {
         email?: string;
         responseId?: string;
+        anonymous?: boolean;
       };
-      if (parsed.email && parsed.responseId) {
+
+      // Resume if we have either email+responseId or anonymous+responseId
+      if (parsed.responseId && (parsed.email || parsed.anonymous)) {
         void startSignup(slug, {
-          email: parsed.email,
+          email: parsed.email || null,
           responseId: parsed.responseId,
           responseMode: resolvedMode,
         })
           .then((result) => {
-            setEmail(parsed.email as string);
+            if (parsed.email) {
+              setEmail(parsed.email);
+            }
             setResponseId(result.responseId);
             setResponses(result.responses || {});
             const initialIndex = findNextQuestionIndex(
@@ -812,41 +821,54 @@ export default function ResearchLinkPage() {
   async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (!email.trim()) {
+
+    // Check if email is required
+    if (emailRequired && !email.trim()) {
       setError("Enter an email to continue");
       return;
     }
+
     try {
       setIsSaving(true);
       const result = await startSignup(slug, {
-        email: email.trim(),
+        email: email.trim() || null,
         responseId,
         responseMode: resolvedMode,
       });
       setResponseId(result.responseId);
       setResponses(result.responses || {});
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({ email: email.trim(), responseId: result.responseId }),
-      );
 
-      // If no person linked, we need to collect name info
-      if (!result.personId) {
-        setStage("name");
+      // Only save to localStorage if email was provided
+      if (email.trim()) {
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({ email: email.trim(), responseId: result.responseId }),
+        );
+      } else {
+        // For anonymous responses, save just the responseId
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({ responseId: result.responseId, anonymous: true }),
+        );
+      }
+
+      // If anonymous or person was found, proceed directly to survey
+      if (result.anonymous || result.personId) {
+        const initialIndex = findNextQuestionIndex(
+          result.responses || {},
+          questions,
+        );
+        if (initialIndex >= questions.length) {
+          setStage("complete");
+        } else {
+          setCurrentIndex(initialIndex);
+          setStage("survey");
+        }
         return;
       }
 
-      // Person was found, proceed to survey
-      const initialIndex = findNextQuestionIndex(
-        result.responses || {},
-        questions,
-      );
-      if (initialIndex >= questions.length) {
-        setStage("complete");
-      } else {
-        setCurrentIndex(initialIndex);
-        setStage("survey");
-      }
+      // If no person linked and email was provided, we need to collect name info
+      setStage("name");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Something went wrong",
@@ -1110,6 +1132,11 @@ export default function ResearchLinkPage() {
                 <div className="space-y-2">
                   <Label htmlFor={emailId} className="text-white/90">
                     Your Email
+                    {!emailRequired && (
+                      <span className="ml-1 font-normal text-white/50">
+                        (optional)
+                      </span>
+                    )}
                   </Label>
                   <Input
                     id={emailId}
@@ -1118,21 +1145,25 @@ export default function ResearchLinkPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
                     className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
-                    required
+                    required={emailRequired}
                   />
                   <p className="text-right text-white/50 text-xs">
-                    {list.hero_cta_helper || ""}
+                    {!emailRequired && !email.trim()
+                      ? "You can respond anonymously"
+                      : list.hero_cta_helper || ""}
                   </p>
                 </div>
                 <div className="flex justify-end">
                   <Button
                     type="submit"
-                    disabled={isSaving || !isEmailValid}
+                    disabled={isSaving || !canContinue}
                     size="sm"
                     className="bg-white text-black hover:bg-white/90 disabled:bg-white/30 disabled:text-white/50"
                   >
                     {isSaving ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : !emailRequired && !email.trim() ? (
+                      "Start anonymously"
                     ) : (
                       "Continue"
                     )}

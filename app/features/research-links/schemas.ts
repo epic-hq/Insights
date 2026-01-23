@@ -144,13 +144,14 @@ export const ResearchLinkPayloadSchema = z.object({
 			return "form"
 		}),
 	isLive: booleanFlag,
+	emailRequired: booleanFlag.default(true),
 	questions: QuestionsJsonSchema,
 })
 
 export type ResearchLinkPayload = z.infer<typeof ResearchLinkPayloadSchema>
 
 export const ResearchLinkResponseStartSchema = z.object({
-	email: z.string({ required_error: "Email is required" }).email("Enter a valid email"),
+	email: z.string().email("Enter a valid email").optional().nullable(),
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
 })
