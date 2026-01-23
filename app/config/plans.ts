@@ -23,6 +23,8 @@ export interface PlanLimits {
   survey_responses: number;
   /** Number of projects allowed */
   projects: number;
+  /** Number of team accounts allowed (0 = personal only) */
+  teams: number;
 }
 
 export interface PlanCredits {
@@ -94,6 +96,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       voice_minutes: 0,
       survey_responses: 50,
       projects: 1,
+      teams: 0, // Personal account only
     },
     credits: {
       monthly: 500,
@@ -127,6 +130,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       voice_minutes: 60,
       survey_responses: 500,
       projects: 3,
+      teams: 1, // One team account
     },
     credits: {
       monthly: 2000,
@@ -160,6 +164,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       voice_minutes: 180,
       survey_responses: 2000,
       projects: Number.POSITIVE_INFINITY,
+      teams: 1, // One team account
     },
     credits: {
       monthly: 5000,
@@ -194,6 +199,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       voice_minutes: 300, // per user
       survey_responses: 5000,
       projects: Number.POSITIVE_INFINITY,
+      teams: Number.POSITIVE_INFINITY, // Unlimited teams (agencies/consultants)
     },
     credits: {
       monthly: 4000, // per user, pooled across team

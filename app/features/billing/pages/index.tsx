@@ -340,7 +340,8 @@ export default function BillingPage() {
                           {p.cta.label}
                         </a>
                       </Button>
-                    ) : (
+                    ) : currentPlan === "free" ? (
+                      // Free tier users: go through checkout
                       <Button
                         variant={
                           p.cta.style === "primary" ? "default" : "outline"
@@ -349,8 +350,19 @@ export default function BillingPage() {
                         asChild
                       >
                         <Link to={`/api/billing/checkout?plan=${key}`}>
-                          {currentPlan === "free" ? "Upgrade" : "Switch"}
+                          Upgrade
                         </Link>
+                      </Button>
+                    ) : (
+                      // Existing subscribers: use portal for plan changes
+                      <Button
+                        variant={
+                          p.cta.style === "primary" ? "default" : "outline"
+                        }
+                        className="w-full"
+                        asChild
+                      >
+                        <Link to="/api/billing/portal">Switch Plan</Link>
                       </Button>
                     )}
                   </CardFooter>

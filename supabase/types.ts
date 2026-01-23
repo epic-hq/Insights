@@ -5429,6 +5429,7 @@ export type Database = {
           statistics: Json | null
           stats_updated_at: string | null
           updated_at: string
+          walkthrough_thumbnail_url: string | null
           walkthrough_video_url: string | null
         }
         Insert: {
@@ -5457,6 +5458,7 @@ export type Database = {
           statistics?: Json | null
           stats_updated_at?: string | null
           updated_at?: string
+          walkthrough_thumbnail_url?: string | null
           walkthrough_video_url?: string | null
         }
         Update: {
@@ -5485,6 +5487,7 @@ export type Database = {
           statistics?: Json | null
           stats_updated_at?: string | null
           updated_at?: string
+          walkthrough_thumbnail_url?: string | null
           walkthrough_video_url?: string | null
         }
         Relationships: [
@@ -6448,6 +6451,7 @@ export type Database = {
           last_name: string | null
           last_used_account_id: string | null
           last_used_project_id: string | null
+          legacy_trial_provisioned_at: string | null
           metadata: Json | null
           mobile_phone: string | null
           notification_preferences: Json
@@ -6478,6 +6482,7 @@ export type Database = {
           last_name?: string | null
           last_used_account_id?: string | null
           last_used_project_id?: string | null
+          legacy_trial_provisioned_at?: string | null
           metadata?: Json | null
           mobile_phone?: string | null
           notification_preferences?: Json
@@ -6508,6 +6513,7 @@ export type Database = {
           last_name?: string | null
           last_used_account_id?: string | null
           last_used_project_id?: string | null
+          legacy_trial_provisioned_at?: string | null
           metadata?: Json | null
           mobile_phone?: string | null
           notification_preferences?: Json
@@ -7163,6 +7169,16 @@ export type Database = {
           total_credits: number
           total_tokens: number
           usage_date: string
+        }[]
+      }
+      get_admin_recent_login_activity: {
+        Args: { p_feature_limit?: number; p_user_limit?: number }
+        Returns: {
+          last_sign_in_at: string
+          recent_features: Json
+          user_email: string
+          user_id: string
+          user_name: string
         }[]
       }
       get_admin_usage_by_account: {
