@@ -87,18 +87,35 @@ export default function LandingPage() {
                   className="group relative overflow-hidden bg-white px-8 py-4 font-semibold text-lg text-slate-900 shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
                 >
                   <Link
-                    to={PATHS.AUTH.REGISTER}
+                    to={`${PATHS.AUTH.REGISTER}?plan=team`}
                     className="flex items-center gap-2"
                   >
-                    Start Free Trial
+                    Start Team Trial
                     <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
 
-                <div className="flex items-center gap-2 text-white/80">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="font-medium text-sm">14-day free trial</span>
-                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/30 bg-white/10 px-8 py-4 font-semibold text-lg text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20"
+                >
+                  <a
+                    href="https://cal.com/rickmoy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Schedule Demo
+                  </a>
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-white/80">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span className="font-medium text-sm">
+                  14-day free trial · No credit card required
+                </span>
               </div>
             </div>
           </div>

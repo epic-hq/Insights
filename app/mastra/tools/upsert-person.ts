@@ -128,6 +128,14 @@ export const upsertPersonTool = createTool({
 		personId: z.string().nullish().describe("Person ID if updating an existing person"),
 		name: z.string().nullish().describe("Full name of the person"),
 		title: z.string().nullish().describe("Job title"),
+		jobFunction: z
+			.string()
+			.nullish()
+			.describe("Job function category (e.g., engineering, sales, marketing, product, operations, etc.)"),
+		seniorityLevel: z
+			.string()
+			.nullish()
+			.describe("Seniority level (e.g., individual_contributor, manager, director, vp, c_level, etc.)"),
 		role: z.string().nullish().describe("Role or position"),
 		company: z.string().nullish().describe("Company/organization name"),
 		description: z.string().nullish().describe("Description or notes about the person"),
@@ -170,6 +178,8 @@ export const upsertPersonTool = createTool({
 			personId,
 			name,
 			title,
+			jobFunction,
+			seniorityLevel,
 			role,
 			company,
 			description,
@@ -215,6 +225,8 @@ export const upsertPersonTool = createTool({
 				updateData.lastname = lastname || null
 			}
 			if (title !== undefined) updateData.title = title
+			if (jobFunction !== undefined) updateData.job_function = jobFunction
+			if (seniorityLevel !== undefined) updateData.seniority_level = seniorityLevel
 			if (role !== undefined) updateData.role = role
 			if (company !== undefined) {
 				const normalized_company = normalizeOrganizationName(company)

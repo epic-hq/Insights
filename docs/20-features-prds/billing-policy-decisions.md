@@ -106,6 +106,18 @@ When Polar sends `subscription.updated` with new quantity:
 - Update `billing_subscriptions.quantity` in database
 - Recalculate feature entitlements if needed (team credits = per-user credits × seats)
 
+### Current Implementation Status
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| SeatBillingInfo type | ✅ Done | `app/features/teams/pages/manage-members.tsx:76-84` |
+| Seat usage display | ✅ Done | `manage-members.tsx:965-1003` |
+| Warning when at limit | ✅ Done | Shows "Adding new members will increase cost" |
+| Polar subscription.quantity | ✅ Done | Stored in `billing_subscriptions.quantity` |
+| "Manage Seats" button | ❌ TODO | Add link to Polar portal for seat management |
+| Auto-provision on invite accept | ❌ TODO | `app/routes/accept-invite.tsx` |
+| Block invite at hard limit | ❌ TODO | `app/components/ui/team-invite.tsx` |
+
 ---
 
 ## 3. Trial Provisioning Policy
