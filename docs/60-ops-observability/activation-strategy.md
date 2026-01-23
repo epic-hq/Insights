@@ -257,6 +257,117 @@ ALTER TABLE accounts.accounts ADD COLUMN IF NOT EXISTS trial_plan TEXT DEFAULT '
 
 ---
 
+## 10. Feature Gate Implementation
+
+Feature gates control access to premium features based on the account's plan. This is critical for the monetization strategy.
+
+### Existing Infrastructure
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| `PLANS` config | Plan definitions, limits, features | `app/config/plans.ts` |
+| `hasFeature()` | Check boolean features | `app/config/plans.ts` |
+| `<FeatureGate>` | Client-side UI wrapper | `app/components/feature-gate/FeatureGate.tsx` |
+| `useFeatureGate()` | Client-side hook | `app/hooks/useFeatureGate.ts` |
+| `checkFeatureAccess()` | Server-side feature check | `app/lib/feature-gate/check-feature.server.ts` |
+| `checkLimitAccess()` | Server-side usage limits | `app/lib/feature-gate/check-limit.server.ts` |
+| `FeatureGateError` | Error handling | `app/lib/feature-gate/errors.ts` |
+
+### Current Gate Implementations
+
+| Feature | Type | Location | Implementation |
+|---------|------|----------|----------------|
+| Calendar Sync | Boolean | `api.calendar.connect.tsx:64` | `hasFeature(planId, "calendar_sync")` |
+| Smart Personas | Boolean | `personas/pages/index.tsx:182` | `useFeatureGate("smart_personas", planId)` |
+| AI CRM | Boolean | `accounts/pages/settings.tsx` | Checks for `ai_crm` feature |
+| Embed Links | Boolean | `embed.$slug.tsx` | Plan check for survey embeds |
+| Welcome Upgrade | Boolean | `welcome-upgrade.tsx:48` | `hasFeature(planId, "calendar_sync")` |
+
+### Gates to Implement
+
+#### Boolean Features (Gate on/off)
+
+| Feature | Where to Gate | Plan Required | Priority |
+|---------|---------------|---------------|----------|
+| **Smart Personas** | Generate button | Starter+ | ✅ Done |
+| **Calendar Sync** | Connect flow | Starter+ | ✅ Done |
+| **Team Workspace** | Invite members | Pro+ | P1 |
+| **SSO/SAML** | Settings page | Team | P2 |
+| **White Label** | Settings/embed | Team | P2 |
+| **Custom Lenses** | Lens creation | Pro+ | P1 |
+| **Interview Guide** | Guide feature | Free+ | N/A (always on) |
+
+#### Usage Limits (Gate at threshold)
+
+| Limit | Where to Gate | Free | Starter | Pro | Team |
+|-------|---------------|------|---------|-----|------|
+| **AI Analyses** | Upload/process flow | 5/mo | 30/mo | Unlimited | Unlimited |
+| **Voice Minutes** | Voice chat start | 5 min | 60 min | 180 min | Unlimited |
+| **Survey Responses** | Embed submission | 10/mo | 100/mo | 500/mo | Unlimited |
+| **Projects** | Project creation | 1 | 3 | 10 | Unlimited |
+
+### Implementation Pattern
+
+#### Client-Side (UI)
+
+```tsx
+// For showing/hiding features
+import { FeatureGate } from "~/components/feature-gate"
+
+<FeatureGate feature="smart_personas" planId={currentPlan}>
+  <PersonaGenerator />
+</FeatureGate>
+
+// For conditional logic
+import { useFeatureGate } from "~/hooks/useFeatureGate"
+
+const { isEnabled, upgradeUrl } = useFeatureGate("calendar_sync", planId)
+if (!isEnabled) {
+  return <UpgradeBadge href={upgradeUrl} />
+}
+```
+
+#### Server-Side (API)
+
+```tsx
+// For feature checks in API routes
+import { checkFeatureAccess } from "~/lib/feature-gate/check-feature.server"
+
+const result = await checkFeatureAccess({ planId, accountId }, "smart_personas")
+if (!result.allowed) {
+  return json({ error: "upgrade_required", ...result }, { status: 403 })
+}
+
+// For usage limit checks
+import { checkLimitAccess } from "~/lib/feature-gate/check-limit.server"
+
+const result = await checkLimitAccess({ planId, accountId }, "ai_analyses")
+if (!result.allowed) {
+  return json({ error: "limit_exceeded", ...result }, { status: 403 })
+}
+```
+
+### Priority Implementation Tasks
+
+1. **P0 - AI Analysis Limit**
+   - Gate at interview upload/processing
+   - Show warning at 80% usage
+   - Block new analyses at 100%
+
+2. **P0 - Project Limit**
+   - Gate at project creation
+   - Show upgrade prompt when limit reached
+
+3. **P1 - Team Workspace Gate**
+   - Gate at member invite
+   - Show upgrade for teams features
+
+4. **P2 - Voice Minutes Tracking**
+   - Track duration in `billing.usage_events`
+   - Gate when minutes exhausted
+
+---
+
 ## Next Steps
 
 1. [ ] Export 30 users with engagement data from PostHog
