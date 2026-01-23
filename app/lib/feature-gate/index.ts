@@ -8,20 +8,18 @@
  * @see docs/20-features-prds/specs/feature-gating-implementation.md
  */
 
+// Client-safe utilities
+export { getFeatureDisplayName } from "./display-names"
+// Errors (client-safe)
+export { FeatureGateError } from "./errors"
 // Types (client-safe)
 export type {
-  FeatureCheckResult,
-  FeatureGateContext,
-  FeatureKey,
-  LimitCheckResult,
-  LimitKey,
-} from "./types";
-
-// Client-safe utilities
-export { getFeatureDisplayName } from "./display-names";
-
-// Errors (client-safe)
-export { FeatureGateError } from "./errors";
+	FeatureCheckResult,
+	FeatureGateContext,
+	FeatureKey,
+	LimitCheckResult,
+	LimitKey,
+} from "./types"
 
 // NOTE: Server-only exports must be imported directly:
 // import { checkFeatureAccess, requireFeatureAccess } from "~/lib/feature-gate/check-feature.server"
