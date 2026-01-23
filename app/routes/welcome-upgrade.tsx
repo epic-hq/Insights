@@ -6,7 +6,7 @@
  */
 
 import consola from "consola";
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, redirect, useLoaderData, useNavigate } from "react-router";
@@ -101,57 +101,49 @@ export default function WelcomeUpgradePage() {
           <h1 className="mb-1 font-semibold text-2xl">You're on {planName}</h1>
         </div>
 
-        {/* Calendar CTA - Primary focus */}
-        {hasCalendarFeature && !connected && (
-          <Card className="border-2 border-primary/20">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <h2 className="mb-2 font-semibold text-lg">
-                  Prep for every customer call
-                </h2>
-                <p className="mb-5 text-muted-foreground text-sm">
-                  Connect your calendar to get AI briefings before meetings and
-                  follow-up drafts after.
-                </p>
-                <PicaConnectButton
-                  userId={userId}
-                  accountId={accountId}
-                  platform="google-calendar"
-                  onSuccess={handleCalendarSuccess}
-                  size="lg"
-                  className="w-full"
-                >
-                  Connect Google Calendar
-                </PicaConnectButton>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Calendar CTA - Commented out until calendar integration is working
+				{hasCalendarFeature && !connected && (
+					<Card className="border-2 border-primary/20">
+						<CardContent className="pt-6">
+							<div className="text-center">
+								<h2 className="mb-2 font-semibold text-lg">Prep for every customer call</h2>
+								<p className="mb-5 text-muted-foreground text-sm">
+									Connect your calendar to get AI briefings before meetings and follow-up drafts after.
+								</p>
+								<PicaConnectButton
+									userId={userId}
+									accountId={accountId}
+									platform="google-calendar"
+									onSuccess={handleCalendarSuccess}
+									size="lg"
+									className="w-full"
+								>
+									Connect Google Calendar
+								</PicaConnectButton>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+				*/}
 
-        {/* Calendar already connected */}
-        {hasCalendarFeature && connected && (
-          <Card className="border-green-500/30 bg-green-500/5">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                <span className="text-sm">Calendar connected</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Calendar already connected - Commented out until calendar integration is working
+				{hasCalendarFeature && connected && (
+					<Card className="border-green-500/30 bg-green-500/5">
+						<CardContent className="py-4">
+							<div className="flex items-center justify-center gap-2">
+								<CheckCircle2 className="h-5 w-5 text-green-500" />
+								<span className="text-sm">Calendar connected</span>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+				*/}
 
-        {/* Skip to Dashboard */}
+        {/* Go to Dashboard */}
         <div className="text-center">
-          <Button
-            variant={hasCalendarFeature && !connected ? "ghost" : "default"}
-            size="lg"
-            className="w-full"
-            asChild
-          >
+          <Button variant="default" size="lg" className="w-full" asChild>
             <Link to={dashboardUrl}>
-              {hasCalendarFeature && !connected
-                ? "Skip for now"
-                : "Go to Dashboard"}
+              Go to Dashboard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

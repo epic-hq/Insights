@@ -49,14 +49,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const accountId = membership?.account_id;
   if (!accountId) {
     consola.warn("[portal] No account_id for user", { userId: user.sub });
-    return redirect("/settings/billing?error=no_account");
+    return redirect("/home?error=no_account");
   }
+
+  // Build the billing page URL for this account
+  const billingUrl = `/a/${accountId}/billing`;
 
   // Check for access token
   const accessToken = env.POLAR_ACCESS_TOKEN;
   if (!accessToken) {
     consola.error("[portal] POLAR_ACCESS_TOKEN not configured");
-    return redirect("/settings/billing?error=billing_not_configured");
+    return redirect(`${billingUrl}?error=billing_not_configured`);
   }
 
   // Look up the Polar customer ID for this account
@@ -73,15 +76,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       accountId,
       error,
     });
-    return redirect("/settings/billing?error=no_subscription");
+    // No subscription yet - redirect to billing page where they can upgrade
+    return redirect(`${billingUrl}?error=no_subscription`);
   }
 
   // Determine server environment
   const server = env.APP_ENV === "production" ? "production" : "sandbox";
 
-  // Build portal URL
+  // Build portal URL - return to the account's billing page
   const url = new URL(request.url);
-  const returnUrl = `${url.origin}/settings/billing`;
+  const returnUrl = `${url.origin}${billingUrl}`;
 
   // Polar customer portal URL format
   const portalBaseUrl =

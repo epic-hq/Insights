@@ -7,7 +7,6 @@ import {
   Mic,
   Sparkles,
   TrendingUp,
-  Users,
   Zap,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -139,6 +138,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     survey_responses: 0, // TODO: count from surveys table
   };
 
+  // Check if Polar customer exists (needed for "Manage Subscription" button)
+  const { data: billingCustomer } = await supabaseAdmin
+    .schema("accounts")
+    .from("billing_customers")
+    .select("id")
+    .eq("account_id", accountId)
+    .eq("provider", "polar")
+    .maybeSingle();
+
   return {
     currentPlan,
     usage,
@@ -147,6 +155,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     accountName:
       (account?.accounts as { name?: string })?.name ?? "Your Account",
     renewalDate: null as string | null, // TODO: Get from billing provider
+    hasBillingCustomer: !!billingCustomer,
   };
 }
 
@@ -173,6 +182,7 @@ export default function BillingPage() {
     totalCredits,
     accountName,
     renewalDate,
+    hasBillingCustomer,
   } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const plan = PLANS[currentPlan];
@@ -251,23 +261,14 @@ export default function BillingPage() {
             )}
           </div>
         </CardHeader>
-        <CardFooter className="flex gap-3">
-          {currentPlan === "free" ? (
-            <Button asChild>
-              <Link to="/pricing">Upgrade Plan</Link>
+        <CardFooter>
+          {hasBillingCustomer && (
+            <Button variant="outline" asChild>
+              <Link to="/api/billing/portal">
+                <CreditCard className="mr-2 h-4 w-4" />
+                Manage Subscription
+              </Link>
             </Button>
-          ) : (
-            <>
-              <Button variant="outline" asChild>
-                <Link to="/api/billing/portal">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Manage Billing
-                </Link>
-              </Button>
-              <Button variant="ghost" asChild>
-                <Link to="/pricing">Change Plan</Link>
-              </Button>
-            </>
           )}
         </CardFooter>
       </Card>
@@ -366,7 +367,7 @@ export default function BillingPage() {
       </div>
 
       {/* Detailed Usage Breakdown */}
-      {usageSummary.length > 0 && (
+      {false && usageSummary.length > 0 && (
         <>
           <Separator />
           <div className="space-y-4">
@@ -413,108 +414,37 @@ export default function BillingPage() {
 
       <Separator />
 
-      {/* Plan Comparison */}
-      <div className="space-y-4">
-        <h2 className="font-semibold text-xl">Compare Plans</h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          {(Object.entries(PLANS) as [PlanKey, (typeof PLANS)[PlanKey]][]).map(
-            ([key, p]) => (
-              <Card
-                key={key}
-                className={
-                  key === currentPlan
-                    ? "border-primary ring-1 ring-primary"
-                    : ""
-                }
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{p.name}</CardTitle>
-                    {key === currentPlan && (
-                      <Badge variant="outline">Current</Badge>
-                    )}
-                  </div>
-                  <CardDescription>
-                    ${p.price.monthly}
-                    {p.price.monthly > 0 && "/mo"}
-                    {p.perUser && " per user"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">AI Analyses</span>
-                    <span>
-                      {p.limits.ai_analyses === Number.POSITIVE_INFINITY
-                        ? "Unlimited"
-                        : p.limits.ai_analyses}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Voice Chat</span>
-                    <span>
-                      {p.limits.voice_minutes === 0
-                        ? "—"
-                        : `${p.limits.voice_minutes} min`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Surveys</span>
-                    <span>{p.limits.survey_responses.toLocaleString()}</span>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  {key === currentPlan ? (
-                    <Button variant="outline" className="w-full" disabled>
-                      Current Plan
-                    </Button>
-                  ) : key === "team" ? (
-                    <Button variant="outline" className="w-full" asChild>
-                      <a
-                        href="https://cal.com/rickmoy"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Users className="mr-2 h-4 w-4" />
-                        Contact Sales
-                      </a>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant={key === "pro" ? "default" : "outline"}
-                      className="w-full"
-                      asChild
-                    >
-                      <Link to={`/api/billing/checkout?plan=${key}`}>
-                        {currentPlan === "free" ? "Upgrade" : "Switch"}
-                      </Link>
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
-            ),
-          )}
-        </div>
-      </div>
-
-      {/* Help Section */}
+      {/* Upgrade / Change Plan CTA */}
       <Card className="bg-muted/50">
         <CardContent className="flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
           <div>
-            <h3 className="font-semibold">Need help choosing a plan?</h3>
+            <h3 className="font-semibold">
+              {currentPlan === "free" ? "Upgrade your plan" : "Compare plans"}
+            </h3>
             <p className="text-muted-foreground text-sm">
-              Talk to our team to find the best fit for your needs.
+              {currentPlan === "free"
+                ? "Unlock unlimited AI analyses, voice chat, and more."
+                : "See all plan features and switch plans anytime."}
             </p>
           </div>
-          <Button variant="outline" asChild>
-            <a
-              href="https://cal.com/rickmoy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Schedule a Call
-            </a>
-          </Button>
+          <div className="flex gap-3">
+            <Button asChild>
+              <Link to="/pricing">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                View Plans
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <a
+                href="https://cal.com/rickmoy"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Talk to Sales
+              </a>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
