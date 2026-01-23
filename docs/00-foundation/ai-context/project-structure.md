@@ -72,6 +72,7 @@ Insights/
 │   ├── components/                     # Shared UI components
 │   │   ├── ui/                         # shadcn/ui primitives (Button, Dialog, etc.)
 │   │   ├── navigation/                 # Sidebar, nav components
+│   │   ├── billing/                    # Billing UI (TrialBanner, etc.)
 │   │   ├── chat/                       # Chat UI components
 │   │   ├── charts/                     # Chart components
 │   │   ├── dialogs/                    # Modal dialogs

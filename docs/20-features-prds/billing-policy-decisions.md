@@ -108,22 +108,39 @@ When Polar sends `subscription.updated` with new quantity:
 
 ---
 
-## 3. Trial Expiration Policy
+## 3. Trial Provisioning Policy
 
-### Current Behavior
-- Trials require credit card upfront (Polar default)
+### Account-Level Billing Model
+Billing is at the **account level**, not the user level. This means:
+- Each account (personal or team) can have its own subscription
+- Team members share the team's plan and credits
+- Users can belong to multiple accounts with different billing states
+
+### Trial Provisioning Logic
+Trials are provisioned to the user's **owned team account** (where `primary_owner_user_id = user.id`), ensuring:
+- Trial goes to the correct account regardless of which team the user lands on after login
+- Invited team members don't accidentally trigger trials on teams they don't own
+- Users see their trial status when viewing their owned team
+
+**Implementation** (`app/routes/_ProtectedLayout.tsx`):
+1. Find user's owned team account (`is_primary_owner: true`, `personal_account: false`)
+2. Check if that account already has a subscription
+3. If not, provision legacy trial to owned team
+4. Mark user's `legacy_trial_provisioned_at` to prevent re-provisioning
+
+### Trial Period Configuration
 - Trial period: 14 days
+- Trials require credit card upfront (Polar default)
 - At trial end with valid CC: Auto-convert to paid subscription
 - At trial end without valid CC: Subscription canceled
 
-### Decision: Keep CC-Required Trials
-
-**Rationale**: Higher conversion rates, reduced trial abuse, consistent with industry practice.
-
-### Trial Banner States
+### Trial Banner Component
+`app/components/billing/TrialBanner.tsx` displays trial status based on days remaining:
 1. **Normal** (>3 days left): Blue, informational
 2. **Expiring Soon** (≤3 days): Amber, urgent
 3. **Expired**: Red, blocked features
+
+**Note**: Trial banner only shows when viewing the account that has the trial subscription.
 
 ---
 
