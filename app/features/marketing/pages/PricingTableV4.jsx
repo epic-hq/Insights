@@ -308,7 +308,7 @@ const PricingTable = () => {
 				<div className="mb-16 text-center">
 					<p className="mb-4 font-medium text-amber-500 text-sm uppercase tracking-widest">Pricing</p>
 					<h1 className="mb-6 font-serif text-4xl tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-						Record everything.
+						Capture everything.
 						<br />
 						<span className="text-stone-400 italic">Pay for intelligence.</span>
 					</h1>

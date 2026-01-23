@@ -1,5 +1,5 @@
-import { Outlet } from "react-router";
-import MainNav from "~/components/navigation/MainNav";
+import { Outlet } from "react-router"
+import MainNav from "~/components/navigation/MainNav"
 
 /**
  * Marketing Layout
@@ -7,10 +7,10 @@ import MainNav from "~/components/navigation/MainNav";
  * Includes MainNav header - child pages control their own backgrounds
  */
 export default function MarketingLayout() {
-  return (
-    <div className="min-h-screen">
-      <MainNav />
-      <Outlet />
-    </div>
-  );
+	return (
+		<div className="min-h-screen">
+			<MainNav />
+			<Outlet />
+		</div>
+	)
 }
