@@ -71,7 +71,10 @@ const ROTATING_STATUS_MESSAGES = [
 const GENERIC_PROGRESS_LABELS = new Set(["thinking", "thinking...", "routing", "routing...", "working", "working..."])
 
 function normalizeProgressMessage(message: string): string {
-	return message.replace(/\u2026/g, "...").trim().toLowerCase()
+	return message
+		.replace(/\u2026/g, "...")
+		.trim()
+		.toLowerCase()
 }
 
 function useRotatingStatus(enabled: boolean): string {

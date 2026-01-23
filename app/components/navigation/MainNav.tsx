@@ -97,9 +97,7 @@ export default function MainNav() {
 				</div>
 
 				{/* Mobile Menu Overlay */}
-				{mobileMenuOpen &&
-					(isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage) &&
-					!user && (
+				{mobileMenuOpen && (isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage) && !user && (
 					<div className="fixed inset-0 z-50 md:hidden">
 						{/* Backdrop */}
 						<div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
