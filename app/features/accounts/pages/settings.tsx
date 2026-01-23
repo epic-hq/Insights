@@ -40,7 +40,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { hasFeature } from "~/config/plans";
+import { hasFeature, PLANS, type PlanId } from "~/config/plans";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
 import {
   loadAccountMetadata,
   updateAccountMetadata,
@@ -226,24 +227,23 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
     .eq("id", accountId)
     .single();
 
-  // Check subscription for Pro plan (calendar_sync feature)
-  // Default to 'free', check billing_subscriptions for active pro/team subscription
-  let planId: "free" | "starter" | "pro" | "team" = "free";
-  const { data: subscription } = await supabase
+  // Get plan from billing_subscriptions (single source of truth)
+  let planId: PlanId = "free";
+  const { data: subscription } = await supabaseAdmin
     .schema("accounts")
     .from("billing_subscriptions")
     .select("plan_name, status")
     .eq("account_id", accountId)
     .in("status", ["active", "trialing"])
-    .order("created", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (subscription?.plan_name) {
-    const planName = subscription.plan_name.toLowerCase();
-    if (planName.includes("pro")) planId = "pro";
-    else if (planName.includes("team")) planId = "team";
-    else if (planName.includes("starter")) planId = "starter";
+    const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId;
+    if (normalizedPlan in PLANS) {
+      planId = normalizedPlan;
+    }
   }
 
   const hasCalendarFeature = hasFeature(planId, "calendar_sync");

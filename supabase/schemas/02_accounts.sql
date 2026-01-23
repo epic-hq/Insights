@@ -581,7 +581,7 @@ begin
             select bs.account_id, bs.status
             from accounts.billing_subscriptions bs
             where bs.account_id = get_account.account_id
-            order by bs.created desc
+            order by bs.created_at desc
             limit 1
         ) bs on bs.account_id = a.id
         where a.id = get_account.account_id

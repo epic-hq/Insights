@@ -137,15 +137,16 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     walkthroughSignedUrl = presigned?.url ?? null;
   }
 
-  // Check account's plan for white_label feature
+  // Get plan from billing_subscriptions (single source of truth)
   // Free tier always shows branding regardless of config
   let planId: PlanId = "free";
   const { data: subscription } = await supabase
+    .schema("accounts")
     .from("billing_subscriptions")
     .select("plan_name, status")
     .eq("account_id", list.account_id)
     .in("status", ["active", "trialing"])
-    .order("created", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 

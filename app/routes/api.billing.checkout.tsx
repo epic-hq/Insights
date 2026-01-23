@@ -67,18 +67,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect(`/login?redirect=${encodeURIComponent(returnUrl)}`);
   }
 
-  // Get account_id from user's membership (use admin client to bypass RLS)
-  // Query accounts.account_user table - users have a personal account by default
+  // Get team account_id (not personal account) for billing
+  // Personal accounts have personal_account=true, we want team accounts
   const { data: membership, error: membershipError } = await supabaseAdmin
     .schema("accounts")
     .from("account_user")
-    .select("account_id")
+    .select("account_id, accounts!inner(id, personal_account)")
     .eq("user_id", user.sub)
+    .eq("accounts.personal_account", false)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (membershipError) {
-    consola.warn("[checkout] Error fetching account membership", {
+    consola.warn("[checkout] Error fetching team account", {
       userId: user.sub,
       error: membershipError.message,
     });
@@ -86,9 +87,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const accountId = membership?.account_id;
   if (!accountId) {
-    consola.warn("[checkout] No account_id for user", { userId: user.sub });
-    // User may have just signed up - redirect to onboarding first
-    return redirect("/home?error=no_account");
+    consola.warn("[checkout] No team account for user", { userId: user.sub });
+    // User doesn't have a team account yet - this shouldn't happen normally
+    return redirect("/home?error=no_team_account");
   }
 
   const url = new URL(request.url);
@@ -132,9 +133,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const server =
     env.APP_ENV === "production" ? "production" : ("sandbox" as const);
 
-  // Build success URL
+  // Build success URL - redirect to welcome-upgrade page with plan param
   const origin = url.origin;
-  const successUrl = `${origin}/settings/billing?checkout=success&plan=${plan}`;
+  const successUrl = `${origin}/a/${accountId}/welcome-upgrade?plan=${plan}`;
 
   consola.info("[checkout] Creating Polar checkout session", {
     plan,

@@ -7,11 +7,13 @@
 
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import { hasFeature } from "~/config/plans";
+import type { PlanId } from "~/config/plans";
+import { hasFeature, PLANS } from "~/config/plans";
 import {
   getGoogleCalendarAuthUrl,
   isPicaConfigured,
 } from "~/lib/integrations/pica.server";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
 
 /**
@@ -46,16 +48,24 @@ export async function action({ context, request }: ActionFunctionArgs) {
     );
   }
 
-  // Check if user's plan allows calendar sync
-  const { data: account } = await ctx.supabase
+  // Check if user's plan allows calendar sync (query billing_subscriptions as source of truth)
+  const { data: subscription } = await supabaseAdmin
     .schema("accounts")
-    .from("accounts")
-    .select("plan_id")
-    .eq("id", accountId)
-    .single();
+    .from("billing_subscriptions")
+    .select("plan_name, status")
+    .eq("account_id", accountId)
+    .in("status", ["active", "trialing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  const planId =
-    (account?.plan_id as "free" | "starter" | "pro" | "team") || "free";
+  let planId: PlanId = "free";
+  if (subscription?.plan_name) {
+    const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId;
+    if (normalizedPlan in PLANS) {
+      planId = normalizedPlan;
+    }
+  }
 
   if (!hasFeature(planId, "calendar_sync")) {
     return Response.json(

@@ -1,3 +1,4 @@
+import consola from "consola";
 import {
   Calendar,
   CheckCircle,
@@ -34,10 +35,8 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { PLANS } from "~/config/plans";
-import {
-  getAuthenticatedUser,
-  getServerClient,
-} from "~/lib/supabase/client.server";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { userContext } from "~/server/user-context";
 
 type PlanKey = keyof typeof PLANS;
 
@@ -49,26 +48,49 @@ type UsageSummaryRow = {
   total_credits: number;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { user } = await getAuthenticatedUser(request);
-  if (!user) {
-    throw new Response("Unauthorized", { status: 401 });
+export async function loader({ context, params }: LoaderFunctionArgs) {
+  const ctx = context.get(userContext);
+  const supabase = ctx.supabase;
+  const accountId = params.accountId;
+
+  if (!supabase) {
+    throw new Response("Database connection unavailable", { status: 500 });
+  }
+  if (!accountId) {
+    throw new Response("Account ID is required", { status: 400 });
   }
 
-  const { client: supabase } = getServerClient(request);
-
-  // Get account info
-  const { data: membership } = await supabase
+  // Get account info (name only - plan comes from billing_subscriptions)
+  const { data: account } = await supabase
     .from("account_members")
     .select("account_id, role, accounts(name, metadata)")
-    .eq("user_id", user.sub)
+    .eq("account_id", accountId)
     .single();
 
-  const accountId = membership?.account_id;
+  // Get current plan from billing_subscriptions (single source of truth)
+  let currentPlan: PlanKey = "free";
+  const { data: subscription, error: subError } = await supabaseAdmin
+    .schema("accounts")
+    .from("billing_subscriptions")
+    .select("plan_name, status")
+    .eq("account_id", accountId)
+    .in("status", ["active", "trialing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  // TODO: Get actual plan from billing provider
-  // For now, everyone is on free tier
-  const currentPlan: PlanKey = "free";
+  consola.info("[billing] Subscription query", {
+    accountId,
+    subscription,
+    error: subError?.message,
+  });
+
+  if (subscription?.plan_name) {
+    const planKey = subscription.plan_name.toLowerCase() as PlanKey;
+    if (planKey in PLANS) {
+      currentPlan = planKey;
+    }
+  }
 
   // Get monthly usage summary from billing schema
   let usageSummary: UsageSummaryRow[] = [];
@@ -123,7 +145,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     usageSummary,
     totalCredits,
     accountName:
-      (membership?.accounts as { name?: string })?.name ?? "Your Account",
+      (account?.accounts as { name?: string })?.name ?? "Your Account",
     renewalDate: null as string | null, // TODO: Get from billing provider
   };
 }

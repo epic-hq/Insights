@@ -82,7 +82,7 @@ create table if not exists accounts.billing_subscriptions
     -- If true the subscription has been canceled by the user and will be deleted at the end of the billing period.
     cancel_at_period_end boolean,
     -- Time at which the subscription was created.
-    created              timestamp with time zone default timezone('utc' :: text, now())   not null,
+    created_at           timestamp with time zone default timezone('utc' :: text, now())   not null,
     -- Start of the current period that the subscription has been invoiced for.
     current_period_start timestamp with time zone default timezone('utc' :: text, now())   not null,
     -- End of the current period that the subscription has been invoiced for. At the end of this period, a new invoice will be created.
@@ -174,7 +174,7 @@ BEGIN
              left join accounts.billing_customers c on c.account_id = coalesce(s.account_id, a.id)
              join accounts.config config on true
     where a.id = get_account_billing_status.account_id
-    order by s.created desc
+    order by s.created_at desc
     limit 1;
 
     return result || role_result;
@@ -204,7 +204,7 @@ BEGIN
     -- if the subscription is not null, upsert the data into billing_subscriptions, only upsert fields that are present in the jsonb object
     if subscription is not null then
         insert into accounts.billing_subscriptions (id, account_id, billing_customer_id, status, metadata, price_id,
-                                                    quantity, cancel_at_period_end, created, current_period_start,
+                                                    quantity, cancel_at_period_end, created_at, current_period_start,
                                                     current_period_end, ended_at, cancel_at, canceled_at, trial_start,
                                                     trial_end, plan_name, provider)
         values (subscription ->> 'id', service_role_upsert_customer_subscription.account_id,
@@ -212,7 +212,7 @@ BEGIN
                 subscription -> 'metadata',
                 subscription ->> 'price_id', (subscription ->> 'quantity')::int,
                 (subscription ->> 'cancel_at_period_end')::boolean,
-                (subscription ->> 'created')::timestamptz, (subscription ->> 'current_period_start')::timestamptz,
+                (subscription ->> 'created_at')::timestamptz, (subscription ->> 'current_period_start')::timestamptz,
                 (subscription ->> 'current_period_end')::timestamptz, (subscription ->> 'ended_at')::timestamptz,
                 (subscription ->> 'cancel_at')::timestamptz,
                 (subscription ->> 'canceled_at')::timestamptz, (subscription ->> 'trial_start')::timestamptz,

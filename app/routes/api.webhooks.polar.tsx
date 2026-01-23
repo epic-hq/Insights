@@ -182,6 +182,13 @@ async function handleSubscriptionUpdated(
     status: subscription.status,
   });
 
+  // Ensure customer exists first
+  await upsertBillingCustomer({
+    polarCustomerId: customer.id,
+    accountId,
+    email: customer.email,
+  });
+
   await upsertBillingSubscription({
     polarSubscriptionId: subscription.id,
     polarCustomerId: customer.id,
@@ -220,6 +227,13 @@ async function handleSubscriptionCanceled(
     subscriptionId: subscription.id,
     accountId,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+  });
+
+  // Ensure customer exists first (may not if this is first event received)
+  await upsertBillingCustomer({
+    polarCustomerId: customer.id,
+    accountId,
+    email: customer.email,
   });
 
   // Update subscription record - entitlements remain until period end
@@ -264,6 +278,13 @@ async function handleSubscriptionRevoked(
   consola.info("[polar webhook] Subscription revoked", {
     subscriptionId: subscription.id,
     accountId,
+  });
+
+  // Ensure customer exists first
+  await upsertBillingCustomer({
+    polarCustomerId: customer.id,
+    accountId,
+    email: customer.email,
   });
 
   await upsertBillingSubscription({

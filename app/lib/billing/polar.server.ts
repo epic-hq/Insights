@@ -13,18 +13,34 @@ import { supabaseAdmin } from "~/lib/supabase/client.server";
 
 /**
  * Map Polar product IDs to internal plan IDs.
- * Update these after creating products in Polar dashboard.
+ * Includes both production and sandbox product IDs.
  */
 export const POLAR_PRODUCT_MAP: Record<string, PlanId> = {
-  // Monthly products
+  // ===================
+  // PRODUCTION Products
+  // ===================
+  // Monthly
   "7b908954-435f-4558-a6b1-857aacd0ceaf": "free",
   "43cd1bf3-1b5b-45e9-9c87-fbd21fa82954": "starter",
   "c09e11de-1ab6-4f0f-86ca-799ad512be5b": "pro",
   "f69fb092-eab5-46e0-820a-d15fafef8a1d": "team",
-  // Annual products (same plan, different billing interval)
+  // Annual
   "e0fc0ce2-c0fd-43c9-bc8b-abb2c1df76ad": "starter",
   "95c62fc0-e26a-4b33-8e5c-fcaf76972a9e": "pro",
   "1e2c65e8-907e-4be3-be4d-8d78613ce66a": "team",
+
+  // ===================
+  // SANDBOX Products
+  // ===================
+  // Monthly
+  "58235e6f-ff64-4d85-a295-ac7baac185cf": "free",
+  "db5c08d1-a954-4ccd-837e-a35d2e6f4020": "starter",
+  "efa737bd-10cc-4bb5-91da-31c48ed9bead": "pro",
+  "9da89ec4-2724-41c5-a1e7-547930706a14": "team",
+  // Annual
+  "23b2e81e-1a3f-48e4-b5e8-025a22cca5f7": "starter",
+  "a71ebfb2-3c62-458d-9c40-063597811b04": "pro",
+  "79bd4d5c-9838-4464-8ce1-bd56716cdf15": "team",
 };
 
 type SubscriptionStatus =
@@ -171,6 +187,9 @@ export async function upsertBillingSubscription(params: {
     consola.error("[polar] Failed to upsert billing subscription", error);
     throw error;
   }
+
+  // Note: billing_subscriptions.plan_name is the single source of truth for plan
+  // No need to sync to accounts.plan_id
 
   return { planId };
 }
