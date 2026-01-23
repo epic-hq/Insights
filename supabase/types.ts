@@ -52,6 +52,7 @@ export type Database = {
           name: string | null
           offerings: string[] | null
           personal_account: boolean
+          plan_id: string
           primary_owner_user_id: string
           private_metadata: Json | null
           public_metadata: Json | null
@@ -74,6 +75,7 @@ export type Database = {
           name?: string | null
           offerings?: string[] | null
           personal_account?: boolean
+          plan_id?: string
           primary_owner_user_id?: string
           private_metadata?: Json | null
           public_metadata?: Json | null
@@ -96,6 +98,7 @@ export type Database = {
           name?: string | null
           offerings?: string[] | null
           personal_account?: boolean
+          plan_id?: string
           primary_owner_user_id?: string
           private_metadata?: Json | null
           public_metadata?: Json | null
@@ -148,7 +151,7 @@ export type Database = {
           cancel_at: string | null
           cancel_at_period_end: boolean | null
           canceled_at: string | null
-          created: string
+          created_at: string
           current_period_end: string
           current_period_start: string
           ended_at: string | null
@@ -168,7 +171,7 @@ export type Database = {
           cancel_at?: string | null
           cancel_at_period_end?: boolean | null
           canceled_at?: string | null
-          created?: string
+          created_at?: string
           current_period_end?: string
           current_period_start?: string
           ended_at?: string | null
@@ -188,7 +191,7 @@ export type Database = {
           cancel_at?: string | null
           cancel_at_period_end?: boolean | null
           canceled_at?: string | null
-          created?: string
+          created_at?: string
           current_period_end?: string
           current_period_start?: string
           ended_at?: string | null
@@ -1165,6 +1168,179 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_connections: {
+        Row: {
+          access_token: string | null
+          account_id: string
+          calendar_id: string | null
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          pica_connection_id: string | null
+          pica_connection_key: string | null
+          provider: string
+          provider_account_id: string | null
+          provider_email: string | null
+          refresh_token: string | null
+          sync_enabled: boolean
+          sync_error: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_id: string
+          calendar_id?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          pica_connection_id?: string | null
+          pica_connection_key?: string | null
+          provider?: string
+          provider_account_id?: string | null
+          provider_email?: string | null
+          refresh_token?: string | null
+          sync_enabled?: boolean
+          sync_error?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          account_id?: string
+          calendar_id?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          pica_connection_id?: string | null
+          pica_connection_key?: string | null
+          provider?: string
+          provider_account_id?: string | null
+          provider_email?: string | null
+          refresh_token?: string | null
+          sync_enabled?: boolean
+          sync_error?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: {
+          account_id: string
+          attendee_emails: string[] | null
+          brief_generated_at: string | null
+          brief_id: string | null
+          connection_id: string
+          created_at: string
+          description: string | null
+          end_time: string
+          external_id: string
+          id: string
+          interview_id: string | null
+          is_customer_meeting: boolean | null
+          location: string | null
+          matched_org_id: string | null
+          matched_person_ids: string[] | null
+          meeting_type: string | null
+          meeting_url: string | null
+          organizer_email: string | null
+          raw_event: Json | null
+          start_time: string
+          synced_at: string
+          timezone: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          attendee_emails?: string[] | null
+          brief_generated_at?: string | null
+          brief_id?: string | null
+          connection_id: string
+          created_at?: string
+          description?: string | null
+          end_time: string
+          external_id: string
+          id?: string
+          interview_id?: string | null
+          is_customer_meeting?: boolean | null
+          location?: string | null
+          matched_org_id?: string | null
+          matched_person_ids?: string[] | null
+          meeting_type?: string | null
+          meeting_url?: string | null
+          organizer_email?: string | null
+          raw_event?: Json | null
+          start_time: string
+          synced_at?: string
+          timezone?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          attendee_emails?: string[] | null
+          brief_generated_at?: string | null
+          brief_id?: string | null
+          connection_id?: string
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          external_id?: string
+          id?: string
+          interview_id?: string | null
+          is_customer_meeting?: boolean | null
+          location?: string | null
+          matched_org_id?: string | null
+          matched_person_ids?: string[] | null
+          meeting_type?: string | null
+          meeting_url?: string | null
+          organizer_email?: string | null
+          raw_event?: Json | null
+          start_time?: string
+          synced_at?: string
+          timezone?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_matched_org_id_fkey"
+            columns: ["matched_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
