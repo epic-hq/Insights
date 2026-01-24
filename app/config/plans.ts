@@ -63,6 +63,8 @@ export interface PlanConfig {
   };
   /** Per-user pricing (for team plan) */
   perUser: boolean;
+  /** Minimum seats required (for per-user plans) */
+  minSeats?: number;
   /** User-facing limits (shown in UI) */
   limits: PlanLimits;
   /** Internal credit allocation (hidden from users) */
@@ -194,6 +196,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     description: "Collaborate with your team, pooled resources, SSO",
     price: { monthly: 39, annual: 31 },
     perUser: true,
+    minSeats: 2, // Minimum 2 seats - "team" implies multiple users
     limits: {
       ai_analyses: Number.POSITIVE_INFINITY,
       voice_minutes: 300, // per user

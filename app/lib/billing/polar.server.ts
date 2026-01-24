@@ -634,20 +634,26 @@ export async function updateSubscriptionQuantity(params: {
     return null;
   }
 
+  // Enforce minimum seats (Team plan requires at least 2 seats)
+  const minSeats = plan.minSeats ?? 1;
+  const effectiveQuantity = Math.max(newQuantity, minSeats);
+
   // Don't update if quantity hasn't changed
-  if (subscription.quantity === newQuantity) {
+  if (subscription.quantity === effectiveQuantity) {
     consola.debug("[polar] Seat quantity unchanged", {
       accountId,
-      quantity: newQuantity,
+      quantity: effectiveQuantity,
     });
-    return { success: true, quantity: newQuantity };
+    return { success: true, quantity: effectiveQuantity };
   }
 
   consola.info("[polar] Updating subscription seat quantity", {
     accountId,
     subscriptionId: subscription.id,
     oldQuantity: subscription.quantity,
-    newQuantity,
+    newQuantity: effectiveQuantity,
+    requestedQuantity: newQuantity,
+    minSeats,
   });
 
   try {
@@ -658,7 +664,7 @@ export async function updateSubscriptionQuantity(params: {
     await polar.subscriptions.update({
       id: subscription.id,
       subscriptionUpdate: {
-        seats: newQuantity,
+        seats: effectiveQuantity,
       },
     });
 
@@ -668,7 +674,7 @@ export async function updateSubscriptionQuantity(params: {
     const { error: updateError } = await supabaseAdmin
       .schema("accounts")
       .from("billing_subscriptions")
-      .update({ quantity: newQuantity })
+      .update({ quantity: effectiveQuantity })
       .eq("id", subscription.id);
 
     if (updateError) {
@@ -681,10 +687,10 @@ export async function updateSubscriptionQuantity(params: {
 
     consola.info("[polar] Subscription seat quantity updated", {
       accountId,
-      quantity: newQuantity,
+      quantity: effectiveQuantity,
     });
 
-    return { success: true, quantity: newQuantity };
+    return { success: true, quantity: effectiveQuantity };
   } catch (error) {
     consola.error("[polar] Failed to update Polar subscription", {
       accountId,
