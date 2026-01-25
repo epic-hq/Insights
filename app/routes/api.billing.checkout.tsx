@@ -152,8 +152,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   // Get minimum seats for per-user plans (Team plan starts at 2 seats)
+  // Only send seats if product supports seat-based pricing (production)
   const planConfig = PLANS[plan];
-  const minSeats = planConfig.perUser ? (planConfig.minSeats ?? 1) : undefined;
+  const minSeats =
+    server === "production" && planConfig.perUser
+      ? (planConfig.minSeats ?? 1)
+      : undefined;
 
   try {
     // Create checkout session via Polar API
@@ -163,7 +167,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       successUrl: `${successUrl}&checkout_id={CHECKOUT_ID}`,
       customerEmail: user.email || undefined,
       metadata,
-      // For per-user plans (Team), set minimum seats
+      // For per-user plans (Team), set minimum seats (production only)
       ...(minSeats && { seats: minSeats }),
     });
 
