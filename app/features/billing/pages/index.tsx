@@ -160,8 +160,8 @@ export default function BillingPage() {
           "Payment system is not configured. Please contact support.",
       },
       no_subscription: {
-        title: "No active subscription",
-        description: "Choose a plan below to get started.",
+        title: "Complete your subscription",
+        description: "Select a plan below to activate billing.",
       },
       checkout_failed: {
         title: "Checkout failed",
@@ -378,8 +378,8 @@ export default function BillingPage() {
                           {p.cta.label}
                         </a>
                       </Button>
-                    ) : currentPlan === "free" ? (
-                      // Free tier users: go through checkout
+                    ) : !hasBillingCustomer ? (
+                      // Users without billing customer (free or trial): go through checkout
                       <Button
                         variant={
                           p.cta.style === "primary" ? "default" : "outline"
@@ -388,11 +388,11 @@ export default function BillingPage() {
                         asChild
                       >
                         <Link to={`/api/billing/checkout?plan=${key}`}>
-                          Upgrade
+                          {currentPlan === "free" ? "Upgrade" : "Subscribe"}
                         </Link>
                       </Button>
                     ) : (
-                      // Existing subscribers: use portal for plan changes
+                      // Paying subscribers: use portal for plan changes
                       <Button
                         variant={
                           p.cta.style === "primary" ? "default" : "outline"
