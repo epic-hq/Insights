@@ -145,6 +145,44 @@ export default function BillingPage() {
     }
   }, [searchParams, setSearchParams]);
 
+  // Show error toast for billing errors
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (!error) return;
+
+    const errorMessages: Record<
+      string,
+      { title: string; description: string }
+    > = {
+      billing_not_configured: {
+        title: "Billing unavailable",
+        description:
+          "Payment system is not configured. Please contact support.",
+      },
+      no_subscription: {
+        title: "No active subscription",
+        description: "Choose a plan below to get started.",
+      },
+      checkout_failed: {
+        title: "Checkout failed",
+        description: "Unable to start checkout. Please try again.",
+      },
+      invalid_plan: {
+        title: "Invalid plan",
+        description: "The selected plan is not available.",
+      },
+    };
+
+    const msg = errorMessages[error] || {
+      title: "Something went wrong",
+      description: "Please try again or contact support.",
+    };
+
+    toast.error(msg.title, { description: msg.description });
+    searchParams.delete("error");
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // Format limit value for display
   const formatLimit = (value: number, suffix?: string): string => {
     if (value === Number.POSITIVE_INFINITY) return "Unlimited";
