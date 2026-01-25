@@ -1,40 +1,40 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { Memory } from "@mastra/memory"
-import { z } from "zod"
-import { supabaseAdmin } from "../../lib/supabase/client.server"
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
+import { z } from "zod";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { displayUserQuestionsTool } from "../tools/display-user-questions"
-import { navigateToPageTool } from "../tools/navigate-to-page"
-import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { displayUserQuestionsTool } from "../tools/display-user-questions";
+import { navigateToPageTool } from "../tools/navigate-to-page";
+import { saveUserSettingsDataTool } from "../tools/save-usersettings-data";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const AgentState = z.object({
-	signupChatData: z
-		.object({
-			problem: z.string().optional(),
-			need_to_learn: z.string().optional(),
-			content_types: z.string().optional(),
-			challenges: z.string().optional(),
-			other_feedback: z.string().optional(),
-			completed: z.boolean().optional(),
-		})
-		.optional(),
-})
+  signupChatData: z
+    .object({
+      problem: z.string().optional(),
+      need_to_learn: z.string().optional(),
+      content_types: z.string().optional(),
+      challenges: z.string().optional(),
+      other_feedback: z.string().optional(),
+      completed: z.boolean().optional(),
+    })
+    .optional(),
+});
 
 export const signupAgent = new Agent({
-	id: "signup-agent",
-	name: "signupAgent",
-	instructions: async ({ requestContext }) => {
-		const { data } = await supabaseAdmin
-			.from("user_settings")
-			.select("signup_data")
-			.eq("user_id", requestContext.get("user_id"))
-			.single()
-		return `
+  id: "signup-agent",
+  name: "signupAgent",
+  instructions: async ({ requestContext }) => {
+    const { data } = await supabaseAdmin
+      .from("user_settings")
+      .select("signup_data")
+      .eq("user_id", requestContext.get("user_id"))
+      .single();
+    return `
 You are an onboarding prescreen assistant for the waitlist. Ask short, targeted questions and collect the minimum to judge fit. Format responses with proper markdown for better readability.
 
 Flow:
@@ -58,27 +58,27 @@ Company:
 
 Current signup_data snapshot:
 ${JSON.stringify(data)}
-`
-	},
-	model: openai("gpt-5-mini"),
-	tools: wrapToolsWithStatusEvents({
-		// Validation guard to ensure the agent never prematurely completes
-		// signupCompletionGuardTool,
-		// Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
-		saveUserSettingsData: saveUserSettingsDataTool,
-		navigateToPage: navigateToPageTool,
-		displayUserQuestions: displayUserQuestionsTool,
-	}),
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-		options: {
-			workingMemory: {
-				enabled: false,
-				schema: AgentState,
-			},
-		},
-		generateTitle: false,
-	}),
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(100_000)],
-})
+`;
+  },
+  model: openai("gpt-5-mini"),
+  tools: wrapToolsWithStatusEvents({
+    // Validation guard to ensure the agent never prematurely completes
+    // signupCompletionGuardTool,
+    // Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
+    saveUserSettingsData: saveUserSettingsDataTool,
+    navigateToPage: navigateToPageTool,
+    displayUserQuestions: displayUserQuestionsTool,
+  }),
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+    options: {
+      workingMemory: {
+        enabled: false,
+        schema: AgentState,
+      },
+    },
+    generateTitle: false,
+  }),
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(100_000)],
+});

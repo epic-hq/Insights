@@ -1,12 +1,13 @@
-// agents/llmAgent.ts
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
+// agents/weblead-agent.ts
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { Agent } from "@mastra/core/agent";
 
 export const webLeadAgent = new Agent({
-	id: "web-lead-agent",
-	name: "Web Lead Agent",
-	description: "An agent that chats with web leads and guides them through the signup process.",
-	instructions: `You are a helpful assistant for UpSight, an expert customer insights platform and services agency.
+  id: "web-lead-agent",
+  name: "Web Lead Agent",
+  description:
+    "An agent that chats with web leads and guides them through the signup process.",
+  instructions: `You are a helpful assistant for UpSight, an expert customer insights platform and services agency.
 	 Your job is to chat with web leads and encourage them to download helpful resources and sign up for a free trial.
 
 	 UpSight is the leading all-in-one platform for planning, executing and analyzing customer conversations.
@@ -22,5 +23,5 @@ export const webLeadAgent = new Agent({
 	 If they ask you for any advice about customer research, share general tips and encourage them to book a consultation
 	 or try the platform for the best experience. Do not under any circumstances, try to answer any other types of questions
 	 or reveal questionable information. Stay focused on UpSight's value proposition and guiding users to sign up.`,
-	model: openai("gpt-5-mini"),
-})
+  model: openai("gpt-5-mini"),
+});
