@@ -21,11 +21,11 @@ import { HowItWorks, KeyBenefits } from "./benefits-how";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Customer Discovery and Validation Made Easy" },
+    { title: "UpSight - The AI-Native CRM That Actually Connects" },
     {
       name: "description",
       content:
-        "Validate your product before you build it. Run fast customer interviews, qualify real buyers, and uncover product-market fit. Set your growth goal, choose a strategy, and turn raw conversations into clear insights — all in one workspace. Plan your questions, run the interview, and analyze responses with structured guidance at every step.",
+        "Customer truth, connected. UpSight captures every customer conversation and turns them into evidence your whole team can see, search, and act on. Click any insight, see exactly who said it. Make work work.",
     },
   ];
 };
@@ -63,21 +63,21 @@ export default function LandingPage() {
               <div className="flex justify-center">
                 <Badge className="border-white/20 bg-white/10 px-4 py-2 font-medium text-white backdrop-blur-sm">
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Customer Intelligence
+                  AI-Native CRM
                 </Badge>
               </div>
 
               <h1 className="bg-gradient-to-r from-white via-white to-white/80 bg-clip-text font-bold text-5xl text-transparent tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
-                Understand your customers
+                Customer truth,
                 <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text text-transparent">
                   {" "}
-                  like never before
+                  connected
                 </span>
               </h1>
 
               <p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
-                Plan customer interviews, qualify real buyers, and extract
-                insights — all in one simple workflow.
+                Every insight shows its receipts. Click any theme, see exactly
+                who said it. One truth, shared across your team.
               </p>
 
               <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
@@ -145,20 +145,20 @@ export default function LandingPage() {
               <div className="space-y-6">
                 <Badge className="border-orange-200 bg-orange-50 px-4 py-2 font-medium text-orange-700">
                   <Target className="mr-2 h-4 w-4" />
-                  Validate before you build
+                  Evidence-backed decisions
                 </Badge>
 
                 <h2 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl">
-                  Unlock Deeper Understanding
+                  AI can say anything.
                   <span className="bg-gradient-to-r from-orange-600 via-red-700 to-orange-700 bg-clip-text text-transparent">
                     {" "}
-                    in Minutes
+                    We show the proof.
                   </span>
                 </h2>
 
                 <p className="mx-auto max-w-3xl text-slate-600 text-xl leading-relaxed md:text-2xl">
-                  The power of experienced UX Researchers and pragmatic business
-                  focus in one place.
+                  Every AI tool gives you summaries. Only UpSight gives you
+                  receipts. Trust isn't generated—it's earned.
                 </p>
               </div>
             </div>
@@ -174,11 +174,11 @@ export default function LandingPage() {
                     <Zap className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Grounded Truths in Real Time
+                    Show the Receipts
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Get instant, actionable discoveries pushed directly to you
-                    as new data emerges.
+                    Click any insight. See exactly who said it, when, and in
+                    what context. Evidence you can verify.
                   </p>
                 </div>
               </Card>
@@ -188,14 +188,14 @@ export default function LandingPage() {
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <Target className="h-8 w-8 text-white" />
+                    <Users className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Intelligent Suggestions
+                    One Truth, Every Team
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Receive Data-driven recommendations for your next strategic
-                    move, guiding your decisions.
+                    Sales, Product, CS — everyone sees the same customer
+                    reality. No more silos, no more "I think I heard..."
                   </p>
                 </div>
               </Card>
@@ -208,11 +208,11 @@ export default function LandingPage() {
                     <BarChart2 className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Find the "Wedge"
+                    The CRM That Remembers
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Discover the most impactful themes and priorities for your
-                    target personas.
+                    Your customers told you everything. Notes, calls, surveys —
+                    captured and connected so nothing gets lost.
                   </p>
                 </div>
               </Card>
@@ -222,14 +222,15 @@ export default function LandingPage() {
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-red-600 to-orange-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <Users className="h-8 w-8 text-white" />
+                    <Target className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Dynamic User Personas
+                    From Conversation to Decision
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Understand your audience segments with rich, data-driven
-                    persona definitions.
+                    Ask any question, get answers grounded in real
+                    conversations. Make decisions backed by what customers
+                    actually said.
                   </p>
                 </div>
               </Card>
@@ -242,11 +243,11 @@ export default function LandingPage() {
                     <MessageSquare className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Effortless and Intelligent
+                    Grounded, Not Generated
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Converse directly with your data and AI assistant for deeper
-                    exploration.
+                    Every insight traces back to real customer words. AI that
+                    shows its work, not just its output.
                   </p>
                 </div>
               </Card>
@@ -259,11 +260,11 @@ export default function LandingPage() {
                     <Lightbulb className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Track Key Questions
+                    Make Work Work
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Measure insight coverage against your core business
-                    questions and research goals.
+                    No more hunting. No more debating. Just clarity, evidence,
+                    and action. Customer truth that flows freely.
                   </p>
                 </div>
               </Card>
@@ -281,10 +282,10 @@ export default function LandingPage() {
 
           <div className="container relative mx-auto mx-auto space-y-8 px-4 md:px-6">
             <h2 className="bg-gradient-to-r from-white via-white to-white/80 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Ready to Transform Your Insights?
+              Start with one project.
             </h2>
             <p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
-              Start making smarter decisions with UpSight AI.
+              Five conversations. See what you learn. Make work work.
             </p>
             <Button
               asChild
@@ -294,7 +295,7 @@ export default function LandingPage() {
                 to={PATHS.AUTH.REGISTER}
                 className="flex items-center gap-3"
               >
-                Get Started Today
+                Start Free Trial
                 <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
