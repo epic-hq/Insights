@@ -195,6 +195,82 @@ posthog.identify(userId, {
 
 ---
 
+### 8. `survey_created`
+**Location**: `/app/features/research-links/pages/new.tsx`
+
+**Trigger**: When a user creates a new survey (Ask link)
+
+**Properties Captured**:
+```typescript
+{
+  survey_id: string
+  account_id: string
+  question_count: number
+  is_live: boolean
+  allow_chat: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 9. `insight_viewed`
+**Location**: `/app/features/insights/pages/insight-detail.tsx`
+
+**Trigger**: When a user views an insight detail page
+
+**Properties Captured**:
+```typescript
+{
+  insight_id: string
+  project_id: string
+  account_id: string
+  evidence_count: number
+  people_affected_count: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 10. `task_created`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a user creates a new task
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  priority: number
+  source: "insight" | "manual"
+  source_insight_id: string | null
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 11. `task_completed`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task status is changed to "done"
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  priority: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
 ## Implementation Patterns
 
 ### Error Handling
@@ -253,6 +329,18 @@ All events are captured server-side for:
    - Added `survey_results_viewed` event
    - Tracks survey engagement with response counts
 
+8. **`/app/features/research-links/pages/new.tsx`**
+   - Added `survey_created` event
+   - Tracks survey creation with question count
+
+9. **`/app/features/insights/pages/insight-detail.tsx`**
+   - Added `insight_viewed` event
+   - Tracks insight engagement with evidence counts
+
+10. **`/app/routes/api.tasks.tsx`**
+    - Added `task_created` event with source tracking
+    - Added `task_completed` event when status changes to done
+
 ---
 
 ## Testing Checklist
@@ -265,6 +353,10 @@ All events are captured server-side for:
 - [ ] Accept team invite → verify `invite_accepted` with correct properties
 - [ ] View interview detail → verify `interview_detail_viewed` with properties
 - [ ] View survey results → verify `survey_results_viewed` with response count
+- [ ] Create survey → verify `survey_created` with question count
+- [ ] View insight detail → verify `insight_viewed` with evidence count
+- [ ] Create task → verify `task_created` with source ("insight" or "manual")
+- [ ] Complete task → verify `task_completed` when status changes to done
 
 ### PostHog Dashboard Verification
 - [ ] Check Activity tab for live events
