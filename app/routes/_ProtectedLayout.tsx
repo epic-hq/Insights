@@ -19,7 +19,6 @@ import { CurrentProjectProvider } from "~/contexts/current-project-context";
 import { getProjects } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { provisionLegacyTrial } from "~/lib/billing/polar.server";
-import { getPostHogServerClient } from "~/lib/posthog.server";
 import {
   getAuthenticatedUser,
   getRlsClient,
@@ -367,27 +366,6 @@ export async function loader({ context }: Route.LoaderArgs) {
         "[PROTECTED_LAYOUT] Failed to check/provision trial:",
         trialError,
       );
-    }
-
-    // Track session_started event for PLG instrumentation
-    try {
-      const posthogServer = getPostHogServerClient();
-      if (posthogServer) {
-        posthogServer.capture({
-          distinctId: user.claims.sub,
-          event: "session_started",
-          properties: {
-            account_id: currentAccountId,
-            $groups: { account: currentAccountId },
-          },
-        });
-      }
-    } catch (trackingError) {
-      consola.warn(
-        "[PROTECTED_LAYOUT] PostHog session tracking failed:",
-        trackingError,
-      );
-      // Don't throw - tracking failure shouldn't block user flow
     }
 
     const responseData = {

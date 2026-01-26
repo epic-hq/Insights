@@ -154,22 +154,7 @@ posthog.identify(userId, {
 
 ---
 
-### 6. `session_started`
-**Location**: `/app/routes/_ProtectedLayout.tsx`
-
-**Trigger**: When a user loads any protected page (server-side)
-
-**Properties Captured**:
-```typescript
-{
-  account_id: string
-  $groups: { account: account_id }
-}
-```
-
----
-
-### 7. `interview_detail_viewed`
+### 6. `interview_detail_viewed`
 **Location**: `/app/features/interviews/pages/detail.tsx`
 
 **Trigger**: When a user views an interview detail page
@@ -190,7 +175,7 @@ posthog.identify(userId, {
 
 ---
 
-### 8. `survey_results_viewed`
+### 7. `survey_results_viewed`
 **Location**: `/app/features/research-links/pages/responses.$listId.tsx`
 
 **Trigger**: When a user views survey (Ask link) results
@@ -259,7 +244,6 @@ All events are captured server-side for:
 5. **`/app/routes/_ProtectedLayout.tsx`**
    - Enhanced person identification with role and company
    - Added group analytics for account-level tracking
-   - Added `session_started` event
 
 6. **`/app/features/interviews/pages/detail.tsx`**
    - Added `interview_detail_viewed` event
@@ -279,7 +263,6 @@ All events are captured server-side for:
 - [ ] Upload interview → verify `interview_added` with correct source
 - [ ] Send team invite → verify `invite_sent` with correct role
 - [ ] Accept team invite → verify `invite_accepted` with correct properties
-- [ ] Load any protected page → verify `session_started` event
 - [ ] View interview detail → verify `interview_detail_viewed` with properties
 - [ ] View survey results → verify `survey_results_viewed` with response count
 
