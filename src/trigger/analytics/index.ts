@@ -5,3 +5,4 @@
  */
 
 export { updateUserMetricsTask } from "./updateUserMetrics";
+export { syncPostHogBrevoTask } from "./syncPostHogBrevo";

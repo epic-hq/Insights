@@ -669,6 +669,8 @@ export const updateUserMetrics = task({
 
 ### Email Campaigns (Brevo)
 
+See [Email Campaigns Setup](./email-campaigns-setup.md) for detailed implementation guide.
+
 | Trigger | Cohort | Email | CTA |
 |---------|--------|-------|-----|
 | D2 no content | `lc-new-no-content` | "Surveys are the fastest way to start" | Create survey link |
@@ -703,7 +705,7 @@ export const updateUserMetrics = task({
 | 3-4 | Activation | Survey events, task completion, agent tracking |
 | 5-6 | Expansion | Lens, CRM, sharing events |
 | 7 | Conversion | Billing events, trial tracking |
-| 8 | Automation | Brevo integration, intervention triggers |
+| 8 | Automation | Brevo setup, sync script, email templates |
 
 ---
 

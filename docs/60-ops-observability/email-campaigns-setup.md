@@ -1,8 +1,15 @@
-# Email Campaigns: PostHog + Engage.so Implementation
+# Email Campaigns: PostHog + Brevo Implementation
 
 ## Overview
 
-This document details how to implement automated email campaigns using PostHog cohorts for segmentation and Engage.so for delivery.
+This document details how to implement automated email campaigns using PostHog cohorts for segmentation and Brevo (formerly Sendinblue) for delivery.
+
+**Why Brevo:**
+- **Cost-effective**: Free tier (300 emails/day), then $25/mo for 20k emails vs $99/mo alternatives
+- **All-in-one**: Transactional + marketing emails in one platform
+- **Features**: Email, SMS, automation workflows, CRM, forms, landing pages
+- **Proven scale**: Used by major companies (IBM, Microsoft, Toyota)
+- **Strong API**: Easy cohort sync with webhooks for event tracking
 
 **Related docs:**
 - [Activation Strategy](./activation-strategy.md) - Campaign strategy and messaging
@@ -15,21 +22,21 @@ This document details how to implement automated email campaigns using PostHog c
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  PostHog    │────▶│   Sync      │────▶│  Engage.so  │
-│  Cohorts    │     │   Script    │     │   Lists     │
+│  PostHog    │────▶│   Sync      │────▶│   Brevo     │
+│  Cohorts    │     │   Task      │     │   Lists     │
 └─────────────┘     └─────────────┘     └─────────────┘
                            │
                     ┌──────┴──────┐
                     │  Supabase   │
-                    │  (backup)   │
+                    │  (source)   │
                     └─────────────┘
 ```
 
 **Flow:**
 1. PostHog tracks user behavior → creates cohorts
-2. Daily sync script exports cohort members → updates Engage lists
-3. Engage.so triggers automations based on list membership
-4. Transactional emails sent via existing `sendEmail()` function
+2. Scheduled Trigger.dev task syncs cohort members → updates Brevo lists
+3. Brevo automation workflows trigger based on list membership
+4. Emails sent via Brevo with tracking (opens, clicks, bounces)
 
 ---
 
@@ -108,224 +115,428 @@ Matching users who:
 
 ---
 
-## Engage.so Configuration
+## Brevo Configuration
 
-### Lists to Create
+### 1. Account Setup
 
-| List Name | Description | Sync Frequency |
-|-----------|-------------|----------------|
+1. Sign up at https://www.brevo.com
+2. Verify email and add sending domain (`mail.getupsight.com`)
+3. Configure DNS records (SPF, DKIM, DMARC) - see [Email Setup](../20-features-prds/features/email.md)
+4. Create API key: Account → SMTP & API → API Keys → Create new key
+
+### 2. Lists to Create
+
+Navigate to Contacts → Lists, create:
+
+| List Name | Description | Update Frequency |
+|-----------|-------------|------------------|
 | `all-users` | All registered users | Daily |
 | `activation-eligible` | Can receive activation emails | Daily |
 | `activation-stalled` | Need feature guidance | Daily |
 | `activation-dormant` | Win-back targets | Daily |
-| `trial-active` | In Pro trial | Hourly |
-| `trial-expiring` | Trial ends in 3 days | Hourly |
+| `trial-active` | In Pro trial | Every 6 hours |
+| `trial-expiring` | Trial ends in 3 days | Every 6 hours |
 | `trial-expired` | Trial ended, not paid | Daily |
 
-### Automations to Create
+### 3. Contact Attributes
 
-#### Automation 1: Trial Welcome Sequence
+Set up custom attributes for personalization (Contacts → Settings → Contact Attributes):
 
-**Trigger:** Added to `trial-active` list
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `USER_ID` | Text | User ID |
+| `ACCOUNT_ID` | Text | Account ID |
+| `PLAN` | Text | Current plan (free/starter/pro/team) |
+| `TRIAL_END` | Date | Trial end date |
+| `COMPANY_NAME` | Text | Company name |
+| `LIFECYCLE_STAGE` | Text | new/activated/power_user/at_risk/churned |
+| `INTERVIEW_COUNT` | Number | Total interviews |
+| `TASK_COMPLETED_COUNT` | Number | Tasks completed |
 
-**Emails:**
-1. **Immediately:** "Your Pro trial is active"
-   - Welcome, what's unlocked
-   - Quick wins to try today
+### 4. Automation Workflows
 
-2. **Day 3:** "Discover Smart Personas"
-   - Feature spotlight
-   - Step-by-step guide
+Navigate to Automation → Create a new workflow:
 
-3. **Day 7:** "Your week in review"
-   - Usage stats if available
-   - Testimonial/social proof
+#### Workflow 1: Trial Welcome Sequence
 
-#### Automation 2: Trial Ending Sequence
+**Entry condition:** Contact added to `trial-active` list
 
-**Trigger:** Added to `trial-expiring` list
+**Steps:**
+1. **Day 0 (Immediate):** Send "Your Pro trial is active"
+   - Template: `trial-welcome`
+   - Subject: "Welcome to UpSight Pro - Your trial starts now"
 
-**Emails:**
-1. **Immediately:** "Your trial ends in 3 days"
-   - What they'll lose
-   - EARLYBIRD25 code
+2. **Day 3:** Send "Discover Smart Personas"
+   - Delay: 3 days after entry
+   - Template: `trial-day-3-feature-highlight`
+   - Subject: "Unlock Smart Personas with 3+ interviews"
 
-2. **Day 2:** "Last day of Pro access"
-   - Urgency
-   - Direct upgrade CTA
+3. **Day 7:** Send "Your week in review"
+   - Delay: 7 days after entry
+   - Template: `trial-day-7-social-proof`
+   - Subject: "See how teams are using UpSight"
 
-#### Automation 3: Trial Expired Win-back
+**Exit condition:** Contact added to list `trial-expired` OR `has_paid_subscription = true`
 
-**Trigger:** Added to `trial-expired` list
+#### Workflow 2: Trial Ending Sequence
 
-**Emails:**
-1. **Day 1:** "Your Pro features are paused"
-   - What's now limited
-   - Upgrade CTA
+**Entry condition:** Contact added to `trial-expiring` list
 
-2. **Day 7:** "We'd love your feedback"
-   - Survey link
-   - Alternative: schedule call
+**Steps:**
+1. **Day 0 (Immediate):** Send "Your trial ends in 3 days"
+   - Template: `trial-ending-3-days`
+   - Subject: "3 days left - Save 25% with EARLYBIRD25"
 
-3. **Day 14:** "New feature announcement"
-   - Product update
-   - Final EARLYBIRD25 offer
+2. **Day 2:** Send "Last day of Pro access"
+   - Delay: 2 days after entry
+   - Template: `trial-ending-last-day`
+   - Subject: "Tomorrow: Your Pro features pause"
 
-#### Automation 4: Dormant User Win-back
+**Exit condition:** Contact added to list `trial-expired` OR removed from `trial-expiring`
 
-**Trigger:** Added to `activation-dormant` list
+#### Workflow 3: Trial Expired Win-back
 
-**Emails:**
-1. **Immediately:** "We miss you"
-   - What's new since they left
-   - Quick start CTA
+**Entry condition:** Contact added to `trial-expired` list
 
-2. **Day 7:** "See what you're missing"
-   - Customer success story
-   - Trial offer
+**Steps:**
+1. **Day 0 (Immediate):** Send "Your Pro features are paused"
+   - Template: `trial-expired-day-0`
+   - Subject: "Your Pro features are now paused"
+
+2. **Day 7:** Send "We'd love your feedback"
+   - Delay: 7 days after entry
+   - Template: `trial-expired-day-7-feedback`
+   - Subject: "Quick question: What stopped you from upgrading?"
+
+3. **Day 14:** Send "New feature announcement"
+   - Delay: 14 days after entry
+   - Template: `trial-expired-day-14-final`
+   - Subject: "New: Calendar sync + voice chat improvements"
+
+#### Workflow 4: Dormant User Win-back
+
+**Entry condition:** Contact added to `activation-dormant` list
+
+**Steps:**
+1. **Day 0 (Immediate):** Send "We miss you"
+   - Template: `dormant-day-0-winback`
+   - Subject: "We miss you at UpSight"
+
+2. **Day 7:** Send "See what you're missing"
+   - Delay: 7 days after entry
+   - Template: `dormant-day-7-success-story`
+   - Subject: "How teams are saving 10 hours/week with UpSight"
+
+**Exit condition:** Contact performs any event (tracked via webhook)
 
 ---
 
-## Sync Script Implementation
+## Sync Implementation
 
-Create `scripts/sync-posthog-engage.ts`:
+### Environment Variables
 
-```typescript
-/**
- * Sync PostHog cohorts to Engage.so lists
- *
- * Run daily via cron or Trigger.dev scheduled task
- */
+Add to `.env`:
 
-import { PostHog } from 'posthog-node'
-import wretch from 'wretch'
+```bash
+# Brevo API
+BREVO_API_KEY=xkeysib-xxx
+BREVO_SENDER_EMAIL=notify@mail.getupsight.com
+BREVO_SENDER_NAME="UpSight Team"
 
-const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY
-const POSTHOG_PROJECT_ID = process.env.POSTHOG_PROJECT_ID
-const ENGAGE_API_KEY = process.env.ENGAGE_API_KEY
-const ENGAGE_API_SECRET = process.env.ENGAGE_API_SECRET
-
-// Cohort ID → Engage List ID mapping
-const COHORT_MAPPINGS: Record<string, string> = {
-  // Get cohort IDs from PostHog dashboard
-  'cohort_123': 'engage_list_abc', // activation-eligible
-  'cohort_456': 'engage_list_def', // trial-active
-  // ... etc
-}
-
-async function getPostHogCohortMembers(cohortId: string): Promise<Array<{email: string, properties: Record<string, unknown>}>> {
-  const response = await wretch(`https://app.posthog.com/api/projects/${POSTHOG_PROJECT_ID}/cohorts/${cohortId}/persons`)
-    .auth(`Bearer ${POSTHOG_API_KEY}`)
-    .get()
-    .json()
-
-  return response.results.map((person: any) => ({
-    email: person.properties.email,
-    properties: person.properties
-  })).filter((p: any) => p.email)
-}
-
-async function updateEngageList(listId: string, members: Array<{email: string, properties: Record<string, unknown>}>) {
-  const credentials = Buffer.from(`${ENGAGE_API_KEY}:${ENGAGE_API_SECRET}`).toString('base64')
-
-  // Engage.so list update API
-  await wretch(`https://api.engage.so/v1/lists/${listId}/members`)
-    .auth(`Basic ${credentials}`)
-    .put({
-      members: members.map(m => ({
-        email: m.email,
-        first_name: m.properties.first_name,
-        last_name: m.properties.last_name,
-        // Add relevant properties for personalization
-        plan: m.properties.plan,
-        trial_end: m.properties.trial_end,
-        company_name: m.properties.company_name,
-      }))
-    })
-    .json()
-}
-
-async function syncCohorts() {
-  console.log('Starting PostHog → Engage sync...')
-
-  for (const [cohortId, listId] of Object.entries(COHORT_MAPPINGS)) {
-    try {
-      const members = await getPostHogCohortMembers(cohortId)
-      await updateEngageList(listId, members)
-      console.log(`Synced ${members.length} members to list ${listId}`)
-    } catch (err) {
-      console.error(`Failed to sync cohort ${cohortId}:`, err)
-    }
-  }
-
-  console.log('Sync complete')
-}
-
-// Run
-syncCohorts()
+# PostHog (already set)
+POSTHOG_API_KEY=phc_xxx
+POSTHOG_PROJECT_ID=12345
 ```
 
 ### Trigger.dev Scheduled Task
 
-Create `src/trigger/sync/posthog-engage-sync.ts`:
+Create `src/trigger/analytics/syncPostHogBrevo.ts`:
 
 ```typescript
-import { schedules } from "@trigger.dev/sdk/v4"
+/**
+ * Sync PostHog Cohorts to Brevo Lists
+ *
+ * Scheduled task that syncs user cohorts from PostHog to Brevo contact lists
+ * for automated email campaigns.
+ */
 
-export const posthogEngageSync = schedules.task({
-  id: "posthog-engage-sync",
+import { schedules, schemaTask } from "@trigger.dev/sdk/v3";
+import consola from "consola";
+import wretch from "wretch";
+import { z } from "zod";
+
+const BREVO_API_KEY = process.env.BREVO_API_KEY!;
+const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY!;
+const POSTHOG_PROJECT_ID = process.env.POSTHOG_PROJECT_ID!;
+
+// PostHog Cohort ID → Brevo List ID mapping
+// Get cohort IDs from PostHog dashboard URLs
+const COHORT_MAPPINGS: Record<string, number> = {
+  // Update these after creating cohorts in PostHog
+  // "cohort_abc123": 2,  // activation-eligible
+  // "cohort_def456": 3,  // trial-active
+  // "cohort_ghi789": 4,  // trial-expiring
+};
+
+interface PostHogPerson {
+  id: string;
+  properties: {
+    email: string;
+    [key: string]: any;
+  };
+}
+
+interface BrevoContact {
+  email: string;
+  attributes: Record<string, any>;
+  listIds?: number[];
+  updateEnabled?: boolean;
+}
+
+/**
+ * Fetch members of a PostHog cohort
+ */
+async function getPostHogCohortMembers(
+  cohortId: string,
+): Promise<PostHogPerson[]> {
+  const url = `https://app.posthog.com/api/projects/${POSTHOG_PROJECT_ID}/cohorts/${cohortId}/persons`;
+
+  const response = await wretch(url)
+    .auth(`Bearer ${POSTHOG_API_KEY}`)
+    .get()
+    .json<{ results: PostHogPerson[] }>();
+
+  return response.results.filter((person) => person.properties.email);
+}
+
+/**
+ * Add or update contact in Brevo list
+ */
+async function syncContactToBrevo(
+  contact: BrevoContact,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await wretch("https://api.brevo.com/v3/contacts")
+      .headers({ "api-key": BREVO_API_KEY })
+      .post({
+        email: contact.email,
+        attributes: contact.attributes,
+        listIds: contact.listIds || [],
+        updateEnabled: true, // Update if exists
+      })
+      .res();
+
+    return { success: true };
+  } catch (error: any) {
+    // 400 with "duplicate_parameter" means contact exists - that's ok
+    if (
+      error?.json?.code === "duplicate_parameter" ||
+      error?.status === 400
+    ) {
+      // Try update instead
+      try {
+        await wretch(`https://api.brevo.com/v3/contacts/${contact.email}`)
+          .headers({ "api-key": BREVO_API_KEY })
+          .put({
+            attributes: contact.attributes,
+            listIds: contact.listIds || [],
+          })
+          .res();
+
+        return { success: true };
+      } catch (updateError: any) {
+        return {
+          success: false,
+          error: updateError?.message || "Update failed",
+        };
+      }
+    }
+
+    return { success: false, error: error?.message || "Unknown error" };
+  }
+}
+
+/**
+ * Sync a single cohort to Brevo list
+ */
+async function syncCohortToList(
+  cohortId: string,
+  listId: number,
+): Promise<{ synced: number; failed: number }> {
+  consola.info(`Syncing cohort ${cohortId} to Brevo list ${listId}...`);
+
+  const members = await getPostHogCohortMembers(cohortId);
+  consola.info(`Found ${members.length} members in cohort`);
+
+  let synced = 0;
+  let failed = 0;
+
+  for (const person of members) {
+    const contact: BrevoContact = {
+      email: person.properties.email,
+      attributes: {
+        USER_ID: person.id,
+        ACCOUNT_ID: person.properties.account_id || "",
+        PLAN: person.properties.plan || "free",
+        TRIAL_END: person.properties.trial_end || null,
+        COMPANY_NAME: person.properties.company_name || "",
+        LIFECYCLE_STAGE: person.properties.lifecycle_stage || "new",
+        INTERVIEW_COUNT: person.properties.interview_count || 0,
+        TASK_COMPLETED_COUNT: person.properties.task_completed_count || 0,
+      },
+      listIds: [listId],
+    };
+
+    const result = await syncContactToBrevo(contact);
+
+    if (result.success) {
+      synced++;
+    } else {
+      failed++;
+      consola.warn(
+        `Failed to sync ${contact.email}: ${result.error}`,
+      );
+    }
+
+    // Rate limit: Brevo free tier allows 300 requests/day
+    // Wait 100ms between requests to be safe
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  consola.success(
+    `Cohort sync complete: ${synced} synced, ${failed} failed`,
+  );
+
+  return { synced, failed };
+}
+
+/**
+ * Main sync task - runs every 6 hours
+ */
+export const syncPostHogBrevoTask = schedules.task({
+  id: "analytics.sync-posthog-brevo",
   cron: "0 */6 * * *", // Every 6 hours
   run: async () => {
-    // Import and run sync logic
-    const { syncCohorts } = await import("./sync-posthog-engage")
-    await syncCohorts()
-  }
-})
+    consola.info("[sync-posthog-brevo] Starting cohort sync to Brevo");
+
+    if (Object.keys(COHORT_MAPPINGS).length === 0) {
+      consola.warn(
+        "[sync-posthog-brevo] No cohort mappings configured. Update COHORT_MAPPINGS in syncPostHogBrevo.ts",
+      );
+      return {
+        success: false,
+        error: "No cohort mappings configured",
+      };
+    }
+
+    const results: Array<{
+      cohortId: string;
+      listId: number;
+      synced: number;
+      failed: number;
+    }> = [];
+
+    for (const [cohortId, listId] of Object.entries(COHORT_MAPPINGS)) {
+      try {
+        const result = await syncCohortToList(cohortId, listId);
+        results.push({ cohortId, listId, ...result });
+      } catch (error) {
+        consola.error(
+          `[sync-posthog-brevo] Error syncing cohort ${cohortId}:`,
+          error,
+        );
+        results.push({
+          cohortId,
+          listId,
+          synced: 0,
+          failed: -1,
+        });
+      }
+    }
+
+    const totalSynced = results.reduce((sum, r) => sum + r.synced, 0);
+    const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
+
+    consola.success(
+      `[sync-posthog-brevo] Sync complete: ${totalSynced} synced, ${totalFailed} failed`,
+    );
+
+    return {
+      success: true,
+      totalSynced,
+      totalFailed,
+      results,
+    };
+  },
+});
+```
+
+### Update Analytics Index
+
+Add to `src/trigger/analytics/index.ts`:
+
+```typescript
+export { syncPostHogBrevoTask } from "./syncPostHogBrevo";
 ```
 
 ---
 
 ## Email Templates
 
-### Template Variables Available
+### Template Variables
 
-From sync, these variables are available in Engage templates:
+Available in all Brevo templates (use `{{ contact.ATTRIBUTE_NAME }}`):
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `{{first_name}}` | User's first name | "Sarah" |
-| `{{email}}` | User's email | "sarah@acme.com" |
-| `{{plan}}` | Current plan | "free" |
-| `{{trial_end}}` | Trial end date | "Jan 28, 2026" |
-| `{{company_name}}` | Company name | "Acme Inc" |
-| `{{days_until_trial_end}}` | Days remaining | "3" |
+| `{{ contact.FIRSTNAME }}` | First name | "Sarah" |
+| `{{ contact.EMAIL }}` | Email address | "sarah@acme.com" |
+| `{{ contact.PLAN }}` | Current plan | "free" |
+| `{{ contact.TRIAL_END }}` | Trial end date | "2026-02-01" |
+| `{{ contact.COMPANY_NAME }}` | Company name | "Acme Inc" |
+| `{{ contact.INTERVIEW_COUNT }}` | Total interviews | "5" |
+| `{{ contact.TASK_COMPLETED_COUNT }}` | Completed tasks | "3" |
 
-### Sample Email: Trial Starting
+### Sample Template: Trial Welcome (Day 0)
 
-**Subject:** Your 14-day Pro trial is active
+**Template name:** `trial-welcome`
+**Subject:** Welcome to UpSight Pro - Your trial starts now
 
-**Body:**
+**HTML Body:**
 ```html
-Hi {{first_name}},
+<p>Hi {{ contact.FIRSTNAME | default: "there" }},</p>
 
-Welcome to UpSight Pro! For the next 14 days, you have full access to:
+<p>Welcome to UpSight Pro! For the next 14 days, you have full access to:</p>
 
-✅ Unlimited AI analyses (vs 5/month)
-✅ Smart Personas
-✅ 60 minutes of voice chat
-✅ Custom Lenses
+<ul>
+  <li>✅ Unlimited AI analyses (vs 5/month on Free)</li>
+  <li>✅ Smart Personas generation</li>
+  <li>✅ 60 minutes of voice chat with AI</li>
+  <li>✅ Custom Conversation Lenses</li>
+</ul>
 
-**Quick wins to try today:**
+<h3>Quick wins to try today:</h3>
 
-1. Upload an interview and watch themes emerge automatically
-2. Generate your first Smart Persona from 3+ interviews
-3. Try voice chat for a customer call
+<ol>
+  <li><strong>Upload an interview</strong> and watch themes emerge automatically</li>
+  <li><strong>Generate your first Smart Persona</strong> from 3+ interviews</li>
+  <li><strong>Try voice chat</strong> for a customer call recording</li>
+</ol>
 
-Your trial ends on {{trial_end}}. Upgrade anytime to keep Pro features.
+<p>Your trial ends on <strong>{{ contact.TRIAL_END | date: "%B %d, %Y" }}</strong>. Upgrade anytime to keep Pro features.</p>
 
-[Start Exploring →]
+<p style="margin-top: 30px;">
+  <a href="https://getupsight.com/app" style="background: #0066ff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Start Exploring →</a>
+</p>
 
-— The UpSight Team
+<p style="margin-top: 40px; color: #666; font-size: 14px;">
+  — The UpSight Team<br>
+  <a href="mailto:support@getupsight.com">support@getupsight.com</a>
+</p>
+
+<p style="margin-top: 20px; color: #999; font-size: 12px;">
+  Don't want these emails? <a href="{{ unsubscribe }}">Unsubscribe</a>
+</p>
 ```
 
 ---
@@ -334,23 +545,54 @@ Your trial ends on {{trial_end}}. Upgrade anytime to keep Pro features.
 
 ### Before Launch
 
+- [ ] Create Brevo account and verify domain
+- [ ] Configure DNS records (SPF, DKIM, DMARC)
+- [ ] Create all contact lists in Brevo
+- [ ] Set up custom contact attributes
 - [ ] Create all cohorts in PostHog dashboard
-- [ ] Verify cohort logic with test users
-- [ ] Create all lists in Engage.so
-- [ ] Test sync script with dry-run
-- [ ] Create email templates in Engage
-- [ ] Set up automations with test triggers
+- [ ] Get cohort IDs from PostHog URLs and update `COHORT_MAPPINGS`
+- [ ] Test sync script with 1-2 test users
+- [ ] Create email templates in Brevo
+- [ ] Set up automation workflows
 - [ ] Send test emails to internal team
 - [ ] Verify unsubscribe links work
 - [ ] Check email renders in Gmail, Outlook, Apple Mail
 
 ### After Launch
 
-- [ ] Monitor daily sync logs
-- [ ] Check email delivery rates in Engage
+- [ ] Monitor sync task logs in Trigger.dev
+- [ ] Check email delivery rates in Brevo dashboard
 - [ ] Review PostHog cohort sizes trending
 - [ ] Track conversion metrics weekly
 - [ ] A/B test subject lines after 100+ sends
+
+---
+
+## Monitoring & Optimization
+
+### Key Metrics (Track in Brevo)
+
+| Metric | Target | Where to Find |
+|--------|--------|---------------|
+| Delivery rate | >98% | Statistics → Email campaigns |
+| Open rate | >25% | Statistics → Email campaigns |
+| Click rate | >5% | Statistics → Email campaigns |
+| Unsubscribe rate | <0.5% | Statistics → Email campaigns |
+| Bounce rate | <2% | Contacts → Invalid contacts |
+
+### Weekly Tasks
+
+1. Review Brevo statistics dashboard
+2. Check for hard bounces and remove invalid emails
+3. Monitor automation workflow performance
+4. Update cohort definitions if needed
+
+### Monthly Tasks
+
+1. Review email content based on feedback
+2. A/B test subject lines and CTAs
+3. Analyze conversion funnel (email → upgrade)
+4. Deprecate underperforming workflows
 
 ---
 
@@ -361,40 +603,74 @@ Your trial ends on {{trial_end}}. Upgrade anytime to keep Pro features.
 **Problem:** Cohort returns 0 members
 - Check cohort definition in PostHog
 - Verify events are being tracked
-- Check person properties are set correctly
+- Check person properties are set correctly (run `updateUserMetricsTask` manually)
 
-**Problem:** Engage API errors
-- Verify API keys are correct
-- Check rate limits (Engage has 100 req/min)
+**Problem:** Brevo API errors
+- Verify API key is correct
+- Check rate limits (free tier: 300 emails/day)
 - Ensure email format is valid
+- Check Trigger.dev logs for detailed errors
 
 ### Email Delivery Issues
 
 **Problem:** Emails going to spam
-- Check DNS records (SPF, DKIM, DMARC)
-- Review email content for spam triggers
-- Warm up sending domain gradually
+- Verify DNS records (SPF, DKIM, DMARC) in Brevo dashboard
+- Review email content for spam triggers (too many links, all caps subject)
+- Warm up sending domain gradually (start with 50 emails/day, increase 20% daily)
+- Check sender reputation with mail-tester.com
 
 **Problem:** Low open rates
-- Test subject lines
-- Check send times
+- Test different subject lines (A/B test in Brevo)
+- Check send times (best: Tue-Thu 10am-2pm)
 - Verify emails aren't being clipped (keep <100KB)
+- Ensure "from" name is recognizable ("UpSight Team" not "noreply")
+
+**Problem:** High unsubscribe rate
+- Review email frequency (max 2/week per user)
+- Check content relevance (wrong cohort targeting?)
+- Ensure value in every email (not just "upgrade now")
 
 ---
 
-## Maintenance
+## Cost Planning
 
-### Weekly
-- Review email metrics in Engage dashboard
-- Check for bounces/complaints
-- Update cohort definitions if needed
+### Brevo Pricing Tiers
 
-### Monthly
-- Audit list hygiene (remove invalid emails)
-- Review automation performance
-- Update email content based on feedback
+| Plan | Monthly Cost | Emails/Month | Contacts | Features |
+|------|-------------|--------------|----------|----------|
+| Free | $0 | 300/day (9k/month) | Unlimited | Email + automations |
+| Starter | $25 | 20,000 | Unlimited | + A/B testing, advanced stats |
+| Business | $65 | 20,000 | Unlimited | + Send time optimization, phone support |
 
-### Quarterly
-- Review overall campaign ROI
-- Deprecate underperforming automations
-- Plan new campaigns based on learnings
+### Recommendation
+
+Start with **Free tier** until you exceed 300 emails/day, then upgrade to **Starter** ($25/mo).
+
+**Estimated costs:**
+- 100 users × 3 emails/week = 1,200 emails/month → Free tier
+- 500 users × 3 emails/week = 6,000 emails/month → Free tier
+- 1,000 users × 3 emails/week = 12,000 emails/month → Starter ($25/mo)
+
+---
+
+## Next Steps
+
+1. **Set up Brevo account** (~30 min)
+   - Sign up, verify domain, configure DNS
+
+2. **Create PostHog cohorts** (~20 min)
+   - Use definitions above
+
+3. **Implement sync task** (~1 hour)
+   - Copy code above, update mappings, test
+
+4. **Create email templates** (~3 hours)
+   - Write 10 emails based on sample above
+
+5. **Set up automations** (~1 hour)
+   - Configure workflows in Brevo
+
+6. **Test end-to-end** (~1 hour)
+   - Add yourself to test cohort, verify emails send
+
+**Total setup time:** ~7 hours to go live

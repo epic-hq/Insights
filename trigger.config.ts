@@ -107,6 +107,14 @@ export default defineConfig({
             name: "POSTHOG_HOST",
             value: process.env.POSTHOG_HOST || "",
           },
+          {
+            name: "POSTHOG_PROJECT_ID",
+            value: process.env.POSTHOG_PROJECT_ID || "",
+          },
+          {
+            name: "BREVO_API_KEY",
+            value: process.env.BREVO_API_KEY || "",
+          },
         ];
       }),
     ],
