@@ -1,12 +1,11 @@
-import { openai } from "../../lib/billing/instrumented-openai.server";
-import { Agent } from "@mastra/core/agent";
+import { Agent } from "@mastra/core/agent"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 
 export const researchAssistantAgent = new Agent({
-  id: "research-assistant-agent",
-  name: "Research Assistant",
-  description:
-    "Helpful assistant for user research best practices and getting started",
-  instructions: `
+	id: "research-assistant-agent",
+	name: "Research Assistant",
+	description: "Helpful assistant for user research best practices and getting started",
+	instructions: `
 You are a friendly and knowledgeable research assistant specializing in user research, customer interviews, and product insights.
 
 Your role is to:
@@ -36,6 +35,6 @@ Topics you can help with:
 - Best practices for customer discovery
 - Research methodologies (Jobs to be Done, empathy mapping, etc.)
 `,
-  model: openai("gpt-5-mini"),
-  tools: {},
-});
+	model: openai("gpt-5-mini"),
+	tools: {},
+})

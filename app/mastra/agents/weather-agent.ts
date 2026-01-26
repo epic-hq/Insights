@@ -1,14 +1,14 @@
-import { openai } from "../../lib/billing/instrumented-openai.server";
-import { Agent } from "@mastra/core/agent";
-import { LibSQLStore } from "@mastra/libsql";
-import { Memory } from "@mastra/memory";
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
-import { weatherTool } from "../tools/weather-tool";
+import { Agent } from "@mastra/core/agent"
+import { LibSQLStore } from "@mastra/libsql"
+import { Memory } from "@mastra/memory"
+import { openai } from "../../lib/billing/instrumented-openai.server"
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { weatherTool } from "../tools/weather-tool"
 
 export const weatherAgent = new Agent({
-  id: "weather-agent",
-  name: "Weather Agent",
-  instructions: `
+	id: "weather-agent",
+	name: "Weather Agent",
+	instructions: `
       You are a helpful weather assistant that provides accurate weather information and can help planning activities based on the weather.
 
       Your primary function is to help users get weather details for specific locations. When responding:
@@ -22,12 +22,12 @@ export const weatherAgent = new Agent({
 
       Use the weatherTool to fetch current weather data.
 `,
-  model: openai("gpt-5-mini"),
-  tools: wrapToolsWithStatusEvents({ weatherTool }),
-  memory: new Memory({
-    storage: new LibSQLStore({
-      id: "weather-agent-memory",
-      url: ":memory:", // using in-memory storage to avoid file connection issues
-    }),
-  }),
-});
+	model: openai("gpt-5-mini"),
+	tools: wrapToolsWithStatusEvents({ weatherTool }),
+	memory: new Memory({
+		storage: new LibSQLStore({
+			id: "weather-agent-memory",
+			url: ":memory:", // using in-memory storage to avoid file connection issues
+		}),
+	}),
+})
