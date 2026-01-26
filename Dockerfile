@@ -38,7 +38,7 @@ COPY package.json pnpm-lock.yaml ./
 # Only production deps + runtime tools
 RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
     pnpm install --prod --frozen-lockfile \
-    && pnpm add concurrently mastra@0.10.21 tsx
+    && pnpm add concurrently mastra@1.0.0-beta.15 tsx
 
 ############################
 # Runtime (slim)
