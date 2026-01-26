@@ -99,6 +99,14 @@ export default defineConfig({
             name: "ENABLE_PERSONA_ANALYSIS",
             value: process.env.ENABLE_PERSONA_ANALYSIS || "",
           },
+          {
+            name: "POSTHOG_API_KEY",
+            value: process.env.POSTHOG_API_KEY || "",
+          },
+          {
+            name: "POSTHOG_HOST",
+            value: process.env.POSTHOG_HOST || "",
+          },
         ];
       }),
     ],
