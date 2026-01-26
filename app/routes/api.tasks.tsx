@@ -182,6 +182,14 @@ export async function action({ request }: ActionFunctionArgs) {
         }
 
         const updates: TaskUpdate = JSON.parse(updatesJson);
+
+        // Get previous state for tracking status changes
+        let previousStatus: string | null = null;
+        if (updates.status) {
+          const previousTask = await getTaskById({ supabase, taskId });
+          previousStatus = previousTask?.status || null;
+        }
+
         const task = await updateTask({
           supabase,
           taskId,
@@ -189,26 +197,43 @@ export async function action({ request }: ActionFunctionArgs) {
           updates,
         });
 
-        // Track task_completed event when status changes to "done"
-        if (updates.status === "done" && task) {
+        // Track task_status_changed event on ANY status change
+        if (updates.status && task && previousStatus !== updates.status) {
           try {
             const posthogServer = getPostHogServerClient();
             if (posthogServer) {
               posthogServer.capture({
                 distinctId: user.id,
-                event: "task_completed",
+                event: "task_status_changed",
                 properties: {
                   task_id: taskId,
                   project_id: task.project_id,
                   account_id: task.account_id,
+                  previous_status: previousStatus,
+                  new_status: updates.status,
                   priority: task.priority,
                   $groups: { account: task.account_id },
                 },
               });
+
+              // Also fire task_completed for funnel analysis when done
+              if (updates.status === "done") {
+                posthogServer.capture({
+                  distinctId: user.id,
+                  event: "task_completed",
+                  properties: {
+                    task_id: taskId,
+                    project_id: task.project_id,
+                    account_id: task.account_id,
+                    priority: task.priority,
+                    $groups: { account: task.account_id },
+                  },
+                });
+              }
             }
           } catch (trackingError) {
             consola.warn(
-              "[TASK_COMPLETED] PostHog tracking failed:",
+              "[TASK_STATUS] PostHog tracking failed:",
               trackingError,
             );
           }

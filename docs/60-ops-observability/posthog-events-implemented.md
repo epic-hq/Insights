@@ -344,6 +344,65 @@ posthog.identify(userId, {
 
 ---
 
+### 16. `task_status_changed`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task status changes (any transition, not just completion)
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  previous_status: string | null
+  new_status: string
+  priority: number
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 17. `interview_shared`
+**Location**: `/app/routes/api.share.enable.tsx`
+
+**Trigger**: When a user enables public sharing for an interview
+
+**Properties Captured**:
+```typescript
+{
+  interview_id: string
+  project_id: string
+  account_id: string
+  share_type: "public_link"
+  expiration_days: "7" | "30" | "never"
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 18. `analyze_started`
+**Location**: `/app/routes/api.reprocess-interview.tsx`
+
+**Trigger**: When a user triggers interview analysis/reprocessing
+
+**Properties Captured**:
+```typescript
+{
+  interview_id: string
+  project_id: string
+  account_id: string
+  needs_transcription: boolean
+  has_media: boolean
+  trigger_run_id: string
+  $groups: { account: account_id }
+}
+```
+
+---
+
 ## Implementation Patterns
 
 ### Error Handling
@@ -412,6 +471,7 @@ All events are captured server-side for:
 
 10. **`/app/routes/api.tasks.tsx`**
     - Added `task_created` event with source tracking
+    - Added `task_status_changed` event on ANY status transition
     - Added `task_completed` event when status changes to done
 
 11. **`/app/features/billing/pages/index.tsx`**
@@ -425,6 +485,12 @@ All events are captured server-side for:
 13. **`/app/routes/api.webhooks.polar.tsx`**
     - Added `checkout_completed` event on subscription.active
     - Added `subscription_canceled` event on subscription.canceled
+
+14. **`/app/routes/api.share.enable.tsx`**
+    - Added `interview_shared` event when public sharing is enabled
+
+15. **`/app/routes/api.reprocess-interview.tsx`**
+    - Added `analyze_started` event when interview analysis begins
 
 ---
 
@@ -446,6 +512,9 @@ All events are captured server-side for:
 - [ ] Start checkout → verify `checkout_started` with plan and interval
 - [ ] Complete checkout → verify `checkout_completed` (via webhook test)
 - [ ] Cancel subscription → verify `subscription_canceled` (via webhook test)
+- [ ] Change task status (any) → verify `task_status_changed` with previous/new status
+- [ ] Enable interview sharing → verify `interview_shared` with share_type
+- [ ] Click Analyze on interview → verify `analyze_started` with interview details
 
 ### PostHog Dashboard Verification
 - [ ] Check Activity tab for live events
