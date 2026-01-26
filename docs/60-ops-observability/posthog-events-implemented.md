@@ -403,6 +403,68 @@ posthog.identify(userId, {
 
 ---
 
+### 19. `task_due_date_changed`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task's due date is set or changed
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  previous_due_date: string | null
+  new_due_date: string | null
+  days_until_due: number | null
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 20. `task_assigned`
+**Location**: `/app/routes/api.tasks.tsx`
+
+**Trigger**: When a task is assigned to someone
+
+**Properties Captured**:
+```typescript
+{
+  task_id: string
+  project_id: string
+  account_id: string
+  assignee_count: number
+  assigner_user_id: string
+  is_self_assign: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 21. `annotation_created`
+**Location**: `/app/features/annotations/api/annotations.tsx`
+
+**Trigger**: When a comment/annotation is posted on any entity
+
+**Properties Captured**:
+```typescript
+{
+  annotation_id: string
+  project_id: string
+  account_id: string
+  entity_type: "task" | "insight" | "evidence" | "interview" | "opportunity"
+  entity_id: string
+  annotation_type: "comment"
+  is_reply: boolean
+  has_mentions: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
 ## Implementation Patterns
 
 ### Error Handling
@@ -492,6 +554,9 @@ All events are captured server-side for:
 15. **`/app/routes/api.reprocess-interview.tsx`**
     - Added `analyze_started` event when interview analysis begins
 
+16. **`/app/features/annotations/api/annotations.tsx`**
+    - Added `annotation_created` event when comments are posted
+
 ---
 
 ## Testing Checklist
@@ -515,6 +580,9 @@ All events are captured server-side for:
 - [ ] Change task status (any) → verify `task_status_changed` with previous/new status
 - [ ] Enable interview sharing → verify `interview_shared` with share_type
 - [ ] Click Analyze on interview → verify `analyze_started` with interview details
+- [ ] Set/change task due date → verify `task_due_date_changed` with dates
+- [ ] Assign task to user → verify `task_assigned` with assignee info
+- [ ] Post comment on any entity → verify `annotation_created` with entity_type
 
 ### PostHog Dashboard Verification
 - [ ] Check Activity tab for live events
