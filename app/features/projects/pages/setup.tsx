@@ -356,8 +356,10 @@ function SetupCapturedPane({
   // Build complete field list with values from both account and project contexts
   const capturedFields: CapturedField[] = CAPTURED_FIELD_DEFINITIONS.map(
     (fieldDef) => {
-      // Check local form values first
+      // Check local form values first - if field exists in localFields, use it
+      // (even if empty - this means user researched and result was empty)
       const localField = localFields.find((f) => f.key === fieldDef.key);
+      const hasLocalField = localField !== undefined;
       const localValue = localField?.value;
 
       // Check project sections (for project-level fields)
@@ -368,12 +370,15 @@ function SetupCapturedPane({
         accountData?.[fieldDef.key as keyof typeof accountData];
 
       // Determine the best value: local > section > account
+      // If local field exists (even if empty), use it - don't fall back to stale account data
       let value: string | string[] | null = null;
-      if (
-        localValue &&
-        (Array.isArray(localValue) ? localValue.length > 0 : localValue)
-      ) {
-        value = localValue;
+      if (hasLocalField) {
+        // Local field exists - use it even if empty (user may have researched new URL)
+        value =
+          localValue &&
+          (Array.isArray(localValue) ? localValue.length > 0 : localValue)
+            ? localValue
+            : null;
       } else if (
         sectionValue &&
         (Array.isArray(sectionValue) ? sectionValue.length > 0 : sectionValue)
