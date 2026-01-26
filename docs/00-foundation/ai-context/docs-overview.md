@@ -44,9 +44,9 @@ This project has extensive documentation organized by purpose. AI agents should 
 ### Analytics & Monitoring
 | Guide | When to Use |
 |-------|-------------|
-| [PostHog Tracking](/docs/posthog-tracking.md) | Adding analytics events |
-| [PostHog Events](/docs/posthog-events-implemented.md) | Existing event catalog |
-| [Langfuse](/docs/observability/langfuse.md) | LLM observability |
+| [PostHog Tracking](/docs/60-ops-observability/posthog-tracking.md) | Adding analytics events |
+| [PostHog Events](/docs/60-ops-observability/posthog-events-implemented.md) | Existing event catalog (21 PLG events) |
+| [Langfuse](/docs/60-ops-observability/langfuse.md) | LLM observability |
 
 ---
 
