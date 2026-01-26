@@ -10,10 +10,10 @@
  * AuthKit completes the OAuth flow.
  */
 
-import type { LoaderFunctionArgs } from "react-router";
-import { redirect } from "react-router";
+import type { LoaderFunctionArgs } from "react-router"
+import { redirect } from "react-router"
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // This endpoint is deprecated - redirect to home with error
-  return redirect("/home?calendar_error=deprecated_endpoint");
+	// This endpoint is deprecated - redirect to home with error
+	return redirect("/home?calendar_error=deprecated_endpoint")
 }
