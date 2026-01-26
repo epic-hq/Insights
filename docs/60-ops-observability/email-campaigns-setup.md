@@ -21,22 +21,31 @@ This document details how to implement automated email campaigns using PostHog c
 ## Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  PostHog    │────▶│   Sync      │────▶│   Brevo     │
-│  Cohorts    │     │   Task      │     │   Lists     │
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  Supabase   │
-                    │  (source)   │
-                    └─────────────┘
+┌─────────────┐                          ┌─────────────┐
+│  PostHog    │──────────────────────────▶│   Brevo     │
+│  Events     │   Native CDP Destination │   Contacts  │
+└─────────────┘                          └─────────────┘
+       │                                         │
+       │ cohorts                                 │ lists
+       ▼                                         ▼
+┌─────────────┐                          ┌─────────────┐
+│  Cohorts    │                          │Automations  │
+│  (filters)  │                          │ (workflows) │
+└─────────────┘                          └─────────────┘
 ```
 
 **Flow:**
-1. PostHog tracks user behavior → creates cohorts
-2. Scheduled Trigger.dev task syncs cohort members → updates Brevo lists
-3. Brevo automation workflows trigger based on list membership
-4. Emails sent via Brevo with tracking (opens, clicks, bounces)
+1. PostHog tracks user behavior → fires events
+2. **PostHog CDP sends events to Brevo** (native destination, real-time)
+3. Brevo creates/updates contacts automatically
+4. Brevo automation workflows trigger based on contact attributes or list membership
+5. Emails sent via Brevo with tracking (opens, clicks, bounces)
+
+**Why use PostHog's native Brevo destination:**
+- ✅ Real-time updates (not batch sync)
+- ✅ Zero code to maintain
+- ✅ Built-in by PostHog, more reliable
+- ✅ Automatic person property mapping
 
 ---
 
@@ -231,253 +240,43 @@ Navigate to Automation → Create a new workflow:
 
 ---
 
-## Sync Implementation
+## PostHog → Brevo Integration Setup
 
-### Environment Variables
+### ✅ Already Configured!
 
-Add to `.env`:
+The PostHog native Brevo destination is already set up and working (39 triggers in last 7 days).
 
-```bash
-# Brevo API
-BREVO_API_KEY=xkeysib-xxx
-BREVO_SENDER_EMAIL=notify@mail.getupsight.com
-BREVO_SENDER_NAME="UpSight Team"
+**Current configuration:**
+- **Status:** Enabled
+- **Email field:** `{person.properties.email}`
+- **Attributes mapped:**
+  - FIRSTNAME → `{person.properties.firstname}`
+  - LASTNAME → `{person.properties.lastname}`
+  - EMAIL → `{person.properties.email}`
+- **Filters:** Internal and test users filtered out
+- **Trigger:** On "Identify" and "Set person properties" events
 
-# PostHog (already set)
-POSTHOG_API_KEY=phc_xxx
-POSTHOG_PROJECT_ID=12345
-```
+### Adding More Attribute Mappings
 
-### Trigger.dev Scheduled Task
+To add more attributes for email personalization:
 
-Create `src/trigger/analytics/syncPostHogBrevo.ts`:
+1. Go to PostHog → **Data Pipeline** → **Destinations** → **Brevo**
+2. Click **Edit** next to the Brevo destination
+3. Under **Attributes** section, click **+ Add entry**
+4. Add mappings for:
 
-```typescript
-/**
- * Sync PostHog Cohorts to Brevo Lists
- *
- * Scheduled task that syncs user cohorts from PostHog to Brevo contact lists
- * for automated email campaigns.
- */
+| Brevo Attribute | PostHog Property | Purpose |
+|-----------------|------------------|---------|
+| `USER_ID` | `{person.properties.user_id}` | Unique user identifier |
+| `ACCOUNT_ID` | `{person.properties.account_id}` | Account grouping |
+| `PLAN` | `{person.properties.plan}` | Current subscription plan |
+| `TRIAL_END` | `{person.properties.trial_end}` | Trial expiration date |
+| `COMPANY_NAME` | `{person.properties.company_name}` | Company for B2B personalization |
+| `LIFECYCLE_STAGE` | `{person.properties.lifecycle_stage}` | new/activated/power_user/at_risk/churned |
+| `INTERVIEW_COUNT` | `{person.properties.interview_count}` | Total interviews created |
+| `TASK_COMPLETED_COUNT` | `{person.properties.task_completed_count}` | Tasks completed |
 
-import { schedules, schemaTask } from "@trigger.dev/sdk/v3";
-import consola from "consola";
-import wretch from "wretch";
-import { z } from "zod";
-
-const BREVO_API_KEY = process.env.BREVO_API_KEY!;
-const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY!;
-const POSTHOG_PROJECT_ID = process.env.POSTHOG_PROJECT_ID!;
-
-// PostHog Cohort ID → Brevo List ID mapping
-// Get cohort IDs from PostHog dashboard URLs
-const COHORT_MAPPINGS: Record<string, number> = {
-  // Update these after creating cohorts in PostHog
-  // "cohort_abc123": 2,  // activation-eligible
-  // "cohort_def456": 3,  // trial-active
-  // "cohort_ghi789": 4,  // trial-expiring
-};
-
-interface PostHogPerson {
-  id: string;
-  properties: {
-    email: string;
-    [key: string]: any;
-  };
-}
-
-interface BrevoContact {
-  email: string;
-  attributes: Record<string, any>;
-  listIds?: number[];
-  updateEnabled?: boolean;
-}
-
-/**
- * Fetch members of a PostHog cohort
- */
-async function getPostHogCohortMembers(
-  cohortId: string,
-): Promise<PostHogPerson[]> {
-  const url = `https://app.posthog.com/api/projects/${POSTHOG_PROJECT_ID}/cohorts/${cohortId}/persons`;
-
-  const response = await wretch(url)
-    .auth(`Bearer ${POSTHOG_API_KEY}`)
-    .get()
-    .json<{ results: PostHogPerson[] }>();
-
-  return response.results.filter((person) => person.properties.email);
-}
-
-/**
- * Add or update contact in Brevo list
- */
-async function syncContactToBrevo(
-  contact: BrevoContact,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    await wretch("https://api.brevo.com/v3/contacts")
-      .headers({ "api-key": BREVO_API_KEY })
-      .post({
-        email: contact.email,
-        attributes: contact.attributes,
-        listIds: contact.listIds || [],
-        updateEnabled: true, // Update if exists
-      })
-      .res();
-
-    return { success: true };
-  } catch (error: any) {
-    // 400 with "duplicate_parameter" means contact exists - that's ok
-    if (
-      error?.json?.code === "duplicate_parameter" ||
-      error?.status === 400
-    ) {
-      // Try update instead
-      try {
-        await wretch(`https://api.brevo.com/v3/contacts/${contact.email}`)
-          .headers({ "api-key": BREVO_API_KEY })
-          .put({
-            attributes: contact.attributes,
-            listIds: contact.listIds || [],
-          })
-          .res();
-
-        return { success: true };
-      } catch (updateError: any) {
-        return {
-          success: false,
-          error: updateError?.message || "Update failed",
-        };
-      }
-    }
-
-    return { success: false, error: error?.message || "Unknown error" };
-  }
-}
-
-/**
- * Sync a single cohort to Brevo list
- */
-async function syncCohortToList(
-  cohortId: string,
-  listId: number,
-): Promise<{ synced: number; failed: number }> {
-  consola.info(`Syncing cohort ${cohortId} to Brevo list ${listId}...`);
-
-  const members = await getPostHogCohortMembers(cohortId);
-  consola.info(`Found ${members.length} members in cohort`);
-
-  let synced = 0;
-  let failed = 0;
-
-  for (const person of members) {
-    const contact: BrevoContact = {
-      email: person.properties.email,
-      attributes: {
-        USER_ID: person.id,
-        ACCOUNT_ID: person.properties.account_id || "",
-        PLAN: person.properties.plan || "free",
-        TRIAL_END: person.properties.trial_end || null,
-        COMPANY_NAME: person.properties.company_name || "",
-        LIFECYCLE_STAGE: person.properties.lifecycle_stage || "new",
-        INTERVIEW_COUNT: person.properties.interview_count || 0,
-        TASK_COMPLETED_COUNT: person.properties.task_completed_count || 0,
-      },
-      listIds: [listId],
-    };
-
-    const result = await syncContactToBrevo(contact);
-
-    if (result.success) {
-      synced++;
-    } else {
-      failed++;
-      consola.warn(
-        `Failed to sync ${contact.email}: ${result.error}`,
-      );
-    }
-
-    // Rate limit: Brevo free tier allows 300 requests/day
-    // Wait 100ms between requests to be safe
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  consola.success(
-    `Cohort sync complete: ${synced} synced, ${failed} failed`,
-  );
-
-  return { synced, failed };
-}
-
-/**
- * Main sync task - runs every 6 hours
- */
-export const syncPostHogBrevoTask = schedules.task({
-  id: "analytics.sync-posthog-brevo",
-  cron: "0 */6 * * *", // Every 6 hours
-  run: async () => {
-    consola.info("[sync-posthog-brevo] Starting cohort sync to Brevo");
-
-    if (Object.keys(COHORT_MAPPINGS).length === 0) {
-      consola.warn(
-        "[sync-posthog-brevo] No cohort mappings configured. Update COHORT_MAPPINGS in syncPostHogBrevo.ts",
-      );
-      return {
-        success: false,
-        error: "No cohort mappings configured",
-      };
-    }
-
-    const results: Array<{
-      cohortId: string;
-      listId: number;
-      synced: number;
-      failed: number;
-    }> = [];
-
-    for (const [cohortId, listId] of Object.entries(COHORT_MAPPINGS)) {
-      try {
-        const result = await syncCohortToList(cohortId, listId);
-        results.push({ cohortId, listId, ...result });
-      } catch (error) {
-        consola.error(
-          `[sync-posthog-brevo] Error syncing cohort ${cohortId}:`,
-          error,
-        );
-        results.push({
-          cohortId,
-          listId,
-          synced: 0,
-          failed: -1,
-        });
-      }
-    }
-
-    const totalSynced = results.reduce((sum, r) => sum + r.synced, 0);
-    const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
-
-    consola.success(
-      `[sync-posthog-brevo] Sync complete: ${totalSynced} synced, ${totalFailed} failed`,
-    );
-
-    return {
-      success: true,
-      totalSynced,
-      totalFailed,
-      results,
-    };
-  },
-});
-```
-
-### Update Analytics Index
-
-Add to `src/trigger/analytics/index.ts`:
-
-```typescript
-export { syncPostHogBrevoTask } from "./syncPostHogBrevo";
-```
+**Note:** These properties are set by the `updateUserMetricsTask` (runs daily at 2am UTC). New users will have these attributes populated within 24 hours of signup.
 
 ---
 
