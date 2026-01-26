@@ -34,6 +34,7 @@ import {
   upsertBillingCustomer,
   upsertBillingSubscription,
 } from "~/lib/billing/polar.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 
 /**
  * Extract account_id from metadata.
@@ -114,6 +115,34 @@ async function handleSubscriptionActive(
     billingPeriodEnd:
       subscription.currentPeriodEnd ?? subscription.currentPeriodStart,
   });
+
+  // Track checkout_completed event for PLG instrumentation
+  try {
+    const posthogServer = getPostHogServerClient();
+    if (posthogServer) {
+      // Get user_id from metadata if available
+      const userId =
+        (subscription.metadata?.user_id as string) || `account:${accountId}`;
+      posthogServer.capture({
+        distinctId: userId,
+        event: "checkout_completed",
+        properties: {
+          account_id: accountId,
+          plan: planId,
+          subscription_id: subscription.id,
+          product_id: subscription.product.id,
+          seats: subscription.seats ?? 1,
+          is_trial: !!subscription.trialStart,
+          $groups: { account: accountId },
+        },
+      });
+    }
+  } catch (trackingError) {
+    consola.warn(
+      "[CHECKOUT_COMPLETED] PostHog tracking failed:",
+      trackingError,
+    );
+  }
 }
 
 /**
@@ -261,6 +290,30 @@ async function handleSubscriptionCanceled(
   // If immediate cancellation (not at period end), revoke entitlements now
   if (!subscription.cancelAtPeriodEnd) {
     await revokeEntitlements({ accountId });
+  }
+
+  // Track subscription_canceled event for PLG instrumentation
+  try {
+    const posthogServer = getPostHogServerClient();
+    if (posthogServer) {
+      const userId =
+        (subscription.metadata?.user_id as string) || `account:${accountId}`;
+      posthogServer.capture({
+        distinctId: userId,
+        event: "subscription_canceled",
+        properties: {
+          account_id: accountId,
+          subscription_id: subscription.id,
+          cancel_at_period_end: subscription.cancelAtPeriodEnd,
+          $groups: { account: accountId },
+        },
+      });
+    }
+  } catch (trackingError) {
+    consola.warn(
+      "[SUBSCRIPTION_CANCELED] PostHog tracking failed:",
+      trackingError,
+    );
   }
 }
 

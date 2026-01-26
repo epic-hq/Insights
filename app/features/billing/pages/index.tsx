@@ -30,6 +30,7 @@ import {
 } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { PLANS, type PlanId } from "~/config/plans";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import { supabaseAdmin } from "~/lib/supabase/client.server";
 import { userContext } from "~/server/user-context";
 
@@ -97,6 +98,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
         year: "numeric",
       },
     );
+  }
+
+  // Track billing_page_viewed event for PLG instrumentation
+  try {
+    const posthogServer = getPostHogServerClient();
+    if (posthogServer) {
+      const userId = ctx.claims.sub;
+      posthogServer.capture({
+        distinctId: userId,
+        event: "billing_page_viewed",
+        properties: {
+          account_id: accountId,
+          current_plan: currentPlan,
+          has_active_subscription: !!subscription,
+          subscription_status: subscription?.status || null,
+          $groups: { account: accountId },
+        },
+      });
+    }
+  } catch (trackingError) {
+    consola.warn("[BILLING_PAGE] PostHog tracking failed:", trackingError);
   }
 
   return {

@@ -22,6 +22,7 @@ import { redirect } from "react-router";
 import type { PlanId } from "~/config/plans";
 import { PLANS } from "~/config/plans";
 import { getServerEnv } from "~/env.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
 import {
   getAuthenticatedUser,
   supabaseAdmin,
@@ -175,6 +176,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
       checkoutId: checkout.id,
       url: checkout.url,
     });
+
+    // Track checkout_started event for PLG instrumentation
+    try {
+      const posthogServer = getPostHogServerClient();
+      if (posthogServer) {
+        posthogServer.capture({
+          distinctId: user.sub,
+          event: "checkout_started",
+          properties: {
+            account_id: accountId,
+            plan: plan,
+            interval: interval,
+            checkout_id: checkout.id,
+            $groups: { account: accountId },
+          },
+        });
+      }
+    } catch (trackingError) {
+      consola.warn("[CHECKOUT] PostHog tracking failed:", trackingError);
+    }
 
     return redirect(checkout.url);
   } catch (error) {

@@ -271,6 +271,79 @@ posthog.identify(userId, {
 
 ---
 
+### 12. `billing_page_viewed`
+**Location**: `/app/features/billing/pages/index.tsx`
+
+**Trigger**: When a user views the billing/subscription page
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  current_plan: "free" | "starter" | "pro" | "team"
+  has_active_subscription: boolean
+  subscription_status: string | null
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 13. `checkout_started`
+**Location**: `/app/routes/api.billing.checkout.tsx`
+
+**Trigger**: When a user initiates a checkout session (clicks upgrade/subscribe)
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  plan: "starter" | "pro" | "team"
+  interval: "month" | "year"
+  checkout_id: string
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 14. `checkout_completed`
+**Location**: `/app/routes/api.webhooks.polar.tsx`
+
+**Trigger**: When a subscription becomes active (payment confirmed via webhook)
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  plan: string
+  subscription_id: string
+  product_id: string
+  seats: number
+  is_trial: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
+### 15. `subscription_canceled`
+**Location**: `/app/routes/api.webhooks.polar.tsx`
+
+**Trigger**: When a subscription is canceled (via webhook)
+
+**Properties Captured**:
+```typescript
+{
+  account_id: string
+  subscription_id: string
+  cancel_at_period_end: boolean
+  $groups: { account: account_id }
+}
+```
+
+---
+
 ## Implementation Patterns
 
 ### Error Handling
@@ -341,6 +414,18 @@ All events are captured server-side for:
     - Added `task_created` event with source tracking
     - Added `task_completed` event when status changes to done
 
+11. **`/app/features/billing/pages/index.tsx`**
+    - Added `billing_page_viewed` event
+    - Tracks current plan and subscription status
+
+12. **`/app/routes/api.billing.checkout.tsx`**
+    - Added `checkout_started` event
+    - Tracks plan, interval, and checkout session ID
+
+13. **`/app/routes/api.webhooks.polar.tsx`**
+    - Added `checkout_completed` event on subscription.active
+    - Added `subscription_canceled` event on subscription.canceled
+
 ---
 
 ## Testing Checklist
@@ -357,6 +442,10 @@ All events are captured server-side for:
 - [ ] View insight detail → verify `insight_viewed` with evidence count
 - [ ] Create task → verify `task_created` with source ("insight" or "manual")
 - [ ] Complete task → verify `task_completed` when status changes to done
+- [ ] View billing page → verify `billing_page_viewed` with current plan
+- [ ] Start checkout → verify `checkout_started` with plan and interval
+- [ ] Complete checkout → verify `checkout_completed` (via webhook test)
+- [ ] Cancel subscription → verify `subscription_canceled` (via webhook test)
 
 ### PostHog Dashboard Verification
 - [ ] Check Activity tab for live events
