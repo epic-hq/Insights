@@ -2,15 +2,15 @@
 
 ## Project Overview
 
-UpSight is an AI-native CRM and conversation intelligence platform that helps teams better understand and serve their customers by extracting actionable insights from all types of communications (from interviews, meetings, notes, surveys and more) through AI-powered analysis. Key features include:
+UpSight is a conversation-first, AI-native CRM/customer intelligence platform that turns customer conversations into **evidence you can verify** ("receipts") and insights your whole team can search, share, and act on. It supports multi-channel inputs (interviews, meetings, notes/docs, surveys, and AI chat/voice) that flow through the same pipeline: **capture → evidence → themes/insights → action**.
 
-- **Conversation Lenses**: Apply structured analytical frameworks (Sales BANT, Empathy Maps, etc.) to extract specific insights
-- **Evidence Extraction**: AI-identified quotes and moments with timestamps
-- **People & Personas**: Track individuals mentioned across interviews
-- **Themes & Insights**: Clustered topics and AI-generated insights
-- **Persona generator**: Detect personas
-- **Voice Chat**: Real-time voice conversations with AI agents (LiveKit)
-- **Task System**: Project prioritization and execution tracking
+Key capabilities include:
+
+- **Evidence ("receipts")**: AI-identified quotes/moments with attribution and timestamps
+- **Conversation lenses**: Structured frameworks (e.g. BANT, empathy maps) for extracting specific facets
+- **Themes & insights**: Cluster evidence into patterns and findings that remain queryable over time
+- **People & personas**: Track participants/mentions and segment patterns by role/persona
+- **Connect to action**: Keep downstream work (tasks/opportunities/next steps) linked back to proof
 
 ## Quick Reference
 

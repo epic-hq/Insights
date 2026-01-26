@@ -1,4 +1,4 @@
-Use 'bd' for task tracking
+Use 'bd' for task creation, and 'bv --robot-triage' for getting advanced prioritization on what to work on next and why, with dependency graph.
 
 
 ## Landing the Plane (Session Completion)
