@@ -696,15 +696,14 @@ export default function ProjectSetupPage() {
         ].filter(Boolean).length;
 
         // Auto-fill company values from research
+        // Replace values entirely when researching - don't keep old website's data
         setCompanyValues((prev) => ({
           ...prev,
-          company_description:
-            result.data?.description || prev.company_description,
-          customer_problem:
-            result.data?.customer_problem || prev.customer_problem,
-          industry: result.data?.industry || prev.industry,
-          target_orgs: result.data?.target_orgs || prev.target_orgs,
-          target_roles: result.data?.target_roles || prev.target_roles,
+          company_description: result.data?.description || "",
+          customer_problem: result.data?.customer_problem || "",
+          industry: result.data?.industry || "",
+          target_orgs: result.data?.target_orgs || [],
+          target_roles: result.data?.target_roles || [],
         }));
 
         // Show success toast
