@@ -280,6 +280,62 @@ To add more attributes for email personalization:
 
 ---
 
+## Brevo → PostHog Webhook (Email Events)
+
+To track email engagement (opens, clicks, bounces) in PostHog, configure a webhook in Brevo.
+
+### Setup Instructions
+
+1. Go to Brevo Dashboard → **Settings** → **Webhooks** (or visit https://app.brevo.com/settings/webhooks)
+2. Click **Add a new webhook**
+3. Configure webhook:
+   - **URL:** `https://getupsight.com/api/webhooks/brevo`
+   - **Description:** "PostHog email engagement tracking"
+   - **Events to track:**
+     - ✅ `opened` - Email opened
+     - ✅ `click` - Link clicked
+     - ✅ `hardBounce` - Hard bounce (invalid email)
+     - ✅ `softBounce` - Soft bounce (temporary failure)
+     - ✅ `unsubscribed` - User unsubscribed
+     - ✅ `spam` - Marked as spam
+   - **Webhook type:** Both Marketing and Transactional (to track nurture campaigns + Supabase auth emails)
+4. Save webhook
+
+### Events Sent to PostHog
+
+| Brevo Event | PostHog Event | Properties |
+|-------------|---------------|------------|
+| `opened`, `uniqueOpened` | `email_opened` | email, campaign_name, timestamp |
+| `click` | `email_clicked` | email, campaign_name, clicked_url, timestamp |
+| `hardBounce`, `softBounce` | `email_bounced` | email, campaign_name, bounce_type, timestamp |
+| `unsubscribed` | `email_unsubscribed` | email, campaign_name, timestamp |
+| `spam` | `email_spam` | email, campaign_name, timestamp |
+
+**Note:** Events use email address as `distinct_id` in PostHog. PostHog will automatically merge these events with existing user profiles created by the native Brevo destination.
+
+### Testing
+
+After configuring the webhook:
+
+1. Send a test email from Brevo (Campaigns → Test emails)
+2. Open the email and click a link
+3. Check PostHog → Events → Live events (within 1-2 minutes)
+4. Verify `email_opened` and `email_clicked` events appear
+
+### Troubleshooting
+
+**Webhook not receiving events:**
+- Check webhook status in Brevo dashboard (should show "Active")
+- Verify URL is correct: `https://getupsight.com/api/webhooks/brevo`
+- Check application logs for webhook errors: `fly logs -a insights-app`
+
+**Events not appearing in PostHog:**
+- Verify POSTHOG_API_KEY and POSTHOG_HOST are configured
+- Check application logs for PostHog capture errors
+- Ensure email address matches a user in PostHog
+
+---
+
 ## Email Templates
 
 ### Template Variables
@@ -347,10 +403,11 @@ Available in all Brevo templates (use `{{ contact.ATTRIBUTE_NAME }}`):
 - [ ] Create Brevo account and verify domain
 - [ ] Configure DNS records (SPF, DKIM, DMARC)
 - [ ] Create all contact lists in Brevo
-- [ ] Set up custom contact attributes
+- [ ] Set up custom contact attributes in Brevo
+- [ ] Add attribute mappings to PostHog Brevo destination
 - [ ] Create all cohorts in PostHog dashboard
-- [ ] Get cohort IDs from PostHog URLs and update `COHORT_MAPPINGS`
-- [ ] Test sync script with 1-2 test users
+- [ ] Configure Brevo → PostHog webhook for email events
+- [ ] Test webhook with a test email (verify events in PostHog)
 - [ ] Create email templates in Brevo
 - [ ] Set up automation workflows
 - [ ] Send test emails to internal team
@@ -359,7 +416,8 @@ Available in all Brevo templates (use `{{ contact.ATTRIBUTE_NAME }}`):
 
 ### After Launch
 
-- [ ] Monitor sync task logs in Trigger.dev
+- [ ] Monitor webhook activity in Brevo dashboard (Settings → Webhooks)
+- [ ] Check email events appearing in PostHog (Events → Live events)
 - [ ] Check email delivery rates in Brevo dashboard
 - [ ] Review PostHog cohort sizes trending
 - [ ] Track conversion metrics weekly

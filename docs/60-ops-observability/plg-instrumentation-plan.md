@@ -370,6 +370,20 @@ All content types can be shared. Track with consistent properties:
 | `session_started` | TODO | Yes | Protected layout loader | device_type, referrer |
 | `feature_viewed` | TODO | Yes | Key page loaders | feature_name |
 
+### O. Email Engagement Events
+
+Tracked via Brevo webhook integration (see [Email Campaigns Setup](./email-campaigns-setup.md#brevo--posthog-webhook-email-events))
+
+| Event | Status | Trackable? | Location | Properties |
+|-------|--------|------------|----------|------------|
+| `email_opened` | ✅ DONE | Yes | Brevo webhook → PostHog | email, campaign_name, campaign_id, webhook_type, timestamp |
+| `email_clicked` | ✅ DONE | Yes | Brevo webhook → PostHog | email, campaign_name, clicked_url, timestamp |
+| `email_bounced` | ✅ DONE | Yes | Brevo webhook → PostHog | email, campaign_name, bounce_type (hard/soft), timestamp |
+| `email_unsubscribed` | ✅ DONE | Yes | Brevo webhook → PostHog | email, campaign_name, timestamp |
+| `email_spam` | ✅ DONE | Yes | Brevo webhook → PostHog | email, campaign_name, timestamp |
+
+**Note:** Email events use email address as `distinct_id`. PostHog automatically merges with user profiles created by native Brevo destination.
+
 ---
 
 ## 7. User & Account Properties
