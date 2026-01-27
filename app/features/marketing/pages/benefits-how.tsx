@@ -236,16 +236,8 @@ export function HowItWorks({
                       />
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 pt-1">
-                    <div className="mb-2 flex items-center gap-2">
-                      {/* <span className="font-mono text-muted-foreground text-xs uppercase tracking-wide">
-												Step {index + 1}
-											</span> */}
-                    </div>
-                    <CardTitle className="flex flex-row gap-2 text-balance text-left font-semibold text-slate-900 text-xl leading-tight md:text-2xl dark:text-white">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 font-bold text-foreground text-xs shadow-sm">
-                        {index + 1}
-                      </span>
+                  <div className="min-w-0 flex-1 pt-2">
+                    <CardTitle className="text-balance text-left font-semibold text-slate-900 text-xl leading-tight md:text-2xl dark:text-white">
                       {step.title}
                     </CardTitle>
                   </div>

@@ -120,6 +120,85 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Who It's For Section */}
+        <section className="w-full bg-gradient-to-b from-slate-50 to-white py-16 md:py-20">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="mb-10 text-center">
+              <p className="mb-2 font-medium text-orange-600 text-sm uppercase tracking-wider">
+                Built for teams who talk to customers
+              </p>
+              <h2 className="font-bold text-3xl text-slate-900 tracking-tight sm:text-4xl">
+                Who It's For
+              </h2>
+            </div>
+
+            <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+              {/* Founders */}
+              <div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg transition-transform group-hover:scale-105">
+                  <Rocket className="h-7 w-7" />
+                </div>
+                <h3 className="mb-1 font-semibold text-slate-900">Founders</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Move fast without losing signal
+                </p>
+              </div>
+
+              {/* Consultants */}
+              <div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-500 text-white shadow-lg transition-transform group-hover:scale-105">
+                  <Briefcase className="h-7 w-7" />
+                </div>
+                <h3 className="mb-1 font-semibold text-slate-900">
+                  Consultants
+                </h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Hours saved = money earned
+                </p>
+              </div>
+
+              {/* Product/UX */}
+              <div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-lg transition-transform group-hover:scale-105">
+                  <Lightbulb className="h-7 w-7" />
+                </div>
+                <h3 className="mb-1 font-semibold text-slate-900">
+                  Product & UX
+                </h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Research without a research team
+                </p>
+              </div>
+
+              {/* CS Leaders */}
+              <div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-lg transition-transform group-hover:scale-105">
+                  <HeadphonesIcon className="h-7 w-7" />
+                </div>
+                <h3 className="mb-1 font-semibold text-slate-900">
+                  CS Leaders
+                </h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  See churn signals before they churn
+                </p>
+              </div>
+
+              {/* Sales Pros */}
+              <div className="group flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-orange-200">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-lg transition-transform group-hover:scale-105">
+                  <TrendingUp className="h-7 w-7" />
+                </div>
+                <h3 className="mb-1 font-semibold text-slate-900">
+                  Sales Pros
+                </h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Win deals with evidence that closes
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Modern spacing wrapper */}
         <div className="bg-gradient-to-b from-white via-slate-50/50 to-white">
           <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
@@ -132,86 +211,6 @@ export default function LandingPage() {
             />
           </div>
         </div>
-
-        {/* Who It's For Section */}
-        <section className="w-full bg-gradient-to-b from-white to-slate-50 py-16 md:py-24">
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="mb-12 text-center">
-              <Badge className="mb-4 border-amber-200 bg-amber-50 px-4 py-2 font-medium text-amber-700">
-                <Users className="mr-2 h-4 w-4" />
-                Built for teams who talk to customers
-              </Badge>
-              <h2 className="font-bold text-3xl text-slate-900 tracking-tight sm:text-4xl md:text-5xl">
-                Who It's For
-              </h2>
-            </div>
-
-            <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-5">
-              {/* Founders */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-md transition-transform group-hover:scale-110">
-                  <Rocket className="h-6 w-6" />
-                </div>
-                <h3 className="mb-2 font-semibold text-slate-900">Founders</h3>
-                <p className="text-slate-600 text-sm">
-                  Move fast without losing signal
-                </p>
-              </div>
-
-              {/* Consultants */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 text-white shadow-md transition-transform group-hover:scale-110">
-                  <Briefcase className="h-6 w-6" />
-                </div>
-                <h3 className="mb-2 font-semibold text-slate-900">
-                  Consultants
-                </h3>
-                <p className="text-slate-600 text-sm">
-                  Hours saved = money earned
-                </p>
-              </div>
-
-              {/* Product/UX */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-md transition-transform group-hover:scale-110">
-                  <Lightbulb className="h-6 w-6" />
-                </div>
-                <h3 className="mb-2 font-semibold text-slate-900">
-                  Product & UX
-                </h3>
-                <p className="text-slate-600 text-sm">
-                  Research without a research team
-                </p>
-              </div>
-
-              {/* CS Leaders */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-md transition-transform group-hover:scale-110">
-                  <HeadphonesIcon className="h-6 w-6" />
-                </div>
-                <h3 className="mb-2 font-semibold text-slate-900">
-                  CS Leaders
-                </h3>
-                <p className="text-slate-600 text-sm">
-                  See churn signals before they churn
-                </p>
-              </div>
-
-              {/* Sales Pros */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-md transition-transform group-hover:scale-110">
-                  <TrendingUp className="h-6 w-6" />
-                </div>
-                <h3 className="mb-2 font-semibold text-slate-900">
-                  Sales Pros
-                </h3>
-                <p className="text-slate-600 text-sm">
-                  Win deals with evidence that closes
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Features Section */}
         <section
