@@ -2,14 +2,18 @@ import { MeshGradient } from "@paper-design/shaders-react";
 import {
   ArrowRight,
   BarChart2,
+  Briefcase,
   ClipboardList,
   FileText,
+  HeadphonesIcon,
   Lightbulb,
   MessageSquare,
   Mic,
+  Rocket,
   Sparkles,
   Star,
   Target,
+  TrendingUp,
   Users,
   Zap,
 } from "lucide-react";
@@ -123,9 +127,91 @@ export default function LandingPage() {
           </div>
 
           <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
-            <HowItWorks onCtaClick={() => navigate(PATHS.AUTH.REGISTER)} />
+            <HowItWorks
+              onCtaClick={() => navigate(`${PATHS.AUTH.REGISTER}?plan=team`)}
+            />
           </div>
         </div>
+
+        {/* Who It's For Section */}
+        <section className="w-full bg-gradient-to-b from-white to-slate-50 py-16 md:py-24">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="mb-12 text-center">
+              <Badge className="mb-4 border-amber-200 bg-amber-50 px-4 py-2 font-medium text-amber-700">
+                <Users className="mr-2 h-4 w-4" />
+                Built for teams who talk to customers
+              </Badge>
+              <h2 className="font-bold text-3xl text-slate-900 tracking-tight sm:text-4xl md:text-5xl">
+                Who It's For
+              </h2>
+            </div>
+
+            <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-5">
+              {/* Founders */}
+              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-md transition-transform group-hover:scale-110">
+                  <Rocket className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 font-semibold text-slate-900">Founders</h3>
+                <p className="text-slate-600 text-sm">
+                  Move fast without losing signal
+                </p>
+              </div>
+
+              {/* Consultants */}
+              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 text-white shadow-md transition-transform group-hover:scale-110">
+                  <Briefcase className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  Consultants
+                </h3>
+                <p className="text-slate-600 text-sm">
+                  Hours saved = money earned
+                </p>
+              </div>
+
+              {/* Product/UX */}
+              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-md transition-transform group-hover:scale-110">
+                  <Lightbulb className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  Product & UX
+                </h3>
+                <p className="text-slate-600 text-sm">
+                  Research without a research team
+                </p>
+              </div>
+
+              {/* CS Leaders */}
+              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-md transition-transform group-hover:scale-110">
+                  <HeadphonesIcon className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  CS Leaders
+                </h3>
+                <p className="text-slate-600 text-sm">
+                  See churn signals before they churn
+                </p>
+              </div>
+
+              {/* Sales Pros */}
+              <div className="group rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm transition-all hover:border-orange-200 hover:shadow-lg">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-md transition-transform group-hover:scale-110">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  Sales Pros
+                </h3>
+                <p className="text-slate-600 text-sm">
+                  Win deals with evidence that closes
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Features Section */}
         <section
@@ -287,10 +373,10 @@ export default function LandingPage() {
               className="group relative overflow-hidden bg-white px-12 py-6 font-semibold text-slate-900 text-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
             >
               <Link
-                to={PATHS.AUTH.REGISTER}
+                to={`${PATHS.AUTH.REGISTER}?plan=team`}
                 className="flex items-center gap-3"
               >
-                Start Free Trial
+                Start Team Trial
                 <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
