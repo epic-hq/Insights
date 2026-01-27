@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Link2, Mic, UploadCloud } from "lucide-react";
+import { ClipboardList, Link2, Mic, UploadCloud } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate } from "react-router";
@@ -210,8 +210,20 @@ export default function QuestionsIndex() {
               </p>
               <div className="flex flex-row flex-wrap justify-center gap-3">
                 <Button
-                  onClick={handleRecordNow}
+                  onClick={() => {
+                    if (routes) {
+                      navigate(routes.ask.new());
+                    }
+                  }}
                   variant="default"
+                  className="gap-2"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  Create Smart Survey
+                </Button>
+                <Button
+                  onClick={handleRecordNow}
+                  variant="outline"
                   disabled={isRecording}
                   className="gap-2"
                 >

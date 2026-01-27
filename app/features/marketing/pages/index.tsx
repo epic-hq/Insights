@@ -2,8 +2,11 @@ import { MeshGradient } from "@paper-design/shaders-react";
 import {
   ArrowRight,
   BarChart2,
+  ClipboardList,
+  FileText,
   Lightbulb,
   MessageSquare,
+  Mic,
   Sparkles,
   Star,
   Target,
@@ -60,11 +63,8 @@ export default function LandingPage() {
           <div className="container relative mx-auto px-2 text-center md:px-6">
             <div className="mx-auto max-w-5xl space-y-8">
               <h1 className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-                <span className="whitespace-nowrap">
-                  Strengthen understanding.
-                </span>
-                <br />
-                Deepen relationships.
+                Get the customer intelligence you need to build deeper
+                relationships.
               </h1>
 
               <p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
@@ -73,8 +73,8 @@ export default function LandingPage() {
               </p>
 
               <p className="mx-auto max-w-3xl text-white/70 text-lg leading-relaxed md:text-xl">
-                Rich AI-driven surveys, conversation guidance, and analysis to
-                help you understand what really matters.
+                AI-driven surveys, conversation guidance, and analysis to help
+                you understand what really matters.
               </p>
 
               <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
