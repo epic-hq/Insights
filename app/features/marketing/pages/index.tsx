@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BarChart2,
   Briefcase,
+  CheckSquare,
   ClipboardList,
   FileText,
   HeadphonesIcon,
@@ -10,11 +11,13 @@ import {
   MessageSquare,
   Mic,
   Rocket,
+  Search,
   Sparkles,
   Star,
   Target,
   TrendingUp,
   Users,
+  Video,
   Zap,
 } from "lucide-react";
 import { Link, type MetaFunction, useNavigate } from "react-router";
@@ -81,17 +84,17 @@ export default function LandingPage() {
                 you understand what really matters.
               </p>
 
-              <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-4">
                 <Button
                   asChild
                   size="lg"
                   className="group relative overflow-hidden bg-white px-8 py-4 font-semibold text-lg text-slate-900 shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
                 >
                   <Link
-                    to={`${PATHS.AUTH.REGISTER}?plan=team`}
+                    to={`${PATHS.AUTH.REGISTER}?plan=pro`}
                     className="flex items-center gap-2"
                   >
-                    Start Team Trial
+                    Start Pro Trial
                     <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
@@ -107,7 +110,7 @@ export default function LandingPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Schedule Demo
+                    Get a Demo
                   </a>
                 </Button>
               </div>
@@ -207,7 +210,7 @@ export default function LandingPage() {
 
           <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
             <HowItWorks
-              onCtaClick={() => navigate(`${PATHS.AUTH.REGISTER}?plan=team`)}
+              onCtaClick={() => navigate(`${PATHS.AUTH.REGISTER}?plan=pro`)}
             />
           </div>
         </div>
@@ -225,126 +228,136 @@ export default function LandingPage() {
               <div className="space-y-6">
                 <Badge className="border-orange-200 bg-orange-50 px-4 py-2 font-medium text-orange-700">
                   <Target className="mr-2 h-4 w-4" />
-                  Evidence-backed decisions
+                  Platform Features
                 </Badge>
 
                 <h2 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text font-bold text-4xl text-transparent tracking-tight sm:text-5xl md:text-6xl">
-                  AI can say anything.
+                  Everything you need to
                   <span className="bg-gradient-to-r from-orange-600 via-red-700 to-orange-700 bg-clip-text text-transparent">
                     {" "}
-                    We show the proof.
+                    understand customers.
                   </span>
                 </h2>
 
                 <p className="mx-auto max-w-3xl text-slate-600 text-xl leading-relaxed md:text-2xl">
-                  Every AI tool gives you summaries. Only UpSight gives you
-                  receipts. Trust isn't generated—it's earned.
+                  Capture conversations, extract evidence, and turn insights
+                  into action—all in one platform.
                 </p>
               </div>
             </div>
             <div className="mx-auto grid max-w-7xl justify-items-center gap-8 py-16 sm:grid-cols-2 lg:grid-cols-3">
+              {/* AI-Powered Surveys */}
               <Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-orange-400/20">
-                {/* Gradient border effect */}
                 <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-400/20 via-amber-500/20 to-orange-500/20 p-[1px]">
                   <div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
                 </div>
-
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 via-amber-500 to-orange-500 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <Zap className="h-8 w-8 text-white" />
+                    <ClipboardList className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Show the Receipts
+                    AI-Powered Surveys
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Click any insight. See exactly who said it, when, and in
-                    what context. Evidence you can verify.
+                    Smart surveys with intelligent follow-up questions. Collect
+                    text, audio, and video responses. AI analyzes themes
+                    automatically.
                   </p>
                 </div>
               </Card>
+
+              {/* Interview Recording */}
               <Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-amber-500/20">
                 <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-amber-500/20 via-yellow-600/20 to-amber-600/20 p-[1px]">
                   <div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <Users className="h-8 w-8 text-white" />
+                    <Mic className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    One Truth, Every Team
+                    Interview Recording
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Sales, Product, CS — everyone sees the same customer
-                    reality. No more silos, no more "I think I heard..."
+                    Plan interview prompts, record live or upload recordings.
+                    Auto-transcribe with speaker identification and timestamps.
                   </p>
                 </div>
               </Card>
+
+              {/* Evidence Extraction */}
               <Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-stone-500/20">
                 <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-stone-500/20 via-neutral-600/20 to-stone-600/20 p-[1px]">
                   <div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-stone-500 via-neutral-600 to-stone-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <BarChart2 className="h-8 w-8 text-white" />
+                    <Sparkles className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    The CRM That Remembers
+                    Evidence Extraction
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Your customers told you everything. Notes, calls, surveys —
-                    captured and connected so nothing gets lost.
+                    AI identifies key quotes, themes, and personas. Every
+                    insight links back to the exact moment—click to verify.
                   </p>
                 </div>
               </Card>
+
+              {/* Semantic Search */}
               <Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-orange-500/20">
                 <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-500/20 via-red-600/20 to-orange-600/20 p-[1px]">
                   <div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-red-600 to-orange-600 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <Target className="h-8 w-8 text-white" />
+                    <Search className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    From Conversation to Decision
+                    Semantic Search
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Ask any question, get answers grounded in real
-                    conversations. Make decisions backed by what customers
-                    actually said.
+                    Ask any question across all conversations. Get answers
+                    grounded in real customer words with source citations.
                   </p>
                 </div>
               </Card>
+
+              {/* Integrated Tasks */}
               <Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-red-600/20">
                 <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-red-600/20 via-orange-700/20 to-red-700/20 p-[1px]">
                   <div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 via-orange-700 to-red-700 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <MessageSquare className="h-8 w-8 text-white" />
+                    <CheckSquare className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Grounded, Not Generated
+                    Integrated Tasks
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    Every insight traces back to real customer words. AI that
-                    shows its work, not just its output.
+                    Turn insights into action items. Assign owners, track
+                    progress, and keep evidence attached so decisions stay
+                    grounded.
                   </p>
                 </div>
               </Card>
+
+              {/* Video Testimonials */}
               <Card className="group hover:-translate-y-2 relative h-full w-full overflow-hidden border-0 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm transition-all duration-500 hover:bg-white hover:shadow-2xl hover:shadow-amber-600/20">
                 <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-amber-600/20 via-yellow-700/20 to-amber-700/20 p-[1px]">
                   <div className="h-full w-full rounded-lg bg-white/90 backdrop-blur-sm" />
                 </div>
                 <div className="relative flex h-full flex-col items-center">
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-600 via-yellow-700 to-amber-700 shadow-lg transition-transform duration-300 group-hover:scale-110">
-                    <Lightbulb className="h-8 w-8 text-white" />
+                    <Video className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="mb-4 font-bold text-slate-900 text-xl">
-                    Make Work Work
+                    Video Testimonials
                   </h3>
                   <p className="text-base text-slate-700 leading-relaxed md:text-lg">
-                    No more hunting. No more debating. Just clarity, evidence,
-                    and action. Customer truth that flows freely.
+                    Collect video responses directly. Create shareable reels and
+                    highlight clips for stakeholders and marketing.
                   </p>
                 </div>
               </Card>
@@ -367,18 +380,29 @@ export default function LandingPage() {
             <p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
               Five conversations. See what you learn. Make work work.
             </p>
-            <Button
-              asChild
-              className="group relative overflow-hidden bg-white px-12 py-6 font-semibold text-slate-900 text-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
-            >
-              <Link
-                to={`${PATHS.AUTH.REGISTER}?plan=team`}
-                className="flex items-center gap-3"
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-4">
+              <Button
+                asChild
+                className="group relative overflow-hidden bg-white px-12 py-6 font-semibold text-slate-900 text-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/95 hover:shadow-white/20"
               >
-                Start Team Trial
-                <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
+                <Link
+                  to={`${PATHS.AUTH.REGISTER}?plan=pro`}
+                  className="flex items-center gap-3"
+                >
+                  Start Pro Trial
+                  <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="border-white/30 bg-white/10 px-12 py-6 font-semibold text-white text-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/20"
+              >
+                <Link to={`${PATHS.AUTH.REGISTER}?plan=team`}>
+                  Start Team Trial
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
       </main>

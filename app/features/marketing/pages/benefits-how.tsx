@@ -275,7 +275,7 @@ export function HowItWorks({
           onClick={onCtaClick}
         >
           <span className="flex items-center gap-2">
-            {ctaLabel}
+            Start Free Trial
             <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
           </span>
         </Button>
