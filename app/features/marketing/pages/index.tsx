@@ -202,19 +202,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Modern spacing wrapper */}
-        <div className="bg-gradient-to-b from-white via-slate-50/50 to-white">
-          <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
-            <KeyBenefits />
-          </div>
-
-          <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
-            <HowItWorks
-              onCtaClick={() => navigate(`${PATHS.AUTH.REGISTER}?plan=pro`)}
-            />
-          </div>
-        </div>
-
         {/* Features Section */}
         <section
           id="features"
@@ -365,7 +352,18 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* How It Works Section */}
+        {/* Modern spacing wrapper */}
+        <div className="bg-gradient-to-b from-white via-slate-50/50 to-white">
+          <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
+            <KeyBenefits />
+          </div>
+
+          <div className="container mx-auto px-4 py-10 md:py-20 lg:py-20">
+            <HowItWorks
+              onCtaClick={() => navigate(`${PATHS.AUTH.REGISTER}?plan=pro`)}
+            />
+          </div>
+        </div>
 
         {/* Call to Action Section */}
         <section className="relative w-full overflow-hidden bg-gradient-to-br from-zinc-900 via-stone-800 to-neutral-700 py-8 text-center text-white md:py-18 lg:py-20">
