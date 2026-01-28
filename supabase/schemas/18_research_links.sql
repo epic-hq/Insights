@@ -21,6 +21,8 @@ create table if not exists public.research_links (
     walkthrough_video_url text,
     walkthrough_thumbnail_url text,
     default_response_mode text not null default 'form' check (default_response_mode in ('form', 'chat', 'voice')),
+    ai_autonomy text not null default 'strict' check (ai_autonomy in ('strict', 'moderate', 'adaptive')),
+    research_goals jsonb default null,
     is_live boolean not null default false,
     statistics jsonb default null,
     stats_updated_at timestamptz default null,
