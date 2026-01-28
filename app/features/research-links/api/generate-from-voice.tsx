@@ -53,6 +53,13 @@ const GuidelineSchema = z.object({
     .string()
     .optional()
     .describe("AI hint for chat mode, e.g., 'Probe on ROI expectations'"),
+  confidence: z
+    .enum(["high", "medium", "low"])
+    .describe("How confident you are in this interpretation"),
+  clarificationNeeded: z
+    .string()
+    .optional()
+    .describe("If medium/low confidence, what clarification would help"),
 });
 
 const SurveyGenerationSchema = z.object({
@@ -122,6 +129,13 @@ If the user mentioned wanting different questions for different groups (e.g., "f
 - targetQuestionIndex: where to skip to (for skip_to)
 - guidance: hints for AI chat mode (e.g., "Probe on approval process")
 - summary: human-readable description using "For...", "When...", "If respondents..."
+- confidence: "high" if you're sure, "medium" if reasonable interpretation, "low" if unclear
+- clarificationNeeded: if medium/low, what specific question would help clarify
+
+CONFIDENCE GUIDANCE:
+- HIGH: User explicitly mentioned the condition and action
+- MEDIUM: Reasonable interpretation but some ambiguity (e.g., "focus on budget" - which questions are "budget" questions?)
+- LOW: Multiple interpretations possible, needs user input
 
 Generate a survey that will help the user gather the insights they described.`,
     });
@@ -153,10 +167,24 @@ Generate a survey that will help the user gather the insights they described.`,
         targetQuestionId: targetQuestion?.id,
         targetQuestionIndex: g.targetQuestionIndex,
         guidance: g.guidance,
-        confidence: "high" as const,
+        confidence: g.confidence ?? ("high" as const),
         source: "ai_generated" as const,
+        clarificationNeeded: g.clarificationNeeded,
       };
     });
+
+    // Collect clarifications from guidelines that need them
+    const clarifications = guidelines
+      .filter((g) => g.confidence !== "high" && g.clarificationNeeded)
+      .map((g) => ({
+        guidelineId: g.id,
+        summary: g.summary,
+        confidence: g.confidence,
+        question: g.clarificationNeeded!,
+      }));
+
+    // Determine if any clarifications are needed
+    const needsClarification = clarifications.length > 0;
 
     return Response.json({
       name: result.object.name,
@@ -164,6 +192,8 @@ Generate a survey that will help the user gather the insights they described.`,
       questions,
       guidelines,
       insights: result.object.insights,
+      needsClarification,
+      clarifications,
     });
   } catch (error) {
     console.error("Failed to generate survey from voice:", error);
