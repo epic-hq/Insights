@@ -167,6 +167,17 @@ export enum BBValues {
   Wisdom = "Wisdom",
 }
 
+export enum ConditionOperator {
+  EQUALS = "EQUALS",
+  NOT_EQUALS = "NOT_EQUALS",
+  CONTAINS = "CONTAINS",
+  NOT_CONTAINS = "NOT_CONTAINS",
+  SELECTED = "SELECTED",
+  NOT_SELECTED = "NOT_SELECTED",
+  ANSWERED = "ANSWERED",
+  NOT_ANSWERED = "NOT_ANSWERED",
+}
+
 export enum Emotions {
   Abandoned = "Abandoned",
   Accepted = "Accepted",
@@ -296,6 +307,11 @@ export enum Emotions {
   Worthless = "Worthless",
 }
 
+export enum GuidelineAction {
+  SKIP_TO = "SKIP_TO",
+  END_SURVEY = "END_SURVEY",
+}
+
 export enum InteractionContext {
   Research = "Research",
   Sales = "Sales",
@@ -321,6 +337,12 @@ export enum JobFunction {
   IT = "IT",
   Research = "Research",
   Other = "Other",
+}
+
+export enum RuleConfidence {
+  HIGH = "HIGH",
+  MEDIUM = "MEDIUM",
+  LOW = "LOW",
 }
 
 export enum SeniorityLevel {
@@ -893,6 +915,14 @@ export interface GoalLensExtraction {
   
 }
 
+export interface GuidelineParseResult {
+  guidelines: ParsedGuideline[]
+  unparseableSegments: string[]
+  suggestedClarifications: string[]
+  overallConfidence: RuleConfidence
+  
+}
+
 export interface HistoryItem {
   questionId: string
   action: "shown" | "rejected" | "asked" | "answered"
@@ -1141,6 +1171,29 @@ export interface PainMatrixInsightsInput {
   total_evidence: number
   high_impact_cells: number
   top_pains: TopPainCell[]
+  
+}
+
+export interface ParsedCondition {
+  questionId: string
+  questionPrompt: string
+  operator: ConditionOperator
+  value?: string | null
+  
+}
+
+export interface ParsedGuideline {
+  id: string
+  naturalLanguage: string
+  summary: string
+  condition: ParsedCondition
+  action: GuidelineAction
+  targetQuestionId?: string | null
+  targetQuestionPrompt?: string | null
+  guidance?: string | null
+  reasoning: string
+  confidence: RuleConfidence
+  ambiguityNotes?: string | null
   
 }
 
@@ -1877,6 +1930,14 @@ export interface SuggestedQuestion {
   rationale: string
   interview_type: "user_interview" | "stakeholder_interview" | "expert_interview"
   priority: number
+  
+}
+
+export interface SurveyQuestionInput {
+  id: string
+  prompt: string
+  type: string
+  options?: string[] | null
   
 }
 

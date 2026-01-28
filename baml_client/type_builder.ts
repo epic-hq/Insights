@@ -143,6 +143,8 @@ export default class TypeBuilder {
     
     GoalLensExtraction: ClassViewer<'GoalLensExtraction', "goal_answers" | "decision_insights" | "unknown_resolutions" | "target_fit" | "research_learnings" | "goal_completion_score" | "recommended_follow_ups">;
     
+    GuidelineParseResult: ClassViewer<'GuidelineParseResult', "guidelines" | "unparseableSegments" | "suggestedClarifications" | "overallConfidence">;
+    
     HistoryItem: ClassViewer<'HistoryItem', "questionId" | "action" | "ts" | "interviewId">;
     
     HypothesisValidation: ClassViewer<'HypothesisValidation', "hypothesis_statement" | "validation_result" | "supporting_evidence" | "confidence_level" | "implications" | "evidence_ids">;
@@ -196,6 +198,10 @@ export default class TypeBuilder {
     PainMatrixInsights: ClassViewer<'PainMatrixInsights', "summary" | "top_3_actions">;
     
     PainMatrixInsightsInput: ClassViewer<'PainMatrixInsightsInput', "total_pains" | "total_groups" | "total_evidence" | "high_impact_cells" | "top_pains">;
+    
+    ParsedCondition: ClassViewer<'ParsedCondition', "questionId" | "questionPrompt" | "operator" | "value">;
+    
+    ParsedGuideline: ClassViewer<'ParsedGuideline', "id" | "naturalLanguage" | "summary" | "condition" | "action" | "targetQuestionId" | "targetQuestionPrompt" | "guidance" | "reasoning" | "confidence" | "ambiguityNotes">;
     
     Participant: ClassViewer<'Participant', "name" | "persona" | "participantDescription" | "facetSummary" | "segment" | "contactInfo">;
     
@@ -339,6 +345,8 @@ export default class TypeBuilder {
     
     SuggestedQuestion: ClassViewer<'SuggestedQuestion', "question" | "rationale" | "interview_type" | "priority">;
     
+    SurveyQuestionInput: ClassViewer<'SurveyQuestionInput', "id" | "prompt" | "type" | "options">;
+    
     SynthesisDiscrepancy: ClassViewer<'SynthesisDiscrepancy', "interview_id" | "interview_title" | "value" | "note">;
     
     SynthesizedInsight: ClassViewer<'SynthesizedInsight', "title" | "insight" | "supporting_interviews" | "confidence" | "category">;
@@ -360,11 +368,17 @@ export default class TypeBuilder {
     
     BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
     
+    ConditionOperator: EnumViewer<'ConditionOperator', "EQUALS" | "NOT_EQUALS" | "CONTAINS" | "NOT_CONTAINS" | "SELECTED" | "NOT_SELECTED" | "ANSWERED" | "NOT_ANSWERED">;
+    
     Emotions: EnumViewer<'Emotions', "Abandoned" | "Accepted" | "Aggressive" | "Amazed" | "Angry" | "Annoyed" | "Anxious" | "Apathetic" | "Appalled" | "Aroused" | "Ashamed" | "Astonished" | "Awe" | "Awful" | "Bad" | "Betrayed" | "Bitter" | "Bored" | "Busy" | "Cheeky" | "Confident" | "Confused" | "Content" | "Courageous" | "Creative" | "Critical" | "Curious" | "Depressed" | "Despair" | "Detestable" | "Disappointed" | "Disapproving" | "Disgusted" | "Disillusioned" | "Dismayed" | "Dismissive" | "Disrespected" | "Distant" | "Eager" | "Embarrassed" | "Empty" | "Energetic" | "Excited" | "Excluded" | "Exposed" | "Fearful" | "Fragile" | "Free" | "Frightened" | "Frustrated" | "Furious" | "Grief" | "Guilty" | "Happy" | "Helpless" | "Hesitant" | "Hopeful" | "Horrified" | "Hostile" | "Humiliated" | "Hurt" | "Inadequate" | "Indifferent" | "Indignant" | "Inferior" | "Infuriated" | "Inquisitive" | "Insecure" | "Insignificant" | "Inspired" | "Interested" | "Intimate" | "Isolated" | "Jealous" | "Joyful" | "Judgmental" | "Let_down" | "Lonely" | "Loving" | "Mad" | "Nauseated" | "Nervous" | "Numb" | "Optimistic" | "Out_of_control" | "Overwhelmed" | "Peaceful" | "Perplexed" | "Persecuted" | "Playful" | "Powerful" | "Powerless" | "Pressured" | "Proud" | "Provoked" | "Rejected" | "Remorseful" | "Repelled" | "Resentful" | "Respected" | "Revolted" | "Ridiculed" | "Rushed" | "Sad" | "Scared" | "Sensitive" | "Shocked" | "Skeptical" | "Sleepy" | "Startled" | "Stressed" | "Successful" | "Surprised" | "Thankful" | "Threatened" | "Tired" | "Trusting" | "Unfocussed" | "Valued" | "Victimized" | "Violated" | "Vulnerable" | "Weak" | "Withdrawn" | "Worried" | "Worthless">;
+    
+    GuidelineAction: EnumViewer<'GuidelineAction', "SKIP_TO" | "END_SURVEY">;
     
     InteractionContext: EnumViewer<'InteractionContext', "Research" | "Sales" | "Support" | "Internal" | "Debrief" | "Personal">;
     
     JobFunction: EnumViewer<'JobFunction', "Engineering" | "Product" | "Design" | "Sales" | "Marketing" | "CustomerSuccess" | "Operations" | "Finance" | "HR" | "Legal" | "Executive" | "Data" | "IT" | "Research" | "Other">;
+    
+    RuleConfidence: EnumViewer<'RuleConfidence', "HIGH" | "MEDIUM" | "LOW">;
     
     SeniorityLevel: EnumViewer<'SeniorityLevel', "CLevel" | "VP" | "Director" | "Manager" | "Senior" | "IC" | "Intern" | "Unknown">;
     
@@ -372,10 +386,10 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AskLinkInsightsResponse","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","HistoryItem","HypothesisValidation","InferredPersonSegments","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","PersonSegmentInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionInsight","QuestionIssue","QuestionPolicy","QuestionSet","QuickResponseSummary","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","ResponseTheme","SalesLensExtraction","Scene","Scores","SectionSynthesis","SegmentPattern","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
+            "ActionButton","AskLinkInsightsResponse","AuthorityInfo","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","BehaviorPattern","BudgetInfo","Category","Chapter","CompetitiveInsight","ContextualSuggestions","ConversationAnalysis","ConversationEvidence","ConversationLensResult","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","ConversationTakeaways","DealAdvisorRecommendation","DealQualificationSignals","DecisionInsight","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","DocumentEvidence","DocumentExtraction","EntityAggregation","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetGroupInput","FacetGroupSummary","FacetMention","FacetSignalInput","FeaturePrioritization","FeatureRequest","FieldSynthesis","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","GeneratedLensField","GeneratedLensSection","GeneratedLensTemplate","GoalAnswer","GoalLensExtraction","GuidelineParseResult","HistoryItem","HypothesisValidation","InferredPersonSegments","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","JobToBeDone","LensEntityResult","LensEvidenceHighlight","LensFieldValue","LensHygieneItem","LensNextStepItem","LensObjectionItem","LensRecommendation","LensSectionResult","LensStakeholderItem","LensSynthesisResult","MentalModel","NeedInfo","NextStepInfo","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","ParsedCondition","ParsedGuideline","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetLensRequest","PersonFacetLensResponse","PersonLensMetadata","PersonProfileInput","PersonScaleInput","PersonSegmentInput","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProductGap","ProductLensExtraction","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","ProposedTheme","QALensResult","QAPair","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionInsight","QuestionIssue","QuestionPolicy","QuestionSet","QuickResponseSummary","ResearchGoal","ResearchInsightInput","ResearchLearning","ResearchLensExtraction","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionInsight","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","ResponseTheme","SalesLensExtraction","Scene","Scores","SectionSynthesis","SegmentPattern","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SpreadsheetAnalysis","SpreadsheetColumnMapping","StakeholderRole","SuggestedFacet","SuggestedQuestion","SurveyQuestionInput","SynthesisDiscrepancy","SynthesizedInsight","TargetFitAssessment","TimelineInfo","TopPainCell","TurnAnchors","UnknownResolution","UsabilityFinding","UserJourneyInsight",
           ]),
           enums: new Set([
-            "BBValues","Emotions","InteractionContext","JobFunction","SeniorityLevel",
+            "BBValues","ConditionOperator","Emotions","GuidelineAction","InteractionContext","JobFunction","RuleConfidence","SeniorityLevel",
           ]),
           runtime: DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME
         });
@@ -612,6 +626,10 @@ export default class TypeBuilder {
           "goal_answers","decision_insights","unknown_resolutions","target_fit","research_learnings","goal_completion_score","recommended_follow_ups",
         ]);
         
+        this.GuidelineParseResult = this.tb.classViewer("GuidelineParseResult", [
+          "guidelines","unparseableSegments","suggestedClarifications","overallConfidence",
+        ]);
+        
         this.HistoryItem = this.tb.classViewer("HistoryItem", [
           "questionId","action","ts","interviewId",
         ]);
@@ -718,6 +736,14 @@ export default class TypeBuilder {
         
         this.PainMatrixInsightsInput = this.tb.classViewer("PainMatrixInsightsInput", [
           "total_pains","total_groups","total_evidence","high_impact_cells","top_pains",
+        ]);
+        
+        this.ParsedCondition = this.tb.classViewer("ParsedCondition", [
+          "questionId","questionPrompt","operator","value",
+        ]);
+        
+        this.ParsedGuideline = this.tb.classViewer("ParsedGuideline", [
+          "id","naturalLanguage","summary","condition","action","targetQuestionId","targetQuestionPrompt","guidance","reasoning","confidence","ambiguityNotes",
         ]);
         
         this.Participant = this.tb.classViewer("Participant", [
@@ -1004,6 +1030,10 @@ export default class TypeBuilder {
           "question","rationale","interview_type","priority",
         ]);
         
+        this.SurveyQuestionInput = this.tb.classViewer("SurveyQuestionInput", [
+          "id","prompt","type","options",
+        ]);
+        
         this.SynthesisDiscrepancy = this.tb.classViewer("SynthesisDiscrepancy", [
           "interview_id","interview_title","value","note",
         ]);
@@ -1045,8 +1075,16 @@ export default class TypeBuilder {
           "Accountability","Achievement","Adaptability","Adventure","Altruism","Ambition","Authenticity","Balance","Beauty","Being_the_best","Belonging","Career","Caring","Collaboration","Commitment","Community","Compassion","Competence","Confidence","Connection","Contentment","Contribution","Cooperation","Courage","Creativity","Curiosity","Dignity","Diversity","Environment","Efficiency","Equality","Ethics","Excellence","Fairness","Faith","Family","Financial_stability","Forgiveness","Freedom","Friendship","Fun","Future_generations","Generosity","Giving_back","Grace","Gratitude","Growth","Harmony","Health","Home","Honesty","Hope","Humility","Humor","Inclusion","Independence","Initiative","Integrity","Intuition","Job_security","Joy","Justice","Kindness","Knowledge","Leadership","Learning","Legacy","Leisure","Love","Loyalty","Making_a_difference","Nature","Openness","Optimism","Order","Parenting","Patience","Patriotism","Peace","Perseverance","Personal_fulfillment","Power","Pride","Recognition","Reliability","Resourcefulness","Respect","Responsibility","Risk_taking","Safety","Security","Self_discipline","Self_expression","Self_respect","Serenity","Service","Simplicity","Spirituality","Sportsmanship","Stewardship","Success","Teamwork","Thrift","Time","Tradition","Travel","Trust","Truth","Understanding","Uniqueness","Usefulness","Vision","Vulnerability","Wealth","Well_being","Wholeheartedness","Wisdom",
         ]);
         
+        this.ConditionOperator = this.tb.enumViewer("ConditionOperator", [
+          "EQUALS","NOT_EQUALS","CONTAINS","NOT_CONTAINS","SELECTED","NOT_SELECTED","ANSWERED","NOT_ANSWERED",
+        ]);
+        
         this.Emotions = this.tb.enumViewer("Emotions", [
           "Abandoned","Accepted","Aggressive","Amazed","Angry","Annoyed","Anxious","Apathetic","Appalled","Aroused","Ashamed","Astonished","Awe","Awful","Bad","Betrayed","Bitter","Bored","Busy","Cheeky","Confident","Confused","Content","Courageous","Creative","Critical","Curious","Depressed","Despair","Detestable","Disappointed","Disapproving","Disgusted","Disillusioned","Dismayed","Dismissive","Disrespected","Distant","Eager","Embarrassed","Empty","Energetic","Excited","Excluded","Exposed","Fearful","Fragile","Free","Frightened","Frustrated","Furious","Grief","Guilty","Happy","Helpless","Hesitant","Hopeful","Horrified","Hostile","Humiliated","Hurt","Inadequate","Indifferent","Indignant","Inferior","Infuriated","Inquisitive","Insecure","Insignificant","Inspired","Interested","Intimate","Isolated","Jealous","Joyful","Judgmental","Let_down","Lonely","Loving","Mad","Nauseated","Nervous","Numb","Optimistic","Out_of_control","Overwhelmed","Peaceful","Perplexed","Persecuted","Playful","Powerful","Powerless","Pressured","Proud","Provoked","Rejected","Remorseful","Repelled","Resentful","Respected","Revolted","Ridiculed","Rushed","Sad","Scared","Sensitive","Shocked","Skeptical","Sleepy","Startled","Stressed","Successful","Surprised","Thankful","Threatened","Tired","Trusting","Unfocussed","Valued","Victimized","Violated","Vulnerable","Weak","Withdrawn","Worried","Worthless",
+        ]);
+        
+        this.GuidelineAction = this.tb.enumViewer("GuidelineAction", [
+          "SKIP_TO","END_SURVEY",
         ]);
         
         this.InteractionContext = this.tb.enumViewer("InteractionContext", [
@@ -1055,6 +1093,10 @@ export default class TypeBuilder {
         
         this.JobFunction = this.tb.enumViewer("JobFunction", [
           "Engineering","Product","Design","Sales","Marketing","CustomerSuccess","Operations","Finance","HR","Legal","Executive","Data","IT","Research","Other",
+        ]);
+        
+        this.RuleConfidence = this.tb.enumViewer("RuleConfidence", [
+          "HIGH","MEDIUM","LOW",
         ]);
         
         this.SeniorityLevel = this.tb.enumViewer("SeniorityLevel", [
