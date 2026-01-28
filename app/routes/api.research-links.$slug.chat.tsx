@@ -11,6 +11,7 @@ import { RequestContext } from "@mastra/core/di";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
+import { getProjectContextGeneric } from "~/features/questions/db";
 import { ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { mastra } from "~/mastra";
@@ -72,7 +73,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const { data: list, error } = await supabase
     .from("research_links")
     .select(
-      "id, name, description, hero_title, hero_subtitle, instructions, questions, account_id, ai_autonomy, research_goals",
+      "id, name, description, hero_title, hero_subtitle, instructions, questions, account_id, project_id, ai_autonomy",
     )
     .eq("slug", slug)
     .eq("is_live", true)
@@ -150,6 +151,47 @@ export async function action({ request, params }: ActionFunctionArgs) {
         jobFunction: person.job_function ?? undefined,
         pastInterviewCount: interviewCount ?? 0,
       };
+    }
+  }
+
+  // SMART PROJECT CONTEXT: Only fetch if project_id exists and autonomy allows it
+  let projectContext: {
+    researchGoal?: string;
+    targetOrgs?: string[];
+    targetRoles?: string[];
+    unknowns?: string[];
+    decisionQuestions?: string[];
+    customInstructions?: string;
+  } | null = null;
+
+  if (list.project_id && aiAutonomy !== "strict") {
+    try {
+      const ctx = await getProjectContextGeneric(supabase, list.project_id);
+      if (ctx?.merged) {
+        const m = ctx.merged;
+        projectContext = {
+          researchGoal:
+            typeof m.research_goal === "string" ? m.research_goal : undefined,
+          targetOrgs: Array.isArray(m.target_orgs)
+            ? (m.target_orgs as string[])
+            : undefined,
+          targetRoles: Array.isArray(m.target_roles)
+            ? (m.target_roles as string[])
+            : undefined,
+          unknowns: Array.isArray(m.unknowns)
+            ? (m.unknowns as string[])
+            : undefined,
+          decisionQuestions: Array.isArray(m.decision_questions)
+            ? (m.decision_questions as string[])
+            : undefined,
+          customInstructions:
+            typeof m.custom_instructions === "string"
+              ? m.custom_instructions
+              : undefined,
+        };
+      }
+    } catch (err) {
+      consola.warn("research-link-chat: failed to fetch project context", err);
     }
   }
 
@@ -238,9 +280,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     requestContext.set("person_context", JSON.stringify(personContext));
   }
 
-  // Pass research goals if configured
-  if (list.research_goals) {
-    requestContext.set("research_goals", JSON.stringify(list.research_goals));
+  // Pass project context if available (research goals, target roles/orgs, unknowns)
+  if (projectContext) {
+    requestContext.set("project_context", JSON.stringify(projectContext));
   }
 
   consola.info("research-link-chat: streaming agent response", {

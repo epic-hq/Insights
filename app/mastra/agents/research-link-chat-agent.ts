@@ -27,14 +27,14 @@ export const researchLinkChatAgent = new Agent({
     const responseId = requestContext?.get("response_id") ?? "";
     const slug = requestContext?.get("slug") ?? "";
 
-    // NEW: AI autonomy level and person context
+    // NEW: AI autonomy level, person context, and project context
     const aiAutonomy =
       (requestContext?.get("ai_autonomy") as
         | "strict"
         | "moderate"
         | "adaptive") ?? "strict";
     const personContextJson = requestContext?.get("person_context");
-    const researchGoalsJson = requestContext?.get("research_goals");
+    const projectContextJson = requestContext?.get("project_context");
 
     let questions: Array<{
       id: string;
@@ -53,9 +53,13 @@ export const researchLinkChatAgent = new Agent({
       jobFunction?: string;
       pastInterviewCount?: number;
     } | null = null;
-    let researchGoals: {
-      objectives?: string[];
-      probeTopics?: string[];
+    let projectContext: {
+      researchGoal?: string;
+      targetOrgs?: string[];
+      targetRoles?: string[];
+      unknowns?: string[];
+      decisionQuestions?: string[];
+      customInstructions?: string;
     } | null = null;
 
     try {
@@ -67,8 +71,8 @@ export const researchLinkChatAgent = new Agent({
       if (personContextJson) {
         personContext = JSON.parse(String(personContextJson));
       }
-      if (researchGoalsJson) {
-        researchGoals = JSON.parse(String(researchGoalsJson));
+      if (projectContextJson) {
+        projectContext = JSON.parse(String(projectContextJson));
       }
     } catch {
       // ignore parse errors
@@ -124,8 +128,11 @@ AUTONOMY: ADAPTIVE
 - Skip questions clearly irrelevant to this respondent's context
 - Reference their background when relevant (but don't be creepy)
 - Ask natural follow-ups when answers warrant exploration
-${researchGoals?.probeTopics?.length ? `- Topics to probe: ${researchGoals.probeTopics.join(", ")}` : ""}
-${researchGoals?.objectives?.length ? `- Research objectives: ${researchGoals.objectives.join("; ")}` : ""}`;
+${projectContext?.researchGoal ? `- Research goal: ${projectContext.researchGoal}` : ""}
+${projectContext?.unknowns?.length ? `- Key unknowns to explore: ${projectContext.unknowns.join("; ")}` : ""}
+${projectContext?.decisionQuestions?.length ? `- Decision questions: ${projectContext.decisionQuestions.join("; ")}` : ""}
+${projectContext?.targetRoles?.length ? `- Target roles: ${projectContext.targetRoles.join(", ")}` : ""}
+${projectContext?.customInstructions ? `- Custom instructions: ${projectContext.customInstructions}` : ""}`;
     }
 
     return `You are a research assistant for ${accountName}. Keep responses ULTRA brief.
