@@ -5407,6 +5407,7 @@ export type Database = {
           account_id: string
           ai_analysis: Json | null
           ai_analysis_updated_at: string | null
+          ai_autonomy: string
           allow_chat: boolean
           allow_video: boolean
           allow_voice: boolean
@@ -5425,6 +5426,7 @@ export type Database = {
           project_id: string | null
           questions: Json
           redirect_url: string | null
+          research_goals: Json | null
           slug: string
           statistics: Json | null
           stats_updated_at: string | null
@@ -5436,6 +5438,7 @@ export type Database = {
           account_id: string
           ai_analysis?: Json | null
           ai_analysis_updated_at?: string | null
+          ai_autonomy?: string
           allow_chat?: boolean
           allow_video?: boolean
           allow_voice?: boolean
@@ -5454,6 +5457,7 @@ export type Database = {
           project_id?: string | null
           questions?: Json
           redirect_url?: string | null
+          research_goals?: Json | null
           slug: string
           statistics?: Json | null
           stats_updated_at?: string | null
@@ -5465,6 +5469,7 @@ export type Database = {
           account_id?: string
           ai_analysis?: Json | null
           ai_analysis_updated_at?: string | null
+          ai_autonomy?: string
           allow_chat?: boolean
           allow_video?: boolean
           allow_voice?: boolean
@@ -5483,6 +5488,7 @@ export type Database = {
           project_id?: string | null
           questions?: Json
           redirect_url?: string | null
+          research_goals?: Json | null
           slug?: string
           statistics?: Json | null
           stats_updated_at?: string | null
