@@ -40,6 +40,51 @@ Currently, UpSight surveys present questions in a fixed linear order. All respon
 3. **AI autonomy**: Flexible—AI can skip/reorder in chat mode
 4. **Analytics**: Nice-to-have for QA/audit; responses are priority
 5. **Priority**: Form mode first, but **shared system underneath** for both modes
+6. **CRM Integration**: Leverage person data (job function, company, past interviews) during AI interviews
+7. **Tiered access**: Simple branching for all; advanced AI features can be gated/premium
+
+---
+
+## Tiered Feature Architecture
+
+### Why Tier?
+
+Our CRM-powered AI interviewing is genuinely differentiated—we have rich person context (job function, company, past interviews, facets) that competitors don't. This justifies a premium tier while still providing value to all users.
+
+### Feature Matrix
+
+| Feature | Form Mode (All) | Chat Strict (All) | Chat Adaptive (Gated) |
+|---------|----------------|-------------------|----------------------|
+| Skip logic rules | ✓ | — | — |
+| Conversational UI | — | ✓ | ✓ |
+| Follows script exactly | ✓ | ✓ | — |
+| Uses CRM person context | — | — | ✓ |
+| Can probe deeper on interesting answers | — | — | ✓ |
+| Can skip irrelevant questions | — | — | ✓ |
+| References past interviews | — | — | ✓ |
+| Research goals guide questioning | — | — | ✓ |
+| Semantic search for similar respondents | — | — | ✓ |
+
+### Tier Definitions
+
+**Tier 1: Simple Branching (Form Mode) — All Users**
+- Static skip logic configured in survey builder
+- Deterministic: same inputs → same path
+- No AI during survey
+- What we built in Phase 1
+
+**Tier 2: Conversational (Chat Strict) — All Users**
+- AI makes questions conversational
+- Follows question order exactly
+- No improvisation or probing
+- Current chat agent behavior
+
+**Tier 3: AI Adaptive Interviewing (Chat Adaptive) — Gated/Premium**
+- AI uses CRM context (person details, job function, company)
+- Can probe deeper based on interesting responses
+- Can skip questions irrelevant to this person's context
+- Research goals/intentions guide improvisation
+- References evidence from past interviews with similar people
 
 ---
 
@@ -308,14 +353,136 @@ Simple dropdown UI—no visual flowchart needed.
 
 ---
 
-### Track B: AI Dynamic Questioning (Chat Mode)
+### Track B: CRM-Powered AI Interviewing (Chat Mode)
 
 #### Current State
 
-The chat agent (`app/mastra/agents/research-link-chat-agent.ts`) already:
+The chat agent (`app/mastra/agents/research-link-chat-agent.ts`) currently:
 - Receives full question list and progress
 - Decides which question to ask next
 - Calls tools to save responses
+- **Does NOT** have access to person CRM data
+- **Does NOT** know research goals/intentions
+- Has only 2 tools: `save-research-response`, `mark-survey-complete`
+
+#### Available CRM Data (Not Yet Used)
+
+We have rich tools that could power smarter interviews:
+
+| Tool | Data Available | Use Case |
+|------|---------------|----------|
+| `fetch-people-details` | Name, title, job function, company, seniority, industry, facets, personas, past interviews | Personalize questions, skip irrelevant topics |
+| `semantic-search-people` | Find similar people by traits | "Others in your role said X, do you agree?" |
+| `fetch-evidence` | Past quotes/observations | Reference specific pain points they mentioned before |
+| `fetch-interview-context` | Full interview history with themes | "Last time you mentioned Y—has that changed?" |
+| `fetch-personas` | Assigned persona archetypes | Adjust tone and depth based on user type |
+
+#### New Setting: AI Autonomy Level
+
+Add `ai_autonomy` column to `research_links` table:
+
+```sql
+ALTER TABLE research_links
+ADD COLUMN ai_autonomy TEXT
+DEFAULT 'strict'
+CHECK (ai_autonomy IN ('strict', 'moderate', 'adaptive'));
+```
+
+| Level | Behavior | Use Case |
+|-------|----------|----------|
+| `strict` | Follow questions exactly, just conversational | Compliance surveys, structured research |
+| `moderate` | Can ask 1 follow-up per topic, respects question order | Standard interviews |
+| `adaptive` | Can skip, reorder, probe deeply based on context | Discovery research, user interviews |
+
+#### New Setting: Research Goals
+
+Add research goals/intentions to guide AI improvisation:
+
+```typescript
+// In research_links table or survey settings
+interface ResearchGoals {
+  objectives: string[]           // "Understand pricing sensitivity", "Identify pain points"
+  targetSegments: string[]       // "B2B founders", "Enterprise buyers"
+  mustAskQuestions: string[]     // Question IDs that can never be skipped
+  probeTopics: string[]          // "competitor mentions", "budget constraints"
+  avoidTopics: string[]          // "pricing" (too early), "competitor names"
+}
+```
+
+#### Enhanced Agent Instructions (Adaptive Mode)
+
+```typescript
+instructions: async ({ requestContext }) => {
+  // Existing context
+  const questions = requestContext?.get("questions")
+  const answered = requestContext?.get("answered_questions")
+
+  // NEW: Person context (if known)
+  const personContext = requestContext?.get("person_context") // From CRM
+  const personName = personContext?.name
+  const personRole = personContext?.title
+  const personCompany = personContext?.company
+  const personSegment = personContext?.segment
+  const pastInterviews = personContext?.past_interviews
+  const personFacets = personContext?.facets
+
+  // NEW: Research goals
+  const researchGoals = requestContext?.get("research_goals")
+  const objectives = researchGoals?.objectives
+  const mustAskQuestions = researchGoals?.mustAskQuestions
+  const probeTopics = researchGoals?.probeTopics
+
+  // NEW: Autonomy level
+  const autonomyLevel = requestContext?.get("ai_autonomy") ?? "strict"
+
+  return `You are conducting a research interview for ${accountName}.
+
+## RESPONDENT CONTEXT
+${personName ? `Name: ${personName}` : ""}
+${personRole ? `Role: ${personRole}` : ""}
+${personCompany ? `Company: ${personCompany}` : ""}
+${personSegment ? `Segment: ${personSegment}` : ""}
+${pastInterviews?.length ? `Previous interviews: ${pastInterviews.length} (they're familiar with us)` : "First-time respondent"}
+
+${personFacets?.length ? `
+## KNOWN TRAITS (from past conversations)
+${personFacets.map(f => `- ${f.label}: ${f.value}`).join("\n")}
+` : ""}
+
+## RESEARCH OBJECTIVES
+${objectives?.map(o => `• ${o}`).join("\n") || "General discovery"}
+
+## AUTONOMY LEVEL: ${autonomyLevel.toUpperCase()}
+${autonomyLevel === "strict" ? `
+- Ask questions EXACTLY in order
+- Do NOT skip any questions
+- Do NOT ask follow-ups beyond the script
+- Keep responses brief and move to next question` : ""}
+${autonomyLevel === "moderate" ? `
+- Follow question order generally
+- You may ask ONE brief follow-up if answer is interesting
+- Do NOT skip required questions (marked with *)
+- Skip questions clearly irrelevant to their segment` : ""}
+${autonomyLevel === "adaptive" ? `
+- Use your judgment on question order and depth
+- Probe deeper when responses touch on research objectives
+- Skip questions clearly irrelevant to this respondent
+- Reference their past interviews/traits when relevant
+- NEVER skip questions marked as required (*)
+- Topics to probe: ${probeTopics?.join(", ") || "interesting responses"}` : ""}
+
+## QUESTIONS
+${questions.map((q, i) => `${i + 1}. ${mustAskQuestions?.includes(q.id) ? "*" : ""}[${q.id}] ${q.prompt}`).join("\n")}
+
+${autonomyLevel === "adaptive" ? `
+## TOOLS AVAILABLE
+- Use fetch-people-details to get more context if needed
+- Use semantic-search-people to find similar respondents
+- Use save-research-response to save answers (ALWAYS include questionId, responseId, slug)
+` : ""}
+`
+}
+```
 
 #### Enhancement: Segment-Aware Instructions
 
@@ -446,39 +613,58 @@ export const detectSegmentTool = createTool({
 
 ## Implementation Phases
 
-### Phase 1: Skip Logic MVP (1 week)
+### Phase 1: Skip Logic MVP ✅ COMPLETE
+
+**Delivered:**
+- `branching.ts` - Core evaluation engine with AND/OR conditions
+- `ResearchLinkQuestionSchema` - Added `branching` field
+- `research.$slug.tsx` - Integrated branching in form flow
+- `QuestionBranchingEditor.tsx` - UI for configuring skip rules
+
+**Commits:**
+- `6d6af4b7` feat: implement survey branching engine v1
+- `5b2a6c07` feat: add skip logic UI to survey question editor
+
+### Phase 2: AI Autonomy Setting
 
 **Scope:**
-- Add `skipLogic` field to question schema
-- Implement `getNextQuestionIndex()` in form mode
-- Basic UI: dropdown to configure skip rules
-- No visual flow diagram
+- Add `ai_autonomy` column to `research_links` table
+- Add UI in survey builder to select autonomy level (strict/moderate/adaptive)
+- Update chat agent instructions based on autonomy level
+- Gate "adaptive" mode to premium accounts
 
 **Files to modify:**
-- `app/features/research-links/schemas.ts` - Add skipLogic field
-- `app/routes/research.$slug.tsx` - Branching in handleAnswerSubmit
-- `app/features/research-links/pages/edit.$listId.tsx` - UI for skip config
+- `supabase/schemas/research_links.sql` - Add column
+- `app/features/research-links/pages/edit.$listId.tsx` - Autonomy selector UI
+- `app/mastra/agents/research-link-chat-agent.ts` - Autonomy-aware instructions
+- `app/routes/api.research-links.$slug.chat.tsx` - Pass autonomy to agent
 
-### Phase 2: AI Dynamic Questioning (1 week)
+### Phase 3: CRM Context Integration
 
 **Scope:**
-- Update chat agent instructions for segment awareness
-- Add `detect-segment` tool
-- Allow AI to skip/reorder questions
-- Store segment metadata in responses
+- Pass person context to chat agent (when person_id known)
+- Add research goals/objectives field to research_links
+- Enable `fetch-people-details` tool in adaptive mode
+- Reference past interviews when available
 
 **Files to modify:**
-- `app/mastra/agents/research-link-chat-agent.ts` - Updated instructions
+- `app/routes/api.research-links.$slug.chat.tsx` - Fetch and pass person context
+- `app/mastra/agents/research-link-chat-agent.ts` - Person-aware instructions
+- `supabase/schemas/research_links.sql` - Add `research_goals` JSONB column
+- `app/features/research-links/pages/edit.$listId.tsx` - Goals editor UI
+
+### Phase 4: Advanced AI Tools (Gated)
+
+**Scope:**
+- Enable semantic search tools in adaptive mode
+- "Others in your role said X" patterns
+- Segment detection and tracking
+- Branch path analytics
+
+**Files to modify:**
+- `app/mastra/agents/research-link-chat-agent.ts` - Add more tools
 - `app/mastra/tools/detect-segment.ts` - New tool
-- `app/routes/api.research-links.$slug.chat.tsx` - Pass segment context
-
-### Phase 3: Polish & Analytics (1 week)
-
-**Scope:**
-- Visual indicators for skip logic in builder
-- Branch path tracking in responses
-- Segment analytics dashboard
-- Question skip validation
+- Analytics dashboard for branch paths
 
 ---
 
