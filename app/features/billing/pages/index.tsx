@@ -170,6 +170,14 @@ export default function BillingPage() {
 				title: "Invalid plan",
 				description: "The selected plan is not available.",
 			},
+			subscription_update_failed: {
+				title: "Plan switch failed",
+				description: "We couldn't switch your plan automatically. Please try again or use the billing portal.",
+			},
+			subscription_update_insufficient_scope: {
+				title: "Plan switch needs admin setup",
+				description: "Billing token is missing privileges. Please contact support or use the billing portal.",
+			},
 		}
 
 		const msg = errorMessages[error] || {

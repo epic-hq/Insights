@@ -147,8 +147,117 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	// Only send seats if product supports seat-based pricing (production)
 	const planConfig = PLANS[plan]
 	const minSeats = server === "production" && planConfig.perUser ? (planConfig.minSeats ?? 1) : undefined
+	const billingErrorUrl = `/a/${accountId}/billing?error=subscription_update_failed`
 
 	try {
+		// If the account already has an active/trialing Polar subscription, update it instead of creating a new checkout.
+		const { data: existingSubscription } = await supabaseAdmin
+			.schema("accounts")
+			.from("billing_subscriptions")
+			.select("id, plan_name, status, quantity")
+			.eq("account_id", accountId)
+			.eq("provider", "polar")
+			.in("status", ["active", "trialing"])
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.maybeSingle()
+
+		if (existingSubscription) {
+			consola.info("[checkout] Updating existing Polar subscription", {
+				accountId,
+				subscriptionId: existingSubscription.id,
+				fromPlan: existingSubscription.plan_name,
+				toPlan: plan,
+			})
+
+			try {
+				await polar.subscriptions.update({
+					id: existingSubscription.id,
+					subscriptionUpdate: {
+						productId,
+					},
+				})
+
+				let seatCount: number | undefined
+				if (server === "production" && planConfig.perUser) {
+					const { count: memberCount, error: memberCountError } = await supabaseAdmin
+						.schema("accounts")
+						.from("account_user")
+						.select("*", { count: "exact", head: true })
+						.eq("account_id", accountId)
+
+					if (memberCountError) {
+						consola.warn("[checkout] Failed to count team members for seat update", {
+							accountId,
+							error: memberCountError.message,
+						})
+					}
+
+					const requestedSeats = memberCount ?? 1
+					const minimumSeats = planConfig.minSeats ?? 1
+					seatCount = Math.max(requestedSeats, minimumSeats)
+
+					await polar.subscriptions.update({
+						id: existingSubscription.id,
+						subscriptionUpdate: {
+							seats: seatCount,
+						},
+					})
+				}
+
+				// Update local subscription record immediately for UI consistency (webhook will also sync)
+				const updatePayload: {
+					plan_name: string
+					price_id: string
+					quantity?: number
+				} = {
+					plan_name: planConfig.name,
+					price_id: productId,
+				}
+
+				if (typeof seatCount === "number") {
+					updatePayload.quantity = seatCount
+				}
+
+				const { error: updateError } = await supabaseAdmin
+					.schema("accounts")
+					.from("billing_subscriptions")
+					.update(updatePayload)
+					.eq("id", existingSubscription.id)
+
+				if (updateError) {
+					consola.warn("[checkout] Failed to update local subscription after product switch", {
+						accountId,
+						error: updateError.message,
+					})
+				}
+
+				return redirect(successUrl)
+			} catch (error) {
+				const errorBody = (error as { body?: string | Record<string, unknown>; rawValue?: Record<string, unknown> })
+					?.body
+				const rawValue = (error as { rawValue?: Record<string, unknown> })?.rawValue
+				const errorDescription =
+					(typeof errorBody === "string" ? errorBody : undefined) ?? (rawValue?.error_description as string | undefined)
+				const errorCode = rawValue?.error as string | undefined
+				const requiresScopes = errorCode === "insufficient_scope"
+
+				consola.error("[checkout] Failed to update subscription", {
+					accountId,
+					subscriptionId: existingSubscription.id,
+					error,
+					errorCode,
+					errorDescription,
+				})
+
+				if (requiresScopes) {
+					return redirect(`/a/${accountId}/billing?error=subscription_update_insufficient_scope`)
+				}
+
+				return redirect(billingErrorUrl)
+			}
+		}
+
 		// Create checkout session via Polar API
 		// Note: SDK uses `products` array, not `productId`
 		const checkout = await polar.checkouts.create({

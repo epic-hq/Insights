@@ -162,7 +162,7 @@ async function handleSubscriptionCreated(payload: WebhookSubscriptionCreatedPayl
 		email: customer.email,
 	})
 
-	await upsertBillingSubscription({
+	const { planId } = await upsertBillingSubscription({
 		polarSubscriptionId: subscription.id,
 		polarCustomerId: customer.id,
 		accountId,
@@ -176,6 +176,16 @@ async function handleSubscriptionCreated(payload: WebhookSubscriptionCreatedPayl
 		trialEnd: subscription.trialEnd?.toISOString(),
 		metadata: subscription.metadata as Record<string, unknown>,
 	})
+
+	// Ensure entitlements stay in sync on plan changes (only when subscription is active/trialing)
+	if (subscription.status === "active" || subscription.status === "trialing") {
+		await provisionPlanEntitlements({
+			accountId,
+			planId,
+			validFrom: subscription.currentPeriodStart,
+			validUntil: subscription.currentPeriodEnd ?? undefined,
+		})
+	}
 }
 
 /**
