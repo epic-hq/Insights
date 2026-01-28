@@ -28,9 +28,18 @@ Currently, UpSight surveys present questions in a fixed linear order. All respon
 4. **Works in both modes**: Form mode (structured) and chat mode (conversational)
 
 **Non-goals:**
-- Complex multi-condition logic builders (SurveyMonkey-style)
 - Visual drag-and-drop flowchart editors
 - Piping/variables beyond basic branching
+
+---
+
+## Decisions (from Richard)
+
+1. **Target segments**: B2B/B2C, founders, small teams, non-professional researchers
+2. **Condition complexity**: Need AND/OR (e.g., "if hasn't purchased OR hasn't considered")
+3. **AI autonomy**: Flexible—AI can skip/reorder in chat mode
+4. **Analytics**: Nice-to-have for QA/audit; responses are priority
+5. **Priority**: Form mode first, but **shared system underneath** for both modes
 
 ---
 
@@ -73,31 +82,175 @@ Currently, UpSight surveys present questions in a fixed linear order. All respon
 
 ## Detailed Design
 
-### Track A: Skip Logic for Form Mode
+### Shared Branching Engine (Core System)
+
+A single evaluation engine used by both form and chat modes. This ensures consistent behavior and avoids logic divergence.
 
 #### Data Model
+
+**New file: `app/features/research-links/branching.ts`**
+
+```typescript
+// Condition types
+type ConditionOperator =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "not_contains"
+  | "selected"      // For multi-select: value is in array
+  | "not_selected"  // For multi-select: value not in array
+  | "answered"      // Question has any response
+  | "not_answered"  // Question has no response
+
+// Single condition
+interface Condition {
+  questionId: string           // Which question to check
+  operator: ConditionOperator
+  value?: string | string[]    // Expected value(s)
+}
+
+// Condition group with AND/OR logic
+interface ConditionGroup {
+  logic: "and" | "or"
+  conditions: Condition[]
+}
+
+// Branch rule
+interface BranchRule {
+  id: string
+  conditions: ConditionGroup   // Supports AND/OR
+  action: "skip_to" | "end_survey"
+  targetQuestionId?: string    // For skip_to
+  label?: string               // "Route B2C users"
+}
+
+// Attached to each question
+interface QuestionBranching {
+  rules: BranchRule[]          // Evaluated in order, first match wins
+  defaultNext?: string         // Override linear order (optional)
+}
+```
+
+**Example: "If hasn't purchased OR hasn't considered, skip to pricing questions"**
+
+```json
+{
+  "rules": [{
+    "id": "skip-to-pricing",
+    "conditions": {
+      "logic": "or",
+      "conditions": [
+        { "questionId": "q_purchased", "operator": "equals", "value": "no" },
+        { "questionId": "q_considered", "operator": "equals", "value": "no" }
+      ]
+    },
+    "action": "skip_to",
+    "targetQuestionId": "q_pricing",
+    "label": "Non-buyers → pricing questions"
+  }]
+}
+```
+
+#### Evaluation Function
+
+```typescript
+// app/features/research-links/branching.ts
+
+export function evaluateCondition(
+  condition: Condition,
+  responses: Record<string, ResponseValue>
+): boolean {
+  const answer = responses[condition.questionId]
+
+  switch (condition.operator) {
+    case "equals":
+      return answer === condition.value
+    case "not_equals":
+      return answer !== condition.value
+    case "contains":
+      return String(answer).toLowerCase().includes(String(condition.value).toLowerCase())
+    case "selected":
+      return Array.isArray(answer) && answer.includes(condition.value as string)
+    case "not_selected":
+      return !Array.isArray(answer) || !answer.includes(condition.value as string)
+    case "answered":
+      return answer !== undefined && answer !== null && answer !== ""
+    case "not_answered":
+      return answer === undefined || answer === null || answer === ""
+    default:
+      return false
+  }
+}
+
+export function evaluateConditionGroup(
+  group: ConditionGroup,
+  responses: Record<string, ResponseValue>
+): boolean {
+  if (group.logic === "and") {
+    return group.conditions.every(c => evaluateCondition(c, responses))
+  } else {
+    return group.conditions.some(c => evaluateCondition(c, responses))
+  }
+}
+
+export function getNextQuestionId(
+  currentQuestion: ResearchLinkQuestion,
+  questions: ResearchLinkQuestion[],
+  responses: Record<string, ResponseValue>
+): string | null {
+  const branching = currentQuestion.branching
+
+  if (branching?.rules) {
+    for (const rule of branching.rules) {
+      if (evaluateConditionGroup(rule.conditions, responses)) {
+        if (rule.action === "end_survey") return null
+        if (rule.action === "skip_to") return rule.targetQuestionId ?? null
+      }
+    }
+  }
+
+  // Default: next in order
+  const currentIndex = questions.findIndex(q => q.id === currentQuestion.id)
+  const nextQuestion = questions[currentIndex + 1]
+  return nextQuestion?.id ?? null
+}
+```
+
+#### Schema Extension
 
 Extend `ResearchLinkQuestionSchema` in `app/features/research-links/schemas.ts`:
 
 ```typescript
+const ConditionSchema = z.object({
+  questionId: z.string(),
+  operator: z.enum([
+    "equals", "not_equals", "contains", "not_contains",
+    "selected", "not_selected", "answered", "not_answered"
+  ]),
+  value: z.union([z.string(), z.array(z.string())]).optional(),
+})
+
+const ConditionGroupSchema = z.object({
+  logic: z.enum(["and", "or"]),
+  conditions: z.array(ConditionSchema),
+})
+
+const BranchRuleSchema = z.object({
+  id: z.string(),
+  conditions: ConditionGroupSchema,
+  action: z.enum(["skip_to", "end_survey"]),
+  targetQuestionId: z.string().optional(),
+  label: z.string().optional(),
+})
+
 export const ResearchLinkQuestionSchema = z.object({
   // ... existing fields ...
 
-  // NEW: Simple branching rules
-  skipLogic: z.array(
-    z.object({
-      // Condition
-      condition: z.enum(["equals", "not_equals", "contains", "selected", "not_selected"]),
-      value: z.union([z.string(), z.array(z.string())]),
-
-      // Action (one of)
-      action: z.enum(["skip_to", "end_survey"]),
-      skipToQuestionId: z.string().optional(),  // For skip_to action
-
-      // Optional metadata
-      label: z.string().optional(),  // "Skip B2B questions"
-    })
-  ).optional().nullable(),
+  // NEW: Branching rules
+  branching: z.object({
+    rules: z.array(BranchRuleSchema),
+    defaultNext: z.string().optional(),
+  }).optional().nullable(),
 })
 ```
 
