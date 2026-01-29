@@ -870,6 +870,18 @@ export function createR2PresignedUrl(
 }
 
 /**
+ * Convenience wrapper for createR2PresignedUrl with simpler signature
+ * Returns just the URL string (or null) for read access
+ */
+export function createR2PresignedReadUrl(
+  key: string,
+  expiresInSeconds = 900,
+): string | null {
+  const result = createR2PresignedUrl({ key, expiresInSeconds });
+  return result?.url ?? null;
+}
+
+/**
  * Create a presigned URL for uploading (PUT) to R2
  * Client can upload directly to R2 without going through the server
  */
