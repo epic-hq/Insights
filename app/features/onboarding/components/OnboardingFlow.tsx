@@ -290,96 +290,109 @@ export default function OnboardingFlow({
 
         let r2Key: string | null = null;
 
-        // Use direct R2 upload for audio/video files
+        // Use direct R2 upload for audio/video files (with fallback to server upload)
         if (isAudioVideo && uploadProjectId) {
-          console.log("[Upload] Using direct R2 upload for", file.name);
+          try {
+            console.log("[Upload] Attempting direct R2 upload for", file.name);
 
-          // Step 1: Get presigned upload URL from server
-          const presignedResponse = await fetch("/api/upload/presigned-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              projectId: uploadProjectId,
-              filename: file.name,
-              contentType: file.type,
-              fileSize: file.size,
-            }),
-          });
+            // Step 1: Get presigned upload URL from server
+            const presignedResponse = await fetch("/api/upload/presigned-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                projectId: uploadProjectId,
+                filename: file.name,
+                contentType: file.type || "application/octet-stream",
+                fileSize: file.size,
+              }),
+            });
 
-          if (!presignedResponse.ok) {
-            const errorData = await presignedResponse.json().catch(() => ({}));
-            throw new Error(errorData.error || "Failed to get upload URL");
-          }
+            if (!presignedResponse.ok) {
+              const errorData = await presignedResponse
+                .json()
+                .catch(() => ({}));
+              throw new Error(errorData.error || "Failed to get upload URL");
+            }
 
-          const presignedData = await presignedResponse.json();
-          console.log("[Upload] Got presigned URL:", presignedData.type);
+            const presignedData = await presignedResponse.json();
+            console.log("[Upload] Got presigned URL:", presignedData.type);
 
-          // Step 2: Upload directly to R2
-          if (presignedData.type === "multipart") {
-            // Large file - use multipart upload
-            console.log(
-              "[Upload] Starting multipart upload with",
-              presignedData.totalParts,
-              "parts",
-            );
-            await uploadToR2WithProgress({
-              file,
-              singlePartUrl: "", // Not used for multipart
-              contentType: file.type,
-              multipartThresholdBytes: 0, // Force multipart
-              partSizeBytes: presignedData.partSize,
-              multipartHandlers: {
-                createMultipartUpload: async () => ({
-                  uploadId: presignedData.uploadId,
-                  partUrls: presignedData.partUrls, // Already Record<number, string> from server
-                }),
-                completeMultipartUpload: async ({ parts }) => {
-                  const completeResponse = await fetch(
-                    "/api/upload/presigned-url?action=complete",
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        key: presignedData.key,
-                        uploadId: presignedData.uploadId,
-                        parts: parts.map((p) => ({
-                          partNumber: p.partNumber,
-                          etag: p.etag,
-                        })),
-                      }),
-                    },
-                  );
-                  if (!completeResponse.ok) {
-                    throw new Error("Failed to complete multipart upload");
-                  }
+            // Step 2: Upload directly to R2
+            if (presignedData.type === "multipart") {
+              // Large file - use multipart upload
+              console.log(
+                "[Upload] Starting multipart upload with",
+                presignedData.totalParts,
+                "parts",
+              );
+              await uploadToR2WithProgress({
+                file,
+                singlePartUrl: "", // Not used for multipart
+                contentType: file.type || "application/octet-stream",
+                multipartThresholdBytes: 0, // Force multipart
+                partSizeBytes: presignedData.partSize,
+                multipartHandlers: {
+                  createMultipartUpload: async () => ({
+                    uploadId: presignedData.uploadId,
+                    partUrls: presignedData.partUrls, // Already Record<number, string> from server
+                  }),
+                  completeMultipartUpload: async ({ parts }) => {
+                    const completeResponse = await fetch(
+                      "/api/upload/presigned-url?action=complete",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          key: presignedData.key,
+                          uploadId: presignedData.uploadId,
+                          parts: parts.map((p) => ({
+                            partNumber: p.partNumber,
+                            etag: p.etag,
+                          })),
+                        }),
+                      },
+                    );
+                    if (!completeResponse.ok) {
+                      throw new Error("Failed to complete multipart upload");
+                    }
+                  },
                 },
-              },
-              onProgress: (progress: UploadProgress) => {
-                console.log(
-                  `[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`,
-                );
-                setUploadProgress(progress.percent);
-              },
-            });
-            r2Key = presignedData.key;
-          } else {
-            // Small file - single PUT upload
-            console.log("[Upload] Starting single PUT upload");
-            await uploadToR2WithProgress({
-              file,
-              singlePartUrl: presignedData.uploadUrl,
-              contentType: file.type,
-              onProgress: (progress: UploadProgress) => {
-                console.log(
-                  `[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`,
-                );
-                setUploadProgress(progress.percent);
-              },
-            });
-            r2Key = presignedData.key;
-          }
+                onProgress: (progress: UploadProgress) => {
+                  console.log(
+                    `[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`,
+                  );
+                  setUploadProgress(progress.percent);
+                },
+              });
+              r2Key = presignedData.key;
+            } else {
+              // Small file - single PUT upload
+              console.log("[Upload] Starting single PUT upload");
+              await uploadToR2WithProgress({
+                file,
+                singlePartUrl: presignedData.uploadUrl,
+                contentType: file.type || "application/octet-stream",
+                onProgress: (progress: UploadProgress) => {
+                  console.log(
+                    `[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`,
+                  );
+                  setUploadProgress(progress.percent);
+                },
+              });
+              r2Key = presignedData.key;
+            }
 
-          console.log("[Upload] Direct R2 upload complete:", r2Key);
+            console.log("[Upload] Direct R2 upload complete:", r2Key);
+          } catch (r2Error) {
+            // Direct R2 upload failed (likely CORS or network issue)
+            // Fall back to server-proxied upload
+            console.warn(
+              "[Upload] Direct R2 upload failed, falling back to server upload:",
+              r2Error,
+            );
+            r2Key = null; // Ensure we use server upload path
+            setUploadProgress(0); // Reset progress for server upload
+          }
         }
 
         // Step 3: Call onboarding-start API (with r2Key if direct upload was used)
