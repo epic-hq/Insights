@@ -192,6 +192,78 @@ it('should clean filename for person name', () => {
 })
 ```
 
+## E2E Tests (Playwright)
+
+End-to-end tests validate complete user flows and PostHog tracking events.
+
+### Running E2E Tests
+
+```bash
+# Run all E2E tests (headless)
+pnpm test:e2e
+
+# Run with Playwright UI for debugging
+pnpm test:e2e:ui
+
+# Run with visible browser
+pnpm test:e2e:headed
+
+# Run specific test file
+pnpm test:e2e tests/e2e/tests/auth.spec.ts
+
+# Run tests matching pattern
+pnpm test:e2e --grep "login"
+```
+
+### E2E Test Structure
+
+```
+tests/e2e/
+├── fixtures/           # Test fixtures
+│   ├── base.ts         # PostHog event capture fixture
+│   ├── auth.ts         # Authentication fixture
+│   └── index.ts        # Combined exports
+├── tests/              # Test files
+│   ├── home.spec.ts    # Homepage tests
+│   ├── auth.spec.ts    # Login/signup tests
+│   ├── project.spec.ts # Project creation tests
+│   └── tracking.spec.ts # PostHog tracking tests
+└── README.md           # Detailed E2E docs
+```
+
+### Authenticated Tests
+
+Some tests require authentication. Set environment variables:
+
+```bash
+# For authenticated flow tests
+E2E_TEST_EMAIL=test@example.com E2E_TEST_PASSWORD=secret pnpm test:e2e
+```
+
+Tests skip gracefully when credentials aren't available.
+
+### PostHog Event Testing
+
+E2E tests can capture and validate PostHog events:
+
+```typescript
+import { test, expect } from '../fixtures';
+
+test('tracks signup event', async ({ page, posthog }) => {
+  await page.goto('/signup');
+  await page.fill('[name=email]', 'test@example.com');
+  await page.click('button[type=submit]');
+
+  // Wait for and validate PostHog event
+  const event = await posthog.waitForEvent('user_signed_up');
+  expect(event.properties.email).toBe('test@example.com');
+});
+```
+
+### CI Configuration
+
+See `tests/e2e/README.md` for GitHub Actions setup and CI considerations.
+
 ## Writing Integration Tests
 
 Test real database operations with seeded data to catch schema/query issues:
