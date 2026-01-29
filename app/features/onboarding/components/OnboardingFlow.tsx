@@ -3,6 +3,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import {
+  uploadToR2WithProgress,
+  type UploadProgress,
+} from "~/utils/r2-upload.client";
 import ProcessingScreen from "./ProcessingScreen";
 import ProjectGoalsScreen from "./ProjectGoalsScreen";
 import ProjectStatusScreen from "./ProjectStatusScreen";
@@ -276,9 +280,126 @@ export default function OnboardingFlow({
       setUploadProgress(0);
 
       try {
-        // Create FormData for the API call
+        // Determine if we should use direct R2 upload
+        // Only use for audio/video files that need transcription
+        const isAudioVideo =
+          file.type.startsWith("audio/") ||
+          file.type.startsWith("video/") ||
+          attachmentData?.sourceType === "audio_upload" ||
+          attachmentData?.sourceType === "video_upload";
+
+        let r2Key: string | null = null;
+
+        // Use direct R2 upload for audio/video files
+        if (isAudioVideo && uploadProjectId) {
+          console.log("[Upload] Using direct R2 upload for", file.name);
+
+          // Step 1: Get presigned upload URL from server
+          const presignedResponse = await fetch("/api/upload/presigned-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              projectId: uploadProjectId,
+              filename: file.name,
+              contentType: file.type,
+              fileSize: file.size,
+            }),
+          });
+
+          if (!presignedResponse.ok) {
+            const errorData = await presignedResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || "Failed to get upload URL");
+          }
+
+          const presignedData = await presignedResponse.json();
+          console.log("[Upload] Got presigned URL:", presignedData.type);
+
+          // Step 2: Upload directly to R2
+          if (presignedData.type === "multipart") {
+            // Large file - use multipart upload
+            console.log(
+              "[Upload] Starting multipart upload with",
+              presignedData.totalParts,
+              "parts",
+            );
+            await uploadToR2WithProgress({
+              file,
+              singlePartUrl: "", // Not used for multipart
+              contentType: file.type,
+              multipartThresholdBytes: 0, // Force multipart
+              partSizeBytes: presignedData.partSize,
+              multipartHandlers: {
+                createMultipartUpload: async () => ({
+                  uploadId: presignedData.uploadId,
+                  partUrls: presignedData.partUrls.reduce(
+                    (acc: Record<number, string>, url: string, idx: number) => {
+                      acc[idx + 1] = url;
+                      return acc;
+                    },
+                    {},
+                  ),
+                }),
+                completeMultipartUpload: async ({ parts }) => {
+                  const completeResponse = await fetch(
+                    "/api/upload/presigned-url?action=complete",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        key: presignedData.key,
+                        uploadId: presignedData.uploadId,
+                        parts: parts.map((p) => ({
+                          partNumber: p.partNumber,
+                          etag: p.etag,
+                        })),
+                      }),
+                    },
+                  );
+                  if (!completeResponse.ok) {
+                    throw new Error("Failed to complete multipart upload");
+                  }
+                },
+              },
+              onProgress: (progress: UploadProgress) => {
+                console.log(
+                  `[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`,
+                );
+                setUploadProgress(progress.percent);
+              },
+            });
+            r2Key = presignedData.key;
+          } else {
+            // Small file - single PUT upload
+            console.log("[Upload] Starting single PUT upload");
+            await uploadToR2WithProgress({
+              file,
+              singlePartUrl: presignedData.uploadUrl,
+              contentType: file.type,
+              onProgress: (progress: UploadProgress) => {
+                console.log(
+                  `[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`,
+                );
+                setUploadProgress(progress.percent);
+              },
+            });
+            r2Key = presignedData.key;
+          }
+
+          console.log("[Upload] Direct R2 upload complete:", r2Key);
+        }
+
+        // Step 3: Call onboarding-start API (with r2Key if direct upload was used)
         const formData = new FormData();
-        formData.append("file", file);
+        if (r2Key) {
+          // Direct upload path - send r2Key instead of file
+          formData.append("r2Key", r2Key);
+          formData.append("originalFilename", file.name);
+          formData.append("originalFileSize", String(file.size));
+          formData.append("originalContentType", file.type);
+        } else {
+          // Legacy path - send file through server
+          formData.append("file", file);
+        }
         formData.append(
           "onboardingData",
           JSON.stringify({
@@ -316,18 +437,32 @@ export default function OnboardingFlow({
           }
         }
 
-        // Call the new onboarding-start API
-        const response = await postFormDataWithProgress<Record<string, any>>({
-          url: "/api/onboarding-start",
-          formData,
-          onProgress: (percent) => setUploadProgress(percent),
-        });
+        // Call the onboarding-start API
+        // For direct R2 uploads, this just triggers processing (no file upload)
+        // For legacy flow, this uploads through server
+        const response = r2Key
+          ? await fetch("/api/onboarding-start", {
+              method: "POST",
+              body: formData,
+            }).then(async (res) => ({
+              ok: res.ok,
+              status: res.status,
+              data: await res.json(),
+              error: res.ok
+                ? undefined
+                : (await res.json().catch(() => ({}))).error,
+            }))
+          : await postFormDataWithProgress<Record<string, any>>({
+              url: "/api/onboarding-start",
+              formData,
+              onProgress: (percent) => setUploadProgress(percent),
+            });
 
         if (!response.ok) {
-          throw new Error(response.error || "Upload failed");
+          throw new Error((response as any).error || "Upload failed");
         }
 
-        const result = response.data;
+        const result = (response as any).data;
         setIsUploading(false);
         setUploadProgress(null);
 
