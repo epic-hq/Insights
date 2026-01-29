@@ -99,6 +99,7 @@ export default defineConfig({
     noExternal: ["katex", "streamdown"],
     external: [
       "@boundaryml/baml",
+      "@boundaryml/baml/errors",
       "@boundaryml/baml-darwin-arm64",
       "@aws-sdk/credential-provider-sso",
       "@aws-sdk/token-providers",
