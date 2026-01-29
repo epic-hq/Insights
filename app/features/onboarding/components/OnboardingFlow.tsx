@@ -331,13 +331,7 @@ export default function OnboardingFlow({
               multipartHandlers: {
                 createMultipartUpload: async () => ({
                   uploadId: presignedData.uploadId,
-                  partUrls: presignedData.partUrls.reduce(
-                    (acc: Record<number, string>, url: string, idx: number) => {
-                      acc[idx + 1] = url;
-                      return acc;
-                    },
-                    {},
-                  ),
+                  partUrls: presignedData.partUrls, // Already Record<number, string> from server
                 }),
                 completeMultipartUpload: async ({ parts }) => {
                   const completeResponse = await fetch(
