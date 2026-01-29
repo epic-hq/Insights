@@ -1,16 +1,22 @@
 /**
- * Re-export all E2E test fixtures.
+ * Authentication fixtures for E2E tests.
  *
- * Combines PostHog tracking and authentication fixtures into a single test instance.
+ * Provides test utilities for authenticated user flows.
+ * Uses test credentials from environment variables.
  */
-import { test as basePostHog, type PostHogFixture } from "./base";
-import { type AuthFixture, STORAGE_STATE_PATH } from "./auth";
-import type { Page } from "playwright/test";
+import { test as base, type Page } from "playwright/test";
+import * as path from "node:path";
 
-export { type CapturedPostHogEvent, type PostHogFixture } from "./base";
-export { type AuthFixture, STORAGE_STATE_PATH } from "./auth";
+const STORAGE_STATE_PATH = path.join(__dirname, "..", ".auth", "user.json");
 
-/** Setup auth fixture */
+export interface AuthFixture {
+  login: (email?: string, password?: string) => Promise<void>;
+  isLoggedIn: () => Promise<boolean>;
+}
+
+/**
+ * Creates an auth fixture for handling login flows.
+ */
 async function setupAuth(page: Page): Promise<AuthFixture> {
   return {
     async login(email?: string, password?: string) {
@@ -19,7 +25,7 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
 
       if (!testEmail || !testPassword) {
         throw new Error(
-          "E2E_TEST_EMAIL and E2E_TEST_PASSWORD environment variables required",
+          "E2E_TEST_EMAIL and E2E_TEST_PASSWORD environment variables required for authenticated tests",
         );
       }
 
@@ -28,21 +34,24 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
       await page.fill('input[name="password"]', testPassword);
       await page.click('button[type="submit"]');
 
+      // Wait for successful redirect
       await page.waitForURL(/\/(projects|login_success|onboarding)/, {
         timeout: 15000,
       });
     },
     async isLoggedIn() {
+      // Check for authenticated user indicators
       const cookies = await page.context().cookies();
-      return cookies.some(
+      const hasAuthCookie = cookies.some(
         (c) => c.name.includes("supabase") || c.name.includes("auth"),
       );
+      return hasAuthCookie;
     },
   };
 }
 
-/** Combined test fixture with PostHog and Auth */
-export const test = basePostHog.extend<{ auth: AuthFixture }>({
+/** Test with auth fixture */
+export const test = base.extend<{ auth: AuthFixture }>({
   auth: async ({ page }, use) => {
     const fixture = await setupAuth(page);
     await use(fixture);
@@ -50,3 +59,4 @@ export const test = basePostHog.extend<{ auth: AuthFixture }>({
 });
 
 export { expect } from "playwright/test";
+export { STORAGE_STATE_PATH };
