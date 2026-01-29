@@ -151,9 +151,9 @@ If the confidence is low, it will suggest clarifications.`,
         existingRuleCount: existingGuidelines.length,
       });
 
-      // Call BAML to parse the guidelines
-      const { b } = await import("~/baml_client");
-      const parseResult = await b.ParseSurveyGuidelines(
+      // Call BAML to parse the guidelines (dynamic import for Mastra compatibility)
+      const bamlClient = await import("../../../baml_client");
+      const parseResult = await bamlClient.b.ParseSurveyGuidelines(
         input.guidelines,
         questionInputs,
         existingGuidelines,
