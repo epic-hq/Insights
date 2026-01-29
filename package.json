@@ -198,7 +198,7 @@
   },
   "private": true,
   "scripts": {
-    "baml-generate": "baml-cli generate",
+    "baml-generate": "baml-cli generate && node scripts/patch-baml.mjs",
     "build": "export NODE_OPTIONS=--max-old-space-size=4096; pnpm run baml-generate && react-router build",
     "build-storybook": "storybook build",
     "check": "biome check .",
