@@ -50,20 +50,21 @@ export function isPlaceholderPerson(name: string): boolean {
 /**
  * Upsert person with company-aware conflict handling and optional person_type.
  * Uses try-insert-then-find pattern since the unique index includes email.
+ *
+ * Schema: company is NOT NULL with default '', primary_email is nullable
  */
 export async function upsertPersonWithCompanyAwareConflict(
   db: SupabaseClient<Database>,
   payload: PeopleInsert,
   personType?: PeopleInsert["person_type"],
 ) {
-  // Normalize company for consistent matching
-  const normalizedCompanyRaw =
+  // Normalize company - use empty string for missing (schema: NOT NULL DEFAULT '')
+  const normalizedCompany =
     typeof payload.company === "string" && payload.company.trim().length > 0
-      ? payload.company.trim()
+      ? payload.company.trim().toLowerCase()
       : "";
-  const normalizedCompany = normalizedCompanyRaw.toLowerCase() || null;
 
-  // Normalize email for consistent matching
+  // Normalize email - use null for missing (schema: nullable)
   const normalizedEmail =
     typeof payload.primary_email === "string" &&
     payload.primary_email.trim().length > 0
@@ -90,17 +91,18 @@ export async function upsertPersonWithCompanyAwareConflict(
       const nameHash = computeNameHash(insertPayload);
 
       // Find existing by name_hash, company, and email (matching the unique index)
+      // The index uses COALESCE(lower(company), '') so empty string matches empty
       let findQuery = db
         .from("people")
         .select("id, name")
         .eq("account_id", insertPayload.account_id!)
         .eq("name_hash", nameHash);
 
-      // Match company (null or value)
+      // Match company (empty string or value)
       if (normalizedCompany) {
         findQuery = findQuery.ilike("company", normalizedCompany);
       } else {
-        findQuery = findQuery.is("company", null);
+        findQuery = findQuery.eq("company", "");
       }
 
       // Match email (null or value)
@@ -121,7 +123,7 @@ export async function upsertPersonWithCompanyAwareConflict(
           .select("id, name")
           .eq("account_id", insertPayload.account_id!)
           .eq("name_hash", nameHash)
-          .ilike("company", normalizedCompany || "")
+          .eq("company", normalizedCompany)
           .limit(1)
           .single();
 
