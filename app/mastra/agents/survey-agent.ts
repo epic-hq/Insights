@@ -11,23 +11,23 @@
  * - Manage survey settings (live status, chat mode, etc.)
  */
 
-import { Agent } from "@mastra/core/agent";
-import { anthropic } from "../../lib/billing/instrumented-anthropic.server";
-import { createSurveyTool } from "../tools/create-survey";
-import { deleteSurveyTool } from "../tools/delete-survey";
-import { fetchSurveysTool } from "../tools/fetch-surveys";
-import { generateProjectRoutesTool } from "../tools/generate-project-routes";
-import { navigateToPageTool } from "../tools/navigate-to-page";
-import { updateSurveyGuidelinesTool } from "../tools/update-survey-guidelines";
+import { Agent } from "@mastra/core/agent"
+import { anthropic } from "../../lib/billing/instrumented-anthropic.server"
+import { createSurveyTool } from "../tools/create-survey"
+import { deleteSurveyTool } from "../tools/delete-survey"
+import { fetchSurveysTool } from "../tools/fetch-surveys"
+import { generateProjectRoutesTool } from "../tools/generate-project-routes"
+import { navigateToPageTool } from "../tools/navigate-to-page"
+import { updateSurveyGuidelinesTool } from "../tools/update-survey-guidelines"
 
 export const surveyAgent = new Agent({
-  id: "survey-agent",
-  name: "surveyAgent",
-  instructions: async ({ requestContext }) => {
-    const projectId = requestContext?.get("project_id") ?? "";
-    const accountId = requestContext?.get("account_id") ?? "";
+	id: "survey-agent",
+	name: "surveyAgent",
+	instructions: async ({ requestContext }) => {
+		const projectId = requestContext?.get("project_id") ?? ""
+		const accountId = requestContext?.get("account_id") ?? ""
 
-    return `You are a survey design assistant helping users create and manage research surveys (called "Ask Links" in Upsight).
+		return `You are a survey design assistant helping users create and manage research surveys (called "Ask Links" in Upsight).
 
 PROJECT CONTEXT:
 - Project ID: ${projectId}
@@ -77,15 +77,15 @@ WORKFLOW:
 1. Understand what the user wants to create or modify
 2. Use appropriate tools to make changes
 3. Summarize what was done
-4. Offer next steps (edit, share, add guidelines)`;
-  },
-  model: anthropic("claude-sonnet-4-20250514"),
-  tools: {
-    "create-survey": createSurveyTool,
-    "fetch-surveys": fetchSurveysTool,
-    "delete-survey": deleteSurveyTool,
-    "update-survey-guidelines": updateSurveyGuidelinesTool,
-    "navigate-to-page": navigateToPageTool,
-    "generate-project-routes": generateProjectRoutesTool,
-  },
-});
+4. Offer next steps (edit, share, add guidelines)`
+	},
+	model: anthropic("claude-sonnet-4-20250514"),
+	tools: {
+		"create-survey": createSurveyTool,
+		"fetch-surveys": fetchSurveysTool,
+		"delete-survey": deleteSurveyTool,
+		"update-survey-guidelines": updateSurveyGuidelinesTool,
+		"navigate-to-page": navigateToPageTool,
+		"generate-project-routes": generateProjectRoutesTool,
+	},
+})
