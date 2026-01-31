@@ -724,6 +724,51 @@ export default function EditResearchLinkPage() {
               </h3>
               <Card>
                 <CardContent className="space-y-2 py-3">
+                  {/* Identity Type - simplified to three options (FIRST - what users see first) */}
+                  <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">Identification</p>
+                      <p className="truncate text-muted-foreground text-xs">
+                        How respondents identify themselves
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant={
+                          identityType === "anonymous" ? "default" : "ghost"
+                        }
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setIdentityType("anonymous")}
+                      >
+                        Anonymous
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={identityType === "email" ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setIdentityType("email")}
+                      >
+                        Email
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={identityType === "phone" ? "default" : "ghost"}
+                        size="sm"
+                        className="h-7 px-2.5"
+                        onClick={() => setIdentityType("phone")}
+                      >
+                        Phone
+                      </Button>
+                    </div>
+                    <input
+                      type="hidden"
+                      name="identity_type"
+                      value={identityType}
+                    />
+                  </div>
                   <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
                     <div className="min-w-0">
                       <p className="font-medium text-sm">Chat mode</p>
@@ -778,51 +823,6 @@ export default function EditResearchLinkPage() {
                       type="hidden"
                       name="allow_video"
                       value={String(allowVideo)}
-                    />
-                  </div>
-                  {/* Identity Type - simplified to three options */}
-                  <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">Identification</p>
-                      <p className="truncate text-muted-foreground text-xs">
-                        How respondents identify themselves
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        type="button"
-                        variant={
-                          identityType === "anonymous" ? "default" : "ghost"
-                        }
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setIdentityType("anonymous")}
-                      >
-                        Anonymous
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={identityType === "email" ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setIdentityType("email")}
-                      >
-                        Email
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={identityType === "phone" ? "default" : "ghost"}
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setIdentityType("phone")}
-                      >
-                        Phone
-                      </Button>
-                    </div>
-                    <input
-                      type="hidden"
-                      name="identity_type"
-                      value={identityType}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
