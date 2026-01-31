@@ -773,88 +773,85 @@ export default function EditResearchLinkPage() {
                       value={String(allowVideo)}
                     />
                   </div>
-                  {/* Identity Mode */}
-                  <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">Identification</p>
-                      <p className="truncate text-muted-foreground text-xs">
-                        {identityMode === "anonymous"
-                          ? "No identification required"
-                          : identityField === "email"
-                            ? "Collect email address"
-                            : "Collect phone number"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        type="button"
-                        variant={
-                          identityMode === "identified" ? "default" : "ghost"
-                        }
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setIdentityMode("identified")}
-                      >
-                        Identified
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          identityMode === "anonymous" ? "default" : "ghost"
-                        }
-                        size="sm"
-                        className="h-7 px-2.5"
-                        onClick={() => setIdentityMode("anonymous")}
-                      >
-                        Anonymous
-                      </Button>
-                    </div>
-                    <input
-                      type="hidden"
-                      name="identity_mode"
-                      value={identityMode}
-                    />
-                  </div>
-                  {/* Identity Field - only show when identified */}
-                  {identityMode === "identified" && (
-                    <div className="flex items-center justify-between gap-4 rounded-md border border-dashed px-3 py-2.5">
+                  {/* Identity Settings - combined in one box */}
+                  <div className="space-y-2 rounded-md border px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="font-medium text-sm">Collect</p>
+                        <p className="font-medium text-sm">Identification</p>
                         <p className="truncate text-muted-foreground text-xs">
-                          Which field to collect from respondents
+                          How respondents identify themselves
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Button
                           type="button"
                           variant={
-                            identityField === "email" ? "default" : "ghost"
+                            identityMode === "identified" ? "default" : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
-                          onClick={() => setIdentityField("email")}
+                          onClick={() => setIdentityMode("identified")}
                         >
-                          Email
+                          Identified
                         </Button>
                         <Button
                           type="button"
                           variant={
-                            identityField === "phone" ? "default" : "ghost"
+                            identityMode === "anonymous" ? "default" : "ghost"
                           }
                           size="sm"
                           className="h-7 px-2.5"
-                          onClick={() => setIdentityField("phone")}
+                          onClick={() => setIdentityMode("anonymous")}
                         >
-                          Phone
+                          Anonymous
                         </Button>
                       </div>
                       <input
                         type="hidden"
-                        name="identity_field"
-                        value={identityField}
+                        name="identity_mode"
+                        value={identityMode}
                       />
                     </div>
-                  )}
+                    {/* Identity Field - show when identified */}
+                    {identityMode === "identified" && (
+                      <div className="flex items-center justify-between gap-4 border-t pt-2">
+                        <div className="min-w-0">
+                          <p className="text-muted-foreground text-xs">
+                            Collect
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            type="button"
+                            variant={
+                              identityField === "email" ? "default" : "ghost"
+                            }
+                            size="sm"
+                            className="h-7 px-2.5"
+                            onClick={() => setIdentityField("email")}
+                          >
+                            Email
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={
+                              identityField === "phone" ? "default" : "ghost"
+                            }
+                            size="sm"
+                            className="h-7 px-2.5"
+                            onClick={() => setIdentityField("phone")}
+                          >
+                            Phone
+                          </Button>
+                        </div>
+                        <input
+                          type="hidden"
+                          name="identity_field"
+                          value={identityField}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
                     <div className="min-w-0">
                       <p className="font-medium text-sm">Default mode</p>
