@@ -5342,10 +5342,11 @@ export type Database = {
         Row: {
           completed: boolean
           created_at: string
-          email: string
+          email: string | null
           evidence_id: string | null
           id: string
           person_id: string | null
+          phone: string | null
           research_link_id: string
           response_mode: string
           responses: Json
@@ -5355,10 +5356,11 @@ export type Database = {
         Insert: {
           completed?: boolean
           created_at?: string
-          email: string
+          email?: string | null
           evidence_id?: string | null
           id?: string
           person_id?: string | null
+          phone?: string | null
           research_link_id: string
           response_mode?: string
           responses?: Json
@@ -5368,10 +5370,11 @@ export type Database = {
         Update: {
           completed?: boolean
           created_at?: string
-          email?: string
+          email?: string | null
           evidence_id?: string | null
           id?: string
           person_id?: string | null
+          phone?: string | null
           research_link_id?: string
           response_mode?: string
           responses?: Json
@@ -5420,6 +5423,8 @@ export type Database = {
           hero_subtitle: string | null
           hero_title: string | null
           id: string
+          identity_field: string
+          identity_mode: string
           instructions: string | null
           is_live: boolean
           name: string
@@ -5451,6 +5456,8 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
+          identity_field?: string
+          identity_mode?: string
           instructions?: string | null
           is_live?: boolean
           name: string
@@ -5482,6 +5489,8 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string | null
           id?: string
+          identity_field?: string
+          identity_mode?: string
           instructions?: string | null
           is_live?: boolean
           name?: string
