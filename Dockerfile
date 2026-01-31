@@ -74,8 +74,8 @@ COPY --from=build /app/baml_client ./baml_client
 COPY --from=build /app/supabase/types.ts ./supabase/types.ts
 
 # Minimal runtime data dir + Mastra output dir (Mastra writes server configs here)
-RUN mkdir -p /app/data /app/.mastra/output \
-  && chown -R node:node /app/data /app/.mastra
+RUN mkdir -p /app/data /app/.mastra/output /app/app/mastra/public \
+  && chown -R node:node /app/data /app/.mastra /app/app/mastra/public
 # Copy production env file for dotenvx
 COPY --chown=node:node .env.production ./.env.production
 
