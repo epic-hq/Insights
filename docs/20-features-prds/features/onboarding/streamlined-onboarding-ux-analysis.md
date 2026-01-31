@@ -560,6 +560,444 @@ Show these at key moments:
 
 ---
 
+## Mermaid Flow Diagrams
+
+### Level 1: Simple Onboarding Flow (First 5 Minutes)
+
+This is the streamlined entry experience - get users to their first "aha moment" fast.
+
+```mermaid
+flowchart TD
+    subgraph entry["🚀 Entry Point"]
+        START((Start)) --> INTENT{What brings<br/>you here?}
+    end
+
+    subgraph research["🔬 Research Path"]
+        INTENT -->|Research| METHOD{How do you<br/>want to learn?}
+        METHOD -->|Surveys| SURVEY_CTX[Enter company<br/>website]
+        METHOD -->|Interviews| INT_CTX[Enter company<br/>website]
+
+        SURVEY_CTX --> SURVEY_GOAL[What do you want<br/>to learn?]
+        INT_CTX --> INT_GOAL[What do you want<br/>to learn?]
+
+        SURVEY_GOAL --> SURVEY_CREATE[Create survey<br/>+ enable video]
+        INT_GOAL --> INT_QUESTIONS[AI generates<br/>questions]
+
+        SURVEY_CREATE --> SHARE[📤 Share link]
+        INT_QUESTIONS --> RECORD{Record or<br/>upload?}
+        RECORD -->|Record| LIVE[🎤 Live recording]
+        RECORD -->|Upload| UPLOAD[📁 Upload file]
+    end
+
+    subgraph sales["💼 Sales Path"]
+        INTENT -->|Sales| SALES_CTX[Enter company<br/>website]
+        SALES_CTX --> SALES_GOAL{What's your<br/>goal?}
+        SALES_GOAL -->|Record calls| SALES_RECORD[🔗 Connect<br/>Zoom/Meet/Teams]
+        SALES_GOAL -->|Upload past| SALES_UPLOAD[📁 Upload<br/>recordings]
+        SALES_GOAL -->|Win/Loss| SALES_WINLOSS[📁 Upload won<br/>& lost deals]
+        SALES_GOAL -->|Competitive| SALES_COMP[📁 Upload calls<br/>with competitors]
+    end
+
+    subgraph firstvalue["✨ First Value"]
+        SHARE --> WAIT_RESPONSES[Wait for<br/>responses]
+        LIVE --> PROCESS[⚙️ Processing...]
+        UPLOAD --> PROCESS
+        SALES_RECORD --> WAIT_CALLS[Wait for<br/>next call]
+        SALES_UPLOAD --> PROCESS
+        SALES_WINLOSS --> PROCESS
+        SALES_COMP --> PROCESS
+
+        WAIT_RESPONSES --> FIRST_EVIDENCE[🎉 First evidence<br/>extracted!]
+        PROCESS --> FIRST_EVIDENCE
+        WAIT_CALLS --> FIRST_EVIDENCE
+    end
+
+    style entry fill:#e8f4f8,stroke:#0ea5e9
+    style research fill:#f0fdf4,stroke:#22c55e
+    style sales fill:#fefce8,stroke:#eab308
+    style firstvalue fill:#fdf4ff,stroke:#a855f7
+```
+
+---
+
+### Level 2: After First Content (Day 1-3)
+
+Once users have their first evidence, introduce the core value props progressively.
+
+```mermaid
+flowchart TD
+    subgraph trigger["📬 Content Triggers"]
+        EVIDENCE[First evidence<br/>extracted] --> NOTIFY[🔔 Notification:<br/>"We found insights!"]
+        RESPONSES[3+ survey<br/>responses] --> THEME_TRIGGER[🔔 "Patterns<br/>emerging"]
+        CALLS[2+ calls<br/>processed] --> PERSON_TRIGGER[🔔 "Meet your<br/>contacts"]
+    end
+
+    subgraph assistant["🤖 AI Assistant Introduction"]
+        NOTIFY --> ASSISTANT_PROMPT["💬 Ask me anything<br/>about your data"]
+        ASSISTANT_PROMPT --> ASK_EXAMPLE["Try: 'What are<br/>customers saying<br/>about pricing?'"]
+        ASK_EXAMPLE --> ASSISTANT_RESPONSE[AI synthesizes<br/>across all evidence]
+        ASSISTANT_RESPONSE --> ASSISTANT_HABIT[User learns to<br/>query naturally]
+    end
+
+    subgraph evidence["📋 Evidence Dashboard"]
+        NOTIFY --> VIEW_EVIDENCE[View evidence<br/>cards]
+        VIEW_EVIDENCE --> FILTER_EVIDENCE[Filter by person,<br/>source, date]
+        FILTER_EVIDENCE --> UNDERSTAND_RECEIPTS["💡 Aha: Evidence = <br/>verifiable quotes"]
+    end
+
+    subgraph themes["🏷️ Themes Discovery"]
+        THEME_TRIGGER --> AUTO_THEME[AI clusters<br/>similar evidence]
+        AUTO_THEME --> VIEW_THEMES[View theme<br/>cards]
+        VIEW_THEMES --> THEME_DRILL[Click theme →<br/>see all evidence]
+        THEME_DRILL --> UNDERSTAND_THEMES["💡 Aha: Themes = <br/>patterns across data"]
+    end
+
+    subgraph people["👤 People/CRM"]
+        PERSON_TRIGGER --> VIEW_PEOPLE[See people<br/>mentioned]
+        VIEW_PEOPLE --> PERSON_PROFILE[Click person →<br/>all their quotes]
+        PERSON_PROFILE --> LINK_CONTACT["💡 Aha: CRM = <br/>evidence per person"]
+    end
+
+    style trigger fill:#fef3c7,stroke:#f59e0b
+    style assistant fill:#dbeafe,stroke:#3b82f6
+    style evidence fill:#f0fdf4,stroke:#22c55e
+    style themes fill:#fce7f3,stroke:#ec4899
+    style people fill:#e0e7ff,stroke:#6366f1
+```
+
+---
+
+### Level 3: Power User Features (Week 2+)
+
+As users build content and habits, progressively reveal advanced capabilities.
+
+```mermaid
+flowchart TD
+    subgraph lenses["🔍 Lenses Introduction"]
+        EVIDENCE_HABIT[User regularly<br/>views evidence] --> LENS_PROMPT["💡 Tip: Try a<br/>lens on this call"]
+        LENS_PROMPT --> LENS_EXPLAIN["Lenses extract<br/>specific angles:<br/>BANT, empathy, etc."]
+        LENS_EXPLAIN --> APPLY_LENS[Apply lens<br/>to interview]
+        APPLY_LENS --> LENS_RESULTS[See structured<br/>extraction]
+        LENS_RESULTS --> LENS_COMPARE[Compare across<br/>multiple calls]
+        LENS_COMPARE --> CUSTOM_LENS["⚡ Power: Create<br/>custom lens"]
+    end
+
+    subgraph insights["💡 Insights & Reports"]
+        THEME_HABIT[User views<br/>themes regularly] --> INSIGHT_PROMPT["💡 Ready to create<br/>an insight?"]
+        INSIGHT_PROMPT --> CREATE_INSIGHT[Bundle themes +<br/>evidence]
+        CREATE_INSIGHT --> INSIGHT_REPORT[Generate<br/>shareable report]
+        INSIGHT_REPORT --> EXPORT_INSIGHT["📤 Export to<br/>Notion/Slides"]
+    end
+
+    subgraph crm["📊 CRM & Opportunities"]
+        SALES_CALLS[5+ sales calls<br/>processed] --> OPP_PROMPT["💡 Track this<br/>as opportunity?"]
+        OPP_PROMPT --> CREATE_OPP[Create<br/>opportunity]
+        CREATE_OPP --> LINK_EVIDENCE[Link supporting<br/>evidence]
+        LINK_EVIDENCE --> OPP_STAGE[Track deal<br/>stages]
+        OPP_STAGE --> WINLOSS[Win/Loss<br/>analysis]
+    end
+
+    subgraph automation["⚡ Automation & Scale"]
+        POWER_USER[Regular<br/>usage] --> PERSONA_PROMPT["💡 Create a<br/>persona segment?"]
+        PERSONA_PROMPT --> CREATE_PERSONA[Define persona<br/>criteria]
+        CREATE_PERSONA --> PERSONA_FILTER[Filter all data<br/>by persona]
+
+        POWER_USER --> ALERT_PROMPT["💡 Set up<br/>theme alerts?"]
+        ALERT_PROMPT --> CREATE_ALERT[Alert when theme<br/>mentioned]
+
+        POWER_USER --> INTEGRATE_PROMPT["💡 Connect to<br/>Slack/Notion?"]
+        INTEGRATE_PROMPT --> INTEGRATIONS[Set up<br/>integrations]
+    end
+
+    style lenses fill:#fef3c7,stroke:#f59e0b
+    style insights fill:#dbeafe,stroke:#3b82f6
+    style crm fill:#f0fdf4,stroke:#22c55e
+    style automation fill:#fce7f3,stroke:#ec4899
+```
+
+---
+
+### Complete User Journey: From Zero to Power User
+
+```mermaid
+flowchart LR
+    subgraph day0["Day 0: Onboarding"]
+        direction TB
+        A1[Choose path:<br/>Research or Sales]
+        A2[Set company<br/>context]
+        A3[Define goal]
+        A4[First action:<br/>survey/upload/record]
+        A1 --> A2 --> A3 --> A4
+    end
+
+    subgraph day1["Day 1-3: First Value"]
+        direction TB
+        B1[🎉 First evidence]
+        B2[💬 Try Assistant]
+        B3[👀 Browse evidence]
+        B4[👤 See people]
+        B1 --> B2
+        B1 --> B3
+        B1 --> B4
+    end
+
+    subgraph week1["Week 1: Patterns"]
+        direction TB
+        C1[🏷️ Themes emerge]
+        C2[📊 Filter & search]
+        C3[➕ Add more data]
+        C1 --> C2 --> C3
+    end
+
+    subgraph week2["Week 2+: Power Features"]
+        direction TB
+        D1[🔍 Apply lenses]
+        D2[💡 Create insights]
+        D3[📈 CRM/Opps]
+        D4[👥 Personas]
+        D5[⚡ Automations]
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+    end
+
+    day0 --> day1 --> week1 --> week2
+
+    style day0 fill:#e8f4f8,stroke:#0ea5e9
+    style day1 fill:#f0fdf4,stroke:#22c55e
+    style week1 fill:#fefce8,stroke:#eab308
+    style week2 fill:#fdf4ff,stroke:#a855f7
+```
+
+---
+
+### Assistant Usage Patterns
+
+How users interact with the AI assistant at different stages.
+
+```mermaid
+flowchart TD
+    subgraph early["🌱 Early Stage (0-5 evidence)"]
+        E1["'What did Sarah say<br/>about pricing?'"]
+        E2["'Summarize my<br/>last interview'"]
+        E3["'What questions<br/>should I ask next?'"]
+    end
+
+    subgraph growing["🌿 Growing Stage (5-20 evidence)"]
+        G1["'What patterns are<br/>emerging about UX?'"]
+        G2["'Compare what<br/>startups vs enterprises say'"]
+        G3["'What objections<br/>come up most?'"]
+    end
+
+    subgraph mature["🌳 Mature Stage (20+ evidence)"]
+        M1["'Create a report on<br/>pricing feedback'"]
+        M2["'What changed since<br/>last quarter?'"]
+        M3["'Which personas<br/>are most interested in X?'"]
+        M4["'Prepare me for<br/>my call with Acme'"]
+    end
+
+    subgraph actions["🎯 Assistant Actions"]
+        SEARCH[Search across<br/>all evidence]
+        SYNTHESIZE[Synthesize<br/>patterns]
+        GENERATE[Generate<br/>reports/emails]
+        RECOMMEND[Recommend<br/>next steps]
+    end
+
+    early --> SEARCH
+    growing --> SEARCH
+    growing --> SYNTHESIZE
+    mature --> SEARCH
+    mature --> SYNTHESIZE
+    mature --> GENERATE
+    mature --> RECOMMEND
+
+    style early fill:#fef3c7,stroke:#f59e0b
+    style growing fill:#bbf7d0,stroke:#22c55e
+    style mature fill:#c7d2fe,stroke:#6366f1
+    style actions fill:#fce7f3,stroke:#ec4899
+```
+
+---
+
+### Lens Usage Flow
+
+When and how users discover and apply lenses.
+
+```mermaid
+flowchart TD
+    subgraph discovery["🔍 Lens Discovery"]
+        INTERVIEW[View processed<br/>interview] --> SUGGEST["💡 'Try the BANT<br/>lens on this call'"]
+        SUGGEST --> EXPLAIN["Lenses = structured<br/>extraction templates"]
+    end
+
+    subgraph apply["📋 Apply Lens"]
+        EXPLAIN --> CHOOSE{Choose lens}
+        CHOOSE -->|BANT| BANT["Budget, Authority,<br/>Need, Timeline"]
+        CHOOSE -->|Empathy Map| EMPATHY["Think, Feel,<br/>Say, Do"]
+        CHOOSE -->|Jobs-to-be-Done| JTBD["Job, Context,<br/>Outcome"]
+        CHOOSE -->|Win/Loss| WINLOSS["Why won,<br/>Why lost"]
+        CHOOSE -->|Custom| CUSTOM["Define your<br/>own fields"]
+    end
+
+    subgraph results["📊 Lens Results"]
+        BANT --> EXTRACT[AI extracts<br/>structured data]
+        EMPATHY --> EXTRACT
+        JTBD --> EXTRACT
+        WINLOSS --> EXTRACT
+        CUSTOM --> EXTRACT
+
+        EXTRACT --> VIEW_RESULTS[View filled<br/>lens card]
+        VIEW_RESULTS --> COMPARE[Compare across<br/>interviews]
+        COMPARE --> SPOT_GAPS["💡 Spot gaps:<br/>'3/10 calls have<br/>budget info'"]
+    end
+
+    subgraph scale["⚡ Scale Usage"]
+        SPOT_GAPS --> AUTO_APPLY["Auto-apply lens<br/>to all new calls"]
+        AUTO_APPLY --> AGGREGATE["Aggregate view:<br/>All BANT data"]
+        AGGREGATE --> EXPORT["Export to<br/>CRM/spreadsheet"]
+    end
+
+    style discovery fill:#fef3c7,stroke:#f59e0b
+    style apply fill:#dbeafe,stroke:#3b82f6
+    style results fill:#f0fdf4,stroke:#22c55e
+    style scale fill:#fce7f3,stroke:#ec4899
+```
+
+---
+
+### CRM Integration Flow
+
+How evidence connects to opportunities and deal tracking.
+
+```mermaid
+flowchart TD
+    subgraph capture["📥 Capture"]
+        CALL[Sales call<br/>recorded] --> PROCESS[⚙️ Process &<br/>transcribe]
+        PROCESS --> EXTRACT[Extract<br/>evidence]
+        EXTRACT --> PERSON[Link to<br/>person/contact]
+    end
+
+    subgraph enrich["🔗 Enrich"]
+        PERSON --> EXISTING{Existing<br/>opportunity?}
+        EXISTING -->|Yes| LINK_OPP[Link evidence<br/>to opportunity]
+        EXISTING -->|No| CREATE_OPP[Create new<br/>opportunity]
+        CREATE_OPP --> LINK_OPP
+    end
+
+    subgraph track["📊 Track"]
+        LINK_OPP --> OPP_VIEW[View opportunity<br/>with all evidence]
+        OPP_VIEW --> TIMELINE[See conversation<br/>timeline]
+        OPP_VIEW --> KEY_QUOTES[Highlight key<br/>quotes]
+        OPP_VIEW --> STAGE[Update deal<br/>stage]
+    end
+
+    subgraph analyze["📈 Analyze"]
+        STAGE --> WINLOSS_BUCKET{Won or<br/>lost?}
+        WINLOSS_BUCKET -->|Won| WON_ANALYSIS["Analyze: What<br/>worked?"]
+        WINLOSS_BUCKET -->|Lost| LOST_ANALYSIS["Analyze: What<br/>blocked?"]
+        WON_ANALYSIS --> PATTERNS[Pattern recognition<br/>across deals]
+        LOST_ANALYSIS --> PATTERNS
+        PATTERNS --> PLAYBOOK["💡 Build winning<br/>playbook"]
+    end
+
+    subgraph action["🎯 Action"]
+        PLAYBOOK --> COACH["Coach reps on<br/>winning patterns"]
+        PLAYBOOK --> ALERT["Alert on<br/>at-risk deals"]
+        PLAYBOOK --> PREP["Prep for calls<br/>with context"]
+    end
+
+    style capture fill:#e8f4f8,stroke:#0ea5e9
+    style enrich fill:#fef3c7,stroke:#f59e0b
+    style track fill:#f0fdf4,stroke:#22c55e
+    style analyze fill:#dbeafe,stroke:#3b82f6
+    style action fill:#fce7f3,stroke:#ec4899
+```
+
+---
+
+### Feature Unlock Timeline
+
+Visual representation of progressive disclosure based on user activity.
+
+```mermaid
+gantt
+    title Feature Unlock Timeline
+    dateFormat X
+    axisFormat %s
+
+    section Onboarding
+    Choose path (Research/Sales)     :done, 0, 1
+    Company context                  :done, 1, 2
+    First survey/upload              :done, 2, 3
+
+    section Day 1
+    View first evidence              :active, 3, 4
+    Browse evidence dashboard        :4, 5
+    Try AI Assistant                 :5, 6
+
+    section Week 1
+    See auto-generated themes        :7, 8
+    View people/contacts             :8, 9
+    Filter & search                  :9, 10
+
+    section Week 2
+    Apply first lens                 :12, 13
+    Create insight report            :13, 14
+    Create opportunity (Sales)       :14, 15
+
+    section Power User
+    Custom lenses                    :18, 19
+    Persona segments                 :19, 20
+    Integrations & alerts            :20, 21
+```
+
+---
+
+### Decision Tree: What Should User Do Next?
+
+```mermaid
+flowchart TD
+    START{What's your<br/>situation?}
+
+    START -->|"I have no data yet"| NO_DATA
+    START -->|"I have some evidence"| SOME_DATA
+    START -->|"I have lots of data"| LOTS_DATA
+
+    subgraph NO_DATA["🌱 No Data Yet"]
+        ND1{Research or<br/>Sales?}
+        ND1 -->|Research| ND_RESEARCH{Qualitative or<br/>quantitative?}
+        ND_RESEARCH -->|"Deep understanding"| REC_INTERVIEW["→ Record/upload<br/>interviews"]
+        ND_RESEARCH -->|"Scale & speed"| REC_SURVEY["→ Create video<br/>survey"]
+        ND1 -->|Sales| ND_SALES{Have past<br/>recordings?}
+        ND_SALES -->|Yes| REC_UPLOAD["→ Upload past<br/>calls"]
+        ND_SALES -->|No| REC_CONNECT["→ Connect Zoom<br/>for next call"]
+    end
+
+    subgraph SOME_DATA["🌿 Some Evidence (5-20)"]
+        SD1{What do you<br/>want to do?}
+        SD1 -->|"Find patterns"| REC_THEMES["→ Check Themes<br/>page"]
+        SD1 -->|"Ask questions"| REC_ASSISTANT["→ Use AI<br/>Assistant"]
+        SD1 -->|"Track contacts"| REC_PEOPLE["→ View People<br/>page"]
+        SD1 -->|"Get more data"| REC_MORE["→ Add more<br/>conversations"]
+    end
+
+    subgraph LOTS_DATA["🌳 Lots of Data (20+)"]
+        LD1{What's your<br/>goal?}
+        LD1 -->|"Extract structure"| REC_LENS["→ Apply lenses<br/>to calls"]
+        LD1 -->|"Share findings"| REC_INSIGHT["→ Create insight<br/>report"]
+        LD1 -->|"Track deals"| REC_OPP["→ Create<br/>opportunities"]
+        LD1 -->|"Segment users"| REC_PERSONA["→ Build persona<br/>segments"]
+        LD1 -->|"Automate"| REC_AUTO["→ Set up alerts<br/>& integrations"]
+    end
+
+    style NO_DATA fill:#fef3c7,stroke:#f59e0b
+    style SOME_DATA fill:#bbf7d0,stroke:#22c55e
+    style LOTS_DATA fill:#c7d2fe,stroke:#6366f1
+```
+
+---
+
 ## References
 
 - [Current Onboarding Spec](./onboarding-spec.md)
