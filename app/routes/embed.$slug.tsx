@@ -295,15 +295,33 @@ export default function EmbedPage() {
   }, [slug]);
 
   // Set transparent body background for transparent theme
-  useEffect(() => {
+  // Use useLayoutEffect to apply BEFORE paint to prevent white flash
+  useLayoutEffect(() => {
     if (config.theme === "transparent" && typeof document !== "undefined") {
-      document.documentElement.style.background = "transparent";
-      document.body.style.background = "transparent";
+      // Set inline styles with !important to override Tailwind base layer
+      document.documentElement.style.setProperty(
+        "background",
+        "transparent",
+        "important",
+      );
+      document.documentElement.style.setProperty(
+        "background-color",
+        "transparent",
+        "important",
+      );
+      document.body.style.setProperty("background", "transparent", "important");
+      document.body.style.setProperty(
+        "background-color",
+        "transparent",
+        "important",
+      );
     }
     return () => {
       if (typeof document !== "undefined") {
-        document.documentElement.style.background = "";
-        document.body.style.background = "";
+        document.documentElement.style.removeProperty("background");
+        document.documentElement.style.removeProperty("background-color");
+        document.body.style.removeProperty("background");
+        document.body.style.removeProperty("background-color");
       }
     };
   }, [config.theme]);
