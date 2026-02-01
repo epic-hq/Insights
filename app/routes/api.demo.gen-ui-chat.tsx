@@ -16,14 +16,15 @@ export async function action({ request }: ActionFunctionArgs) {
   });
 
   const requestContext = new RequestContext();
-  // Demo doesn't need real user/project context
+  // Use demo context - signupAgent doesn't need real user/project data
   requestContext.set("user_id", "demo-user");
-  requestContext.set("project_id", "demo-project");
+  requestContext.set("account_id", "demo-account");
 
   try {
+    // Use the WORKING signupAgent instead of broken demo agent
     const stream = await handleChatStream({
       mastra,
-      agentId: "demoGenerativeUIAgent",
+      agentId: "signupAgent",
       params: {
         messages,
         requestContext,
