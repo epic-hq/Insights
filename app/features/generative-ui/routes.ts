@@ -11,10 +11,9 @@ export const generativeUIRoutes: RouteConfig[] = [
     path: "/demo/gen-ui",
     file: "features/generative-ui/pages/demo-live.tsx",
   },
-  // Other demos
   {
-    path: "/demo/gen-ui-live",
-    file: "features/generative-ui/pages/demo-live.tsx",
+    path: "/demo/gen-ui-static",
+    file: "features/generative-ui/pages/demo-working.tsx",
   },
   {
     path: "/demo/gen-ui-v2",
