@@ -24,10 +24,18 @@ import { cn } from "~/lib/utils";
 import { BANTScorecard } from "../components/BANTScorecard";
 
 export default function LiveGenerativeUIDemo() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } =
     useChat({
       api: "/api/demo/gen-ui-chat",
+      onError: (error) => {
+        console.error("Chat error:", error);
+      },
+      onResponse: (response) => {
+        console.log("Chat response:", response);
+      },
     });
+
+  console.log("Demo state:", { messages, input, isLoading, error });
 
   const [renderedComponent, setRenderedComponent] = useState<{
     type: string;

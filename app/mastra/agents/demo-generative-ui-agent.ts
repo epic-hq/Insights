@@ -91,11 +91,7 @@ You: [Call recommendLensComponentTool with intent="sales", lens="bant"]
 - Don't explain all the options upfront - discover through conversation
 - If user mentions recording/interviewing, offer to start voice recording`,
 
-  model: {
-    provider: openai,
-    name: "gpt-4o",
-    toolChoice: "auto",
-  },
+  model: openai("gpt-4o"),
 
   tools: {
     recommendLensComponent: recommendLensComponentTool,
