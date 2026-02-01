@@ -7,7 +7,7 @@
  * 3. Dynamically renders components based on what it learns
  */
 
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, Loader2, Send, User } from "lucide-react";
 import { useState } from "react";
