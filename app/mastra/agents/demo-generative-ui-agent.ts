@@ -8,8 +8,7 @@
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-
-const openaiModule = import("../../lib/billing/instrumented-openai.server");
+import { openai } from "../../lib/billing/instrumented-openai.server";
 
 // Tool: Recommend a lens-specific component based on conversation
 const recommendLensComponentTool = createTool({
@@ -92,13 +91,10 @@ You: [Call recommendLensComponentTool with intent="sales", lens="bant"]
 - Don't explain all the options upfront - discover through conversation
 - If user mentions recording/interviewing, offer to start voice recording`,
 
-  model: async () => {
-    const { openai } = await openaiModule;
-    return {
-      provider: openai,
-      name: "gpt-4o",
-      toolChoice: "auto",
-    };
+  model: {
+    provider: openai,
+    name: "gpt-4o",
+    toolChoice: "auto",
   },
 
   tools: {

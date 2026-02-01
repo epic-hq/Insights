@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
   requestContext.set("user_id", "demo-user");
   requestContext.set("project_id", "demo-project");
 
-  const agent = mastra.getAgent("demo-generative-ui-agent");
+  const agent = mastra.getAgent("demoGenerativeUIAgent");
 
   if (!agent) {
     return new Response(JSON.stringify({ error: "Agent not found" }), {

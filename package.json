@@ -21,7 +21,7 @@
     "@livekit/agents-plugin-silero": "latest",
     "@livekit/components-react": "latest",
     "@livekit/components-styles": "latest",
-    "@livekit/rtc-node": "0.13.22",
+    "@livekit/rtc-node": "latest",
     "@mastra/ai-sdk": "1.0.0-beta.10",
     "@mastra/core": "1.0.0-beta.17",
     "@mastra/libsql": "1.0.0-beta.7",
