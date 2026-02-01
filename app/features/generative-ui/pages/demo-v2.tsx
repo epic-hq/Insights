@@ -256,9 +256,9 @@ export default function GenerativeUIDemoV2() {
         <h1 className="font-bold text-4xl">
           Generative UI - Agent-Driven Flow
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-lg">
           Instead of wizards or forms,{" "}
-          <span className="font-semibold text-foreground">
+          <span className="font-semibold">
             ask users what they want to learn
           </span>
           , then let the agent decide what to show them.
@@ -293,7 +293,7 @@ export default function GenerativeUIDemoV2() {
                       </div>
                       <div className="mt-3 text-center">
                         <p className="font-semibold text-sm">{step.label}</p>
-                        <p className="mt-1 max-w-[150px] text-muted-foreground text-xs">
+                        <p className="mt-1 max-w-[150px] text-xs">
                           {step.description}
                         </p>
                       </div>
@@ -313,7 +313,7 @@ export default function GenerativeUIDemoV2() {
                 <div className="grid grid-cols-4 gap-4">
                   <div className="rounded-lg border bg-background p-4">
                     <p className="mb-2 font-medium text-sm">User Says:</p>
-                    <p className="text-muted-foreground text-sm italic">
+                    <p className="text-sm italic">
                       "I need to qualify enterprise deals"
                     </p>
                   </div>
@@ -414,11 +414,9 @@ export default function GenerativeUIDemoV2() {
                       )}
                     </div>
                     <p className="mb-2 font-medium text-sm">User says:</p>
-                    <p className="mb-3 text-muted-foreground text-sm italic">
-                      "{intent.userSays}"
-                    </p>
+                    <p className="mb-3 text-sm italic">"{intent.userSays}"</p>
                     <div className="mt-3 border-t pt-3">
-                      <p className="mb-1 text-[10px] text-muted-foreground uppercase">
+                      <p className="mb-1 text-[10px] uppercase opacity-70">
                         Agent Response:
                       </p>
                       <p className="text-xs">
@@ -427,7 +425,7 @@ export default function GenerativeUIDemoV2() {
                           {intent.componentShown}
                         </span>
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[10px] opacity-70">
                         Using {intent.lensUsed}
                       </p>
                     </div>
@@ -458,7 +456,7 @@ export default function GenerativeUIDemoV2() {
                           <p className="font-medium text-sm">
                             Parse user input
                           </p>
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-xs">
                             Detected keywords: "
                             {currentIntent.userSays
                               .split(" ")
@@ -476,9 +474,7 @@ export default function GenerativeUIDemoV2() {
                           <p className="font-medium text-sm">
                             Determine intent
                           </p>
-                          <p className="text-muted-foreground text-xs">
-                            {currentIntent.agentThinks}
-                          </p>
+                          <p className="text-xs">{currentIntent.agentThinks}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
@@ -555,36 +551,6 @@ export default function GenerativeUIDemoV2() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Bottom Section: Why This Matters */}
-      <Card className="border-2">
-        <CardHeader>
-          <CardTitle>Why Generative UI?</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-6">
-          <div>
-            <h4 className="mb-2 font-semibold text-sm">❌ Traditional UI</h4>
-            <p className="text-muted-foreground text-sm">
-              User navigates menus → clicks through forms → sees generic
-              template
-            </p>
-          </div>
-          <div>
-            <h4 className="mb-2 font-semibold text-sm">✅ Generative UI</h4>
-            <p className="text-muted-foreground text-sm">
-              User states goal → agent understands → dynamically renders perfect
-              component
-            </p>
-          </div>
-          <div>
-            <h4 className="mb-2 font-semibold text-sm">💡 Result</h4>
-            <p className="text-muted-foreground text-sm">
-              Faster time-to-value, less cognitive load, better match to user
-              intent
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
