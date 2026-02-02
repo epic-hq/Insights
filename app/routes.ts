@@ -416,6 +416,7 @@ const routes = [
   ...generativeUIRoutes,
   route("api/demo/gen-ui-chat", "./routes/api.demo.gen-ui-chat.tsx"),
   route("api/demo/stream-bant", "./routes/api.demo.stream-bant.tsx"),
+  route("api/demo/stream-prompts", "./routes/api.demo.stream-prompts.tsx"),
 
   // Test routes
   route("test/upsight", "./routes/test.upsight.tsx"),

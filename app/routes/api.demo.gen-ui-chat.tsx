@@ -10,10 +10,11 @@ export async function action({ request }: ActionFunctionArgs) {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  const { messages } = await request.json();
+  const { messages, promptsState } = await request.json();
 
   consola.info("demo-gen-ui-chat: received messages", {
     messageCount: messages?.length,
+    hasPromptsState: !!promptsState,
   });
 
   const requestContext = new RequestContext();
@@ -33,7 +34,21 @@ export async function action({ request }: ActionFunctionArgs) {
         })
       : [];
 
-    const stream = await agent.stream(sanitizedMessages, {
+    // Inject current UI state context if available
+    const messagesWithContext = [...sanitizedMessages];
+    if (promptsState && promptsState.prompts?.length > 0) {
+      const stateContext = {
+        role: "system",
+        content: `CURRENT UI STATE - Interview Prompts (${promptsState.count} items):
+${promptsState.prompts.map((p: { index: number; id: string; text: string; status: string }) => `  ${p.index}. [${p.status}] ${p.text}`).join("\n")}
+
+When user asks to modify prompts, use the index numbers above (1-based) to identify them.`,
+      };
+      // Insert after first message to not override agent instructions
+      messagesWithContext.splice(1, 0, stateContext);
+    }
+
+    const stream = await agent.stream(messagesWithContext, {
       requestContext,
       onFinish: (data) => {
         consola.info("demo-gen-ui-chat: stream finished", {
