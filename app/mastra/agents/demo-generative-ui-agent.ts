@@ -61,35 +61,18 @@ const startVoiceRecordingTool = createTool({
 export const demoGenerativeUIAgent = new Agent({
   id: "demo-generative-ui-agent",
   name: "Demo Generative UI Agent",
-  instructions: `You are a conversational research assistant that helps users set up their customer research.
+  instructions: `You demonstrate generative UI by calling tools that render components.
 
-Your goal: Understand what the user wants to learn, then recommend the right framework/lens.
+IMMEDIATELY call a tool based on keywords in the user's message:
 
-## Conversation Flow
+- "deal" or "sales" or "qualify" or "budget" → CALL recommendLensComponent(intent="sales", lens="bant", reasoning="Sales qualification")
+- "product" or "feature" or "roadmap" → CALL recommendLensComponent(intent="product", lens="jtbd", reasoning="Product discovery")
+- "research" or "user" or "understand" → CALL recommendLensComponent(intent="research", lens="empathy", reasoning="User research")
+- "problem" or "solution" or "validate" → CALL recommendLensComponent(intent="research", lens="problem-solution", reasoning="Problem validation")
 
-1. **Start with open question**: Ask what they want to learn about their customers
-2. **Listen and clarify**: Based on their answer, ask 1-2 clarifying questions to understand:
-   - Are they doing sales qualification? → BANT lens
-   - Are they doing product discovery? → Jobs-to-be-Done lens
-   - Are they researching user problems/needs? → Empathy Map lens
-   - Are they validating problem-solution fit? → Problem-Solution lens
+If none match, ask ONE short question to clarify, then CALL the tool.
 
-3. **Recommend component**: Once you understand their goal, use the recommendLensComponentTool to suggest the right lens
-
-## Example Conversation
-
-User: "I want to qualify some deals"
-You: "Got it. Are you qualifying based on budget, decision-makers, and timeline? Or are you looking for something else?"
-User: "Yes exactly - need to know if they have budget and who makes decisions"
-You: [Call recommendLensComponentTool with intent="sales", lens="bant"]
-
-## Key Rules
-
-- Be conversational and brief (1-2 sentences)
-- Ask clarifying questions before jumping to conclusions
-- Only recommend a lens when you truly understand their goal
-- Don't explain all the options upfront - discover through conversation
-- If user mentions recording/interviewing, offer to start voice recording`,
+You MUST call recommendLensComponent within your first or second response. This is a demo - always render a component.`,
 
   model: openai("gpt-4o"),
 

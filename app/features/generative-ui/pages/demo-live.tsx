@@ -1,16 +1,18 @@
 /**
- * Live Generative UI Demo with Real Agent
+ * Live Generative UI Demo
  *
- * Shows actual back-and-forth conversation where the agent:
- * 1. Asks clarifying questions
- * 2. Understands user intent through conversation
- * 3. Dynamically renders components based on what it learns
+ * Demonstrates:
+ * 1. Agent conversation that triggers component selection (tool call)
+ * 2. Streaming structured data into components (useObject)
  */
 
 import { useChat } from "@ai-sdk/react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Loader2, Send, User } from "lucide-react";
-import { useState } from "react";
+import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { Bot, Loader2, Send, Sparkles, User } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
+import { Response as AiResponse } from "~/components/ai-elements/response";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -19,195 +21,250 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { BANTScorecard } from "../components/BANTScorecard";
+import type { UpsightMessage } from "~/mastra/message-types";
+import { SimpleBANT, type SimpleBANTData } from "../components/SimpleBANT";
 
-export default function LiveGenerativeUIDemo() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } =
-    useChat({
-      api: "/api/demo/gen-ui-chat",
-      onError: (error) => {
-        console.error("Chat error:", error);
-      },
-      onResponse: (response) => {
-        console.log("Chat response:", response);
-      },
-    });
+// Schema for streaming BANT data
+const bantSchema = z.object({
+  budget: z
+    .object({
+      score: z.number(),
+      note: z.string().optional(),
+    })
+    .optional(),
+  authority: z
+    .object({
+      score: z.number(),
+      note: z.string().optional(),
+    })
+    .optional(),
+  need: z
+    .object({
+      score: z.number(),
+      note: z.string().optional(),
+    })
+    .optional(),
+  timeline: z
+    .object({
+      score: z.number(),
+      note: z.string().optional(),
+    })
+    .optional(),
+  overall: z.number().optional(),
+});
 
-  console.log("Demo state:", { messages, input, isLoading, error });
+// Types for tool results
+interface LensRecommendation {
+  intent: string;
+  lens: string;
+  reasoning: string;
+  componentType: string;
+  renderUI: boolean;
+}
 
-  const [renderedComponent, setRenderedComponent] = useState<{
-    type: string;
-    data: Record<string, unknown>;
-  } | null>(null);
+// Extract tool results from message parts
+function extractToolResult(message: UpsightMessage): LensRecommendation | null {
+  if (!message.parts) return null;
 
-  // Check tool calls in messages for component rendering
-  // When agent calls recommendLensComponent, we render the appropriate component
-  const lastMessage = messages[messages.length - 1];
-  if (
-    lastMessage?.role === "assistant" &&
-    Array.isArray(
-      (lastMessage as { toolInvocations?: unknown[] }).toolInvocations,
-    )
-  ) {
-    const toolInvocations = (
-      lastMessage as {
-        toolInvocations: {
-          toolName?: string;
-          result?: { componentType?: string; lens?: string };
-        }[];
-      }
-    ).toolInvocations;
-    const componentTool = toolInvocations.find(
-      (t) => t.toolName === "recommend-lens-component",
-    );
-    if (componentTool?.result?.componentType && !renderedComponent) {
-      // Render component based on tool result
-      setRenderedComponent({
-        type: componentTool.result.componentType,
-        data: componentTool.result,
-      });
+  for (const part of message.parts) {
+    const anyPart = part as {
+      type: string;
+      state?: string;
+      output?: LensRecommendation;
+    };
+
+    if (
+      anyPart.type === "tool-recommendLensComponent" &&
+      anyPart.state === "output-available" &&
+      anyPart.output?.renderUI
+    ) {
+      return anyPart.output;
     }
   }
+  return null;
+}
+
+export default function LiveGenerativeUIDemo() {
+  const [input, setInput] = useState("");
+  const [streamingData, setStreamingData] = useState(false);
+
+  // Chat for component selection
+  const { messages, sendMessage, status } = useChat<UpsightMessage>({
+    transport: new DefaultChatTransport({
+      api: "/api/demo/gen-ui-chat",
+    }),
+  });
+
+  // Streaming object for BANT data
+  const {
+    object: bantData,
+    submit: streamBant,
+    isLoading: isStreamingBant,
+  } = useObject({
+    api: "/api/demo/stream-bant",
+    schema: bantSchema,
+  });
+
+  const isBusy = status === "streaming" || status === "submitted";
+
+  // Extract component recommendation
+  const componentToRender = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const result = extractToolResult(messages[i]);
+      if (result) return result;
+    }
+    return null;
+  }, [messages]);
+
+  // Auto-stream BANT data when component is selected
+  useEffect(() => {
+    if (
+      componentToRender?.componentType === "BANTScorecard" &&
+      !streamingData &&
+      !bantData
+    ) {
+      setStreamingData(true);
+      // Get conversation context for BANT analysis
+      const context = messages
+        .map((m) => {
+          const text = m.parts
+            ?.filter((p) => p.type === "text")
+            .map((p) => p.text)
+            .join("");
+          return `${m.role}: ${text}`;
+        })
+        .join("\n");
+      streamBant({ context });
+    }
+  }, [componentToRender, streamingData, bantData, messages, streamBant]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    sendMessage({ text: trimmed });
+    setInput("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl space-y-6 p-6">
-      {/* Header */}
-      <div className="space-y-3">
-        <h1 className="font-bold text-4xl">Live Demo: Conversational Agent</h1>
-        <p className="text-lg">
-          Have a real conversation with the agent. It will ask clarifying
-          questions, understand your goal, and dynamically choose what to show
-          you.
+    <div className="mx-auto min-h-screen max-w-6xl space-y-6 p-6">
+      <div className="space-y-2">
+        <h1 className="font-bold text-3xl">Generative UI Demo</h1>
+        <p className="text-muted-foreground">
+          Chat triggers component selection, then data streams in.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Chat Panel */}
         <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Conversation</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Conversation</CardTitle>
             <CardDescription>
-              Start by saying what you want to learn about your customers
+              Say &quot;I want to qualify deals&quot; to see the BANT component
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
-            {/* Messages */}
-            <div className="mb-4 flex-1 space-y-4 overflow-y-auto">
+            <div className="mb-4 min-h-[300px] max-h-[400px] space-y-3 overflow-y-auto">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                  <Bot className="mb-3 h-12 w-12 text-muted-foreground" />
-                  <p className="font-medium">
-                    Hi! What do you want to learn about your customers?
-                  </p>
-                  <p className="mt-1 text-muted-foreground text-sm">
-                    Try: "I need to qualify some deals" or "I want to understand
-                    user needs"
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center">
+                  <Bot className="mb-2 h-10 w-10 text-muted-foreground" />
+                  <p className="font-medium text-sm">
+                    What do you want to learn?
                   </p>
                 </div>
               )}
 
-              <AnimatePresence mode="popLayout">
-                {messages.map((message, index) => (
-                  <motion.div
-                    key={`${message.id}-${index}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
+              {messages.map((message, index) => {
+                const key = message.id || `${message.role}-${index}`;
+                const isUser = message.role === "user";
+                const textParts =
+                  message.parts
+                    ?.filter((part) => part.type === "text")
+                    .map((part) => part.text) ?? [];
+                const messageText = textParts.filter(Boolean).join("\n").trim();
+
+                if (
+                  !isUser &&
+                  !messageText &&
+                  !(isBusy && index === messages.length - 1)
+                ) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    key={key}
                     className={cn(
-                      "flex gap-3",
-                      message.role === "user" ? "justify-end" : "justify-start",
+                      "flex gap-2",
+                      isUser ? "justify-end" : "justify-start",
                     )}
                   >
-                    {message.role === "assistant" && (
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <Bot className="h-5 w-5 text-primary" />
+                    {!isUser && (
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                        <Bot className="h-4 w-4 text-primary" />
                       </div>
                     )}
                     <div
                       className={cn(
-                        "max-w-[80%] rounded-lg px-4 py-2",
-                        message.role === "user"
+                        "max-w-[85%] rounded-lg px-3 py-2",
+                        isUser
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted",
                       )}
                     >
-                      <p className="text-sm">{message.content}</p>
-
-                      {/* Show tool calls */}
-                      {message.role === "assistant" &&
-                        Array.isArray(
-                          (
-                            message as {
-                              toolInvocations?: {
-                                toolName?: string;
-                                state?: string;
-                                result?: { reasoning?: string };
-                              }[];
-                            }
-                          ).toolInvocations,
-                        ) &&
-                        (
-                          message as {
-                            toolInvocations: {
-                              toolName?: string;
-                              state?: string;
-                              result?: { reasoning?: string };
-                            }[];
-                          }
-                        ).toolInvocations.map((tool, toolIndex) => (
-                          <div
-                            key={`${index}-${toolIndex}`}
-                            className="mt-2 rounded border border-primary/20 bg-primary/5 p-2 text-xs"
-                          >
-                            <p className="font-medium">
-                              🔧{" "}
-                              {tool.toolName === "recommend-lens-component"
-                                ? "Recommending component..."
-                                : tool.toolName}
-                            </p>
-                            {tool.state === "result" &&
-                              tool.result?.reasoning && (
-                                <p className="mt-1 opacity-70">
-                                  {tool.result.reasoning}
-                                </p>
-                              )}
-                          </div>
-                        ))}
+                      {messageText ? (
+                        isUser ? (
+                          <span className="whitespace-pre-wrap text-sm">
+                            {messageText}
+                          </span>
+                        ) : (
+                          <AiResponse className="text-sm">
+                            {messageText}
+                          </AiResponse>
+                        )
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span className="text-xs">Thinking...</span>
+                        </div>
+                      )}
                     </div>
-                    {message.role === "user" && (
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary">
-                        <User className="h-5 w-5 text-primary-foreground" />
+                    {isUser && (
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary">
+                        <User className="h-4 w-4 text-primary-foreground" />
                       </div>
                     )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                    <Bot className="h-5 w-5 text-primary" />
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Thinking...</span>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
 
-            {/* Input */}
             <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
+              <Textarea
                 value={input}
-                onChange={handleInputChange}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Type your message..."
-                disabled={isLoading}
-                className="flex-1"
+                disabled={isBusy}
+                rows={2}
+                className="min-h-[50px] flex-1 resize-none text-sm"
               />
-              <Button type="submit" disabled={isLoading} size="icon">
+              <Button
+                type="submit"
+                disabled={isBusy || !input.trim()}
+                size="icon"
+                className="h-auto"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </form>
@@ -216,97 +273,49 @@ export default function LiveGenerativeUIDemo() {
 
         {/* Component Panel */}
         <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Agent-Chosen Component</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-4 w-4" />
+              Generated Component
+            </CardTitle>
             <CardDescription>
-              Once the agent understands your goal, it will render the
-              appropriate component here
+              {componentToRender
+                ? `${componentToRender.componentType} - ${isStreamingBant ? "Streaming data..." : "Ready"}`
+                : "Waiting for conversation..."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1">
-            {!renderedComponent && (
-              <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                <div className="mb-3 h-16 w-16 rounded-full bg-muted/50" />
-                <p className="font-medium">No component yet</p>
-                <p className="mt-1 text-muted-foreground text-sm">
-                  The agent will choose what to show based on your conversation
+            {!componentToRender && (
+              <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center">
+                <div className="mb-2 h-12 w-12 rounded-full bg-muted/50" />
+                <p className="font-medium text-sm">No component yet</p>
+                <p className="mt-1 text-muted-foreground text-xs">
+                  Try: &quot;I want to qualify deals&quot;
                 </p>
               </div>
             )}
 
-            <AnimatePresence mode="wait">
-              {renderedComponent && (
-                <motion.div
-                  key={renderedComponent.type}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Render component based on type */}
-                  {renderedComponent.type === "BANTScorecard" && (
-                    <BANTScorecard
-                      budget={{
-                        score: 0,
-                        evidence: [],
-                        status: "empty",
-                      }}
-                      authority={{
-                        score: 0,
-                        evidence: [],
-                        status: "empty",
-                      }}
-                      need={{
-                        score: 0,
-                        evidence: [],
-                        status: "empty",
-                      }}
-                      timeline={{
-                        score: 0,
-                        evidence: [],
-                        status: "empty",
-                      }}
-                      overallScore={0}
-                      isStreaming={false}
-                    />
-                  )}
-
-                  {renderedComponent.type === "GenericLens" && (
-                    <div className="rounded-lg border p-6">
-                      <h3 className="mb-2 font-semibold">
-                        {renderedComponent.data.lens} Framework
-                      </h3>
-                      <p className="text-muted-foreground text-sm">
-                        Component for {renderedComponent.data.lens} would render
-                        here
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {componentToRender?.componentType === "BANTScorecard" && (
+              <div className="space-y-3">
+                <div className="rounded-lg bg-primary/5 p-3 text-sm">
+                  <p className="font-medium">{componentToRender.reasoning}</p>
+                </div>
+                <SimpleBANT
+                  data={(bantData as SimpleBANTData) || {}}
+                  isStreaming={isStreamingBant}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Status Footer */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between text-sm">
-            <div>
-              <span className="font-medium">Status:</span>{" "}
-              {isLoading
-                ? "Agent is thinking..."
-                : renderedComponent
-                  ? `Showing ${renderedComponent.type}`
-                  : "Waiting for conversation"}
-            </div>
-            <div className="opacity-70">
-              {messages.length} messages exchanged
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="text-center text-muted-foreground text-xs">
+        Status: {status} | Messages: {messages.length}
+        {componentToRender &&
+          ` | Component: ${componentToRender.componentType}`}
+        {isStreamingBant && " | Streaming BANT data..."}
+      </div>
     </div>
   );
 }

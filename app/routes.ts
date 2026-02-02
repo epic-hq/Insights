@@ -415,6 +415,7 @@ const routes = [
   // Demo routes (PoC components)
   ...generativeUIRoutes,
   route("api/demo/gen-ui-chat", "./routes/api.demo.gen-ui-chat.tsx"),
+  route("api/demo/stream-bant", "./routes/api.demo.stream-bant.tsx"),
 
   // Test routes
   route("test/upsight", "./routes/test.upsight.tsx"),
