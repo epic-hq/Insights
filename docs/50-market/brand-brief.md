@@ -1,442 +1,502 @@
 # UpSight Brand Brief
 
 > **Document Purpose**: Strategic foundation for all marketing, sales, and product communications
-> **Version**: 1.0 | **Date**: February 2026
+> **Version**: 2.0 | **Date**: February 2026
 > **Status**: Draft for Review
 
 ---
 
 ## Executive Summary
 
-UpSight is a conversation-first customer intelligence platform that transforms scattered customer conversations into **defensible decisions**. Unlike tools that generate AI summaries, UpSight provides **evidence with receipts**—every insight links back to who said it, when, and in what context.
+UpSight helps teams **build the right thing, faster**—by turning scattered customer conversations into decisions you can defend.
 
-**One-sentence positioning**: The AI-native CRM that makes customer truth visible, searchable, and actionable across your entire team.
+We're not selling transcription. We're not selling AI summaries. We're selling the end of "I think the customer wants..." and the beginning of "Here's exactly what they said."
 
----
-
-## 1. Brand Foundation
-
-### 1.1 Brand Purpose (Why We Exist)
-
-**Your company has a hearing problem.**
-
-Not a listening problem—your people listen. They pick up the phone. They sit in the room. They run the interviews. The problem is what happens next.
-
-They listen. They learn. **Then they lose it.**
-
-Notes in Notion. Recordings in Zoom. Insights locked in someone's head. By the time it matters, nobody can find what they heard. Teams argue, guess, and build the wrong thing. Sales hears one thing. Product hears another. CS knows the customer is frustrated. Nobody else does.
-
-**UpSight exists to solve this.** We turn scattered customer conversations into evidence your whole team can see, search, and act on.
-
-### 1.2 Brand Vision
-
-To become the **institutional memory** for customer-centric organizations—the AI-powered "Chief of Staff" that knows everything about your customers and makes that knowledge accessible through natural conversation.
-
-### 1.3 Brand Mission
-
-Make customer truth the foundation for every decision by capturing every interaction, synthesizing what matters, and connecting insights to action.
-
-### 1.4 Brand Promise
-
-**Every insight shows its receipts.**
-
-We don't just tell you what customers think. We show you exactly who said it, when they said it, and in what context—so you can trust it, share it, and act on it.
+**One-sentence positioning**: UpSight turns customer conversations into better decisions, faster—with proof you can point to.
 
 ---
 
-## 2. Target Audience
+## 1. The Big Idea
 
-### 2.1 Ideal Customer Profile (ICP)
+### The Human Truth
+
+**The best teams don't lack customer insight. They lose it.**
+
+Every day, smart people at good companies talk to customers. They listen. They take notes. They learn things that could change everything.
+
+And then it disappears.
+
+Into a Notion doc nobody reads. A Zoom recording nobody watches. A Slack thread that scrolls away. Someone's head when they leave the company.
+
+**The tragedy isn't that you don't listen. It's that listening isn't enough.**
+
+Because what good is insight if you can't find it when it matters? What good is learning if you can't prove what you learned? What good is talking to customers if your team still argues about what customers actually want?
+
+### The Aspiration
+
+**What if every decision your team makes could start with "Here's what customers actually said"?**
+
+Not "I think." Not "My gut says." Not "The loudest person in the room believes."
+
+Actual words. From actual customers. That anyone can find, verify, and act on.
+
+That's not a feature. That's a different way of building a company.
+
+### The Promise
+
+**Build the right thing, faster.**
+
+UpSight captures what customers tell you and turns it into decisions you can defend—so you stop debating and start shipping.
+
+---
+
+## 2. Brand Foundation
+
+### 2.1 Why We Exist
+
+To end the gap between what customers tell you and what your team does about it.
+
+### 2.2 What We Believe
+
+- **Customer conversations are gold.** But only if you can mine them.
+- **AI should prove, not just produce.** Summaries without sources are just expensive guesses.
+- **Speed matters.** The team that learns fastest wins.
+- **Alignment beats brilliance.** A mediocre insight everyone acts on beats a great insight nobody sees.
+
+### 2.3 What We Enable
+
+| Old World | UpSight World |
+|-----------|---------------|
+| "I think customers want..." | "Here's exactly what they said." |
+| Debate what to build | Decide what to build |
+| Research dies in decks | Research drives roadmaps |
+| Repeat the same discovery | Build on what you've learned |
+| Loudest voice wins | Customer voice wins |
+
+---
+
+## 3. Value Proposition
+
+### 3.1 Core Value Prop
+
+**Make better customer decisions, faster.**
+
+UpSight turns every conversation—interviews, calls, surveys, support tickets—into searchable, shareable intelligence that connects directly to action.
+
+### 3.2 The Proof (Why Believe Us)
+
+Every insight shows its receipts.
+
+Click any theme, any finding, any recommendation—and see exactly who said it, when, in what context. This isn't AI hallucination. This is evidence you can verify.
+
+### 3.3 Value Ladder
+
+```
+OUTCOME (what you get)
+├── Build the right thing → Ship features customers actually want
+├── Move faster → Decisions in hours, not weeks of synthesis
+├── Align your team → One truth, not five opinions
+└── Stop repeating work → Find what you've already learned
+
+HOW (what UpSight does)
+├── Captures every conversation → Interviews, calls, surveys, tickets, notes
+├── Synthesizes what matters → Themes, patterns, insights, signals
+├── Connects to action → Tasks, opportunities, roadmap items
+└── Makes it findable → Search, chat, share
+
+WHY TRUST IT (the differentiator)
+└── Every insight links to source → Click to verify. See the receipts.
+```
+
+### 3.4 Three Promises
+
+| Promise | Meaning | Proof |
+|---------|---------|-------|
+| **Build the right thing** | Stop guessing what customers want | Evidence-backed prioritization |
+| **Move faster** | Decisions in hours, not weeks | Same-day synthesis vs. 2+ weeks |
+| **Defend your decisions** | End "he said, she said" debates | Click any insight → see the source |
+
+---
+
+## 4. Target Audience
+
+### 4.1 Who This Is For
+
+**Teams small enough to care, busy enough to need help.**
 
 | Attribute | Specification |
 |-----------|---------------|
 | **Company Size** | 5-50 people |
-| **Customer Contact Frequency** | Weekly (not quarterly research projects) |
-| **Work Style** | Distributed or async (can't rely on hallway conversations) |
-| **Budget Reality** | Resource-constrained (no budget for Dovetail + Gong + dedicated researcher) |
-| **Decision Proximity** | Decision-makers or close to them |
+| **Customer Contact** | Weekly conversations (not quarterly research projects) |
+| **Pain Level** | Losing insights across tools and people |
+| **Decision Style** | Want to be evidence-driven but lack infrastructure |
+| **Budget Reality** | Can't afford Dovetail + Gong + dedicated researcher |
 
-### 2.2 Primary Personas
+### 4.2 Primary Personas
 
-#### Persona 1: Startup Founder
-- **Pain**: Losing insights between their ears and their team
-- **Goal**: Make faster, more confident product and GTM decisions
-- **Message**: "Stop debating what customers want. Know."
+#### The Founder (5-30 person company)
+- **Reality**: Talks to customers constantly, insights trapped in their head
+- **Fear**: Building the wrong thing. Again.
+- **Dream**: Make decisions their team trusts and customers validate
+- **Message**: "Stop debating what to build. Know."
 
-#### Persona 2: Consultant / Fractional Executive
-- **Pain**: Spending more time synthesizing than advising
-- **Goal**: Turn stakeholder interviews into defensible recommendations
-- **Message**: "From stakeholder interviews to defensible recommendations in hours, not weeks."
+#### The Consultant / Fractional Exec
+- **Reality**: Drowning in stakeholder interviews, synthesizing for days
+- **Fear**: Recommendations that get challenged or ignored
+- **Dream**: Walk into every meeting with undeniable evidence
+- **Message**: "Recommendations that can't be argued with."
 
-#### Persona 3: Product / UX Lead (at companies without dedicated researchers)
-- **Pain**: Research that dies in a slide deck nobody reads
-- **Goal**: Connect customer evidence to product decisions
-- **Message**: "Research that doesn't die in a slide deck."
+#### The Product Lead (no research team)
+- **Reality**: Owns customer insight but lacks time and tools
+- **Fear**: Research that dies in a slide deck
+- **Dream**: Evidence that actually changes what gets built
+- **Message**: "Research that ships."
 
-#### Persona 4: Customer Success Leader
-- **Pain**: Knowing the problem but not being able to prove it
-- **Goal**: Surface churn signals and cross-team alignment
-- **Message**: "See churn signals before they become churn."
+#### The CS Leader
+- **Reality**: Hears churn signals, can't prove them to leadership
+- **Fear**: Watching preventable churn happen
+- **Dream**: Early warning system with receipts
+- **Message**: "See it coming. Prove it. Fix it."
 
-### 2.3 Anti-Personas (Who This Isn't For)
+### 4.3 Who This Isn't For
 
 - Companies that don't talk to customers
-- Enterprises with 47 existing tools they'll never replace
-- Anyone looking for "AI magic" without doing the work
-- Enterprise teams with dedicated research ops (8+ person teams)
+- Enterprises with 47 tools they'll never consolidate
+- Anyone looking for AI magic without doing the work
+- Teams with dedicated research ops (8+ people)
 - Sales-only orgs who just want call coaching
 
 ---
 
-## 3. Market Context
+## 5. Positioning
 
-### 3.1 Category Definition
+### 5.1 Market Position
 
-**Customer Intelligence Platform** (conversation-first CRM for Product + Sales)
-
-We occupy the whitespace between research tools and sales tools:
+We sit in the whitespace between research tools and sales tools:
 
 ```
-RESEARCH TOOLS ──────────────► SALES TOOLS
-(Dovetail, Looppanel)          (Gong, Chorus)
-    Optimize for LEARNING          Optimize for COACHING
+RESEARCH TOOLS                         SALES TOOLS
+(Dovetail, Looppanel)                 (Gong, Chorus)
 
-              ↓ UpSight ↓
+  Built for researchers                Built for sales managers
+  Optimize for LEARNING                Optimize for COACHING
+  Slow, thorough, academic             Fast, narrow, quota-focused
 
-         WHITESPACE
-    Optimize for DECISIONS
-    (Small teams, All roles, Action-first)
+
+                    ↓ UPSIGHT ↓
+
+               Built for BUILDERS
+            Optimize for DECISIONS
+         Fast, cross-functional, action-first
 ```
 
-### 3.2 Competitive Landscape
+### 5.2 Competitive Framing
 
-| Competitor | Their Focus | Our Angle |
-|------------|-------------|-----------|
+| They Say | We Say |
+|----------|--------|
+| "AI-powered summaries" | "Evidence you can verify" |
+| "Research repository" | "Decision engine" |
+| "Capture everything" | "Find what matters" |
+| "Insights" | "Proof" |
+
+| Competitor | Their Game | Our Angle |
+|------------|------------|-----------|
 | **Dovetail** | Research repository for UX teams | For teams without dedicated researchers |
-| **Gong/Chorus** | Sales call coaching | For product + CS + founders, not just sales |
+| **Gong** | Sales call coaching | For the whole company, not just sales |
+| **Notion + AI** | Docs with AI bolted on | Purpose-built for customer evidence |
 | **Looppanel** | Interview analysis | End-to-end: capture → synthesize → act |
-| **Notion + AI** | General docs with AI | Purpose-built for customer evidence |
-| **Otter/Fathom** | Transcription | Synthesis + traceability, not just notes |
 
-### 3.3 Competitive Moat
+### 5.3 Positioning Statement
 
-**What's easy to copy:**
-- Transcription (commodity)
-- AI summaries (everyone has GPT)
-- Pretty dashboards
+**For** teams who talk to customers constantly but lose what they learn,
 
-**What's hard to copy (our moat):**
-- **Evidence traceability** – Click any theme → see exactly who said it
-- **Cross-source synthesis** – Calls + tickets + notes + surveys, unified
-- **Role-aware analysis** – CEO vs. end user perspectives, distinguished
-- **Action integration** – Insights → tasks → outcomes, connected
+**UpSight** is the customer intelligence platform
+
+**That** turns conversations into decisions you can defend
+
+**Unlike** AI summary tools that generate unverifiable text,
+
+**UpSight** connects every insight to its source—so you can trust it, share it, and ship it.
 
 ---
 
-## 4. Brand Positioning
+## 6. Taglines & Headlines
 
-### 4.1 Positioning Statement
+### 6.1 Primary Tagline
 
-**For** small teams who talk to customers constantly but lose insights across tools,
+**"Build the right thing, faster."**
 
-**UpSight is** a customer intelligence platform
+### 6.2 Alternative Taglines
 
-**That** turns scattered conversations into defensible decisions with full evidence traceability
+| Option | Energy |
+|--------|--------|
+| "Customer decisions, defended." | Authority |
+| "From conversation to conviction." | Journey |
+| "Know what to build." | Simplicity |
+| "Customer truth, connected." | Poetic |
 
-**Unlike** AI summary tools or traditional CRMs,
+### 6.3 Headlines by Context
 
-**We** connect every insight back to its source—so you can trust it, share it, and act on it.
-
-### 4.2 Tagline Options
-
-| Primary | "Customer truth, connected." |
-|---------|------------------------------|
-| Alternative 1 | "Every insight shows its receipts." |
-| Alternative 2 | "Turn conversations into decisions." |
-
-### 4.3 Key Differentiators
-
-1. **Grounded, Not Generated** – Every insight links back to who said it, when, in what context
-2. **One Place, Not Five Tools** – All synthesized together (calls, notes, tickets, surveys)
-3. **Decisions, Not Decks** – Insights roll into tasks with owners and deadlines
-4. **Human + AI, Not AI-Only** – AI assists; humans lead
-
-### 4.4 What We Sell vs. What We Don't
-
-| We Sell | We Don't Sell |
-|---------|---------------|
-| Defensible decisions | AI summaries |
-| Shared reality across teams | Faster note-taking |
-| Evidence you can act on | Research repositories |
-| Traceability to source | Call recordings |
+| Context | Headline |
+|---------|----------|
+| **Homepage Hero** | "Your customers told you what to build. Can you find it?" |
+| **Product Page** | "Every conversation. One truth. Zero guesswork." |
+| **Founder Landing** | "Stop debating what to build. Know." |
+| **Consultant Landing** | "From stakeholder interviews to undeniable recommendations." |
+| **Product Lead Landing** | "Research that actually ships." |
+| **CS Landing** | "See churn coming. Prove it. Stop it." |
 
 ---
 
-## 5. Value Proposition
+## 7. Brand Voice
 
-### 5.1 Core Value Proposition
+### 7.1 Brand Archetype
 
-**Transform scattered customer conversations into evidence your whole team can see, search, and act on—with full traceability to the source.**
+**The Trusted Operator**
 
-### 5.2 Value by Persona
+Not the flashy visionary. Not the aggressive disruptor. The calm, experienced builder who's seen teams waste months building the wrong thing—and knows there's a better way.
 
-| Persona | Primary Value | Proof Point |
-|---------|---------------|-------------|
-| **Founders** | Faster, more confident decisions | Ship the right feature, not the loudest request |
-| **Consultants** | 8-12 hours saved per project | $1,200-3,600 value at consulting rates |
-| **Product/UX** | Research connected to roadmap | Evidence that doesn't die in slide decks |
-| **CS Leaders** | Early warning on churn risk | Signal detection from QBR conversations |
+We're the person you want in the room when decisions get hard.
 
-### 5.3 ROI Framework
+### 7.2 Voice Principles
 
-| Metric | Value |
-|--------|-------|
-| **Time to synthesize interviews** | 2+ weeks → same day |
-| **Consulting project savings** | 8-12 hours × $150-300/hr = $1,200-3,600 |
-| **Weekly synthesis time (PMs)** | 4 hours → 30 minutes |
-| **Repeated discovery elimination** | Find what your team already learned |
+| Principle | Meaning | Example |
+|-----------|---------|---------|
+| **Direct** | Say it plainly. No jargon. | "See what customers said" not "Leverage voice-of-customer insights" |
+| **Confident** | We've seen this work. No hedging. | "You'll find patterns in minutes" not "You might potentially discover..." |
+| **Grounded** | AI hype is everywhere. We're not. | "Every insight shows its source" not "Revolutionary AI-powered intelligence" |
+| **Useful** | Help, don't lecture. | "Here's how to get started" not "Best practices for customer centricity" |
 
----
+### 7.3 We Say / We Don't Say
 
-## 6. Brand Personality & Voice
+| We Say | We Don't Say |
+|--------|--------------|
+| "Here's what customers said" | "AI-powered insights" |
+| "See the source" | "Unlock the power of" |
+| "Build the right thing" | "10x your customer understanding" |
+| "Find patterns in minutes" | "Revolutionary" / "Game-changing" |
+| "Proof you can point to" | "Actionable intelligence" |
 
-### 6.1 Brand Archetype
-
-**The Guide / Sage** – A calm, experienced operator who's seen the mess and knows the way out. Not the hero of the story—that's the customer.
-
-### 6.2 Personality Traits
-
-| Trait | Description |
-|-------|-------------|
-| **Confident** | We know this works. No hedging. |
-| **Clear** | Direct language. No jargon. |
-| **Evidence-based** | Show, don't tell. Receipts, not rhetoric. |
-| **Grounded** | Realistic about what AI can/can't do. |
-| **Helpful** | Enable success, don't gatekeep it. |
-
-### 6.3 Voice Guidelines
-
-**We say:**
-- "Here's what customers are actually saying."
-- "Every insight shows its receipts."
-- "Start with one project. See what you learn."
-
-**We never say:**
-- "Revolutionary AI-powered insights"
-- "10x your customer understanding"
-- "Crush your competition with data"
-- "Unlock the power of..."
-- "Game-changing"
-
-### 6.4 Tone Calibration
+### 7.4 Tone by Context
 
 | Context | Tone |
 |---------|------|
-| **Homepage** | Confident, slightly provocative (the "hearing problem") |
+| **Homepage** | Confident, slightly provocative |
 | **Product UI** | Clear, helpful, encouraging |
-| **Error messages** | Honest, not defensive |
-| **Success moments** | Celebratory but not over-the-top |
-| **Sales conversations** | Consultative, not pushy |
+| **Errors** | Honest, specific, fixable |
+| **Success moments** | Warm but not performative |
+| **Sales** | Consultative, curious, not pushy |
 
 ---
 
-## 7. Key Messages
+## 8. Campaigns
 
-### 7.1 Message Hierarchy
+### 8.1 Campaign: "What Did They Say?"
 
-**Level 1 (Brand):** Customer truth, connected.
+**Insight**: Every team argues about what customers want. Nobody can prove it.
 
-**Level 2 (Problem):** Your company has a hearing problem. Your people listen. Then they lose it.
+**Headline**: "Your team has opinions about customers. Do they have proof?"
 
-**Level 3 (Solution):** UpSight captures every customer conversation and turns it into evidence your whole team can see, search, and act on.
+**Visual**: Meeting room, everyone talking, giant quote bubble from actual customer floating above them—unnoticed.
 
-**Level 4 (Proof):** Every insight links back to who said it, when, in what context. Click any theme to see the receipts.
+**Tagline**: "Build the right thing, faster."
 
-### 7.2 Audience-Specific Headlines
-
-| Audience | Headline |
-|----------|----------|
-| **General** | "Your customers told you everything. Do you remember?" |
-| **Founders** | "Stop debating what customers want. Know." |
-| **Consultants** | "From interviews to recommendations in hours, not weeks." |
-| **Product** | "Research that doesn't die in a slide deck." |
-| **CS** | "See churn signals before they become churn." |
-
-### 7.3 Objection Handling Messages
-
-| Objection | Response |
-|-----------|----------|
-| "We use Notion/Docs" | "Great for storing. Not built for synthesis or traceability." |
-| "AI summaries hallucinate" | "That's why every UpSight insight shows its receipts." |
-| "We're too small for this" | "You're exactly who we built this for. Start with 5 conversations." |
-| "Dovetail/Gong does this" | "For dedicated research teams or sales coaching. We're for everyone who talks to customers." |
+**CTA**: "Start with 5 conversations"
 
 ---
 
-## 8. Campaign Concepts
+### 8.2 Campaign: "The Last Time"
 
-### 8.1 Campaign: "Remember"
+**Insight**: Teams repeat the same customer discovery because nobody can find what was already learned.
 
-**Insight**: The tragedy isn't that teams don't listen—it's that they forget.
+**Concept**: A series showing "the last time" moments:
+- "The last time you'll wonder what customers actually said."
+- "The last time you'll dig through Notion for that one quote."
+- "The last time you'll argue about priorities without proof."
+- "The last time you'll build something nobody asked for."
 
-**Headline**: "Your customers told you everything. Do you remember?"
+**Visual**: Stark, clean. Problem on left (chaos), solution on right (clarity).
 
-**Visual**: Split screen. Left: chaotic notes, scattered tools, arguing team. Right: calm, connected, decisive team.
-
-**CTA**: "Start remembering"
-
-### 8.2 Campaign: "Receipts"
-
-**Insight**: AI tools promise summaries. We deliver proof.
-
-**Headline**: "AI can say anything. We show the proof."
-
-**Subhead**: Every AI tool gives you summaries. Only UpSight gives you receipts.
-
-**Visual**: Bold insight statement with "show receipts" button revealing exact customer quote, timestamp, context.
-
-**CTA**: "See the receipts"
-
-### 8.3 Campaign: "One Truth"
-
-**Insight**: Cross-functional alignment fails because teams have different versions of customer reality.
-
-**Headline**: "Sales heard it. Product missed it. CS knew it. Nobody proved it. Until now."
-
-**Visual**: Single thread connecting multiple people across company—all seeing the same customer insight.
-
-**CTA**: "See one truth"
+**CTA**: "Make it the last time"
 
 ---
 
-## 9. Proof Points & Social Proof
+### 8.3 Campaign: "Receipts"
 
-### 9.1 Time-to-Value Metrics
+**Insight**: AI tools make claims. We show proof.
 
-| Metric | Target |
-|--------|--------|
-| **Time to wow** | < 33 minutes (signup → cross-interview synthesis) |
-| **First value** | Upload 2 conversations, see patterns immediately |
-| **Full project value** | Same day (vs. 2+ weeks traditional synthesis) |
+**Headline**: "AI can say anything. We show where it came from."
 
-### 9.2 Success Metrics to Track
+**Visual**: Bold insight statement. "Show source" button. Click reveals exact quote, speaker, timestamp, context.
 
-| Metric | Why It Matters |
-|--------|----------------|
-| **Second project usage** | > 60% = real adoption, not trial curiosity |
-| **"Would you show this to your team?"** | Trust is the unlock |
-| **Referral rate** | Teams who give a damn tell other teams |
-| **Time saved (self-reported)** | ROI proof for expansion |
+**Subhead**: "Every insight. Verified. Traceable. Defensible."
 
-### 9.3 Case Study Framework
-
-**Structure**:
-1. **Before**: Chaos snapshot (hours spent, tools scattered, decisions questioned)
-2. **Turning point**: First time they found an insight they would have missed
-3. **After**: Quantified improvement (time saved, decisions accelerated)
-4. **Quote**: One sentence on the emotional impact
+**CTA**: "See it in action"
 
 ---
 
-## 10. Go-to-Market Guidance
+### 8.4 Campaign: "One Conversation Away"
 
-### 10.1 Primary Call-to-Action
+**Insight**: The insight that changes everything might already be in a recording you haven't watched.
 
-**"Start with one project and five conversations."**
+**Headline**: "The answer's in a conversation you've already had."
 
-**Why this works:**
+**Visual**: Mountain of video files, transcripts, notes. One golden thread running through them.
+
+**Subhead**: "UpSight finds what matters in what you've already captured."
+
+**CTA**: "Upload your first conversation"
+
+---
+
+## 9. Proof Points
+
+### 9.1 Speed Claims
+
+| Metric | Claim | Context |
+|--------|-------|---------|
+| **Time to first insight** | < 33 minutes | Signup → upload 2 conversations → see synthesis |
+| **Synthesis time** | Same day vs. 2+ weeks | Traditional manual synthesis |
+| **Weekly time saved** | 3-4 hours | For PMs doing regular customer work |
+| **Per-project savings** | 8-12 hours | Consultants synthesizing interviews |
+
+### 9.2 ROI Framework
+
+| Persona | Time Saved | Value |
+|---------|------------|-------|
+| **Consultant** ($150-300/hr) | 8-12 hrs/project | $1,200-3,600/project |
+| **Product Manager** | 4 hrs/week | 200 hrs/year |
+| **Founder** | Incalculable | Not building the wrong thing |
+
+### 9.3 Qualitative Proof (to collect)
+
+- "First time our whole team was looking at the same customer truth"
+- "Found a pattern in 10 minutes that would've taken me a week"
+- "Finally had receipts when leadership questioned our priorities"
+- "Stopped the 'but I heard customers say...' arguments"
+
+---
+
+## 10. Go-to-Market
+
+### 10.1 Primary CTA
+
+**"Start with one project and 5 conversations."**
+
+Why this works:
 - Low commitment (not "implement across your org")
 - Concrete milestone (not "try it out")
-- Fast time-to-wow (< 33 minutes)
-- Natural expansion path (success leads to more projects)
+- Achievable quickly (< 1 hour to value)
+- Natural expansion (success → more projects)
 
-### 10.2 Secondary CTAs
+### 10.2 Beachhead Sequence
 
-1. "Watch 2-minute demo"
-2. "See how [similar company] uses UpSight"
-3. "Talk to us"
+| Phase | Segment | Why First |
+|-------|---------|-----------|
+| **1** | Solo consultants | Buy alone, fast feedback, become advocates |
+| **2** | Boutique firms (5-15) | Word of mouth, team features |
+| **3** | Startup product leads | No research team, need a system |
+| **4** | Growth teams (15-50) | Only if pulled, don't chase |
 
-### 10.3 Beachhead Strategy
+### 10.3 Channel Strategy (Draft)
 
-**Phase 1: Solo Consultants**
-- Buy alone, low CAC, fast feedback, become advocates
-
-**Phase 2: Boutique Firms (5-15 people)**
-- Word of mouth, team features, fast sales cycle
-
-**Phase 3: Startup Product/UX Leads**
-- No dedicated research team, need a system
-
-**Phase 4: Practice Teams (15-50)**
-- Only if pulled, don't chase prematurely
-
----
-
-## 11. Brand Assessment
-
-### What's Solid
-
-| Element | Assessment |
-|---------|------------|
-| **Core positioning** | Strong. "Customer truth, connected" is clear, differentiated, and memorable. |
-| **Problem articulation** | Excellent. The "hearing problem" narrative is emotionally resonant and specific. |
-| **Differentiation** | Clear. "Receipts" / evidence traceability is a genuine moat. |
-| **Target audience** | Well-defined. Anti-personas add clarity. |
-| **Voice & tone** | Consistent and distinctive. Anti-patterns prevent drift. |
-| **Value proposition** | Concrete with quantified ROI. |
-| **Campaign concepts** | Strong conceptual foundation with visual hooks. |
-
-### Needs Work
-
-| Element | Gap | Recommendation |
-|---------|-----|----------------|
-| **Social proof** | No customer testimonials, case studies, or logos yet | Prioritize collecting 3-5 early customer stories |
-| **Pricing narrative** | Pricing undefined; value ≠ price articulation | Define pricing tiers with clear value mapping |
-| **Visual identity** | No logo, color, typography guidelines in docs | Develop brand identity system |
-| **Competitive proof** | Claims unsubstantiated with head-to-head comparisons | Create comparison landing pages with evidence |
-| **Enterprise messaging** | Explicitly excluded but may need eventually | Park for now; revisit post-PMF |
-| **Product screenshots** | No visual evidence of product in brand materials | Add product imagery to campaigns |
-| **SEO/content strategy** | No documented content pillars | Define content themes aligned to positioning |
-| **Partner/integration story** | Weak integration ecosystem acknowledged | Either build integrations or reframe as feature |
-| **International considerations** | US-only language, no localization plan | Low priority but note for future |
-
-### Critical Gaps to Address Before Launch
-
-1. **Customer proof**: At minimum 3 testimonial quotes with names/companies
-2. **Product visuals**: Screenshots showing the "receipts" experience
-3. **Pricing page**: Even "contact us" with tier hints
-4. **Competitive landing pages**: vs. Dovetail, vs. Gong, vs. Notion
-5. **Demo video**: The 2-minute CTA needs actual content
+| Channel | Use For |
+|---------|---------|
+| **LinkedIn (organic)** | Thought leadership, consultant reach |
+| **Product Hunt** | Launch moment, early adopter signal |
+| **Communities** | Lenny's, Product Coalition, consulting Slacks |
+| **Content/SEO** | "How to synthesize customer interviews" etc. |
+| **Partnerships** | Fractional exec networks, consulting tools |
 
 ---
 
-## 12. Appendix
+## 11. Differentiators (Why Us)
+
+### 11.1 Defensible Advantages
+
+| Differentiator | What It Means | Why It Matters |
+|----------------|---------------|----------------|
+| **Evidence traceability** | Click any insight → see source | Trust. Defensibility. End of "AI made it up." |
+| **Cross-source synthesis** | Calls + surveys + tickets + notes | One truth from fragmented reality |
+| **Role-aware analysis** | CEO vs. user vs. buyer perspectives | Nuance, not noise |
+| **Action connection** | Insights → tasks → outcomes | Research that ships, not sits |
+
+### 11.2 What's Easy to Copy (Not Our Moat)
+
+- Transcription (commodity)
+- AI summaries (everyone has GPT)
+- Pretty dashboards (design is tablestakes)
+
+### 11.3 What's Hard to Copy (Our Moat)
+
+- **Evidence graph**: The connection layer between insight and source
+- **Multi-source synthesis**: Unified model across conversation types
+- **Workflow integration**: From insight to decision to action
+- **Trust through transparency**: The "show receipts" paradigm
+
+---
+
+## 12. Assessment
+
+### What's Strong
+
+| Element | Status |
+|---------|--------|
+| **Core promise** | "Build the right thing, faster" is clear, outcome-focused, universal |
+| **Problem narrative** | "Listen → lose it" is emotionally true and specific |
+| **Differentiator** | Evidence traceability is real, hard to copy, and matters |
+| **Target definition** | Tight ICP with clear anti-personas |
+| **Voice** | Confident without being arrogant, clear without being boring |
+
+### What Needs Work
+
+| Gap | Priority | Action |
+|-----|----------|--------|
+| **Customer proof** | Critical | Get 3-5 testimonials with names before launch |
+| **Product visuals** | Critical | Screenshots showing the "see source" experience |
+| **Demo video** | High | 2-minute video for CTAs |
+| **Pricing** | High | Define tiers with clear value mapping |
+| **Competitive pages** | Medium | vs. Dovetail, vs. Gong, vs. Notion landing pages |
+| **Content strategy** | Medium | Define SEO pillars aligned to positioning |
+| **Visual identity** | Medium | Logo, colors, typography system |
+
+### Open Questions
+
+1. **"Build the right thing" vs. "Make better decisions"** — which resonates more?
+2. **How hard to lean into AI skepticism** — "AI hallucinates, we don't" as angle?
+3. **Consultant-first or founder-first** — which beachhead to prioritize?
+4. **Pricing psychology** — value-based ($X per insight?) vs. seat-based?
+
+---
+
+## 13. Appendix
 
 ### A. Source Documents
 
-- `/docs/50-market/positioning-brief-v2.md` – Latest positioning (January 2026)
-- `/docs/50-market/positioning-brief.md` – Comprehensive positioning with battle-testing
-- `/docs/50-market/customer-centric-crm-value-prop.md` – Full feature breakdown
-- `/docs/50-market/market/competitors-discovery-sales-notes/our-honest-assessment.md` – Competitive analysis
-- `/docs/50-market/market/positioning-consulting/consulting-critical-analysis.md` – Beachhead strategy
-- `/docs/10-architecture/platform-vision.md` – Long-term platform direction
+| Document | Content |
+|----------|---------|
+| `/docs/50-market/positioning-brief-v2.md` | Latest positioning narrative |
+| `/docs/50-market/positioning-brief.md` | Comprehensive positioning + battlecards |
+| `/docs/50-market/customer-centric-crm-value-prop.md` | Feature breakdown |
+| `/docs/50-market/market/competitors-discovery-sales-notes/our-honest-assessment.md` | Competitive analysis |
+| `/docs/50-market/market/positioning-consulting/consulting-critical-analysis.md` | Consulting beachhead strategy |
 
 ### B. Glossary
 
 | Term | Definition |
 |------|------------|
-| **Receipts** | Evidence linking any insight back to its source (who, when, context) |
-| **Conversation Lens** | Structured framework for analyzing conversations (e.g., BANT, Empathy Map) |
-| **Evidence** | AI-extracted quotes/moments with attribution and timestamps |
+| **Receipts** | Traceable link from any insight to its source (who said it, when, context) |
+| **Evidence** | AI-extracted quote/moment with attribution |
 | **Theme** | Pattern clustered from multiple pieces of evidence |
-| **Customer truth** | Shared understanding of what customers actually said |
+| **Lens** | Structured framework for analyzing conversations (BANT, Empathy Map, etc.) |
 
-### C. Brand Brief Change Log
+### C. Change Log
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | Feb 2026 | Initial brand brief created |
+| 1.0 | Feb 2026 | Initial brand brief |
+| 2.0 | Feb 2026 | Elevated value prop from "receipts" to "build the right thing, faster" |
 
 ---
 
-*This brand brief should be reviewed quarterly and updated as market conditions, competitive landscape, or product capabilities evolve.*
+*Review quarterly. Update as product, market, and customer understanding evolves.*
