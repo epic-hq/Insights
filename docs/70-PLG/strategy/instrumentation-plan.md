@@ -372,7 +372,7 @@ All content types can be shared. Track with consistent properties:
 
 ### O. Email Engagement Events
 
-Tracked via Brevo webhook integration (see [Email Campaigns Setup](./email-campaigns-setup.md#brevo--posthog-webhook-email-events))
+Tracked via Brevo webhook integration (see [Brevo Setup](../nurture/brevo-setup.md#brevo--posthog-webhook-email-events))
 
 | Event | Status | Trackable? | Location | Properties |
 |-------|--------|------------|----------|------------|
@@ -683,7 +683,7 @@ export const updateUserMetrics = task({
 
 ### Email Campaigns (Brevo)
 
-See [Email Campaigns Setup](./email-campaigns-setup.md) for detailed implementation guide.
+See [Brevo Setup](../nurture/brevo-setup.md) for detailed implementation guide.
 
 | Trigger | Cohort | Email | CTA |
 |---------|--------|-------|-----|
@@ -739,4 +739,4 @@ See [Email Campaigns Setup](./email-campaigns-setup.md) for detailed implementat
 - [PostHog Tracking Guide](./posthog-tracking.md) - Naming conventions
 - [PostHog Events Implemented](./posthog-events-implemented.md) - Current state
 - [Activation Strategy](./activation-strategy.md) - Reverse trial design
-- [Email Campaigns Setup](./email-campaigns-setup.md) - Brevo configuration
+- [Brevo Setup](../nurture/brevo-setup.md) - Brevo configuration

@@ -18,12 +18,22 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [["html", { open: "never" }], ["list"]],
+  globalSetup: "./tests/e2e/global-setup.ts",
 
   use: {
     baseURL: process.env.E2E_BASE_URL || "http://localhost:4280",
-    trace: "on-first-retry",
+    trace:
+      process.env.E2E_TRACE === "on"
+        ? "on"
+        : process.env.CI
+          ? "on-first-retry"
+          : "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    storageState:
+      process.env.E2E_TEST_EMAIL && process.env.E2E_TEST_PASSWORD
+        ? "tests/e2e/.auth/user.json"
+        : undefined,
   },
 
   projects: [

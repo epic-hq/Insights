@@ -2,7 +2,8 @@
 
 ## Executive Summary
 
-Convert 30 existing signups to paid plans through a **reverse trial + early adopter discount** strategy, leveraging PostHog cohorts for segmentation and Engage.so for automated email campaigns.
+Convert 30 existing signups to paid plans through a **reverse trial + early adopter discount** strategy, leveraging PostHog cohorts for segmentation and Brevo for automated email campaigns.
+For execution details, see `/docs/70-PLG/nurture/plan.md`.
 
 ---
 
@@ -194,9 +195,9 @@ Create in Polar:
    })
    ```
 
-### Engage.so Campaigns
+### Brevo Campaigns
 
-1. **Lists:** Sync from PostHog cohorts via API or CSV export
+1. **Lists:** Sync from PostHog cohorts via native destination or CSV export
 2. **Automations:**
    - Trial welcome sequence (3 emails)
    - Trial ending sequence (2 emails)
@@ -218,7 +219,7 @@ ALTER TABLE accounts.accounts ADD COLUMN IF NOT EXISTS trial_plan TEXT DEFAULT '
 
 | Week | Activity |
 |------|----------|
-| **Week 1** | Set up PostHog cohorts, create Engage campaigns |
+| **Week 1** | Set up PostHog cohorts, create Brevo automations |
 | **Week 2** | Create discount codes in Polar, test trial flow |
 | **Week 3** | Pre-launch warm-up emails |
 | **Week 4** | Launch, monitor metrics daily |
@@ -374,7 +375,7 @@ if (!result.allowed) {
 2. [ ] Create cohort segments in PostHog dashboard
 3. [ ] Set up discount codes in Polar (FOUNDING40, EARLYBIRD25)
 4. [ ] Draft email copy for each campaign phase
-5. [ ] Configure Engage.so lists and automations
+5. [ ] Configure Brevo lists and automations
 6. [ ] Add trial columns to database schema
 7. [ ] Build trial grant/revoke logic in app
 8. [ ] Schedule pre-launch emails

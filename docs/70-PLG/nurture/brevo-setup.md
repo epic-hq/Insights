@@ -3,6 +3,7 @@
 ## Overview
 
 This document details how to implement automated email campaigns using PostHog cohorts for segmentation and Brevo (formerly Sendinblue) for delivery.
+For the canonical plan, see `/docs/70-PLG/nurture/plan.md`.
 
 **Why Brevo:**
 - **Cost-effective**: Free tier (300 emails/day), then $25/mo for 20k emails vs $99/mo alternatives
@@ -12,9 +13,9 @@ This document details how to implement automated email campaigns using PostHog c
 - **Strong API**: Easy cohort sync with webhooks for event tracking
 
 **Related docs:**
-- [Activation Strategy](./activation-strategy.md) - Campaign strategy and messaging
-- [PostHog Tracking](./posthog-tracking.md) - Event definitions and cohorts
-- [Email Setup](../20-features-prds/features/email.md) - DNS and deliverability
+- [Activation Strategy](../strategy/activation-strategy.md) - Campaign strategy and messaging
+- [PostHog Tracking](../../60-ops-observability/posthog-tracking.md) - Event definitions and cohorts
+- [Email Setup](../../20-features-prds/features/email.md) - DNS and deliverability
 
 ---
 

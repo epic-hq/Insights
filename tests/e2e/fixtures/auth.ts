@@ -5,9 +5,7 @@
  * Uses test credentials from environment variables.
  */
 import { test as base, type Page } from "playwright/test";
-import * as path from "node:path";
-
-const STORAGE_STATE_PATH = path.join(__dirname, "..", ".auth", "user.json");
+import { STORAGE_STATE_PATH } from "./storage-state";
 
 export interface AuthFixture {
   login: (email?: string, password?: string) => Promise<void>;
@@ -18,8 +16,17 @@ export interface AuthFixture {
  * Creates an auth fixture for handling login flows.
  */
 async function setupAuth(page: Page): Promise<AuthFixture> {
+  const isLoggedIn = async () => {
+    const cookies = await page.context().cookies();
+    return cookies.some(
+      (c) => c.name.includes("supabase") || c.name.includes("auth"),
+    );
+  };
+
   return {
     async login(email?: string, password?: string) {
+      if (await isLoggedIn()) return;
+
       const testEmail = email || process.env.E2E_TEST_EMAIL;
       const testPassword = password || process.env.E2E_TEST_PASSWORD;
 
@@ -32,20 +39,16 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
       await page.goto("/login");
       await page.fill('input[name="email"]', testEmail);
       await page.fill('input[name="password"]', testPassword);
-      await page.click('button[type="submit"]');
+      // Click the Login button (not the Google OAuth button which is also type="submit")
+      await page.click('button[type="submit"]:has-text("Login")');
 
       // Wait for successful redirect
-      await page.waitForURL(/\/(projects|login_success|onboarding)/, {
+      await page.waitForURL(/\/(projects|login_success|onboarding|a\/)/, {
         timeout: 15000,
       });
     },
     async isLoggedIn() {
-      // Check for authenticated user indicators
-      const cookies = await page.context().cookies();
-      const hasAuthCookie = cookies.some(
-        (c) => c.name.includes("supabase") || c.name.includes("auth"),
-      );
-      return hasAuthCookie;
+      return isLoggedIn();
     },
   };
 }

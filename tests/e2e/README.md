@@ -74,6 +74,17 @@ test.describe('Authenticated flows', () => {
 });
 ```
 
+### Auth Bundle (Storage State)
+
+When `E2E_TEST_EMAIL` and `E2E_TEST_PASSWORD` are set, global setup logs in
+once and stores a reusable auth state at `tests/e2e/.auth/user.json`.
+
+```bash
+E2E_TEST_EMAIL=test@example.com E2E_TEST_PASSWORD=secret pnpm test:e2e
+```
+
+This reduces repeated logins across tests and improves stability.
+
 ## Environment Variables
 
 | Variable | Description | Required |
@@ -130,6 +141,26 @@ Tests automatically adapt to CI environment:
 - **Workers**: 1 worker in CI (unlimited locally)
 - **Artifacts**: Screenshots on failure, trace on first retry
 - **Web Server**: Disabled in CI (expects running server)
+
+### Bug Bundles (Local Failures)
+
+When you set `BUG_ID`, failing tests will copy their artifacts into a bundle:
+
+```bash
+BUG_ID=123 pnpm test:e2e --project=chromium
+```
+
+Artifacts are copied to:
+
+```
+artifacts/bug-123/<project>-<test>/
+  console.log
+  network.har
+  trace.zip
+  screenshot.png
+  video.webm
+  repro.md
+```
 
 ### Running Against Staging
 

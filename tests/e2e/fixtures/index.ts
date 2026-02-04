@@ -4,16 +4,27 @@
  * Combines PostHog tracking and authentication fixtures into a single test instance.
  */
 import { test as basePostHog, type PostHogFixture } from "./base";
-import { type AuthFixture, STORAGE_STATE_PATH } from "./auth";
+import { type AuthFixture } from "./auth";
+import { STORAGE_STATE_PATH } from "./storage-state";
 import type { Page } from "playwright/test";
 
 export { type CapturedPostHogEvent, type PostHogFixture } from "./base";
-export { type AuthFixture, STORAGE_STATE_PATH } from "./auth";
+export { type AuthFixture } from "./auth";
+export { STORAGE_STATE_PATH } from "./storage-state";
 
 /** Setup auth fixture */
 async function setupAuth(page: Page): Promise<AuthFixture> {
+  const isLoggedIn = async () => {
+    const cookies = await page.context().cookies();
+    return cookies.some(
+      (c) => c.name.includes("supabase") || c.name.includes("auth"),
+    );
+  };
+
   return {
     async login(email?: string, password?: string) {
+      if (await isLoggedIn()) return;
+
       const testEmail = email || process.env.E2E_TEST_EMAIL;
       const testPassword = password || process.env.E2E_TEST_PASSWORD;
 
@@ -33,10 +44,7 @@ async function setupAuth(page: Page): Promise<AuthFixture> {
       });
     },
     async isLoggedIn() {
-      const cookies = await page.context().cookies();
-      return cookies.some(
-        (c) => c.name.includes("supabase") || c.name.includes("auth"),
-      );
+      return isLoggedIn();
     },
   };
 }
