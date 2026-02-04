@@ -6,8 +6,15 @@
  * - is_activated (completed activation criteria)
  * - is_power_user (high engagement)
  * - days_since_last_activity
+ * - trial/subscription status for PLG cohorts
+ * - team_size for expansion campaigns
+ *
+ * These properties are used by:
+ * - PostHog cohort definitions for PLG automation
+ * - Brevo contact attributes for email personalization
  *
  * See: docs/60-ops-observability/plg-instrumentation-plan.md
+ * See: docs/70-PLG/nurture/email-sequences.md
  */
 
 import { schedules } from "@trigger.dev/sdk/v3";
@@ -19,16 +26,24 @@ interface UserMetrics {
   userId: string;
   email: string;
   accountId: string;
+  accountName: string | null;
   interviewCount: number;
   surveyCount: number;
+  insightCount: number;
   taskCompletedCount: number;
   opportunityCount: number;
   personCount: number;
+  teamSize: number;
   hasViewedAnalysis: boolean;
   hasUsedAgent: boolean;
   daysSinceLastActivity: number;
   signupDate: Date;
   lastActivityDate: Date | null;
+  // Billing/subscription
+  plan: "free" | "starter" | "pro" | "team";
+  hasProTrial: boolean;
+  trialEnd: Date | null;
+  hasPaidSubscription: boolean;
 }
 
 /**
@@ -49,6 +64,13 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
     return null;
   }
 
+  // Get account info (name for Brevo personalization)
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("name")
+    .eq("id", user.account_id)
+    .single();
+
   // Count interviews
   const { count: interviewCount } = await supabase
     .from("interviews")
@@ -60,6 +82,12 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
     .from("research_links")
     .select("*", { count: "exact", head: true })
     .eq("created_by", userId);
+
+  // Count insights (for lc-stalled-no-insight cohort)
+  const { count: insightCount } = await supabase
+    .from("insights")
+    .select("*", { count: "exact", head: true })
+    .eq("account_id", user.account_id);
 
   // Count completed tasks
   const { count: taskCompletedCount } = await supabase
@@ -79,6 +107,50 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
     .from("people")
     .select("*", { count: "exact", head: true })
     .eq("account_id", user.account_id);
+
+  // Count team members (for team_size and expansion cohort)
+  const { count: teamSize } = await supabase
+    .from("account_user")
+    .select("*", { count: "exact", head: true })
+    .eq("account_id", user.account_id);
+
+  // Get subscription/billing info (for trial cohorts)
+  const { data: subscription } = await supabase
+    .from("billing_subscriptions")
+    .select("status, plan_name, trial_start, trial_end")
+    .eq("account_id", user.account_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  // Determine plan and trial status
+  let plan: "free" | "starter" | "pro" | "team" = "free";
+  let hasProTrial = false;
+  let trialEnd: Date | null = null;
+  let hasPaidSubscription = false;
+
+  if (subscription) {
+    // Check if currently in trial
+    if (subscription.status === "trialing" && subscription.trial_end) {
+      hasProTrial = true;
+      trialEnd = new Date(subscription.trial_end);
+    }
+
+    // Check if has active paid subscription
+    if (subscription.status === "active") {
+      hasPaidSubscription = true;
+    }
+
+    // Determine plan from subscription
+    const planName = subscription.plan_name?.toLowerCase() ?? "";
+    if (planName.includes("team")) {
+      plan = "team";
+    } else if (planName.includes("pro")) {
+      plan = "pro";
+    } else if (planName.includes("starter")) {
+      plan = "starter";
+    }
+  }
 
   // Check if user has viewed analysis (interview detail or survey results)
   // This is a proxy - we'd ideally track this via PostHog events
@@ -128,16 +200,23 @@ async function calculateMetrics(userId: string): Promise<UserMetrics | null> {
     userId: user.id,
     email: user.email,
     accountId: user.account_id,
+    accountName: account?.name ?? null,
     interviewCount: interviewCount ?? 0,
     surveyCount: surveyCount ?? 0,
+    insightCount: insightCount ?? 0,
     taskCompletedCount: taskCompletedCount ?? 0,
     opportunityCount: opportunityCount ?? 0,
     personCount: personCount ?? 0,
+    teamSize: teamSize ?? 1,
     hasViewedAnalysis,
     hasUsedAgent,
     daysSinceLastActivity,
     signupDate: new Date(user.created_at),
     lastActivityDate,
+    plan,
+    hasProTrial,
+    trialEnd,
+    hasPaidSubscription,
   };
 }
 
@@ -261,23 +340,58 @@ export const updateUserMetricsTask = schedules.task({
         // Calculate lifecycle stage
         const lifecycleStage = determineLifecycleStage(metrics, isActivated);
 
+        // Calculate days since signup for cohort filtering
+        const daysSinceSignup = Math.floor(
+          (Date.now() - metrics.signupDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+
+        // Has data ingested (interviews or surveys)
+        const dataIngested = metrics.interviewCount + metrics.surveyCount;
+
         // Update PostHog person properties
+        // These properties are used by:
+        // - PostHog cohorts for PLG automation
+        // - Brevo contact attributes (via native PostHog → Brevo destination)
         posthog.identify({
           distinctId: user.id,
           properties: {
+            // Identity & account (for Brevo)
             email: metrics.email,
+            account_id: metrics.accountId,
+            company_name: metrics.accountName,
+
+            // Content metrics
             interview_count: metrics.interviewCount,
             survey_count: metrics.surveyCount,
+            insight_count: metrics.insightCount,
             task_completed_count: metrics.taskCompletedCount,
             opportunity_count: metrics.opportunityCount,
             person_count: metrics.personCount,
+
+            // Team metrics (for expansion cohorts)
+            team_size: metrics.teamSize,
+
+            // Billing/subscription (for trial cohorts)
+            plan: metrics.plan,
+            has_pro_trial: metrics.hasProTrial,
+            trial_end: metrics.trialEnd?.toISOString() ?? null,
+            has_paid_subscription: metrics.hasPaidSubscription,
+
+            // Activity flags
             has_viewed_analysis: metrics.hasViewedAnalysis,
             has_used_agent: metrics.hasUsedAgent,
+
+            // Computed metrics for cohorts
+            data_ingested: dataIngested,
+            insight_published: metrics.insightCount > 0,
             is_activated: isActivated,
             is_power_user: isPowerUser,
             is_churn_risk: isChurnRisk,
             days_since_last_activity: metrics.daysSinceLastActivity,
+            days_since_signup: daysSinceSignup,
             lifecycle_stage: lifecycleStage,
+
+            // Metadata
             last_metrics_update: new Date().toISOString(),
           },
         });

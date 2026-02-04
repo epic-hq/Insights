@@ -52,76 +52,140 @@ For the canonical plan, see `/docs/70-PLG/nurture/plan.md`.
 
 ## PostHog Cohort Configuration
 
-### Required Cohorts for Activation Campaign
+### Person Properties (Set by updateUserMetricsTask)
 
-Create these in PostHog Dashboard → People → Cohorts:
+These properties are updated daily at 2am UTC and used for cohort definitions:
 
-#### 1. `activation-eligible`
-Users who can receive activation campaign emails.
+| Property | Type | Description |
+|----------|------|-------------|
+| `email` | string | User email |
+| `account_id` | string | Account UUID |
+| `company_name` | string | Account name |
+| `interview_count` | number | Total interviews |
+| `survey_count` | number | Total surveys |
+| `insight_count` | number | Total insights |
+| `task_completed_count` | number | Completed tasks |
+| `team_size` | number | Account members count |
+| `plan` | string | free/starter/pro/team |
+| `has_pro_trial` | boolean | Currently in trial |
+| `trial_end` | date | Trial expiration |
+| `has_paid_subscription` | boolean | Has active paid plan |
+| `data_ingested` | number | interviews + surveys |
+| `insight_published` | boolean | Has any insights |
+| `is_activated` | boolean | Meets activation criteria |
+| `is_power_user` | boolean | High engagement |
+| `is_churn_risk` | boolean | Activated but inactive 14d+ |
+| `days_since_last_activity` | number | Inactivity days |
+| `days_since_signup` | number | Days since account created |
+| `lifecycle_stage` | string | new/onboarding/activated/power_user/at_risk/churned |
+
+### Required Cohorts for Email Sequences
+
+Create these in PostHog Dashboard → People → Cohorts.
+
+**See [email-sequences.md](./email-sequences.md) for the full email content.**
+
+---
+
+#### 1. `lc-new-no-content` (Welcome & First Data sequence)
+
+Users who signed up but haven't added any content.
 
 ```
 Matching users who:
-- Signed up more than 7 days ago
+- Have person property "days_since_signup" >= 2
+- AND have person property "data_ingested" = 0
 - AND do NOT have person property "has_paid_subscription" = true
-- AND do NOT have person property "unsubscribed" = true
 ```
 
-#### 2. `activation-active-light`
-Engaged but not power users.
+**Trigger for:** Welcome & First Data Playbook (4 emails, Days 0-5)
 
-```
-Matching users who:
-- Performed any event in last 14 days
-- AND event count in last 7 days < 10
-- AND are in cohort "activation-eligible"
-```
+---
 
-#### 3. `activation-stalled`
-Created content but not deriving value.
+#### 2. `lc-stalled-no-insight` (Aha Activation sequence)
+
+Users who have data but haven't generated insights.
 
 ```
 Matching users who:
-- Performed "interview_added" event ever
-- AND have NOT performed "insight_created" event ever
-- AND are in cohort "activation-eligible"
+- Have person property "data_ingested" >= 1
+- AND have person property "insight_published" = false
+- AND have person property "days_since_signup" >= 7
+- AND do NOT have person property "has_paid_subscription" = true
 ```
 
-#### 4. `activation-dormant`
-No recent activity.
+**Trigger for:** Aha Activation Sequence (3 emails, Days 7-14)
+
+---
+
+#### 3. `lc-power-user` (Power User Expansion sequence)
+
+Highly engaged solo users ready for team expansion.
 
 ```
 Matching users who:
-- Have NOT performed any event in last 14 days
-- AND are in cohort "activation-eligible"
+- Have person property "is_power_user" = true
+- AND have person property "team_size" = 1
 ```
 
-#### 5. `trial-active`
+**Trigger for:** Power User Expansion (3 emails, Days 21-35)
+
+---
+
+#### 4. `lc-dormant-14d` (Churn Rescue sequence)
+
+Previously activated users who have gone inactive.
+
+```
+Matching users who:
+- Have person property "is_activated" = true
+- AND have person property "days_since_last_activity" >= 14
+- AND do NOT have person property "has_paid_subscription" = true
+```
+
+**Trigger for:** Churn Rescue Sequence (4 emails, Days 14-28)
+
+---
+
+#### 5. `trial-active` (Trial Conversion sequence)
+
 Currently in Pro trial.
 
 ```
 Matching users who:
 - Have person property "has_pro_trial" = true
-- AND person property "trial_end" > now
 ```
 
-#### 6. `trial-expiring-soon`
+**Trigger for:** Trial Conversion Sequence - Value Recap (Day -7)
+
+---
+
+#### 6. `trial-expiring` (Trial Ending sequence)
+
 Trial ending within 3 days.
 
 ```
 Matching users who:
-- Are in cohort "trial-active"
-- AND person property "trial_end" is within 3 days of now
+- Have person property "has_pro_trial" = true
+- AND have person property "trial_end" is within 3 days of now
 ```
 
+**Trigger for:** Trial Conversion Sequence - Urgency emails (Days -3 to 0)
+
+---
+
 #### 7. `trial-expired`
+
 Trial ended, not converted.
 
 ```
 Matching users who:
 - Have person property "has_pro_trial" = true
-- AND person property "trial_end" < now
+- AND have person property "trial_end" is in the past
 - AND do NOT have person property "has_paid_subscription" = true
 ```
+
+**Trigger for:** Trial Ended email (Day 0)
 
 ---
 
@@ -136,108 +200,121 @@ Matching users who:
 
 ### 2. Lists to Create
 
-Navigate to Contacts → Lists, create:
+Navigate to Contacts → Lists, create these lists that mirror the PostHog cohorts:
 
-| List Name | Description | Update Frequency |
-|-----------|-------------|------------------|
-| `all-users` | All registered users | Daily |
-| `activation-eligible` | Can receive activation emails | Daily |
-| `activation-stalled` | Need feature guidance | Daily |
-| `activation-dormant` | Win-back targets | Daily |
-| `trial-active` | In Pro trial | Every 6 hours |
-| `trial-expiring` | Trial ends in 3 days | Every 6 hours |
-| `trial-expired` | Trial ended, not paid | Daily |
+| List Name | PostHog Cohort | Email Sequence | Update Frequency |
+|-----------|----------------|----------------|------------------|
+| `all-users` | — | — | Daily |
+| `lc-new-no-content` | `lc-new-no-content` | Welcome & First Data | Daily |
+| `lc-stalled-no-insight` | `lc-stalled-no-insight` | Aha Activation | Daily |
+| `lc-power-user` | `lc-power-user` | Power User Expansion | Daily |
+| `lc-dormant-14d` | `lc-dormant-14d` | Churn Rescue | Daily |
+| `trial-active` | `trial-active` | Trial Conversion | Every 6 hours |
+| `trial-expiring` | `trial-expiring` | Trial Conversion | Every 6 hours |
+| `trial-expired` | `trial-expired` | Trial Conversion | Daily |
+
+**Note:** List membership is managed by Brevo automation rules based on contact attributes synced from PostHog.
 
 ### 3. Contact Attributes
 
 Set up custom attributes for personalization (Contacts → Settings → Contact Attributes):
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `USER_ID` | Text | User ID |
-| `ACCOUNT_ID` | Text | Account ID |
-| `PLAN` | Text | Current plan (free/starter/pro/team) |
-| `TRIAL_END` | Date | Trial end date |
-| `COMPANY_NAME` | Text | Company name |
-| `LIFECYCLE_STAGE` | Text | new/activated/power_user/at_risk/churned |
-| `INTERVIEW_COUNT` | Number | Total interviews |
-| `TASK_COMPLETED_COUNT` | Number | Tasks completed |
+| Attribute | Type | PostHog Property | Description |
+|-----------|------|------------------|-------------|
+| `USER_ID` | Text | `user_id` | User UUID |
+| `ACCOUNT_ID` | Text | `account_id` | Account UUID |
+| `PLAN` | Text | `plan` | Current plan (free/starter/pro/team) |
+| `TRIAL_END` | Date | `trial_end` | Trial end date |
+| `COMPANY_NAME` | Text | `company_name` | Company name for personalization |
+| `LIFECYCLE_STAGE` | Text | `lifecycle_stage` | new/onboarding/activated/power_user/at_risk/churned |
+| `INTERVIEW_COUNT` | Number | `interview_count` | Total interviews uploaded |
+| `INSIGHT_COUNT` | Number | `insight_count` | Total insights generated |
+| `TASK_COMPLETED_COUNT` | Number | `task_completed_count` | Tasks completed |
+| `TEAM_SIZE` | Number | `team_size` | Number of team members |
+| `DAYS_SINCE_SIGNUP` | Number | `days_since_signup` | Days since account created |
+
+**Setup:** Add these attribute mappings in PostHog → Data Pipeline → Destinations → Brevo → Edit
 
 ### 4. Automation Workflows
 
-Navigate to Automation → Create a new workflow:
+Navigate to Automation → Create a new workflow.
 
-#### Workflow 1: Trial Welcome Sequence
+**For full email content and templates, see [email-sequences.md](./email-sequences.md).**
 
-**Entry condition:** Contact added to `trial-active` list
+---
 
-**Steps:**
-1. **Day 0 (Immediate):** Send "Your Pro trial is active"
-   - Template: `trial-welcome`
-   - Subject: "Welcome to UpSight Pro - Your trial starts now"
+#### Workflow 1: Welcome & First Data Playbook
 
-2. **Day 3:** Send "Discover Smart Personas"
-   - Delay: 3 days after entry
-   - Template: `trial-day-3-feature-highlight`
-   - Subject: "Unlock Smart Personas with 3+ interviews"
+**Trigger:** Contact attribute `days_since_signup` >= 0 (new signup via PostHog identify)
+**Goal:** Get user to add their first data (survey or interview upload)
+**Exit:** Contact has `data_ingested` >= 1 (interview or survey added)
 
-3. **Day 7:** Send "Your week in review"
-   - Delay: 7 days after entry
-   - Template: `trial-day-7-social-proof`
-   - Subject: "See how teams are using UpSight"
+| Day | Template | Subject |
+|-----|----------|---------|
+| 0 | `welcome-context-setup` | Welcome to UpSight — let's capture your first insight |
+| 2 | `welcome-survey-cta` | The fastest way to get insights? A 2-minute survey |
+| 4 | `welcome-concierge-import` | Need help importing your existing research? |
+| 5 | `welcome-video-demo` | See UpSight in action (90-second demo) |
 
-**Exit condition:** Contact added to list `trial-expired` OR `has_paid_subscription = true`
+---
 
-#### Workflow 2: Trial Ending Sequence
+#### Workflow 2: Aha Activation Sequence
 
-**Entry condition:** Contact added to `trial-expiring` list
+**Trigger:** Contact attribute `data_ingested` >= 1 AND `insight_published` = false AND `days_since_signup` >= 7
+**Goal:** User publishes their first insight
+**Exit:** Contact has `insight_count` >= 1
 
-**Steps:**
-1. **Day 0 (Immediate):** Send "Your trial ends in 3 days"
-   - Template: `trial-ending-3-days`
-   - Subject: "3 days left - Save 25% with EARLYBIRD25"
+| Day | Template | Subject |
+|-----|----------|---------|
+| 7 | `aha-insight-checklist` | You're one step away from your first insight |
+| 10 | `aha-ai-draft-offer` | Let AI write your first insight (you just approve) |
+| 14 | `aha-success-story` | How [Company] turned 5 interviews into a product decision |
 
-2. **Day 2:** Send "Last day of Pro access"
-   - Delay: 2 days after entry
-   - Template: `trial-ending-last-day`
-   - Subject: "Tomorrow: Your Pro features pause"
+---
 
-**Exit condition:** Contact added to list `trial-expired` OR removed from `trial-expiring`
+#### Workflow 3: Power User Expansion
 
-#### Workflow 3: Trial Expired Win-back
+**Trigger:** Contact attribute `is_power_user` = true AND `team_size` = 1
+**Goal:** Add team members / expand seats
+**Exit:** Contact has `team_size` >= 2
 
-**Entry condition:** Contact added to `trial-expired` list
+| Day | Template | Subject |
+|-----|----------|---------|
+| 21 | `expansion-impact-stats` | You've saved {{ time_saved_hours }} hours this month |
+| 28 | `expansion-team-roi` | What if everyone on your team could search customer conversations? |
+| 35 | `expansion-invite-offer` | Invite 2 teammates — we'll extend your trial |
 
-**Steps:**
-1. **Day 0 (Immediate):** Send "Your Pro features are paused"
-   - Template: `trial-expired-day-0`
-   - Subject: "Your Pro features are now paused"
+---
 
-2. **Day 7:** Send "We'd love your feedback"
-   - Delay: 7 days after entry
-   - Template: `trial-expired-day-7-feedback`
-   - Subject: "Quick question: What stopped you from upgrading?"
+#### Workflow 4: Churn Rescue Sequence
 
-3. **Day 14:** Send "New feature announcement"
-   - Delay: 14 days after entry
-   - Template: `trial-expired-day-14-final`
-   - Subject: "New: Calendar sync + voice chat improvements"
+**Trigger:** Contact attribute `is_activated` = true AND `days_since_last_activity` >= 14
+**Goal:** Re-engage with clear next step
+**Exit:** Contact performs any event in PostHog (tracked via webhook)
 
-#### Workflow 4: Dormant User Win-back
+| Day | Template | Subject |
+|-----|----------|---------|
+| 14 | `rescue-friendly-checkin` | Quick question, {{ contact.FIRSTNAME \| default: "there" }} |
+| 18 | `rescue-meeting-bot` | What if insights captured themselves? |
+| 24 | `rescue-last-project` | Your {{ project_name \| default: "research project" }} is waiting |
+| 28 | `rescue-final-offer` | Before we stop emailing you... |
 
-**Entry condition:** Contact added to `activation-dormant` list
+---
 
-**Steps:**
-1. **Day 0 (Immediate):** Send "We miss you"
-   - Template: `dormant-day-0-winback`
-   - Subject: "We miss you at UpSight"
+#### Workflow 5: Trial Conversion Sequence
 
-2. **Day 7:** Send "See what you're missing"
-   - Delay: 7 days after entry
-   - Template: `dormant-day-7-success-story`
-   - Subject: "How teams are saving 10 hours/week with UpSight"
+**Trigger:** Contact attribute `has_pro_trial` = true
+**Goal:** Convert to paid plan
+**Exit:** Contact has `has_paid_subscription` = true
 
-**Exit condition:** Contact performs any event (tracked via webhook)
+| Day | Template | Subject |
+|-----|----------|---------|
+| -7 | `trial-value-recap` | Your Pro trial: Here's what you've unlocked |
+| -3 | `trial-urgency-discount` | 3 days left — save 25% on Pro |
+| -1 | `trial-last-chance` | Tomorrow: Your Pro features pause |
+| 0 | `trial-ended` | Your Pro features are now paused |
+
+**Note:** Day numbers are relative to `trial_end` date.
 
 ---
 
