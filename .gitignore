@@ -104,3 +104,17 @@ cadre-devkit-claude/
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# AI tooling configs (user-specific)
+.mcp.json
+.agents/
+.codex/
+.opencode/
+.claude-design/
+.claude/skills/
+
+# Generated visualization files
+graph.html
+
+# Playwright auth state (contains session tokens)
+tests/e2e/.auth/
