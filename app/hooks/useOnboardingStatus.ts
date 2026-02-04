@@ -5,8 +5,7 @@
  * and provides data for personalizing the AI experience.
  */
 
-import { useEffect, useState } from "react"
-import { useFetcher, useRouteLoaderData } from "react-router"
+import { useRouteLoaderData } from "react-router"
 
 export interface OnboardingStatus {
 	/** Whether onboarding data has loaded */
@@ -17,10 +16,8 @@ export interface OnboardingStatus {
 	jobFunction: string
 	/** Primary use case selected */
 	primaryUseCase: string
-	/** Team size */
-	teamSize: string
-	/** User's stated goals */
-	goals: string
+	/** Company size category (startup, smb, mid-market, enterprise) */
+	companySize: string
 	/** Whether to show the onboarding modal */
 	shouldShowOnboarding: boolean
 }
@@ -32,16 +29,14 @@ interface ProtectedLayoutData {
 				completed?: boolean
 				job_function?: string
 				primary_use_case?: string
-				team_size?: string
-				goals?: string
+				company_size?: string
 			}
 		}
 		metadata?: {
 			onboarding?: {
 				job_function?: string
 				primary_use_case?: string
-				team_size?: string
-				goals?: string
+				company_size?: string
 			}
 		}
 	} | null
@@ -62,8 +57,7 @@ export function useOnboardingStatus(): OnboardingStatus {
 	const completed = walkthrough?.completed || false
 	const jobFunction = walkthrough?.job_function || metadata?.job_function || ""
 	const primaryUseCase = walkthrough?.primary_use_case || metadata?.primary_use_case || ""
-	const teamSize = walkthrough?.team_size || metadata?.team_size || ""
-	const goals = walkthrough?.goals || metadata?.goals || ""
+	const companySize = walkthrough?.company_size || metadata?.company_size || ""
 
 	// Show onboarding if not completed and we have data loaded
 	const shouldShowOnboarding = protectedData !== null && !completed
@@ -73,8 +67,7 @@ export function useOnboardingStatus(): OnboardingStatus {
 		completed,
 		jobFunction,
 		primaryUseCase,
-		teamSize,
-		goals,
+		companySize,
 		shouldShowOnboarding,
 	}
 }
@@ -91,19 +84,28 @@ export function buildOnboardingContext(status: OnboardingStatus): string {
 	const parts: string[] = []
 
 	if (status.jobFunction) {
+		// Map to friendly descriptions for AI context
 		const roleMap: Record<string, string> = {
-			founder: "founder/CEO",
+			engineering: "engineering professional",
 			product: "product manager",
-			sales: "sales professional",
-			research: "UX researcher",
+			design: "designer",
 			marketing: "marketing professional",
-			other: "professional",
+			sales: "sales professional",
+			"customer-success": "customer success professional",
+			operations: "operations professional",
+			finance: "finance professional",
+			hr: "HR/people professional",
+			legal: "legal professional",
+			data: "data & analytics professional",
+			research: "researcher",
+			executive: "executive/leader",
 		}
 		parts.push(`User Role: ${roleMap[status.jobFunction] || status.jobFunction}`)
 	}
 
 	if (status.primaryUseCase) {
 		const useCaseMap: Record<string, string> = {
+			surveys: "collecting feedback via surveys",
 			customer_discovery: "customer discovery and validation",
 			sales_intelligence: "sales intelligence and deal tracking",
 			user_research: "user research and synthesis",
@@ -113,18 +115,14 @@ export function buildOnboardingContext(status: OnboardingStatus): string {
 		parts.push(`Primary Goal: ${useCaseMap[status.primaryUseCase] || status.primaryUseCase}`)
 	}
 
-	if (status.teamSize) {
-		const teamMap: Record<string, string> = {
-			solo: "working solo",
-			small: "small team (2-5)",
-			medium: "medium team (6-20)",
-			large: "large team (20+)",
+	if (status.companySize) {
+		const sizeMap: Record<string, string> = {
+			startup: "startup (1-50 employees)",
+			smb: "SMB (51-500 employees)",
+			"mid-market": "mid-market company (501-5,000 employees)",
+			enterprise: "enterprise (5,000+ employees)",
 		}
-		parts.push(`Team: ${teamMap[status.teamSize] || status.teamSize}`)
-	}
-
-	if (status.goals) {
-		parts.push(`Stated Goals: ${status.goals}`)
+		parts.push(`Company Size: ${sizeMap[status.companySize] || status.companySize}`)
 	}
 
 	if (parts.length === 0) {

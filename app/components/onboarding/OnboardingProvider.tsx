@@ -6,7 +6,11 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react"
-import { buildOnboardingContext, useOnboardingStatus, type OnboardingStatus } from "~/hooks/useOnboardingStatus"
+import {
+	buildOnboardingContext,
+	useOnboardingStatus,
+	type OnboardingStatus,
+} from "~/hooks/useOnboardingStatus"
 import { OnboardingWalkthrough, type OnboardingData } from "./OnboardingWalkthrough"
 
 interface OnboardingContextValue {
@@ -80,8 +84,7 @@ export function OnboardingProvider({ children, autoShow = true }: OnboardingProv
 				initialData={{
 					jobFunction: status.jobFunction,
 					primaryUseCase: status.primaryUseCase,
-					teamSize: status.teamSize,
-					goals: status.goals,
+					companySize: status.companySize,
 				}}
 			/>
 		</OnboardingContext.Provider>

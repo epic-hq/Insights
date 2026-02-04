@@ -1,7 +1,8 @@
 /**
  * API route to save user onboarding data
  *
- * Stores job function, use case, team size, and goals in user_settings.
+ * Stores job function, use case, company size in user_settings.
+ * Also updates the account's size_category for CRM alignment.
  * This data is used to personalize AI recommendations.
  */
 
@@ -12,8 +13,7 @@ import type { Database } from "~/types"
 export interface OnboardingData {
 	jobFunction: string
 	primaryUseCase: string
-	teamSize: string
-	goals: string
+	companySize: string
 	completed: boolean
 }
 
@@ -21,6 +21,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 	const userId = ctx.claims?.sub
+	const accountId = ctx.account_id
 
 	if (!supabase || !userId) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -58,8 +59,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 			completed_at: new Date().toISOString(),
 			job_function: onboardingData.jobFunction,
 			primary_use_case: onboardingData.primaryUseCase,
-			team_size: onboardingData.teamSize,
-			goals: onboardingData.goals,
+			company_size: onboardingData.companySize,
 		},
 	}
 
@@ -69,12 +69,11 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		onboarding: {
 			job_function: onboardingData.jobFunction,
 			primary_use_case: onboardingData.primaryUseCase,
-			team_size: onboardingData.teamSize,
-			goals: onboardingData.goals,
+			company_size: onboardingData.companySize,
 		},
 	}
 
-	// Update user_settings
+	// Update user_settings with job function as role
 	const { error: updateError } = await supabase
 		.from("user_settings")
 		.update({
@@ -86,6 +85,28 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
 	if (updateError) {
 		return Response.json({ error: updateError.message }, { status: 500 })
+	}
+
+	// Also update account's target company size if we have an account
+	if (accountId && onboardingData.companySize) {
+		// Update the account's public_metadata with company size category
+		const { data: account } = await supabase
+			.from("accounts")
+			.select("public_metadata")
+			.eq("id", accountId)
+			.single()
+
+		const publicMetadata = (account?.public_metadata as Record<string, unknown>) || {}
+
+		await supabase
+			.from("accounts")
+			.update({
+				public_metadata: {
+					...publicMetadata,
+					company_size_category: onboardingData.companySize,
+				},
+			})
+			.eq("id", accountId)
 	}
 
 	return Response.json({ success: true })
@@ -112,7 +133,14 @@ export async function loader({ context }: { context: Map<symbol, unknown> }) {
 		.eq("user_id", userId)
 		.single()
 
-	const steps = (settings?.onboarding_steps as Record<string, { walkthrough?: OnboardingData }>) || {}
+	interface WalkthroughData {
+		completed?: boolean
+		job_function?: string
+		primary_use_case?: string
+		company_size?: string
+	}
+
+	const steps = (settings?.onboarding_steps as { walkthrough?: WalkthroughData }) || {}
 	const walkthrough = steps.walkthrough
 
 	if (!walkthrough) {
@@ -123,7 +151,6 @@ export async function loader({ context }: { context: Map<symbol, unknown> }) {
 		completed: walkthrough.completed || false,
 		jobFunction: walkthrough.job_function || "",
 		primaryUseCase: walkthrough.primary_use_case || "",
-		teamSize: walkthrough.team_size || "",
-		goals: walkthrough.goals || "",
+		companySize: walkthrough.company_size || "",
 	})
 }
