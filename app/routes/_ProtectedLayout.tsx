@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { Link, redirect, useLoaderData, useLocation, useNavigation, useParams, useRouteLoaderData } from "react-router"
 import { TrialBanner, type TrialInfo } from "~/components/billing/TrialBanner"
 import { AppLayout } from "~/components/layout/AppLayout"
+import { OnboardingProvider } from "~/components/onboarding"
 import { PLANS, type PlanId } from "~/config/plans"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
@@ -408,48 +409,50 @@ export default function ProtectedLayout() {
 	return (
 		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
 			<CurrentProjectProvider>
-				<div className="min-h-screen bg-background">
-					{/* Trial Banner */}
-					<TrialBanner trial={trialInfo} />
+				<OnboardingProvider>
+					<div className="min-h-screen bg-background">
+						{/* Trial Banner */}
+						<TrialBanner trial={trialInfo} />
 
-					{/* Pending Invite Banner */}
-					{showInviteBanner && (
-						<div className="border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
-							<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-								<div className="flex items-center gap-2 text-emerald-800 text-sm dark:text-emerald-200">
-									<Mail className="h-4 w-4" />
-									<span>
-										You have {pendingInvites.length} pending team{" "}
-										{pendingInvites.length === 1 ? "invitation" : "invitations"}
-										{pendingInvites[0]?.account_name && (
-											<span>
-												{" "}
-												from <strong>{pendingInvites[0].account_name}</strong>
-											</span>
-										)}
-									</span>
+						{/* Pending Invite Banner */}
+						{showInviteBanner && (
+							<div className="border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
+								<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+									<div className="flex items-center gap-2 text-emerald-800 text-sm dark:text-emerald-200">
+										<Mail className="h-4 w-4" />
+										<span>
+											You have {pendingInvites.length} pending team{" "}
+											{pendingInvites.length === 1 ? "invitation" : "invitations"}
+											{pendingInvites[0]?.account_name && (
+												<span>
+													{" "}
+													from <strong>{pendingInvites[0].account_name}</strong>
+												</span>
+											)}
+										</span>
+									</div>
+									<Link
+										to={`/accept-invite?invite_token=${encodeURIComponent(pendingInvites[0]?.token || "")}`}
+										className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-emerald-700"
+									>
+										Accept Invitation
+									</Link>
 								</div>
-								<Link
-									to={`/accept-invite?invite_token=${encodeURIComponent(pendingInvites[0]?.token || "")}`}
-									className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-emerald-700"
-								>
-									Accept Invitation
-								</Link>
 							</div>
-						</div>
-					)}
+						)}
 
-					{/* Global Loading Indicator */}
-					{isLoading && (
-						<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
-							<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
-								<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
+						{/* Global Loading Indicator */}
+						{isLoading && (
+							<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
+								<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
+									<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 
-					<AppLayout showJourneyNav={showJourneyNav} />
-				</div>
+						<AppLayout showJourneyNav={showJourneyNav} />
+					</div>
+				</OnboardingProvider>
 			</CurrentProjectProvider>
 		</AuthProvider>
 	)

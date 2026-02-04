@@ -4,6 +4,10 @@
  * Provides:
  * - Desktop: Sidebar navigation (can coexist with chat panel)
  * - Mobile: Bottom tab bar + Profile sheet
+ *
+ * With ffSplitPaneLayout feature flag:
+ * - Desktop: Horizontal top nav + AI panel on left + main content
+ * - Mobile: Bottom tab bar + hamburger menu
  */
 
 import { useCallback, useState } from "react"
@@ -14,8 +18,10 @@ import { ProfileSheet } from "~/components/navigation/ProfileSheet"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
+import { SplitPaneLayout } from "./SplitPaneLayout"
 
 interface AppLayoutProps {
 	showJourneyNav?: boolean
@@ -26,6 +32,7 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const [searchParams] = useSearchParams()
 	const { accountId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+	const { isEnabled: useSplitPaneLayout } = usePostHogFeatureFlag("ffSplitPaneLayout")
 
 	const persistSidebarPreference = useCallback((openState: boolean) => {
 		if (typeof window === "undefined") return
@@ -79,6 +86,12 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 		[persistSidebarPreference]
 	)
 
+	// Use new split-pane layout when feature flag is enabled
+	if (useSplitPaneLayout) {
+		return <SplitPaneLayout showJourneyNav={showJourneyNav} />
+	}
+
+	// Original sidebar layout
 	return (
 		<SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
 			{showMainNav && !isMobile && <AppSidebar />}
