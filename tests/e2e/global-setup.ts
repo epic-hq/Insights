@@ -9,6 +9,13 @@ export default async function globalSetup() {
 
   if (!testEmail || !testPassword) return;
 
+  try {
+    await fs.access(STORAGE_STATE_PATH);
+    return;
+  } catch {
+    // Continue to create storage state via login.
+  }
+
   await fs.mkdir(path.dirname(STORAGE_STATE_PATH), { recursive: true });
 
   const baseURL = process.env.E2E_BASE_URL || "http://localhost:4280";

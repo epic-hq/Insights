@@ -35,6 +35,7 @@ import {
 	upsertBillingSubscription,
 } from "~/lib/billing/polar.server"
 import { getPostHogServerClient } from "~/lib/posthog.server"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 
 /**
  * Extract account_id from metadata.
@@ -92,6 +93,14 @@ async function handleSubscriptionActive(payload: WebhookSubscriptionActivePayloa
 		metadata: subscription.metadata as Record<string, unknown>,
 	})
 
+	if (!planId) {
+		consola.warn("[polar webhook] Unknown product ID, skipping entitlements/credits", {
+			subscriptionId: subscription.id,
+			productId: subscription.product.id,
+		})
+		return
+	}
+
 	// Provision entitlements
 	await provisionPlanEntitlements({
 		accountId,
@@ -106,6 +115,7 @@ async function handleSubscriptionActive(payload: WebhookSubscriptionActivePayloa
 		planId,
 		billingPeriodStart: subscription.currentPeriodStart,
 		billingPeriodEnd: subscription.currentPeriodEnd ?? subscription.currentPeriodStart,
+		seatCount: subscription.seats ?? 1,
 	})
 
 	// Track checkout_completed event for PLG instrumentation
@@ -178,7 +188,7 @@ async function handleSubscriptionCreated(payload: WebhookSubscriptionCreatedPayl
 	})
 
 	// Ensure entitlements stay in sync on plan changes (only when subscription is active/trialing)
-	if (subscription.status === "active" || subscription.status === "trialing") {
+	if ((subscription.status === "active" || subscription.status === "trialing") && planId) {
 		await provisionPlanEntitlements({
 			accountId,
 			planId,
@@ -209,6 +219,14 @@ async function handleSubscriptionUpdated(payload: WebhookSubscriptionUpdatedPayl
 		status: subscription.status,
 	})
 
+	// Fetch existing subscription to detect plan/period changes
+	const { data: existingSubscription } = await supabaseAdmin
+		.schema("accounts")
+		.from("billing_subscriptions")
+		.select("price_id, current_period_start")
+		.eq("id", subscription.id)
+		.maybeSingle()
+
 	// Ensure customer exists first
 	await upsertBillingCustomer({
 		polarCustomerId: customer.id,
@@ -216,7 +234,7 @@ async function handleSubscriptionUpdated(payload: WebhookSubscriptionUpdatedPayl
 		email: customer.email,
 	})
 
-	await upsertBillingSubscription({
+	const { planId } = await upsertBillingSubscription({
 		polarSubscriptionId: subscription.id,
 		polarCustomerId: customer.id,
 		accountId,
@@ -232,6 +250,40 @@ async function handleSubscriptionUpdated(payload: WebhookSubscriptionUpdatedPayl
 		trialEnd: subscription.trialEnd?.toISOString(),
 		metadata: subscription.metadata as Record<string, unknown>,
 	})
+
+	if (!planId) {
+		consola.warn("[polar webhook] Unknown product ID, skipping entitlements/credits on update", {
+			subscriptionId: subscription.id,
+			productId: subscription.product.id,
+		})
+		return
+	}
+
+	const currentPeriodStartIso = subscription.currentPeriodStart.toISOString()
+	const periodChanged =
+		!existingSubscription?.current_period_start || existingSubscription.current_period_start !== currentPeriodStartIso
+	const productChanged = !existingSubscription?.price_id || existingSubscription.price_id !== subscription.product.id
+
+	if (subscription.status === "active" || subscription.status === "trialing") {
+		if (productChanged) {
+			await provisionPlanEntitlements({
+				accountId,
+				planId,
+				validFrom: subscription.currentPeriodStart,
+				validUntil: subscription.currentPeriodEnd ?? undefined,
+			})
+		}
+
+		if (periodChanged) {
+			await grantPlanCredits({
+				accountId,
+				planId,
+				billingPeriodStart: subscription.currentPeriodStart,
+				billingPeriodEnd: subscription.currentPeriodEnd ?? subscription.currentPeriodStart,
+				seatCount: subscription.seats ?? 1,
+			})
+		}
+	}
 }
 
 /**

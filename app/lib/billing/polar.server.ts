@@ -154,8 +154,16 @@ export async function upsertBillingSubscription(params: {
 	} = params
 
 	// Resolve plan name from product ID
-	const planId = POLAR_PRODUCT_MAP[productId] ?? "starter"
-	const planName = PLANS[planId]?.name ?? "Unknown"
+	const planId = POLAR_PRODUCT_MAP[productId]
+	const planName = planId ? PLANS[planId]?.name ?? "Unknown" : "Unknown"
+
+	if (!planId) {
+		consola.error("[polar] Unknown Polar product ID", {
+			productId,
+			accountId,
+			polarSubscriptionId,
+		})
+	}
 
 	consola.info("[polar] Upserting billing subscription", {
 		polarSubscriptionId,

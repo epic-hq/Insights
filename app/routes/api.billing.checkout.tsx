@@ -60,13 +60,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		return redirect(`/login?redirect=${encodeURIComponent(returnUrl)}`)
 	}
 
-	// Get team account_id (not personal account) for billing
+	// Get team account_id where user is an owner (not personal account) for billing
 	// Personal accounts have personal_account=true, we want team accounts
 	const { data: membership, error: membershipError } = await supabaseAdmin
 		.schema("accounts")
 		.from("account_user")
-		.select("account_id, accounts!inner(id, personal_account)")
+		.select("account_id, account_role, accounts!inner(id, personal_account)")
 		.eq("user_id", user.sub)
+		.eq("account_role", "owner")
 		.eq("accounts.personal_account", false)
 		.limit(1)
 		.maybeSingle()
@@ -80,9 +81,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	const accountId = membership?.account_id
 	if (!accountId) {
-		consola.warn("[checkout] No team account for user", { userId: user.sub })
-		// User doesn't have a team account yet - this shouldn't happen normally
-		return redirect("/home?error=no_team_account")
+		consola.warn("[checkout] No owned team account for user", { userId: user.sub })
+		// User isn't an owner on any team account
+		return redirect("/pricing?error=owner_required")
 	}
 
 	const url = new URL(request.url)

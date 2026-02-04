@@ -27,12 +27,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}
 
 	// Get account_id from user's membership (use admin client to bypass RLS)
-	// Query accounts.account_user table - users have a personal account by default
+	// Only allow owners of a team account to access billing
 	const { data: membership, error: membershipError } = await supabaseAdmin
 		.schema("accounts")
 		.from("account_user")
-		.select("account_id")
+		.select("account_id, account_role, accounts!inner(id, personal_account)")
 		.eq("user_id", user.sub)
+		.eq("account_role", "owner")
+		.eq("accounts.personal_account", false)
 		.limit(1)
 		.single()
 
@@ -45,8 +47,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	const accountId = membership?.account_id
 	if (!accountId) {
-		consola.warn("[portal] No account_id for user", { userId: user.sub })
-		return redirect("/home?error=no_account")
+		consola.warn("[portal] No owned team account for user", { userId: user.sub })
+		return redirect("/home?error=owner_required")
 	}
 
 	// Build the billing page URL for this account
