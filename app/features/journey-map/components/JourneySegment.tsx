@@ -4,7 +4,7 @@
  */
 
 import { Check, Lock } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "~/lib/utils";
 import type { RouteDefinitions } from "~/utils/route-definitions";
 import {
@@ -41,6 +41,11 @@ export function JourneySegment({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const Icon = phase.icon;
 
+  // Sync expanded state when defaultExpanded changes (e.g. async counts loaded)
+  useEffect(() => {
+    if (defaultExpanded) setExpanded(true);
+  }, [defaultExpanded]);
+
   const completedCards = phase.cards.filter((card) =>
     isCardComplete(card, counts, journeyProgress),
   ).length;
@@ -53,7 +58,6 @@ export function JourneySegment({
     <div
       className={cn(
         "relative z-10 w-full cursor-pointer",
-        index % 2 === 0 ? "mt-[50px]" : "mt-[140px]",
         state === "locked" && "opacity-60",
       )}
     >

@@ -73,27 +73,20 @@ export const JOURNEY_PHASES: JourneyPhaseConfig[] = [
       (counts.people ?? 0) > 0,
     cards: [
       {
-        id: "company-context",
-        title: "Tell us about your company & project",
+        id: "context-goals",
+        title: "Context & Goals",
         icon: Settings,
         cta: "Set Up",
         getRoute: (routes) => routes.projects.setup(),
-        completionCheck: (_counts, jp) => jp.contextComplete,
-      },
-      {
-        id: "create-interview-guide",
-        title: "Generate an interview plan",
-        icon: FileText,
-        cta: "Create Guide",
-        getRoute: (routes) => routes.questions.index(),
-        completionCheck: (_counts, jp) => jp.promptsComplete,
+        completionCheck: (_counts, jp) =>
+          jp.contextComplete && jp.promptsComplete,
       },
       {
         id: "create-survey",
         title: "Create a survey",
         icon: Link2,
         cta: "Create Survey",
-        getRoute: (routes) => routes.ask.index(),
+        getRoute: (routes) => routes.ask.new(),
         completionKey: "surveyResponses",
       },
       {
