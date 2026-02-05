@@ -657,9 +657,9 @@ export function OnboardingWalkthrough({
 
   const handleContinueToCompany = useCallback(() => {
     onOpenChange(false);
-    // Navigate to context/setup page
+    // Navigate to context/setup page with welcome flag for form-first experience
     if (accountId && projectId) {
-      navigate(routes.projects.setup());
+      navigate(`${routes.projects.setup()}?welcome=1`);
     }
   }, [onOpenChange, navigate, routes, accountId, projectId]);
 

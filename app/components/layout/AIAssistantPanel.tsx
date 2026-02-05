@@ -40,6 +40,8 @@ interface AIAssistantPanelProps {
   systemContext?: string;
   /** Additional CSS classes */
   className?: string;
+  /** When true, don't persist panel open/close state to localStorage (used during welcome flow) */
+  suppressPersistence?: boolean;
 }
 
 interface TaskItem {
@@ -185,6 +187,7 @@ export function AIAssistantPanel({
   accounts = [],
   systemContext = "",
   className,
+  suppressPersistence = false,
 }: AIAssistantPanelProps) {
   const params = useParams();
   const accountId = params.accountId || "";
@@ -194,12 +197,12 @@ export function AIAssistantPanel({
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const { counts } = useSidebarCounts(accountId, projectId);
 
-  // Persist panel state to localStorage
+  // Persist panel state to localStorage (skip during welcome flow to avoid overwriting user's preference)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !suppressPersistence) {
       localStorage.setItem("ai-panel-open", String(isOpen));
     }
-  }, [isOpen]);
+  }, [isOpen, suppressPersistence]);
 
   const handleToggle = useCallback(() => {
     onOpenChange(!isOpen);

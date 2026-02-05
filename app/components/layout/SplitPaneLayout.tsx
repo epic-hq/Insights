@@ -18,7 +18,7 @@
  * - Mobile: AI panel hidden, hamburger menu for nav
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Outlet,
   useParams,
@@ -28,6 +28,11 @@ import {
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { SidebarProvider } from "~/components/ui/sidebar";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "~/components/ui/resizable";
 import { cn } from "~/lib/utils";
 import { BottomTabBar } from "../navigation/BottomTabBar";
 import { ProfileSheet } from "../navigation/ProfileSheet";
@@ -85,6 +90,9 @@ export function SplitPaneLayout({
     .filter(Boolean)
     .join("\n\n");
 
+  const isOnboarding = searchParams.get("onboarding") === "true";
+  const isWelcomeFlow = searchParams.get("welcome") === "1";
+
   // AI Panel state - persisted to localStorage
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -93,10 +101,15 @@ export function SplitPaneLayout({
     return stored !== "false";
   });
 
+  // Collapse panel when entering welcome flow (useEffect to avoid stale closure in initializer)
+  useEffect(() => {
+    if (isWelcomeFlow) {
+      setIsAIPanelOpen(false);
+    }
+  }, [isWelcomeFlow]);
+
   // Profile sheet state (mobile)
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  const isOnboarding = searchParams.get("onboarding") === "true";
   const showMainNav = !isOnboarding;
 
   // Should we show the mobile navigation?
@@ -112,6 +125,11 @@ export function SplitPaneLayout({
     setIsAIPanelOpen(open);
   }, []);
 
+  // Whether to show the resizable AI panel (desktop + nav visible + panel expanded)
+  const showResizablePanel = showMainNav && !isMobile && isAIPanelOpen;
+  // Collapsed icon strip (desktop + nav visible + panel collapsed)
+  const showCollapsedPanel = showMainNav && !isMobile && !isAIPanelOpen;
+
   return (
     <SidebarProvider>
       <ProjectStatusAgentProvider>
@@ -120,27 +138,66 @@ export function SplitPaneLayout({
           {showMainNav && !isMobile && <TopNavigation accounts={accounts} />}
 
           {/* Main content area with AI panel */}
-          <div className="flex min-h-0 flex-1">
-            {/* AI Assistant Panel - hidden on mobile */}
-            {showMainNav && !isMobile && (
-              <AIAssistantPanel
-                isOpen={isAIPanelOpen}
-                onOpenChange={handleAIPanelOpenChange}
-                accounts={accounts}
-                systemContext={combinedSystemContext}
-              />
-            )}
-
-            {/* Main content */}
-            <main
-              className={cn(
-                "flex min-h-0 flex-1 flex-col overflow-auto",
-                showMobileNav ? "pb-[72px]" : "",
-              )}
+          {showResizablePanel ? (
+            <ResizablePanelGroup
+              direction="horizontal"
+              className="min-h-0 flex-1"
+              autoSaveId="ai-panel-layout"
             >
-              <Outlet />
-            </main>
-          </div>
+              {/* AI Assistant Panel — resizable */}
+              <ResizablePanel
+                defaultSize={22}
+                minSize={15}
+                maxSize={45}
+                order={1}
+              >
+                <AIAssistantPanel
+                  isOpen={isAIPanelOpen}
+                  onOpenChange={handleAIPanelOpenChange}
+                  accounts={accounts}
+                  systemContext={combinedSystemContext}
+                  suppressPersistence={isWelcomeFlow}
+                />
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              {/* Main content */}
+              <ResizablePanel defaultSize={78} order={2}>
+                <main
+                  className={cn(
+                    "flex h-full min-h-0 flex-col overflow-auto",
+                    showMobileNav ? "pb-[72px]" : "",
+                  )}
+                >
+                  <Outlet />
+                </main>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <div className="flex min-h-0 flex-1">
+              {/* Collapsed AI panel icon strip */}
+              {showCollapsedPanel && (
+                <AIAssistantPanel
+                  isOpen={isAIPanelOpen}
+                  onOpenChange={handleAIPanelOpenChange}
+                  accounts={accounts}
+                  systemContext={combinedSystemContext}
+                  suppressPersistence={isWelcomeFlow}
+                />
+              )}
+
+              {/* Main content */}
+              <main
+                className={cn(
+                  "flex min-h-0 flex-1 flex-col overflow-auto",
+                  showMobileNav ? "pb-[72px]" : "",
+                )}
+              >
+                <Outlet />
+              </main>
+            </div>
+          )}
 
           {/* Mobile Bottom Tab Bar */}
           {showMobileNav && (
