@@ -417,6 +417,8 @@ interface ProjectStatusAgentChatProps {
   embedded?: boolean;
   /** Ref callback to expose clearChat to parent (used by AIAssistantPanel) */
   onClearChatRef?: (clearFn: (() => void) | null) => void;
+  /** Ref callback to expose loadThread to parent (used by AIAssistantPanel) */
+  onLoadThreadRef?: (loadFn: ((threadId: string) => void) | null) => void;
 }
 
 const INTERNAL_ORIGINS = [HOST, PRODUCTION_HOST]
@@ -485,6 +487,7 @@ export function ProjectStatusAgentChat({
   onCollapsedChange,
   embedded,
   onClearChatRef,
+  onLoadThreadRef,
 }: ProjectStatusAgentChatProps) {
   const [input, setInput] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -728,6 +731,37 @@ export function ProjectStatusAgentChat({
     onClearChatRef?.(handleClearChat);
     return () => onClearChatRef?.(null);
   }, [onClearChatRef, handleClearChat]);
+
+  // Load a specific thread's messages
+  const handleLoadThread = useCallback(
+    (threadId: string) => {
+      const historyUrl = `/a/${accountId}/${projectId}/api/chat/project-status/history-by-thread?threadId=${encodeURIComponent(threadId)}`;
+      fetch(historyUrl)
+        .then((res) => res.json())
+        .then((data: { messages?: UpsightMessage[]; error?: string }) => {
+          if (data.error) {
+            consola.warn("Failed to load thread:", data.error);
+            return;
+          }
+          if (data.messages) {
+            setMessages(data.messages);
+            requestAnimationFrame(() => {
+              scrollToBottom();
+            });
+          }
+        })
+        .catch((err) => {
+          consola.error("Failed to load thread:", err);
+        });
+    },
+    [accountId, projectId, setMessages, scrollToBottom],
+  );
+
+  // Expose loadThread to parent via callback ref
+  useEffect(() => {
+    onLoadThreadRef?.(handleLoadThread);
+    return () => onLoadThreadRef?.(null);
+  }, [onLoadThreadRef, handleLoadThread]);
 
   const {
     startRecording: startVoiceRecording,
