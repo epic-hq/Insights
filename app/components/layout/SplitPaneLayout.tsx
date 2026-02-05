@@ -18,7 +18,7 @@
  * - Mobile: AI panel hidden, hamburger menu for nav
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Outlet,
   useParams,
