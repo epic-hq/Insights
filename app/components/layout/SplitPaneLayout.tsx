@@ -19,12 +19,8 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  Outlet,
-  useParams,
-  useRouteLoaderData,
-  useSearchParams,
-} from "react-router";
+import { Outlet, useRouteLoaderData, useSearchParams } from "react-router";
+import { useCurrentProject } from "~/contexts/current-project-context";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { SidebarProvider } from "~/components/ui/sidebar";
@@ -74,11 +70,7 @@ export function SplitPaneLayout({
 }: SplitPaneLayoutProps) {
   const { isMobile } = useDeviceDetection();
   const [searchParams] = useSearchParams();
-  const params = useParams();
-  const accountId = params.accountId || "";
-  const projectId = params.projectId || "";
-  const projectPath =
-    accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+  const { accountId, projectId } = useCurrentProject();
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const protectedData = useRouteLoaderData(
     "routes/_ProtectedLayout",

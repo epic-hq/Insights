@@ -10,7 +10,7 @@
 
 import { Menu, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, NavLink, useLocation, useParams } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -28,6 +28,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "~/components/ui/sheet";
+import { useCurrentProject } from "~/contexts/current-project-context";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { useSidebarCounts } from "~/hooks/useSidebarCounts";
 import { cn } from "~/lib/utils";
@@ -162,9 +163,7 @@ export function TopNavigation({
   accounts = [],
   className,
 }: TopNavigationProps) {
-  const params = useParams();
-  const accountId = params.accountId || "";
-  const projectId = params.projectId || "";
+  const { accountId, projectId } = useCurrentProject();
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
