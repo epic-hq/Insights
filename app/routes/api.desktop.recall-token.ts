@@ -60,7 +60,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const baseUrl = (RECALL_API_URL || DEFAULT_RECALL_API_URL).replace(/\/+$/, "")
 		const endpointUrl = `${baseUrl}/api/v1/sdk_upload/`
 
-		// Generate upload token from Recall.ai
+		// Generate upload token from Recall.ai with real-time transcription enabled
 		const recallResponse = await fetch(endpointUrl, {
 			method: "POST",
 			headers: {
@@ -72,6 +72,22 @@ export async function action({ request }: ActionFunctionArgs) {
 					account_id,
 					project_id,
 					user_id: user.id,
+				},
+				// Enable real-time transcription via Desktop SDK callback
+				recording_config: {
+					transcript: {
+						provider: {
+							// Use AssemblyAI streaming for real-time transcription
+							assembly_ai_v3_streaming: {},
+						},
+					},
+					// Route transcript events back to the Desktop SDK
+					realtime_endpoints: [
+						{
+							type: "desktop_sdk_callback",
+							events: ["transcript.data", "transcript.partial_data", "participant_events.join"],
+						},
+					],
 				},
 			}),
 		})
