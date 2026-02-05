@@ -35,6 +35,7 @@ import teamsRoutes, {
   teamsAccountRoutes as teamRoutes,
 } from "./features/teams/routes";
 import voiceRoutes from "./features/voice/routes";
+import realtimeTranscriptionRoutes from "./features/realtime-transcription/routes";
 
 const routes = [
   // Public marketing landing page
@@ -368,6 +369,7 @@ const routes = [
   ),
   route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
   route("api.livekit-token", "./routes/api.livekit-token.tsx"),
+  route("api/realtime-evidence", "./routes/api.realtime-evidence.tsx"),
   route("api/process", "./routes/api.process.tsx"),
   route("api.research-answers", "./routes/api.research-answers.tsx"),
   route("api/teams/create", "./routes/api.teams.create.tsx"),
@@ -409,6 +411,7 @@ const routes = [
   route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),
 
   ...voiceRoutes,
+  ...realtimeTranscriptionRoutes,
 
   // Billing routes (Polar.sh integration)
   route("api/billing/checkout", "./routes/api.billing.checkout.tsx"),
