@@ -105,7 +105,7 @@ export function UserProfile({
               {!collapsed && (
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{displayName}</span>
-                  {email && (
+                  {email && email !== displayName && (
                     <span className="truncate text-muted-foreground text-xs">
                       {email}
                     </span>
@@ -130,7 +130,7 @@ export function UserProfile({
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{displayName}</span>
-                  {email && (
+                  {email && email !== displayName && (
                     <span className="truncate text-muted-foreground text-xs">
                       {email}
                     </span>
