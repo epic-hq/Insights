@@ -85,7 +85,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         title: "Create a Survey",
         description: "Collect responses via shareable links",
         icon: ScrollText,
-        to: (routes) => routes.ask.index(),
+        to: (routes) => routes.ask.new(),
       },
       {
         key: "journey",
