@@ -92,7 +92,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         title: "Your Journey",
         description: "Track your research progress",
         icon: Map,
-        to: (routes) => routes.dashboard(),
+        to: (routes) => routes.journey(),
         featureFlag: "ffYourJourney",
       },
     ],

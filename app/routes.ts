@@ -15,6 +15,7 @@ import facetsRoutes from "./features/facets/routes";
 import homeRoutes from "./features/home/routes";
 import insightsRoutes from "./features/insights/routes";
 import interviewsRoutes from "./features/interviews/routes";
+import journeyMapRoutes from "./features/journey-map/routes";
 import lensesRoutes from "./features/lenses/routes";
 import marketingRoutes from "./features/marketing/routes";
 import mobileRoutes from "./features/mobile/insights/routes";
@@ -130,6 +131,7 @@ const routes = [
         ...facetsRoutes,
         ...lensesRoutes,
         ...prioritiesRoutes,
+        ...journeyMapRoutes,
         ...assetsRoutes,
         ...sourcesRoutes,
         ...responsesRoutes,
@@ -192,6 +194,14 @@ const routes = [
         route(
           "api/chat/project-status/history",
           "./routes/api.chat.project-status.history.tsx",
+        ),
+        route(
+          "api/chat/project-status/threads",
+          "./routes/api.chat.project-status.threads.tsx",
+        ),
+        route(
+          "api/chat/project-status/history-by-thread",
+          "./routes/api.chat.project-status.history-by-thread.tsx",
         ),
         // Interview insight agent chat API (project-scoped)
         route(

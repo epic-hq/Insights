@@ -8,6 +8,7 @@ import {
   Glasses,
   Home,
   Link2,
+  Map,
   MessageSquareText,
   Sparkles,
   Users,
@@ -44,6 +45,14 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
         description: "Your workspace at a glance.",
         icon: Home,
         to: (routes) => routes.dashboard(),
+      },
+      {
+        key: "journey",
+        title: "Journey",
+        description: "Your research journey progress map.",
+        icon: Map,
+        to: (routes) => routes.journey(),
+        featureFlag: "ffYourJourney",
       },
       {
         key: "relationships",

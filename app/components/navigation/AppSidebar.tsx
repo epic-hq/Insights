@@ -92,6 +92,8 @@ export function AppSidebar() {
   const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM");
   const { isEnabled: prioritiesEnabled } =
     usePostHogFeatureFlag("ffPriorities");
+  const { isEnabled: journeyMapEnabled } =
+    usePostHogFeatureFlag("ffYourJourney");
 
   // Journey progress for onboarding sidebar
   const { progress: journeyProgress, allComplete: journeyComplete } =
@@ -317,6 +319,15 @@ export function AppSidebar() {
           if (item.key === "priorities" && !prioritiesEnabled) {
             return false;
           }
+          // Journey map: show when feature flag is enabled or in local dev
+          if (
+            item.key === "journey" &&
+            !journeyMapEnabled &&
+            typeof window !== "undefined" &&
+            window.location.hostname !== "localhost"
+          ) {
+            return false;
+          }
           if (item.key === "opportunities") {
             return shouldShowOpportunities;
           }
@@ -330,6 +341,7 @@ export function AppSidebar() {
     salesCrmEnabled,
     icpFeatureEnabled,
     prioritiesEnabled,
+    journeyMapEnabled,
     shouldShowOpportunities,
   ]);
 

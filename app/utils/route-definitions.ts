@@ -105,6 +105,9 @@ export interface RouteDefinitions {
     edit: (id: string) => string;
   };
 
+  // Journey map
+  journey: () => string;
+
   // Priorities / roadmap tasks
   priorities: () => string;
   tasks: {
@@ -318,6 +321,9 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
       detail: (id: string) => `${base}/opportunities/${id}`,
       edit: (id: string) => `${base}/opportunities/${id}/edit`,
     },
+
+    // Journey map
+    journey: () => `${base}/journey`,
 
     // Priorities / task system
     priorities: () => `${base}/priorities`,
