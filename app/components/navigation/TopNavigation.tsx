@@ -10,7 +10,7 @@
 
 import { Menu, Search, X } from "lucide-react";
 import { useState } from "react";
-import { Link, NavLink, useLocation } from "react-router";
+import { Link, NavLink, useLocation, useParams } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -27,8 +27,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "~/components/ui/sheet";
-import { useCurrentProject } from "~/contexts/current-project-context";
-import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { useSidebarCounts } from "~/hooks/useSidebarCounts";
 import { cn } from "~/lib/utils";
 import { UserProfile } from "../auth/UserProfile";
@@ -168,12 +167,14 @@ export function TopNavigation({
   isAIPanelOpen,
   className,
 }: TopNavigationProps) {
-  const { accountId, projectId, projectPath } = useCurrentProject();
-  const routes = useProjectRoutes(projectPath || "");
+  const params = useParams();
+  const accountId = params.accountId || "";
+  const projectId = params.projectId || "";
+  const routes = useProjectRoutesFromIds(accountId, projectId);
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { counts } = useSidebarCounts(accountId, projectId || "");
+  const { counts } = useSidebarCounts(accountId, projectId);
 
   // Determine which category is active based on current path
   const getActiveCategory = () => {

@@ -19,10 +19,14 @@
  */
 
 import { useCallback, useState } from "react";
-import { Outlet, useRouteLoaderData, useSearchParams } from "react-router";
-import { useCurrentProject } from "~/contexts/current-project-context";
+import {
+  Outlet,
+  useParams,
+  useRouteLoaderData,
+  useSearchParams,
+} from "react-router";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
-import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
 import { BottomTabBar } from "../navigation/BottomTabBar";
@@ -65,8 +69,12 @@ export function SplitPaneLayout({
 }: SplitPaneLayoutProps) {
   const { isMobile } = useDeviceDetection();
   const [searchParams] = useSearchParams();
-  const { accountId, projectPath } = useCurrentProject();
-  const routes = useProjectRoutes(projectPath || "");
+  const params = useParams();
+  const accountId = params.accountId || "";
+  const projectId = params.projectId || "";
+  const projectPath =
+    accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+  const routes = useProjectRoutesFromIds(accountId, projectId);
   const protectedData = useRouteLoaderData(
     "routes/_ProtectedLayout",
   ) as ProtectedLayoutData | null;
@@ -144,10 +152,10 @@ export function SplitPaneLayout({
           {showMobileNav && (
             <BottomTabBar
               routes={{
-                dashboard: `${projectPath}/dashboard`,
+                dashboard: routes.projects.dashboard(),
                 contacts: routes.people.index(),
                 content: routes.interviews.index(),
-                chat: `${projectPath}/assistant`,
+                chat: routes.projects.projectChat(),
                 insights: routes.insights.cards(),
                 upload: routes.interviews.upload(),
               }}

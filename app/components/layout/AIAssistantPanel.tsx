@@ -18,12 +18,11 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useParams } from "react-router";
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { useCurrentProject } from "~/contexts/current-project-context";
-import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { useSidebarCounts } from "~/hooks/useSidebarCounts";
 import { cn } from "~/lib/utils";
 import type { RouteDefinitions } from "~/utils/route-definitions";
@@ -263,9 +262,13 @@ export function AIAssistantPanel({
   systemContext = "",
   className,
 }: AIAssistantPanelProps) {
-  const { accountId, projectId, projectPath } = useCurrentProject();
-  const routes = useProjectRoutes(projectPath || "");
-  const { counts } = useSidebarCounts(accountId, projectId || "");
+  const params = useParams();
+  const accountId = params.accountId || "";
+  const projectId = params.projectId || "";
+  const projectPath =
+    accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+  const routes = useProjectRoutesFromIds(accountId, projectId);
+  const { counts } = useSidebarCounts(accountId, projectId);
 
   // Persist panel state to localStorage
   useEffect(() => {
