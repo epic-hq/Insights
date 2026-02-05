@@ -26,7 +26,9 @@ import prioritiesRoutes from "./features/priorities/routes";
 import projectChatRoutes from "./features/project-chat/routes";
 import projectsRoutes from "./features/projects/routes";
 import questionsRoutes from "./features/questions/routes";
+import responsesRoutes from "./features/responses/routes";
 import segmentsRoutes from "./features/segments/routes";
+import sourcesRoutes from "./features/sources/routes";
 import signupChatRoutes from "./features/signup-chat/routes";
 import teamsRoutes, {
   teamsAccountRoutes as teamRoutes,
@@ -129,6 +131,8 @@ const routes = [
         ...lensesRoutes,
         ...prioritiesRoutes,
         ...assetsRoutes,
+        ...sourcesRoutes,
+        ...responsesRoutes,
 
         // Ask routes (shareable prompts for collecting responses)
         ...prefix("ask", askRoutes),
