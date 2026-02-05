@@ -35,7 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			})),
 			[], // no chapters for realtime
 			language || "en",
-			{ kinds: DEFAULT_FACET_KINDS, facets: [], version: "realtime-proto" },
+			{ kinds: DEFAULT_FACET_KINDS, facets: [], version: "realtime-proto" }
 		)
 
 		consola.info(`[realtime-evidence] Extracted ${result.evidence?.length || 0} evidence turns`)
