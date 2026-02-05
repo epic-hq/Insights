@@ -1,14 +1,40 @@
 import slugify from "@sindresorhus/slugify"
 import { z } from "zod"
+import { QuestionBranchingSchema } from "./branching"
 
 export const ResearchLinkQuestionSchema = z.object({
 	id: z.string().min(1, "Question id is required"),
 	prompt: z.string().min(1, "Question text is required"),
-	required: z.boolean().default(true),
-	type: z.enum(["auto", "short_text", "long_text", "single_select", "multi_select"]).default("auto"),
+	required: z.boolean().default(false),
+	type: z
+		.enum(["auto", "short_text", "long_text", "single_select", "multi_select", "likert", "image_select"])
+		.default("auto"),
 	placeholder: z.string().optional().nullable(),
 	helperText: z.string().optional().nullable(),
 	options: z.array(z.string()).optional().nullable(),
+	// Likert scale configuration
+	likertScale: z.number().min(3).max(10).optional().nullable(),
+	likertLabels: z
+		.object({
+			low: z.string().optional(),
+			high: z.string().optional(),
+		})
+		.optional()
+		.nullable(),
+	// Image options configuration (label + imageUrl pairs)
+	imageOptions: z
+		.array(
+			z.object({
+				label: z.string(),
+				imageUrl: z.string().url(),
+			})
+		)
+		.optional()
+		.nullable(),
+	// Video prompt URL (shown before/with question)
+	videoUrl: z.string().optional().nullable(),
+	// Conditional branching rules
+	branching: QuestionBranchingSchema.optional().nullable(),
 })
 
 export type ResearchLinkQuestion = z.infer<typeof ResearchLinkQuestionSchema>
@@ -19,11 +45,15 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 	return {
 		id,
 		prompt: "",
-		required: true,
+		required: false,
 		type: "auto",
 		placeholder: null,
 		helperText: null,
 		options: null,
+		likertScale: null,
+		likertLabels: null,
+		imageOptions: null,
+		videoUrl: null,
 	}
 }
 
@@ -67,6 +97,7 @@ export const ResearchLinkPayloadSchema = z.object({
 	description: textField,
 	heroTitle: textField,
 	heroSubtitle: textField,
+	instructions: textField,
 	heroCtaLabel: textField,
 	heroCtaHelper: textField,
 	calendarUrl: z
@@ -106,9 +137,15 @@ export const ResearchLinkPayloadSchema = z.object({
 			}
 		}),
 	allowChat: booleanFlag,
+	allowVoice: booleanFlag,
+	allowVideo: booleanFlag,
 	defaultResponseMode: z
-		.union([z.literal("form"), z.literal("chat"), z.string().optional(), z.null()])
-		.transform((value) => (value === "chat" ? "chat" : "form")),
+		.union([z.literal("form"), z.literal("chat"), z.literal("voice"), z.string().optional(), z.null()])
+		.transform((value) => {
+			if (value === "chat") return "chat"
+			if (value === "voice") return "voice"
+			return "form"
+		}),
 	isLive: booleanFlag,
 	questions: QuestionsJsonSchema,
 })
@@ -121,6 +158,34 @@ export const ResearchLinkResponseStartSchema = z.object({
 	responseMode: z.enum(["form", "chat"]).optional(),
 })
 
+/**
+ * Schema for starting an anonymous response (no identification required)
+ */
+export const ResearchLinkAnonymousStartSchema = z.object({
+	responseId: z.string().uuid().optional().nullable(),
+	responseMode: z.enum(["form", "chat"]).optional(),
+})
+
+/**
+ * Schema for starting a phone-identified response
+ */
+export const ResearchLinkPhoneStartSchema = z.object({
+	phone: z.string({ required_error: "Phone number is required" }).min(7, "Enter a valid phone number"),
+	responseId: z.string().uuid().optional().nullable(),
+	responseMode: z.enum(["form", "chat"]).optional(),
+})
+
+/**
+ * Schema for creating a person when one doesn't exist for the given email
+ */
+export const ResearchLinkCreatePersonSchema = z.object({
+	email: z.string({ required_error: "Email is required" }).email("Enter a valid email"),
+	firstName: z.string({ required_error: "First name is required" }).min(1, "First name is required"),
+	lastName: z.string().optional().nullable(),
+	responseId: z.string().uuid({ message: "Response ID is required" }),
+	responseMode: z.enum(["form", "chat"]).optional(),
+})
+
 export const ResearchLinkResponseSaveSchema = z.object({
 	responseId: z.string().uuid({ message: "Response id is required" }),
 	responses: z
@@ -128,6 +193,7 @@ export const ResearchLinkResponseSaveSchema = z.object({
 		.optional()
 		.default({}),
 	completed: z.boolean().optional(),
+	merge: z.boolean().optional().default(false), // If true, merge responses with existing instead of replacing
 })
 
 export type ResearchLinkResponsePayload = z.infer<typeof ResearchLinkResponseSaveSchema>

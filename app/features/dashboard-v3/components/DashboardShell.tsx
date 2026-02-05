@@ -15,7 +15,6 @@ import type { Insight } from "~/types"
 import { ActiveDashboard } from "./ActiveDashboard"
 import { OnboardingDashboard } from "./OnboardingDashboard"
 import type { ProjectContext } from "./sections/ContextPanel"
-import type { LensActivityItem } from "./sections/LensFeed"
 
 export type DashboardState = "empty" | "processing" | "active"
 
@@ -24,6 +23,8 @@ export interface DashboardShellProps {
 	projectName: string
 	/** Base path for project routes */
 	projectPath: string
+	/** Project ID for navigation and skip functionality */
+	projectId: string
 	/** Total conversation count */
 	conversationCount: number
 	/** Number of items currently processing */
@@ -34,6 +35,10 @@ export interface DashboardShellProps {
 	hasGoals: boolean
 	/** Whether lenses have been configured */
 	hasLenses: boolean
+	/** Whether company context has been set up */
+	hasCompanyContext: boolean
+	/** Whether interview prompts have been generated */
+	hasPrompts?: boolean
 	/** Project research goal text */
 	researchGoal?: string
 	/** Full project context for setup progress */
@@ -44,8 +49,6 @@ export interface DashboardShellProps {
 	insights: Insight[]
 	/** Array of lens summaries */
 	lenses: LensSummary[]
-	/** Recent lens activity for feed */
-	recentActivity?: LensActivityItem[]
 	/** Additional CSS classes */
 	className?: string
 }
@@ -84,17 +87,19 @@ export function shouldShowSidebar(state: DashboardState, hasGoals: boolean): boo
 export function DashboardShell({
 	projectName,
 	projectPath,
+	projectId,
 	conversationCount,
 	processingCount,
 	activeLensCount,
 	hasGoals,
 	hasLenses,
+	hasCompanyContext,
+	hasPrompts = false,
 	researchGoal,
 	projectContext,
 	tasks,
 	insights,
 	lenses,
-	recentActivity,
 	className,
 }: DashboardShellProps) {
 	const state = getDashboardState(conversationCount, processingCount, hasGoals)
@@ -106,8 +111,11 @@ export function DashboardShell({
 				<OnboardingDashboard
 					projectName={projectName}
 					projectPath={projectPath}
+					projectId={projectId}
 					hasGoals={hasGoals}
 					hasLenses={hasLenses}
+					hasCompanyContext={hasCompanyContext}
+					hasPrompts={hasPrompts}
 					hasConversations={conversationCount > 0}
 					hasAppliedLenses={lenses.some((l) => l.conversationCount > 0)}
 				/>
@@ -138,7 +146,6 @@ export function DashboardShell({
 							tasks={tasks}
 							insights={insights}
 							lenses={lenses}
-							recentActivity={recentActivity}
 							researchGoal={researchGoal}
 							projectContext={projectContext}
 							conversationCount={conversationCount}
@@ -149,8 +156,11 @@ export function DashboardShell({
 						<OnboardingDashboard
 							projectName={projectName}
 							projectPath={projectPath}
+							projectId={projectId}
 							hasGoals={hasGoals}
 							hasLenses={hasLenses}
+							hasCompanyContext={hasCompanyContext}
+							hasPrompts={hasPrompts}
 							hasConversations={false}
 							hasAppliedLenses={false}
 							hideHeader
@@ -167,7 +177,6 @@ export function DashboardShell({
 					tasks={tasks}
 					insights={insights}
 					lenses={lenses}
-					recentActivity={recentActivity}
 					researchGoal={researchGoal}
 					projectContext={projectContext}
 					conversationCount={conversationCount}

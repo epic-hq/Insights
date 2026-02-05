@@ -90,6 +90,8 @@ export async function uploadWithProgress({
 		body,
 		headers: contentType ? { "Content-Type": contentType } : undefined,
 		signal,
+		// @ts-expect-error - duplex is required for streaming bodies in modern browsers
+		duplex: "half",
 	})
 
 	if (!response.ok) {
@@ -116,7 +118,10 @@ export async function uploadMultipartWithProgress({
 	partSizeBytes = DEFAULT_PART_SIZE_BYTES,
 	onProgress,
 	signal,
-}: MultipartUploadParams): Promise<{ uploadId: string; parts: CompletedPart[] }> {
+}: MultipartUploadParams): Promise<{
+	uploadId: string
+	parts: CompletedPart[]
+}> {
 	const totalBytes = file.size
 	const safePartSize = Math.max(partSizeBytes, MIN_PART_SIZE_BYTES)
 	const totalParts = Math.max(1, Math.ceil(totalBytes / safePartSize))
@@ -124,7 +129,9 @@ export async function uploadMultipartWithProgress({
 	let bytesSent = 0
 	const completedParts: CompletedPart[] = []
 
-	const { uploadId, partUrls = {} } = await handlers.createMultipartUpload({ totalParts })
+	const { uploadId, partUrls = {} } = await handlers.createMultipartUpload({
+		totalParts,
+	})
 
 	try {
 		for (let partIndex = 0; partIndex < totalParts; partIndex += 1) {
@@ -134,35 +141,35 @@ export async function uploadMultipartWithProgress({
 			const partBlob = file.slice(start, end)
 
 			const partUrl =
-				partUrls[partNumber] ?? (await handlers.getPartUrl?.({ uploadId, partNumber, partSize: partBlob.size }))
+				partUrls[partNumber] ??
+				(await handlers.getPartUrl?.({
+					uploadId,
+					partNumber,
+					partSize: partBlob.size,
+				}))
 
 			if (!partUrl) {
 				throw new Error(`Missing presigned URL for part ${partNumber}`)
 			}
 
-			let partBytesSent = 0
-			const body = createProgressStream(partBlob, (chunkBytes) => {
-				partBytesSent += chunkBytes
-				bytesSent += chunkBytes
-
-				onProgress?.({
-					bytesSent,
-					totalBytes,
-					percent: calcPercent(bytesSent, totalBytes, { capAt: 99 }),
-					phase: "uploading",
-					part: {
-						index: partNumber,
-						total: totalParts,
-						bytesSent: partBytesSent,
-						size: partBlob.size,
-					},
-				})
+			// Use Blob directly instead of streaming for better R2 compatibility
+			// Progress is tracked per-part completion rather than per-chunk
+			onProgress?.({
+				bytesSent,
+				totalBytes,
+				percent: calcPercent(bytesSent, totalBytes, { capAt: 99 }),
+				phase: "uploading",
+				part: {
+					index: partNumber,
+					total: totalParts,
+					bytesSent: 0,
+					size: partBlob.size,
+				},
 			})
 
 			const response = await fetch(partUrl, {
 				method: "PUT",
-				body,
-				// R2/S3 ignore Content-Type on parts; optional to set.
+				body: partBlob, // Send Blob directly - more compatible than streaming
 				signal,
 			})
 
@@ -172,6 +179,9 @@ export async function uploadMultipartWithProgress({
 
 			const etag = normalizeEtag(response.headers.get("etag")) ?? `part-${partNumber}`
 			completedParts.push({ partNumber, etag, size: partBlob.size })
+
+			// Update bytesSent after successful part upload
+			bytesSent += partBlob.size
 
 			onProgress?.({
 				bytesSent,

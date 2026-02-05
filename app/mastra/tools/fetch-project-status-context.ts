@@ -316,7 +316,19 @@ type PersonEvidencePayload = z.infer<typeof personEvidenceSchema>
 type PersonaPayload = z.infer<typeof personaSchema>
 type InterviewPayload = z.infer<typeof interviewSchema>
 
+interface AccountContext {
+	website_url?: string | null
+	company_description?: string | null
+	customer_problem?: string | null
+	offerings?: string[] | null
+	target_orgs?: string[] | null
+	target_roles?: string[] | null
+	competitors?: string[] | null
+	industry?: string | null
+}
+
 interface ToolData {
+	accountContext?: AccountContext
 	status?: ProjectStatusPayload
 	sections?: SectionPayload[]
 	insights?: InsightPayload[]
@@ -332,32 +344,32 @@ export const fetchProjectStatusContextTool = createTool({
 	description:
 		"Load project status context, including research sections, insights, evidence, people, and personas for accessible projects.",
 	inputSchema: z.object({
-		projectId: z.string().optional().describe("Project ID to load. Defaults to the current project in context."),
-		scopes: z.array(z.enum(detailScopes)).optional().describe("Optional list of data groups to fetch."),
-		insightLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of insights to return."),
-		evidenceLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of evidence items to return."),
-		themeLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of themes to return."),
-		peopleLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of people to return."),
-		personaLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of personas to return."),
-		interviewLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of interviews to return."),
+		projectId: z.string().nullish().describe("Project ID to load. Defaults to the current project in context."),
+		scopes: z.array(z.enum(detailScopes)).nullish().describe("Optional list of data groups to fetch."),
+		insightLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of insights to return."),
+		evidenceLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of evidence items to return."),
+		themeLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of themes to return."),
+		peopleLimit: z.number().int().min(1).max(100).nullish().describe("Maximum number of people to return."),
+		personaLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of personas to return."),
+		interviewLimit: z.number().int().min(1).max(100).nullish().describe("Maximum number of interviews to return."),
 		peopleSearch: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Optional case-insensitive search string to match people by name or display name."),
 		includePersonEvidence: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("When true, include recent evidence snippets linked to the matched people."),
 		personEvidenceLimit: z
 			.number()
 			.int()
 			.min(1)
 			.max(50)
-			.optional()
+			.nullish()
 			.describe("Maximum number of evidence snippets to include per person when includePersonEvidence is true."),
 		includeEvidence: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("Set to false to omit detailed evidence and focus on higher-level insights and personas."),
 	}),
 	outputSchema: z.object({
@@ -368,6 +380,18 @@ export const fetchProjectStatusContextTool = createTool({
 		scopes: z.array(z.enum(detailScopes)),
 		data: z
 			.object({
+				accountContext: z
+					.object({
+						website_url: z.string().nullable().optional(),
+						company_description: z.string().nullable().optional(),
+						customer_problem: z.string().nullable().optional(),
+						offerings: z.array(z.string()).nullable().optional(),
+						target_orgs: z.array(z.string()).nullable().optional(),
+						target_roles: z.array(z.string()).nullable().optional(),
+						competitors: z.array(z.string()).nullable().optional(),
+						industry: z.string().nullable().optional(),
+					})
+					.optional(),
 				status: projectStatusSchema.optional(),
 				sections: z.array(sectionSchema).optional(),
 				insights: z.array(insightSchema).optional(),
@@ -385,7 +409,7 @@ export const fetchProjectStatusContextTool = createTool({
 		const runtimeAccountId = context?.requestContext?.get?.("account_id")
 
 		const projectId = (input.projectId ?? runtimeProjectId ?? "").trim()
-		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
+		const runtimeAccountIdString = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
 		const includeEvidence = input.includeEvidence !== false
 		const scopes = (input.scopes && input.scopes.length > 0 ? input.scopes : detailScopes) as DetailScope[]
 		const scopeSet = new Set<DetailScope>(scopes)
@@ -403,7 +427,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 		consola.debug("fetch-project-status-context: execute start", {
 			projectId,
-			accountId,
+			accountId: runtimeAccountIdString,
 			scopes,
 			includeEvidence,
 			insightLimit,
@@ -439,6 +463,33 @@ export const fetchProjectStatusContextTool = createTool({
 				.eq("id", projectId)
 				.maybeSingle()
 
+			// Fetch account context for AI operations
+			let accountContext: {
+				website_url?: string | null
+				company_description?: string | null
+				customer_problem?: string | null
+				offerings?: string[] | null
+				target_orgs?: string[] | null
+				target_roles?: string[] | null
+				competitors?: string[] | null
+				industry?: string | null
+			} | null = null
+
+			if (project?.account_id) {
+				const { data: account } = await supabase
+					.schema("accounts")
+					.from("accounts")
+					.select(
+						"website_url, company_description, customer_problem, offerings, target_orgs, target_roles, competitors, industry"
+					)
+					.eq("id", project.account_id)
+					.maybeSingle()
+
+				if (account) {
+					accountContext = account
+				}
+			}
+
 			if (projectError) {
 				consola.error("fetch-project-status-context: failed to load project metadata", projectError)
 				return {
@@ -451,7 +502,9 @@ export const fetchProjectStatusContextTool = createTool({
 			}
 
 			if (!project) {
-				consola.warn("fetch-project-status-context: project not found", { projectId })
+				consola.warn("fetch-project-status-context: project not found", {
+					projectId,
+				})
 				return {
 					success: false,
 					message: `No project found for id ${projectId}.`,
@@ -461,19 +514,32 @@ export const fetchProjectStatusContextTool = createTool({
 				}
 			}
 
-			if (accountId && project.account_id && project.account_id !== accountId) {
+			const resolvedAccountId = runtimeAccountIdString || project.account_id || undefined
+
+			if (runtimeAccountIdString && project.account_id && project.account_id !== runtimeAccountIdString) {
 				consola.debug("fetch-project-status-context: runtime account differs from project account", {
-					expectedAccountId: accountId,
+					expectedAccountId: runtimeAccountIdString,
 					projectAccountId: project.account_id,
 				})
 			}
 
+			if (!runtimeAccountIdString && project.account_id) {
+				consola.debug("fetch-project-status-context: using project.account_id as fallback for routes", {
+					accountId: project.account_id,
+				})
+			}
+
 			// Generate route definitions for URL generation
-			const projectPath = accountId && projectId ? `/a/${accountId}/${projectId}` : ""
+			const projectPath = resolvedAccountId && projectId ? `/a/${resolvedAccountId}/${projectId}` : ""
 			const routes = createRouteDefinitions(projectPath)
 
 			const data: ToolData = {}
 			const scopeErrors: string[] = []
+
+			// Add account context if available
+			if (accountContext) {
+				data.accountContext = accountContext
+			}
 
 			if (scopeSet.has("status")) {
 				try {
@@ -916,7 +982,12 @@ export const fetchProjectStatusContextTool = createTool({
 					const personaInsightMap = new Map<string, Set<string>>()
 					const personaPeopleMap = new Map<
 						string,
-						Array<{ id: string; name: string | null; segment: string | null; role: string | null }>
+						Array<{
+							id: string
+							name: string | null
+							segment: string | null
+							role: string | null
+						}>
 					>()
 
 					if (personaIds.length > 0) {

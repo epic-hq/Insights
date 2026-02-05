@@ -17,6 +17,7 @@ interface LazyTranscriptResultsProps {
 		display_name: string | null
 		people?: { id?: string; name?: string | null; segment?: string | null }
 	}>
+	onSpeakerClick?: (speakerKey: string) => void
 }
 
 interface TranscriptApiResponse {
@@ -44,6 +45,7 @@ export function LazyTranscriptResults({
 	hasFormattedTranscript,
 	durationSec,
 	participants = [],
+	onSpeakerClick,
 }: LazyTranscriptResultsProps) {
 	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
 	const [loading, setLoading] = useState(false)
@@ -207,6 +209,7 @@ export function LazyTranscriptResults({
 					}}
 					rawTranscript={transcriptData.text || undefined}
 					participants={participants}
+					onSpeakerClick={onSpeakerClick}
 				/>
 			)}
 		</div>

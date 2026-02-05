@@ -119,7 +119,10 @@ function extractMediaUrls(html: string): Array<{ type: string; url: string }> {
 	for (const pattern of videoPatterns) {
 		for (const match of html.matchAll(pattern)) {
 			if (match[1] && (match[1].startsWith("http") || match[1].startsWith("//"))) {
-				media.push({ type: "video", url: match[1].startsWith("//") ? `https:${match[1]}` : match[1] })
+				media.push({
+					type: "video",
+					url: match[1].startsWith("//") ? `https:${match[1]}` : match[1],
+				})
 			}
 		}
 	}
@@ -133,7 +136,10 @@ function extractMediaUrls(html: string): Array<{ type: string; url: string }> {
 	for (const pattern of audioPatterns) {
 		for (const match of html.matchAll(pattern)) {
 			if (match[1] && (match[1].startsWith("http") || match[1].startsWith("//"))) {
-				media.push({ type: "audio", url: match[1].startsWith("//") ? `https:${match[1]}` : match[1] })
+				media.push({
+					type: "audio",
+					url: match[1].startsWith("//") ? `https:${match[1]}` : match[1],
+				})
 			}
 		}
 	}
@@ -155,19 +161,42 @@ export const fetchWebContentTool = createTool({
 		url: z.string().url().describe("The URL of the webpage to fetch."),
 		includeLinks: z
 			.boolean()
-			.optional()
-			.default(false)
+			.nullish()
+			.transform((val) => val ?? false)
 			.describe("Whether to extract and return links from the page. Default: false"),
 		includeMedia: z
 			.boolean()
-			.optional()
-			.default(false)
+			.nullish()
+			.transform((val) => val ?? false)
 			.describe("Whether to extract and return media URLs (video/audio) from the page. Default: false"),
 		maxContentLength: z
 			.number()
-			.optional()
-			.default(MAX_CONTENT_LENGTH)
+			.nullish()
+			.transform((val) => val ?? MAX_CONTENT_LENGTH)
 			.describe(`Maximum length of text content to return. Default: ${MAX_CONTENT_LENGTH}`),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		url: z.string(),
+		metadata: z.record(z.string(), z.string().nullable()).nullable(),
+		textContent: z.string().nullable(),
+		links: z
+			.array(
+				z.object({
+					href: z.string(),
+					text: z.string(),
+				})
+			)
+			.nullable(),
+		media: z
+			.array(
+				z.object({
+					type: z.string(),
+					url: z.string(),
+				})
+			)
+			.nullable(),
+		error: z.string().optional(),
 	}),
 	execute: async (input) => {
 		const { url, includeLinks = false, includeMedia = false, maxContentLength = MAX_CONTENT_LENGTH } = input

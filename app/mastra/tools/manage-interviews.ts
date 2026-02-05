@@ -7,16 +7,16 @@ import type { Database } from "~/types"
 
 const toolInputSchema = z.object({
 	action: z.enum(["get", "list", "delete"]),
-	interviewId: z.string().optional().describe("Required for get and delete actions"),
-	accountId: z.string().optional(),
-	projectId: z.string().optional(),
-	titleSearch: z.string().optional().describe("Optional case-insensitive title search for list"),
-	limit: z.number().int().min(1).max(200).optional().describe("Max rows for list (default 50)"),
-	dryRun: z.boolean().optional().describe("For delete: return what would be deleted without mutating"),
-	force: z.boolean().optional().describe("For delete: proceed even if linked records exist"),
+	interviewId: z.string().nullish().describe("Required for get and delete actions"),
+	accountId: z.string().nullish(),
+	projectId: z.string().nullish(),
+	titleSearch: z.string().nullish().describe("Optional case-insensitive title search for list"),
+	limit: z.number().int().min(1).max(200).nullish().describe("Max rows for list (default 50)"),
+	dryRun: z.boolean().nullish().describe("For delete: return what would be deleted without mutating"),
+	force: z.boolean().nullish().describe("For delete: proceed even if linked records exist"),
 	confirmTitle: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("For delete (non-dryRun): must match the interview's current title exactly (case-insensitive)"),
 })
 
@@ -113,7 +113,11 @@ export const manageInterviewsTool = createTool({
 		try {
 			if (action === "get") {
 				if (!interviewId) {
-					return { success: false, message: "interviewId is required for get.", interview: null }
+					return {
+						success: false,
+						message: "interviewId is required for get.",
+						interview: null,
+					}
 				}
 
 				const { data: interview_row, error } = await supabase
@@ -125,7 +129,11 @@ export const manageInterviewsTool = createTool({
 					.single()
 
 				if (error || !interview_row) {
-					return { success: false, message: "Interview not found.", interview: null }
+					return {
+						success: false,
+						message: "Interview not found.",
+						interview: null,
+					}
 				}
 
 				return {
@@ -179,7 +187,11 @@ export const manageInterviewsTool = createTool({
 
 			if (action === "delete") {
 				if (!interviewId) {
-					return { success: false, message: "interviewId is required for delete.", interview: null }
+					return {
+						success: false,
+						message: "interviewId is required for delete.",
+						interview: null,
+					}
 				}
 
 				const { data: interview_row, error: fetch_error } = await supabase
@@ -191,7 +203,11 @@ export const manageInterviewsTool = createTool({
 					.maybeSingle()
 
 				if (fetch_error || !interview_row) {
-					return { success: false, message: "Interview not found.", interview: null }
+					return {
+						success: false,
+						message: "Interview not found.",
+						interview: null,
+					}
 				}
 
 				const linked_counts = await countLinks(supabase, interview_row.id, resolved_project_id)
@@ -268,7 +284,11 @@ export const manageInterviewsTool = createTool({
 				}
 			}
 
-			return { success: false, message: `Unknown action: ${action}`, interview: null }
+			return {
+				success: false,
+				message: `Unknown action: ${action}`,
+				interview: null,
+			}
 		} catch (error) {
 			consola.error("manage-interviews: unexpected failure", error)
 			return {

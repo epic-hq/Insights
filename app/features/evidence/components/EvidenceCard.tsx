@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { Clock, FileText, Minus, Play, Plus } from "lucide-react"
+import { ClipboardList, Clock, FileText, Minus, Play, Plus } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -149,16 +149,28 @@ function EvidenceCard({
 			{/* Header */}
 			<div className="flex items-start justify-between px-4 pt-3">
 				<h3 className="font-semibold text-base text-foreground text-lg leading-5">{gist}</h3>
-				{/* Source type indicator - only show Note badge for secondary sources */}
-				{evidence.source_type === "secondary" && (
-					<span
-						className="flex shrink-0 items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs"
-						title="From note or document"
-					>
-						<FileText className="h-3 w-3" />
-						Note
-					</span>
-				)}
+				<div className="flex shrink-0 items-center gap-1">
+					{/* Survey source indicator */}
+					{evidence.method === "survey" && (
+						<span
+							className="flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-violet-700 text-xs dark:bg-violet-950 dark:text-violet-300"
+							title="From survey response"
+						>
+							<ClipboardList className="h-3 w-3" />
+							Survey
+						</span>
+					)}
+					{/* Note source indicator for secondary sources */}
+					{evidence.source_type === "secondary" && (
+						<span
+							className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 text-xs dark:bg-amber-950 dark:text-amber-300"
+							title="From note or document"
+						>
+							<FileText className="h-3 w-3" />
+							Note
+						</span>
+					)}
+				</div>
 			</div>
 
 			{/* Subheader - People first, then topic */}

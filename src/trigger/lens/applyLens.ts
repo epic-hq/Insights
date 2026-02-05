@@ -11,7 +11,10 @@ import { metadata, task } from "@trigger.dev/sdk";
 import consola from "consola";
 
 import { createTask } from "~/features/tasks/db";
-import { runBaml } from "../lib/baml-tracing";
+import {
+  runBamlWithBilling,
+  systemBillingContext,
+} from "~/lib/billing/instrumented-baml.server";
 import type { TaskStatus } from "~/features/tasks/types";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 import { workflowRetryConfig } from "~/utils/processInterview.server";
@@ -317,7 +320,7 @@ async function resolveStakeholdersToPeople({
           lastname: lastName,
           title: stakeholder.role || null,
           primary_email: stakeholder.email?.toLowerCase() || null,
-          company: stakeholder.organization || null,
+          company: stakeholder.organization || "", // DB has NOT NULL default ''
           contact_info: {
             stakeholder_labels: stakeholder.labels || [],
             influence: stakeholder.influence || null,
@@ -460,7 +463,7 @@ export const applyLensTask = task({
       return { skipped: true, reason: "private" };
     }
 
-    // 3. Load evidence
+    // 3. Load evidence (interview evidence + survey evidence from same project)
     type EvidenceRow = {
       id: string;
       gist: string | null;
@@ -470,7 +473,9 @@ export const applyLensTask = task({
       created_at: string;
     };
 
-    const { data: evidence, error: evidenceError } = (await (client as any)
+    const { data: interviewEvidence, error: evidenceError } = (await (
+      client as any
+    )
       .from("evidence")
       .select("id, gist, verbatim, chunk, anchors, created_at")
       .eq("interview_id", interviewId)
@@ -482,6 +487,30 @@ export const applyLensTask = task({
     if (evidenceError) {
       throw new Error(`Failed to load evidence: ${evidenceError.message}`);
     }
+
+    // Also load survey evidence for the same project (if projectId is available)
+    let surveyEvidence: EvidenceRow[] = [];
+    const effectiveProject = projectId || interview.project_id;
+    if (effectiveProject) {
+      const { data: surveyEv } = (await (client as any)
+        .from("evidence")
+        .select("id, gist, verbatim, chunk, anchors, created_at")
+        .eq("project_id", effectiveProject)
+        .not("research_link_response_id", "is", null)
+        .is("interview_id", null)
+        .order("created_at", { ascending: true })
+        .limit(100)) as { data: EvidenceRow[] | null; error: any };
+
+      surveyEvidence = surveyEv || [];
+      if (surveyEvidence.length > 0) {
+        consola.info(
+          `[applyLens] Including ${surveyEvidence.length} survey evidence records`,
+        );
+      }
+    }
+
+    // Combine interview and survey evidence
+    const evidence = [...(interviewEvidence || []), ...surveyEvidence];
 
     if (!evidence || evidence.length === 0) {
       consola.warn(
@@ -546,30 +575,41 @@ export const applyLensTask = task({
       consola.info(
         `[applyLens] Calling ApplyConversationLens for ${template.template_name}`,
       );
-      const { result } = await runBaml({
-        functionName: "ApplyConversationLens",
-        traceName: `lens.${templateKey}`,
-        input: {
-          templateName: template.template_name,
-          evidenceCount: evidence.length,
-          interviewContext,
-          hasCustomInstructions: !!customInstructions,
-        },
-        metadata: {
-          interviewId,
-          templateKey,
-          accountId,
-          projectId,
-        },
-        bamlCall: (client) =>
-          client.ApplyConversationLens(
-            templateDefinition,
-            template.template_name,
-            evidenceJson,
+      const billingCtx = systemBillingContext(
+        accountId,
+        "lens_application",
+        projectId || undefined,
+      );
+      const { result } = await runBamlWithBilling(
+        billingCtx,
+        {
+          functionName: "ApplyConversationLens",
+          traceName: `lens.${templateKey}`,
+          input: {
+            templateName: template.template_name,
+            evidenceCount: evidence.length,
             interviewContext,
-            customInstructions || null,
-          ),
-      });
+            hasCustomInstructions: !!customInstructions,
+          },
+          metadata: {
+            interviewId,
+            templateKey,
+            accountId,
+            projectId,
+          },
+          resourceType: "lens_analysis",
+          resourceId: `${interviewId}:${templateKey}`,
+          bamlCall: (client) =>
+            client.ApplyConversationLens(
+              templateDefinition,
+              template.template_name,
+              evidenceJson,
+              interviewContext,
+              customInstructions || null,
+            ),
+        },
+        `lens:${interviewId}:${templateKey}`,
+      );
       extraction = result;
     } catch (error) {
       consola.error(

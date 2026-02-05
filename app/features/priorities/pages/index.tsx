@@ -75,24 +75,6 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const accountId = params.accountId
 	const projectId = params.projectId
 
-	// DEBUG: Detailed logging to track down task access issues
-	consola.info("🔍 [PRIORITIES DEBUG] Loader started")
-	consola.info("🔍 [PRIORITIES DEBUG] URL params:", { accountId, projectId })
-	consola.info("🔍 [PRIORITIES DEBUG] User:", {
-		email: ctx.claims?.email,
-		userId: ctx.claims?.sub,
-	})
-	consola.info(
-		"🔍 [PRIORITIES DEBUG] User's accounts:",
-		ctx.accounts?.map((a) => ({
-			accountId: a.account_id,
-			name: a.name,
-			personal: a.personal_account,
-			role: a.account_role,
-		}))
-	)
-	consola.info("🔍 [PRIORITIES DEBUG] Requesting accountId from URL:", accountId)
-
 	if (!accountId || !projectId) {
 		throw new Response("Missing account or project ID", { status: 400 })
 	}
@@ -100,13 +82,11 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// Verify user has access to this account
 	const userAccounts = ctx.accounts || []
 	const hasAccess = userAccounts.some((acc) => acc.account_id === accountId)
-	consola.info("🔍 [PRIORITIES DEBUG] Access check:", {
-		hasAccess,
-		urlAccountId: accountId,
-		userAccountIds: userAccounts.map((a) => a.account_id),
-	})
 	if (!hasAccess) {
-		consola.warn("🚫 [PRIORITIES DEBUG] User denied access to account:", accountId)
+		consola.warn("priorities: access denied", {
+			accountId,
+			userId: ctx.claims?.sub,
+		})
 		throw new Response("Unauthorized: You don't have access to this account", {
 			status: 403,
 		})
@@ -233,6 +213,8 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		const cluster = formData.get("cluster") as string
 		const priority = Number.parseInt(formData.get("priority") as string, 10) || 3
 		const sourceThemeId = formData.get("source_theme_id") as string | null
+		const dueDateRaw = formData.get("due_date") as string | null
+		const dueDate = dueDateRaw && dueDateRaw.trim() !== "" ? dueDateRaw : null
 
 		if (!title) {
 			return { success: false, error: "Title is required" }
@@ -260,6 +242,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 					cluster: cluster || "Product",
 					priority: priority as 1 | 2 | 3,
 					source_theme_id: sourceThemeId || null,
+					due_date: dueDate,
 				},
 			})
 

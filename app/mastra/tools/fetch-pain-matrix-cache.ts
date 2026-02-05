@@ -23,11 +23,11 @@ export const fetchPainMatrixCacheTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to fetch the cached matrix for. Defaults to the current project in runtime context."),
 		computeFreshness: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe(
 				"Set to false to skip recounting evidence for freshness checks (useful when minimizing additional Supabase queries). Defaults to true."
 			),

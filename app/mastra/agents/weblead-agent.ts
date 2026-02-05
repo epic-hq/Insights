@@ -1,6 +1,7 @@
-// agents/llmAgent.ts
-import { openai } from "@ai-sdk/openai"
+// agents/weblead-agent.ts
+
 import { Agent } from "@mastra/core/agent"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 
 export const webLeadAgent = new Agent({
 	id: "web-lead-agent",

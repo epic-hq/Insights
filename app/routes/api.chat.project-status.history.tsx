@@ -50,22 +50,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// })
 
 		if (!threads?.total || threads.total === 0) {
-			consola.info("project-status history: no threads found for resourceId", { resourceId })
 			return Response.json({ messages: [] })
 		}
 
 		const threadId = threads.threads[0].id
-		consola.info("project-status history: using thread", { threadId })
 
 		// Query messages using Memory API (v1: query() renamed to recall(), messagesV2 renamed to messages)
 		const { messages } = await memory.recall({
 			threadId,
 			selectBy: { last: 10 },
-		})
-
-		consola.info("project-status history loaded", {
-			threadId,
-			messageCount: messages?.length || 0,
 		})
 
 		// Convert messages to UI format

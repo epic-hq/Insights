@@ -1,3 +1,4 @@
 packages:
   - '.'           # Web app at root
   - 'desktop'     # Desktop app
+  - 'mcp-servers/*' # MCP servers

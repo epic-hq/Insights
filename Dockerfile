@@ -38,7 +38,7 @@ COPY package.json pnpm-lock.yaml ./
 # Only production deps + runtime tools
 RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
     pnpm install --prod --frozen-lockfile \
-    && pnpm add concurrently mastra@0.10.21 tsx
+    && pnpm add concurrently mastra@1.0.0-beta.15 tsx
 
 ############################
 # Runtime (slim)
@@ -67,14 +67,15 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 # Copy built assets only
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public
-COPY --from=build /app/.mastra ./.mastra
+COPY --chown=node:node --from=build /app/.mastra ./.mastra
 COPY --from=build /app/agents ./agents
 COPY --from=build /app/app ./app
 COPY --from=build /app/baml_client ./baml_client
 COPY --from=build /app/supabase/types.ts ./supabase/types.ts
 
-# Minimal runtime data dir
-RUN mkdir -p /app/data
+# Minimal runtime data dir + Mastra output dir (Mastra writes server configs here)
+RUN mkdir -p /app/data /app/.mastra/output /app/app/mastra/public \
+  && chown -R node:node /app/data /app/.mastra /app/app/mastra/public
 # Copy production env file for dotenvx
 COPY --chown=node:node .env.production ./.env.production
 

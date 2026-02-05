@@ -1,6 +1,17 @@
 import { createTool } from "@mastra/core/tools"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
+import { z } from "zod"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { HOST } from "~/paths"
+import type { Database } from "~/types"
 import { createRouteDefinitions } from "~/utils/route-definitions"
+
+function extractProjectIdFromResourceId(resourceId?: string | null): string | null {
+	if (!resourceId) return null
+	const match = resourceId.match(/[0-9a-fA-F-]{36}$/)
+	return match ? match[0] : null
+}
 
 /**
  * Tool to generate project-scoped routes for linking to entities in AI responses
@@ -8,83 +19,50 @@ import { createRouteDefinitions } from "~/utils/route-definitions"
 export const generateProjectRoutesTool = createTool({
 	id: "generate-project-routes",
 	description:
-		"Generate URLs for project entities like personas, people, opportunities, etc. Use this to create clickable links in responses.",
-	inputSchema: {
-		type: "object",
-		properties: {
-			entityType: {
-				type: "string",
-				enum: [
-					"persona",
-					"person",
-					"opportunity",
-					"organization",
-					"theme",
-					"evidence",
-					"insight",
-					"interview",
-					"segment",
-				],
-				description: "The type of entity to generate a route for",
-			},
-			entityId: {
-				type: "string",
-				description: "The ID of the entity",
-			},
-			action: {
-				type: "string",
-				enum: ["detail", "edit"],
-				default: "detail",
-				description: "The action/route type to generate (detail page or edit page)",
-			},
-		},
-		required: ["entityType", "entityId"],
-	},
-	outputSchema: {
-		type: "object",
-		properties: {
-			success: {
-				type: "boolean",
-				description: "Whether the route generation was successful",
-			},
-			route: {
-				type: "string",
-				nullable: true,
-				description: "Relative route that can be used directly in-app",
-			},
-			absoluteRoute: {
-				type: "string",
-				nullable: true,
-				description: "Absolute URL including the host (useful for emails or copying)",
-			},
-			entityType: {
-				type: "string",
-				optional: true,
-				description: "The type of entity to generate a route for",
-			},
-			entityId: {
-				type: "string",
-				optional: true,
-				description: "The ID of the entity",
-			},
-			action: {
-				type: "string",
-				optional: true,
-				description: "The action/route type to generate (detail page or edit page)",
-			},
-			error: {
-				type: "string",
-				optional: true,
-				description: "Error message if route generation failed",
-			},
-		},
-	},
+		"Generate URLs for project entities like personas, people, opportunities, survey_response, etc. Use this to create clickable links in responses. For survey_response, pass surveyId as parentEntityId and responseId as entityId.",
+	inputSchema: z.object({
+		entityType: z.enum([
+			"persona",
+			"person",
+			"opportunity",
+			"organization",
+			"theme",
+			"evidence",
+			"insight",
+			"interview",
+			"segment",
+			"survey",
+			"survey_response",
+		]),
+		entityId: z.string().min(1),
+		parentEntityId: z.string().nullish(),
+		action: z
+			.enum(["detail", "edit"])
+			.nullish()
+			.transform((val) => val ?? "detail"),
+		projectId: z.string().nullish(),
+		accountId: z.string().nullish(),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		route: z.string().nullable(),
+		absoluteRoute: z.string().nullable(),
+		entityType: z.string().optional(),
+		entityId: z.string().optional(),
+		action: z.enum(["detail", "edit"]).optional(),
+		error: z.string().optional(),
+	}),
 	execute: async (input, context?) => {
+		const supabase = supabaseAdmin as SupabaseClient<Database>
 		const { entityType, entityId, action = "detail" } = input || {}
 
 		// Validate required parameters
 		if (!entityType || !entityId) {
-			console.warn("generate-project-routes: Missing required parameters", { entityType, entityId, action })
+			consola.warn("generate-project-routes: Missing required parameters", {
+				entityType,
+				entityId,
+				action,
+			})
 			return {
 				success: false,
 				error: "Missing required parameters: entityType and entityId are required",
@@ -93,12 +71,36 @@ export const generateProjectRoutesTool = createTool({
 			}
 		}
 
-		// Get accountId and projectId from runtime context
-		const accountId = context?.requestContext?.get?.("account_id") as string
-		const projectId = context?.requestContext?.get?.("project_id") as string
+		const contextAccountId = context?.requestContext?.get?.("account_id") as string | undefined
+		const contextProjectId = context?.requestContext?.get?.("project_id") as string | undefined
+		const resourceProjectId = extractProjectIdFromResourceId(context?.agent?.resourceId)
+		const inputProjectId = typeof input.projectId === "string" ? input.projectId : undefined
+		const inputAccountId = typeof input.accountId === "string" ? input.accountId : undefined
+
+		const projectId = (contextProjectId || inputProjectId || resourceProjectId || "").trim()
+		let accountId = (contextAccountId || inputAccountId || "").trim()
+
+		if (!accountId && projectId) {
+			const { data: projectRow, error } = await supabase
+				.from("projects")
+				.select("account_id")
+				.eq("id", projectId)
+				.maybeSingle()
+
+			if (error) {
+				consola.error("generate-project-routes: failed to resolve accountId from project", error)
+			}
+
+			if (projectRow?.account_id) {
+				accountId = projectRow.account_id
+			}
+		}
 
 		if (!accountId || !projectId) {
-			console.warn("generate-project-routes: Missing runtime context", { accountId, projectId })
+			consola.warn("generate-project-routes: Missing runtime context", {
+				accountId,
+				projectId,
+			})
 			return {
 				success: false,
 				error: "Missing accountId or projectId in runtime context",
@@ -142,6 +144,22 @@ export const generateProjectRoutesTool = createTool({
 				case "segment":
 					route = routes.segments.detail(entityId) // segments don't have edit
 					break
+				case "survey":
+					route = action === "edit" ? routes.ask.edit(entityId) : routes.ask.responses(entityId)
+					break
+				case "survey_response": {
+					const parentId = typeof input.parentEntityId === "string" ? input.parentEntityId : null
+					if (!parentId) {
+						return {
+							success: false,
+							error: "survey_response requires parentEntityId (surveyId) to be provided",
+							route: null,
+							absoluteRoute: null,
+						}
+					}
+					route = routes.ask.responseDetail(parentId, entityId)
+					break
+				}
 				default:
 					return {
 						success: false,
@@ -162,7 +180,7 @@ export const generateProjectRoutesTool = createTool({
 				action,
 			}
 		} catch (error) {
-			console.error("generate-project-routes: Unexpected error", error)
+			consola.error("generate-project-routes: Unexpected error", error)
 			return {
 				success: false,
 				error: "Unexpected error generating route",

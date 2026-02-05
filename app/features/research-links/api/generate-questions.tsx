@@ -12,6 +12,7 @@ const RequestSchema = z.object({
 	surveyName: z.string().min(1),
 	surveyDescription: z.string().optional().default(""),
 	existingQuestions: z.string().optional().default("[]"),
+	customPrompt: z.string().optional().default(""),
 })
 
 const QuestionsResponseSchema = z.object({
@@ -29,6 +30,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			surveyName: formData.get("surveyName") ?? "",
 			surveyDescription: formData.get("surveyDescription") ?? "",
 			existingQuestions: formData.get("existingQuestions") ?? "[]",
+			customPrompt: formData.get("customPrompt") ?? "",
 		}
 
 		const parsed = RequestSchema.safeParse(rawPayload)
@@ -36,7 +38,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Invalid request" }, { status: 400 })
 		}
 
-		const { surveyName, surveyDescription, existingQuestions } = parsed.data
+		const { surveyName, surveyDescription, existingQuestions, customPrompt } = parsed.data
 
 		let existing: string[] = []
 		try {
@@ -50,6 +52,8 @@ export async function action({ request }: ActionFunctionArgs) {
 				? `\n\nExisting questions (don't repeat these):\n${existing.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
 				: ""
 
+		const customInstructions = customPrompt ? `\n\nUser's specific instructions:\n${customPrompt}` : ""
+
 		const result = await generateObject({
 			model: anthropic("claude-sonnet-4-20250514"),
 			schema: QuestionsResponseSchema,
@@ -58,6 +62,7 @@ export async function action({ request }: ActionFunctionArgs) {
 Survey name: ${surveyName}
 ${surveyDescription ? `Description: ${surveyDescription}` : ""}
 ${existingContext}
+${customInstructions}
 
 Guidelines:
 - Ask open-ended questions that elicit detailed, thoughtful responses
@@ -65,6 +70,7 @@ Guidelines:
 - Avoid yes/no questions
 - Make questions conversational and easy to understand
 - Each question should provide unique insight
+${customPrompt ? "- Follow the user's specific instructions above" : ""}
 
 Generate questions that will help gather valuable research insights.`,
 		})

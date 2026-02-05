@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beads Development Workflow Guide</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary: #5D5CDE;
+            --secondary: #2D3748;
+            --accent: #38B2AC;
+            --warning: #ED8936;
+            --success: #48BB78;
+            --bg: #FFFFFF;
+            --text: #1A202C;
+            --muted: #718096;
+            --border: #E2E8F0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: var(--secondary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.3rem;
+            margin-top: 2.5rem;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: var(--accent);
+            margin-top: 1.5rem;
+            page-break-after: avoid;
+        }
+
+        .header-meta {
+            background: linear-gradient(135deg, var(--primary) 0%, #7C7CE5 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .header-meta h1 {
+            color: white;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            margin-bottom: 1rem;
+        }
+
+        .header-meta p {
+            margin: 0.3rem 0;
+            opacity: 0.95;
+        }
+
+        .phase-card {
+            background: #F7FAFC;
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+            page-break-inside: avoid;
+        }
+
+        .phase-card.capture { border-left-color: #9F7AEA; }
+        .phase-card.refine { border-left-color: #4299E1; }
+        .phase-card.approve { border-left-color: #48BB78; }
+        .phase-card.plan { border-left-color: #ED8936; }
+        .phase-card.execute { border-left-color: #F56565; }
+
+        .phase-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .phase-number {
+            background: var(--primary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .capture .phase-number { background: #9F7AEA; }
+        .refine .phase-number { background: #4299E1; }
+        .approve .phase-number { background: #48BB78; }
+        .plan .phase-number { background: #ED8936; }
+        .execute .phase-number { background: #F56565; }
+
+        code {
+            background: #EDF2F7;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .command-highlight {
+            color: #68D391;
+        }
+
+        .flag-highlight {
+            color: #63B3ED;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+        }
+
+        th {
+            background: var(--secondary);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #F7FAFC;
+        }
+
+        .mermaid {
+            background: #FAFAFA;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        .quick-ref {
+            background: linear-gradient(135deg, #EBF8FF 0%, #E6FFFA 100%);
+            border: 2px solid var(--accent);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .quick-ref h3 {
+            color: var(--secondary);
+            margin-top: 0;
+        }
+
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+
+        .checklist li {
+            padding: 0.4rem 0;
+            padding-left: 1.8rem;
+            position: relative;
+        }
+
+        .checklist li::before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-size: 1.1em;
+        }
+
+        .tip-box {
+            background: #FFFAF0;
+            border: 1px solid #F6AD55;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .tip-box::before {
+            content: "💡 ";
+        }
+
+        .warning-box {
+            background: #FFF5F5;
+            border: 1px solid #FC8181;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .warning-box::before {
+            content: "⚠️ ";
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .daily-ritual {
+            background: linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%);
+            border: 2px solid var(--success);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .daily-ritual h3 {
+            color: #276749;
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+
+        .time-block {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            align-items: flex-start;
+        }
+
+        .time-label {
+            background: var(--success);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 0.85rem;
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border);
+            color: var(--muted);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                padding: 0.5in;
+                font-size: 11pt;
+                max-width: none;
+            }
+
+            .header-meta {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .phase-card, .quick-ref, .daily-ritual, .tip-box, .warning-box {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            h2 {
+                page-break-after: avoid;
+            }
+
+            .mermaid, pre, table {
+                page-break-inside: avoid;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-meta">
+    <h1>🔗 Beads Development Workflow Guide</h1>
+    <p><strong>Purpose:</strong> Daily reference for requirements → specs → tasks workflow</p>
+    <p><strong>Tools:</strong> <code>bd</code> (task management) + <code>bv</code> (visualization & prioritization)</p>
+    <p><strong>Principle:</strong> Specs before tasks. Diagrams before code. Alignment before execution.</p>
+</div>
+
+<h2>📊 The Three Layers</h2>
+
+<div class="mermaid">
+flowchart TD
+    subgraph layer1["🎯 REQUIREMENTS"]
+        REQ[Business Need]
+        EPIC[Epic in Beads]
+    end
+    
+    subgraph layer2["📝 SPECIFICATION"]
+        SPEC_DOC[Feature Spec Markdown]
+        REFINE[Refinement Cycle<br/>with Claude]
+        MERMAID[Mermaid Diagrams]
+    end
+    
+    subgraph layer3["⚡ EXECUTION"]
+        TASKS[Tasks in Beads]
+        BV[BV Prioritization]
+        WORK[Implementation]
+    end
+    
+    REQ --> EPIC
+    EPIC --> SPEC_DOC
+    SPEC_DOC <--> REFINE
+    REFINE --> MERMAID
+    MERMAID --> SPEC_DOC
+    SPEC_DOC -->|Approved| TASKS
+    TASKS --> BV
+    BV --> WORK
+    WORK -->|Discovered Work| TASKS
+
+    style layer1 fill:#F3E8FF,stroke:#9F7AEA
+    style layer2 fill:#EBF8FF,stroke:#4299E1
+    style layer3 fill:#F0FFF4,stroke:#48BB78
+</div>
+
+<h2>🔄 The Five Phases</h2>
+
+<div class="phase-card capture">
+    <h3><span class="phase-number">1</span> CAPTURE</h3>
+    <p><strong>Goal:</strong> Anchor the requirement in beads + create spec file</p>
+    <pre><code><span class="command-highlight">bd create</span> "Feature Name" <span class="flag-highlight">-t epic -p 1</span> <span class="flag-highlight">-d</span> "Description"
+<span class="comment"># Returns: bd-a7f3</span>
+
+<span class="command-highlight">mkdir -p</span> docs/specs
+<span class="command-highlight">touch</span> docs/specs/bd-a7f3-feature-name.md</code></pre>
+    <p><strong>Output:</strong> Epic ID + empty spec document</p>
+</div>
+
+<div class="phase-card refine">
+    <h3><span class="phase-number">2</span> REFINE</h3>
+    <p><strong>Goal:</strong> Iterate with Claude to align spec with codebase</p>
+    <div class="mermaid">
+flowchart LR
+    DRAFT[Draft Section] --> REVIEW[Review w/ Claude]
+    REVIEW --> CODEBASE[Check Codebase]
+    CODEBASE --> UPDATE[Update Spec]
+    UPDATE --> VIZ[Add Mermaid]
+    VIZ -->|More sections| DRAFT
+    VIZ -->|Complete| DONE[✓ Ready]
+    
+    style DONE fill:#48BB78,color:#fff
+    </div>
+    <p><strong>Refinement cycles:</strong> Problem → Existing Code → Approach → Risks → Breakdown</p>
+</div>
+
+<div class="phase-card approve">
+    <h3><span class="phase-number">3</span> APPROVE</h3>
+    <p><strong>Goal:</strong> Get alignment before creating tasks</p>
+    <ul class="checklist">
+        <li>Problem & success criteria clear?</li>
+        <li>User journey diagrams complete?</li>
+        <li>Integration map (existing vs. new) documented?</li>
+        <li>Risks identified with mitigations?</li>
+        <li>Task breakdown with dependencies defined?</li>
+    </ul>
+</div>
+
+<div class="phase-card plan">
+    <h3><span class="phase-number">4</span> PLAN</h3>
+    <p><strong>Goal:</strong> Generate tasks in beads with proper dependencies</p>
+    <pre><code><span class="comment"># Create tasks from spec breakdown</span>
+<span class="command-highlight">bd create</span> "Schema migration" <span class="flag-highlight">-t task -p 1</span>  <span class="comment"># → bd-a7f3.1</span>
+<span class="command-highlight">bd create</span> "API endpoints" <span class="flag-highlight">-t task -p 1</span>     <span class="comment"># → bd-a7f3.2</span>
+<span class="command-highlight">bd create</span> "UI components" <span class="flag-highlight">-t task -p 1</span>    <span class="comment"># → bd-a7f3.3</span>
+
+<span class="comment"># Set dependencies (blocker must complete first)</span>
+<span class="command-highlight">bd dep add</span> bd-a7f3.2 bd-a7f3.1 <span class="flag-highlight">--type blocks</span>
+<span class="command-highlight">bd dep add</span> bd-a7f3.3 bd-a7f3.2 <span class="flag-highlight">--type blocks</span>
+
+<span class="comment"># Validate with BV</span>
+<span class="command-highlight">bv --robot-insights</span> | jq '.cycles'      <span class="comment"># Check for cycles</span>
+<span class="command-highlight">bv --robot-plan</span>                         <span class="comment"># Get execution order</span></code></pre>
+</div>
+
+<div class="phase-card execute">
+    <h3><span class="phase-number">5</span> EXECUTE</h3>
+    <p><strong>Goal:</strong> Work through tasks, discover new work, keep beads updated</p>
+    <div class="mermaid">
+flowchart LR
+    ORIENT[Orient] --> PICK[Pick Task]
+    PICK --> WORK[Implement]
+    WORK --> DISCOVER{Discover<br/>New Work?}
+    DISCOVER -->|Yes| FILE[File Issue]
+    FILE --> WORK
+    DISCOVER -->|No| CLOSE[Close Task]
+    CLOSE --> SYNC[Sync]
+    SYNC --> ORIENT
+    
+    style ORIENT fill:#4299E1,color:#fff
+    style CLOSE fill:#48BB78,color:#fff
+    </div>
+</div>
+
+<h2>🌅 Daily Ritual</h2>
+
+<div class="daily-ritual">
+    <h3>Your Daily Development Loop</h3>
+    
+    <div class="time-block">
+        <span class="time-label">START</span>
+        <div>
+            <strong>Orient & Pick</strong><br>
+            <code>bd ready --json | jq '.[0:5]'</code> — What's unblocked?<br>
+            <code>bv</code> → press <code>i</code> — Check insights/bottlenecks<br>
+            <code>bd update bd-xxx --status in_progress</code>
+        </div>
+    </div>
+    
+    <div class="time-block">
+        <span class="time-label">DURING</span>
+        <div>
+            <strong>Work & Discover</strong><br>
+            When you find new work:<br>
+            <code>bd create "Description" -t bug -p 1</code><br>
+            <code>bd dep add bd-new bd-current --type discovered-from</code>
+        </div>
+    </div>
+    
+    <div class="time-block">
+        <span class="time-label">END</span>
+        <div>
+            <strong>Close & Sync</strong><br>
+            <code>bd close bd-xxx --reason "What was completed"</code><br>
+            <code>bd sync</code><br>
+            <code>git add . && git commit -m "Complete bd-xxx: description"</code>
+        </div>
+    </div>
+</div>
+
+<h2>⌨️ Command Quick Reference</h2>
+
+<div class="two-column">
+    <div class="quick-ref">
+        <h3>📝 Creating & Updating</h3>
+        <table>
+            <tr><th>Action</th><th>Command</th></tr>
+            <tr><td>Create epic</td><td><code>bd create "X" -t epic -p 1</code></td></tr>
+            <tr><td>Create task</td><td><code>bd create "X" -t task -p 2</code></td></tr>
+            <tr><td>Create bug</td><td><code>bd create "X" -t bug -p 1</code></td></tr>
+            <tr><td>Start work</td><td><code>bd update ID --status in_progress</code></td></tr>
+            <tr><td>Close</td><td><code>bd close ID --reason "..."</code></td></tr>
+            <tr><td>Add labels</td><td><code>bd label add ID tag1,tag2</code></td></tr>
+            <tr><td>Assign</td><td><code>bd update ID --assignee name</code></td></tr>
+        </table>
+    </div>
+    
+    <div class="quick-ref">
+        <h3>🔗 Dependencies</h3>
+        <table>
+            <tr><th>Action</th><th>Command</th></tr>
+            <tr><td>Add blocker</td><td><code>bd dep add BLOCKED BLOCKER --type blocks</code></td></tr>
+            <tr><td>Link related</td><td><code>bd dep add A B --type related</code></td></tr>
+            <tr><td>Track discovery</td><td><code>bd dep add NEW PARENT --type discovered-from</code></td></tr>
+            <tr><td>Remove dep</td><td><code>bd dep remove A B</code></td></tr>
+            <tr><td>View tree</td><td><code>bd dep tree ID</code></td></tr>
+            <tr><td>Find cycles</td><td><code>bd dep cycles</code></td></tr>
+        </table>
+    </div>
+</div>
+
+<div class="two-column">
+    <div class="quick-ref">
+        <h3>🔍 Finding Work</h3>
+        <table>
+            <tr><th>Action</th><th>Command</th></tr>
+            <tr><td>Ready work</td><td><code>bd ready</code></td></tr>
+            <tr><td>Blocked work</td><td><code>bd blocked</code></td></tr>
+            <tr><td>All issues</td><td><code>bd list</code></td></tr>
+            <tr><td>By status</td><td><code>bd list --status open</code></td></tr>
+            <tr><td>By priority</td><td><code>bd list --priority 1</code></td></tr>
+            <tr><td>Show details</td><td><code>bd show ID</code></td></tr>
+        </table>
+    </div>
+    
+    <div class="quick-ref">
+        <h3>📊 BV Visualization</h3>
+        <table>
+            <tr><th>Key</th><th>View</th></tr>
+            <tr><td><code>i</code></td><td>Insights dashboard</td></tr>
+            <tr><td><code>b</code></td><td>Kanban board</td></tr>
+            <tr><td><code>g</code></td><td>Dependency graph</td></tr>
+            <tr><td><code>p</code></td><td>Priority hints overlay</td></tr>
+            <tr><td><code>r</code></td><td>Filter: ready only</td></tr>
+            <tr><td><code>/</code></td><td>Fuzzy search</td></tr>
+        </table>
+    </div>
+</div>
+
+<div class="quick-ref">
+    <h3>🤖 BV Robot Flags (for automation & agents)</h3>
+    <table>
+        <tr><th>Command</th><th>Output</th><th>Use Case</th></tr>
+        <tr><td><code>bv --robot-insights</code></td><td>Graph metrics JSON</td><td>Bottlenecks, PageRank, cycles</td></tr>
+        <tr><td><code>bv --robot-plan</code></td><td>Execution plan JSON</td><td>Parallel tracks, what to work on</td></tr>
+        <tr><td><code>bv --robot-priority</code></td><td>Priority recommendations</td><td>Misaligned priorities</td></tr>
+        <tr><td><code>bv --robot-diff --diff-since HEAD~5</code></td><td>Change diff JSON</td><td>What changed recently</td></tr>
+    </table>
+</div>
+
+<h2>📄 Spec Document Structure</h2>
+
+<p>Every feature gets a spec at <code>docs/specs/bd-{id}-{slug}.md</code></p>
+
+<table>
+    <tr><th>#</th><th>Section</th><th>Purpose</th><th>Contains</th></tr>
+    <tr><td>1</td><td>Problem & Success</td><td>Why we're doing this</td><td>Pain point, measurable criteria</td></tr>
+    <tr><td>2</td><td>User Journey</td><td>Visual flow</td><td>Mermaid flowcharts, sequence diagrams</td></tr>
+    <tr><td>3</td><td>Integration Map</td><td>What exists vs. new</td><td>Existing components, patterns, net new</td></tr>
+    <tr><td>4</td><td>Risks & Unknowns</td><td>What could go wrong</td><td>Technical risks, open questions, spikes</td></tr>
+    <tr><td>5</td><td>Task Breakdown</td><td>Executable work</td><td>Dependency graph, task table with estimates</td></tr>
+    <tr><td>6</td><td>Implementation</td><td>Technical details</td><td>Decisions, API contracts, file changes</td></tr>
+</table>
+
+<div class="tip-box">
+    <strong>Refinement Prompt Pattern:</strong> "I'm working on epic bd-XXX. Current spec state: [section]. Help me: 1) Check against codebase patterns, 2) Identify reusable components, 3) Create the mermaid diagram for [flow type]."
+</div>
+
+<h2>🎯 Dependency Types</h2>
+
+<div class="mermaid">
+flowchart LR
+    subgraph blocks["<b>blocks</b> (hard dependency)"]
+        B1[Task B] -->|"can't start until"| B2[Task A done]
+    end
+    
+    subgraph related["<b>related</b> (soft link)"]
+        R1[Task X] -.-|"connected to"| R2[Task Y]
+    end
+    
+    subgraph discovered["<b>discovered-from</b> (audit trail)"]
+        D1[New Bug] -->|"found while working on"| D2[Parent Task]
+    end
+    
+    subgraph parent["<b>parent-child</b> (hierarchy)"]
+        P1[Epic] --> P2[Feature]
+        P2 --> P3[Task]
+    end
+    
+    style blocks fill:#FED7D7
+    style related fill:#E9D8FD
+    style discovered fill:#FEFCBF
+    style parent fill:#C6F6D5
+</div>
+
+<p><strong>Only <code>blocks</code> affects ready work detection.</strong> Use <code>related</code> for context, <code>discovered-from</code> for audit trail.</p>
+
+<h2>⚠️ Common Pitfalls</h2>
+
+<div class="warning-box">
+    <strong>Skipping the spec phase:</strong> Going straight from idea to tasks leads to rework. Always refine with Claude first.
+</div>
+
+<div class="warning-box">
+    <strong>Forgetting to sync:</strong> Always <code>bd sync</code> at session end. Your work is only saved when it's in git.
+</div>
+
+<div class="warning-box">
+    <strong>Circular dependencies:</strong> Check <code>bv --robot-insights | jq '.cycles'</code> before starting work. Cycles = blocked forever.
+</div>
+
+<div class="warning-box">
+    <strong>Not linking discovered work:</strong> Always <code>bd dep add NEW CURRENT --type discovered-from</code> to maintain audit trail.
+</div>
+
+<h2>📈 BV Metrics Explained</h2>
+
+<table>
+    <tr><th>Metric</th><th>What It Measures</th><th>High Score Means</th></tr>
+    <tr><td><strong>PageRank</strong></td><td>Recursive importance</td><td>Foundational blocker - many things depend on this</td></tr>
+    <tr><td><strong>Betweenness</strong></td><td>Bridge position</td><td>Bottleneck - blocks multiple parallel streams</td></tr>
+    <tr><td><strong>Critical Path</strong></td><td>Longest chain depth</td><td>Keystone - any delay cascades to final delivery</td></tr>
+    <tr><td><strong>HITS Hub</strong></td><td>Dependency aggregator</td><td>Epic/Feature - pulls together many tasks</td></tr>
+    <tr><td><strong>HITS Authority</strong></td><td>Widely depended on</td><td>Utility - many things use this</td></tr>
+    <tr><td><strong>Eigenvector</strong></td><td>Connected to important nodes</td><td>Strategic - linked to power players</td></tr>
+</table>
+
+<div class="tip-box">
+    Press <code>p</code> in BV to see priority hints: ⬆ means impact suggests higher priority, ⬇ means lower.
+</div>
+
+<footer>
+    <p><strong>Beads Workflow Guide</strong> • <code>bd</code> for management • <code>bv</code> for visualization</p>
+    <p>Specs before tasks. Diagrams before code. Alignment before execution.</p>
+</footer>
+
+<script>
+    mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'neutral',
+        flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            curve: 'basis'
+        }
+    });
+</script>
+
+</body>
+</html>

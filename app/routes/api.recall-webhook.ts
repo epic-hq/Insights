@@ -1,5 +1,5 @@
-import * as crypto from "node:crypto"
 import type { ActionFunctionArgs } from "react-router"
+import { Webhook } from "svix"
 import { getServerEnv } from "~/env.server"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 
@@ -38,18 +38,6 @@ interface RecallWebhookPayload {
 	}
 }
 
-function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
-	if (!signature) return false
-
-	const expectedSignature = crypto.createHmac("sha256", secret).update(payload).digest("hex")
-
-	try {
-		return crypto.timingSafeEqual(Buffer.from(`sha256=${expectedSignature}`), Buffer.from(signature))
-	} catch {
-		return false
-	}
-}
-
 /**
  * POST /api/recall-webhook
  * Receives webhook events from Recall.ai after recording upload completes.
@@ -60,20 +48,31 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
-	const signature = request.headers.get("X-Recall-Signature")
+	// Get raw payload for signature verification
 	const payload = await request.text()
 
-	// Verify webhook signature
-	if (RECALL_WEBHOOK_SECRET && !verifyWebhookSignature(payload, signature, RECALL_WEBHOOK_SECRET)) {
-		console.error("Invalid Recall webhook signature")
-		return Response.json({ error: "Invalid signature" }, { status: 401 })
-	}
-
+	// Verify webhook signature using official svix library
 	let webhook: RecallWebhookPayload
-	try {
-		webhook = JSON.parse(payload)
-	} catch {
-		return Response.json({ error: "Invalid JSON" }, { status: 400 })
+	if (RECALL_WEBHOOK_SECRET) {
+		try {
+			const wh = new Webhook(RECALL_WEBHOOK_SECRET)
+			// svix expects headers as an object
+			const headers = {
+				"svix-id": request.headers.get("svix-id") || "",
+				"svix-timestamp": request.headers.get("svix-timestamp") || "",
+				"svix-signature": request.headers.get("svix-signature") || "",
+			}
+			webhook = wh.verify(payload, headers) as RecallWebhookPayload
+		} catch (err) {
+			console.error("Invalid Recall webhook signature", err)
+			return Response.json({ error: "Invalid signature" }, { status: 401 })
+		}
+	} else {
+		try {
+			webhook = JSON.parse(payload)
+		} catch {
+			return Response.json({ error: "Invalid JSON" }, { status: 400 })
+		}
 	}
 
 	console.log(`Recall webhook received: ${webhook.event}`, webhook.data?.id)
@@ -105,9 +104,26 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ received: true, interview_id: existingId })
 		}
 
-		// Get video and transcript URLs
-		const videoUrl = media_shortcuts?.video_mixed?.data?.download_url
-		const transcriptUrl = media_shortcuts?.transcript?.data?.download_url
+		// Get video and transcript URLs (allow minor payload shape variations)
+		const videoUrl =
+			media_shortcuts?.video_mixed?.data?.download_url ??
+			media_shortcuts?.video_mixed?.data?.url ??
+			media_shortcuts?.video_mixed?.download_url ??
+			null
+		const transcriptUrl =
+			media_shortcuts?.transcript?.data?.download_url ??
+			media_shortcuts?.transcript?.data?.url ??
+			media_shortcuts?.transcript?.download_url ??
+			(webhook.data as { transcript?: { download_url?: string } })?.transcript?.download_url ??
+			null
+
+		if (!transcriptUrl) {
+			console.warn("Recall webhook missing transcript URL", {
+				recordingId,
+				event: webhook.event,
+				media_shortcuts: media_shortcuts?.transcript?.status?.code,
+			})
+		}
 
 		// Create interview record
 		// Note: Some columns will be added by pending migration - using type assertion

@@ -205,8 +205,8 @@ async function ensureDefaultAccountAndProject({
 			consola.warn("[LOGIN_SUCCESS] Failed to persist default account/project in user_settings:", settingsError.message)
 		}
 
-		const projectRoutes = createProjectRoutes(accountId, projectId)
-		return projectRoutes.dashboard()
+		// New users go to project setup chat onboarding (Typeform-style flow)
+		return `/a/${accountId}/${projectId}/setup?onboarding=1`
 	} catch (error) {
 		consola.warn("[LOGIN_SUCCESS] Error ensuring default account/project:", error)
 		return null
@@ -320,6 +320,18 @@ async function resolveInviteRedirect({
 	next: string
 	origin: string
 }): Promise<string | null> {
+	// If next is already /accept-invite, let it handle the flow
+	// The accept-invite page has a proper UI for accepting invitations
+	try {
+		const nextUrl = new URL(next, origin)
+		if (nextUrl.pathname === "/accept-invite" || nextUrl.pathname.startsWith("/accept-invite")) {
+			consola.log("[LOGIN_SUCCESS] Preserving /accept-invite flow, not intercepting")
+			return next
+		}
+	} catch {
+		// If parsing fails, continue with normal flow
+	}
+
 	const tokenFromNext = extractInviteToken(next, origin)
 	if (tokenFromNext) {
 		const manageUrl = await computeManagePathFromToken({
@@ -373,7 +385,8 @@ async function computeManagePathFromToken({
 	const accountId = (lookup?.account_id as string | undefined) ?? null
 	if (!accountId) return null
 
-	return `/a/${accountId}/team/manage?invite_token=${encodeURIComponent(token)}`
+	// Send to accept-invite page, not team/manage (user isn't a member yet)
+	return `/accept-invite?invite_token=${encodeURIComponent(token)}`
 }
 
 function extractInviteToken(next: string, origin: string): string | null {

@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION billing.spend_credits_atomic(UUID, INTEGER, INTEGER, INTEGER, TEXT, UUID, TEXT, JSONB) TO service_role;

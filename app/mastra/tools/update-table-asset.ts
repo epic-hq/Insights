@@ -76,7 +76,7 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 		// For addRows
 		newRows: z
 			.array(z.record(z.string(), z.string()))
-			.optional()
+			.nullish()
 			.describe(
 				'For addRows: Array of row objects. MUST include ALL existing column headers as keys. Example: [{"Feature": "X", "Us": "Y", "Competitor": "Z"}]'
 			),
@@ -89,16 +89,16 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 					value: z.string().describe("New value"),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("For updateRows: array of cell updates"),
 		// For removeRows
-		rowIndices: z.array(z.number()).optional().describe("For removeRows: array of row indices to remove"),
+		rowIndices: z.array(z.number()).nullish().describe("For removeRows: array of row indices to remove"),
 		// For addColumn
-		columnName: z.string().optional().describe("For addColumn: name of the new column"),
-		defaultValue: z.string().optional().describe("For addColumn: default value for existing rows"),
+		columnName: z.string().nullish().describe("For addColumn: name of the new column"),
+		defaultValue: z.string().nullish().describe("For addColumn: default value for existing rows"),
 		// For replaceAll
-		headers: z.array(z.string()).optional().describe("For replaceAll: new column headers"),
-		rows: z.array(z.record(z.string(), z.string())).optional().describe("For replaceAll: new row data"),
+		headers: z.array(z.string()).nullish().describe("For replaceAll: new column headers"),
+		rows: z.array(z.record(z.string(), z.string())).nullish().describe("For replaceAll: new row data"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

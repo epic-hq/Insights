@@ -1,6 +1,7 @@
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 
 /**
@@ -63,8 +64,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			.eq("interview_id", interviewId)
 			.limit(1)
 		const participant_organization =
-			(linkedOrgs as Array<{ organizations: { name: string | null } | null }> | null)?.[0]?.organizations?.name ??
-			undefined
+			(
+				linkedOrgs as Array<{
+					organizations: { name: string | null } | null
+				}> | null
+			)?.[0]?.organizations?.name ?? undefined
 
 		// 3. ALWAYS re-transcribe from media if available, otherwise use transcript
 		let transcriptData: Record<string, unknown>
@@ -136,6 +140,28 @@ export async function action({ request }: ActionFunctionArgs) {
 			runId: handle.id,
 			needsTranscription,
 		})
+
+		// Track analyze_started event for PLG instrumentation
+		try {
+			const posthogServer = getPostHogServerClient()
+			if (posthogServer && interview.created_by) {
+				posthogServer.capture({
+					distinctId: interview.created_by,
+					event: "analyze_started",
+					properties: {
+						interview_id: interview.id,
+						project_id: interview.project_id,
+						account_id: interview.account_id,
+						needs_transcription: needsTranscription,
+						has_media: !!interview.media_url,
+						trigger_run_id: handle.id,
+						$groups: { account: interview.account_id },
+					},
+				})
+			}
+		} catch (trackingError) {
+			consola.warn("[ANALYZE_STARTED] PostHog tracking failed:", trackingError)
+		}
 
 		return Response.json({
 			success: true,

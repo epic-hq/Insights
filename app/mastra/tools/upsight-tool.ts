@@ -18,10 +18,10 @@ export const upsightTool = createTool({
 	inputSchema: z.object({
 		accountId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("The account ID to search within (will use runtime context if not provided)"),
-		projectId: z.string().optional().describe("Specific project ID to analyze (optional)"),
-		searchQuery: z.string().optional().describe("Text to search for across project data"),
+		projectId: z.string().nullish().describe("Specific project ID to analyze (optional)"),
+		searchQuery: z.string().nullish().describe("Text to search for across project data"),
 		includeInsights: z.boolean().default(true).describe("Include insights in the search"),
 		includeInterviews: z.boolean().default(true).describe("Include interviews in the search"),
 		includeOpportunities: z.boolean().default(true).describe("Include opportunities in the search"),

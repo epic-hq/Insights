@@ -3,6 +3,13 @@ import { RequestContext } from "@mastra/core/di"
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import {
+	clearActiveBillingContext,
+	estimateOpenAICost,
+	setActiveBillingContext,
+	userBillingContext,
+} from "~/lib/billing/instrumented-openai.server"
+import { recordUsageOnly } from "~/lib/billing/usage.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { mastra } from "~/mastra"
 import { memory } from "~/mastra/memory"
@@ -86,6 +93,16 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	requestContext.set("project_id", projectId)
 
 	const agent = mastra.getAgent("projectSetupAgent")
+
+	// Set up billing context for agent LLM calls
+	const billingCtx = userBillingContext({
+		accountId,
+		userId: userId || "",
+		featureSource: "project_setup_agent",
+		projectId,
+	})
+	setActiveBillingContext(billingCtx, `agent:project-setup:${userId}:${projectId}`)
+
 	const result = await agent.stream(runtimeMessages, {
 		memory: {
 			thread: threadId,
@@ -101,6 +118,43 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				]
 			: undefined,
 		onFinish: async (data) => {
+			// Record usage BEFORE clearing billing context
+			// Mastra uses inputTokens/outputTokens (not promptTokens/completionTokens)
+			const usage = (
+				data as {
+					usage?: { inputTokens?: number; outputTokens?: number }
+				}
+			).usage
+			if (usage && (usage.inputTokens || usage.outputTokens)) {
+				const model = "gpt-4o"
+				const inputTokens = usage.inputTokens || 0
+				const outputTokens = usage.outputTokens || 0
+				const costUsd = estimateOpenAICost(model, inputTokens, outputTokens)
+
+				await recordUsageOnly(
+					billingCtx,
+					{
+						provider: "openai",
+						model,
+						inputTokens,
+						outputTokens,
+						estimatedCostUsd: costUsd,
+					},
+					`agent:project-setup:${userId}:${projectId}:${Date.now()}`
+				).catch((err) => {
+					consola.error("[billing] Failed to record agent usage:", err)
+				})
+
+				consola.info("project-setup billing recorded", {
+					inputTokens,
+					outputTokens,
+					costUsd,
+				})
+			}
+
+			// Clear billing context when agent finishes
+			clearActiveBillingContext()
+
 			consola.info("project-setup onFinish", {
 				finishReason: data.finishReason,
 				toolCallsCount: data.toolCalls?.length || 0,

@@ -1,12 +1,14 @@
 import { b } from "baml_client"
 import type { ActionFunctionArgs } from "react-router"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import { runBamlWithBilling, userBillingContext } from "~/lib/billing"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { userContext } from "~/server/user-context"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	const langfuse = getLangfuseClient()
-	const lfTrace = (langfuse as any).trace?.({ name: "api.contextual-suggestions" })
+	const lfTrace = (langfuse as any).trace?.({
+		name: "api.contextual-suggestions",
+	})
 	try {
 		const ctx = context.get(userContext)
 		const formData = await request.formData()
@@ -66,39 +68,37 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Ensure rejected_items is an array
 		const rejected_items_array: string[] = Array.isArray(rejected_items) ? rejected_items : []
 
-		const { result: suggestions } = await runBamlWithTracing({
-			functionName: "GenerateContextualSuggestions",
-			traceName: "baml.generate-contextual-suggestions",
-			input: {
-				research_goal,
-				current_input,
-				suggestion_type,
-				exclude_items,
-				rejected_items: rejected_items_array,
-				project_context,
-				custom_instructions,
-				response_count,
-				question_category,
-			},
-			metadata: {
-				route: "api.contextual-suggestions",
-				accountId: ctx.accountId,
-				userId: ctx.userId,
-			},
-			logUsageLabel: "GenerateContextualSuggestions",
-			bamlCall: (client) =>
-				client.GenerateContextualSuggestions(
-					research_goal,
-					current_input || "",
-					suggestion_type,
-					exclude_items,
-					rejected_items_array,
-					project_context,
-					custom_instructions,
-					response_count,
-					question_category
-				),
+		// Handle auth context - during onboarding, user may not have full account setup
+		const accountId = ctx?.account_id || "onboarding"
+		const userId = ctx?.claims?.sub || "anonymous"
+
+		const billingCtx = userBillingContext({
+			accountId,
+			userId,
+			featureSource: "contextual_suggestions",
 		})
+
+		const { result: suggestions } = await runBamlWithBilling(
+			billingCtx,
+			{
+				functionName: "GenerateContextualSuggestions",
+				traceName: "baml.generate-contextual-suggestions",
+				bamlCall: (client) =>
+					client.GenerateContextualSuggestions(
+						research_goal,
+						current_input || "",
+						suggestion_type,
+						exclude_items,
+						rejected_items_array,
+						project_context,
+						custom_instructions,
+						response_count,
+						question_category
+					),
+				resourceType: "suggestion",
+			},
+			`contextual-suggestions:${accountId}:${suggestion_type}:${Date.now()}`
+		)
 
 		console.log("Generated enhanced suggestions:", suggestions)
 		lfTrace?.update?.({

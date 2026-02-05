@@ -68,6 +68,11 @@ import {
   mapUsageToLangfuse,
   summarizeCollectorUsage,
 } from "~/lib/baml/collector.server";
+import {
+  createTaskBillingContext,
+  inferProvider,
+  recordTaskUsage,
+} from "../../lib/billing";
 import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema";
 import {
   FacetResolver,
@@ -550,6 +555,31 @@ export async function extractEvidenceAndPeopleCore({
         "[BAML usage] ExtractEvidenceFromTranscriptV2:",
         usageSummary,
       );
+
+      // Record usage and spend credits for billing
+      if (metadata.accountId && usageSummary.totalCostUsd) {
+        const billingCtx = createTaskBillingContext(
+          metadata,
+          "interview_extraction",
+        );
+        const model =
+          process.env.BAML_EXTRACT_EVIDENCE_MODEL || "claude-sonnet";
+        recordTaskUsage(
+          billingCtx,
+          {
+            provider: inferProvider(model),
+            model,
+            inputTokens: usageSummary.inputTokens || 0,
+            outputTokens: usageSummary.outputTokens || 0,
+            estimatedCostUsd: usageSummary.totalCostUsd,
+            resourceType: "interview",
+            resourceId: interviewRecord.id,
+          },
+          `interview:${interviewRecord.id}:extract-evidence`,
+        ).catch((err) => {
+          consola.warn("[billing] Failed to record extraction usage:", err);
+        });
+      }
     }
     langfuseUsage = mapUsageToLangfuse(usageSummary);
 
@@ -745,6 +775,31 @@ export async function extractEvidenceAndPeopleCore({
         "[BAML usage] DerivePersonaFacetsFromEvidence:",
         synthesisUsage,
       );
+
+      // Record usage and spend credits for billing
+      if (metadata.accountId && synthesisUsage.totalCostUsd) {
+        const billingCtx = createTaskBillingContext(
+          metadata,
+          "persona_synthesis",
+        );
+        const model =
+          process.env.BAML_PERSONA_SYNTHESIS_MODEL || "claude-sonnet";
+        recordTaskUsage(
+          billingCtx,
+          {
+            provider: inferProvider(model),
+            model,
+            inputTokens: synthesisUsage.inputTokens || 0,
+            outputTokens: synthesisUsage.outputTokens || 0,
+            estimatedCostUsd: synthesisUsage.totalCostUsd,
+            resourceType: "interview",
+            resourceId: interviewRecord.id,
+          },
+          `interview:${interviewRecord.id}:persona-synthesis`,
+        ).catch((err) => {
+          consola.warn("[billing] Failed to record synthesis usage:", err);
+        });
+      }
     }
     const synthesisLangfuseUsage = mapUsageToLangfuse(synthesisUsage);
 
@@ -1502,7 +1557,7 @@ export async function extractEvidenceAndPeopleCore({
       description: overrides.description ?? null,
       segment: overrides.segment ?? metadata.segment ?? null,
       contact_info: overrides.contact_info ?? null,
-      company: overrides.company ?? null,
+      company: overrides.company || "", // DB has NOT NULL default ''
       role: overrides.role ?? null,
     };
     if (peopleHooks?.upsertPerson) {
@@ -1602,7 +1657,7 @@ export async function extractEvidenceAndPeopleCore({
       const participantOverrides: Partial<PeopleInsert> = {
         description: participant.summary ?? null,
         segment: segments[0] || metadata.segment || null,
-        company: participant.organization ?? null,
+        company: participant.organization || "", // DB has NOT NULL default ''
         role: participant.role ?? null,
       };
       let personRecord: { id: string; name: string } | null = null;
@@ -1692,8 +1747,8 @@ export async function extractEvidenceAndPeopleCore({
   for (const personId of ensuredPersonIds) {
     const role = personRoleById.get(personId) ?? null;
     const personKey = keyByPersonId.get(personId) ?? null;
-    // Prefer speaker_label (AssemblyAI format like "SPEAKER A") for transcript_key,
-    // fall back to person_key (BAML format like "participant-1") if speaker_label not available
+    // Prefer speaker_label (AssemblyAI format), fall back to person_key (BAML format)
+    // transcript_key can be null if we don't know which speaker this person is
     const transcriptKey = speakerLabelByPersonId.get(personId) ?? personKey;
 
     consola.info(`🔗 Creating interview_people for person ${personId}:`, {
@@ -1834,6 +1889,7 @@ export async function extractEvidenceAndPeopleCore({
         `🎙️  Found ${missingSpeakers.length} transcript speakers without interview_people records: ${missingSpeakers.join(", ")}`,
       );
 
+      // Link the internal person (current user/interviewer) to a speaker if not already linked
       if (internalPerson?.id && !internalPersonHasTranscriptKey) {
         const preferredInternalSpeaker =
           missingSpeakers.find((speaker) =>
@@ -1869,64 +1925,22 @@ export async function extractEvidenceAndPeopleCore({
           } else {
             internalPersonLinked = true;
             internalPersonHasTranscriptKey = true;
-            const index = missingSpeakers.indexOf(preferredInternalSpeaker);
-            if (index >= 0) {
-              missingSpeakers.splice(index, 1);
-            }
+            consola.info(
+              `  ✅ Linked internal person to speaker "${preferredInternalSpeaker}"`,
+            );
           }
         }
       }
 
-      for (const speakerLabel of missingSpeakers) {
-        // Create a placeholder person record for this speaker
-        // The user can later link them to a real person or the system can auto-link to the uploading user
-        const placeholderName = `Speaker ${speakerLabel.replace(/^SPEAKER\s*/i, "").toUpperCase()}`;
-        const { data: placeholderPerson, error: personErr } = await db
-          .from("people")
-          .insert({
-            account_id: metadata.accountId,
-            name: placeholderName,
-            source: "interview_upload",
-          })
-          .select("id, name")
-          .single();
-
-        if (personErr || !placeholderPerson) {
-          consola.warn(
-            `Failed to create placeholder person for speaker ${speakerLabel}:`,
-            personErr?.message,
-          );
-          continue;
-        }
-
-        // Determine role - if we already have a primary participant, this is likely the interviewer
-        const speakerRole =
-          primaryPersonId && ensuredPersonIds.size > 0 ? "interviewer" : null;
-
-        const linkPayload: InterviewPeopleInsert = {
-          interview_id: interviewRecord.id,
-          person_id: placeholderPerson.id,
-          project_id: metadata.projectId ?? null,
-          role: speakerRole,
-          transcript_key: speakerLabel.toUpperCase().startsWith("SPEAKER ")
-            ? speakerLabel
-            : `SPEAKER ${speakerLabel}`.toUpperCase(),
-          display_name: placeholderName,
-        };
-
-        const { error: linkErr } = await db
-          .from("interview_people")
-          .upsert(linkPayload, { onConflict: "interview_id,person_id" });
-        if (linkErr && !linkErr.message?.includes("duplicate")) {
-          consola.warn(
-            `Failed linking placeholder speaker ${speakerLabel} to interview:`,
-            linkErr.message,
-          );
-        } else {
-          consola.info(
-            `  ✅ Created interview_people record for speaker "${speakerLabel}" as ${speakerRole || "unknown role"}`,
-          );
-        }
+      // NOTE: We intentionally do NOT auto-create placeholder people records for
+      // unidentified transcript speakers. This prevents polluting the people table
+      // with generic "Speaker A", "Speaker B" entries when diarization over-segments.
+      // The transcript display shows raw speaker labels, and users can manually
+      // add participants via "Add Participant" in the UI when they know who's who.
+      if (missingSpeakers.length > 1) {
+        consola.info(
+          `🎙️  Remaining unlinked speakers: ${missingSpeakers.join(", ")}. Users can manually add via "Add Participant".`,
+        );
       }
     }
   }
@@ -2152,7 +2166,7 @@ async function ensureFallbackPerson(
     project_id: metadata.projectId,
     firstname: firstname || null,
     lastname: lastname || null,
-    company: metadata.participantOrganization ?? null,
+    company: metadata.participantOrganization || "", // DB has NOT NULL default ''
   };
   const { data, error } = await db
     .from("people")

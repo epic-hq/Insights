@@ -10,6 +10,7 @@ import {
 	Edit2,
 	Loader2,
 	MoreVertical,
+	RefreshCw,
 	Sparkles,
 	Trash2,
 	User,
@@ -68,6 +69,7 @@ import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMe
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import { memory } from "~/mastra/memory"
@@ -130,6 +132,47 @@ function normalizeMultilineText(value: unknown): string {
 		// If JSON.parse fails, treat it as plain text
 		return typeof value === "string" ? value : ""
 	}
+}
+
+// Derive media format (audio/video) from file_extension and source_type
+// This is different from media_type which is a semantic category (interview, voice_memo, etc.)
+const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "webm"]
+const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "m4v"]
+
+function deriveMediaFormat(
+	fileExtension: string | null | undefined,
+	sourceType: string | null | undefined,
+	mediaType: string | null | undefined
+): "audio" | "video" | null {
+	// 1. Check file extension first (most reliable)
+	if (fileExtension) {
+		const ext = fileExtension.toLowerCase().replace(/^\./, "")
+		if (AUDIO_EXTENSIONS.includes(ext)) return "audio"
+		if (VIDEO_EXTENSIONS.includes(ext)) return "video"
+		// webm can be audio or video, check source_type
+		if (ext === "webm") {
+			if (sourceType === "audio_upload" || sourceType === "audio_url") return "audio"
+			if (sourceType === "video_upload" || sourceType === "video_url") return "video"
+			// Default webm to video (more common)
+			return "video"
+		}
+	}
+
+	// 2. Check source_type
+	if (sourceType) {
+		if (sourceType.includes("audio")) return "audio"
+		if (sourceType.includes("video")) return "video"
+		// Recall recordings are typically video
+		if (sourceType === "recall") return "video"
+		// Realtime recordings default to audio
+		if (sourceType === "realtime_recording") return "audio"
+	}
+
+	// 3. Check semantic media_type for hints
+	if (mediaType === "voice_memo") return "audio"
+
+	// 4. Default to video (shows larger player, user can resize)
+	return null
 }
 
 type AnalysisJobSummary = {
@@ -276,7 +319,9 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				const createPerson = formData.get("create_person")?.toString() === "true"
 				let personId = (formData.get("personId") || formData.get("person_id"))?.toString()
 				const role = formData.get("role")?.toString().trim() || null
-				const transcriptKey = formData.get("transcriptKey")?.toString().trim() || null
+				// Support both snake_case (from ManagePeopleAssociations) and camelCase (from LinkPersonDialog)
+				const transcriptKey =
+					(formData.get("transcript_key") || formData.get("transcriptKey"))?.toString().trim() || null
 				const displayName = formData.get("displayName")?.toString().trim() || null
 
 				// If creating a new person, do that first
@@ -1201,6 +1246,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			assistantMessages: assistantMessages.length,
 		})
 
+		// Track interview_detail_viewed event for PLG instrumentation
+		try {
+			const posthogServer = getPostHogServerClient()
+			if (posthogServer) {
+				const userId = ctx.claims.sub
+				posthogServer.capture({
+					distinctId: userId,
+					event: "interview_detail_viewed",
+					properties: {
+						interview_id: interviewId,
+						project_id: projectId,
+						account_id: accountId,
+						has_transcript: interview.hasTranscript,
+						has_analysis: !!conversationAnalysis,
+						evidence_count: evidence?.length || 0,
+						insights_count: insights?.length || 0,
+						$groups: { account: accountId },
+					},
+				})
+			}
+		} catch (trackingError) {
+			consola.warn("[INTERVIEW_DETAIL] PostHog tracking failed:", trackingError)
+			// Don't throw - tracking failure shouldn't block user flow
+		}
+
 		return loaderResult
 	} catch (error) {
 		// Re-throw Response errors directly without wrapping
@@ -1414,6 +1484,49 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const participants = interview.participants || []
 	const interviewTitle = interview.title || "Untitled Interview"
 	const _primaryParticipant = participants[0]?.people
+
+	// Calculate transcript speakers for the Manage Participants dialog
+	// Derive from transcript_formatted utterances since speaker_transcripts column was removed
+	const transcriptSpeakers = useMemo(() => {
+		const transcriptData = interview.transcript_formatted as
+			| { utterances?: Array<{ speaker: string }> }
+			| null
+			| undefined
+
+		if (!transcriptData?.utterances || !Array.isArray(transcriptData.utterances)) {
+			return []
+		}
+
+		// Extract unique speakers from utterances
+		const uniqueSpeakers = new Set<string>()
+		for (const utterance of transcriptData.utterances) {
+			if (utterance.speaker) {
+				uniqueSpeakers.add(utterance.speaker)
+			}
+		}
+
+		// Convert to TranscriptSpeaker format with proper labels
+		return Array.from(uniqueSpeakers).map((key) => {
+			// Generate a display label based on the speaker key format
+			let label = key
+			// participant-0, participant-1 -> Speaker A, B
+			if (/^participant-\d+$/i.test(key)) {
+				const num = Number.parseInt(key.split("-")[1], 10)
+				const letter = String.fromCharCode(65 + num) // 0 -> A, 1 -> B
+				label = `Speaker ${letter}`
+			} else if (/^[A-Z]$/i.test(key)) {
+				label = `Speaker ${key.toUpperCase()}`
+			} else if (/^speaker[\s_-]?(\d+)$/i.test(key)) {
+				const match = key.match(/(\d+)/)
+				if (match) {
+					const num = Number.parseInt(match[1], 10)
+					const letter = String.fromCharCode(64 + num) // 1 -> A, 2 -> B
+					label = `Speaker ${letter}`
+				}
+			}
+			return { key, label }
+		})
+	}, [interview.transcript_formatted])
 	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
 	const conversationUpdatedLabel =
 		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
@@ -1998,89 +2111,34 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											</button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="end">
-											{(interview.status === "uploading" ||
-												interview.status === "transcribing" ||
-												interview.status === "processing" ||
-												interview.status === "uploaded") && (
-												<DropdownMenuItem
-													onClick={async () => {
-														try {
-															const response = await fetch("/api/fix-stuck-interview", {
-																method: "POST",
-																headers: {
-																	"Content-Type": "application/json",
-																},
-																body: JSON.stringify({
-																	interviewId: interview.id,
-																}),
-															})
-															const result = await response.json()
-															if (result.success) {
-																consola.success("Interview status fixed")
-																revalidator.revalidate()
-															} else {
-																consola.error("Failed to fix interview:", result.error)
-															}
-														} catch (e) {
-															consola.error("Fix stuck interview failed", e)
+											{/* Single smart restart button that handles all cases */}
+											<DropdownMenuItem
+												onClick={async () => {
+													try {
+														const response = await fetch("/api/interview-restart", {
+															method: "POST",
+															headers: { "Content-Type": "application/json" },
+															body: JSON.stringify({
+																interviewId: interview.id,
+															}),
+														})
+														const result = await response.json()
+														if (result.success) {
+															consola.success("Processing restarted:", result.message)
+															// Refresh the page data to show new status
+															revalidator.revalidate()
+														} else {
+															consola.error("Restart failed:", result.error || result.message)
 														}
-													}}
-													disabled={fetcher.state !== "idle"}
-													className="text-orange-600 focus:text-orange-600"
-												>
-													Fix Stuck Interview Status
-												</DropdownMenuItem>
-											)}
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{ method: "post", action: "/api.analysis-retry" }
-														)
 													} catch (e) {
-														consola.error("Retry analysis submit failed", e)
+														consola.error("Restart processing failed", e)
 													}
 												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
+												disabled={fetcher.state !== "idle"}
+												className="text-orange-600 focus:text-orange-600"
 											>
-												Rerun Transcription
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{
-																method: "post",
-																action: "/api.reprocess-evidence",
-															}
-														)
-													} catch (e) {
-														consola.error("Reprocess evidence submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Rerun Evidence Collection
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => {
-													try {
-														fetcher.submit(
-															{ interview_id: interview.id },
-															{
-																method: "post",
-																action: "/api.reanalyze-themes",
-															}
-														)
-													} catch (e) {
-														consola.error("Re-analyze themes submit failed", e)
-													}
-												}}
-												disabled={fetcher.state !== "idle" || isProcessing}
-											>
-												Re-analyze Themes
+												<RefreshCw className="mr-2 h-4 w-4" />
+												Restart Processing
 											</DropdownMenuItem>
 											<DropdownMenuItem
 												onClick={() => {
@@ -2262,7 +2320,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<MediaPlayer
 										mediaUrl={interview.media_url}
 										thumbnailUrl={interview.thumbnail_url}
-										mediaType={interview.media_type as "audio" | "video" | "voice_memo" | "interview" | null}
+										mediaType={deriveMediaFormat(interview.file_extension, interview.source_type, interview.media_type)}
 										// title="Play Recording"
 										className="max-w-xl"
 									/>
@@ -2500,6 +2558,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							hasFormattedTranscript={interview.hasFormattedTranscript}
 							durationSec={interview.duration_sec}
 							participants={participants}
+							onSpeakerClick={() => setParticipantsDialogOpen(true)}
 						/>
 					</div>
 
@@ -2524,12 +2583,20 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							role: p.role,
 							transcript_key: p.transcript_key,
 							display_name: p.display_name,
-							people: p.people ? { id: (p.people as any).id, name: (p.people as any).name } : null,
+							people: p.people
+								? {
+										id: (p.people as any).id,
+										name: (p.people as any).name,
+										person_type: (p.people as any).person_type,
+									}
+								: null,
 						}))}
 						availablePeople={peopleOptions.map((p) => ({
 							id: p.id,
 							name: p.name,
+							person_type: (p as any).person_type,
 						}))}
+						transcriptSpeakers={transcriptSpeakers}
 						onUpdate={() => {
 							revalidator.revalidate()
 						}}

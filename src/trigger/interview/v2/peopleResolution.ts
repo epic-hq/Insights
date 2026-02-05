@@ -81,29 +81,18 @@ export function parseFullName(fullName: string): {
 }
 
 /**
- * Generate a fallback person name from interview metadata.
- * Uses filename, title, or timestamp as fallback.
+ * Generate a fallback person name when BAML can't identify a participant.
+ * Only uses explicitly provided participant name, never interview titles or dates.
  */
 export function generateFallbackPersonName(
   metadata: InterviewMetadataForPeople,
 ): string {
-  if (metadata.fileName) {
-    const nameFromFile = metadata.fileName
-      .replace(/\.[^/.]+$/, "")
-      .replace(/[_-]/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase())
-      .trim();
-
-    if (nameFromFile.length > 0) return nameFromFile;
+  // Only use explicitly provided participant name
+  if (metadata.participantName?.trim()) {
+    return metadata.participantName.trim();
   }
-  if (
-    metadata.interviewTitle &&
-    !metadata.interviewTitle.includes("Interview -")
-  ) {
-    return metadata.interviewTitle;
-  }
-  const timestamp = new Date().toISOString().split("T")[0];
-  return timestamp;
+  // Generic fallback - never use interview title, filename, or dates as person names
+  return "Unknown Participant";
 }
 
 /**

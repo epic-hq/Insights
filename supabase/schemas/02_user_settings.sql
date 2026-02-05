@@ -24,6 +24,7 @@ create table public.user_settings (
   ui_preferences jsonb not null default '{}',
   last_used_account_id uuid,
   last_used_project_id uuid,
+  is_platform_admin boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

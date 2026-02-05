@@ -27,43 +27,43 @@ interface FacetObservation {
  */
 const columnMappingSchema = z.object({
 	// Name fields
-	name: z.string().optional().describe("Column name containing full name"),
-	firstname: z.string().optional().describe("Column name containing first name"),
-	lastname: z.string().optional().describe("Column name containing last name"),
+	name: z.string().nullish().describe("Column name containing full name"),
+	firstname: z.string().nullish().describe("Column name containing first name"),
+	lastname: z.string().nullish().describe("Column name containing last name"),
 
 	// Primary contact info
-	email: z.string().optional().describe("Column name containing email address"),
-	phone: z.string().optional().describe("Column name containing phone number"),
-	website: z.string().optional().describe("Column name containing website URL"),
-	address: z.string().optional().describe("Column name containing full address"),
+	email: z.string().nullish().describe("Column name containing email address"),
+	phone: z.string().nullish().describe("Column name containing phone number"),
+	website: z.string().nullish().describe("Column name containing website URL"),
+	address: z.string().nullish().describe("Column name containing full address"),
 
 	// Social profiles - stored in contact_info JSONB
-	linkedin: z.string().optional().describe("Column name containing LinkedIn URL"),
-	twitter: z.string().optional().describe("Column name containing Twitter/X URL or handle"),
-	instagram: z.string().optional().describe("Column name containing Instagram URL or handle"),
-	tiktok: z.string().optional().describe("Column name containing TikTok URL or handle"),
+	linkedin: z.string().nullish().describe("Column name containing LinkedIn URL"),
+	twitter: z.string().nullish().describe("Column name containing Twitter/X URL or handle"),
+	instagram: z.string().nullish().describe("Column name containing Instagram URL or handle"),
+	tiktok: z.string().nullish().describe("Column name containing TikTok URL or handle"),
 
 	// Professional info
-	title: z.string().optional().describe("Column name containing job title"),
-	company: z.string().optional().describe("Column name containing company/organization name"),
-	role: z.string().optional().describe("Column name containing role"),
-	industry: z.string().optional().describe("Column name containing industry"),
-	location: z.string().optional().describe("Column name containing location (city/region)"),
+	title: z.string().nullish().describe("Column name containing job title"),
+	company: z.string().nullish().describe("Column name containing company/organization name"),
+	role: z.string().nullish().describe("Column name containing role"),
+	industry: z.string().nullish().describe("Column name containing industry"),
+	location: z.string().nullish().describe("Column name containing location (city/region)"),
 
 	// Company context - stored on organizations table
-	company_stage: z.string().optional().describe("Column name containing company stage (Startup, Growth, etc.)"),
-	company_size: z.string().optional().describe("Column name containing company size"),
+	company_stage: z.string().nullish().describe("Column name containing company stage (Startup, Growth, etc.)"),
+	company_size: z.string().nullish().describe("Column name containing company size"),
 
 	// Company metrics - stored on organizations table
-	company_url: z.string().optional().describe("Column name containing company website URL"),
-	annual_revenue: z.string().optional().describe("Column name containing company annual revenue"),
-	market_cap: z.string().optional().describe("Column name containing company market capitalization"),
-	funding_stage: z.string().optional().describe("Column name containing funding stage (Seed, Series A, etc.)"),
-	total_funding: z.string().optional().describe("Column name containing total funding raised"),
+	company_url: z.string().nullish().describe("Column name containing company website URL"),
+	annual_revenue: z.string().nullish().describe("Column name containing company annual revenue"),
+	market_cap: z.string().nullish().describe("Column name containing company market capitalization"),
+	funding_stage: z.string().nullish().describe("Column name containing funding stage (Seed, Series A, etc.)"),
+	total_funding: z.string().nullish().describe("Column name containing total funding raised"),
 
 	// Segmentation
-	segment: z.string().optional().describe("Column name containing customer segment"),
-	lifecycle_stage: z.string().optional().describe("Column name containing lifecycle stage"),
+	segment: z.string().nullish().describe("Column name containing customer segment"),
+	lifecycle_stage: z.string().nullish().describe("Column name containing lifecycle stage"),
 })
 
 type ColumnMapping = z.infer<typeof columnMappingSchema>
@@ -286,25 +286,25 @@ The tool will:
 	inputSchema: z.object({
 		assetId: z.string().uuid().describe("ID of the project_asset containing the table data"),
 		columnMapping: columnMappingSchema
-			.optional()
+			.nullish()
 			.describe(
 				"OPTIONAL - Leave undefined to use auto-detection (RECOMMENDED). If provided, only include fields that exist in your spreadsheet. Do NOT map fields to null - simply omit them. Unmapped fields are skipped, not overwritten."
 			),
 		mode: z
 			.enum(["create", "upsert"])
-			.optional()
+			.nullish()
 			.default("create")
 			.describe(
 				"'create' = skip existing people, 'upsert' = match by email and UPDATE only fields that have values in spreadsheet (preserves existing data for unmapped/empty fields)"
 			),
 		skipDuplicates: z
 			.boolean()
-			.optional()
+			.nullish()
 			.default(true)
 			.describe("Skip rows where email already exists (only applies in 'create' mode)"),
 		createOrganizations: z
 			.boolean()
-			.optional()
+			.nullish()
 			.default(true)
 			.describe("Create organization records from company column"),
 		facetColumns: z
@@ -314,18 +314,18 @@ The tool will:
 					facetKind: z.string().describe("Facet kind slug (e.g., 'event', 'survey_response', 'persona')"),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("Additional columns to import as facets (beyond the standard segment/role/industry/location)"),
 		suggestedFacets: z
 			.array(
 				z.object({
 					column: z.string().describe("Column name from spreadsheet"),
 					facetKind: z.string().describe("Suggested facet kind slug"),
-					sampleValues: z.array(z.string()).optional().describe("Example values"),
-					reason: z.string().optional().describe("Why this should be a facet"),
+					sampleValues: z.array(z.string()).nullish().describe("Example values"),
+					reason: z.string().nullish().describe("Why this should be a facet"),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("LLM-suggested facets from parseSpreadsheet - will be auto-imported as facets for each person"),
 	}),
 	outputSchema: z.object({
@@ -336,7 +336,7 @@ The tool will:
 			updated: z.number().describe("Number of existing people records updated (upsert mode)"),
 			organizations: z.number().describe("Number of organization records created"),
 			facets: z.number().describe("Number of facet observations created"),
-			surveyResponses: z.number().optional().describe("Number of survey Q&A pairs created as evidence_facet records"),
+			surveyResponses: z.number().nullish().describe("Number of survey Q&A pairs created as evidence_facet records"),
 			skipped: z.number().describe("Number of rows skipped (duplicates or invalid)"),
 		}),
 		details: z
@@ -349,9 +349,9 @@ The tool will:
 					rowIndex: z.number(),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("Details of imported records"),
-		detectedMapping: z.record(z.string(), z.string()).optional().describe("Auto-detected column mappings used"),
+		detectedMapping: z.record(z.string(), z.string()).nullish().describe("Auto-detected column mappings used"),
 		skipReasons: z
 			.array(
 				z.object({
@@ -360,7 +360,7 @@ The tool will:
 					data: z.record(z.string(), z.unknown()).optional(),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("First 10 skip reasons for debugging"),
 		error: z.string().optional(),
 	}),

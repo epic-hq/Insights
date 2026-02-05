@@ -15,21 +15,29 @@ const EXA_API_URL = "https://api.exa.ai"
  * Schema for LLM extraction output
  */
 const CompanyExtractionSchema = z.object({
-	description: z.string().optional().describe("A 1-2 sentence description of what the company does"),
-	customer_problem: z.string().optional().describe("The main problem or pain point the company solves for customers"),
+	description: z.string().nullish().describe("A 1-2 sentence description of what the company does"),
+	customer_problem: z.string().nullish().describe("The main problem or pain point the company solves for customers"),
 	offerings: z
 		.array(z.string())
-		.optional()
+		.nullish()
 		.describe("List of main products or services offered (2-5 items, be specific)"),
 	target_customers: z
 		.array(z.string())
-		.optional()
+		.nullish()
 		.describe(
-			"Types of companies or people they serve (e.g., 'Enterprise software companies', 'Healthcare providers')"
+			"Types of companies or organizations they serve (e.g., 'Enterprise software companies', 'Healthcare providers')"
 		),
+	target_roles: z
+		.array(z.string())
+		.nullish()
+		.describe("Job roles or personas they target (e.g., 'Product Managers', 'Engineering Leaders', 'CTOs')"),
+	competitors: z
+		.array(z.string())
+		.nullish()
+		.describe("Known competitors or alternative solutions mentioned on the site"),
 	industry: z
 		.string()
-		.optional()
+		.nullish()
 		.describe("The industry or sector (e.g., 'Healthcare Technology', 'B2B SaaS', 'Fintech')"),
 })
 
@@ -79,6 +87,7 @@ export interface CompanyResearchResult {
 		offerings?: string[]
 		competitors?: string[]
 		target_orgs?: string[]
+		target_roles?: string[]
 		description?: string
 		industry?: string
 	}
@@ -208,8 +217,13 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 						return {
 							success: true,
 							data: {
-								...extractedData,
+								description: extractedData.description,
+								customer_problem: extractedData.customer_problem,
+								offerings: extractedData.offerings,
 								target_orgs: extractedData.target_customers,
+								target_roles: extractedData.target_roles,
+								competitors: extractedData.competitors,
+								industry: extractedData.industry,
 							},
 						}
 					}
@@ -256,8 +270,13 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 	return {
 		success: true,
 		data: {
-			...extractedData,
+			description: extractedData.description,
+			customer_problem: extractedData.customer_problem,
+			offerings: extractedData.offerings,
 			target_orgs: extractedData.target_customers,
+			target_roles: extractedData.target_roles,
+			competitors: extractedData.competitors,
+			industry: extractedData.industry,
 		},
 	}
 }
@@ -284,7 +303,9 @@ INSTRUCTIONS:
 - Be specific and concise
 - For offerings: list actual products/services, not vague descriptions
 - For customer_problem: describe the pain point they solve in one sentence
-- For target_customers: list specific customer segments (e.g., "B2B SaaS companies", "Healthcare providers")
+- For target_customers: list specific organization types (e.g., "B2B SaaS companies", "Healthcare providers")
+- For target_roles: list job titles or personas (e.g., "Product Managers", "Engineering Leaders", "CTOs")
+- For competitors: only include if explicitly mentioned on the site
 - If information isn't clearly available, omit that field
 - Keep descriptions to 1-2 sentences max`,
 		})
@@ -308,6 +329,21 @@ export const researchCompanyWebsiteTool = createTool({
 		"Research a company website using Exa.ai to extract company information. Use this when users provide a website URL during project setup or when enriching organization data. Returns structured data including offerings, customer problems, target industries, and company description.",
 	inputSchema: z.object({
 		website_url: z.string().describe("The company website URL to research (can be with or without https://)"),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		error: z.string().optional(),
+		data: z
+			.object({
+				customer_problem: z.string().optional(),
+				offerings: z.array(z.string()).optional(),
+				competitors: z.array(z.string()).optional(),
+				target_orgs: z.array(z.string()).optional(),
+				target_roles: z.array(z.string()).optional(),
+				description: z.string().optional(),
+				industry: z.string().optional(),
+			})
+			.optional(),
 	}),
 	execute: async ({ website_url }) => {
 		return researchCompanyWebsite(website_url)

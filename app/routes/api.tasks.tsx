@@ -23,6 +23,7 @@ import {
 	updateTask,
 } from "~/features/tasks/db"
 import type { TaskInsert, TaskListOptions, TaskUpdate } from "~/features/tasks/types"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 // ============================================================================
@@ -131,6 +132,28 @@ export async function action({ request }: ActionFunctionArgs) {
 					data,
 				})
 
+				// Track task_created event for PLG instrumentation
+				try {
+					const posthogServer = getPostHogServerClient()
+					if (posthogServer && task) {
+						posthogServer.capture({
+							distinctId: user.id,
+							event: "task_created",
+							properties: {
+								task_id: task.id,
+								project_id: projectId,
+								account_id: accountId,
+								priority: data.priority,
+								source: data.source_insight_id ? "insight" : "manual",
+								source_insight_id: data.source_insight_id || null,
+								$groups: { account: accountId },
+							},
+						})
+					}
+				} catch (trackingError) {
+					consola.warn("[TASK_CREATED] PostHog tracking failed:", trackingError)
+				}
+
 				return { task }
 			}
 
@@ -143,12 +166,110 @@ export async function action({ request }: ActionFunctionArgs) {
 				}
 
 				const updates: TaskUpdate = JSON.parse(updatesJson)
+
+				// Get previous state for tracking changes
+				const previousTask = await getTaskById({ supabase, taskId })
+				const previousStatus = previousTask?.status || null
+				const previousDueDate = previousTask?.due_date || null
+				const previousAssignedTo = previousTask?.assigned_to || []
+
 				const task = await updateTask({
 					supabase,
 					taskId,
 					userId: user.id,
 					updates,
 				})
+
+				// Track task changes for PLG instrumentation
+				try {
+					const posthogServer = getPostHogServerClient()
+					if (posthogServer && task) {
+						// Track status changes
+						if (updates.status && previousStatus !== updates.status) {
+							posthogServer.capture({
+								distinctId: user.id,
+								event: "task_status_changed",
+								properties: {
+									task_id: taskId,
+									project_id: task.project_id,
+									account_id: task.account_id,
+									previous_status: previousStatus,
+									new_status: updates.status,
+									priority: task.priority,
+									$groups: { account: task.account_id },
+								},
+							})
+
+							// Also fire task_completed for funnel analysis when done
+							if (updates.status === "done") {
+								posthogServer.capture({
+									distinctId: user.id,
+									event: "task_completed",
+									properties: {
+										task_id: taskId,
+										project_id: task.project_id,
+										account_id: task.account_id,
+										priority: task.priority,
+										$groups: { account: task.account_id },
+									},
+								})
+							}
+						}
+
+						// Track due date changes
+						if (updates.due_date !== undefined && previousDueDate !== updates.due_date) {
+							const newDueDate = updates.due_date ? new Date(updates.due_date) : null
+							const daysUntilDue = newDueDate
+								? Math.ceil((newDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+								: null
+
+							posthogServer.capture({
+								distinctId: user.id,
+								event: "task_due_date_changed",
+								properties: {
+									task_id: taskId,
+									project_id: task.project_id,
+									account_id: task.account_id,
+									previous_due_date: previousDueDate,
+									new_due_date: updates.due_date,
+									days_until_due: daysUntilDue,
+									$groups: { account: task.account_id },
+								},
+							})
+						}
+
+						// Track assignment changes
+						if (updates.assigned_to !== undefined) {
+							const prevIds = previousAssignedTo
+								.map((a: { user_id?: string; person_id?: string }) => a.user_id || a.person_id)
+								.filter(Boolean)
+							const newIds = (updates.assigned_to || [])
+								.map((a: { user_id?: string; person_id?: string }) => a.user_id || a.person_id)
+								.filter(Boolean)
+
+							// Check if assignment actually changed
+							const assignmentChanged = JSON.stringify(prevIds.sort()) !== JSON.stringify(newIds.sort())
+
+							if (assignmentChanged && newIds.length > 0) {
+								posthogServer.capture({
+									distinctId: user.id,
+									event: "task_assigned",
+									properties: {
+										task_id: taskId,
+										project_id: task.project_id,
+										account_id: task.account_id,
+										assignee_count: newIds.length,
+										assigner_user_id: user.id,
+										is_self_assign: newIds.length === 1 && newIds[0] === user.id,
+										$groups: { account: task.account_id },
+									},
+								})
+							}
+						}
+					}
+				} catch (trackingError) {
+					consola.warn("[TASK_UPDATE] PostHog tracking failed:", trackingError)
+				}
 
 				return { task }
 			}

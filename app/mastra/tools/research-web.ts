@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
-import { generateEmbedding } from "~/lib/embeddings/openai.server"
+import { generateEmbeddingWithBilling, systemBillingContext } from "~/lib/billing"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 
 const EXA_API_URL = "https://api.exa.ai"
@@ -49,25 +49,35 @@ export const webResearchTool = createTool({
 			.number()
 			.min(1)
 			.max(10)
-			.default(5)
+			.nullish()
+			.transform((val) => val ?? 5)
 			.describe("Number of results to return (1-10). Use higher values instead of multiple separate searches."),
 		type: z
 			.enum(["neural", "keyword", "auto"])
-			.default("auto")
+			.nullish()
+			.transform((val) => val ?? "auto")
 			.describe("Search type: neural (semantic), keyword (traditional), or auto"),
-		useAutoprompt: z.boolean().default(true).describe("Let Exa optimize the query for better results"),
-		includeText: z.boolean().default(true).describe("Include text snippets from pages"),
+		useAutoprompt: z
+			.boolean()
+			.nullish()
+			.transform((val) => val ?? true)
+			.describe("Let Exa optimize the query for better results"),
+		includeText: z
+			.boolean()
+			.nullish()
+			.transform((val) => val ?? true)
+			.describe("Include text snippets from pages"),
 		category: z
 			.enum(["company", "research paper", "news", "pdf", "github", "tweet", "personal site", "linkedin profile"])
-			.optional()
+			.nullish()
 			.describe("Filter to specific content category"),
 	}),
 	outputSchema: z.object({
 		tldr: z.string().describe("2-3 key takeaways from the search"),
-		noteUrl: z.string().optional().describe("Link to the full research note"),
-		noteId: z.string().optional().describe("ID of the created note"),
+		noteUrl: z.string().nullish().describe("Link to the full research note"),
+		noteId: z.string().nullish().describe("ID of the created note"),
 		resultCount: z.number().describe("Number of results found"),
-		evidenceCount: z.number().optional().describe("Number of evidence records created"),
+		evidenceCount: z.number().nullish().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
 	execute: async (input, context?) => {
@@ -228,11 +238,15 @@ export const webResearchTool = createTool({
 						consola.info("[web-research] Saved research note:", noteId)
 
 						// Create evidence records for each search result (for semantic search)
+						const billingCtx = systemBillingContext(accountId, "embedding_generation", projectId)
 						for (const result of results) {
 							try {
 								// Generate embedding for the result content
 								const textToEmbed = `${result.title}: ${result.summary}`
-								const embedding = await generateEmbedding(textToEmbed)
+								const embedding = await generateEmbeddingWithBilling(billingCtx, textToEmbed, {
+									idempotencyKey: `web-research:${noteId}:${result.url}`,
+									resourceType: "evidence",
+								})
 
 								const evidenceRecord = {
 									account_id: accountId,
@@ -375,15 +389,25 @@ export const findSimilarPagesTool = createTool({
 		"Find web pages similar to a given URL. Useful for competitive analysis, finding related companies, or discovering similar content. Saves full results as a note.",
 	inputSchema: z.object({
 		url: z.string().url().describe("URL to find similar pages for"),
-		numResults: z.number().min(1).max(10).default(5).describe("Number of results (1-10)"),
-		includeText: z.boolean().default(true).describe("Include text snippets"),
+		numResults: z
+			.number()
+			.min(1)
+			.max(10)
+			.nullish()
+			.transform((val) => val ?? 5)
+			.describe("Number of results (1-10)"),
+		includeText: z
+			.boolean()
+			.nullish()
+			.transform((val) => val ?? true)
+			.describe("Include text snippets"),
 	}),
 	outputSchema: z.object({
 		tldr: z.string().describe("2-3 key takeaways from similar pages"),
-		noteUrl: z.string().optional().describe("Link to the full research note"),
-		noteId: z.string().optional().describe("ID of the created note"),
+		noteUrl: z.string().nullish().describe("Link to the full research note"),
+		noteId: z.string().nullish().describe("ID of the created note"),
 		resultCount: z.number().describe("Number of similar pages found"),
-		evidenceCount: z.number().optional().describe("Number of evidence records created"),
+		evidenceCount: z.number().nullish().describe("Number of evidence records created"),
 		error: z.string().optional(),
 	}),
 	execute: async (input, context?) => {
@@ -522,11 +546,15 @@ export const findSimilarPagesTool = createTool({
 						consola.info("[find-similar] Saved research note:", noteId)
 
 						// Create evidence records for each similar page (for semantic search)
+						const billingCtx = systemBillingContext(accountId, "embedding_generation", projectId)
 						for (const result of results) {
 							try {
 								// Generate embedding for the result content
 								const textToEmbed = `${result.title}: ${result.summary}`
-								const embedding = await generateEmbedding(textToEmbed)
+								const embedding = await generateEmbeddingWithBilling(billingCtx, textToEmbed, {
+									idempotencyKey: `find-similar:${noteId}:${result.url}`,
+									resourceType: "evidence",
+								})
 
 								const evidenceRecord = {
 									account_id: accountId,

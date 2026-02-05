@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/check-limit.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
@@ -53,6 +54,29 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	const accountId = projectRow.account_id
 	consola.log(`api.upload-file resolved accountId: ${accountId}, projectId: ${projectId}`)
 
+	// Check AI analyses limit before processing
+	if (userId) {
+		const gateCtx = await buildFeatureGateContext(accountId, userId)
+		const limitCheck = await checkLimitAccess(gateCtx, "ai_analyses")
+		if (!limitCheck.allowed) {
+			consola.info("[upload-file] AI analyses limit exceeded", {
+				accountId,
+				currentUsage: limitCheck.currentUsage,
+				limit: limitCheck.limit,
+			})
+			return Response.json(
+				{
+					error: "ai_analyses_limit_exceeded",
+					message: `You've used all ${limitCheck.limit} AI analyses this month. Upgrade to analyze more interviews.`,
+					currentUsage: limitCheck.currentUsage,
+					limit: limitCheck.limit,
+					upgradeUrl: limitCheck.upgradeUrl,
+				},
+				{ status: 403 }
+			)
+		}
+	}
+
 	const interviewTitle = `Interview - ${format(new Date(), "yyyy-MM-dd")}`
 
 	try {
@@ -67,11 +91,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		let mediaUrl: string
 
 		// Detect file type for source_type field up front
+		// Use MIME type as primary signal, fall back to extension
 		const fileExtension = file.name.split(".").pop()?.toLowerCase() || ""
 		let sourceType = "audio_upload"
-		if (file.type.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(fileExtension)) {
+		if (file.type.startsWith("video/")) {
+			// MIME type is the most reliable signal
+			sourceType = "video_upload"
+		} else if (file.type.startsWith("audio/")) {
+			// Explicitly audio MIME type
+			sourceType = "audio_upload"
+		} else if (["mp4", "mov", "avi", "mkv", "m4v"].includes(fileExtension)) {
+			// Unambiguous video extensions (not webm - it can be audio or video)
 			sourceType = "video_upload"
 		}
+		// webm without MIME info stays as audio_upload (safer default - smaller player)
 		if (isTextFile) {
 			sourceType = "document"
 		}
@@ -109,7 +142,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			})
 		}
 
-		await createPlannedAnswersForInterview(supabase, { projectId, interviewId: interview.id })
+		await createPlannedAnswersForInterview(supabase, {
+			projectId,
+			interviewId: interview.id,
+		})
 
 		if (isTextFile) {
 			// Handle text/markdown files - read content directly

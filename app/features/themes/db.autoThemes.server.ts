@@ -1,6 +1,12 @@
 import consola from "consola"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
-import { generateEmbedding, generateEmbeddingOrThrow, SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server"
+import {
+	type BillingContext,
+	generateEmbeddingWithBilling,
+	generateEmbeddingWithBillingOrThrow,
+	runBamlWithBilling,
+	systemBillingContext,
+} from "~/lib/billing"
+import { SIMILARITY_THRESHOLDS } from "~/lib/embeddings/openai.server"
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types"
 import { deleteOrphanedThemes } from "./services/segmentThemeQueries.server"
 
@@ -11,10 +17,13 @@ async function findSimilarEvidenceForTheme(
 	supabase: SupabaseClient,
 	projectId: string,
 	themeText: string,
+	billingCtx: BillingContext,
 	matchThreshold = SIMILARITY_THRESHOLDS.EVIDENCE_TO_THEME,
 	matchCount = 50
 ): Promise<Array<{ id: string; verbatim: string; similarity: number }>> {
-	const embedding = await generateEmbeddingOrThrow(themeText, {
+	const embedding = await generateEmbeddingWithBillingOrThrow(billingCtx, themeText, {
+		idempotencyKey: `theme-evidence-search:${projectId}:${themeText.slice(0, 50)}`,
+		resourceType: "theme",
 		label: "theme-evidence-search",
 	})
 
@@ -136,10 +145,13 @@ async function findSemanticallySimilarTheme(
 	supabase: SupabaseClient,
 	projectId: string,
 	themeText: string,
+	billingCtx: BillingContext,
 	matchThreshold = SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION
 ): Promise<{ id: string; name: string; similarity: number } | null> {
 	try {
-		const embedding = await generateEmbedding(themeText, {
+		const embedding = await generateEmbeddingWithBilling(billingCtx, themeText, {
+			idempotencyKey: `theme-dedup:${projectId}:${themeText.slice(0, 50)}`,
+			resourceType: "theme",
 			label: "theme-dedup",
 		})
 		if (!embedding) return null
@@ -174,7 +186,8 @@ async function findSemanticallySimilarTheme(
 // Uses semantic matching to prevent near-duplicate themes
 async function upsertTheme(
 	supabase: SupabaseClient,
-	payload: Omit<ThemeInsert, "id"> & { id?: string }
+	payload: Omit<ThemeInsert, "id"> & { id?: string },
+	billingCtx: BillingContext
 ): Promise<Theme> {
 	// 1. Try exact name match first (fastest)
 	const { data: existing, error: findErr } = await supabase
@@ -212,7 +225,8 @@ async function upsertTheme(
 		const similarTheme = await findSemanticallySimilarTheme(
 			supabase,
 			payload.project_id,
-			searchText
+			searchText,
+			billingCtx
 			// Uses SIMILARITY_THRESHOLDS.THEME_DEDUPLICATION (0.8) by default
 		)
 
@@ -253,7 +267,9 @@ async function upsertTheme(
 
 	// 3. Create new theme with embedding for future semantic matching
 	const searchText = [payload.name, payload.statement].filter(Boolean).join(". ")
-	const embedding = await generateEmbedding(searchText, {
+	const embedding = await generateEmbeddingWithBilling(billingCtx, searchText, {
+		idempotencyKey: `theme-create:${payload.project_id}:${payload.name}`,
+		resourceType: "theme",
 		label: `theme:${payload.name}`,
 	})
 
@@ -365,6 +381,9 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 		throw new Error(`No evidence found for project ${project_id}. Cannot generate themes without evidence data.`)
 	}
 
+	// Create billing context for all LLM operations
+	const billingCtx = systemBillingContext(account_id, "theme_generation", project_id ?? undefined)
+
 	// 2) Call BAML
 	let resp
 	try {
@@ -374,19 +393,25 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 			"[autoGroupThemesAndApply] Sample evidence (first 2):",
 			evidence.slice(0, 2).map((e) => ({ id: e.id, verbatim: e.verbatim?.slice(0, 50) }))
 		)
-		const { result } = await runBamlWithTracing({
-			functionName: "AutoGroupThemes",
-			traceName: "baml.auto-group-themes",
-			input: {
-				account_id,
-				project_id,
-				evidenceCount: evidence.length,
-				guidanceLength: guidance.length,
+		const { result } = await runBamlWithBilling(
+			billingCtx,
+			{
+				functionName: "AutoGroupThemes",
+				traceName: "baml.auto-group-themes",
+				input: {
+					account_id,
+					project_id,
+					evidenceCount: evidence.length,
+					guidanceLength: guidance.length,
+				},
+				metadata: { caller: "autoGroupThemesAndApply" },
+				logUsageLabel: "AutoGroupThemes",
+				bamlCall: (client) => client.AutoGroupThemes(evidence_json, guidance),
+				resourceType: "project",
+				resourceId: project_id ?? undefined,
 			},
-			metadata: { caller: "autoGroupThemesAndApply" },
-			logUsageLabel: "AutoGroupThemes",
-			bamlCall: (client) => client.AutoGroupThemes(evidence_json, guidance),
-		})
+			`auto-group-themes:${account_id}:${project_id}:${Date.now()}`
+		)
 		resp = result
 		consola.log("[autoGroupThemesAndApply] BAML response received, themes count:", resp.themes?.length || 0)
 	} catch (bamlError) {
@@ -416,16 +441,20 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	for (const t of themesFromBaml) {
 		let theme: Theme
 		try {
-			theme = await upsertTheme(supabase, {
-				account_id,
-				project_id,
-				name: t.name,
-				statement: t.statement ?? null,
-				inclusion_criteria: t.inclusion_criteria ?? null,
-				exclusion_criteria: t.exclusion_criteria ?? null,
-				synonyms: t.synonyms ?? [],
-				anti_examples: [],
-			})
+			theme = await upsertTheme(
+				supabase,
+				{
+					account_id,
+					project_id,
+					name: t.name,
+					statement: t.statement ?? null,
+					inclusion_criteria: t.inclusion_criteria ?? null,
+					exclusion_criteria: t.exclusion_criteria ?? null,
+					synonyms: t.synonyms ?? [],
+					anti_examples: [],
+				},
+				billingCtx
+			)
 		} catch (themeErr) {
 			consola.warn("[autoGroupThemesAndApply] Failed to upsert theme", {
 				name: t?.name,
@@ -447,6 +476,7 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 					supabase,
 					project_id,
 					searchQuery,
+					billingCtx,
 					0.4, // threshold - balance between coverage and relevance
 					50 // max matches per theme
 				)

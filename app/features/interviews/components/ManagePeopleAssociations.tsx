@@ -35,10 +35,20 @@ export interface Person {
 	person_type?: string | null
 }
 
+/** A speaker detected in the transcript */
+export interface TranscriptSpeaker {
+	/** The transcript key (e.g., "participant-1", "A") */
+	key: string
+	/** Display label (e.g., "Speaker B") */
+	label: string
+}
+
 interface ManagePeopleAssociationsProps {
 	interviewId: string
 	participants: InterviewPerson[]
 	availablePeople: Person[]
+	/** Speakers detected in the transcript (from speaker_transcripts) */
+	transcriptSpeakers?: TranscriptSpeaker[]
 	onUpdate?: () => void
 }
 
@@ -46,12 +56,14 @@ export function ManagePeopleAssociations({
 	interviewId,
 	participants,
 	availablePeople,
+	transcriptSpeakers = [],
 	onUpdate,
 }: ManagePeopleAssociationsProps) {
 	const fetcher = useFetcher()
 	const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
 	const [showAddPersonDialog, setShowAddPersonDialog] = useState(false)
 	const [newPersonName, setNewPersonName] = useState("")
+	const [selectedSpeakerKey, setSelectedSpeakerKey] = useState<string | null>(null)
 	const [newPersonFirst, setNewPersonFirst] = useState("")
 	const [newPersonLast, setNewPersonLast] = useState("")
 	const [newPersonOrg, setNewPersonOrg] = useState("")
@@ -59,8 +71,16 @@ export function ManagePeopleAssociations({
 	const [voiceStatus, setVoiceStatus] = useState<"idle" | "listening" | "unsupported">("idle")
 	const recognitionRef = useRef<SpeechRecognition | null>(null)
 	const [searchInput, setSearchInput] = useState("")
+	const [addDialogMode, setAddDialogMode] = useState<"search" | "create">("search")
+	const [addSearchInput, setAddSearchInput] = useState("")
 	const isSubmitting = fetcher.state !== "idle"
 	const voiceStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	// Calculate which transcript speakers are not yet assigned to a participant
+	const unassignedSpeakers = useMemo(() => {
+		const assignedKeys = new Set(participants.map((p) => p.transcript_key).filter((k): k is string => k !== null))
+		return transcriptSpeakers.filter((s) => !assignedKeys.has(s.key))
+	}, [participants, transcriptSpeakers])
 
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data && onUpdate) {
@@ -106,6 +126,22 @@ export function ManagePeopleAssociations({
 		setSearchInput("")
 	}
 
+	// Add an existing person as a new participant
+	const addExistingParticipant = (personId: string) => {
+		fetcher.submit(
+			{
+				intent: "add-participant",
+				personId,
+				...(selectedSpeakerKey && { transcript_key: selectedSpeakerKey }),
+			},
+			{ method: "post" }
+		)
+		setShowAddPersonDialog(false)
+		setAddDialogMode("search")
+		setAddSearchInput("")
+		setSelectedSpeakerKey(null)
+	}
+
 	// Add a brand new participant to the interview (not linking an existing speaker)
 	const addNewParticipant = (name: string) => {
 		const first = newPersonFirst.trim()
@@ -125,24 +161,29 @@ export function ManagePeopleAssociations({
 				person_lastname: last || undefined,
 				person_company: org || undefined,
 				person_title: title || undefined,
+				...(selectedSpeakerKey && { transcript_key: selectedSpeakerKey }),
 			},
 			{ method: "post" }
 		)
 		setShowAddPersonDialog(false)
+		setAddDialogMode("search")
+		setAddSearchInput("")
 		setNewPersonName("")
 		setNewPersonFirst("")
 		setNewPersonLast("")
 		setNewPersonOrg("")
 		setNewPersonTitle("")
+		setSelectedSpeakerKey(null)
 		setVoiceStatus("idle")
 		stopVoiceFill()
 	}
 
 	// Format transcript key to a clean speaker label
 	// Handles both AssemblyAI format ("A", "SPEAKER A") and BAML format ("participant-1", "interviewer-1")
-	const numberToLetter = (num: number) => {
-		if (Number.isNaN(num) || num < 1) return null
-		if (num <= 26) return String.fromCharCode(64 + num) // 1 -> A, 2 -> B
+	const numberToLetter = (num: number, zeroBased = false) => {
+		const adjusted = zeroBased ? num + 1 : num // 0-based: 0->A, 1->B; 1-based: 1->A, 2->B
+		if (Number.isNaN(adjusted) || adjusted < 1) return null
+		if (adjusted <= 26) return String.fromCharCode(64 + adjusted)
 		return null
 	}
 	const nextAvailableLetter = (used: Set<string>) => {
@@ -152,9 +193,11 @@ export function ManagePeopleAssociations({
 		}
 		return null
 	}
-	const formatSpeakerLabel = (transcriptKey: string | null, idx: number): string => {
+	const formatSpeakerLabel = (transcriptKey: string | null, _idx: number): string => {
 		if (!transcriptKey) {
-			return "Unassigned"
+			// No transcript_key means this person is linked to the interview
+			// but NOT to a specific speaker in the transcript
+			return "Unlinked"
 		}
 
 		// Single letter like "A", "B" -> "Speaker A", "Speaker B"
@@ -172,12 +215,12 @@ export function ManagePeopleAssociations({
 			const letter = numberToLetter(num)
 			return letter ? `Speaker ${letter}` : `Speaker ${num}`
 		}
-		// BAML format: "participant-1" / "interviewer-1" -> Speaker A/B
+		// BAML/fallback format: "participant-0" / "participant-1" -> Speaker A/B (0-based)
 		if (/^(participant|interviewer|observer|moderator)-\d+$/i.test(transcriptKey)) {
 			const [, numStr] = transcriptKey.split("-")
 			const num = Number.parseInt(numStr, 10)
-			const letter = numberToLetter(num)
-			return letter ? `Speaker ${letter}` : `Speaker ${num || ""}`.trim()
+			const letter = numberToLetter(num, true) // 0-based numbering
+			return letter ? `Speaker ${letter}` : `Speaker ${num + 1}`
 		}
 		// Fallback - just use the key
 		return transcriptKey
@@ -275,9 +318,21 @@ export function ManagePeopleAssociations({
 						}
 						const linkedPerson = participant.people
 
+						const isUnlinked = speakerLabel === "Unlinked"
+
 						return (
-							<div key={participant.id} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
-								<div className="min-w-[100px] font-medium text-sm">{speakerLabel}</div>
+							<div
+								key={participant.id}
+								className={cn(
+									"flex items-center gap-2 rounded-md border px-3 py-2",
+									isUnlinked ? "border-muted-foreground/40 border-dashed bg-muted/10" : "bg-muted/30"
+								)}
+							>
+								<div
+									className={cn("min-w-[100px] text-sm", isUnlinked ? "text-muted-foreground italic" : "font-medium")}
+								>
+									{speakerLabel}
+								</div>
 
 								{linkedPerson ? <Check className="h-4 w-4 shrink-0 text-green-600" /> : <div className="h-4 w-4" />}
 
@@ -408,79 +463,184 @@ export function ManagePeopleAssociations({
 				</Button>
 			</div>
 
-			{/* Add New Participant Dialog */}
-			<Dialog open={showAddPersonDialog} onOpenChange={setShowAddPersonDialog}>
+			{/* Add Participant Dialog - Search first, then create */}
+			<Dialog
+				open={showAddPersonDialog}
+				onOpenChange={(open) => {
+					setShowAddPersonDialog(open)
+					if (!open) {
+						setAddDialogMode("search")
+						setAddSearchInput("")
+						setSelectedSpeakerKey(null)
+					}
+				}}
+			>
 				<DialogContent className="sm:max-w-[400px]">
 					<DialogHeader>
 						<DialogTitle>Add Participant</DialogTitle>
 					</DialogHeader>
-					<div className="space-y-4 py-4">
-						<p className="text-muted-foreground text-sm">
-							Add someone who wasn't detected as a speaker. Link them to contacts above after creation.
-						</p>
-						<div className="grid grid-cols-2 gap-3">
-							<div className="space-y-2">
-								<Label htmlFor="new-person-first">First name</Label>
-								<Input
-									id="new-person-first"
-									placeholder="First name"
-									value={newPersonFirst}
-									onChange={(e) => setNewPersonFirst(e.target.value)}
-								/>
+
+					{/* Speaker Selection - show if there are unassigned speakers */}
+					{unassignedSpeakers.length > 0 && (
+						<div className="space-y-2 border-b pb-4">
+							<Label className="font-medium text-sm">Link to transcript speaker (optional)</Label>
+							<div className="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									variant={selectedSpeakerKey === null ? "default" : "outline"}
+									size="sm"
+									onClick={() => setSelectedSpeakerKey(null)}
+								>
+									No speaker
+								</Button>
+								{unassignedSpeakers.map((speaker) => (
+									<Button
+										key={speaker.key}
+										type="button"
+										variant={selectedSpeakerKey === speaker.key ? "default" : "outline"}
+										size="sm"
+										onClick={() => setSelectedSpeakerKey(speaker.key)}
+									>
+										{speaker.label}
+									</Button>
+								))}
 							</div>
-							<div className="space-y-2">
-								<Label htmlFor="new-person-last">Last name</Label>
-								<Input
-									id="new-person-last"
-									placeholder="Last name"
-									value={newPersonLast}
-									onChange={(e) => setNewPersonLast(e.target.value)}
-								/>
-							</div>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="new-person-org">Organization</Label>
-							<Input
-								id="new-person-org"
-								placeholder="Organization"
-								value={newPersonOrg}
-								onChange={(e) => setNewPersonOrg(e.target.value)}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="new-person-title">Title (optional)</Label>
-							<Input
-								id="new-person-title"
-								placeholder="e.g., Product Manager"
-								value={newPersonTitle}
-								onChange={(e) => setNewPersonTitle(e.target.value)}
-							/>
-						</div>
-						<div className="flex items-center gap-2">
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={startVoiceFill}
-								disabled={voiceStatus === "listening"}
-							>
-								{voiceStatus === "listening" ? "Listening..." : "Speak it in"}
-							</Button>
-							{voiceStatus === "unsupported" && (
-								<span className="text-muted-foreground text-xs">Voice fill not supported in this browser</span>
+							{selectedSpeakerKey && (
+								<p className="text-muted-foreground text-xs">
+									This person will be linked to{" "}
+									{unassignedSpeakers.find((s) => s.key === selectedSpeakerKey)?.label || selectedSpeakerKey} in the
+									transcript.
+								</p>
 							)}
 						</div>
-					</div>
+					)}
+
+					{addDialogMode === "search" ? (
+						<div className="space-y-4 py-4">
+							<p className="text-muted-foreground text-sm">Search for an existing person or create a new one.</p>
+							<Command className="rounded-lg border">
+								<CommandInput placeholder="Search people..." value={addSearchInput} onValueChange={setAddSearchInput} />
+								<CommandList className="max-h-[200px]">
+									<CommandEmpty>
+										<p className="py-2 text-center text-muted-foreground text-sm">No people found</p>
+									</CommandEmpty>
+									<CommandGroup>
+										{availablePeople
+											.filter((p) => {
+												if (!addSearchInput.trim()) return true
+												return p.name?.toLowerCase().includes(addSearchInput.toLowerCase())
+											})
+											.map((person) => (
+												<CommandItem
+													key={person.id}
+													value={person.name || person.id}
+													onSelect={() => addExistingParticipant(person.id)}
+												>
+													<div className="flex items-center gap-2">
+														<span>{person.name || "Unnamed Person"}</span>
+														{person.person_type === "internal" && (
+															<span className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-[10px] text-blue-800 uppercase tracking-wide">
+																Team
+															</span>
+														)}
+													</div>
+												</CommandItem>
+											))}
+									</CommandGroup>
+									<CommandSeparator />
+									<CommandGroup>
+										<CommandItem
+											value={`create-new-${addSearchInput}`}
+											onSelect={() => {
+												if (addSearchInput.trim()) {
+													const tokens = addSearchInput.trim().split(/\s+/)
+													setNewPersonFirst(tokens[0] ?? "")
+													setNewPersonLast(tokens.length > 1 ? tokens.slice(1).join(" ") : "")
+													setNewPersonName(addSearchInput.trim())
+												}
+												setAddDialogMode("create")
+											}}
+											className="text-primary"
+										>
+											<Plus className="mr-2 h-4 w-4" />
+											{addSearchInput.trim() ? `Create "${addSearchInput.trim()}"` : "Create new person..."}
+										</CommandItem>
+									</CommandGroup>
+								</CommandList>
+							</Command>
+						</div>
+					) : (
+						<div className="space-y-4 py-4">
+							<Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => setAddDialogMode("search")}>
+								← Back to search
+							</Button>
+							<div className="grid grid-cols-2 gap-3">
+								<div className="space-y-2">
+									<Label htmlFor="new-person-first">First name</Label>
+									<Input
+										id="new-person-first"
+										placeholder="First name"
+										value={newPersonFirst}
+										onChange={(e) => setNewPersonFirst(e.target.value)}
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="new-person-last">Last name</Label>
+									<Input
+										id="new-person-last"
+										placeholder="Last name"
+										value={newPersonLast}
+										onChange={(e) => setNewPersonLast(e.target.value)}
+									/>
+								</div>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="new-person-org">Organization</Label>
+								<Input
+									id="new-person-org"
+									placeholder="Organization"
+									value={newPersonOrg}
+									onChange={(e) => setNewPersonOrg(e.target.value)}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="new-person-title">Title (optional)</Label>
+								<Input
+									id="new-person-title"
+									placeholder="e.g., Product Manager"
+									value={newPersonTitle}
+									onChange={(e) => setNewPersonTitle(e.target.value)}
+								/>
+							</div>
+							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={startVoiceFill}
+									disabled={voiceStatus === "listening"}
+								>
+									{voiceStatus === "listening" ? "Listening..." : "Speak it in"}
+								</Button>
+								{voiceStatus === "unsupported" && (
+									<span className="text-muted-foreground text-xs">Voice fill not supported in this browser</span>
+								)}
+							</div>
+						</div>
+					)}
+
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setShowAddPersonDialog(false)}>
 							Cancel
 						</Button>
-						<Button
-							onClick={() => addNewParticipant(newPersonName || `${newPersonFirst} ${newPersonLast}`)}
-							disabled={(!newPersonFirst.trim() && !newPersonName.trim()) || isSubmitting}
-						>
-							Create & Add
-						</Button>
+						{addDialogMode === "create" && (
+							<Button
+								onClick={() => addNewParticipant(newPersonName || `${newPersonFirst} ${newPersonLast}`)}
+								disabled={(!newPersonFirst.trim() && !newPersonName.trim()) || isSubmitting}
+							>
+								Create & Add
+							</Button>
+						)}
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

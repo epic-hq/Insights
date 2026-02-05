@@ -77,17 +77,22 @@ export const fetchOpportunitiesTool = createTool({
 	description:
 		"List opportunities in the current project. Use this to inspect pipeline status, find deals by name, stage, or status, and cite details (amount, close date, description).",
 	inputSchema: z.object({
-		search: z.string().optional().describe("Case-insensitive substring to match against title or description"),
-		kanbanStatus: z.string().optional().describe("Filter by kanban status (Explore, Validate, Build)"),
-		stage: z.string().optional().describe("Filter by sales stage"),
-		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of opportunities to return"),
-		opportunityIds: z.array(z.string()).optional().describe("Specific opportunity IDs to retrieve"),
+		search: z.string().nullish().describe("Case-insensitive substring to match against title or description"),
+		kanbanStatus: z.string().nullish().describe("Filter by kanban status (Explore, Validate, Build)"),
+		stage: z.string().nullish().describe("Filter by sales stage"),
+		limit: z.number().int().min(1).max(100).nullish().describe("Maximum number of opportunities to return"),
+		opportunityIds: z.array(z.string()).nullish().describe("Specific opportunity IDs to retrieve"),
+		responseFormat: z
+			.enum(["concise", "detailed"])
+			.nullish()
+			.describe("Use concise for short lists (id/title/stage/status/amount/closeDate)."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		message: z.string(),
 		total: z.number().optional(),
 		opportunities: z.array(opportunityOutputSchema).optional(),
+		responseFormat: z.enum(["concise", "detailed"]).optional(),
 	}),
 	execute: async (input, context?) => {
 		try {
@@ -95,7 +100,8 @@ export const fetchOpportunitiesTool = createTool({
 			const { accountId, projectId } = ensureContext(context)
 			const projectPath = buildProjectPath(accountId, projectId)
 			const sanitizedSearch = input?.search?.trim()
-			const limit = input?.limit ?? 25
+			const responseFormat = input?.responseFormat ?? "detailed"
+			const limit = input?.limit ?? (responseFormat === "concise" ? 5 : 25)
 			const opportunityIds = input?.opportunityIds ?? []
 
 			let query = supabase
@@ -131,31 +137,52 @@ export const fetchOpportunitiesTool = createTool({
 			}
 
 			const mapped = (data ?? []).map((row) => mapOpportunity(row as RawOpportunity, projectPath))
+			const opportunities =
+				responseFormat === "concise"
+					? mapped.map((row) => ({
+							id: row.id,
+							title: row.title ?? null,
+							stage: row.stage ?? null,
+							status: row.status ?? null,
+							amount: row.amount ?? null,
+							closeDate: row.closeDate ?? null,
+							detailRoute: row.detailRoute ?? null,
+						}))
+					: mapped
 
 			return {
 				success: true,
 				message: mapped.length ? `Found ${mapped.length} opportunities` : "No opportunities found",
 				total: typeof count === "number" ? count : mapped.length,
-				opportunities: mapped,
+				opportunities,
+				responseFormat,
 			}
 		} catch (error) {
 			consola.error("fetch-opportunities: unexpected error", error)
-			return { success: false, message: "Unexpected error fetching opportunities" }
+			return {
+				success: false,
+				message: "Unexpected error fetching opportunities",
+			}
 		}
 	},
 })
 
 const sharedOpportunityFields = {
-	description: z.string().optional().describe("Deal summary or context"),
-	kanbanStatus: z.string().optional().describe("Pipeline column (Explore, Validate, Build)"),
-	stage: z.string().optional().describe("Sales stage (e.g., Discovery, Proposal)"),
-	status: z.string().optional().describe("CRM status or health label"),
-	amount: z.number().optional().describe("Deal amount in dollars"),
-	closeDate: z.string().optional().describe("Expected close date (ISO 8601)"),
-	ownerId: z.string().optional().describe("Team member responsible for the opportunity"),
-	relatedInsightIds: z.array(z.string()).optional().describe("Insight IDs linked to this opportunity"),
-	linkedInterviewId: z.string().optional().describe("Interview ID that inspired this opportunity"),
-	metadata: z.record(z.unknown()).optional().describe("Additional structured metadata to store"),
+	description: z.string().nullish().describe("Deal summary or context"),
+	kanbanStatus: z.string().nullish().describe("Pipeline column (Explore, Validate, Build)"),
+	stage: z.string().nullish().describe("Sales stage (e.g., Discovery, Proposal)"),
+	status: z.string().nullish().describe("CRM status or health label"),
+	amount: z.number().nullish().describe("Deal amount in dollars"),
+	closeDate: z.string().nullish().describe("Expected close date (ISO 8601)"),
+	ownerId: z
+		.string()
+		.nullish()
+		.describe(
+			"User ID of the team member responsible (must be a valid user_id from users table, NOT an organization or person ID)"
+		),
+	relatedInsightIds: z.array(z.string()).nullish().describe("Insight IDs linked to this opportunity"),
+	linkedInterviewId: z.string().nullish().describe("Interview ID that inspired this opportunity"),
+	metadata: z.record(z.unknown()).nullish().describe("Additional structured metadata to store"),
 }
 
 export const createOpportunityTool = createTool({
@@ -178,7 +205,11 @@ export const createOpportunityTool = createTool({
 			const projectPath = buildProjectPath(accountId, projectId)
 			const title = input?.title?.trim()
 			if (!title) {
-				return { success: false, message: "Title is required", opportunity: null }
+				return {
+					success: false,
+					message: "Title is required",
+					opportunity: null,
+				}
 			}
 
 			const insertData: Record<string, unknown> = {
@@ -208,7 +239,11 @@ export const createOpportunityTool = createTool({
 
 			if (error || !data) {
 				consola.error("create-opportunity: insert failed", error)
-				return { success: false, message: "Failed to create opportunity", opportunity: null }
+				return {
+					success: false,
+					message: "Failed to create opportunity",
+					opportunity: null,
+				}
 			}
 
 			return {
@@ -218,7 +253,11 @@ export const createOpportunityTool = createTool({
 			}
 		} catch (error) {
 			consola.error("create-opportunity: unexpected error", error)
-			return { success: false, message: "Unexpected error creating opportunity", opportunity: null }
+			return {
+				success: false,
+				message: "Unexpected error creating opportunity",
+				opportunity: null,
+			}
 		}
 	},
 })
@@ -229,7 +268,7 @@ export const updateOpportunityTool = createTool({
 		"Update an existing opportunity's stage, status, description, amount, or linked interview. Use this after confirming which deal the user is referring to.",
 	inputSchema: z.object({
 		opportunityId: z.string().describe("ID of the opportunity to update"),
-		title: z.string().optional().describe("Updated title"),
+		title: z.string().nullish().describe("Updated title"),
 		...sharedOpportunityFields,
 	}),
 	outputSchema: z.object({
@@ -244,7 +283,11 @@ export const updateOpportunityTool = createTool({
 			const projectPath = buildProjectPath(accountId, projectId)
 			const opportunityId = input?.opportunityId
 			if (!opportunityId) {
-				return { success: false, message: "opportunityId is required", opportunity: null }
+				return {
+					success: false,
+					message: "opportunityId is required",
+					opportunity: null,
+				}
 			}
 
 			const updateData: Record<string, unknown> = {}
@@ -259,7 +302,9 @@ export const updateOpportunityTool = createTool({
 			if (Array.isArray(input?.relatedInsightIds)) updateData.related_insight_ids = input.relatedInsightIds
 
 			if (input?.metadata || input?.linkedInterviewId !== undefined) {
-				const metadata: Record<string, unknown> = { ...(input?.metadata ?? {}) }
+				const metadata: Record<string, unknown> = {
+					...(input?.metadata ?? {}),
+				}
 				if (input?.linkedInterviewId) {
 					metadata.linked_interview_id = input.linkedInterviewId
 				}
@@ -267,7 +312,11 @@ export const updateOpportunityTool = createTool({
 			}
 
 			if (Object.keys(updateData).length === 0) {
-				return { success: false, message: "No fields provided to update", opportunity: null }
+				return {
+					success: false,
+					message: "No fields provided to update",
+					opportunity: null,
+				}
 			}
 
 			const { data, error } = await supabase
@@ -281,7 +330,11 @@ export const updateOpportunityTool = createTool({
 
 			if (error || !data) {
 				consola.error("update-opportunity: update failed", error)
-				return { success: false, message: "Failed to update opportunity", opportunity: null }
+				return {
+					success: false,
+					message: "Failed to update opportunity",
+					opportunity: null,
+				}
 			}
 
 			return {
@@ -291,7 +344,11 @@ export const updateOpportunityTool = createTool({
 			}
 		} catch (error) {
 			consola.error("update-opportunity: unexpected error", error)
-			return { success: false, message: "Unexpected error updating opportunity", opportunity: null }
+			return {
+				success: false,
+				message: "Unexpected error updating opportunity",
+				opportunity: null,
+			}
 		}
 	},
 })

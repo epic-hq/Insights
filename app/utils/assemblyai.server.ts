@@ -83,6 +83,9 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 				speech_model: "slam-1", // Latest high-accuracy speech model
 				language_code: "en", // Default to English transcription
 				speaker_labels: true,
+				// NOTE: speakers_expected can be set to improve diarization accuracy if known.
+				// We don't set it by default since we don't know speaker count upfront.
+				// If over-segmentation occurs, user can reprocess with explicit speaker count.
 				// iab_categories: true,
 				format_text: true,
 				punctuate: true,

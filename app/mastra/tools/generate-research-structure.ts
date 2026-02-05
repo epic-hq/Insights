@@ -13,7 +13,7 @@ export const generateResearchStructureTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to generate research structure for. Defaults to the current project in context."),
 	}),
 	outputSchema: z.object({

@@ -1,19 +1,15 @@
-import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { TokenLimiterProcessor } from "@mastra/core/processors"
 import { Memory } from "@mastra/memory"
 import consola from "consola"
-import { z } from "zod"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { capabilityLookupTool } from "../tools/capability-lookup"
 import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
-import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
-import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
-import { fetchPersonasTool } from "../tools/fetch-personas"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
 import { fetchSegmentsTool } from "../tools/fetch-segments"
@@ -25,45 +21,106 @@ import { getCurrentDateTool } from "../tools/get-current-date"
 import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table"
 import { importPeopleFromTableTool } from "../tools/import-people-from-table"
 import { importVideoFromUrlTool } from "../tools/import-video-from-url"
-import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { manageDocumentsTool } from "../tools/manage-documents"
-import {
-	createInterviewPromptTool,
-	deleteInterviewPromptTool,
-	fetchInterviewPromptsTool,
-	updateInterviewPromptTool,
-} from "../tools/manage-interview-prompts"
-import { manageInterviewsTool } from "../tools/manage-interviews"
-import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
-import { managePeopleTool } from "../tools/manage-people"
-import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
-import {
-	createTaskTool,
-	deleteTaskTool,
-	fetchFocusTasksTool,
-	fetchTasksTool,
-	updateTaskTool,
-} from "../tools/manage-tasks"
-import { navigateToPageTool } from "../tools/navigate-to-page"
 import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
-import { researchOrganizationTool } from "../tools/research-organization"
+import { recommendNextActionsTool } from "../tools/recommend-next-actions"
 import { findSimilarPagesTool, webResearchTool } from "../tools/research-web"
 import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
 import { semanticSearchAssetsTool } from "../tools/semantic-search-assets"
 import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
-import { semanticSearchPeopleTool } from "../tools/semantic-search-people"
 import { suggestionTool } from "../tools/suggestion-tool"
-import { switchAgentTool } from "../tools/switch-agent"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { updateTableAssetTool } from "../tools/update-table-asset"
-import { upsertPersonTool } from "../tools/upsert-person"
-import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
+import { chiefOfStaffAgent } from "./chief-of-staff-agent"
+import { opsAgent } from "./ops-agent"
+import { peopleAgent } from "./people-agent"
+import { researchAgent } from "./research-agent"
+import { taskAgent } from "./task-agent"
 
-const ProjectStatusMemoryState = z.object({
-	lastProjectId: z.string().optional(),
-	lastSummary: z.string().optional(),
-	lastUpdatedAt: z.string().optional(),
-})
+function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
+	try {
+		const tool_entries = Object.entries(tools)
+		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = []
+
+		for (const [tool_name, tool] of tool_entries) {
+			if (!tool || typeof tool !== "object") {
+				issues.push({ tool: tool_name, issue: `tool is not an object (${typeof tool})` })
+				continue
+			}
+
+			const own_props = Object.getOwnPropertyNames(tool)
+			const has_input_schema = own_props.includes("inputSchema")
+			const has_output_schema = own_props.includes("outputSchema")
+
+			const input_schema = (tool as any).inputSchema
+			const output_schema = (tool as any).outputSchema
+			const input_is_zod =
+				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function"
+			const output_is_zod =
+				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function"
+
+			if (!has_input_schema || !input_is_zod) {
+				issues.push({
+					tool: tool_name,
+					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+					ownProps: own_props,
+				})
+			}
+			if (!has_output_schema || !output_is_zod) {
+				issues.push({
+					tool: tool_name,
+					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+					ownProps: own_props,
+				})
+			}
+		}
+
+		if (issues.length > 0) {
+			consola.warn("[mastra-schema-audit] tool schema issues", {
+				agent: agent_name,
+				issueCount: issues.length,
+				issues,
+			})
+		} else {
+			consola.info("[mastra-schema-audit] all tool schemas look valid", {
+				agent: agent_name,
+				toolCount: tool_entries.length,
+			})
+		}
+	} catch (error) {
+		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error })
+	}
+}
+
+const project_status_agent_tools = {
+	getCurrentDate: getCurrentDateTool,
+	fetchProjectStatusContext: fetchProjectStatusContextTool,
+	fetchEvidence: fetchEvidenceTool,
+	semanticSearchEvidence: semanticSearchEvidenceTool,
+	semanticSearchAssets: semanticSearchAssetsTool,
+	fetchProjectGoals: fetchProjectGoalsTool,
+	fetchThemes: fetchThemesTool,
+	fetchPainMatrixCache: fetchPainMatrixCacheTool,
+	fetchSegments: fetchSegmentsTool,
+	fetchConversationLenses: fetchConversationLensesTool,
+	generateProjectRoutes: generateProjectRoutesTool,
+	generateDocumentLink: generateDocumentLinkTool,
+	importVideoFromUrl: importVideoFromUrlTool,
+	fetchWebContent: fetchWebContentTool,
+	manageDocuments: manageDocumentsTool,
+	capabilityLookup: capabilityLookupTool,
+	suggestNextSteps: suggestionTool,
+	webResearch: webResearchTool,
+	findSimilarPages: findSimilarPagesTool,
+	parseSpreadsheet: parseSpreadsheetTool,
+	saveTableToAssets: saveTableToAssetsTool,
+	updateTableAsset: updateTableAssetTool,
+	importPeopleFromTable: importPeopleFromTableTool,
+	importOpportunitiesFromTable: importOpportunitiesFromTableTool,
+	recommendNextActions: recommendNextActionsTool,
+}
+
+auditToolSchemas("projectStatusAgent", project_status_agent_tools)
 
 export const projectStatusAgent = new Agent({
 	id: "project-status-agent",
@@ -72,10 +129,11 @@ export const projectStatusAgent = new Agent({
 		try {
 			const projectId = requestContext.get("project_id")
 			const accountId = requestContext.get("account_id")
+			const userId = requestContext.get("user_id")
 			return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
-project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}
+project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
 
 ## Your Differentiators
 You don't just retrieve data—you **interpret it**. When answering:
@@ -87,6 +145,14 @@ You don't just retrieve data—you **interpret it**. When answering:
 
 ## Project Setup Check
 First call "fetchProjectStatusContext" with scopes=["sections"]. If sections are empty or missing key goals (research_goal, unknowns, target_roles), say: "Your project isn't set up yet. Want me to help you define your research goals?" If they agree, call "switchAgent" with targetAgent="project-setup".
+
+## Proactive Recommendations
+When the user asks "what should I do next?", "what's the next step?", or seems unsure how to proceed:
+- Call "recommendNextActions" with projectId=${projectId} to get personalized suggestions
+- The tool analyzes themes, evidence levels, interviews, and surveys to recommend 1-3 next actions
+- Each recommendation includes a "navigateTo" path - use this to create clickable links AND call "navigateToPage" to take the user there
+- Example: If recommendation has navigateTo="/setup", link it like **[Complete project setup](/a/{accountId}/{projectId}/setup)** and then call navigateToPage({path: "/setup"})
+- Present recommendations clearly with the reasoning provided
 
 ## Response Quality Standards
 - **Be specific**: "Budget is the #1 blocker (4/6 prospects)" not "budget is a concern"
@@ -119,45 +185,46 @@ For ANY research question (company info, market data, people, etc.):
 Call "getCurrentDate" first for any date/time questions.
 
 **Understanding People & Segments**:
-- "fetchPeopleDetails" with peopleSearch + includePersonas/includeEvidence=true for specific person lookup
+- People requests are handled by the PeopleAgent sub-agent (search, updates, org links, deletes)
 - "fetchSegments" for bullseye scores showing which segments are most likely to buy
-- "semanticSearchPeople" for finding people by traits, roles, or demographics
 
 **Finding Evidence & Patterns**:
-- "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels)
+- "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
+- Survey and interview data are handled by the ResearchAgent sub-agent.
+  **MANDATORY: Link EVERY survey quote/citation to its source:**
+  - Tool returns textResponses[] with { answer, responseUrl, personName } for each text answer
+  - When quoting: [personName](responseUrl): "their exact quote"
+  - Example: [Sarah Chen](/a/abc/123/ask/xyz/responses/456): "The onboarding was confusing"
+  - NEVER quote survey responses without the markdown link
+  - Use the exact responseUrl from the tool output, don't construct URLs
 - "fetchConversationLenses" for structured analysis frameworks (BANT, empathy maps, customer discovery)
 - "fetchPainMatrixCache" for the pain × user matrix analysis
 - "fetchThemes" for recurring patterns across interviews
 
 **Interview Deep-Dives**:
-- "fetchInterviewContext" with interview IDs for full context including evidence
+- Interview requests are handled by the ResearchAgent sub-agent.
 - "fetchProjectStatusContext" for project-wide status and metrics
 
 **Sales & Pipeline**:
-- "fetchOpportunities" for deal details (stage, amount, close date)
+- Sales and pipeline requests are handled by the OpsAgent sub-agent.
 - For BANT analysis: fetchConversationLenses(mode='analyses', templateKey='sales-bant') → synthesize Budget/Authority/Need/Timeline signals → identify strengths and gaps → recommend specific follow-up actions
 
 **Managing Data**:
-- Deals: "createOpportunity", "updateOpportunity"
-- People: "upsertPerson" (contact info), "upsertPersonFacets" (behavioral traits), "managePersonOrganizations" (company relationships)
-- **Destructive action safety (People)**: Never delete a person record based on an ambiguous name.
-  - If user says "delete Participant 2", first call "managePeople" with { action: "list", nameSearch: "Participant 2", limit: 10 } and show the candidate rows (name + company/email if present).
-  - Ask the user which exact person to delete by repeating the exact displayed name (e.g. "Participant 2 (2)").
-  - After the user picks a candidate, call "managePeople" with { action: "delete", personId, dryRun: true } and report linkedCounts.
-  - Ask for confirmation in plain language (no special phrase required): "Delete '<name>'?"
-  - Only after user confirms, call "managePeople" with { action: "delete", personId, force: true, confirmName: "<name>" }.
-  - After a successful delete, if linkedInterviews were returned, you MUST say interviews were NOT deleted and ask: "Do you also want me to delete the linked interview record(s) too?" Only delete interviews if the user explicitly confirms.
-    - If user confirms, for each interview: call "manageInterviews" with { action: "delete", interviewId, dryRun: true } then ask: "Delete interview '<title>'?" and only then call "manageInterviews" with { action: "delete", interviewId, force: true, confirmTitle: "<title>" }.
+- Deals and organization ops are handled by the OpsAgent sub-agent.
+- People: delegate to PeopleAgent for all people/persona operations
 - Text documents: "manageDocuments" for prose content (positioning, strategies, meeting notes)
 - **Tables/matrices**: "saveTableToAssets" for competitive matrices, feature comparisons, pricing tables - anything with rows/columns that should be editable
 - **Search files/assets**: "semanticSearchAssets" to find previously saved tables, documents, spreadsheets by natural language query
 - Capabilities lookup: "capabilityLookup" when user asks what you can do or to restate scope/guardrails
 - Document links: "generateDocumentLink" to give the user a clickable link after saving or reading a document
-- Annotations: "manageAnnotations" for entity-level notes and reminders
-- Tasks: "fetchTasks", "createTask", "updateTask", "deleteTask"
+- Annotations are handled by the OpsAgent sub-agent
+- **Tasks**: Task operations (create, update, complete, delete) are handled by the taskAgent sub-agent. The network will automatically route task-related requests.
 - **User-pasted tabular data**: use "parseSpreadsheet" to parse CSV/TSV - it saves to project_assets and shows in Files tab
 - **Agent-generated tables**: use "saveTableToAssets" when YOU generate a table/matrix (competitive analysis, feature comparison)
-- Interview prompts: use interview prompt tools only
+- Interview prompts and surveys are handled by the ResearchAgent sub-agent
+
+**Creating Surveys/Ask Links**:
+- Survey creation is handled by the ResearchAgent sub-agent.
 
 **URL Pasted into chat**
 - When user provides a URL, it could be content to fetch and process, or a video/audio URL to import as a conversation/interview
@@ -166,18 +233,8 @@ Call "getCurrentDate" first for any date/time questions.
 - If it's a webpage or PDF URL, call "fetchWebContent" with the URL and process it based on content.
 - If we have access to Gemini, we can use it to extract the key insights from the content.
 
-**Organization Research** (researchOrganization):
-- Use when the user asks to "research [company name]" or wants to enrich organization data
-- FIRST search internally with semanticSearchEvidence - only use this if no results or user explicitly wants external research
-- This tool uses Exa's company search to find company information (size, industry, HQ, leadership, news)
-- It automatically:
-  1. Creates the organization if it doesn't exist (or updates if found)
-  2. Populates extracted data (size_range, industry, headquarters, description)
-  3. Creates an annotation linked to the organization with full research findings
-  4. Creates evidence records for semantic search (so future internal searches find this data)
-- Pass organizationName (required) and optionally organizationId if you know it
-- If wasCreated=true, tell user: "Created organization [name] - [industry], [size_range] employees"
-- If updated, tell user: "Updated [name] with [X] new fields"
+**Organization Research**:
+- Organization research and enrichment are handled by the OpsAgent sub-agent.
 
 **Web Research** (webResearch, findSimilarPages):
 - Use ONLY after internal search returns nothing OR user explicitly asks for web/external research
@@ -250,6 +307,9 @@ Ask brief clarifying questions when the request is ambiguous.
 
 ## Suggestions
 Do NOT add a "Next steps" section in the text response. Rely on the suggestion widgets only: call "suggestNextSteps" with 2-3 brief, imperative commands that match your response. Keep them aligned with what you just delivered; no extra or conflicting steps.
+
+## Chief of Staff
+For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
 `
 		} catch (error) {
 			consola.error("Error in project status agent instructions:", error)
@@ -263,62 +323,16 @@ Please try:
 		}
 	},
 	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents({
-		getCurrentDate: getCurrentDateTool,
-		fetchProjectStatusContext: fetchProjectStatusContextTool,
-		fetchInterviewContext: fetchInterviewContextTool,
-		fetchPeopleDetails: fetchPeopleDetailsTool,
-		fetchPersonas: fetchPersonasTool,
-		fetchEvidence: fetchEvidenceTool,
-		semanticSearchEvidence: semanticSearchEvidenceTool,
-		semanticSearchPeople: semanticSearchPeopleTool,
-		semanticSearchAssets: semanticSearchAssetsTool,
-		fetchProjectGoals: fetchProjectGoalsTool,
-		fetchThemes: fetchThemesTool,
-		fetchPainMatrixCache: fetchPainMatrixCacheTool,
-		fetchSegments: fetchSegmentsTool,
-		fetchConversationLenses: fetchConversationLensesTool,
-		generateProjectRoutes: generateProjectRoutesTool,
-		generateDocumentLink: generateDocumentLinkTool,
-		fetchOpportunities: fetchOpportunitiesTool,
-		createOpportunity: createOpportunityTool,
-		updateOpportunity: updateOpportunityTool,
-		fetchInterviewPrompts: fetchInterviewPromptsTool,
-		createInterviewPrompt: createInterviewPromptTool,
-		updateInterviewPrompt: updateInterviewPromptTool,
-		deleteInterviewPrompt: deleteInterviewPromptTool,
-		fetchTasks: fetchTasksTool,
-		fetchFocusTasks: fetchFocusTasksTool,
-		createTask: createTaskTool,
-		updateTask: updateTaskTool,
-		deleteTask: deleteTaskTool,
-		navigateToPage: navigateToPageTool,
-		importVideoFromUrl: importVideoFromUrlTool,
-		fetchWebContent: fetchWebContentTool,
-		upsertPersonFacets: upsertPersonFacetsTool,
-		managePersonOrganizations: managePersonOrganizationsTool,
-		upsertPerson: upsertPersonTool,
-		managePeople: managePeopleTool,
-		manageInterviews: manageInterviewsTool,
-		manageDocuments: manageDocumentsTool,
-		capabilityLookup: capabilityLookupTool,
-		manageAnnotations: manageAnnotationsTool,
-		switchAgent: switchAgentTool,
-		suggestNextSteps: suggestionTool,
-		webResearch: webResearchTool,
-		findSimilarPages: findSimilarPagesTool,
-		parseSpreadsheet: parseSpreadsheetTool,
-		saveTableToAssets: saveTableToAssetsTool,
-		updateTableAsset: updateTableAssetTool,
-		importPeopleFromTable: importPeopleFromTableTool,
-		importOpportunitiesFromTable: importOpportunitiesFromTableTool,
-		researchOrganization: researchOrganizationTool,
-	}),
+	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+	agents: {
+		taskAgent,
+		peopleAgent,
+		researchAgent,
+		opsAgent,
+		chiefOfStaffAgent,
+	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
-		options: {
-			workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
-		},
 	}),
 	// TokenLimiterProcessor prevents context window overflow
 	// Note: Using number format for Zod v4 compatibility

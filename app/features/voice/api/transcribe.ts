@@ -2,17 +2,10 @@ import { openai } from "@ai-sdk/openai"
 import { NoOutputGeneratedError, experimental_transcribe as transcribe } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return new Response("Method Not Allowed", { status: 405 })
-	}
-
-	// Auth + DB client for actions
-	const { user } = await getAuthenticatedUser(request)
-	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
 	}
 
 	// Accept either raw audio body or multipart form-data with a file

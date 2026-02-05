@@ -21,6 +21,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 	const email = formData.get("email") as string
 	const password = formData.get("password") as string
 	const repeatPassword = formData.get("repeat-password") as string
+	const redirectTo = formData.get("redirect") as string | null
 
 	if (!password) {
 		return {
@@ -32,20 +33,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 		return { error: "Passwords do not match" }
 	}
 
+	// Build the email redirect URL with the original destination
+	const emailRedirectUrl = redirectTo
+		? `${origin}/login_success?next=${encodeURIComponent(redirectTo)}`
+		: `${origin}/login_success`
+
 	const { error } = await supabase.auth.signUp({
 		email,
 		password,
 		options: {
-			emailRedirectTo: `${origin}/login_success`,
+			emailRedirectTo: emailRedirectUrl,
 		},
 	})
 
 	if (error) {
 		return { error: error.message }
 	}
-	consola.log("redirecting to /login_success")
-	return redirect("/login_success")
-	// return redirect("/sign-up?success")
+
+	// Redirect back to sign-up with success flag to show "check your email" message
+	// Don't redirect to login_success yet - user needs to confirm email first
+	const successUrl = redirectTo
+		? `/sign-up?success=true&redirect=${encodeURIComponent(redirectTo)}`
+		: "/sign-up?success=true"
+	consola.log("redirecting to", successUrl)
+	return redirect(successUrl)
 }
 
 export default function SignUp() {
@@ -55,8 +66,26 @@ export default function SignUp() {
 	const success = !!searchParams.has("success")
 	const error = fetcher.data?.error
 	const loading = fetcher.state === "submitting"
+	const redirectTo = searchParams.get("redirect")
+
+	// Build login URL with redirect param if present
+	const loginUrl = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"
 
 	useEffect(() => {
+		// Store plan parameter for post-signup checkout
+		const plan = searchParams.get("plan")
+		if (plan) {
+			try {
+				const secure = window.location.protocol === "https:" ? "; Secure" : ""
+				const oneWeekSeconds = 60 * 60 * 24 * 7
+				document.cookie = `selected_plan=${plan}; Path=/; Max-Age=${oneWeekSeconds}; SameSite=Lax${secure}`
+				consola.info("[REGISTER] Stored selected plan:", plan)
+			} catch (error) {
+				consola.warn("[REGISTER] Failed to persist plan param", error)
+			}
+		}
+
+		// Handle UTM params
 		const utmParams = extractUtmParamsFromSearch(location.search)
 		if (!hasUtmParams(utmParams)) {
 			return
@@ -78,7 +107,7 @@ export default function SignUp() {
 		} catch (error) {
 			consola.warn("[REGISTER] Failed to persist UTM params", error)
 		}
-	}, [])
+	}, [searchParams])
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -130,6 +159,7 @@ export default function SignUp() {
 									<CardContent className="space-y-6">
 										<LoginForm />
 										<fetcher.Form method="post">
+											{redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
 											<div className="flex flex-col gap-6">
 												<div className="grid gap-2">
 													<Label htmlFor="email">Email</Label>
@@ -154,7 +184,7 @@ export default function SignUp() {
 											</div>
 											<div className="mt-4 text-center text-sm">
 												Already have an account?{" "}
-												<Link to="/login" className="underline underline-offset-4">
+												<Link to={loginUrl} className="underline underline-offset-4">
 													Login
 												</Link>
 											</div>

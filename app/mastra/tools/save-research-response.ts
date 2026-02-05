@@ -1,8 +1,11 @@
 /**
  * Tool for saving research link responses during chat
+ * Uses shared db functions from research-links feature
  */
 import { createTool } from "@mastra/core/tools"
+import consola from "consola"
 import { z } from "zod"
+import { markResearchLinkComplete, saveResearchLinkAnswer } from "~/features/research-links/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 
 export const saveResearchResponseTool = createTool({
@@ -13,65 +16,65 @@ export const saveResearchResponseTool = createTool({
 		answer: z
 			.union([z.string(), z.array(z.string())])
 			.describe("The user's answer - string for text, array for multi-select"),
+		responseId: z.string().describe("The response ID for this survey session"),
+		slug: z.string().describe("The survey slug"),
 	}),
-	execute: async ({ context, questionId, answer }) => {
-		const responseId = context?.requestContext?.get("response_id")
+	outputSchema: z.object({
+		success: z.boolean(),
+		message: z.string(),
+		questionId: z.string().optional(),
+	}),
+	execute: async (input) => {
+		const { questionId, answer, responseId } = input
+		consola.info("save-research-response: TOOL CALLED", {
+			questionId,
+			answer,
+			responseId,
+		})
 
-		if (!responseId) {
-			return { success: false, error: "No response ID in context" }
+		const result = await saveResearchLinkAnswer({
+			supabase: supabaseAdmin,
+			responseId,
+			questionId,
+			answer,
+		})
+
+		if (!result.success) {
+			consola.error("save-research-response: FAILED", { error: result.error })
+			return { success: false, message: result.error ?? "Unknown error" }
 		}
 
-		// Get current responses
-		const { data: existing, error: fetchError } = await supabaseAdmin
-			.from("research_link_responses")
-			.select("responses")
-			.eq("id", responseId)
-			.maybeSingle()
-
-		if (fetchError) {
-			return { success: false, error: fetchError.message }
-		}
-
-		const currentResponses = (existing?.responses as Record<string, unknown>) ?? {}
-		const updatedResponses = {
-			...currentResponses,
-			[questionId]: answer,
-		}
-
-		// Save updated responses
-		const { error: updateError } = await supabaseAdmin
-			.from("research_link_responses")
-			.update({ responses: updatedResponses })
-			.eq("id", responseId)
-
-		if (updateError) {
-			return { success: false, error: updateError.message }
-		}
-
-		return { success: true, questionId, saved: true }
+		consola.info("save-research-response: SUCCESS", { questionId })
+		return { success: true, message: "Saved", questionId }
 	},
 })
 
 export const markSurveyCompleteTool = createTool({
 	id: "mark-survey-complete",
 	description: "Mark the survey as complete when all questions have been answered. Call this after the final question.",
-	inputSchema: z.object({}),
-	execute: async ({ context }) => {
-		const responseId = context?.requestContext?.get("response_id")
+	inputSchema: z.object({
+		responseId: z.string().describe("The response ID for this survey session"),
+		slug: z.string().describe("The survey slug"),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		message: z.string(),
+	}),
+	execute: async (input) => {
+		const { responseId } = input
+		consola.info("mark-survey-complete: TOOL CALLED", { responseId })
 
-		if (!responseId) {
-			return { success: false, error: "No response ID in context" }
+		const result = await markResearchLinkComplete({
+			supabase: supabaseAdmin,
+			responseId,
+		})
+
+		if (!result.success) {
+			consola.error("mark-survey-complete: FAILED", { error: result.error })
+			return { success: false, message: result.error ?? "Unknown error" }
 		}
 
-		const { error } = await supabaseAdmin
-			.from("research_link_responses")
-			.update({ completed_at: new Date().toISOString() })
-			.eq("id", responseId)
-
-		if (error) {
-			return { success: false, error: error.message }
-		}
-
-		return { success: true, completed: true }
+		consola.info("mark-survey-complete: SUCCESS")
+		return { success: true, message: "Survey marked complete" }
 	},
 })

@@ -9,7 +9,7 @@
 import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
-import { generateEmbedding } from "~/lib/embeddings/openai.server"
+import { generateEmbeddingWithBilling, systemBillingContext } from "~/lib/billing"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 
 const EXA_API_URL = "https://api.exa.ai"
@@ -184,16 +184,16 @@ Use this when:
 - User wants to enrich organization data
 - User asks "what do we know about [company]" and internal search has no results`,
 	inputSchema: z.object({
-		organizationId: z.string().optional().describe("Organization ID to update. If not provided, will search by name."),
+		organizationId: z.string().nullish().describe("Organization ID to update. If not provided, will search by name."),
 		organizationName: z.string().describe("Name of the organization to research"),
 		additionalQueries: z
 			.array(z.string())
-			.optional()
+			.nullish()
 			.describe("Additional search queries (e.g., 'recent funding', 'leadership changes')"),
 		createIfNotFound: z
 			.boolean()
-			.optional()
-			.default(true)
+			.nullish()
+			.transform((val) => val ?? true)
 			.describe("Create the organization if it doesn't exist (default: true)"),
 	}),
 	outputSchema: z.object({
@@ -429,11 +429,15 @@ Use this when:
 
 			// Create evidence records for semantic search
 			let evidenceCount = 0
+			const billingCtx = systemBillingContext(accountId, "embedding_generation", projectId)
 
 			for (const result of data.results) {
 				try {
 					const textToEmbed = `${result.title}: ${result.highlights?.join(" ") || result.text?.slice(0, 500) || ""}`
-					const embedding = await generateEmbedding(textToEmbed)
+					const embedding = await generateEmbeddingWithBilling(billingCtx, textToEmbed, {
+						idempotencyKey: `org-research:${orgId || organizationName}:${result.url}`,
+						resourceType: "evidence",
+					})
 
 					const { error: evidenceError } = await supabaseAdmin.from("evidence").insert({
 						account_id: accountId,

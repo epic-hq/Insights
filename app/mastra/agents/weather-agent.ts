@@ -1,7 +1,7 @@
-import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { LibSQLStore } from "@mastra/libsql"
 import { Memory } from "@mastra/memory"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
 import { weatherTool } from "../tools/weather-tool"
 

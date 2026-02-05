@@ -285,7 +285,7 @@ export default function LandingPage() {
 							</Button>
 						</div>
 						<p className="text-sm text-white/80">
-							✓ No credit card required &nbsp;&nbsp; ✓ Setup in minutes &nbsp;&nbsp; ✓ Cancel anytime
+							✓ 14-day free trial &nbsp;&nbsp; ✓ Setup in minutes &nbsp;&nbsp; ✓ Cancel anytime
 						</p>
 					</div>
 				</section>

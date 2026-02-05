@@ -27,7 +27,13 @@ export const meta: MetaFunction = () => [{ title: "Dashboard | UpSight Customer 
  */
 export const handle = {
 	hideProjectStatusAgent: (
-		data: { conversationCount?: number; processingCount?: number; hasGoals?: boolean } | undefined
+		data:
+			| {
+					conversationCount?: number
+					processingCount?: number
+					hasGoals?: boolean
+			  }
+			| undefined
 	) => {
 		if (!data) return true
 		// Hide if no data AND no goals (pure empty state)
@@ -77,7 +83,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 // Loader
 // ============================================================================
 
-export async function loader({ context, params }: LoaderFunctionArgs) {
+export async function loader({ request, context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 
@@ -89,7 +95,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", {
+			status: 400,
+		})
+	}
+
+	// Force setup view with ?setup=1 query param (for testing only)
+	// NOTE: We no longer force-redirect to setup - users can access home even without completing setup
+	// The sidebar shows "Getting Started" section to guide them, but doesn't block access
+	const url = new URL(request.url)
+	const forceSetup = url.searchParams.get("setup") === "1"
+	if (forceSetup) {
+		const { redirect } = await import("react-router")
+		throw redirect(`/a/${accountId}/${projectId}/setup`)
 	}
 
 	// Fetch project
@@ -111,6 +129,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		projectSectionsResult,
 		tasksResult,
 		insightsResult,
+		accountResult,
+		interviewPromptsResult,
 	] = await Promise.all([
 		// Get interviews with status
 		supabase
@@ -135,14 +155,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Get recent completed lens analyses for activity feed
 		supabase
 			.from("conversation_lens_analyses")
-			.select(`
+			.select(
+				`
 				id,
 				interview_id,
 				template_key,
 				analysis_data,
 				processed_at,
 				interviews!inner(participant_pseudonym)
-			`)
+			`
+			)
 			.eq("project_id", projectId)
 			.eq("status", "completed")
 			.not("processed_at", "is", null)
@@ -179,11 +201,35 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false })
 			.limit(10),
+
+		// Get account company context to check if setup is complete
+		supabase
+			.schema("accounts")
+			.from("accounts")
+			.select("website_url, company_description, customer_problem")
+			.eq("id", accountId)
+			.single(),
+
+		// Check if interview prompts have been generated
+		supabase
+			.from("interview_prompts")
+			.select("id")
+			.eq("project_id", projectId)
+			.limit(1),
 	])
 
 	const interviews = interviewsResult.data || []
 	const lensTemplates = lensTemplatesResult.data || []
 	const lensAnalyses = lensAnalysesResult.data || []
+	const account = accountResult.data
+	const interviewPrompts = interviewPromptsResult.data || []
+
+	// Check if company context has been set up
+	const hasCompanyContext = Boolean(account?.website_url || account?.company_description || account?.customer_problem)
+
+	// Check if interview prompts have been generated
+	const hasPrompts = interviewPrompts.length > 0
+
 	const recentLensActivity = recentLensActivityResult.data || []
 	const projectSections = projectSectionsResult.data || []
 	const tasks = tasksResult || []
@@ -215,10 +261,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	}
 
-	// Build lens summaries
+	// Build lens summaries - show ANY lens with data, not just enabled ones
 	const lensAnalysesByTemplate = new Map<string, { count: number; completed: number }>()
 	for (const analysis of lensAnalyses) {
-		const existing = lensAnalysesByTemplate.get(analysis.template_key) || { count: 0, completed: 0 }
+		const existing = lensAnalysesByTemplate.get(analysis.template_key) || {
+			count: 0,
+			completed: 0,
+		}
 		existing.count++
 		if (analysis.status === "completed") {
 			existing.completed++
@@ -226,10 +275,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		lensAnalysesByTemplate.set(analysis.template_key, existing)
 	}
 
+	// Include all lenses that have completed analyses, plus enabled ones
 	const lensSummaries: LensSummary[] = lensTemplates
-		.filter((t) => enabledLenses.includes(t.template_key))
+		.filter((t) => {
+			const stats = lensAnalysesByTemplate.get(t.template_key)
+			const hasCompletedData = stats && stats.completed > 0
+			return hasCompletedData || enabledLenses.includes(t.template_key)
+		})
 		.map((template) => {
-			const stats = lensAnalysesByTemplate.get(template.template_key) || { count: 0, completed: 0 }
+			const stats = lensAnalysesByTemplate.get(template.template_key) || {
+				count: 0,
+				completed: 0,
+			}
 			const hasData = stats.completed > 0
 
 			// Build href based on template key
@@ -328,7 +385,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		// Get interview title from nested join
-		const interviewData = analysis.interviews as { participant_pseudonym: string | null } | null
+		const interviewData = analysis.interviews as {
+			participant_pseudonym: string | null
+		} | null
 		const interviewTitle = interviewData?.participant_pseudonym || "Untitled Conversation"
 
 		return {
@@ -354,6 +413,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		recentActivity: activityFeedItems,
 		hasGoals,
 		hasLenses,
+		hasCompanyContext,
+		hasPrompts,
 		researchGoal,
 		projectContext,
 		tasks,
@@ -364,6 +425,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export default function DashboardV3Page() {
 	const {
 		project,
+		projectId,
 		conversationCount,
 		processingCount,
 		activeLensCount,
@@ -371,6 +433,8 @@ export default function DashboardV3Page() {
 		recentActivity,
 		hasGoals,
 		hasLenses,
+		hasCompanyContext,
+		hasPrompts,
 		researchGoal,
 		projectContext,
 		tasks,
@@ -384,17 +448,19 @@ export default function DashboardV3Page() {
 			<DashboardShell
 				projectName={project?.name || "Untitled Project"}
 				projectPath={projectPath || ""}
+				projectId={projectId}
 				conversationCount={conversationCount}
 				processingCount={processingCount}
 				activeLensCount={activeLensCount}
 				hasGoals={hasGoals}
 				hasLenses={hasLenses}
+				hasCompanyContext={hasCompanyContext}
+				hasPrompts={hasPrompts}
 				researchGoal={researchGoal}
 				projectContext={projectContext}
 				tasks={tasks}
 				insights={insights}
 				lenses={lensSummaries}
-				recentActivity={recentActivity}
 			/>
 		</PageContainer>
 	)

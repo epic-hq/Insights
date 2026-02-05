@@ -1,12 +1,14 @@
 import "~/lib/instrumentation" // Must be the first import
+import { AuthKitToken } from "@picahq/authkit-token"
 import { AssemblyAI } from "assemblyai"
 import consola from "consola"
 import { bodyLimit } from "hono/body-limit"
-import { cors } from "hono/cors"
 import { createHonoServer } from "react-router-hono-server/node"
 import { i18next } from "remix-hono/i18next"
 import i18nextOpts from "../localization/i18n.server"
 import { getLoadContext } from "./load-context"
+
+const PICA_SECRET_KEY = process.env.PICA_SECRET_KEY || process.env.PICA_API_KEY
 
 export default await createHonoServer({
 	useWebSocket: true,
@@ -18,16 +20,76 @@ export default await createHonoServer({
 				maxSize: 2 * 1024 * 1024 * 1024, // 2GB in bytes
 			})
 		)
-		// Add CORS headers for all requests including __manifest
-		server.use(
-			"*",
-			cors({
-				origin: "*",
-				credentials: true,
-			})
-		)
+		// CORS middleware - handle preflight and add headers to all responses
+		server.use("*", async (c, next) => {
+			const origin = c.req.header("Origin") || "*"
+
+			// Handle OPTIONS preflight immediately
+			if (c.req.method === "OPTIONS") {
+				return new Response(null, {
+					status: 204,
+					headers: {
+						"Access-Control-Allow-Origin": origin,
+						"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+						"Access-Control-Allow-Headers": "Content-Type, x-user-id, x-account-id, Authorization",
+						"Access-Control-Max-Age": "86400",
+						"X-CORS-Handler": "custom-v2", // Debug header to verify new code
+					},
+				})
+			}
+
+			// For non-preflight, continue and add CORS headers to response
+			await next()
+			c.res.headers.set("Access-Control-Allow-Origin", origin)
+		})
 
 		server.use("*", i18next(i18nextOpts))
+
+		// Pica AuthKit token endpoint - handled at Hono level for proper CORS
+		// This is called from Pica's iframe at authkit.picaos.com
+		server.options("/api/authkit/token", (c) => {
+			return c.text("", 204, {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type, x-user-id, x-account-id",
+				"Access-Control-Max-Age": "86400",
+			})
+		})
+
+		server.all("/api/authkit/token", async (c) => {
+			const userId = c.req.header("x-user-id")
+
+			if (!userId) {
+				return c.json({ error: "x-user-id header required" }, 400, {
+					"Access-Control-Allow-Origin": "*",
+				})
+			}
+
+			if (!PICA_SECRET_KEY) {
+				consola.error("[authkit] PICA_SECRET_KEY not configured")
+				return c.json({ error: "AuthKit not configured" }, 503, {
+					"Access-Control-Allow-Origin": "*",
+				})
+			}
+
+			try {
+				const authKitToken = new AuthKitToken(PICA_SECRET_KEY)
+				const token = await authKitToken.create({
+					identity: userId,
+					identityType: "user",
+				})
+
+				consola.info("[authkit] Token generated for user", { userId })
+				return c.json(token, 200, {
+					"Access-Control-Allow-Origin": "*",
+				})
+			} catch (error) {
+				consola.error("[authkit] Failed to generate token:", error)
+				return c.json({ error: "Failed to generate token" }, 500, {
+					"Access-Control-Allow-Origin": "*",
+				})
+			}
+		})
 
 		// Realtime transcription proxy (browser <-> server <-> AssemblyAI)
 
@@ -42,7 +104,12 @@ export default await createHonoServer({
 						try {
 							const apiKey = process.env.ASSEMBLYAI_API_KEY
 							if (!apiKey) {
-								ws.send(JSON.stringify({ type: "Error", error: "Missing ASSEMBLYAI_API_KEY" }))
+								ws.send(
+									JSON.stringify({
+										type: "Error",
+										error: "Missing ASSEMBLYAI_API_KEY",
+									})
+								)
 								ws.close(1011, "Server misconfigured")
 								return
 							}
@@ -69,7 +136,12 @@ export default await createHonoServer({
 							transcriber.on("error", (error: any) => {
 								consola.error("[WS] upstream error", error)
 								try {
-									ws.send(JSON.stringify({ type: "Error", error: String(error?.message || error) }))
+									ws.send(
+										JSON.stringify({
+											type: "Error",
+											error: String(error?.message || error),
+										})
+									)
 								} catch {}
 								try {
 									ws.close(1011, "Upstream error")
@@ -92,7 +164,12 @@ export default await createHonoServer({
 							writer = transcriber.stream().getWriter()
 						} catch (e: any) {
 							try {
-								ws.send(JSON.stringify({ type: "Error", error: e?.message || "Failed to connect" }))
+								ws.send(
+									JSON.stringify({
+										type: "Error",
+										error: e?.message || "Failed to connect",
+									})
+								)
 							} catch {}
 							try {
 								ws.close(1011, "Init failure")

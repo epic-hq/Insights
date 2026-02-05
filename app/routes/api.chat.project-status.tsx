@@ -1,13 +1,80 @@
-import { toAISdkStream } from "@mastra/ai-sdk"
+import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk"
 import { RequestContext } from "@mastra/core/di"
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai"
+import { createUIMessageStreamResponse } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import {
+	clearActiveBillingContext,
+	estimateOpenAICost,
+	setActiveBillingContext,
+	userBillingContext,
+} from "~/lib/billing/instrumented-openai.server"
+import { recordUsageOnly } from "~/lib/billing/usage.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { mastra } from "~/mastra"
 import { memory } from "~/mastra/memory"
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils"
+import { navigateToPageTool } from "~/mastra/tools/navigate-to-page"
+import { switchAgentTool } from "~/mastra/tools/switch-agent"
 import { userContext } from "~/server/user-context"
+
+function getLastUserText(messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>): string {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index]
+		if (message?.role !== "user") continue
+		if (typeof message.content === "string") return message.content
+		if (Array.isArray(message.parts)) {
+			const textPart = message.parts.find((part) => (part as { type?: string })?.type === "text") as
+				| { text?: unknown }
+				| undefined
+			if (textPart && typeof textPart.text === "string") return textPart.text
+		}
+	}
+	return ""
+}
+
+function isChiefOfStaffPrompt(text: string): boolean {
+	const normalized = text.toLowerCase().trim()
+	if (!normalized) return false
+	const triggers = [
+		"what should i do next",
+		"what's next",
+		"whats next",
+		"next steps",
+		"what should we focus on",
+		"where should we focus",
+		"prioritize",
+		"priority",
+		"roadmap",
+		"plan",
+		"what to do now",
+		"chief of staff",
+	]
+	return triggers.some((trigger) => normalized.includes(trigger))
+}
+
+function isSurveyCreationPrompt(text: string): boolean {
+	const normalized = text.toLowerCase().trim()
+	if (!normalized) return false
+	// Must include creation intent AND survey/waitlist concept
+	const creationTriggers = ["create", "make", "build", "set up", "setup", "start", "new", "launch"]
+	const surveyTriggers = [
+		"survey",
+		"waitlist",
+		"wait list",
+		"ask link",
+		"signup",
+		"sign up",
+		"feedback form",
+		"qualifying questions",
+		"lead capture",
+		"beta signup",
+		"interest form",
+	]
+	const hasCreation = creationTriggers.some((t) => normalized.includes(t))
+	const hasSurvey = surveyTriggers.some((t) => normalized.includes(t))
+	return hasCreation && hasSurvey
+}
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -22,17 +89,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const accountId = await resolveAccountIdFromProject(projectId, "api.chat.project-status", fallbackAccountId)
 	const userId = ctx?.claims?.sub || ""
 
-	consola.info("project-status action: received request", {
-		accountId,
-		projectId,
-		userId,
-		paramsAccountId: params.accountId,
-		paramsProjectId: params.projectId,
-		ctxAccountId: ctx?.account_id,
-	})
-
 	if (!projectId) {
-		consola.warn("project-status action: Missing projectId")
+		consola.warn("project-status: missing projectId")
 		return new Response(JSON.stringify({ error: "Missing projectId" }), {
 			status: 400,
 			headers: { "Content-Type": "application/json" },
@@ -40,9 +98,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	const { messages, system, userTimezone } = await request.json()
-	consola.info("project-status action: received userTimezone", {
-		userTimezone,
-	})
 	const sanitizedMessages = Array.isArray(messages)
 		? messages.map((message) => {
 				if (!message || typeof message !== "object") return message
@@ -60,7 +115,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	)
 
 	if (!hasUserMessage) {
-		consola.warn("project-status action: missing user message in payload")
+		consola.warn("project-status: missing user message")
 		return new Response(JSON.stringify({ error: "Missing user prompt" }), {
 			status: 400,
 			headers: { "Content-Type": "application/json" },
@@ -76,26 +131,29 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	// This ensures we always send at least the new user message to the agent.
 	const runtimeMessages = lastUserIndex >= 0 ? sanitizedMessages.slice(lastUserIndex) : sanitizedMessages
 
-	consola.info("project-status action: sending messages to agent", {
-		totalReceived: sanitizedMessages.length,
-		messageCount: runtimeMessages.length,
-		roles: runtimeMessages.map((m: { role?: string }) => m?.role),
-	})
+	const lastUserText = getLastUserText(sanitizedMessages)
+	const shouldUseChiefOfStaff = isChiefOfStaffPrompt(lastUserText)
+	const shouldUseSurveyAgent = isSurveyCreationPrompt(lastUserText)
+	const targetAgentId = shouldUseChiefOfStaff
+		? "chiefOfStaffAgent"
+		: shouldUseSurveyAgent
+			? "researchAgent"
+			: "projectStatusAgent"
+
+	if (shouldUseChiefOfStaff || shouldUseSurveyAgent) {
+		consola.info("project-status: routing override", {
+			targetAgentId,
+			lastUserText,
+		})
+	}
 
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`
 
-	consola.info("project-status action: using resourceId", { resourceId })
-
-	const threadsStart = Date.now()
 	const threads = await memory.listThreadsByResourceId({
 		resourceId,
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 1,
-	})
-	consola.info("project-status action: threads fetched", {
-		durationMs: Date.now() - threadsStart,
-		total: threads?.total,
 	})
 
 	let threadId = ""
@@ -122,44 +180,14 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		requestContext.set("user_timezone", userTimezone)
 	}
 
-	const agent = mastra.getAgent("projectStatusAgent")
-
-	// Helper to run agent stream with memory
-	const runAgentStream = async (useThreadId: string) => {
-		return agent.stream(runtimeMessages, {
-			maxSteps: 10, // Prevent infinite tool loops (default is 5)
-			memory: {
-				thread: useThreadId,
-				resource: resourceId,
-			},
-			requestContext,
-			context: system
-				? [
-						{
-							role: "system",
-							content: `## Context from the client's UI:\n${system}`,
-						},
-					]
-				: undefined,
-			onFinish: (data) => {
-				// Log summary only, not full data dump
-				consola.info("project-status onFinish", {
-					finishReason: data.finishReason,
-					toolCallsCount: data.toolCalls?.length || 0,
-					textLength: data.text?.length || 0,
-					stepsCount: data.steps?.length || 0,
-				})
-				const langfuse = getLangfuseClient()
-				const lfTrace = langfuse.trace?.({ name: "api.chat.project-status" })
-				const gen = lfTrace?.generation?.({
-					name: "api.chat.project-status",
-					input: messages,
-					output: data,
-				})
-				gen?.end?.()
-			},
-		})
-	}
+	// Set up billing context for agent LLM calls
+	const billingCtx = userBillingContext({
+		accountId,
+		userId,
+		featureSource: "project_status_agent",
+		projectId,
+	})
+	setActiveBillingContext(billingCtx, `agent:project-status:${userId}:${projectId}`)
 
 	// Helper to handle corrupted thread recovery
 	const handleCorruptedThread = async (corruptedThreadId: string, errorMessage: string) => {
@@ -171,12 +199,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		// Delete the corrupted thread so it doesn't get picked up again
 		try {
 			await memory.deleteThread(corruptedThreadId)
-			consola.info("project-status: Deleted corrupted thread", {
-				corruptedThreadId,
-			})
 		} catch (deleteError) {
-			consola.error("project-status: Failed to delete corrupted thread", {
-				corruptedThreadId,
+			consola.error("project-status: failed to delete corrupted thread", {
 				deleteError,
 			})
 		}
@@ -191,63 +215,119 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				account_id: accountId,
 			},
 		})
-		consola.info("project-status: Created fresh thread", {
-			newThreadId: freshThread.id,
-		})
 		return freshThread.id
 	}
 
-	let stream: Awaited<ReturnType<typeof runAgentStream>> | undefined
+	const buildAgentParams = (useThreadId: string) => ({
+		messages: runtimeMessages,
+		maxSteps: 10, // Prevent infinite tool loops (default is 5)
+		clientTools: {
+			navigateToPage: navigateToPageTool,
+			switchAgent: switchAgentTool,
+		},
+		memory: {
+			thread: useThreadId,
+			resource: resourceId,
+		},
+		requestContext,
+		context: system
+			? [
+					{
+						role: "system" as const,
+						content: `## Context from the client's UI:\n${system}`,
+					},
+				]
+			: undefined,
+		onFinish: async (data: {
+			usage?: { inputTokens?: number; outputTokens?: number }
+			finishReason?: string
+			toolCalls?: unknown[]
+			text?: string
+			steps?: unknown[]
+		}) => {
+			const usage = data.usage
+			if (usage && (usage.inputTokens || usage.outputTokens) && billingCtx.accountId) {
+				const model = "gpt-4o" // Default model for agents
+				const inputTokens = usage.inputTokens || 0
+				const outputTokens = usage.outputTokens || 0
+				const costUsd = estimateOpenAICost(model, inputTokens, outputTokens)
+
+				consola.info("project-status: billing", {
+					inputTokens,
+					outputTokens,
+					costUsd,
+				})
+
+				await recordUsageOnly(
+					billingCtx,
+					{
+						provider: "openai",
+						model,
+						inputTokens,
+						outputTokens,
+						estimatedCostUsd: costUsd,
+					},
+					`agent:project-status:${userId}:${projectId}:${Date.now()}`
+				).catch((err) => {
+					consola.error("[billing] Failed to record agent usage:", err)
+				})
+			}
+
+			clearActiveBillingContext()
+
+			consola.debug("project-status: finished", {
+				steps: data.steps?.length || 0,
+			})
+			const langfuse = getLangfuseClient()
+			const lfTrace = langfuse.trace?.({ name: "api.chat.project-status" })
+			const gen = lfTrace?.generation?.({
+				name: "api.chat.project-status",
+				input: messages,
+				output: data,
+			})
+			gen?.end?.()
+		},
+	})
+
+	let stream: Awaited<ReturnType<typeof handleNetworkStream>> | Awaited<ReturnType<typeof handleChatStream>> | undefined
 	try {
-		stream = await runAgentStream(threadId)
+		stream =
+			targetAgentId === "projectStatusAgent"
+				? await handleNetworkStream({
+						mastra,
+						agentId: targetAgentId,
+						params: buildAgentParams(threadId),
+					})
+				: await handleChatStream({
+						mastra,
+						agentId: targetAgentId,
+						params: buildAgentParams(threadId),
+						sendReasoning: true,
+						sendSources: true,
+					})
 	} catch (error) {
 		// Check if this is the "No tool call found" error from corrupted memory
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		if (errorMessage.includes("No tool call found") || errorMessage.includes("function call output")) {
 			threadId = await handleCorruptedThread(threadId, errorMessage)
-			stream = await runAgentStream(threadId)
+			stream =
+				targetAgentId === "projectStatusAgent"
+					? await handleNetworkStream({
+							mastra,
+							agentId: targetAgentId,
+							params: buildAgentParams(threadId),
+						})
+					: await handleChatStream({
+							mastra,
+							agentId: targetAgentId,
+							params: buildAgentParams(threadId),
+							sendReasoning: true,
+							sendSources: true,
+						})
 		} else {
 			throw error
 		}
 	}
 
-	// Transform Mastra stream to AI SDK format with custom data parts support
-	// Enable sendReasoning to stream LLM thinking/reasoning tokens to frontend
-	const toAISdkOptions = {
-		from: "agent" as const,
-		sendReasoning: true,
-		sendSources: true,
-	}
-
-	const uiMessageStream = createUIMessageStream({
-		execute: async ({ writer }) => {
-			try {
-				const transformedStream = toAISdkStream(stream, toAISdkOptions)
-				if (transformedStream) {
-					for await (const part of transformedStream) {
-						writer.write(part)
-					}
-				}
-			} catch (streamError) {
-				// Check if this is the "No tool call found" error from corrupted memory
-				const errorMessage = streamError instanceof Error ? streamError.message : String(streamError)
-				if (errorMessage.includes("No tool call found") || errorMessage.includes("function call output")) {
-					// Delete corrupted thread and retry with fresh one
-					const freshThreadId = await handleCorruptedThread(threadId, errorMessage)
-					const freshStream = await runAgentStream(freshThreadId)
-					const freshTransformed = toAISdkStream(freshStream, toAISdkOptions)
-					if (freshTransformed) {
-						for await (const part of freshTransformed) {
-							writer.write(part)
-						}
-					}
-				} else {
-					// Re-throw other errors
-					throw streamError
-				}
-			}
-		},
-	})
-
-	return createUIMessageStreamResponse({ stream: uiMessageStream })
+	return createUIMessageStreamResponse({ stream })
 }

@@ -1,6 +1,7 @@
 // agents/llmAgent.ts
-import { openai } from "@ai-sdk/openai"
+
 import { Agent } from "@mastra/core/agent"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 
 export const llmAgent = new Agent({
 	id: "llm-agent",

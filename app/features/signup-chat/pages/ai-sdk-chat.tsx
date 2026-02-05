@@ -3,7 +3,7 @@ import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { Brain, Check, Loader, Pencil, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { data, useNavigate, useRouteLoaderData } from "react-router"
 import { Streamdown } from "streamdown"
@@ -138,6 +138,16 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 			setInput("")
 		}
 	}
+
+	// Ref for auto-focusing the input
+	const inputRef = useRef<HTMLTextAreaElement>(null)
+
+	// Auto-focus the input when the assistant finishes responding
+	useEffect(() => {
+		if (status === "ready" && inputRef.current) {
+			inputRef.current.focus()
+		}
+	}, [status, messages.length])
 
 	return (
 		<div className="relative mx-auto flex size-full h-dvh max-w-6xl flex-col rounded-lg px-2 md:flex-row md:px-4">
@@ -297,10 +307,12 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 				</div>
 				<PromptInput onSubmit={handleSubmit} className="relative mx-auto mt-1 mb-6 w-full max-w-2xl">
 					<PromptInputTextarea
+						ref={inputRef}
 						value={input}
 						placeholder="Say something..."
 						onChange={(e) => setInput(e.currentTarget.value)}
 						className="pr-12"
+						autoFocus
 					/>
 					<PromptInputSubmit
 						status={status === "streaming" ? "streaming" : "ready"}

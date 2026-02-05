@@ -14,7 +14,7 @@ export const fetchProjectGoalsTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to fetch goals from. Defaults to the current project in context."),
 	}),
 	outputSchema: z.object({

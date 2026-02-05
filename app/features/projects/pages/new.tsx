@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea"
 import { createProject } from "~/features/projects/db"
 import { userContext } from "~/server/user-context"
-import { generateTwoWordSlug } from "~/utils/random-name"
+// Note: Previously used generateTwoWordSlug for random names like "gentle-bacon"
+// Simplified to use "New Project" as default - users can rename in setup
 import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
@@ -42,8 +43,8 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		return {}
 	}
 
-	// Auto-create minimal project with a friendly two-word slug name (e.g., "fancy-bear")
-	const defaultName = generateTwoWordSlug()
+	// Use simple default name - users will rename during setup
+	const defaultName = "New Project"
 
 	const { data: created, error } = await createProject({
 		supabase,
@@ -64,7 +65,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// Persist last-used pointers for better resume UX
 	await supabase
 		.from("user_settings")
-		.update({ last_used_account_id: accountId, last_used_project_id: created.id })
+		.update({
+			last_used_account_id: accountId,
+			last_used_project_id: created.id,
+		})
 		.eq("user_id", user.sub)
 
 	const projectRoutes = createProjectRoutes(accountId, created.id)

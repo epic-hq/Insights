@@ -1,4 +1,5 @@
 import { createTool } from "@mastra/core/tools"
+import { z } from "zod"
 import { HOST } from "~/paths"
 
 /**
@@ -9,23 +10,16 @@ import { HOST } from "~/paths"
 export const generateDocumentLinkTool = createTool({
 	id: "generate-document-link",
 	description: "Build a link to a project document (project_sections) using the section ID and kind.",
-	inputSchema: {
-		type: "object",
-		properties: {
-			sectionId: { type: "string", description: "project_sections.id of the document" },
-			kind: { type: "string", description: "Document kind (e.g., competitive_analysis)" },
-		},
-		required: ["sectionId", "kind"],
-	},
-	outputSchema: {
-		type: "object",
-		properties: {
-			success: { type: "boolean" },
-			route: { type: "string", nullable: true },
-			absoluteRoute: { type: "string", nullable: true },
-			error: { type: "string", nullable: true },
-		},
-	},
+	inputSchema: z.object({
+		sectionId: z.string().min(1),
+		kind: z.string().min(1),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		route: z.string().nullable(),
+		absoluteRoute: z.string().nullable(),
+		error: z.string().nullable(),
+	}),
 	execute: async (input, context?) => {
 		const accountId = context?.requestContext?.get?.("account_id") as string
 		const projectId = context?.requestContext?.get?.("project_id") as string

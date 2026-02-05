@@ -1,0 +1,13 @@
+{
+	"mcpServers": {
+		"docs-manager": {
+			"command": "node",
+			"args": [
+				"/Users/richardmoy/Code/ai/Insights/mcp-servers/docs-manager/dist/index.js"
+			],
+			"env": {
+				"DOCS_ROOT": "/Users/richardmoy/Code/ai/Insights/docs"
+			}
+		}
+	}
+}

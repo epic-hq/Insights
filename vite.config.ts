@@ -82,6 +82,7 @@ export default defineConfig({
       "@ai-sdk/react",
       "ai",
       "@supabase/ssr",
+      "qrcode.react",
       // Other
       "@paper-design/shaders-react",
       "@livekit/components-react",
@@ -172,6 +173,18 @@ export default defineConfig({
   server: {
     open: true,
     port: Number(process.env.PORT || 4280),
+    // CORS config for Pica AuthKit - their iframe calls our API from authkit.picaos.com
+    cors: {
+      origin: true, // Reflect the request origin
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Content-Type",
+        "x-user-id",
+        "x-account-id",
+        "Authorization",
+      ],
+      credentials: false,
+    },
     allowedHosts: [
       /\.fly\.dev$/, // any *.fly.dev
       /\.ngrok-free\.app$/, // any *.ngrok-free.app

@@ -113,7 +113,7 @@ export const getAccountMembers = async ({
 const updateAccountUserRoleSchema = z.object({
 	account_id: z.string().uuid(),
 	user_id: z.string().uuid(),
-	role: z.enum(["owner", "member"]),
+	role: z.enum(["owner", "member", "viewer"]),
 })
 type UpdateAccountUserRoleRequest = z.infer<typeof updateAccountUserRoleSchema>
 
@@ -123,10 +123,47 @@ export const updateAccountUserRole = async ({
 	user_id,
 	role,
 }: { supabase: SupabaseClient } & UpdateAccountUserRoleRequest) => {
-	const validatedData = updateAccountUserRoleSchema.parse({ account_id, user_id, role })
+	const validatedData = updateAccountUserRoleSchema.parse({
+		account_id,
+		user_id,
+		role,
+	})
 	return await supabase.rpc("update_account_user_role", {
 		account_id: validatedData.account_id,
 		user_id: validatedData.user_id,
 		new_account_role: validatedData.role,
+	})
+}
+
+const leaveAccountSchema = z.object({
+	account_id: z.string().uuid(),
+})
+type LeaveAccountRequest = z.infer<typeof leaveAccountSchema>
+
+export const leaveAccount = async ({ supabase, account_id }: { supabase: SupabaseClient } & LeaveAccountRequest) => {
+	const validatedData = leaveAccountSchema.parse({ account_id })
+	return await supabase.rpc("leave_account", {
+		account_id: validatedData.account_id,
+	})
+}
+
+const removeAccountMemberSchema = z.object({
+	account_id: z.string().uuid(),
+	user_id: z.string().uuid(),
+})
+type RemoveAccountMemberRequest = z.infer<typeof removeAccountMemberSchema>
+
+export const removeAccountMember = async ({
+	supabase,
+	account_id,
+	user_id,
+}: { supabase: SupabaseClient } & RemoveAccountMemberRequest) => {
+	const validatedData = removeAccountMemberSchema.parse({
+		account_id,
+		user_id,
+	})
+	return await supabase.rpc("remove_account_member", {
+		account_id: validatedData.account_id,
+		user_id: validatedData.user_id,
 	})
 }

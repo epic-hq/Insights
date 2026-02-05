@@ -7,6 +7,9 @@
 @theme {
 	/* Your theme styles go here */
 	--animate-float: float 3s ease-in-out infinite;
+	--animate-breathe: breathe 4s ease-in-out infinite;
+	--animate-morph: morph 3s ease-in-out infinite;
+	--animate-gradient: gradient 3s ease infinite;
 
 	@keyframes float {
 		0%,
@@ -24,6 +27,45 @@
 		}
 		100% {
 			transform: translateX(100%);
+		}
+	}
+
+	/* VoiceOrb animations */
+	@keyframes breathe {
+		0%,
+		100% {
+			transform: scale(1);
+			opacity: 0.8;
+		}
+		50% {
+			transform: scale(1.05);
+			opacity: 1;
+		}
+	}
+
+	@keyframes morph {
+		0%,
+		100% {
+			border-radius: 50%;
+		}
+		25% {
+			border-radius: 45% 55% 55% 45%;
+		}
+		50% {
+			border-radius: 55% 45% 45% 55%;
+		}
+		75% {
+			border-radius: 45% 55% 55% 45%;
+		}
+	}
+
+	@keyframes gradient {
+		0%,
+		100% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
 		}
 	}
 }

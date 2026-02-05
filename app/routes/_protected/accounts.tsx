@@ -6,9 +6,8 @@
  */
 
 import consola from "consola"
-import { Outlet, redirect, useOutletContext } from "react-router"
+import { Outlet, redirect } from "react-router"
 import { z } from "zod"
-import type { AppLayoutOutletContext } from "~/components/layout/AppLayout"
 import { CurrentAccountProvider } from "~/contexts/current-account-context"
 import { currentAccountContext } from "~/server/current-account-context"
 import { userContext } from "~/server/user-context"
@@ -44,7 +43,9 @@ async function parse_account_id_from_params({
 			// consola.log("Found user account:", !!userAccount)
 			if (!userAccount) {
 				consola.error("User does not have access to account:", account_id_or_slug)
-				throw new Response("You must be a member of an account to access it", { status: 403 })
+				throw new Response("You must be a member of an account to access it", {
+					status: 403,
+				})
 			}
 			// Return the account ID - the account object will be loaded from userContext
 			return { account_id: account_id_or_slug }
@@ -105,7 +106,9 @@ export const middleware: Route.MiddlewareFunction[] = [
 			const ctx = context.get(userContext)
 			const _supabase = ctx.supabase
 			if (!_supabase) {
-				throw new Response("Database connection not available", { status: 500 })
+				throw new Response("Database connection not available", {
+					status: 500,
+				})
 			}
 			const account_id_or_slug = params?.accountId || ""
 
@@ -160,13 +163,9 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function Accounts() {
-	// const currentProject = useLoaderData<typeof loader>()
-	// consola.log("Accounts currentAccountContext:", currentProject)
-	const appLayoutContext = useOutletContext<AppLayoutOutletContext>()
-
 	return (
 		<CurrentAccountProvider>
-			<Outlet context={appLayoutContext} />
+			<Outlet />
 		</CurrentAccountProvider>
 	)
 }

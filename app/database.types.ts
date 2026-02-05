@@ -36,43 +36,73 @@ export type Database = {
 			}
 			accounts: {
 				Row: {
+					company_description: string | null
+					competitors: string[] | null
 					created_at: string | null
 					created_by: string | null
+					customer_problem: string | null
 					id: string
+					industry: string | null
 					name: string | null
+					offerings: string[] | null
 					personal_account: boolean
+					plan_id: string
 					primary_owner_user_id: string
 					private_metadata: Json | null
 					public_metadata: Json | null
 					slug: string | null
+					target_company_sizes: string[] | null
+					target_orgs: string[] | null
+					target_roles: string[] | null
 					updated_at: string | null
 					updated_by: string | null
+					website_url: string | null
 				}
 				Insert: {
+					company_description?: string | null
+					competitors?: string[] | null
 					created_at?: string | null
 					created_by?: string | null
+					customer_problem?: string | null
 					id?: string
+					industry?: string | null
 					name?: string | null
+					offerings?: string[] | null
 					personal_account?: boolean
+					plan_id?: string
 					primary_owner_user_id?: string
 					private_metadata?: Json | null
 					public_metadata?: Json | null
 					slug?: string | null
+					target_company_sizes?: string[] | null
+					target_orgs?: string[] | null
+					target_roles?: string[] | null
 					updated_at?: string | null
 					updated_by?: string | null
+					website_url?: string | null
 				}
 				Update: {
+					company_description?: string | null
+					competitors?: string[] | null
 					created_at?: string | null
 					created_by?: string | null
+					customer_problem?: string | null
 					id?: string
+					industry?: string | null
 					name?: string | null
+					offerings?: string[] | null
 					personal_account?: boolean
+					plan_id?: string
 					primary_owner_user_id?: string
 					private_metadata?: Json | null
 					public_metadata?: Json | null
 					slug?: string | null
+					target_company_sizes?: string[] | null
+					target_orgs?: string[] | null
+					target_roles?: string[] | null
 					updated_at?: string | null
 					updated_by?: string | null
+					website_url?: string | null
 				}
 				Relationships: []
 			}
@@ -115,7 +145,7 @@ export type Database = {
 					cancel_at: string | null
 					cancel_at_period_end: boolean | null
 					canceled_at: string | null
-					created: string
+					created_at: string
 					current_period_end: string
 					current_period_start: string
 					ended_at: string | null
@@ -135,7 +165,7 @@ export type Database = {
 					cancel_at?: string | null
 					cancel_at_period_end?: boolean | null
 					canceled_at?: string | null
-					created?: string
+					created_at?: string
 					current_period_end?: string
 					current_period_start?: string
 					ended_at?: string | null
@@ -155,7 +185,7 @@ export type Database = {
 					cancel_at?: string | null
 					cancel_at_period_end?: boolean | null
 					canceled_at?: string | null
-					created?: string
+					created_at?: string
 					current_period_end?: string
 					current_period_start?: string
 					ended_at?: string | null
@@ -204,6 +234,42 @@ export type Database = {
 					enable_personal_account_billing?: boolean | null
 					enable_team_account_billing?: boolean | null
 					enable_team_accounts?: boolean | null
+				}
+				Relationships: []
+			}
+			invitation_audit: {
+				Row: {
+					account_id: string
+					account_role: Database["accounts"]["Enums"]["account_role"] | null
+					action: string
+					actor_user_id: string | null
+					created_at: string
+					details: Json | null
+					id: string
+					invitation_id: string | null
+					invitee_email: string | null
+				}
+				Insert: {
+					account_id: string
+					account_role?: Database["accounts"]["Enums"]["account_role"] | null
+					action: string
+					actor_user_id?: string | null
+					created_at?: string
+					details?: Json | null
+					id?: string
+					invitation_id?: string | null
+					invitee_email?: string | null
+				}
+				Update: {
+					account_id?: string
+					account_role?: Database["accounts"]["Enums"]["account_role"] | null
+					action?: string
+					actor_user_id?: string | null
+					created_at?: string
+					details?: Json | null
+					id?: string
+					invitation_id?: string | null
+					invitee_email?: string | null
 				}
 				Relationships: []
 			}
@@ -285,6 +351,290 @@ export type Database = {
 				| "incomplete_expired"
 				| "past_due"
 				| "unpaid"
+		}
+		CompositeTypes: {
+			[_ in never]: never
+		}
+	}
+	billing: {
+		Tables: {
+			credit_ledger: {
+				Row: {
+					account_id: string
+					amount: number
+					billing_period_end: string | null
+					billing_period_start: string | null
+					created_at: string
+					created_by: string | null
+					event_type: Database["billing"]["Enums"]["credit_event_type"]
+					expires_at: string | null
+					feature_source: string | null
+					id: string
+					idempotency_key: string | null
+					metadata: Json | null
+					source: Database["billing"]["Enums"]["credit_source"] | null
+					usage_event_id: string | null
+				}
+				Insert: {
+					account_id: string
+					amount: number
+					billing_period_end?: string | null
+					billing_period_start?: string | null
+					created_at?: string
+					created_by?: string | null
+					event_type: Database["billing"]["Enums"]["credit_event_type"]
+					expires_at?: string | null
+					feature_source?: string | null
+					id?: string
+					idempotency_key?: string | null
+					metadata?: Json | null
+					source?: Database["billing"]["Enums"]["credit_source"] | null
+					usage_event_id?: string | null
+				}
+				Update: {
+					account_id?: string
+					amount?: number
+					billing_period_end?: string | null
+					billing_period_start?: string | null
+					created_at?: string
+					created_by?: string | null
+					event_type?: Database["billing"]["Enums"]["credit_event_type"]
+					expires_at?: string | null
+					feature_source?: string | null
+					id?: string
+					idempotency_key?: string | null
+					metadata?: Json | null
+					source?: Database["billing"]["Enums"]["credit_source"] | null
+					usage_event_id?: string | null
+				}
+				Relationships: [
+					{
+						foreignKeyName: "credit_ledger_usage_event_id_fkey"
+						columns: ["usage_event_id"]
+						isOneToOne: false
+						referencedRelation: "usage_events"
+						referencedColumns: ["id"]
+					},
+				]
+			}
+			feature_entitlements: {
+				Row: {
+					account_id: string
+					created_at: string
+					created_by: string | null
+					enabled: boolean
+					feature_key: string
+					id: string
+					metadata: Json | null
+					quantity_limit: number | null
+					quantity_used: number | null
+					source: Database["billing"]["Enums"]["entitlement_source"]
+					valid_from: string
+					valid_until: string | null
+				}
+				Insert: {
+					account_id: string
+					created_at?: string
+					created_by?: string | null
+					enabled?: boolean
+					feature_key: string
+					id?: string
+					metadata?: Json | null
+					quantity_limit?: number | null
+					quantity_used?: number | null
+					source: Database["billing"]["Enums"]["entitlement_source"]
+					valid_from?: string
+					valid_until?: string | null
+				}
+				Update: {
+					account_id?: string
+					created_at?: string
+					created_by?: string | null
+					enabled?: boolean
+					feature_key?: string
+					id?: string
+					metadata?: Json | null
+					quantity_limit?: number | null
+					quantity_used?: number | null
+					source?: Database["billing"]["Enums"]["entitlement_source"]
+					valid_from?: string
+					valid_until?: string | null
+				}
+				Relationships: []
+			}
+			usage_events: {
+				Row: {
+					account_id: string
+					created_at: string
+					credits_charged: number
+					estimated_cost_usd: number
+					feature_source: string
+					id: string
+					idempotency_key: string | null
+					input_tokens: number
+					model: string
+					output_tokens: number
+					project_id: string | null
+					provider: string
+					resource_id: string | null
+					resource_type: string | null
+					total_tokens: number | null
+					user_id: string | null
+				}
+				Insert: {
+					account_id: string
+					created_at?: string
+					credits_charged: number
+					estimated_cost_usd: number
+					feature_source: string
+					id?: string
+					idempotency_key?: string | null
+					input_tokens?: number
+					model: string
+					output_tokens?: number
+					project_id?: string | null
+					provider: string
+					resource_id?: string | null
+					resource_type?: string | null
+					total_tokens?: number | null
+					user_id?: string | null
+				}
+				Update: {
+					account_id?: string
+					created_at?: string
+					credits_charged?: number
+					estimated_cost_usd?: number
+					feature_source?: string
+					id?: string
+					idempotency_key?: string | null
+					input_tokens?: number
+					model?: string
+					output_tokens?: number
+					project_id?: string | null
+					provider?: string
+					resource_id?: string | null
+					resource_type?: string | null
+					total_tokens?: number | null
+					user_id?: string | null
+				}
+				Relationships: []
+			}
+		}
+		Views: {
+			[_ in never]: never
+		}
+		Functions: {
+			get_active_entitlement: {
+				Args: { p_account_id: string; p_feature_key: string }
+				Returns: {
+					enabled: boolean
+					id: string
+					quantity_limit: number
+					quantity_remaining: number
+					quantity_used: number
+					source: Database["billing"]["Enums"]["entitlement_source"]
+					valid_until: string
+				}[]
+			}
+			get_admin_daily_usage: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					event_count: number
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+					unique_accounts: number
+					usage_date: string
+				}[]
+			}
+			get_admin_usage_by_account: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					account_id: string
+					account_name: string
+					event_count: number
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+				}[]
+			}
+			get_admin_usage_by_feature: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					event_count: number
+					feature_source: string
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+				}[]
+			}
+			get_credit_balance: {
+				Args: { p_account_id: string }
+				Returns: {
+					balance: number
+					expires_in_7_days: number
+					grants_total: number
+					spends_total: number
+				}[]
+			}
+			get_monthly_usage_summary: {
+				Args: { p_account_id: string; p_month_start?: string }
+				Returns: {
+					event_count: number
+					feature_source: string
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+				}[]
+			}
+			grant_credits: {
+				Args: {
+					p_account_id: string
+					p_amount: number
+					p_billing_period_end?: string
+					p_billing_period_start?: string
+					p_created_by?: string
+					p_expires_at?: string
+					p_idempotency_key: string
+					p_metadata?: Json
+					p_source: Database["billing"]["Enums"]["credit_source"]
+				}
+				Returns: {
+					is_duplicate: boolean
+					ledger_id: string
+					success: boolean
+				}[]
+			}
+			increment_voice_minutes: {
+				Args: { p_account_id: string; p_minutes: number }
+				Returns: {
+					new_quantity_used: number
+					quantity_remaining: number
+					success: boolean
+				}[]
+			}
+			spend_credits_atomic: {
+				Args: {
+					p_account_id: string
+					p_amount: number
+					p_feature_source?: string
+					p_hard_limit: number
+					p_idempotency_key: string
+					p_metadata?: Json
+					p_soft_limit: number
+					p_usage_event_id?: string
+				}
+				Returns: {
+					limit_status: string
+					new_balance: number
+					success: boolean
+				}[]
+			}
+		}
+		Enums: {
+			credit_event_type: "grant" | "purchase" | "spend" | "expire" | "refund"
+			credit_source: "plan" | "purchase" | "promo" | "manual"
+			entitlement_source: "plan" | "addon" | "promo" | "override"
 		}
 		CompositeTypes: {
 			[_ in never]: never
@@ -816,6 +1166,179 @@ export type Database = {
 					},
 				]
 			}
+			calendar_connections: {
+				Row: {
+					access_token: string | null
+					account_id: string
+					calendar_id: string | null
+					created_at: string
+					id: string
+					last_synced_at: string | null
+					pica_connection_id: string | null
+					pica_connection_key: string | null
+					provider: string
+					provider_account_id: string | null
+					provider_email: string | null
+					refresh_token: string | null
+					sync_enabled: boolean
+					sync_error: string | null
+					token_expires_at: string | null
+					updated_at: string
+					user_id: string
+				}
+				Insert: {
+					access_token?: string | null
+					account_id: string
+					calendar_id?: string | null
+					created_at?: string
+					id?: string
+					last_synced_at?: string | null
+					pica_connection_id?: string | null
+					pica_connection_key?: string | null
+					provider?: string
+					provider_account_id?: string | null
+					provider_email?: string | null
+					refresh_token?: string | null
+					sync_enabled?: boolean
+					sync_error?: string | null
+					token_expires_at?: string | null
+					updated_at?: string
+					user_id: string
+				}
+				Update: {
+					access_token?: string | null
+					account_id?: string
+					calendar_id?: string | null
+					created_at?: string
+					id?: string
+					last_synced_at?: string | null
+					pica_connection_id?: string | null
+					pica_connection_key?: string | null
+					provider?: string
+					provider_account_id?: string | null
+					provider_email?: string | null
+					refresh_token?: string | null
+					sync_enabled?: boolean
+					sync_error?: string | null
+					token_expires_at?: string | null
+					updated_at?: string
+					user_id?: string
+				}
+				Relationships: []
+			}
+			calendar_events: {
+				Row: {
+					account_id: string
+					attendee_emails: string[] | null
+					brief_generated_at: string | null
+					brief_id: string | null
+					connection_id: string
+					created_at: string
+					description: string | null
+					end_time: string
+					external_id: string
+					id: string
+					interview_id: string | null
+					is_customer_meeting: boolean | null
+					location: string | null
+					matched_org_id: string | null
+					matched_person_ids: string[] | null
+					meeting_type: string | null
+					meeting_url: string | null
+					organizer_email: string | null
+					raw_event: Json | null
+					start_time: string
+					synced_at: string
+					timezone: string | null
+					title: string | null
+					updated_at: string
+					user_id: string
+				}
+				Insert: {
+					account_id: string
+					attendee_emails?: string[] | null
+					brief_generated_at?: string | null
+					brief_id?: string | null
+					connection_id: string
+					created_at?: string
+					description?: string | null
+					end_time: string
+					external_id: string
+					id?: string
+					interview_id?: string | null
+					is_customer_meeting?: boolean | null
+					location?: string | null
+					matched_org_id?: string | null
+					matched_person_ids?: string[] | null
+					meeting_type?: string | null
+					meeting_url?: string | null
+					organizer_email?: string | null
+					raw_event?: Json | null
+					start_time: string
+					synced_at?: string
+					timezone?: string | null
+					title?: string | null
+					updated_at?: string
+					user_id: string
+				}
+				Update: {
+					account_id?: string
+					attendee_emails?: string[] | null
+					brief_generated_at?: string | null
+					brief_id?: string | null
+					connection_id?: string
+					created_at?: string
+					description?: string | null
+					end_time?: string
+					external_id?: string
+					id?: string
+					interview_id?: string | null
+					is_customer_meeting?: boolean | null
+					location?: string | null
+					matched_org_id?: string | null
+					matched_person_ids?: string[] | null
+					meeting_type?: string | null
+					meeting_url?: string | null
+					organizer_email?: string | null
+					raw_event?: Json | null
+					start_time?: string
+					synced_at?: string
+					timezone?: string | null
+					title?: string | null
+					updated_at?: string
+					user_id?: string
+				}
+				Relationships: [
+					{
+						foreignKeyName: "calendar_events_connection_id_fkey"
+						columns: ["connection_id"]
+						isOneToOne: false
+						referencedRelation: "calendar_connections"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "calendar_events_interview_id_fkey"
+						columns: ["interview_id"]
+						isOneToOne: false
+						referencedRelation: "conversations"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "calendar_events_interview_id_fkey"
+						columns: ["interview_id"]
+						isOneToOne: false
+						referencedRelation: "interviews"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "calendar_events_matched_org_id_fkey"
+						columns: ["matched_org_id"]
+						isOneToOne: false
+						referencedRelation: "organizations"
+						referencedColumns: ["id"]
+					},
+				]
+			}
 			comments: {
 				Row: {
 					account_id: string
@@ -1296,6 +1819,7 @@ export type Database = {
 					personas: string[] | null
 					project_answer_id: string | null
 					project_id: string | null
+					research_link_response_id: string | null
 					says: string[] | null
 					segments: string[] | null
 					source_type: string | null
@@ -1335,6 +1859,7 @@ export type Database = {
 					personas?: string[] | null
 					project_answer_id?: string | null
 					project_id?: string | null
+					research_link_response_id?: string | null
 					says?: string[] | null
 					segments?: string[] | null
 					source_type?: string | null
@@ -1374,6 +1899,7 @@ export type Database = {
 					personas?: string[] | null
 					project_answer_id?: string | null
 					project_id?: string | null
+					research_link_response_id?: string | null
 					says?: string[] | null
 					segments?: string[] | null
 					source_type?: string | null
@@ -1422,6 +1948,13 @@ export type Database = {
 						referencedRelation: "projects"
 						referencedColumns: ["id"]
 					},
+					{
+						foreignKeyName: "evidence_research_link_response_id_fkey"
+						columns: ["research_link_response_id"]
+						isOneToOne: false
+						referencedRelation: "research_link_responses"
+						referencedColumns: ["id"]
+					},
 				]
 			}
 			evidence_facet: {
@@ -1439,6 +1972,7 @@ export type Database = {
 					kind_slug: string
 					label: string
 					notes: string | null
+					person_id: string | null
 					project_id: string | null
 					quote: string | null
 					source: string
@@ -1458,6 +1992,7 @@ export type Database = {
 					kind_slug: string
 					label: string
 					notes?: string | null
+					person_id?: string | null
 					project_id?: string | null
 					quote?: string | null
 					source?: string
@@ -1477,6 +2012,7 @@ export type Database = {
 					kind_slug?: string
 					label?: string
 					notes?: string | null
+					person_id?: string | null
 					project_id?: string | null
 					quote?: string | null
 					source?: string
@@ -1495,6 +2031,13 @@ export type Database = {
 						columns: ["facet_account_id"]
 						isOneToOne: false
 						referencedRelation: "facet_account"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "evidence_facet_person_id_fkey"
+						columns: ["person_id"]
+						isOneToOne: false
+						referencedRelation: "people"
 						referencedColumns: ["id"]
 					},
 					{
@@ -2432,6 +2975,7 @@ export type Database = {
 					lens_visibility: string | null
 					media_type: string | null
 					media_url: string | null
+					meeting_platform: string | null
 					observations_and_notes: string | null
 					open_questions_and_next_steps: string | null
 					original_filename: string | null
@@ -2439,7 +2983,9 @@ export type Database = {
 					person_id: string | null
 					processing_metadata: Json | null
 					project_id: string
+					recall_recording_id: string | null
 					relevant_answers: string[] | null
+					research_link_id: string | null
 					segment: string | null
 					share_created_at: string | null
 					share_enabled: boolean | null
@@ -2451,6 +2997,7 @@ export type Database = {
 					title: string | null
 					transcript: string | null
 					transcript_formatted: Json | null
+					transcript_url: string | null
 					updated_at: string
 					updated_by: string | null
 				}
@@ -2473,6 +3020,7 @@ export type Database = {
 					lens_visibility?: string | null
 					media_type?: string | null
 					media_url?: string | null
+					meeting_platform?: string | null
 					observations_and_notes?: string | null
 					open_questions_and_next_steps?: string | null
 					original_filename?: string | null
@@ -2480,7 +3028,9 @@ export type Database = {
 					person_id?: string | null
 					processing_metadata?: Json | null
 					project_id: string
+					recall_recording_id?: string | null
 					relevant_answers?: string[] | null
+					research_link_id?: string | null
 					segment?: string | null
 					share_created_at?: string | null
 					share_enabled?: boolean | null
@@ -2492,6 +3042,7 @@ export type Database = {
 					title?: string | null
 					transcript?: string | null
 					transcript_formatted?: Json | null
+					transcript_url?: string | null
 					updated_at?: string
 					updated_by?: string | null
 				}
@@ -2514,6 +3065,7 @@ export type Database = {
 					lens_visibility?: string | null
 					media_type?: string | null
 					media_url?: string | null
+					meeting_platform?: string | null
 					observations_and_notes?: string | null
 					open_questions_and_next_steps?: string | null
 					original_filename?: string | null
@@ -2521,7 +3073,9 @@ export type Database = {
 					person_id?: string | null
 					processing_metadata?: Json | null
 					project_id?: string
+					recall_recording_id?: string | null
 					relevant_answers?: string[] | null
+					research_link_id?: string | null
 					segment?: string | null
 					share_created_at?: string | null
 					share_enabled?: boolean | null
@@ -2533,6 +3087,7 @@ export type Database = {
 					title?: string | null
 					transcript?: string | null
 					transcript_formatted?: Json | null
+					transcript_url?: string | null
 					updated_at?: string
 					updated_by?: string | null
 				}
@@ -2549,6 +3104,13 @@ export type Database = {
 						columns: ["project_id"]
 						isOneToOne: false
 						referencedRelation: "projects"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "interviews_research_link_id_fkey"
+						columns: ["research_link_id"]
+						isOneToOne: false
+						referencedRelation: "research_links"
 						referencedColumns: ["id"]
 					},
 				]
@@ -2623,22 +3185,36 @@ export type Database = {
 					createdAtZ: string | null
 					endedAt: string | null
 					endedAtZ: string | null
+					entityId: string | null
+					entityName: string | null
+					entityType: string | null
+					environment: string | null
 					error: Json | null
 					input: Json | null
 					isEvent: boolean
 					links: Json | null
 					metadata: Json | null
 					name: string
+					organizationId: string | null
 					output: Json | null
 					parentSpanId: string | null
+					requestId: string | null
+					resourceId: string | null
+					runId: string | null
 					scope: Json | null
+					serviceName: string | null
+					sessionId: string | null
+					source: string | null
 					spanId: string
 					spanType: string
 					startedAt: string
 					startedAtZ: string | null
+					tags: Json | null
+					threadId: string | null
 					traceId: string
 					updatedAt: string | null
 					updatedAtZ: string | null
+					userId: string | null
 				}
 				Insert: {
 					attributes?: Json | null
@@ -2646,22 +3222,36 @@ export type Database = {
 					createdAtZ?: string | null
 					endedAt?: string | null
 					endedAtZ?: string | null
+					entityId?: string | null
+					entityName?: string | null
+					entityType?: string | null
+					environment?: string | null
 					error?: Json | null
 					input?: Json | null
 					isEvent: boolean
 					links?: Json | null
 					metadata?: Json | null
 					name: string
+					organizationId?: string | null
 					output?: Json | null
 					parentSpanId?: string | null
+					requestId?: string | null
+					resourceId?: string | null
+					runId?: string | null
 					scope?: Json | null
+					serviceName?: string | null
+					sessionId?: string | null
+					source?: string | null
 					spanId: string
 					spanType: string
 					startedAt: string
 					startedAtZ?: string | null
+					tags?: Json | null
+					threadId?: string | null
 					traceId: string
 					updatedAt?: string | null
 					updatedAtZ?: string | null
+					userId?: string | null
 				}
 				Update: {
 					attributes?: Json | null
@@ -2669,22 +3259,36 @@ export type Database = {
 					createdAtZ?: string | null
 					endedAt?: string | null
 					endedAtZ?: string | null
+					entityId?: string | null
+					entityName?: string | null
+					entityType?: string | null
+					environment?: string | null
 					error?: Json | null
 					input?: Json | null
 					isEvent?: boolean
 					links?: Json | null
 					metadata?: Json | null
 					name?: string
+					organizationId?: string | null
 					output?: Json | null
 					parentSpanId?: string | null
+					requestId?: string | null
+					resourceId?: string | null
+					runId?: string | null
 					scope?: Json | null
+					serviceName?: string | null
+					sessionId?: string | null
+					source?: string | null
 					spanId?: string
 					spanType?: string
 					startedAt?: string
 					startedAtZ?: string | null
+					tags?: Json | null
+					threadId?: string | null
 					traceId?: string
 					updatedAt?: string | null
 					updatedAtZ?: string | null
+					userId?: string | null
 				}
 				Relationships: []
 			}
@@ -3191,12 +3795,14 @@ export type Database = {
 					domain: string | null
 					email: string | null
 					employee_count: number | null
+					funding_stage: string | null
 					headquarters_location: string | null
 					id: string
 					industry: string | null
 					legal_name: string | null
 					lifecycle_stage: string | null
 					linkedin_url: string | null
+					market_cap: number | null
 					name: string
 					notes: string | null
 					parent_organization_id: string | null
@@ -3208,6 +3814,7 @@ export type Database = {
 					sub_industry: string | null
 					tags: string[] | null
 					timezone: string | null
+					total_funding: number | null
 					twitter_url: string | null
 					updated_at: string
 					website_url: string | null
@@ -3223,12 +3830,14 @@ export type Database = {
 					domain?: string | null
 					email?: string | null
 					employee_count?: number | null
+					funding_stage?: string | null
 					headquarters_location?: string | null
 					id?: string
 					industry?: string | null
 					legal_name?: string | null
 					lifecycle_stage?: string | null
 					linkedin_url?: string | null
+					market_cap?: number | null
 					name: string
 					notes?: string | null
 					parent_organization_id?: string | null
@@ -3240,6 +3849,7 @@ export type Database = {
 					sub_industry?: string | null
 					tags?: string[] | null
 					timezone?: string | null
+					total_funding?: number | null
 					twitter_url?: string | null
 					updated_at?: string
 					website_url?: string | null
@@ -3255,12 +3865,14 @@ export type Database = {
 					domain?: string | null
 					email?: string | null
 					employee_count?: number | null
+					funding_stage?: string | null
 					headquarters_location?: string | null
 					id?: string
 					industry?: string | null
 					legal_name?: string | null
 					lifecycle_stage?: string | null
 					linkedin_url?: string | null
+					market_cap?: number | null
 					name?: string
 					notes?: string | null
 					parent_organization_id?: string | null
@@ -3272,6 +3884,7 @@ export type Database = {
 					sub_industry?: string | null
 					tags?: string[] | null
 					timezone?: string | null
+					total_funding?: number | null
 					twitter_url?: string | null
 					updated_at?: string
 					website_url?: string | null
@@ -3355,7 +3968,7 @@ export type Database = {
 					account_id: string | null
 					age: number | null
 					age_range: string | null
-					company: string | null
+					company: string
 					contact_info: Json | null
 					created_at: string
 					default_organization_id: string | null
@@ -3396,7 +4009,7 @@ export type Database = {
 					account_id?: string | null
 					age?: number | null
 					age_range?: string | null
-					company?: string | null
+					company?: string
 					contact_info?: Json | null
 					created_at?: string
 					default_organization_id?: string | null
@@ -3437,7 +4050,7 @@ export type Database = {
 					account_id?: string | null
 					age?: number | null
 					age_range?: string | null
-					company?: string | null
+					company?: string
 					contact_info?: Json | null
 					created_at?: string
 					default_organization_id?: string | null
@@ -4713,6 +5326,174 @@ export type Database = {
 				}
 				Relationships: []
 			}
+			research_link_responses: {
+				Row: {
+					completed: boolean
+					created_at: string
+					email: string
+					evidence_id: string | null
+					id: string
+					person_id: string | null
+					research_link_id: string
+					response_mode: string
+					responses: Json
+					updated_at: string
+					video_url: string | null
+				}
+				Insert: {
+					completed?: boolean
+					created_at?: string
+					email: string
+					evidence_id?: string | null
+					id?: string
+					person_id?: string | null
+					research_link_id: string
+					response_mode?: string
+					responses?: Json
+					updated_at?: string
+					video_url?: string | null
+				}
+				Update: {
+					completed?: boolean
+					created_at?: string
+					email?: string
+					evidence_id?: string | null
+					id?: string
+					person_id?: string | null
+					research_link_id?: string
+					response_mode?: string
+					responses?: Json
+					updated_at?: string
+					video_url?: string | null
+				}
+				Relationships: [
+					{
+						foreignKeyName: "research_link_responses_evidence_id_fkey"
+						columns: ["evidence_id"]
+						isOneToOne: false
+						referencedRelation: "evidence"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "research_link_responses_person_id_fkey"
+						columns: ["person_id"]
+						isOneToOne: false
+						referencedRelation: "people"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "research_link_responses_research_link_id_fkey"
+						columns: ["research_link_id"]
+						isOneToOne: false
+						referencedRelation: "research_links"
+						referencedColumns: ["id"]
+					},
+				]
+			}
+			research_links: {
+				Row: {
+					account_id: string
+					ai_analysis: Json | null
+					ai_analysis_updated_at: string | null
+					ai_autonomy: string
+					allow_chat: boolean
+					allow_video: boolean
+					allow_voice: boolean
+					calendar_url: string | null
+					created_at: string
+					default_response_mode: string
+					description: string | null
+					hero_cta_helper: string | null
+					hero_cta_label: string | null
+					hero_subtitle: string | null
+					hero_title: string | null
+					id: string
+					instructions: string | null
+					is_live: boolean
+					name: string
+					project_id: string | null
+					questions: Json
+					redirect_url: string | null
+					research_goals: Json | null
+					slug: string
+					statistics: Json | null
+					stats_updated_at: string | null
+					updated_at: string
+					walkthrough_thumbnail_url: string | null
+					walkthrough_video_url: string | null
+				}
+				Insert: {
+					account_id: string
+					ai_analysis?: Json | null
+					ai_analysis_updated_at?: string | null
+					ai_autonomy?: string
+					allow_chat?: boolean
+					allow_video?: boolean
+					allow_voice?: boolean
+					calendar_url?: string | null
+					created_at?: string
+					default_response_mode?: string
+					description?: string | null
+					hero_cta_helper?: string | null
+					hero_cta_label?: string | null
+					hero_subtitle?: string | null
+					hero_title?: string | null
+					id?: string
+					instructions?: string | null
+					is_live?: boolean
+					name: string
+					project_id?: string | null
+					questions?: Json
+					redirect_url?: string | null
+					research_goals?: Json | null
+					slug: string
+					statistics?: Json | null
+					stats_updated_at?: string | null
+					updated_at?: string
+					walkthrough_thumbnail_url?: string | null
+					walkthrough_video_url?: string | null
+				}
+				Update: {
+					account_id?: string
+					ai_analysis?: Json | null
+					ai_analysis_updated_at?: string | null
+					ai_autonomy?: string
+					allow_chat?: boolean
+					allow_video?: boolean
+					allow_voice?: boolean
+					calendar_url?: string | null
+					created_at?: string
+					default_response_mode?: string
+					description?: string | null
+					hero_cta_helper?: string | null
+					hero_cta_label?: string | null
+					hero_subtitle?: string | null
+					hero_title?: string | null
+					id?: string
+					instructions?: string | null
+					is_live?: boolean
+					name?: string
+					project_id?: string | null
+					questions?: Json
+					redirect_url?: string | null
+					research_goals?: Json | null
+					slug?: string
+					statistics?: Json | null
+					stats_updated_at?: string | null
+					updated_at?: string
+					walkthrough_thumbnail_url?: string | null
+					walkthrough_video_url?: string | null
+				}
+				Relationships: [
+					{
+						foreignKeyName: "research_links_project_id_fkey"
+						columns: ["project_id"]
+						isOneToOne: false
+						referencedRelation: "projects"
+						referencedColumns: ["id"]
+					},
+				]
+			}
 			research_plan_data_sources: {
 				Row: {
 					id: string
@@ -5659,10 +6440,12 @@ export type Database = {
 					id: string
 					image_url: string | null
 					industry: string | null
+					is_platform_admin: boolean
 					language: string | null
 					last_name: string | null
 					last_used_account_id: string | null
 					last_used_project_id: string | null
+					legacy_trial_provisioned_at: string | null
 					metadata: Json | null
 					mobile_phone: string | null
 					notification_preferences: Json
@@ -5688,10 +6471,12 @@ export type Database = {
 					id?: string
 					image_url?: string | null
 					industry?: string | null
+					is_platform_admin?: boolean
 					language?: string | null
 					last_name?: string | null
 					last_used_account_id?: string | null
 					last_used_project_id?: string | null
+					legacy_trial_provisioned_at?: string | null
 					metadata?: Json | null
 					mobile_phone?: string | null
 					notification_preferences?: Json
@@ -5717,10 +6502,12 @@ export type Database = {
 					id?: string
 					image_url?: string | null
 					industry?: string | null
+					is_platform_admin?: boolean
 					language?: string | null
 					last_name?: string | null
 					last_used_account_id?: string | null
 					last_used_project_id?: string | null
+					legacy_trial_provisioned_at?: string | null
 					metadata?: Json | null
 					mobile_phone?: string | null
 					notification_preferences?: Json
@@ -6122,6 +6909,7 @@ export type Database = {
 				Args: { p_insight_id: string }
 				Returns: undefined
 			}
+			cleanup_expired_invitations: { Args: never; Returns: number }
 			create_account: { Args: { name?: string; slug?: string }; Returns: Json }
 			create_account_id: {
 				Args: { name?: string; primary_owner_user_id?: string; slug?: string }
@@ -6347,7 +7135,73 @@ export type Database = {
 				}
 				Returns: Json
 			}
+			get_account_research_link_ids: { Args: never; Returns: string[] }
 			get_accounts: { Args: never; Returns: Json }
+			get_admin_daily_usage: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					event_count: number
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+					unique_accounts: number
+					usage_date: string
+				}[]
+			}
+			get_admin_daily_usage_by_feature: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					event_count: number
+					feature_source: string
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+					usage_date: string
+				}[]
+			}
+			get_admin_recent_login_activity: {
+				Args: { p_feature_limit?: number; p_user_limit?: number }
+				Returns: {
+					last_sign_in_at: string
+					recent_features: Json
+					user_email: string
+					user_id: string
+					user_name: string
+				}[]
+			}
+			get_admin_usage_by_account: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					account_id: string
+					account_name: string
+					event_count: number
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+				}[]
+			}
+			get_admin_usage_by_feature: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					event_count: number
+					feature_source: string
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+				}[]
+			}
+			get_admin_usage_by_user: {
+				Args: { p_end_date?: string; p_start_date?: string }
+				Returns: {
+					event_count: number
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+					user_email: string
+					user_id: string
+					user_name: string
+				}[]
+			}
 			get_annotation_counts: {
 				Args: {
 					p_entity_id: string
@@ -6382,7 +7236,24 @@ export type Database = {
 					similarity: number
 				}[]
 			}
+			get_monthly_usage_summary: {
+				Args: { p_account_id: string }
+				Returns: {
+					event_count: number
+					feature_source: string
+					total_cost_usd: number
+					total_credits: number
+					total_tokens: number
+				}[]
+			}
 			get_personal_account: { Args: never; Returns: Json }
+			get_research_link_response_counts: {
+				Args: { link_ids: string[] }
+				Returns: {
+					research_link_id: string
+					response_count: number
+				}[]
+			}
 			get_user_accounts: { Args: never; Returns: Json }
 			get_user_flags: {
 				Args: {
@@ -6396,6 +7267,8 @@ export type Database = {
 					metadata: Json
 				}[]
 			}
+			get_user_response_account_ids: { Args: never; Returns: string[] }
+			get_user_response_link_ids: { Args: never; Returns: string[] }
 			get_user_vote: {
 				Args: {
 					p_entity_id: string
@@ -6433,7 +7306,24 @@ export type Database = {
 				Args: { func_name: string; payload: Json }
 				Returns: undefined
 			}
+			is_email_account_member: {
+				Args: { check_account_id: string; check_email: string }
+				Returns: boolean
+			}
+			is_platform_admin: { Args: never; Returns: boolean }
+			leave_account: { Args: { account_id: string }; Returns: undefined }
 			list_invitations_for_current_user: { Args: never; Returns: Json }
+			log_invitation_audit: {
+				Args: {
+					p_account_id: string
+					p_account_role?: Database["accounts"]["Enums"]["account_role"]
+					p_action: string
+					p_details?: Json
+					p_invitation_id: string
+					p_invitee_email?: string
+				}
+				Returns: undefined
+			}
 			lookup_invitation: {
 				Args: { lookup_invitation_token: string }
 				Returns: Json
@@ -6442,6 +7332,24 @@ export type Database = {
 			process_facet_embedding_queue: { Args: never; Returns: string }
 			process_person_facet_embedding_queue: { Args: never; Returns: string }
 			process_transcribe_queue: { Args: never; Returns: string }
+			record_usage_event: {
+				Args: {
+					p_account_id: string
+					p_credits_charged: number
+					p_estimated_cost_usd: number
+					p_feature_source: string
+					p_idempotency_key?: string
+					p_input_tokens: number
+					p_model: string
+					p_output_tokens: number
+					p_project_id: string
+					p_provider: string
+					p_resource_id?: string
+					p_resource_type?: string
+					p_user_id: string
+				}
+				Returns: string
+			}
 			remove_account_member: {
 				Args: { account_id: string; user_id: string }
 				Returns: undefined
@@ -6530,10 +7438,14 @@ export type Database = {
 				Args: { p_signup_data: Json; p_user_id: string }
 				Returns: undefined
 			}
+			user_has_response_for_link: {
+				Args: { link_id: string }
+				Returns: boolean
+			}
 		}
 		Enums: {
 			asset_type: "table" | "pdf" | "document" | "image" | "audio" | "video" | "link"
-			interaction_context: "research" | "sales" | "support" | "internal" | "debrief"
+			interaction_context: "research" | "sales" | "support" | "internal" | "debrief" | "personal"
 			interview_status:
 				| "draft"
 				| "scheduled"
@@ -6674,10 +7586,17 @@ export const Constants = {
 			subscription_status: ["trialing", "active", "canceled", "incomplete", "incomplete_expired", "past_due", "unpaid"],
 		},
 	},
+	billing: {
+		Enums: {
+			credit_event_type: ["grant", "purchase", "spend", "expire", "refund"],
+			credit_source: ["plan", "purchase", "promo", "manual"],
+			entitlement_source: ["plan", "addon", "promo", "override"],
+		},
+	},
 	public: {
 		Enums: {
 			asset_type: ["table", "pdf", "document", "image", "audio", "video", "link"],
-			interaction_context: ["research", "sales", "support", "internal", "debrief"],
+			interaction_context: ["research", "sales", "support", "internal", "debrief", "personal"],
 			interview_status: [
 				"draft",
 				"scheduled",

@@ -1,5 +1,5 @@
-import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
+import { openai } from "../../lib/billing/instrumented-openai.server"
 import { dailyBriefWorkflow } from "../workflows/daily-brief"
 
 /**

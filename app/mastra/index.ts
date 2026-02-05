@@ -3,14 +3,19 @@ import type { RequestContext } from "@mastra/core/di"
 import { Mastra } from "@mastra/core/mastra"
 import { PinoLogger } from "@mastra/loggers"
 import { createClient } from "@supabase/supabase-js"
+import { chiefOfStaffAgent } from "./agents/chief-of-staff-agent"
 import { insightsAgent } from "./agents/insights-agent"
 import { interviewStatusAgent } from "./agents/interview-status-agent"
 import { mainAgent } from "./agents/main-agent"
+import { opsAgent } from "./agents/ops-agent"
+import { peopleAgent } from "./agents/people-agent"
 import { projectSetupAgent } from "./agents/project-setup-agent"
 import { projectStatusAgent } from "./agents/project-status-agent"
+import { researchAgent } from "./agents/research-agent"
 import { researchAssistantAgent } from "./agents/research-assistant-agent"
 import { researchLinkChatAgent } from "./agents/research-link-chat-agent"
 import { signupAgent } from "./agents/signup-agent"
+import { surveyAgent } from "./agents/survey-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { webLeadAgent } from "./agents/weblead-agent"
 import { getSharedPostgresStore } from "./storage/postgres-singleton"
@@ -36,10 +41,15 @@ const agents = {
 	signupAgent,
 	projectSetupAgent,
 	projectStatusAgent,
+	chiefOfStaffAgent,
+	peopleAgent,
+	researchAgent,
+	opsAgent,
 	interviewStatusAgent,
 	researchAssistantAgent,
 	researchLinkChatAgent,
 	webLeadAgent,
+	surveyAgent,
 }
 
 export const mastra = new Mastra({
@@ -101,6 +111,10 @@ export const mastra = new Mastra({
 			chatRoute({
 				path: "/chat/web-lead",
 				agent: "webLeadAgent",
+			}),
+			chatRoute({
+				path: "/chat/survey",
+				agent: "surveyAgent",
 			}),
 		],
 	},

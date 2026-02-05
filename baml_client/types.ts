@@ -167,6 +167,17 @@ export enum BBValues {
   Wisdom = "Wisdom",
 }
 
+export enum ConditionOperator {
+  EQUALS = "EQUALS",
+  NOT_EQUALS = "NOT_EQUALS",
+  CONTAINS = "CONTAINS",
+  NOT_CONTAINS = "NOT_CONTAINS",
+  SELECTED = "SELECTED",
+  NOT_SELECTED = "NOT_SELECTED",
+  ANSWERED = "ANSWERED",
+  NOT_ANSWERED = "NOT_ANSWERED",
+}
+
 export enum Emotions {
   Abandoned = "Abandoned",
   Accepted = "Accepted",
@@ -296,6 +307,11 @@ export enum Emotions {
   Worthless = "Worthless",
 }
 
+export enum GuidelineAction {
+  SKIP_TO = "SKIP_TO",
+  END_SURVEY = "END_SURVEY",
+}
+
 export enum InteractionContext {
   Research = "Research",
   Sales = "Sales",
@@ -323,6 +339,12 @@ export enum JobFunction {
   Other = "Other",
 }
 
+export enum RuleConfidence {
+  HIGH = "HIGH",
+  MEDIUM = "MEDIUM",
+  LOW = "LOW",
+}
+
 export enum SeniorityLevel {
   CLevel = "CLevel",
   VP = "VP",
@@ -339,6 +361,19 @@ export interface ActionButton {
   action_type: string
   parameters: string
   priority: string
+  
+}
+
+export interface AskLinkInsightsResponse {
+  executive_summary: string
+  total_responses: number
+  completion_rate: number
+  top_themes: ResponseTheme[]
+  question_insights: QuestionInsight[]
+  response_segments: SegmentPattern[]
+  recommended_followups: string[]
+  actionable_insights: string[]
+  data_quality_notes: string[]
   
 }
 
@@ -495,6 +530,38 @@ export interface ConversationTakeaways {
   critical_next_step: string
   future_improvement: string
   supporting_evidence_ids: string[]
+  
+}
+
+export interface CrossLensFinding {
+  title: string
+  description: string
+  severity: "critical" | "important" | "notable"
+  people_count: number
+  mention_count: number
+  category: string
+  supporting_lenses: string[]
+  
+}
+
+export interface CrossLensRecommendedAction {
+  title: string
+  description: string
+  priority: "high" | "medium" | "low"
+  category: string
+  
+}
+
+export interface CrossLensSynthesisResult {
+  executive_summary: string
+  key_findings: CrossLensFinding[]
+  person_snapshots: PersonSnapshot[]
+  recommended_actions: CrossLensRecommendedAction[]
+  patterns: string[]
+  risks: string[]
+  overall_confidence: number
+  analysis_count: number
+  lens_count: number
   
 }
 
@@ -880,6 +947,14 @@ export interface GoalLensExtraction {
   
 }
 
+export interface GuidelineParseResult {
+  guidelines: ParsedGuideline[]
+  unparseableSegments: string[]
+  suggestedClarifications: string[]
+  overallConfidence: RuleConfidence
+  
+}
+
 export interface HistoryItem {
   questionId: string
   action: "shown" | "rejected" | "asked" | "answered"
@@ -1131,6 +1206,29 @@ export interface PainMatrixInsightsInput {
   
 }
 
+export interface ParsedCondition {
+  questionId: string
+  questionPrompt: string
+  operator: ConditionOperator
+  value?: string | null
+  
+}
+
+export interface ParsedGuideline {
+  id: string
+  naturalLanguage: string
+  summary: string
+  condition: ParsedCondition
+  action: GuidelineAction
+  targetQuestionId?: string | null
+  targetQuestionPrompt?: string | null
+  guidance?: string | null
+  reasoning: string
+  confidence: RuleConfidence
+  ambiguityNotes?: string | null
+  
+}
+
 export interface Participant {
   name?: string | null
   persona?: string | null
@@ -1232,6 +1330,15 @@ export interface PersonSegmentInput {
   title?: string | null
   role?: string | null
   company?: string | null
+  
+}
+
+export interface PersonSnapshot {
+  person_name: string
+  role?: string | null
+  organization?: string | null
+  key_needs: string[]
+  engagement_signal: string
   
 }
 
@@ -1562,6 +1669,15 @@ export interface QuestionImprovement {
   
 }
 
+export interface QuestionInsight {
+  question: string
+  summary: string
+  key_findings: string[]
+  common_answers: string[]
+  notable_outliers: string[]
+  
+}
+
 export interface QuestionIssue {
   type: "leading" | "closed_ended" | "too_vague" | "compound" | "biased" | "jargon" | "assume_knowledge"
   description: string
@@ -1585,6 +1701,17 @@ export interface QuestionSet {
   questions: Question[]
   history: HistoryItem[]
   round: number
+  
+}
+
+export interface QuickResponseSummary {
+  summary: string
+  quality_responses_count: number
+  total_responses_count: number
+  top_insights: string[]
+  sentiment_overview: string
+  suggested_actions: string[]
+  data_quality_warning: string
   
 }
 
@@ -1692,6 +1819,15 @@ export interface ResearchStructure {
   
 }
 
+export interface ResponseTheme {
+  theme: string
+  description: string
+  frequency: number
+  sentiment: string
+  example_quotes: string[]
+  
+}
+
 export interface SalesLensExtraction {
   budget: BudgetInfo
   authority: AuthorityInfo
@@ -1727,6 +1863,15 @@ export interface SectionSynthesis {
   section_name: string
   summary: string
   fields: FieldSynthesis[]
+  
+}
+
+export interface SegmentPattern {
+  segment_name: string
+  segment_description: string
+  respondent_count: number
+  key_characteristics: string[]
+  recommended_actions: string[]
   
 }
 
@@ -1826,6 +1971,14 @@ export interface SuggestedQuestion {
   rationale: string
   interview_type: "user_interview" | "stakeholder_interview" | "expert_interview"
   priority: number
+  
+}
+
+export interface SurveyQuestionInput {
+  id: string
+  prompt: string
+  type: string
+  options?: string[] | null
   
 }
 

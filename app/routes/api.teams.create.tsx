@@ -1,9 +1,11 @@
 import { parseWithZod } from "@conform-to/zod"
+import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { data } from "react-router"
 import { z } from "zod"
+import { PLANS, type PlanId } from "~/config/plans"
 import { createTeamAccount } from "~/features/teams/db/accounts"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
+import { getAuthenticatedUser, getServerClient, supabaseAdmin } from "~/lib/supabase/client.server"
 
 const createTeamSchema = z.object({
 	name: z.string().min(1, "Team name is required").max(50, "Team name must be 50 characters or less"),
@@ -20,6 +22,19 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	if (!user) {
 		return data({ ok: false, error: "Unauthorized" }, { status: 401 })
+	}
+
+	// Check team creation limit based on user's plan
+	const teamLimitCheck = await checkTeamCreationLimit(user.sub)
+	if (!teamLimitCheck.allowed) {
+		return data(
+			{
+				ok: false,
+				error: teamLimitCheck.error,
+				upgradeRequired: true,
+			},
+			{ status: 403 }
+		)
 	}
 
 	const formData = await request.formData()
@@ -75,4 +90,95 @@ export async function action({ request }: ActionFunctionArgs) {
 		name,
 		slug,
 	})
+}
+
+/**
+ * Check if user can create a new team based on their plan limits
+ *
+ * IMPORTANT: Team limit counts only teams the user OWNS (is primary_owner),
+ * not teams they've been invited to as a member.
+ */
+async function checkTeamCreationLimit(userId: string): Promise<{ allowed: boolean; error?: string }> {
+	try {
+		// Get teams the user OWNS (is primary_owner_user_id)
+		// This excludes teams they've been invited to
+		const { data: ownedAccounts, error: ownedError } = await supabaseAdmin
+			.schema("accounts")
+			.from("accounts")
+			.select("id, personal_account")
+			.eq("primary_owner_user_id", userId)
+
+		if (ownedError) {
+			consola.error("[teams.create] Error fetching owned accounts", ownedError)
+			// Allow on error to not block users
+			return { allowed: true }
+		}
+
+		// Count only OWNED non-personal accounts (teams)
+		const ownedTeamCount = ownedAccounts?.filter((a) => !a.personal_account).length ?? 0
+
+		// Get all accounts user is member of (for subscription lookup)
+		const { data: memberAccounts } = await supabaseAdmin
+			.schema("accounts")
+			.from("account_user")
+			.select("account_id")
+			.eq("user_id", userId)
+
+		const accountIds = memberAccounts?.map((a) => a.account_id) ?? []
+		if (accountIds.length === 0) {
+			// No accounts - allow creating first team (will be on trial)
+			return { allowed: true }
+		}
+
+		const { data: subscriptions } = await supabaseAdmin
+			.schema("accounts")
+			.from("billing_subscriptions")
+			.select("account_id, plan_name, status")
+			.in("account_id", accountIds)
+			.in("status", ["active", "trialing"])
+
+		// Find the best plan the user has access to
+		let bestPlanId: PlanId = "free"
+		const planPriority: Record<PlanId, number> = {
+			free: 0,
+			starter: 1,
+			pro: 2,
+			team: 3,
+		}
+
+		for (const sub of subscriptions ?? []) {
+			const planId = sub.plan_name?.toLowerCase() as PlanId
+			if (planId && planPriority[planId] > planPriority[bestPlanId]) {
+				bestPlanId = planId
+			}
+		}
+
+		const plan = PLANS[bestPlanId]
+		const teamLimit = plan.limits.teams
+
+		consola.info("[teams.create] Team limit check", {
+			userId,
+			ownedTeamCount,
+			bestPlanId,
+			teamLimit,
+		})
+
+		// Check limit (Infinity means unlimited)
+		if (teamLimit !== Number.POSITIVE_INFINITY && ownedTeamCount >= teamLimit) {
+			const limitText =
+				teamLimit === 0
+					? "Your plan doesn't include team workspaces"
+					: `You've reached your limit of ${teamLimit} team${teamLimit === 1 ? "" : "s"}`
+			return {
+				allowed: false,
+				error: `${limitText}. Upgrade to create more teams.`,
+			}
+		}
+
+		return { allowed: true }
+	} catch (error) {
+		consola.error("[teams.create] Error checking team limit", error)
+		// Allow on error to not block users
+		return { allowed: true }
+	}
 }

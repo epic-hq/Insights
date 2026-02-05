@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { Button } from "~/components/ui/button"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
+import { type UploadProgress, uploadToR2WithProgress } from "~/utils/r2-upload.client"
 import ProcessingScreen from "./ProcessingScreen"
 import ProjectGoalsScreen from "./ProjectGoalsScreen"
 import ProjectStatusScreen from "./ProjectStatusScreen"
@@ -31,6 +32,108 @@ export interface OnboardingData {
 	triggerAccessToken?: string | null
 	error?: string
 	personId?: string
+}
+
+type UploadResponse<T> =
+	| {
+			ok: true
+			status: number
+			data: T
+	  }
+	| {
+			ok: false
+			status: number
+			error: string
+	  }
+
+function postFormDataWithProgress<T>({
+	url,
+	formData,
+	onProgress,
+	onStatusChange,
+}: {
+	url: string
+	formData: FormData
+	onProgress?: (progress: number) => void
+	onStatusChange?: (status: string) => void
+}): Promise<UploadResponse<T>> {
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest()
+		xhr.open("POST", url)
+		xhr.responseType = "json"
+		// 10 minute timeout for large files
+		xhr.timeout = 600000
+
+		// Track upload start to confirm XHR is actually sending
+		xhr.upload.onloadstart = () => {
+			console.log("[Upload] Upload started")
+			onStatusChange?.("uploading")
+		}
+
+		xhr.upload.onprogress = (event) => {
+			if (!event.lengthComputable) {
+				console.log("[Upload] Progress event (not computable)")
+				return
+			}
+			const percent = Math.round((event.loaded / event.total) * 100)
+			console.log(`[Upload] Progress: ${percent}% (${event.loaded}/${event.total})`)
+			onProgress?.(percent)
+		}
+
+		xhr.upload.onload = () => {
+			console.log("[Upload] Upload complete, waiting for server response...")
+			onStatusChange?.("processing")
+		}
+
+		xhr.upload.onerror = (event) => {
+			console.error("[Upload] Upload error:", event)
+			onStatusChange?.("error")
+		}
+
+		xhr.onload = () => {
+			const status = xhr.status
+			console.log(`[Upload] Server response: ${status}`)
+			const responseBody =
+				xhr.response ??
+				(() => {
+					try {
+						return xhr.responseText ? JSON.parse(xhr.responseText) : null
+					} catch {
+						return null
+					}
+				})()
+
+			if (status >= 200 && status < 300) {
+				resolve({ ok: true, status, data: responseBody as T })
+				return
+			}
+
+			const errorMessage =
+				(responseBody && typeof responseBody === "object" && "error" in responseBody
+					? String((responseBody as { error?: string }).error)
+					: xhr.statusText) || "Upload failed"
+			resolve({ ok: false, status, error: errorMessage })
+		}
+
+		xhr.onerror = (event) => {
+			console.error("[Upload] XHR error:", event, "readyState:", xhr.readyState, "status:", xhr.status)
+			reject(new Error(`Upload failed: Network error (readyState: ${xhr.readyState})`))
+		}
+
+		xhr.ontimeout = () => {
+			console.error("[Upload] XHR timeout after 10 minutes")
+			reject(new Error("Upload timed out after 10 minutes. Try a smaller file or check your connection."))
+		}
+
+		xhr.onabort = () => {
+			console.log("[Upload] XHR aborted")
+			reject(new Error("Upload was cancelled"))
+		}
+
+		// Log before sending to confirm we reach this point
+		console.log("[Upload] Starting XHR send to:", url)
+		xhr.send(formData)
+	})
 }
 
 interface OnboardingFlowProps {
@@ -89,6 +192,8 @@ export default function OnboardingFlow({
 		triggerAccessToken: null,
 		personId: preselectedPersonId,
 	})
+	const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+	const [isUploading, setIsUploading] = useState(false)
 
 	const handleWelcomeNext = useCallback(
 		async (welcomeData: {
@@ -142,11 +247,121 @@ export default function OnboardingFlow({
 			}
 			setData(updatedData)
 			setCurrentStep("processing")
+			setIsUploading(true)
+			setUploadProgress(0)
 
 			try {
-				// Create FormData for the API call
+				// Determine if we should use direct R2 upload
+				// Only use for audio/video files that need transcription
+				const isAudioVideo =
+					file.type.startsWith("audio/") ||
+					file.type.startsWith("video/") ||
+					attachmentData?.sourceType === "audio_upload" ||
+					attachmentData?.sourceType === "video_upload"
+
+				let r2Key: string | null = null
+
+				// Use direct R2 upload for audio/video files (with fallback to server upload)
+				if (isAudioVideo && uploadProjectId) {
+					try {
+						console.log("[Upload] Attempting direct R2 upload for", file.name)
+
+						// Step 1: Get presigned upload URL from server
+						const presignedResponse = await fetch("/api/upload/presigned-url", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								projectId: uploadProjectId,
+								filename: file.name,
+								contentType: file.type || "application/octet-stream",
+								fileSize: file.size,
+							}),
+						})
+
+						if (!presignedResponse.ok) {
+							const errorData = await presignedResponse.json().catch(() => ({}))
+							throw new Error(errorData.error || "Failed to get upload URL")
+						}
+
+						const presignedData = await presignedResponse.json()
+						console.log("[Upload] Got presigned URL:", presignedData.type)
+
+						// Step 2: Upload directly to R2
+						if (presignedData.type === "multipart") {
+							// Large file - use multipart upload
+							console.log("[Upload] Starting multipart upload with", presignedData.totalParts, "parts")
+							await uploadToR2WithProgress({
+								file,
+								singlePartUrl: "", // Not used for multipart
+								contentType: file.type || "application/octet-stream",
+								multipartThresholdBytes: 0, // Force multipart
+								partSizeBytes: presignedData.partSize,
+								multipartHandlers: {
+									createMultipartUpload: async () => ({
+										uploadId: presignedData.uploadId,
+										partUrls: presignedData.partUrls, // Already Record<number, string> from server
+									}),
+									completeMultipartUpload: async ({ parts }) => {
+										const completeResponse = await fetch("/api/upload/presigned-url?action=complete", {
+											method: "POST",
+											headers: { "Content-Type": "application/json" },
+											body: JSON.stringify({
+												key: presignedData.key,
+												uploadId: presignedData.uploadId,
+												parts: parts.map((p) => ({
+													partNumber: p.partNumber,
+													etag: p.etag,
+												})),
+											}),
+										})
+										if (!completeResponse.ok) {
+											throw new Error("Failed to complete multipart upload")
+										}
+									},
+								},
+								onProgress: (progress: UploadProgress) => {
+									console.log(`[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`)
+									setUploadProgress(progress.percent)
+								},
+							})
+							r2Key = presignedData.key
+						} else {
+							// Small file - single PUT upload
+							console.log("[Upload] Starting single PUT upload")
+							await uploadToR2WithProgress({
+								file,
+								singlePartUrl: presignedData.uploadUrl,
+								contentType: file.type || "application/octet-stream",
+								onProgress: (progress: UploadProgress) => {
+									console.log(`[Upload] Progress: ${progress.percent}% (phase: ${progress.phase})`)
+									setUploadProgress(progress.percent)
+								},
+							})
+							r2Key = presignedData.key
+						}
+
+						console.log("[Upload] Direct R2 upload complete:", r2Key)
+					} catch (r2Error) {
+						// Direct R2 upload failed (likely CORS or network issue)
+						// Fall back to server-proxied upload
+						console.warn("[Upload] Direct R2 upload failed, falling back to server upload:", r2Error)
+						r2Key = null // Ensure we use server upload path
+						setUploadProgress(0) // Reset progress for server upload
+					}
+				}
+
+				// Step 3: Call onboarding-start API (with r2Key if direct upload was used)
 				const formData = new FormData()
-				formData.append("file", file)
+				if (r2Key) {
+					// Direct upload path - send r2Key instead of file
+					formData.append("r2Key", r2Key)
+					formData.append("originalFilename", file.name)
+					formData.append("originalFileSize", String(file.size))
+					formData.append("originalContentType", file.type)
+				} else {
+					// Legacy path - send file through server
+					formData.append("file", file)
+				}
 				formData.append(
 					"onboardingData",
 					JSON.stringify({
@@ -184,18 +399,32 @@ export default function OnboardingFlow({
 					}
 				}
 
-				// Call the new onboarding-start API
-				const response = await fetch("/api/onboarding-start", {
-					method: "POST",
-					body: formData,
-				})
+				// Call the onboarding-start API
+				// For direct R2 uploads, this just triggers processing (no file upload)
+				// For legacy flow, this uploads through server
+				const response = r2Key
+					? await fetch("/api/onboarding-start", {
+							method: "POST",
+							body: formData,
+						}).then(async (res) => ({
+							ok: res.ok,
+							status: res.status,
+							data: await res.json(),
+							error: res.ok ? undefined : (await res.json().catch(() => ({}))).error,
+						}))
+					: await postFormDataWithProgress<Record<string, any>>({
+							url: "/api/onboarding-start",
+							formData,
+							onProgress: (percent) => setUploadProgress(percent),
+						})
 
 				if (!response.ok) {
-					const errorData = await response.json()
-					throw new Error(errorData.error || "Upload failed")
+					throw new Error((response as any).error || "Upload failed")
 				}
 
-				const result = await response.json()
+				const result = (response as any).data
+				setIsUploading(false)
+				setUploadProgress(null)
 
 				// Redirect to interview page immediately after upload completes
 				// Processing will continue in the background via Trigger.dev
@@ -264,6 +493,8 @@ export default function OnboardingFlow({
 			} catch (error) {
 				// Handle error - show error message and return to upload screen
 				const errorMessage = error instanceof Error ? error.message : "Upload failed"
+				setIsUploading(false)
+				setUploadProgress(null)
 				setData((prev) => ({ ...prev, error: errorMessage }))
 				setCurrentStep("upload") // Return to upload screen so user can retry
 			}
@@ -361,6 +592,8 @@ export default function OnboardingFlow({
 					projectId: prev.projectId || currentProjectId,
 					uploadLabel: url,
 					uploadedUrl: url,
+					triggerRunId: result.triggerRunId ?? prev.triggerRunId,
+					triggerAccessToken: result.publicRunToken ?? prev.triggerAccessToken,
 				}))
 
 				if (result.interviewId && accountId) {
@@ -437,6 +670,8 @@ export default function OnboardingFlow({
 						interviewId={data.interviewId}
 						triggerRunId={data.triggerRunId}
 						triggerAccessToken={data.triggerAccessToken ?? undefined}
+						uploadProgress={uploadProgress ?? undefined}
+						isUploading={isUploading}
 					/>
 				)
 

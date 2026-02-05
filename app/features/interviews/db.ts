@@ -91,7 +91,10 @@ export const getInterviews = async ({
 		evidence_count: evidenceCountMap.get(interview.id) || 0,
 	}))
 
-	return { data: interviewsWithCounts as unknown as InterviewWithPeople[], error: null }
+	return {
+		data: interviewsWithCounts as unknown as InterviewWithPeople[],
+		error: null,
+	}
 }
 
 export const getInterviewById = async ({
@@ -132,7 +135,9 @@ export const getInterviewById = async ({
 			updated_at,
 			share_token,
 			share_enabled,
-			share_expires_at
+			share_expires_at,
+			transcript_formatted,
+			conversation_analysis
 		`
 		)
 		.eq("project_id", projectId)

@@ -1,13 +1,18 @@
 import consola from "consola"
+import { Mail } from "lucide-react"
 import posthog from "posthog-js"
 import { useEffect } from "react"
-import { redirect, useLoaderData, useLocation, useNavigation, useParams, useRouteLoaderData } from "react-router"
+import { Link, redirect, useLoaderData, useLocation, useNavigation, useParams, useRouteLoaderData } from "react-router"
+import { TrialBanner, type TrialInfo } from "~/components/billing/TrialBanner"
 import { AppLayout } from "~/components/layout/AppLayout"
+import { OnboardingProvider } from "~/components/onboarding"
+import { PLANS, type PlanId } from "~/config/plans"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
-import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/client.server"
+import { provisionLegacyTrial } from "~/lib/billing/polar.server"
+import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
 
@@ -63,9 +68,20 @@ export const middleware: Route.MiddlewareFunction[] = [
 				})),
 			})
 
-			// Determine current account: use last_used_account_id from user_settings, validate it's available
+			// Determine current account with priority:
+			// 1. URL accountId param (if user has access)
+			// 2. last_used_account_id from user_settings
+			// 3. First non-personal account, or first account
 			let currentAccount = null
-			if (user_settings?.last_used_account_id && Array.isArray(accounts)) {
+
+			// First priority: URL accountId param
+			const urlAccountId = params.accountId
+			if (urlAccountId && Array.isArray(accounts)) {
+				currentAccount = accounts.find((acc: any) => acc.account_id === urlAccountId)
+			}
+
+			// Second priority: last_used_account_id from user_settings
+			if (!currentAccount && user_settings?.last_used_account_id && Array.isArray(accounts)) {
 				currentAccount = accounts.find((acc: any) => acc.account_id === user_settings.last_used_account_id)
 			}
 
@@ -123,12 +139,17 @@ export const middleware: Route.MiddlewareFunction[] = [
 				// Check current path to avoid redirect loops
 				const url = new URL(request.url)
 				const pathname = url.pathname
+				const hasInviteToken = url.searchParams.has("invite_token")
+				const isTeamManagePage = pathname.includes("/team/manage")
 
-				// Don't redirect if already in onboarding or project creation
+				// Don't redirect if:
+				// - Already in onboarding or project creation
+				// - Has an invite token on team manage page (let loader accept invitation)
 				if (
 					!pathname.includes("/projects/new") &&
 					!pathname.includes("onboarding=true") &&
-					!pathname.includes("/home")
+					!pathname.includes("/home") &&
+					!(hasInviteToken && isTeamManagePage)
 				) {
 					consola.log("No projects found. Redirecting to account home.")
 					throw redirect(`/a/${currentAccount.account_id}/home`)
@@ -148,15 +169,159 @@ export const middleware: Route.MiddlewareFunction[] = [
 	},
 ]
 
+type PendingInvite = {
+	account_id: string
+	account_name: string | null
+	account_role: string
+	token: string
+}
+
 export async function loader({ context }: Route.LoaderArgs) {
 	try {
 		// const loadContextInstance = context.get(loadContext)
 		// const { lang } = loadContextInstance
 		const user = context.get(userContext)
 
-		// Get the current team account (non-personal account) or fallback to first account
-		const currentTeamAccount = user.accounts?.find((acc) => !acc.personal_account) || user.accounts?.[0]
-		const currentAccountId = currentTeamAccount?.account_id || user.account_id
+		// Use the current account from middleware context (respects last_used_account_id priority)
+		const currentAccountId = user.currentAccount?.account_id || user.account_id
+
+		// Check for pending invitations for this user's email
+		let pendingInvites: PendingInvite[] = []
+		if (user.supabase) {
+			try {
+				const { data: rawInvites } = await user.supabase.rpc("list_invitations_for_current_user")
+				if (Array.isArray(rawInvites)) {
+					pendingInvites = rawInvites as PendingInvite[]
+				} else if (rawInvites) {
+					const parsed = JSON.parse(String(rawInvites))
+					if (Array.isArray(parsed)) {
+						pendingInvites = parsed as PendingInvite[]
+					}
+				}
+			} catch (inviteError) {
+				consola.debug("[PROTECTED_LAYOUT] Failed to fetch pending invites:", inviteError)
+			}
+		}
+
+		// Check for existing subscription or provision legacy trial (once per user)
+		let trialInfo: TrialInfo = {
+			isOnTrial: false,
+			planName: "",
+			trialEnd: null,
+			accountId: currentAccountId,
+		}
+		try {
+			// First check if current account has ANY subscription
+			const { data: subscription, error: subError } = await supabaseAdmin
+				.schema("accounts")
+				.from("billing_subscriptions")
+				.select("id, plan_name, status, trial_end")
+				.eq("account_id", currentAccountId)
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle()
+
+			if (subError) {
+				consola.error("[PROTECTED_LAYOUT] Error fetching subscription", subError)
+			}
+
+			if (subscription) {
+				// Account has subscription - check if it's trialing
+				if (subscription.status === "trialing") {
+					const planKey = subscription.plan_name?.toLowerCase() as PlanId
+					trialInfo = {
+						isOnTrial: true,
+						planName: PLANS[planKey]?.name ?? subscription.plan_name ?? "Pro",
+						trialEnd: subscription.trial_end,
+						accountId: currentAccountId,
+					}
+				}
+				// If active/canceled/etc, trialInfo stays as default (not on trial)
+			} else {
+				// No subscription for current account - check if we should provision legacy trial
+				// Only provision ONCE per user (check user_settings flag)
+				const legacyTrialProvisioned = user.user_settings?.legacy_trial_provisioned_at
+
+				if (!legacyTrialProvisioned) {
+					// IMPORTANT: Provision trial to user's OWNED team account, not current account
+					// This ensures trials go to the team the user owns, not to invited teams
+					const ownedTeamAccount = (user.accounts || []).find(
+						(acc: any) => !acc.personal_account && acc.is_primary_owner
+					)
+
+					if (ownedTeamAccount) {
+						// Check if owned team already has subscription
+						const { data: existingSub } = await supabaseAdmin
+							.schema("accounts")
+							.from("billing_subscriptions")
+							.select("id")
+							.eq("account_id", ownedTeamAccount.account_id)
+							.maybeSingle()
+
+						if (!existingSub) {
+							consola.info("[PROTECTED_LAYOUT] No subscription on owned team, provisioning legacy trial", {
+								ownedTeamAccountId: ownedTeamAccount.account_id,
+								ownedTeamName: ownedTeamAccount.name,
+								currentAccountId,
+								userEmail: user.claims?.email,
+							})
+
+							const legacyTrial = await provisionLegacyTrial({
+								accountId: ownedTeamAccount.account_id,
+								email: user.claims?.email,
+								planId: "pro", // Give existing users Pro trial
+							})
+
+							if (legacyTrial) {
+								// Mark user as having received legacy trial
+								await supabaseAdmin
+									.from("user_settings")
+									.update({
+										legacy_trial_provisioned_at: new Date().toISOString(),
+									})
+									.eq("user_id", user.claims.sub)
+
+								// Only show trial info if the owned team is the current account
+								if (ownedTeamAccount.account_id === currentAccountId) {
+									trialInfo = {
+										isOnTrial: legacyTrial.isOnTrial,
+										planName: legacyTrial.planName,
+										trialEnd: legacyTrial.trialEnd,
+										accountId: ownedTeamAccount.account_id,
+									}
+								}
+
+								consola.info("[PROTECTED_LAYOUT] Legacy trial provisioned", {
+									accountId: ownedTeamAccount.account_id,
+									trialEnd: legacyTrial.trialEnd,
+								})
+							}
+						} else {
+							consola.debug("[PROTECTED_LAYOUT] Owned team already has subscription, marking trial as provisioned", {
+								ownedTeamAccountId: ownedTeamAccount.account_id,
+							})
+							// Mark as provisioned so we don't keep checking
+							await supabaseAdmin
+								.from("user_settings")
+								.update({
+									legacy_trial_provisioned_at: new Date().toISOString(),
+								})
+								.eq("user_id", user.claims.sub)
+						}
+					} else {
+						consola.debug("[PROTECTED_LAYOUT] User has no owned team account, skipping trial provisioning", {
+							userId: user.claims.sub,
+						})
+					}
+				} else {
+					consola.debug("[PROTECTED_LAYOUT] Legacy trial already provisioned, skipping", {
+						provisionedAt: legacyTrialProvisioned,
+					})
+				}
+			}
+		} catch (trialError) {
+			consola.error("[PROTECTED_LAYOUT] Failed to check/provision trial:", trialError)
+		}
 
 		const responseData = {
 			// lang,
@@ -166,6 +331,8 @@ export async function loader({ context }: Route.LoaderArgs) {
 			},
 			accounts: user.accounts || [],
 			user_settings: user.user_settings || {},
+			pendingInvites,
+			trialInfo,
 		}
 
 		// Include auth headers (for token refresh) in the response if present
@@ -181,12 +348,16 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function ProtectedLayout() {
-	const { auth, accounts, user_settings } = useLoaderData<typeof loader>()
+	const { auth, accounts, user_settings, pendingInvites, trialInfo } = useLoaderData<typeof loader>()
 	const { clientEnv } = useRouteLoaderData("root")
 	const _params = useParams()
 	const navigation = useNavigation()
 	const location = useLocation()
 	const { isMobile } = useDeviceDetection()
+
+	// Don't show invite banner on accept-invite page
+	const isAcceptInvitePage = location.pathname.includes("/accept-invite")
+	const showInviteBanner = pendingInvites.length > 0 && !isAcceptInvitePage
 
 	const isLoading = navigation.state === "loading"
 
@@ -238,18 +409,50 @@ export default function ProtectedLayout() {
 	return (
 		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
 			<CurrentProjectProvider>
-				<div className="min-h-screen bg-background">
-					{/* Global Loading Indicator */}
-					{isLoading && (
-						<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
-							<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
-								<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
-							</div>
-						</div>
-					)}
+				<OnboardingProvider>
+					<div className="min-h-screen bg-background">
+						{/* Trial Banner */}
+						<TrialBanner trial={trialInfo} />
 
-					<AppLayout showJourneyNav={showJourneyNav} />
-				</div>
+						{/* Pending Invite Banner */}
+						{showInviteBanner && (
+							<div className="border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/50">
+								<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+									<div className="flex items-center gap-2 text-emerald-800 text-sm dark:text-emerald-200">
+										<Mail className="h-4 w-4" />
+										<span>
+											You have {pendingInvites.length} pending team{" "}
+											{pendingInvites.length === 1 ? "invitation" : "invitations"}
+											{pendingInvites[0]?.account_name && (
+												<span>
+													{" "}
+													from <strong>{pendingInvites[0].account_name}</strong>
+												</span>
+											)}
+										</span>
+									</div>
+									<Link
+										to={`/accept-invite?invite_token=${encodeURIComponent(pendingInvites[0]?.token || "")}`}
+										className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-emerald-700"
+									>
+										Accept Invitation
+									</Link>
+								</div>
+							</div>
+						)}
+
+						{/* Global Loading Indicator */}
+						{isLoading && (
+							<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
+								<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
+									<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
+								</div>
+							</div>
+						)}
+
+						<AppLayout showJourneyNav={showJourneyNav} />
+					</div>
+				</OnboardingProvider>
 			</CurrentProjectProvider>
 		</AuthProvider>
 	)

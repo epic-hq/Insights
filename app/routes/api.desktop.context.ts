@@ -47,6 +47,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			.eq("user_id", user.id)
 			.single()
 
+		// Determine default account/project (last used, or first available)
+		const defaultAccountId =
+			userSettings?.last_used_account_id || (accountsArray.length > 0 ? accountsArray[0].account_id : null)
+		const defaultProjectId =
+			userSettings?.last_used_project_id || (projects && projects.length > 0 ? projects[0].id : null)
+
 		return Response.json({
 			user: {
 				id: user.id,
@@ -64,10 +70,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				slug: p.slug,
 				accountId: p.account_id,
 			})),
-			lastUsed: {
-				accountId: userSettings?.last_used_account_id || null,
-				projectId: userSettings?.last_used_project_id || null,
-			},
+			// Desktop app expects these field names
+			default_account_id: defaultAccountId,
+			default_project_id: defaultProjectId,
 		})
 	} catch (error) {
 		console.error("Context fetch error:", error)

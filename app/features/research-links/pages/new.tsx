@@ -1,4 +1,5 @@
 import slugify from "@sindresorhus/slugify"
+import consola from "consola"
 import { motion } from "framer-motion"
 import { useEffect, useMemo, useState } from "react"
 import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
@@ -11,6 +12,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Switch } from "~/components/ui/switch"
 import { Textarea } from "~/components/ui/textarea"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { createRouteDefinitions } from "~/utils/route-definitions"
 import { QuestionListEditor } from "../components/QuestionListEditor"
@@ -25,7 +27,10 @@ import {
 export const meta: MetaFunction = () => {
 	return [
 		{ title: "Create research link" },
-		{ name: "description", content: "Craft a research link that collects high-intent responses." },
+		{
+			name: "description",
+			content: "Craft a research link that collects high-intent responses.",
+		},
 	]
 }
 
@@ -175,7 +180,33 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		)
 	}
 
-	return redirect(routes.researchLinks.edit(data.id))
+	// Track survey_created event for PLG instrumentation
+	try {
+		const posthogServer = getPostHogServerClient()
+		if (posthogServer) {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser()
+			if (user) {
+				posthogServer.capture({
+					distinctId: user.id,
+					event: "survey_created",
+					properties: {
+						survey_id: data.id,
+						account_id: accountId,
+						question_count: payload.questions?.length || 0,
+						is_live: payload.isLive,
+						allow_chat: payload.allowChat,
+						$groups: { account: accountId },
+					},
+				})
+			}
+		}
+	} catch (trackingError) {
+		consola.warn("[SURVEY_CREATED] PostHog tracking failed:", trackingError)
+	}
+
+	return redirect(routes.ask.edit(data.id))
 }
 
 export default function NewResearchLinkPage() {
@@ -191,9 +222,7 @@ export default function NewResearchLinkPage() {
 	const [heroTitle, setHeroTitle] = useState(actionData?.values?.heroTitle ?? "")
 	const [heroSubtitle, setHeroSubtitle] = useState(actionData?.values?.heroSubtitle ?? "")
 	const [heroCtaLabel, setHeroCtaLabel] = useState(actionData?.values?.heroCtaLabel ?? "Continue")
-	const [heroCtaHelper, setHeroCtaHelper] = useState(
-		actionData?.values?.heroCtaHelper ?? "We’ll only contact you about this study"
-	)
+	const [heroCtaHelper, setHeroCtaHelper] = useState(actionData?.values?.heroCtaHelper ?? "Let's get started")
 	const [calendarUrl, setCalendarUrl] = useState(actionData?.values?.calendarUrl ?? "")
 	const [redirectUrl, setRedirectUrl] = useState(actionData?.values?.redirectUrl ?? "")
 	const [allowChat, setAllowChat] = useState(actionData?.values?.allowChat ?? false)
@@ -270,7 +299,7 @@ export default function NewResearchLinkPage() {
 									required
 								/>
 								<p className="text-muted-foreground text-xs">
-									Shareable link: {routes.researchLinks.public(slug || "your-slug")}
+									Shareable link: {routes.ask.public(slug || "your-slug")}
 								</p>
 								{actionData?.errors?.slug ? <p className="text-destructive text-sm">{actionData.errors.slug}</p> : null}
 							</div>
@@ -439,7 +468,7 @@ export default function NewResearchLinkPage() {
 					<input type="hidden" name="questions" value={questionsJson} />
 					<div className="flex items-center justify-end gap-3">
 						<Button asChild variant="outline">
-							<Link to={routes.researchLinks.index()}>Cancel</Link>
+							<Link to={routes.ask.index()}>Cancel</Link>
 						</Button>
 						<Button type="submit" disabled={isSubmitting}>
 							{isSubmitting ? "Saving..." : "Create research link"}

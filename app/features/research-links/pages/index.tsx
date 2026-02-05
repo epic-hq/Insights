@@ -1,38 +1,53 @@
-import { ExternalLink, ListTodo, UsersRound } from "lucide-react"
+import { Copy, ExternalLink, Link2, MessageSquare, MoreHorizontal, Pencil, Video } from "lucide-react"
+import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { createRouteDefinitions } from "~/utils/route-definitions"
+import { QRCodeButton } from "../components/QRCodeButton"
+import { QRCodeModal } from "../components/QRCodeModal"
 import { getResearchLinks } from "../db"
 import { ResearchLinkQuestionSchema } from "../schemas"
 
 export const meta: MetaFunction = () => {
 	return [
-		{ title: "Research links" },
-		{ name: "description", content: "Design, publish, and review research response links." },
+		{ title: "Surveys" },
+		{
+			name: "description",
+			content: "Create shareable links to collect responses from participants.",
+		},
 	]
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const accountId = params.accountId
+	const { accountId, projectId } = params
 	if (!accountId) {
 		throw new Response("Account id required", { status: 400 })
 	}
+	if (!projectId) {
+		throw new Response("Project id required", { status: 400 })
+	}
 	const { client: supabase } = getServerClient(request)
-	const { data, error } = await getResearchLinks({ supabase, accountId })
+	const { data, error } = await getResearchLinks({
+		supabase,
+		accountId,
+		projectId,
+	})
 	if (error) {
 		throw new Response(error.message, { status: 500 })
 	}
 	const origin = new URL(request.url).origin
-	return { accountId, origin, lists: data ?? [] }
+	return { accountId, projectId, origin, lists: data ?? [] }
 }
 
 interface LoaderData {
 	accountId: string
+	projectId: string
 	origin: string
 	lists: Array<{
 		id: string
@@ -47,41 +62,166 @@ interface LoaderData {
 		calendar_url: string | null
 		questions: unknown
 		allow_chat: boolean
+		allow_video: boolean
 		default_response_mode: "form" | "chat"
 		is_live: boolean
 		updated_at: string
+		walkthrough_video_url: string | null
 		research_link_responses?: Array<{ count: number | null }>
 	}>
 }
 
+interface AskLinkCardProps {
+	list: LoaderData["lists"][0]
+	questions: Array<{ id: string; prompt: string }>
+	responsesCount: number
+	publicUrl: string
+	routes: ReturnType<typeof createRouteDefinitions>
+}
+
+function AskLinkCard({ list, questions, responsesCount, publicUrl, routes }: AskLinkCardProps) {
+	const [copied, setCopied] = useState(false)
+	const [isQRModalOpen, setIsQRModalOpen] = useState(false)
+
+	const copyUrl = async () => {
+		await navigator.clipboard.writeText(publicUrl)
+		setCopied(true)
+		setTimeout(() => setCopied(false), 2000)
+	}
+
+	const openQRModal = () => {
+		setIsQRModalOpen(true)
+	}
+
+	return (
+		<>
+			<Card className="group relative flex flex-col transition-shadow hover:shadow-md">
+				<CardHeader className="pb-3">
+					<div className="flex items-start justify-between gap-3">
+						<div className="min-w-0 flex-1 space-y-1">
+							<div className="flex items-center gap-2">
+								<CardTitle className="text-lg">{list.name}</CardTitle>
+								<Badge variant={list.is_live ? "default" : "secondary"} className="text-xs">
+									{list.is_live ? "Live" : "Draft"}
+								</Badge>
+							</div>
+							{list.description && <CardDescription className="line-clamp-2">{list.description}</CardDescription>}
+						</div>
+						<div className="flex items-center gap-1">
+							<QRCodeButton url={publicUrl} onClick={openQRModal} />
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+									>
+										<MoreHorizontal className="h-4 w-4" />
+										<span className="sr-only">Actions</span>
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem asChild>
+										<Link to={routes.ask.edit(list.id)}>
+											<Pencil className="mr-2 h-4 w-4" />
+											Edit
+										</Link>
+									</DropdownMenuItem>
+									<DropdownMenuItem onClick={copyUrl}>
+										<Copy className="mr-2 h-4 w-4" />
+										Copy link
+									</DropdownMenuItem>
+									<DropdownMenuItem asChild>
+										<a href={publicUrl} target="_blank" rel="noreferrer">
+											<ExternalLink className="mr-2 h-4 w-4" />
+											Open link
+										</a>
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
+					</div>
+				</CardHeader>
+
+				<CardContent className="flex flex-1 flex-col justify-between pt-0">
+					{/* Stats row */}
+					<div className="flex items-center gap-4 text-muted-foreground text-sm">
+						<span className="flex items-center gap-1.5">
+							<MessageSquare className="h-4 w-4" />
+							{responsesCount} {responsesCount === 1 ? "response" : "responses"}
+						</span>
+						<span>·</span>
+						<span>{questions.length} questions</span>
+						{list.walkthrough_video_url && (
+							<>
+								<span>·</span>
+								<span className="flex items-center gap-1.5">
+									<Video className="h-4 w-4" />
+									Video
+								</span>
+							</>
+						)}
+					</div>
+
+					{/* URL and actions */}
+					<div className="mt-4 flex items-center justify-between gap-2">
+						<button
+							type="button"
+							onClick={copyUrl}
+							className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+						>
+							<Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+							<span className="truncate text-muted-foreground">{copied ? "Copied!" : list.slug}</span>
+						</button>
+						<div className="flex items-center gap-2">
+							<Button asChild size="sm" variant="outline">
+								<Link to={routes.ask.edit(list.id)}>Edit</Link>
+							</Button>
+							<Button asChild size="sm">
+								<Link to={routes.ask.responses(list.id)}>View responses</Link>
+							</Button>
+						</div>
+					</div>
+
+					{/* Footer */}
+					<div className="mt-3 text-muted-foreground text-xs">
+						Updated {new Date(list.updated_at).toLocaleDateString()}
+					</div>
+				</CardContent>
+			</Card>
+
+			<QRCodeModal isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} url={publicUrl} title={list.name} />
+		</>
+	)
+}
+
 export default function ResearchLinksIndexPage() {
-	const { accountId, origin, lists } = useLoaderData<LoaderData>()
-	const routes = createRouteDefinitions(`/a/${accountId}`)
+	const { accountId, projectId, origin, lists } = useLoaderData<LoaderData>()
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
 
 	return (
 		<PageContainer className="space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-2">
-					<h1 className="font-semibold text-3xl">Research links</h1>
+					<h1 className="font-semibold text-3xl">Surveys</h1>
 					<p className="max-w-2xl text-muted-foreground text-sm">
-						Spin up lightweight, typeform-style experiences to capture emails and context from research participants.
+						Create shareable links to collect responses from participants using your interview prompts.
 					</p>
 				</div>
 				<Button asChild>
-					<Link to={routes.researchLinks.new()}>New research link</Link>
+					<Link to={routes.ask.new()}>New survey</Link>
 				</Button>
 			</div>
 
 			{lists.length === 0 ? (
 				<div className="rounded-lg border border-dashed bg-muted/40 p-12 text-center">
-					<ListTodo className="mx-auto h-10 w-10 text-muted-foreground" />
-					<h2 className="mt-4 font-semibold text-xl">Create your first research link</h2>
+					<Link2 className="mx-auto h-10 w-10 text-muted-foreground" />
+					<h2 className="mt-4 font-semibold text-xl">Create your first survey</h2>
 					<p className="mx-auto mt-2 max-w-lg text-muted-foreground text-sm">
-						Define the headline, capture the questions you care about, and share the public link to start collecting
-						responses.
+						Define the headline, select questions from your prompts, and share the link to start collecting responses.
 					</p>
 					<Button asChild className="mt-4">
-						<Link to={routes.researchLinks.new()}>Create research link</Link>
+						<Link to={routes.ask.new()}>New survey</Link>
 					</Button>
 				</div>
 			) : (
@@ -90,51 +230,16 @@ export default function ResearchLinksIndexPage() {
 						const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
 						const questions = questionsResult.success ? questionsResult.data : []
 						const responsesCount = list.research_link_responses?.[0]?.count ?? 0
-						const publicUrl = `${origin}${routes.researchLinks.public(list.slug)}`
+						const publicUrl = `${origin}${routes.ask.public(list.slug)}`
 						return (
-							<Card key={list.id} className="flex flex-col border-muted/70">
-								<CardHeader className="space-y-3">
-									<div className="flex items-center gap-2">
-										<Badge variant={list.is_live ? "default" : "secondary"}>{list.is_live ? "Live" : "Draft"}</Badge>
-										<span className="text-muted-foreground text-xs">
-											Last updated {new Date(list.updated_at).toLocaleDateString()}
-										</span>
-									</div>
-									<div>
-										<h2 className="font-semibold text-xl">{list.name}</h2>
-										{list.description ? <p className="mt-1 text-muted-foreground text-sm">{list.description}</p> : null}
-									</div>
-								</CardHeader>
-								<CardContent className="flex flex-1 flex-col justify-between space-y-4">
-									<div className="space-y-2 text-sm">
-										<p className="flex items-center gap-2 text-muted-foreground">
-											<UsersRound className="h-4 w-4" /> {responsesCount}{" "}
-											{responsesCount === 1 ? "response" : "responses"}
-										</p>
-										<p className="flex items-center gap-2 text-muted-foreground">
-											<ListTodo className="h-4 w-4" /> {questions.length}{" "}
-											{questions.length === 1 ? "question" : "questions"}
-										</p>
-										<a
-											href={publicUrl}
-											target="_blank"
-											rel="noreferrer"
-											className="flex items-center gap-2 font-medium text-primary text-sm hover:underline"
-										>
-											<ExternalLink className="h-4 w-4" />
-											{publicUrl}
-										</a>
-									</div>
-									<div className="flex flex-wrap gap-2">
-										<Button asChild variant="outline">
-											<Link to={routes.researchLinks.edit(list.id)}>Edit</Link>
-										</Button>
-										<Button asChild variant="secondary">
-											<Link to={routes.researchLinks.responses(list.id)}>View responses</Link>
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
+							<AskLinkCard
+								key={list.id}
+								list={list}
+								questions={questions}
+								responsesCount={responsesCount}
+								publicUrl={publicUrl}
+								routes={routes}
+							/>
 						)
 					})}
 				</div>

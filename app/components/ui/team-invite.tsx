@@ -1,7 +1,7 @@
 "use client"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { Crown, Edit3, Eye, Users } from "lucide-react"
+import { Crown, Edit3, Eye, UserMinus, Users } from "lucide-react"
 import * as React from "react"
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -33,6 +33,7 @@ interface TeamInviteProps {
 	members?: TeamMember[]
 	onInvite?: (email: string, permission: PermissionLevel) => void
 	onUpdateMemberPermission?: (memberId: string, permission: PermissionLevel) => void
+	onRemoveMember?: (memberId: string, memberName: string) => void
 	onCancel?: () => void
 }
 
@@ -100,9 +101,8 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 			members = [],
 			onInvite,
 			onUpdateMemberPermission,
+			onRemoveMember,
 			onCancel,
-			useActions = false,
-			formAction,
 			...props
 		},
 		ref
@@ -260,33 +260,46 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
 																Owner
 															</Badge>
 														) : onUpdateMemberPermission ? (
-															<Select
-																value={member.role}
-																onValueChange={(value) => handleUpdatePermission(member.id, value as PermissionLevel)}
-															>
-																<SelectTrigger className="h-8 text-xs">
-																	<div className="flex items-center gap-1">
-																		<PermissionIcon size={12} />
-																		<span className="truncate">{getPermissionLabel(member.role)}</span>
-																	</div>
-																</SelectTrigger>
-																<SelectContent>
-																	{permissionOptions.map((option) => {
-																		const IconComponent = option.icon
-																		return (
-																			<SelectItem key={option.value} value={option.value}>
-																				<div className="flex items-center gap-2">
-																					<IconComponent size={14} />
-																					<div>
-																						<p className="font-medium">{option.label}</p>
-																						<p className="text-muted-foreground text-xs">{option.description}</p>
+															<>
+																<Select
+																	value={member.role}
+																	onValueChange={(value) => handleUpdatePermission(member.id, value as PermissionLevel)}
+																>
+																	<SelectTrigger className="h-8 text-xs">
+																		<div className="flex items-center gap-1">
+																			<PermissionIcon size={12} />
+																			<span className="truncate">{getPermissionLabel(member.role)}</span>
+																		</div>
+																	</SelectTrigger>
+																	<SelectContent>
+																		{permissionOptions.map((option) => {
+																			const IconComponent = option.icon
+																			return (
+																				<SelectItem key={option.value} value={option.value}>
+																					<div className="flex items-center gap-2">
+																						<IconComponent size={14} />
+																						<div>
+																							<p className="font-medium">{option.label}</p>
+																							<p className="text-muted-foreground text-xs">{option.description}</p>
+																						</div>
 																					</div>
-																				</div>
-																			</SelectItem>
-																		)
-																	})}
-																</SelectContent>
-															</Select>
+																				</SelectItem>
+																			)
+																		})}
+																	</SelectContent>
+																</Select>
+																{onRemoveMember && (
+																	<Button
+																		variant="ghost"
+																		size="icon"
+																		className="h-8 w-8 text-muted-foreground hover:text-destructive"
+																		onClick={() => onRemoveMember(member.id, member.name)}
+																		title="Remove from team"
+																	>
+																		<UserMinus size={14} />
+																	</Button>
+																)}
+															</>
 														) : (
 															<Badge variant="secondary" className="text-xs">
 																<PermissionIcon size={12} className="mr-1" />

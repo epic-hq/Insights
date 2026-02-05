@@ -1,10 +1,12 @@
 "use client"
 
-import { Plus } from "lucide-react"
+import { format } from "date-fns"
+import { CalendarIcon, Plus, X } from "lucide-react"
 import type { FormEvent, ReactNode } from "react"
-import { useCallback, useEffect, useId, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { useFetcher } from "react-router"
 import { Button } from "~/components/ui/button"
+import { Calendar } from "~/components/ui/calendar"
 import {
 	Dialog,
 	DialogContent,
@@ -16,8 +18,10 @@ import {
 } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
+import { cn } from "~/lib/utils"
 import type { Cluster, TaskPriority } from "../types"
 import { PriorityBars, priorityConfig } from "./PriorityBars"
 
@@ -65,18 +69,34 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 	const [description, setDescription] = useState("")
 	const [cluster, setCluster] = useState<string>(defaultCluster || CLUSTERS[0])
 	const [priority, setPriority] = useState<TaskPriority>(3)
+	const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
+	const [datePickerOpen, setDatePickerOpen] = useState(false)
 
 	const isSubmitting = fetcher.state === "submitting"
+	const wasSubmitting = useRef(false)
 
-	// Close modal on successful submission
+	// Track submission state
 	useEffect(() => {
-		if (fetcher.state === "idle" && fetcher.data?.ok) {
-			handleOpenChange(false)
-			// Reset form
-			setTitle("")
-			setDescription("")
-			setCluster(defaultCluster || CLUSTERS[0])
-			setPriority(3)
+		if (fetcher.state === "submitting") {
+			wasSubmitting.current = true
+		}
+	}, [fetcher.state])
+
+	// Close modal when submission completes successfully
+	useEffect(() => {
+		// Check if we just finished submitting and got success response
+		if (wasSubmitting.current && fetcher.state === "idle" && fetcher.data) {
+			// Only close if success (not on error)
+			if (fetcher.data.success) {
+				handleOpenChange(false)
+				// Reset form
+				setTitle("")
+				setDescription("")
+				setCluster(defaultCluster || CLUSTERS[0])
+				setPriority(3)
+				setDueDate(undefined)
+			}
+			wasSubmitting.current = false
 		}
 	}, [fetcher.state, fetcher.data, defaultCluster, handleOpenChange])
 
@@ -84,16 +104,18 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 		e.preventDefault()
 		if (!title.trim()) return
 
-		fetcher.submit(
-			{
-				intent: "create",
-				title: title.trim(),
-				description: description.trim(),
-				cluster,
-				priority: String(priority),
-			},
-			{ method: "POST" }
-		)
+		const formData: Record<string, string> = {
+			intent: "create",
+			title: title.trim(),
+			description: description.trim(),
+			cluster,
+			priority: String(priority),
+		}
+		if (dueDate) {
+			formData.due_date = dueDate.toISOString().split("T")[0]
+		}
+		// Submit to current page - which should have the create action
+		fetcher.submit(formData, { method: "POST", action: "." })
 	}
 
 	const titleId = `${id}-title`
@@ -169,6 +191,51 @@ export function TaskCreateModal({ open: controlledOpen, onOpenChange, trigger, d
 										))}
 									</SelectContent>
 								</Select>
+							</div>
+
+							<div className="grid gap-2">
+								<Label>Due Date</Label>
+								<Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+									<PopoverTrigger asChild>
+										<Button
+											variant="outline"
+											className={cn(
+												"w-[140px] justify-start text-left font-normal",
+												!dueDate && "text-muted-foreground"
+											)}
+										>
+											<CalendarIcon className="mr-2 h-4 w-4" />
+											{dueDate ? format(dueDate, "MMM d, yyyy") : "Select"}
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="start">
+										<Calendar
+											mode="single"
+											selected={dueDate}
+											onSelect={(date) => {
+												setDueDate(date)
+												setDatePickerOpen(false)
+											}}
+											initialFocus
+										/>
+										{dueDate && (
+											<div className="border-t p-2">
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => {
+														setDueDate(undefined)
+														setDatePickerOpen(false)
+													}}
+													className="w-full"
+												>
+													<X className="mr-2 h-4 w-4" />
+													Clear date
+												</Button>
+											</div>
+										)}
+									</PopoverContent>
+								</Popover>
 							</div>
 						</div>
 					</div>

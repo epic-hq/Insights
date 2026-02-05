@@ -80,7 +80,7 @@ alter table accounts.invitations
     for select
     to authenticated
     using (
-            created_at > (now() - interval '24 hours')
+            created_at > (now() - interval '3 days')
         and
             accounts.has_role_on_account(account_id, 'owner') = true
     );
@@ -146,7 +146,7 @@ BEGIN
                        )
             from accounts.invitations i
             where i.account_id = get_account_invitations.account_id
-              and i.created_at > now() - interval '24 hours'
+              and i.created_at > now() - interval '3 days'
             limit coalesce(get_account_invitations.results_limit, 25) offset coalesce(get_account_invitations.results_offset, 0));
 END;
 $$;
@@ -175,7 +175,7 @@ begin
     from accounts.invitations i
              join accounts.accounts a on a.id = i.account_id
     where i.token = lookup_invitation_token
-      and i.created_at > now() - interval '24 hours';
+      and i.created_at > now() - interval '3 days';
 
     if lookup_account_id IS NULL then
         raise exception 'Invitation not found';
@@ -211,17 +211,26 @@ create or replace function public.lookup_invitation(lookup_invitation_token text
 as
 $$
 declare
-    name              text;
-    invitation_active boolean;
+    invitation_record RECORD;
 begin
-    select account_name,
-           case when id IS NOT NULL then true else false end as active
-    into name, invitation_active
+    select
+        account_id,
+        account_name,
+        account_role,
+        invited_by_user_id,
+        case when id IS NOT NULL then true else false end as active
+    into invitation_record
     from accounts.invitations
     where token = lookup_invitation_token
-      and created_at > now() - interval '24 hours'
+      and created_at > now() - interval '3 days'
     limit 1;
-    return json_build_object('active', coalesce(invitation_active, false), 'account_name', name);
+    return json_build_object(
+        'active', coalesce(invitation_record.active, false),
+        'account_name', invitation_record.account_name,
+        'account_id', invitation_record.account_id,
+        'account_role', invitation_record.account_role,
+        'inviter_user_id', invitation_record.invited_by_user_id
+    );
 end;
 $$;
 

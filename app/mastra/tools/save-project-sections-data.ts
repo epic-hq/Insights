@@ -91,12 +91,12 @@ const buildInputSchema = () => {
 	for (const section of PROJECT_SECTIONS) {
 		if (section.kind === "research_goal") {
 			// Special case: research_goal can be string or object with details
-			schemaFields.research_goal = z.string().optional()
-			schemaFields.research_goal_details = z.string().optional()
+			schemaFields.research_goal = z.string().nullish()
+			schemaFields.research_goal_details = z.string().nullish()
 		} else if (section.type === "string[]") {
-			schemaFields[section.kind] = z.array(z.string()).optional()
+			schemaFields[section.kind] = z.array(z.string()).nullish()
 		} else if (section.type === "string") {
-			schemaFields[section.kind] = z.string().optional()
+			schemaFields[section.kind] = z.string().nullish()
 		}
 	}
 

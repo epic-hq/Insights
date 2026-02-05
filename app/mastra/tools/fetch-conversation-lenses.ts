@@ -67,35 +67,32 @@ export const fetchConversationLensesTool = createTool({
 	inputSchema: z.object({
 		mode: z
 			.enum(["templates", "analyses", "both"])
-			.optional()
+			.nullish()
 			.describe(
 				"What to fetch: 'templates' (available lens frameworks), 'analyses' (applied lens results), or 'both'. Default: 'both'"
 			),
-		projectId: z
-			.string()
-			.optional()
-			.describe("Project ID to scope the search. Defaults to current project in context."),
+		projectId: z.string().nullish().describe("Project ID to scope the search. Defaults to current project in context."),
 		interviewId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Filter analyses by specific interview ID. Only applies when mode includes 'analyses'."),
 		templateKey: z
 			.string()
-			.optional()
+			.nullish()
 			.describe(
 				"Filter by specific lens template (e.g., 'customer-discovery', 'sales-bant', 'project-research'). Applies to both templates and analyses."
 			),
 		category: z
 			.string()
-			.optional()
+			.nullish()
 			.describe(
 				"Filter templates by category (e.g., 'research', 'product', 'sales'). Only applies when mode includes 'templates'."
 			),
 		status: z
 			.enum(["pending", "processing", "completed", "failed"])
-			.optional()
+			.nullish()
 			.describe("Filter analyses by processing status. Only applies when mode includes 'analyses'."),
-		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of analyses to return. Default: 50"),
+		limit: z.number().int().min(1).max(100).nullish().describe("Maximum number of analyses to return. Default: 50"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

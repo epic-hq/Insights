@@ -26,6 +26,81 @@ export const COMPANY_SIZE_RANGES: SelectOption[] = [
 	{ value: "10000+", label: "10,000+" },
 ]
 
+/**
+ * Target company size categories - semantic labels with mapped ranges
+ * Use for account-level targeting preferences
+ */
+export interface CompanySizeCategory {
+	value: string
+	label: string
+	description: string
+	/** Numeric ranges this category maps to */
+	sizeRanges: string[]
+	/** Min employee count for matching */
+	minEmployees: number
+	/** Max employee count for matching (Infinity for unlimited) */
+	maxEmployees: number
+}
+
+export const TARGET_COMPANY_SIZE_CATEGORIES: CompanySizeCategory[] = [
+	{
+		value: "startup",
+		label: "Startup",
+		description: "Early-stage companies (1-50 employees)",
+		sizeRanges: ["1-10", "11-50"],
+		minEmployees: 1,
+		maxEmployees: 50,
+	},
+	{
+		value: "smb",
+		label: "SMB",
+		description: "Small & medium businesses (51-500 employees)",
+		sizeRanges: ["51-200", "201-500"],
+		minEmployees: 51,
+		maxEmployees: 500,
+	},
+	{
+		value: "mid-market",
+		label: "Mid-Market",
+		description: "Mid-sized companies (501-5,000 employees)",
+		sizeRanges: ["501-1000", "1001-5000"],
+		minEmployees: 501,
+		maxEmployees: 5000,
+	},
+	{
+		value: "enterprise",
+		label: "Enterprise",
+		description: "Large organizations (5,000+ employees)",
+		sizeRanges: ["5001-10000", "10000+"],
+		minEmployees: 5001,
+		maxEmployees: Number.POSITIVE_INFINITY,
+	},
+]
+
+/**
+ * Check if an organization's size matches a target category
+ */
+export function matchesSizeCategory(
+	employeeCount: number | null,
+	sizeRange: string | null,
+	targetCategory: string
+): boolean {
+	const category = TARGET_COMPANY_SIZE_CATEGORIES.find((c) => c.value === targetCategory)
+	if (!category) return false
+
+	// If we have employee count, use that for precise matching
+	if (employeeCount !== null) {
+		return employeeCount >= category.minEmployees && employeeCount <= category.maxEmployees
+	}
+
+	// Fall back to size range matching
+	if (sizeRange) {
+		return category.sizeRanges.includes(sizeRange)
+	}
+
+	return false
+}
+
 export const FUNDING_STAGES: SelectOption[] = [
 	{ value: "bootstrapped", label: "Bootstrapped" },
 	{ value: "pre-seed", label: "Pre-Seed" },

@@ -180,13 +180,13 @@ export const fetchInterviewContextTool = createTool({
 	inputSchema: z.object({
 		interviewId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Interview ID to load. Defaults to the interview ID in the runtime context."),
 		includeEvidence: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("Set to false to omit evidence details when only high-level insights are required."),
-		evidenceLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of evidence items to return."),
+		evidenceLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of evidence items to return."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

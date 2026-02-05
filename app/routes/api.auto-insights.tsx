@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import { runBamlWithBilling, userBillingContext } from "~/lib/billing"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { aggregateAutoInsightsData, formatDataForLLM } from "~/utils/autoInsightsData.server"
 
@@ -74,19 +74,22 @@ export async function action({ request }: ActionFunctionArgs) {
 			const formattedData = formatDataForLLM(aggregatedData)
 
 			// 3. Generate insights using BAML
-			const { result: autoInsights } = await runBamlWithTracing({
-				functionName: "GenerateAutoInsights",
-				traceName: "baml.generate-auto-insights",
-				input: {
-					accountId,
-					dataSummaryLength: formattedData?.summary?.length ?? 0,
-					competitiveContext,
-					businessGoals,
+			const billingCtx = userBillingContext(
+				accountId,
+				accountId, // userId same as accountId for server-side
+				"auto_insights"
+			)
+
+			const { result: autoInsights } = await runBamlWithBilling(
+				billingCtx,
+				{
+					functionName: "GenerateAutoInsights",
+					traceName: "baml.generate-auto-insights",
+					bamlCall: (client) => client.GenerateAutoInsights(formattedData, competitiveContext, businessGoals),
+					resourceType: "auto_insight",
 				},
-				metadata: { route: "api.auto-insights", accountId },
-				logUsageLabel: "GenerateAutoInsights",
-				bamlCall: (client) => client.GenerateAutoInsights(formattedData, competitiveContext, businessGoals),
-			})
+				`auto-insights:${accountId}:${Date.now()}`
+			)
 
 			consola.info(
 				`Auto-insights generated: ${autoInsights.critical_insights?.length || 0} insights, ${autoInsights.top_opportunities?.length || 0} opportunities`

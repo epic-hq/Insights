@@ -148,16 +148,16 @@ export const fetchPeopleDetailsTool = createTool({
 		projectId: z.string().describe("Project ID to fetch people from. Required - no default project context available."),
 		peopleSearch: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Case-insensitive search string to match people by name or display name."),
-		peopleLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of people to return."),
-		includeEvidence: z.boolean().optional().describe("Whether to include actual evidence snippets from interviews."),
-		includePersonas: z.boolean().optional().describe("Whether to include persona assignments for each person."),
+		peopleLimit: z.number().int().min(1).max(50).nullish().describe("Maximum number of people to return."),
+		includeEvidence: z.boolean().nullish().describe("Whether to include actual evidence snippets from interviews."),
+		includePersonas: z.boolean().nullish().describe("Whether to include persona assignments for each person."),
 		includeFacets: z
 			.boolean()
-			.optional()
+			.nullish()
 			.describe("Whether to include facet attributes and scale measurements for each person."),
-		specificPersonIds: z.array(z.string()).optional().describe("Specific person IDs to fetch details for."),
+		specificPersonIds: z.array(z.string()).nullish().describe("Specific person IDs to fetch details for."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

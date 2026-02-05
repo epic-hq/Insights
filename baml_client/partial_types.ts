@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AuthorityInfo,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  DocumentEvidence,  DocumentExtraction,  Emotions,  EntityAggregation,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FieldSynthesis,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GeneratedLensField,  GeneratedLensSection,  GeneratedLensTemplate,  GoalAnswer,  GoalLensExtraction,  HistoryItem,  HypothesisValidation,  InferredPersonSegments,  InsightMatch,  InteractionContext,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobFunction,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  LensSynthesisResult,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  PersonSegmentInput,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  ProposedTheme,  QALensResult,  QAPair,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  SalesLensExtraction,  Scene,  Scores,  SectionSynthesis,  SeniorityLevel,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SpreadsheetAnalysis,  SpreadsheetColumnMapping,  StakeholderRole,  SuggestedFacet,  SuggestedQuestion,  SynthesisDiscrepancy,  SynthesizedInsight,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
+import type {  ActionButton,  AskLinkInsightsResponse,  AuthorityInfo,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  BehaviorPattern,  BudgetInfo,  Category,  Chapter,  CompetitiveInsight,  ConditionOperator,  ContextualSuggestions,  ConversationAnalysis,  ConversationEvidence,  ConversationLensResult,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  ConversationTakeaways,  CrossLensFinding,  CrossLensRecommendedAction,  CrossLensSynthesisResult,  DealAdvisorRecommendation,  DealQualificationSignals,  DecisionInsight,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  DocumentEvidence,  DocumentExtraction,  Emotions,  EntityAggregation,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetGroupInput,  FacetGroupSummary,  FacetMention,  FacetSignalInput,  FeaturePrioritization,  FeatureRequest,  FieldSynthesis,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  GeneratedLensField,  GeneratedLensSection,  GeneratedLensTemplate,  GoalAnswer,  GoalLensExtraction,  GuidelineAction,  GuidelineParseResult,  HistoryItem,  HypothesisValidation,  InferredPersonSegments,  InsightMatch,  InteractionContext,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  JobFunction,  JobToBeDone,  LensEntityResult,  LensEvidenceHighlight,  LensFieldValue,  LensHygieneItem,  LensNextStepItem,  LensObjectionItem,  LensRecommendation,  LensSectionResult,  LensStakeholderItem,  LensSynthesisResult,  MentalModel,  NeedInfo,  NextStepInfo,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  ParsedCondition,  ParsedGuideline,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetLensRequest,  PersonFacetLensResponse,  PersonLensMetadata,  PersonProfileInput,  PersonScaleInput,  PersonSegmentInput,  PersonSnapshot,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProductGap,  ProductLensExtraction,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  ProposedTheme,  QALensResult,  QAPair,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionInsight,  QuestionIssue,  QuestionPolicy,  QuestionSet,  QuickResponseSummary,  ResearchGoal,  ResearchInsightInput,  ResearchLearning,  ResearchLensExtraction,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionInsight,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  ResponseTheme,  RuleConfidence,  SalesLensExtraction,  Scene,  Scores,  SectionSynthesis,  SegmentPattern,  SeniorityLevel,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SpreadsheetAnalysis,  SpreadsheetColumnMapping,  StakeholderRole,  SuggestedFacet,  SuggestedQuestion,  SurveyQuestionInput,  SynthesisDiscrepancy,  SynthesizedInsight,  TargetFitAssessment,  TimelineInfo,  TopPainCell,  TurnAnchors,  UnknownResolution,  UsabilityFinding,  UserJourneyInsight } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -41,6 +41,17 @@ export namespace partial_types {
       action_type?: string | null
       parameters?: string | null
       priority?: string | null
+    }
+    export interface AskLinkInsightsResponse {
+      executive_summary?: string | null
+      total_responses?: number | null
+      completion_rate?: number | null
+      top_themes: ResponseTheme[]
+      question_insights: QuestionInsight[]
+      response_segments: SegmentPattern[]
+      recommended_followups: string[]
+      actionable_insights: string[]
+      data_quality_notes: string[]
     }
     export interface AuthorityInfo {
       decision_maker_identified?: boolean | null
@@ -163,6 +174,32 @@ export namespace partial_types {
       critical_next_step?: string | null
       future_improvement?: string | null
       supporting_evidence_ids: string[]
+    }
+    export interface CrossLensFinding {
+      title?: string | null
+      description?: string | null
+      severity?: "critical" | "important" | "notable" | null
+      people_count?: number | null
+      mention_count?: number | null
+      category?: string | null
+      supporting_lenses: string[]
+    }
+    export interface CrossLensRecommendedAction {
+      title?: string | null
+      description?: string | null
+      priority?: "high" | "medium" | "low" | null
+      category?: string | null
+    }
+    export interface CrossLensSynthesisResult {
+      executive_summary?: string | null
+      key_findings: CrossLensFinding[]
+      person_snapshots: PersonSnapshot[]
+      recommended_actions: CrossLensRecommendedAction[]
+      patterns: string[]
+      risks: string[]
+      overall_confidence?: number | null
+      analysis_count?: number | null
+      lens_count?: number | null
     }
     export interface DealAdvisorRecommendation {
       status_assessment?: string | null
@@ -468,6 +505,12 @@ export namespace partial_types {
       goal_completion_score?: number | null
       recommended_follow_ups: string[]
     }
+    export interface GuidelineParseResult {
+      guidelines: ParsedGuideline[]
+      unparseableSegments: string[]
+      suggestedClarifications: string[]
+      overallConfidence?: types.RuleConfidence | null
+    }
     export interface HistoryItem {
       questionId?: string | null
       action?: "shown" | "rejected" | "asked" | "answered" | null
@@ -665,6 +708,25 @@ export namespace partial_types {
       high_impact_cells?: number | null
       top_pains: TopPainCell[]
     }
+    export interface ParsedCondition {
+      questionId?: string | null
+      questionPrompt?: string | null
+      operator?: types.ConditionOperator | null
+      value?: string | null
+    }
+    export interface ParsedGuideline {
+      id?: string | null
+      naturalLanguage?: string | null
+      summary?: string | null
+      condition?: ParsedCondition | null
+      action?: types.GuidelineAction | null
+      targetQuestionId?: string | null
+      targetQuestionPrompt?: string | null
+      guidance?: string | null
+      reasoning?: string | null
+      confidence?: types.RuleConfidence | null
+      ambiguityNotes?: string | null
+    }
     export interface Participant {
       name?: string | null
       persona?: string | null
@@ -744,6 +806,13 @@ export namespace partial_types {
       title?: string | null
       role?: string | null
       company?: string | null
+    }
+    export interface PersonSnapshot {
+      person_name?: string | null
+      role?: string | null
+      organization?: string | null
+      key_needs: string[]
+      engagement_signal?: string | null
     }
     export interface Persona {
       name?: string | null
@@ -1020,6 +1089,13 @@ export namespace partial_types {
       suggested_rewrite?: string | null
       explanation?: string | null
     }
+    export interface QuestionInsight {
+      question?: string | null
+      summary?: string | null
+      key_findings: string[]
+      common_answers: string[]
+      notable_outliers: string[]
+    }
     export interface QuestionIssue {
       type?: "leading" | "closed_ended" | "too_vague" | "compound" | "biased" | "jargon" | "assume_knowledge" | null
       description?: string | null
@@ -1039,6 +1115,15 @@ export namespace partial_types {
       questions: Question[]
       history: HistoryItem[]
       round?: number | null
+    }
+    export interface QuickResponseSummary {
+      summary?: string | null
+      quality_responses_count?: number | null
+      total_responses_count?: number | null
+      top_insights: string[]
+      sentiment_overview?: string | null
+      suggested_actions: string[]
+      data_quality_warning?: string | null
     }
     export interface ResearchGoal {
       goal?: string | null
@@ -1120,6 +1205,13 @@ export namespace partial_types {
       research_questions: ResearchQuestionItem[]
       interview_prompts: InterviewPromptItem[]
     }
+    export interface ResponseTheme {
+      theme?: string | null
+      description?: string | null
+      frequency?: number | null
+      sentiment?: string | null
+      example_quotes: string[]
+    }
     export interface SalesLensExtraction {
       budget?: BudgetInfo | null
       authority?: AuthorityInfo | null
@@ -1149,6 +1241,13 @@ export namespace partial_types {
       section_name?: string | null
       summary?: string | null
       fields: FieldSynthesis[]
+    }
+    export interface SegmentPattern {
+      segment_name?: string | null
+      segment_description?: string | null
+      respondent_count?: number | null
+      key_characteristics: string[]
+      recommended_actions: string[]
     }
     export interface Set {
       name?: string | null
@@ -1228,6 +1327,12 @@ export namespace partial_types {
       rationale?: string | null
       interview_type?: "user_interview" | "stakeholder_interview" | "expert_interview" | null
       priority?: number | null
+    }
+    export interface SurveyQuestionInput {
+      id?: string | null
+      prompt?: string | null
+      type?: string | null
+      options?: string[] | null
     }
     export interface SynthesisDiscrepancy {
       interview_id?: string | null

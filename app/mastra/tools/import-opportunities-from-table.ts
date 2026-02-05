@@ -8,37 +8,37 @@ import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
  */
 const columnMappingSchema = z.object({
 	// Required - deal/opportunity name
-	name: z.string().optional().describe("Column name containing deal/opportunity name"),
-	title: z.string().optional().describe("Column name containing deal title"),
+	name: z.string().nullish().describe("Column name containing deal/opportunity name"),
+	title: z.string().nullish().describe("Column name containing deal title"),
 
 	// Value/Amount
-	amount: z.string().optional().describe("Column name containing deal amount/value"),
-	currency: z.string().optional().describe("Column name containing currency"),
+	amount: z.string().nullish().describe("Column name containing deal amount/value"),
+	currency: z.string().nullish().describe("Column name containing currency"),
 
 	// Stage/Pipeline
-	stage: z.string().optional().describe("Column name containing deal stage"),
-	pipeline: z.string().optional().describe("Column name containing pipeline name"),
-	forecast_category: z.string().optional().describe("Column name containing forecast category"),
+	stage: z.string().nullish().describe("Column name containing deal stage"),
+	pipeline: z.string().nullish().describe("Column name containing pipeline name"),
+	forecast_category: z.string().nullish().describe("Column name containing forecast category"),
 
 	// Dates
-	close_date: z.string().optional().describe("Column name containing expected close date"),
-	created_date: z.string().optional().describe("Column name containing created date"),
+	close_date: z.string().nullish().describe("Column name containing expected close date"),
+	created_date: z.string().nullish().describe("Column name containing created date"),
 
 	// Probability/Confidence
-	probability: z.string().optional().describe("Column name containing win probability"),
-	confidence: z.string().optional().describe("Column name containing confidence score"),
+	probability: z.string().nullish().describe("Column name containing win probability"),
+	confidence: z.string().nullish().describe("Column name containing confidence score"),
 
 	// Related entities
-	account: z.string().optional().describe("Column name containing account/company name"),
-	contact: z.string().optional().describe("Column name containing primary contact name"),
-	contact_email: z.string().optional().describe("Column name containing contact email"),
-	owner: z.string().optional().describe("Column name containing deal owner"),
+	account: z.string().nullish().describe("Column name containing account/company name"),
+	contact: z.string().nullish().describe("Column name containing primary contact name"),
+	contact_email: z.string().nullish().describe("Column name containing contact email"),
+	owner: z.string().nullish().describe("Column name containing deal owner"),
 
 	// Additional info
-	description: z.string().optional().describe("Column name containing description"),
-	next_step: z.string().optional().describe("Column name containing next step"),
-	source: z.string().optional().describe("Column name containing lead source"),
-	crm_id: z.string().optional().describe("Column name containing external CRM ID"),
+	description: z.string().nullish().describe("Column name containing description"),
+	next_step: z.string().nullish().describe("Column name containing next step"),
+	source: z.string().nullish().describe("Column name containing lead source"),
+	crm_id: z.string().nullish().describe("Column name containing external CRM ID"),
 })
 
 type ColumnMapping = z.infer<typeof columnMappingSchema>
@@ -176,15 +176,15 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 	inputSchema: z.object({
 		assetId: z.string().uuid().describe("The project_asset ID from parseSpreadsheet result"),
 		columnMapping: columnMappingSchema
-			.optional()
+			.nullish()
 			.describe("Optional explicit column mappings. If not provided, auto-detects."),
 		createOrganizations: z
 			.boolean()
-			.optional()
+			.nullish()
 			.default(true)
 			.describe("Create organizations from account column if they don't exist"),
 		skipDuplicates: z.boolean().optional().default(true).describe("Skip rows where CRM external ID already exists"),
-		defaultStage: z.string().optional().describe("Default stage for opportunities without a stage column"),
+		defaultStage: z.string().nullish().describe("Default stage for opportunities without a stage column"),
 		defaultCurrency: z.string().optional().default("USD").describe("Default currency if not specified in data"),
 	}),
 	outputSchema: z.object({
@@ -205,9 +205,9 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					rowIndex: z.number(),
 				})
 			)
-			.optional()
+			.nullish()
 			.describe("Details of imported opportunities"),
-		errors: z.array(z.string()).optional().describe("Any errors encountered"),
+		errors: z.array(z.string()).nullish().describe("Any errors encountered"),
 	}),
 	execute: async (input, context?) => {
 		const errors: string[] = []

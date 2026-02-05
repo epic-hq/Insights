@@ -17,6 +17,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 	const email = formData.get("email") as string
 	const password = formData.get("password") as string
+	const redirectTo = formData.get("redirect") as string | null
 
 	const { error } = await supabase.auth.signInWithPassword({
 		email,
@@ -29,8 +30,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 		}
 	}
 
-	// Update this route to redirect to an authenticated route. The user already has an active session.
-	return redirect("/login_success", { headers })
+	// Redirect to login_success with the original redirect destination
+	const successUrl = redirectTo ? `/login_success?next=${encodeURIComponent(redirectTo)}` : "/login_success"
+	return redirect(successUrl, { headers })
 }
 
 export default function Login() {
@@ -39,6 +41,10 @@ export default function Login() {
 
 	const error = fetcher.data?.error || searchParams.get("error")
 	const loading = fetcher.state === "submitting"
+	const redirectTo = searchParams.get("redirect")
+
+	// Build sign-up URL with redirect param if present
+	const signUpUrl = redirectTo ? `/sign-up?redirect=${encodeURIComponent(redirectTo)}` : "/sign-up"
 
 	// Persist incoming UTM params so they survive Supabase redirects
 	useEffect(() => {
@@ -106,6 +112,7 @@ export default function Login() {
 							<CardContent className="space-y-8 p-0">
 								<LoginForm />
 								<fetcher.Form method="post">
+									{redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
 									<div className="flex flex-col gap-6">
 										<div className="grid gap-2">
 											<Label htmlFor="email">Email</Label>
@@ -130,7 +137,7 @@ export default function Login() {
 									</div>
 									<div className="mt-4 text-center text-sm">
 										Don&apos;t have an account?{" "}
-										<Link to="/sign-up" className="underline underline-offset-4">
+										<Link to={signUpUrl} className="underline underline-offset-4">
 											Sign up
 										</Link>
 									</div>

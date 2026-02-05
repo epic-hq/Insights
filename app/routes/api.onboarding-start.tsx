@@ -98,12 +98,22 @@ export async function action({ request }: ActionFunctionArgs) {
 		const entityId = formData.get("entityId") as string | null
 		const fileExtension = formData.get("fileExtension") as string | null
 		const sourceType = formData.get("sourceType") as string | null
+		// Direct R2 upload support: r2Key is the R2 object key if file was uploaded directly to R2
+		const r2Key = formData.get("r2Key") as string | null
+		const originalFilename = formData.get("originalFilename") as string | null
+		const originalFileSize = formData.get("originalFileSize") as string | null
+		const originalContentType = formData.get("originalContentType") as string | null
 
 		consola.info("✅ [ONBOARDING] Form data parsed", {
 			hasFile: !!file,
-			fileName: file?.name,
-			fileSize: file ? `${(file.size / 1024 / 1024).toFixed(2)}MB` : null,
-			fileType: file?.type,
+			hasR2Key: !!r2Key,
+			fileName: file?.name || originalFilename,
+			fileSize: file
+				? `${(file.size / 1024 / 1024).toFixed(2)}MB`
+				: originalFileSize
+					? `${(Number(originalFileSize) / 1024 / 1024).toFixed(2)}MB`
+					: null,
+			fileType: file?.type || originalContentType,
 			elapsedMs: Date.now() - startTime,
 		})
 
@@ -130,10 +140,14 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.log("projectId:", projectId)
 		consola.log("formData keys:", Array.from(formData.keys()))
 
-		if (!file) {
-			consola.error("Missing file")
-			traceEndPayload = { level: "ERROR", statusMessage: "Missing file" }
-			return Response.json({ error: "Missing file" }, { status: 400 })
+		// Require either file OR r2Key (direct upload path)
+		if (!file && !r2Key) {
+			consola.error("Missing file or r2Key")
+			traceEndPayload = {
+				level: "ERROR",
+				statusMessage: "Missing file or r2Key",
+			}
+			return Response.json({ error: "Missing file or r2Key" }, { status: 400 })
 		}
 		if (!onboardingDataStr) {
 			consola.error("Missing onboardingData")
@@ -143,6 +157,11 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 			return Response.json({ error: "Missing onboardingData" }, { status: 400 })
 		}
+
+		// For direct R2 uploads, we need file metadata
+		const effectiveFilename = file?.name || originalFilename || "unknown"
+		const effectiveFileSize = file?.size || Number(originalFileSize) || 0
+		const effectiveContentType = file?.type || originalContentType || "application/octet-stream"
 
 		const onboardingData: OnboardingData = JSON.parse(onboardingDataStr)
 		trace?.update?.({
@@ -376,11 +395,11 @@ Please extract insights that specifically address these research questions and h
 		const interviewData: InterviewInsert = {
 			account_id: teamAccountId,
 			project_id: finalProjectId,
-			title: titleFromPerson ?? file.name,
+			title: titleFromPerson ?? effectiveFilename,
 			interview_date: format(interviewDate, "yyyy-MM-dd"),
 			participant_pseudonym: linkedPerson?.name ?? "Participant 1",
 			segment: null,
-			media_url: null, // Will be set by upload worker
+			media_url: r2Key || null, // Set immediately if direct R2 upload, otherwise set by upload worker
 			media_type: finalMediaType, // Determined based on source type and context
 			transcript: null, // Will be set by transcription
 			transcript_formatted: null,
@@ -398,8 +417,9 @@ Please extract insights that specifically address these research questions and h
 				accountId: teamAccountId,
 			},
 			input: {
-				fileName: file.name,
+				fileName: effectiveFilename,
 				mediaType: mediaTypeInput,
+				directR2Upload: !!r2Key,
 			},
 		})
 
@@ -474,14 +494,14 @@ Please extract insights that specifically address these research questions and h
 
 		// 3. Determine processing path based on sourceType and mediaType
 		const isTextFile =
-			file.type.startsWith("text/") ||
-			file.name.endsWith(".txt") ||
-			file.name.endsWith(".md") ||
-			file.name.endsWith(".markdown")
+			effectiveContentType.startsWith("text/") ||
+			effectiveFilename.endsWith(".txt") ||
+			effectiveFilename.endsWith(".md") ||
+			effectiveFilename.endsWith(".markdown")
 
 		const isAudioVideo =
-			file.type.startsWith("audio/") ||
-			file.type.startsWith("video/") ||
+			effectiveContentType.startsWith("audio/") ||
+			effectiveContentType.startsWith("video/") ||
 			sourceType === "audio_upload" ||
 			sourceType === "video_upload"
 
@@ -761,7 +781,7 @@ Please extract insights that specifically address these research questions and h
 
 		// Path 5: Audio/video files for interviews - full processing with transcription and analysis
 		if (isAudioVideo) {
-			// Handle audio/video files - store file first, then trigger Trigger.dev task for transcription
+			// Handle audio/video files - store file first (if not direct upload), then trigger AssemblyAI transcription
 			const audioSpan = trace?.span?.({
 				name: "ingest.audio",
 				metadata: {
@@ -769,83 +789,130 @@ Please extract insights that specifically address these research questions and h
 					projectId: finalProjectId,
 				},
 				input: {
-					fileName: file.name,
-					size: file.size,
-					type: file.type,
+					fileName: effectiveFilename,
+					size: effectiveFileSize,
+					type: effectiveContentType,
+					directR2Upload: !!r2Key,
 				},
 			})
 
-			// Store audio file in Cloudflare R2 first using shared utility
-			consola.info("💾 [ONBOARDING] Converting file to buffer...", {
-				fileName: file.name,
-				fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-				elapsedMs: Date.now() - startTime,
-			})
-			const fileBuffer = await file.arrayBuffer()
-			const fileBlob = new Blob([fileBuffer], { type: file.type })
-			const _assemblyPayload = Buffer.from(fileBuffer)
+			let finalR2Key: string
+			let presignedUrl: string
 
-			consola.info("✅ [ONBOARDING] Buffer conversion complete", {
-				bufferSize: `${(fileBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
-				elapsedMs: Date.now() - startTime,
-			})
-
-			consola.info("☁️ [ONBOARDING] Starting R2 upload...", {
-				fileName: file.name,
-				fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-				elapsedMs: Date.now() - startTime,
-			})
-
-			// Upload to R2 first (with multipart + retry for large files)
-			const storageResult = await storeAudioFile({
-				projectId: finalProjectId,
-				interviewId: interview.id,
-				source: fileBlob,
-				originalFilename: file.name,
-				contentType: file.type,
-				langfuseParent: audioSpan ?? trace,
-			})
-
-			const r2Key = storageResult.mediaUrl
-			const presignedUrl = storageResult.presignedUrl
-			const storageError = storageResult.error
-
-			if (storageError || !r2Key || !presignedUrl) {
-				consola.error("❌ [ONBOARDING] R2 upload failed:", storageError, {
+			// Check if file was already uploaded directly to R2
+			if (r2Key) {
+				// Direct R2 upload path - file is already in R2
+				consola.info("⚡ [ONBOARDING] Using direct R2 upload - skipping server upload", {
+					r2Key,
 					elapsedMs: Date.now() - startTime,
 				})
+				finalR2Key = r2Key
+
+				// Generate presigned URL for AssemblyAI to access the file
+				const { createR2PresignedReadUrl } = await import("~/utils/r2.server")
+				const presignedResult = createR2PresignedReadUrl(r2Key, 3600) // 1 hour
+				if (!presignedResult) {
+					audioSpan?.end?.({
+						level: "ERROR",
+						statusMessage: "Failed to generate presigned URL for R2 object",
+					})
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: "Failed to generate presigned URL",
+					}
+					return Response.json({ error: "Failed to generate presigned URL for uploaded file" }, { status: 500 })
+				}
+				presignedUrl = presignedResult
+
+				audioSpan?.event?.({
+					name: "r2.direct-upload-used",
+					metadata: { r2Key, presignedUrlGenerated: true },
+				})
+			} else if (file) {
+				// Legacy upload path - file needs to be uploaded to R2 via server
+				consola.info("💾 [ONBOARDING] Converting file to buffer...", {
+					fileName: effectiveFilename,
+					fileSize: `${(effectiveFileSize / 1024 / 1024).toFixed(2)}MB`,
+					elapsedMs: Date.now() - startTime,
+				})
+				const fileBuffer = await file.arrayBuffer()
+				const fileBlob = new Blob([fileBuffer], { type: file.type })
+
+				consola.info("✅ [ONBOARDING] Buffer conversion complete", {
+					bufferSize: `${(fileBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
+					elapsedMs: Date.now() - startTime,
+				})
+
+				consola.info("☁️ [ONBOARDING] Starting R2 upload...", {
+					fileName: effectiveFilename,
+					fileSize: `${(effectiveFileSize / 1024 / 1024).toFixed(2)}MB`,
+					elapsedMs: Date.now() - startTime,
+				})
+
+				// Upload to R2 first (with multipart + retry for large files)
+				const storageResult = await storeAudioFile({
+					projectId: finalProjectId,
+					interviewId: interview.id,
+					source: fileBlob,
+					originalFilename: file.name,
+					contentType: file.type,
+					langfuseParent: audioSpan ?? trace,
+				})
+
+				const storageError = storageResult.error
+
+				if (storageError || !storageResult.mediaUrl || !storageResult.presignedUrl) {
+					consola.error("❌ [ONBOARDING] R2 upload failed:", storageError, {
+						elapsedMs: Date.now() - startTime,
+					})
+					audioSpan?.end?.({
+						level: "ERROR",
+						statusMessage: storageError ?? "Failed to store audio file",
+					})
+					traceEndPayload = {
+						level: "ERROR",
+						statusMessage: `Failed to store audio file: ${storageError}`,
+					}
+					return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
+				}
+
+				finalR2Key = storageResult.mediaUrl
+				presignedUrl = storageResult.presignedUrl
+
+				consola.info("✅ [ONBOARDING] R2 upload complete", {
+					r2Key: finalR2Key,
+					elapsedMs: Date.now() - startTime,
+				})
+
+				// Update interview with R2 key (not presigned URL)
+				await supabase.from("interviews").update({ media_url: finalR2Key }).eq("id", interview.id)
+			} else {
+				// This shouldn't happen due to earlier validation, but handle it
 				audioSpan?.end?.({
 					level: "ERROR",
-					statusMessage: storageError ?? "Failed to store audio file",
+					statusMessage: "No file or r2Key provided",
 				})
 				traceEndPayload = {
 					level: "ERROR",
-					statusMessage: `Failed to store audio file: ${storageError}`,
+					statusMessage: "No file or r2Key provided",
 				}
-				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
+				return Response.json({ error: "No file or r2Key provided" }, { status: 500 })
 			}
 
-			consola.info("✅ [ONBOARDING] R2 upload complete", {
-				r2Key,
-				elapsedMs: Date.now() - startTime,
-			})
 			audioSpan?.end?.({
 				output: {
-					r2Key,
-					presignedUrl,
+					r2Key: finalR2Key,
+					presignedUrl: presignedUrl.substring(0, 50) + "...",
 				},
 			})
 			trace?.update?.({
 				metadata: {
-					r2Key,
+					r2Key: finalR2Key,
 				},
 			})
 
-			// Update interview with R2 key (not presigned URL)
-			await supabase.from("interviews").update({ media_url: r2Key }).eq("id", interview.id)
-
 			// Submit to Assembly AI for async transcription with webhook
-			const assemblySpan = audioSpan?.span?.({
+			const assemblySpan = trace?.span?.({
 				name: "assemblyai.submit",
 				metadata: {
 					interviewId: interview.id,
@@ -916,8 +983,8 @@ Please extract insights that specifically address these research questions and h
 							transcript_data: {
 								status: "pending_transcription",
 								assemblyai_id: transcriptData.id,
-								file_name: file.name,
-								file_type: file.type,
+								file_name: effectiveFilename,
+								file_type: effectiveContentType,
 								external_url: presignedUrl,
 							},
 							custom_instructions: customInstructions,

@@ -3,6 +3,7 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
+import { buildFeatureGateContext, checkLimitAccess } from "~/lib/feature-gate/check-limit.server"
 import { getPostHogServerClient } from "~/lib/posthog.server"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 
@@ -45,6 +46,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (!teamAccountId) {
 			return Response.json({ error: "No team account found" }, { status: 500 })
+		}
+
+		// Check project limit before creating
+		const gateCtx = await buildFeatureGateContext(teamAccountId, user.sub)
+		const limitCheck = await checkLimitAccess(gateCtx, "projects")
+		if (!limitCheck.allowed) {
+			consola.info("[create-project] Project limit exceeded", {
+				accountId: teamAccountId,
+				currentUsage: limitCheck.currentUsage,
+				limit: limitCheck.limit,
+			})
+			return Response.json(
+				{
+					error: "project_limit_exceeded",
+					message: `You've reached your plan's limit of ${limitCheck.limit} projects. Upgrade to create more.`,
+					currentUsage: limitCheck.currentUsage,
+					limit: limitCheck.limit,
+					upgradeUrl: limitCheck.upgradeUrl,
+				},
+				{ status: 403 }
+			)
 		}
 
 		const formData = await request.formData()

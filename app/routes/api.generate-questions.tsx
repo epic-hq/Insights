@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import {
+	buildEnhancedCustomInstructions,
+	getEnhancedProjectContext,
+} from "~/features/questions/enhanced-context.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
@@ -29,7 +33,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const project_id = ((formData.get("project_id") as string) || ctxProjectId || null) as string | null
 		if (!project_id) {
 			return Response.json(
-				{ error: "Project ID is required to generate and save interview questions" },
+				{
+					error: "Project ID is required to generate and save interview questions",
+				},
 				{ status: 400 }
 			)
 		}
@@ -201,6 +207,37 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			)
 		}
 
+		// Load enhanced context for richer question generation
+		let customer_problem = ""
+		let offerings = ""
+		let competitors = ""
+		try {
+			const enhancedContext = await getEnhancedProjectContext(supabase, project_id)
+			if (enhancedContext) {
+				// Use account-level context
+				customer_problem = enhancedContext.customer_problem || ""
+				offerings = enhancedContext.offerings || ""
+				competitors = enhancedContext.competitors || ""
+
+				// Build enhanced instructions with themes, personas, lenses
+				const enhancedInstructions = buildEnhancedCustomInstructions(
+					enhancedContext,
+					customInstructionParts.join("\n\n")
+				)
+				customInstructionParts.length = 0
+				customInstructionParts.push(enhancedInstructions)
+
+				consola.info("[api.generate-questions] Enhanced context loaded", {
+					hasCompanyContext: !!enhancedContext.company_description,
+					themesCount: enhancedContext.themes.length,
+					personasCount: enhancedContext.personas.length,
+					lensesCount: enhancedContext.lenses.length,
+				})
+			}
+		} catch (error) {
+			consola.warn("[api.generate-questions] Failed to load enhanced context:", error)
+		}
+
 		const combinedCustomInstructions = customInstructionParts.filter(Boolean).join("\n\n")
 
 		// Decide on questionCount default now that we know if this is first-time
@@ -271,6 +308,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				assumptions: ensure(assumptions, ""),
 				unknowns: ensure(unknowns, ""),
 				custom_instructions: ensure(combinedCustomInstructions, ""),
+				// Enhanced context fields
+				customer_problem: ensure(customer_problem, ""),
+				offerings: ensure(offerings, ""),
+				competitors: ensure(competitors, ""),
 				session_id: ensure(computedSessionId),
 				round: 1,
 				total_per_round: questionCount || 10,
@@ -403,10 +444,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			}
 		}
 
+		// UUID validation regex
+		const isValidUUID = (str: string): boolean => {
+			return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str)
+		}
+
 		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
 			const usedIds = new Set<string>()
 			questionSet.questions = questionSet.questions.map((question: any) => {
-				let id = question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
+				// Only use existing ID if it's a valid UUID, otherwise generate new one
+				let id = question.id && typeof question.id === "string" && isValidUUID(question.id) ? question.id : randomUUID()
 				while (usedIds.has(id)) {
 					id = randomUUID()
 				}
@@ -422,7 +469,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const generatedQuestions = Array.isArray(questionSet?.questions) ? questionSet.questions : []
 		if (generatedQuestions.length === 0) {
 			return Response.json(
-				{ error: "No questions were generated. Please adjust your inputs and try again." },
+				{
+					error: "No questions were generated. Please adjust your inputs and try again.",
+				},
 				{ status: 500 }
 			)
 		}

@@ -48,10 +48,25 @@ const envSchema = z.object({
 
 	// Recall.ai Desktop SDK
 	RECALL_API_KEY: z.string().optional(),
+	RECALL_API_URL: z.string().optional(),
 	RECALL_WEBHOOK_SECRET: z.string().optional(),
 
 	// Payload CMS
 	PAYLOAD_CMS_URL: z.string().default("https://upsight-cms.vercel.app"),
+
+	// Polar.sh billing
+	POLAR_WEBHOOK_SECRET: z.string().optional(),
+	POLAR_ACCESS_TOKEN: z.string().optional(),
+	// Polar product IDs (hardcoded defaults from Polar dashboard)
+	POLAR_PRODUCT_STARTER_MONTHLY: z.string().default("43cd1bf3-1b5b-45e9-9c87-fbd21fa82954"),
+	POLAR_PRODUCT_STARTER_ANNUAL: z.string().default("e0fc0ce2-c0fd-43c9-bc8b-abb2c1df76ad"),
+	POLAR_PRODUCT_PRO_MONTHLY: z.string().default("c09e11de-1ab6-4f0f-86ca-799ad512be5b"),
+	POLAR_PRODUCT_PRO_ANNUAL: z.string().default("95c62fc0-e26a-4b33-8e5c-fcaf76972a9e"),
+	POLAR_PRODUCT_TEAM_MONTHLY: z.string().default("f69fb092-eab5-46e0-820a-d15fafef8a1d"),
+	POLAR_PRODUCT_TEAM_ANNUAL: z.string().default("1e2c65e8-907e-4be3-be4d-8d78613ce66a"),
+
+	// Sales/Demo scheduling
+	SALES_SCHEDULER_URL: z.string().default("https://cal.com/rickmoy"),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>
@@ -80,6 +95,8 @@ function initEnv() {
 		// or the previously used DEFAULT_EMAIL_FROM / DEFAULT_EMAIL_FROM_NAME
 		DEFAULT_FROM_EMAIL: process.env.DEFAULT_FROM_EMAIL ?? process.env.DEFAULT_EMAIL_FROM,
 		DEFAULT_FROM_EMAIL_NAME: process.env.DEFAULT_FROM_EMAIL_NAME ?? process.env.DEFAULT_EMAIL_FROM_NAME,
+		// Backward-compatibility: allow legacy RECALLAI_API_KEY
+		RECALL_API_KEY: process.env.RECALL_API_KEY ?? process.env.RECALLAI_API_KEY,
 	}
 
 	const envData = envSchema.safeParse(rawEnv)
@@ -121,6 +138,8 @@ export function getClientEnv() {
 		POSTHOG_KEY: serverEnv.POSTHOG_KEY,
 		POSTHOG_HOST: serverEnv.POSTHOG_HOST,
 		SIGNUP_CHAT_REQUIRED: serverEnv.SIGNUP_CHAT_REQUIRED,
+		// Sales/Demo scheduling
+		SALES_SCHEDULER_URL: serverEnv.SALES_SCHEDULER_URL,
 	}
 }
 

@@ -55,10 +55,104 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Check if there's a pending AssemblyAI transcription
 		if (!assemblyaiId) {
+			// NEW: Recovery path for interviews that never got submitted to AssemblyAI
+			// This can happen if network disconnect occurred after R2 upload but before AssemblyAI submission
+			const { data: fullInterview } = await supabase
+				.from("interviews")
+				.select("media_url, source_type")
+				.eq("id", interviewId)
+				.single()
+
+			const mediaUrl = fullInterview?.media_url
+			const isAudioVideo =
+				fullInterview?.source_type === "audio_upload" || fullInterview?.source_type === "video_upload"
+
+			if (mediaUrl && isAudioVideo) {
+				consola.info("[check-transcription] No assemblyai_id but has media_url - submitting fresh to AssemblyAI")
+
+				// Generate presigned URL for AssemblyAI to access the R2 file
+				const { createR2PresignedReadUrl } = await import("~/utils/r2.server")
+				const presignedUrl = createR2PresignedReadUrl(mediaUrl, 3600)
+
+				if (!presignedUrl) {
+					return Response.json({ error: "Failed to generate presigned URL for media file" }, { status: 500 })
+				}
+
+				const apiKey = process.env.ASSEMBLYAI_API_KEY
+				if (!apiKey) {
+					return Response.json({ error: "AssemblyAI not configured" }, { status: 500 })
+				}
+
+				// Determine webhook URL
+				const baseUrl = process.env.PUBLIC_TUNNEL_URL
+					? `https://${process.env.PUBLIC_TUNNEL_URL}`
+					: process.env.FLY_APP_NAME
+						? `https://${process.env.FLY_APP_NAME}.fly.dev`
+						: "https://getupsight.com"
+				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`
+
+				// Submit to AssemblyAI
+				const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+					method: "POST",
+					headers: {
+						authorization: apiKey,
+						"content-type": "application/json",
+					},
+					body: JSON.stringify({
+						audio_url: presignedUrl,
+						webhook_url: webhookUrl,
+						speech_model: "slam-1",
+						speaker_labels: true,
+						format_text: true,
+						punctuate: true,
+						sentiment_analysis: false,
+					}),
+				})
+
+				if (!transcriptResponse.ok) {
+					const errorText = await transcriptResponse.text()
+					consola.error("[check-transcription] AssemblyAI submission failed:", errorText)
+					return Response.json(
+						{
+							error: `AssemblyAI submission failed: ${transcriptResponse.status}`,
+						},
+						{ status: 500 }
+					)
+				}
+
+				const assemblyData = await transcriptResponse.json()
+				consola.info("[check-transcription] AssemblyAI job created (recovery):", assemblyData.id)
+
+				// Update interview with AssemblyAI ID for future polling
+				await supabase
+					.from("interviews")
+					.update({
+						status: "processing" as const,
+						conversation_analysis: {
+							...conversationAnalysis,
+							current_step: "transcription",
+							transcript_data: {
+								status: "pending_transcription",
+								assemblyai_id: assemblyData.id,
+								external_url: presignedUrl,
+							},
+							status_detail: "Transcription submitted (recovery)",
+						} as Json,
+					})
+					.eq("id", interviewId)
+
+				return Response.json({
+					success: true,
+					status: "processing",
+					assemblyaiId: assemblyData.id,
+					message: "Transcription submitted via recovery path",
+				})
+			}
+
 			return Response.json({
 				success: false,
 				status: interview.status,
-				message: "No pending transcription found",
+				message: "No pending transcription found and no media file to process",
 			})
 		}
 

@@ -1,14 +1,25 @@
 import { parseWithZod } from "@conform-to/zod"
 import consola from "consola"
 import { formatDistanceToNow } from "date-fns"
-import { Check, Clock4, Copy, Info, LinkIcon, RefreshCw, ShieldOff } from "lucide-react"
+import {
+	AlertTriangle,
+	Check,
+	Clock4,
+	Copy,
+	DoorOpen,
+	Info,
+	LinkIcon,
+	RefreshCw,
+	ShieldOff,
+	UserMinus,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, useLoaderData, useNavigation } from "react-router"
+import { data, redirect, useLoaderData, useNavigation } from "react-router"
 import { useSubmit } from "react-router-dom"
 import { z } from "zod"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Alert, AlertDescription } from "~/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -22,6 +33,7 @@ import {
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
+import { PLANS, type PlanId } from "~/config/plans"
 import { getPostHogServerClient } from "~/lib/posthog.server"
 // import { sendEmail } from "~/emails/clients.server"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
@@ -31,14 +43,14 @@ import InvitationEmail from "../../../../emails/team-invitation"
 import {
 	getAccount as dbGetAccount,
 	getAccountMembers as dbGetAccountMembers,
+	leaveAccount as dbLeaveAccount,
+	removeAccountMember as dbRemoveAccountMember,
 	updateAccountUserRole as dbUpdateAccountUserRole,
 } from "../db/accounts"
 import {
-	acceptInvitation as dbAcceptInvitation,
 	createInvitation as dbCreateInvitation,
 	deleteInvitation as dbDeleteInvitation,
 	getAccountInvitations as dbGetAccountInvitations,
-	lookupInvitation as dbLookupInvitation,
 } from "../db/invitations"
 
 type MembersRow = {
@@ -54,6 +66,16 @@ type InvitationAcceptanceState = {
 	message?: string
 }
 
+type SeatBillingInfo = {
+	planId: PlanId
+	planName: string
+	isTeamPlan: boolean
+	currentSeats: number
+	subscribedSeats: number
+	pricePerSeat: number
+	pendingInvites: number
+}
+
 type LoaderData = {
 	account: {
 		account_id: string
@@ -65,6 +87,7 @@ type LoaderData = {
 	invitations: GetAccountInvitesResponse
 	inviteAcceptance: InvitationAcceptanceState
 	activeShareLinks: ActiveShareLink[]
+	seatBilling: SeatBillingInfo | null
 }
 
 type ShareLinkRow = {
@@ -94,76 +117,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const url = new URL(request.url)
 	const inviteToken = url.searchParams.get("invite_token")?.trim() || null
-	let inviteAcceptance: InvitationAcceptanceState = { status: "idle" }
+	const inviteAcceptance: InvitationAcceptanceState = { status: "idle" }
 
+	// Redirect to /accept-invite for proper invitation handling
+	// This ensures the user gets a proper acceptance flow with fresh account data
 	if (inviteToken) {
-		const { data: lookupData, error: lookupError } = await dbLookupInvitation({
-			supabase: client,
-			lookup_invitation_token: inviteToken,
-		})
-		if (lookupError) {
-			inviteAcceptance = {
-				status: "error",
-				message: lookupError.message || "We couldn't validate this invitation.",
-			}
-		} else {
-			const lookup = (lookupData as Record<string, unknown> | null) ?? null
-			const lookupAccountId = (lookup?.account_id as string | undefined) ?? null
-			const isActive = Boolean(lookup?.active)
-
-			if (!lookupAccountId || lookupAccountId !== accountId) {
-				inviteAcceptance = {
-					status: "error",
-					message: "This invitation doesn't match the selected team.",
-				}
-			} else if (!isActive) {
-				inviteAcceptance = {
-					status: "inactive",
-					message: "This invitation has already been used or has expired.",
-				}
-			} else {
-				const { error: acceptError } = await dbAcceptInvitation({
-					supabase: client,
-					lookup_invitation_token: inviteToken,
-				})
-				if (acceptError) {
-					inviteAcceptance = {
-						status: "error",
-						message: acceptError.message || "We couldn't accept this invitation.",
-					}
-				} else {
-					inviteAcceptance = {
-						status: "accepted",
-						message: "Invitation accepted. You're now on this team.",
-					}
-
-					// Capture invite_accepted event
-					try {
-						const inviterUserId = (lookup?.inviter_user_id as string | undefined) ?? null
-						const role = (lookup?.account_role as "owner" | "member" | "viewer" | undefined) ?? "member"
-
-						const posthogServer = getPostHogServerClient()
-						if (posthogServer) {
-							posthogServer.capture({
-								distinctId: user.sub,
-								event: "invite_accepted",
-								properties: {
-									account_id: accountId,
-									inviter_user_id: inviterUserId,
-									role,
-									$set: {
-										team_member: true,
-										last_team_joined_at: new Date().toISOString(),
-									},
-								},
-							})
-						}
-					} catch (trackingError) {
-						consola.warn("[INVITE] PostHog tracking failed:", trackingError)
-					}
-				}
-			}
-		}
+		throw redirect(`/accept-invite?invite_token=${encodeURIComponent(inviteToken)}`)
 	}
 
 	const { data: account, error: accountError } = await dbGetAccount({
@@ -231,12 +190,54 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			projectId: row.project_id,
 		}))
 
+	// Fetch seat billing info for Team plan accounts
+	let seatBilling: SeatBillingInfo | null = null
+
+	// Only fetch billing info for owners (needed for the warning)
+	if (normalizedAccount?.account_role === "owner") {
+		const { supabaseAdmin } = await import("~/lib/supabase/client.server")
+
+		// Get active subscription
+		const { data: subscription } = await supabaseAdmin
+			.schema("accounts")
+			.from("billing_subscriptions")
+			.select("plan_name, quantity, status")
+			.eq("account_id", accountId)
+			.in("status", ["active", "trialing"])
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.maybeSingle()
+
+		if (subscription?.plan_name) {
+			const planKey = subscription.plan_name.toLowerCase() as PlanId
+			const plan = PLANS[planKey]
+
+			if (plan && plan.perUser) {
+				// This is a per-seat plan (Team)
+				const currentSeats = members.length
+				const pendingInviteCount = invitations.length
+				const subscribedSeats = subscription.quantity ?? 1
+
+				seatBilling = {
+					planId: planKey,
+					planName: plan.name,
+					isTeamPlan: true,
+					currentSeats,
+					subscribedSeats,
+					pricePerSeat: plan.price.monthly,
+					pendingInvites: pendingInviteCount,
+				}
+			}
+		}
+	}
+
 	const data: LoaderData = {
 		account: normalizedAccount,
 		members,
 		invitations,
 		inviteAcceptance,
 		activeShareLinks,
+		seatBilling,
 	}
 	return data
 }
@@ -270,6 +271,15 @@ const RevokeShareLinkSchema = z.object({
 	interviewId: z.string().uuid(),
 })
 
+const LeaveTeamSchema = z.object({
+	intent: z.literal("leaveTeam"),
+})
+
+const RemoveMemberSchema = z.object({
+	intent: z.literal("removeMember"),
+	memberId: z.string().uuid(),
+})
+
 export async function action({ request, params }: ActionFunctionArgs) {
 	const { client } = getServerClient(request)
 	const { user } = await getAuthenticatedUser(request)
@@ -286,10 +296,25 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			return data({ ok: false, errors: submission.error }, { status: 400 })
 		}
 		const { email, permission } = submission.value
+
+		// Check if email is already a member of this account
+		const { data: isMember, error: memberCheckError } = await client.rpc("is_email_account_member", {
+			check_account_id: accountId,
+			check_email: email,
+		})
+		if (memberCheckError) {
+			consola.warn("[INVITE] Failed to check existing membership", {
+				error: memberCheckError,
+			})
+			// Continue anyway - the invitation will still work, just might be redundant
+		} else if (isMember === true) {
+			return data({ ok: false, message: "This person is already a member of this team." }, { status: 400 })
+		}
+
 		const result = await dbCreateInvitation({
 			supabase: client,
 			account_id: accountId,
-			account_role: mapPermissionToAccountRoleForRpc(permission),
+			account_role: mapPermissionToAccountRole(permission),
 			invitation_type: "one_time",
 			invitee_email: email,
 		})
@@ -298,6 +323,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			typeof (result.data as { token?: unknown } | null)?.token === "string"
 				? (result.data as { token: string }).token
 				: undefined
+
+		// Track email send status to return to UI
+		let emailSent = false
+		let emailError: string | null = null
 
 		// Attempt to send invitation email if we have both email and token
 		if (email && token) {
@@ -333,7 +362,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 				const sendResult = await sendEmail({
 					to: email,
-					subject: `You’re invited to join ${teamName} on Upsight`,
+					subject: `You're invited to join ${teamName} on Upsight`,
 					send_intent: "transactional",
 					reply_to: user.email ?? undefined,
 					react: (
@@ -350,11 +379,43 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					to: email,
 					resultId: (sendResult as unknown as { id?: string })?.id,
 				})
+				emailSent = true
+
+				// Log successful email send to audit trail
+				try {
+					await client.rpc("log_invitation_audit", {
+						p_invitation_id: null,
+						p_account_id: accountId,
+						p_action: "email_sent",
+						p_invitee_email: email,
+						p_account_role: mapPermissionToAccountRole(permission),
+						p_details: {
+							email_id: (sendResult as unknown as { id?: string })?.id,
+						},
+					})
+				} catch {
+					// Audit logging failure shouldn't block the main flow
+				}
 			} catch (err) {
 				consola.error("[INVITE] Failed to send invitation email", {
 					to: email,
 					error: err,
 				})
+				emailError = err instanceof Error ? err.message : "Failed to send email"
+
+				// Log failed email send to audit trail
+				try {
+					await client.rpc("log_invitation_audit", {
+						p_invitation_id: null,
+						p_account_id: accountId,
+						p_action: "email_failed",
+						p_invitee_email: email,
+						p_account_role: mapPermissionToAccountRole(permission),
+						p_details: { error: emailError },
+					})
+				} catch {
+					// Audit logging failure shouldn't block the main flow
+				}
 			}
 		}
 
@@ -368,8 +429,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					properties: {
 						account_id: accountId,
 						invitee_email: email,
-						role: mapPermissionToAccountRoleForRpc(permission),
+						role: mapPermissionToAccountRole(permission),
 						invitation_type: "one_time",
+						email_sent: emailSent,
 					},
 				})
 			}
@@ -377,7 +439,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			consola.warn("[INVITE] PostHog tracking failed:", trackingError)
 		}
 
-		return data({ ok: true, token, email })
+		return data({ ok: true, token, email, emailSent, emailError })
 	}
 
 	if (intent === "updateRole") {
@@ -390,7 +452,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			supabase: client,
 			account_id: accountId,
 			user_id: memberId,
-			role: mapPermissionToAccountRoleForRpc(permission),
+			role: mapPermissionToAccountRole(permission),
 		})
 		if (result.error) return data({ ok: false, message: result.error.message }, { status: 500 })
 		return data({ ok: true })
@@ -434,7 +496,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			}
 		} catch {}
 
-		// Create a new invitation (replaces the old one since invitee_email is unique per account)
+		// Create a new invitation (the trigger will replace the old one)
 		const result = await dbCreateInvitation({
 			supabase: client,
 			account_id: accountId,
@@ -448,6 +510,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			typeof (result.data as { token?: unknown } | null)?.token === "string"
 				? (result.data as { token: string }).token
 				: undefined
+
+		// Track email send status
+		let emailSent = false
+		let emailError: string | null = null
 
 		// Send the invitation email
 		if (token) {
@@ -472,12 +538,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					),
 				})
 				consola.success("[RESEND INVITE] Email sent", { to: email })
+				emailSent = true
 			} catch (err) {
 				consola.error("[RESEND INVITE] Failed to send email", { error: err })
+				emailError = err instanceof Error ? err.message : "Failed to send email"
 			}
 		}
 
-		return data({ ok: true, resent: true })
+		return data({ ok: true, resent: true, emailSent, emailError })
 	}
 
 	if (intent === "revokeShareLink") {
@@ -511,10 +579,68 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return data({ ok: true, revoked: true })
 	}
 
+	if (intent === "leaveTeam") {
+		const submission = parseWithZod(formData, { schema: LeaveTeamSchema })
+		if (submission.status !== "success") {
+			return data({ ok: false, errors: submission.error }, { status: 400 })
+		}
+
+		const result = await dbLeaveAccount({
+			supabase: client,
+			account_id: accountId,
+		})
+
+		if (result.error) {
+			consola.error("[MANAGE TEAM] Failed to leave team", {
+				accountId,
+				error: result.error,
+			})
+			return data({ ok: false, message: result.error.message }, { status: 500 })
+		}
+
+		consola.info("[MANAGE TEAM] User left team", {
+			userId: user.sub,
+			accountId,
+		})
+
+		// Redirect to home page after leaving
+		return redirect("/")
+	}
+
+	if (intent === "removeMember") {
+		const submission = parseWithZod(formData, { schema: RemoveMemberSchema })
+		if (submission.status !== "success") {
+			return data({ ok: false, errors: submission.error }, { status: 400 })
+		}
+		const { memberId } = submission.value
+
+		const result = await dbRemoveAccountMember({
+			supabase: client,
+			account_id: accountId,
+			user_id: memberId,
+		})
+
+		if (result.error) {
+			consola.error("[MANAGE TEAM] Failed to remove member", {
+				accountId,
+				memberId,
+				error: result.error,
+			})
+			return data({ ok: false, message: result.error.message }, { status: 500 })
+		}
+
+		consola.info("[MANAGE TEAM] Member removed", {
+			accountId,
+			memberId,
+		})
+		return data({ ok: true, removed: true })
+	}
+
 	return new Response("Bad Request", { status: 400 })
 }
 export default function ManageTeamMembers() {
-	const { account, members, invitations, inviteAcceptance, activeShareLinks } = useLoaderData() as LoaderData
+	const { account, members, invitations, inviteAcceptance, activeShareLinks, seatBilling } =
+		useLoaderData() as LoaderData
 	const submit = useSubmit()
 	const navigation = useNavigation()
 
@@ -536,6 +662,14 @@ export default function ManageTeamMembers() {
 	const [selectedInviteEmail, setSelectedInviteEmail] = useState<string | null>(null)
 	const [shareLinkOrigin, setShareLinkOrigin] = useState("https://getupsight.com")
 	const [copiedShareLinkId, setCopiedShareLinkId] = useState<string | null>(null)
+
+	// Leave team dialog state
+	const [isLeaveTeamOpen, setIsLeaveTeamOpen] = useState(false)
+
+	// Remove member dialog state
+	const [isRemoveMemberOpen, setIsRemoveMemberOpen] = useState(false)
+	const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+	const [selectedMemberName, setSelectedMemberName] = useState<string | null>(null)
 
 	// Keep local state in sync with loader data after automatic revalidation
 	useEffect(() => {
@@ -648,6 +782,29 @@ export default function ManageTeamMembers() {
 		[account?.account_id, submit]
 	)
 
+	const handleLeaveTeam = useCallback(() => {
+		if (!account?.account_id) return
+		submit({ intent: "leaveTeam" }, { method: "post", replace: true })
+	}, [account?.account_id, submit])
+
+	const handleRemoveMember = useCallback(
+		(memberId: string) => {
+			if (!account?.account_id) return
+			setLocalMembers((prev) => prev.filter((m) => m.id !== memberId))
+			submit({ intent: "removeMember", memberId }, { method: "post", replace: true })
+			setIsRemoveMemberOpen(false)
+			setSelectedMemberId(null)
+			setSelectedMemberName(null)
+		},
+		[account?.account_id, submit]
+	)
+
+	// Check if current user is the primary owner
+	const currentUserMember = localMembers.find((m) => m.email === account?.account_id)
+	const isPrimaryOwner = localMembers.some((m) => m.isOwner && m.id === currentUserMember?.id)
+	// For personal accounts, we should not show leave option
+	const canLeaveTeam = !account?.personal_account && account?.account_role !== "owner"
+
 	return (
 		<PageContainer size="sm" padded={false} className="container max-w-3xl py-6">
 			<div className="mb-6 space-y-2">
@@ -688,13 +845,52 @@ export default function ManageTeamMembers() {
 			<Alert className="mb-6">
 				<Info className="h-4 w-4" />
 				<AlertDescription className="text-sm">
-					<strong>How team access works:</strong> Inviting someone adds them to your entire account. They'll have access
-					to all projects and resources based on their permission level.
-					<span className="mt-1 block text-muted-foreground">
-						Per-resource sharing (e.g., sharing a single interview) is coming soon.
-					</span>
+					<strong>How team access works:</strong> Invite colleagues to your account. They'll have access to all projects
+					and resources based on their permission level, either view or edit. Invitations expire after 3 days.
 				</AlertDescription>
 			</Alert>
+
+			{/* Seat billing warning for Team plans */}
+			{seatBilling && (
+				<Alert
+					variant="default"
+					className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30"
+				>
+					<AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+					<AlertTitle className="text-amber-800 dark:text-amber-300">Per-Seat Billing</AlertTitle>
+					<AlertDescription className="text-amber-700 text-sm dark:text-amber-400">
+						<p>
+							Your <strong>{seatBilling.planName}</strong> plan is billed at{" "}
+							<strong>${seatBilling.pricePerSeat}/seat/month</strong>.
+						</p>
+						<p className="mt-1">
+							Currently using{" "}
+							<strong>
+								{seatBilling.currentSeats} of {seatBilling.subscribedSeats}
+							</strong>{" "}
+							seats
+							{seatBilling.pendingInvites > 0 && (
+								<span>
+									{" "}
+									({seatBilling.pendingInvites} pending invite
+									{seatBilling.pendingInvites === 1 ? "" : "s"})
+								</span>
+							)}
+							.
+						</p>
+						{seatBilling.currentSeats + seatBilling.pendingInvites >= seatBilling.subscribedSeats && (
+							<p className="mt-2 font-medium">
+								Adding new members will increase your subscription cost. Your billing will be prorated automatically.
+							</p>
+						)}
+						<div className="mt-3">
+							<Button variant="outline" size="sm" asChild>
+								<a href={`/a/${account?.account_id}/billing`}>Manage Seats & Billing</a>
+							</Button>
+						</div>
+					</AlertDescription>
+				</Alert>
+			)}
 
 			<TeamInvite
 				teamName={teamName}
@@ -702,6 +898,15 @@ export default function ManageTeamMembers() {
 				members={localMembers}
 				onInvite={canManage ? handleInvite : undefined}
 				onUpdateMemberPermission={canManage ? handleUpdateMemberPermission : undefined}
+				onRemoveMember={
+					canManage
+						? (memberId, memberName) => {
+								setSelectedMemberId(memberId)
+								setSelectedMemberName(memberName)
+								setIsRemoveMemberOpen(true)
+							}
+						: undefined
+				}
 			/>
 
 			{/* Active public share links */}
@@ -709,7 +914,8 @@ export default function ManageTeamMembers() {
 				<div className="space-y-1">
 					<h2 className="font-semibold text-lg">Active share links</h2>
 					<p className="text-muted-foreground text-sm">
-						Public interview links that are currently active. Anyone with the link can view the shared interview.
+						Anyone with the link can view a curated version of the conversation and analysis until the link expires.
+						Click 'share' on the resource to create a new share link. Available on Conversations and evidence pages.
 					</p>
 				</div>
 				{shareLinksWithUrls.length === 0 ? (
@@ -889,6 +1095,95 @@ export default function ManageTeamMembers() {
 					</AlertDialog>
 				</>
 			)}
+
+			{/* Leave Team section - shown for non-owners of non-personal accounts */}
+			{canLeaveTeam && (
+				<div className="mt-8 rounded-lg border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+					<div className="flex items-center justify-between">
+						<div>
+							<h3 className="font-medium text-red-700 dark:text-red-400">Leave this team</h3>
+							<p className="mt-1 text-red-600/80 text-sm dark:text-red-400/80">
+								You will lose access to all projects and resources in this account.
+							</p>
+						</div>
+						<Button
+							variant="outline"
+							className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+							onClick={() => setIsLeaveTeamOpen(true)}
+						>
+							<DoorOpen className="mr-2 h-4 w-4" />
+							Leave Team
+						</Button>
+					</div>
+				</div>
+			)}
+
+			{/* Leave team confirmation dialog */}
+			<AlertDialog open={isLeaveTeamOpen} onOpenChange={setIsLeaveTeamOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Leave {teamName}?</AlertDialogTitle>
+					</AlertDialogHeader>
+					<AlertDialogDescription>
+						Are you sure you want to leave this team? You will lose access to all projects, interviews, and insights.
+						This action cannot be undone.
+					</AlertDialogDescription>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={navigation.state === "submitting"}
+							onClick={handleLeaveTeam}
+						>
+							<DoorOpen className="mr-2 h-4 w-4" />
+							Leave Team
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			{/* Remove member confirmation dialog */}
+			<AlertDialog
+				open={isRemoveMemberOpen}
+				onOpenChange={(open) => {
+					setIsRemoveMemberOpen(open)
+					if (!open) {
+						setSelectedMemberId(null)
+						setSelectedMemberName(null)
+					}
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Remove team member</AlertDialogTitle>
+					</AlertDialogHeader>
+					<AlertDialogDescription>
+						{selectedMemberName ? (
+							<span>
+								Are you sure you want to remove <strong>{selectedMemberName}</strong> from the team? They will lose
+								access to all projects and resources.
+							</span>
+						) : (
+							<span>Are you sure you want to remove this member from the team?</span>
+						)}
+					</AlertDialogDescription>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={navigation.state === "submitting" || !selectedMemberId}
+							onClick={() => {
+								if (selectedMemberId) {
+									handleRemoveMember(selectedMemberId)
+								}
+							}}
+						>
+							<UserMinus className="mr-2 h-4 w-4" />
+							Remove Member
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</PageContainer>
 	)
 }
@@ -903,15 +1198,17 @@ function mapAccountRoleToPermission(role: "owner" | "member" | "viewer"): Permis
 			return "can-view"
 	}
 }
-// For RPCs that only accept 'owner' | 'member'
-function mapPermissionToAccountRoleForRpc(permission: PermissionLevel): "owner" | "member" {
+// Map UI permission levels to database account roles
+function mapPermissionToAccountRole(permission: PermissionLevel): "owner" | "member" | "viewer" {
 	switch (permission) {
 		case "admin":
 			return "owner"
 		case "can-edit":
 			return "member"
+		case "can-view":
+			return "viewer"
 		default:
-			return "member" // fallback to member when 'viewer' is not supported in RPC type
+			return "member"
 	}
 }
 

@@ -56,6 +56,9 @@ create table if not exists interviews (
   context_confidence real, -- 0.0-1.0 confidence in classification
   context_reasoning text, -- brief explanation of why this context was chosen
   processing_metadata jsonb default '{}'::jsonb, -- processing state and progress tracking
+  -- Survey/Ask link support (unified conversation architecture)
+  draft_responses jsonb default '{}'::jsonb, -- in-progress survey answers saved in real-time
+  research_link_id uuid, -- FK to Ask link config (added later via ALTER to avoid circular deps)
   created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now(),
 	created_by uuid references auth.users (id),
@@ -88,6 +91,19 @@ CREATE INDEX idx_interviews_interaction_context ON public.interviews(interaction
 COMMENT ON COLUMN public.interviews.interaction_context IS 'LLM-determined content type: research, sales, support, internal, or personal. Used for automatic lens selection.';
 COMMENT ON COLUMN public.interviews.context_confidence IS 'LLM confidence (0.0-1.0) in the interaction_context classification';
 COMMENT ON COLUMN public.interviews.context_reasoning IS 'LLM explanation for why this interaction_context was chosen';
+
+-- Survey/Ask link support comments
+COMMENT ON COLUMN public.interviews.draft_responses IS 'In-progress survey/chat answers saved in real-time. Cleared when finalized to transcript_formatted. Structure: { "question_id": "answer_text", ... }';
+COMMENT ON COLUMN public.interviews.research_link_id IS 'FK to research_links for Ask link responses. Null for traditional interviews/uploads.';
+
+-- Indexes for Ask link lookups
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_interviews_research_link_person
+  ON public.interviews(research_link_id, person_id)
+  WHERE research_link_id IS NOT NULL AND person_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_interviews_research_link_id
+  ON public.interviews(research_link_id)
+  WHERE research_link_id IS NOT NULL;
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_interviews_timestamp

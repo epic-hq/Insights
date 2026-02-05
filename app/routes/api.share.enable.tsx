@@ -6,6 +6,7 @@ import consola from "consola"
 import { nanoid } from "nanoid"
 import type { ActionFunctionArgs } from "react-router"
 import { z } from "zod"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { userContext } from "~/server/user-context"
 
 const EnableShareSchema = z.object({
@@ -89,6 +90,37 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			shareToken,
 			expirationDays,
 		})
+
+		// Track interview_shared event for PLG instrumentation
+		try {
+			const posthogServer = getPostHogServerClient()
+			if (posthogServer) {
+				// Get account_id and project_id from interview
+				const { data: interviewDetails } = await supabase
+					.from("interviews")
+					.select("account_id, project_id")
+					.eq("id", interviewId)
+					.single()
+
+				if (interviewDetails) {
+					const userId = ctx.claims.sub
+					posthogServer.capture({
+						distinctId: userId,
+						event: "interview_shared",
+						properties: {
+							interview_id: interviewId,
+							project_id: interviewDetails.project_id,
+							account_id: interviewDetails.account_id,
+							share_type: "public_link",
+							expiration_days: expirationDays,
+							$groups: { account: interviewDetails.account_id },
+						},
+					})
+				}
+			}
+		} catch (trackingError) {
+			consola.warn("[INTERVIEW_SHARED] PostHog tracking failed:", trackingError)
+		}
 
 		return Response.json({
 			ok: true,

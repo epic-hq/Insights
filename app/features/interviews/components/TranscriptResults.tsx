@@ -1,10 +1,11 @@
 import consola from "consola"
-import { Check, Copy, Tag, User } from "lucide-react"
+import { Check, Copy, Pencil, Tag, User } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 
 const MAX_TOPIC_RESULTS = 120
 
@@ -62,9 +63,10 @@ interface TranscriptResultsProps {
 		display_name: string | null
 		people?: { id?: string; name?: string | null; segment?: string | null }
 	}>
+	onSpeakerClick?: (speakerKey: string) => void
 }
 
-export function TranscriptResults({ data, rawTranscript, participants = [] }: TranscriptResultsProps) {
+export function TranscriptResults({ data, rawTranscript, participants = [], onSpeakerClick }: TranscriptResultsProps) {
 	const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({})
 
 	// Create speaker name mapping from participants
@@ -262,25 +264,46 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 						</CardHeader>
 						<CardContent>
 							{hasFormattedData ? (
-								<div className="space-y-4">
-									{(data?.utterances || []).map((utterance, index) => {
-										const colors = getSpeakerColor(utterance.speaker)
-										const speakerName = getSpeakerName(utterance.speaker)
-										return (
-											<div key={index} className={`${colors.border} border-l-4 py-3 pl-4`}>
-												<div className="mb-2 flex items-start justify-between">
-													<Badge className={`${colors.badge} mb-2`}>{speakerName}</Badge>
-													<div className="text-right text-foreground text-xs">
-														<div>
-															{formatTime(utterance.start)} - {formatTime(utterance.end)}
+								<TooltipProvider>
+									<div className="space-y-4">
+										{(data?.utterances || []).map((utterance, index) => {
+											const colors = getSpeakerColor(utterance.speaker)
+											const speakerName = getSpeakerName(utterance.speaker)
+											return (
+												<div key={index} className={`${colors.border} border-l-4 py-3 pl-4`}>
+													<div className="mb-2 flex items-start justify-between">
+														<div className="mb-2 flex items-center gap-1">
+															<Badge className={`${colors.badge}`}>{speakerName}</Badge>
+															{onSpeakerClick && (
+																<Tooltip>
+																	<TooltipTrigger asChild>
+																		<button
+																			type="button"
+																			onClick={() => onSpeakerClick(utterance.speaker)}
+																			className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+																			aria-label="Edit speaker"
+																		>
+																			<Pencil className="h-3 w-3" />
+																		</button>
+																	</TooltipTrigger>
+																	<TooltipContent>
+																		<p>Edit speaker assignment</p>
+																	</TooltipContent>
+																</Tooltip>
+															)}
+														</div>
+														<div className="text-right text-foreground text-xs">
+															<div>
+																{formatTime(utterance.start)} - {formatTime(utterance.end)}
+															</div>
 														</div>
 													</div>
+													<p className="text-foreground leading-relaxed">{utterance.text}</p>
 												</div>
-												<p className="text-foreground leading-relaxed">{utterance.text}</p>
-											</div>
-										)
-									})}
-								</div>
+											)
+										})}
+									</div>
+								</TooltipProvider>
 							) : (
 								<div className="space-y-4">
 									<div className="rounded-lg bg-muted p-4">

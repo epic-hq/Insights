@@ -22,29 +22,42 @@ export const fetchEvidenceTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
-			.nullable()
+			.nullish()
 			.describe("Project ID to fetch evidence from. Defaults to the current project in context."),
-		interviewId: z.string().optional().nullable().describe("Filter evidence by specific interview ID."),
-		personId: z.string().optional().nullable().describe("Filter evidence by specific person ID."),
+		interviewId: z.string().nullish().describe("Filter evidence by specific interview ID."),
+		personId: z.string().nullish().describe("Filter evidence by specific person ID."),
 		evidenceSearch: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Case-insensitive search string to match evidence content (gist, verbatim, chunk)."),
-		evidenceLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of evidence items to return."),
-		includeInterview: z.boolean().optional().describe("Whether to include interview details for each evidence item."),
-		includePerson: z.boolean().optional().describe("Whether to include person details for each evidence item."),
-		includeInsights: z.boolean().optional().describe("Whether to include related insights for each evidence item."),
+		evidenceLimit: z
+			.number()
+			.int()
+			.min(1)
+			.max(100)
+			.nullish()
+			.transform((val) => val ?? DEFAULT_EVIDENCE_LIMIT)
+			.describe("Maximum number of evidence items to return."),
+		includeInterview: z
+			.boolean()
+			.nullish()
+			.transform((val) => val ?? true)
+			.describe("Whether to include interview details for each evidence item."),
+		includePerson: z
+			.boolean()
+			.nullish()
+			.transform((val) => val ?? true)
+			.describe("Whether to include person details for each evidence item."),
+		includeInsights: z
+			.boolean()
+			.nullish()
+			.transform((val) => val ?? false)
+			.describe("Whether to include related insights for each evidence item."),
 		modality: z
 			.enum(["qual", "quant"])
-			.optional()
-			.nullable()
+			.nullish()
 			.describe("Filter by evidence modality (qualitative or quantitative)."),
-		confidence: z
-			.enum(["low", "medium", "high"])
-			.optional()
-			.nullable()
-			.describe("Filter by evidence confidence level."),
+		confidence: z.enum(["low", "medium", "high"]).nullish().describe("Filter by evidence confidence level."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -120,7 +133,8 @@ export const fetchEvidenceTool = createTool({
 			// Build the base query for evidence
 			let query = supabase
 				.from("evidence")
-				.select(`
+				.select(
+					`
 					id,
 					project_id,
 					interview_id,
@@ -145,7 +159,8 @@ export const fetchEvidenceTool = createTool({
 					gains,
 					created_at,
 					updated_at
-				`)
+				`
+				)
 				.eq("project_id", projectIdStr)
 
 			// Apply filters
@@ -223,10 +238,12 @@ export const fetchEvidenceTool = createTool({
 				includePerson && evidenceRows.length > 0
 					? supabase
 							.from("interview_people")
-							.select(`
+							.select(
+								`
 							interview_id,
 							people:person_id(id, name)
-						`)
+						`
+							)
 							.in(
 								"interview_id",
 								evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []

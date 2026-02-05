@@ -9,8 +9,11 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import consola from "consola";
 import { z } from "zod";
-import { b } from "~/../baml_client";
-import { generateEmbedding } from "~/lib/embeddings/openai.server";
+import {
+  generateEmbeddingWithBilling,
+  systemBillingContext,
+} from "~/lib/billing";
+import { runBamlWithBilling } from "~/lib/billing/instrumented-baml.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 export const indexNoteTask = schemaTask({
@@ -64,15 +67,42 @@ export const indexNoteTask = schemaTask({
       `[indexNote] Extracting evidence from ${documentType}, text length: ${documentText.length}`,
     );
 
-    // 2. Extract evidence using BAML
+    // 2. Extract evidence using BAML with billing
+    const billingCtx = systemBillingContext(
+      interview.account_id,
+      "interview_extraction",
+      interview.project_id,
+    );
     let extraction;
     try {
-      extraction = await b.ExtractEvidenceFromDocument(
-        documentText,
-        interview.title || undefined,
-        documentType,
-        maxEvidence,
+      const { result } = await runBamlWithBilling(
+        billingCtx,
+        {
+          functionName: "ExtractEvidenceFromDocument",
+          traceName: "note.extract-evidence",
+          input: {
+            documentType,
+            textLength: documentText.length,
+            maxEvidence,
+          },
+          metadata: {
+            interviewId,
+            accountId: interview.account_id,
+            projectId: interview.project_id,
+          },
+          resourceType: "note",
+          resourceId: interviewId,
+          bamlCall: (client) =>
+            client.ExtractEvidenceFromDocument(
+              documentText,
+              interview.title || undefined,
+              documentType,
+              maxEvidence,
+            ),
+        },
+        `note:${interviewId}:extract-evidence`,
       );
+      extraction = result;
     } catch (bamlError) {
       consola.error("[indexNote] BAML extraction failed:", bamlError);
       throw new Error(`Evidence extraction failed: ${bamlError}`);
@@ -96,12 +126,27 @@ export const indexNoteTask = schemaTask({
     }
 
     // 4. Create evidence records with embeddings
+    // Create billing context for embedding generation
+    const embeddingBillingCtx = systemBillingContext(
+      interview.account_id,
+      "embedding_generation",
+      interview.project_id,
+    );
+
     let evidenceCount = 0;
     for (const ev of extraction.evidence) {
       try {
-        // Generate embedding for the evidence
+        // Generate embedding for the evidence with billing tracking
         const textToEmbed = `${ev.gist}: ${ev.verbatim}`;
-        const embedding = await generateEmbedding(textToEmbed);
+        const embedding = await generateEmbeddingWithBilling(
+          embeddingBillingCtx,
+          textToEmbed,
+          {
+            idempotencyKey: `note:${interviewId}:evidence:${evidenceCount}`,
+            resourceType: "evidence",
+            resourceId: interviewId,
+          },
+        );
 
         const evidenceRecord = {
           account_id: interview.account_id,

@@ -35,7 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Verify participant exists and get interview context
 		const { data: participant, error: participantError } = await userDb
 			.from("interview_people")
-			.select("id, interview_id, interviews(project_id, account_id)")
+			.select("id, interview_id, person_id, interviews(project_id, account_id)")
 			.eq("id", participantId)
 			.single()
 
@@ -78,6 +78,41 @@ export async function action({ request }: ActionFunctionArgs) {
 			finalPersonId = newPerson.id
 		}
 
+		// Smart speaker swap: If the target person is already linked to another
+		// participant in this interview, swap them instead of just overwriting
+		let swappedWith: string | null = null
+		const currentPersonId = participant.person_id
+
+		if (finalPersonId) {
+			// Check if target person is already linked to another participant
+			const { data: existingLink } = await userDb
+				.from("interview_people")
+				.select("id, person_id")
+				.eq("interview_id", participant.interview_id)
+				.eq("person_id", finalPersonId)
+				.neq("id", participantId)
+				.maybeSingle()
+
+			if (existingLink) {
+				// Swap: assign current participant's person to the other participant
+				const { error: swapError } = await userDb
+					.from("interview_people")
+					.update({ person_id: currentPersonId || null })
+					.eq("id", existingLink.id)
+
+				if (swapError) {
+					return Response.json(
+						{
+							ok: false,
+							error: `Failed to swap participants: ${swapError.message}`,
+						},
+						{ status: 500 }
+					)
+				}
+				swappedWith = existingLink.id
+			}
+		}
+
 		// Update the interview_people record to link/unlink person
 		// If personId is empty string, unlink by setting to null
 		const { error: updateError } = await userDb
@@ -99,10 +134,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		return Response.json({
 			ok: true,
+			swapped: !!swappedWith,
 			message: finalPersonId
-				? createPerson
-					? "Person created and linked successfully"
-					: "Person linked successfully"
+				? swappedWith
+					? "Speakers swapped successfully"
+					: createPerson
+						? "Person created and linked successfully"
+						: "Person linked successfully"
 				: "Person unlinked successfully",
 		})
 	} catch (error: any) {

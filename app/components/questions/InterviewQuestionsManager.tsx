@@ -17,7 +17,6 @@ import {
 	Plus,
 	RefreshCcw,
 	Settings,
-	Sparkles,
 	Star,
 	Trash2,
 	X,
@@ -39,7 +38,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useOptionalProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions"
 import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
@@ -219,7 +217,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 	const routes = useProjectRoutes(projectPath)
 	const isLoadingRef = useRef(false)
-	const lastLoadedRef = useRef<{ projectId?: string; ts: number }>({ projectId: undefined, ts: 0 })
+	const lastLoadedRef = useRef<{ projectId?: string; ts: number }>({
+		projectId: undefined,
+		ts: 0,
+	})
 	const existingPromptIdsRef = useRef<string[]>([])
 	// Suppress deletions during critical saves (e.g., adding a follow-up)
 	const suppressDeletionRef = useRef(false)
@@ -307,34 +308,6 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const contextualInputRef = useRef<HTMLTextAreaElement>(null)
 	const contextualSuggestionsApiPath =
 		projectPath && projectPath.length > 0 ? `${projectPath}/api/contextual-suggestions` : "/api/contextual-suggestions"
-
-	const projectStatusAgent = useOptionalProjectStatusAgent()
-
-	const sendQuestionsToAgent = useCallback(() => {
-		if (!projectStatusAgent) {
-			toast.error("Project Copilot is unavailable in this view.")
-			return
-		}
-
-		const sample = questions
-			.filter((q) => q.status !== "deleted")
-			.slice(0, 8)
-			.map((q, idx) => `${idx + 1}. [${q.status || "proposed"}] ${q.text}`)
-			.join("\n")
-
-		const prompt = [
-			"Review the current interview prompts and help curate them.",
-			"You can call fetchInterviewPrompts/createInterviewPrompt/updateInterviewPrompt/deleteInterviewPrompt to add, rewrite, reorder, or mark must-haves. Keep rationale, categories, and time estimates intact when useful.",
-			sample.length
-				? `Current prompts:\n${sample}`
-				: "We do not have prompts yet—propose a concise, must-have set tailored to the project.",
-		]
-			.filter(Boolean)
-			.join("\n\n")
-
-		projectStatusAgent.insertText(prompt)
-		toast.success("Sent to Project Copilot")
-	}, [projectStatusAgent, questions])
 
 	// Load research goal from API
 	useEffect(() => {
@@ -648,7 +621,11 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	}, [projectId, loadQuestions])
 
 	const estimateMinutesPerQuestion = useCallback((q: Question, mode: ManagerResearchMode, f: Familiarity): number => {
-		const baseTimes = { exploratory: 3.5, validation: 2.5, user_testing: 2.0 }
+		const baseTimes = {
+			exploratory: 3.5,
+			validation: 2.5,
+			user_testing: 2.0,
+		}
 		const categoryAdjustments: Record<string, number> = {
 			pain: 0.5,
 			workflow: 0.5,
@@ -675,7 +652,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			// - Initial generation: time-based target (4/6/8/10)
 			// - Subsequent generations: user-selected count (default 3)
 			// First-time generation target by time; default 30m should produce 8
-			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
+			const countByTime: Record<number, number> = {
+				15: 4,
+				30: 8,
+				45: 8,
+				60: 10,
+			}
 			const initialTarget = countByTime[timeMinutes] ?? 8
 			const count = autoGenerateInitial ? initialTarget : moreCount
 			formData.append("questionCount", String(count))
@@ -846,7 +828,11 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		}
 
 		const tc = targetCounts[timeMinutes]
-		const defaultConfig = { base: Math.max(4, Math.floor(timeMinutes / 5)), validation: +1, cold: 0 }
+		const defaultConfig = {
+			base: Math.max(4, Math.floor(timeMinutes / 5)),
+			validation: +1,
+			cold: 0,
+		}
 		const config = tc ?? defaultConfig
 		const validationBoost = researchMode === "validation" ? config.validation : 0
 		const targetCount = Math.max(4, config.base + validationBoost + (familiarity === "cold" ? config.cold : 0))
@@ -987,7 +973,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	// Time used per category for currently selected questions
 	const _usedMinutesByCategory = useMemo(() => {
 		const acc: Record<string, number> = {}
-		for (const q of questionPack.questions as Array<{ categoryId: string; estimatedMinutes: number }>) {
+		for (const q of questionPack.questions as Array<{
+			categoryId: string
+			estimatedMinutes: number
+		}>) {
 			acc[q.categoryId] = (acc[q.categoryId] || 0) + (q.estimatedMinutes || 0)
 		}
 		return acc
@@ -1162,7 +1151,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				if (newlyCreatedIds.length > 0) {
 					const missing = newlyCreatedIds.filter((id) => !insertedIds.has(id))
 					if (missing.length > 0) {
-						console.error("❌ Missing inserted prompt IDs from response", { missing, newlyCreatedIds })
+						console.error("❌ Missing inserted prompt IDs from response", {
+							missing,
+							newlyCreatedIds,
+						})
 						throw new Error(`Failed to confirm persistence for prompts: ${missing.join(", ")}`)
 					}
 				}
@@ -1311,12 +1303,16 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						}, {}),
 					}))
 					setShowPendingModal(true)
-					toast.success("Generated 1 question", { description: `Added to review for ${catName}.` })
+					toast.success("Generated 1 question", {
+						description: `Added to review for ${catName}.`,
+					})
 				} else {
 					throw new Error("No question returned")
 				}
 			} catch (e) {
-				toast.error("Failed to generate in category", { description: e instanceof Error ? e.message : "Unknown error" })
+				toast.error("Failed to generate in category", {
+					description: e instanceof Error ? e.message : "Unknown error",
+				})
 			} finally {
 				setGeneratingCategoryId(null)
 			}
@@ -1947,7 +1943,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 					return next
 				})
 
-				await saveQuestionsToDatabase(updatedQuestions, newBaseIds, { refresh: true })
+				await saveQuestionsToDatabase(updatedQuestions, newBaseIds, {
+					refresh: true,
+				})
 
 				// Reload from database to ensure UI reflects actual DB state
 				await loadQuestions()
@@ -2012,12 +2010,6 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						<h1 className="whitespace-nowrap font-bold text-2xl text-foreground">Conversation Prompts</h1>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
-						{projectStatusAgent && (
-							<Button variant="outline" size="sm" onClick={sendQuestionsToAgent} className="hidden sm:inline-flex">
-								<Sparkles className="h-4 w-4" />
-								Ask Project Copilot
-							</Button>
-						)}
 						{generating ? (
 							<StatusPill variant="active">
 								Generating <ProgressDots className="ml-1" />
@@ -2338,7 +2330,13 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 												setEvaluatingId(improvingId)
 												const quality = await evaluateQuestionQuality(opt)
 												const updated = questions.map((q) =>
-													q.id === improvingId ? { ...q, text: opt, qualityFlag: quality ?? undefined } : q
+													q.id === improvingId
+														? {
+																...q,
+																text: opt,
+																qualityFlag: quality ?? undefined,
+															}
+														: q
 												)
 												setQuestions(updated)
 												setSkipDebounce(true)
@@ -2396,7 +2394,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 							<MessageCircleQuestion className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
 							<h3 className="mb-1 font-medium text-foreground">No prompts yet</h3>
 							<p className="mb-4 text-muted-foreground text-sm">
-								Click "Generate Prompts" above to create interview questions based on your project context.
+								Generate AI-assisted questions based on your project context, or write your own using the input above.
 							</p>
 						</div>
 					)}
@@ -2466,7 +2464,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																									// Use PATCH API to update the question text
 																									const response = await fetch(`/api/questions/${question.id}`, {
 																										method: "PATCH",
-																										headers: { "Content-Type": "application/json" },
+																										headers: {
+																											"Content-Type": "application/json",
+																										},
 																										body: JSON.stringify({
 																											text: editingText,
 																											table: "interview_prompts",
@@ -2577,7 +2577,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																					<span
 																						className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${cat?.color || "border-gray-200 bg-gray-50 text-gray-700"}`}
 																					>
-																						{cat?.name || "Other"} • ~{Math.round(question.estimatedMinutes || 3)}min
+																						{cat?.name || "Other"} • ~{Math.round(question.estimatedMinutes || 3)}
+																						min
 																					</span>
 																				</div>
 																			)}
@@ -2593,7 +2594,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																				>
 																					{questionCategories.find((c) => c.id === question.categoryId)?.name ||
 																						"Other"}{" "}
-																					• ~{Math.round(question.estimatedMinutes || 3)}min
+																					• ~{Math.round(question.estimatedMinutes || 3)}
+																					min
 																				</span>
 																			)}
 																			<DropdownMenu>
@@ -2621,7 +2623,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																									// Update UI state with server response
 																									const updated = questions.map((q) =>
 																										q.id === question.id
-																											? { ...q, isMustHave: result.question.is_must_have }
+																											? {
+																													...q,
+																													isMustHave: result.question.is_must_have,
+																												}
 																											: q
 																									)
 																									setQuestions(updated)
@@ -2687,7 +2692,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																								if (result.success) {
 																									// Update UI state with server response
 																									const updated = questions.map((q) =>
-																										q.id === question.id ? { ...q, status: "deleted" as const } : q
+																										q.id === question.id
+																											? {
+																													...q,
+																													status: "deleted" as const,
+																												}
+																											: q
 																									)
 																									setQuestions(updated)
 																									const baseIds = getBaseSelectedIds().filter(
@@ -2777,14 +2787,20 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							id: crypto.randomUUID(),
 																							text: trimmedInput,
 																							categoryId: followupCategory,
-																							scores: { importance: 0.7, goalMatch: 0.8, novelty: 0.6 },
+																							scores: {
+																								importance: 0.7,
+																								goalMatch: 0.8,
+																								novelty: 0.6,
+																							},
 																							rationale: `Follow-up to: ${question.text}`,
 																							status: "selected",
 																							timesAnswered: 0,
 																							source: "user",
 																							isMustHave: mustHavesOnly,
 																							estimatedMinutes: estimateMinutesPerQuestion(
-																								{ categoryId: followupCategory } as Question,
+																								{
+																									categoryId: followupCategory,
+																								} as Question,
 																								researchMode,
 																								familiarity
 																							),
@@ -2918,7 +2934,14 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 													</TooltipTrigger>
 													<TooltipContent>
 														{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"} • ~
-														{Math.round((question as unknown as { estimatedMinutes: number }).estimatedMinutes)}min
+														{Math.round(
+															(
+																question as unknown as {
+																	estimatedMinutes: number
+																}
+															).estimatedMinutes
+														)}
+														min
 													</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>

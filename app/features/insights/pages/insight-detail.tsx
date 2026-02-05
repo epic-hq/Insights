@@ -6,6 +6,7 @@ import { PageContainer } from "~/components/layout/PageContainer"
 import { BackButton } from "~/components/ui/back-button"
 import { getInsightById } from "~/features/insights/db"
 import { getUsersWithThemes } from "~/features/themes/services/segmentThemeQueries.server"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { userContext } from "~/server/user-context"
 import { InsightCardV3Page } from "../components/InsightCardV3Page"
 import type { Route } from "./+types/insight-detail"
@@ -363,6 +364,28 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			}))
 			.sort((a, b) => b.facet_count - a.facet_count)
 			.slice(0, 20)
+
+		// Track insight_viewed event for PLG instrumentation
+		try {
+			const posthogServer = getPostHogServerClient()
+			if (posthogServer) {
+				const userId = ctx.claims.sub
+				posthogServer.capture({
+					distinctId: userId,
+					event: "insight_viewed",
+					properties: {
+						insight_id: insightId,
+						project_id: projectId,
+						account_id: accountId,
+						evidence_count: evidence.length,
+						people_affected_count: peopleAffected.length,
+						$groups: { account: accountId },
+					},
+				})
+			}
+		} catch (trackingError) {
+			consola.warn("[INSIGHT_VIEWED] PostHog tracking failed:", trackingError)
+		}
 
 		return {
 			insight,

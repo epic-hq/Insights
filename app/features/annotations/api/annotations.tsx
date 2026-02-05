@@ -1,5 +1,6 @@
 import consola from "consola"
 import type { ActionFunction, LoaderFunction } from "react-router"
+import { getPostHogServerClient } from "~/lib/posthog.server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 import {
@@ -114,6 +115,37 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 				if (error) {
 					consola.error("Failed to create comment:", error)
 					return Response.json({ error: { message: "Failed to create comment" } }, { status: 500 })
+				}
+
+				// Track annotation_created event for PLG instrumentation
+				try {
+					const posthogServer = getPostHogServerClient()
+					if (posthogServer && annotation) {
+						// Check for mentions in contentJsonb
+						const hasMentions = !!(
+							contentJsonb?.mentions &&
+							Array.isArray(contentJsonb.mentions) &&
+							contentJsonb.mentions.length > 0
+						)
+
+						posthogServer.capture({
+							distinctId: userId,
+							event: "annotation_created",
+							properties: {
+								annotation_id: annotation.id,
+								project_id: projectId,
+								account_id: accountId,
+								entity_type: entityType,
+								entity_id: entityId,
+								annotation_type: "comment",
+								is_reply: !!parentId,
+								has_mentions: hasMentions,
+								$groups: { account: accountId },
+							},
+						})
+					}
+				} catch (trackingError) {
+					consola.warn("[ANNOTATION_CREATED] PostHog tracking failed:", trackingError)
 				}
 
 				return Response.json({ annotation })

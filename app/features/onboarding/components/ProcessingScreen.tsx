@@ -1,17 +1,7 @@
 import consola from "consola"
-import { Brain, Lightbulb, Shield, TrendingUp, Zap } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Badge } from "~/components/ui/badge"
 import { useInterviewProgress, useRealtimeInterview } from "~/hooks/useInterviewProgress"
-
-interface EducationalCard {
-	id: string
-	title: string
-	subtitle: string
-	content: string
-	icon: typeof Brain
-	color: string
-}
 
 interface ProcessingScreenProps {
 	fileName: string
@@ -19,55 +9,9 @@ interface ProcessingScreenProps {
 	interviewId?: string
 	triggerRunId?: string
 	triggerAccessToken?: string
+	uploadProgress?: number
+	isUploading?: boolean
 }
-
-const educationalCards: EducationalCard[] = [
-	{
-		id: "analysis",
-		title: "How AI analyzes your interviews",
-		subtitle: "Understanding the process",
-		content:
-			"Our AI transcribes your audio, identifies key themes, extracts insights about user needs, and maps them to your research questions. This typically takes 2-5 minutes depending on file length.",
-		icon: Brain,
-		color: "bg-blue-600",
-	},
-	{
-		id: "tips",
-		title: "Getting the most from your insights",
-		subtitle: "Best practices",
-		content:
-			"For best results, ensure clear audio quality and encourage participants to speak naturally. Interviews with 3+ concrete examples or stories typically yield the richest insights.",
-		icon: Lightbulb,
-		color: "bg-yellow-600",
-	},
-	{
-		id: "privacy",
-		title: "Your data is secure",
-		subtitle: "Privacy & security",
-		content:
-			"All audio files are encrypted in transit and at rest. We process your data securely and never share personal information. You can delete your data anytime from your account settings.",
-		icon: Shield,
-		color: "bg-green-600",
-	},
-	{
-		id: "features",
-		title: "Explore powerful features",
-		subtitle: "What's coming next",
-		content:
-			"Once processing is complete, you'll see persona insights, journey mapping, pain point analysis, and opportunity recommendations. You can also share findings with your team.",
-		icon: Zap,
-		color: "bg-purple-600",
-	},
-	{
-		id: "value",
-		title: "Unlock deeper insights",
-		subtitle: "Add more interviews",
-		content:
-			"Projects with 3+ interviews reveal 40% more insights and patterns. Each additional interview helps us identify stronger themes and more accurate persona profiles.",
-		icon: TrendingUp,
-		color: "bg-red-600",
-	},
-]
 
 export default function ProcessingScreen({
 	fileName,
@@ -75,8 +19,9 @@ export default function ProcessingScreen({
 	interviewId,
 	triggerRunId,
 	triggerAccessToken,
+	uploadProgress,
+	isUploading,
 }: ProcessingScreenProps) {
-	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 	const [pollingAttempted, setPollingAttempted] = useState(false)
 	const stuckTimerRef = useRef<NodeJS.Timeout | null>(null)
 	const lastStatusRef = useRef<string | null>(null)
@@ -90,7 +35,10 @@ export default function ProcessingScreen({
 		runId: triggerRunId,
 		accessToken: triggerAccessToken,
 	})
-	const { progress, label: processingStage, isComplete } = progressInfo
+	const { progress, label: processingStage, isComplete, hasError, status } = progressInfo
+	const showUploadProgress = isUploading && typeof uploadProgress === "number"
+	const displayProgress = showUploadProgress ? uploadProgress : progress
+	const displayStage = showUploadProgress ? "Uploading file..." : processingStage
 
 	// Polling fallback: if stuck in transcription without Trigger.dev, poll AssemblyAI
 	const checkStuckTranscription = useCallback(async () => {
@@ -142,7 +90,7 @@ export default function ProcessingScreen({
 			stuckTimerRef.current = setTimeout(() => {
 				consola.warn("[ProcessingScreen] Interview appears stuck, triggering polling fallback")
 				checkStuckTranscription()
-			}, 30000) // Wait 30 seconds before polling
+			}, 30000)
 		}
 
 		return () => {
@@ -155,126 +103,71 @@ export default function ProcessingScreen({
 	// Auto-complete when processing is done
 	useEffect(() => {
 		if (isComplete) {
-			setTimeout(onComplete, 1000) // Small delay before completion
+			setTimeout(onComplete, 1000)
 		}
 	}, [isComplete, onComplete])
 
-	// Auto-advance cards every 8 seconds (slower, more relaxed)
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setCurrentCardIndex((prev) => (prev + 1) % educationalCards.length)
-		}, 8000)
-
-		return () => clearInterval(interval)
-	}, [])
-
-	const currentCard = educationalCards[currentCardIndex]
-	const IconComponent = currentCard.icon
-
-	const goToCard = (index: number) => {
-		setCurrentCardIndex(index)
+	// Derive display status
+	const getStatusText = () => {
+		if (showUploadProgress) return "Uploading"
+		if (hasError) return "Error"
+		if (isComplete) return "Complete"
+		if (isRealtime) return "Connected"
+		if (triggerRunId) return "Connecting..."
+		return "Queued"
 	}
 
 	return (
-		<div className="relative min-h-screen bg-black text-white">
-			{/* Clean Header */}
-			<div className="border-gray-800 border-b bg-black p-6">
-				<div className="flex items-center gap-4">
-					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/20">
-						<div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
-					</div>
-					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-						<h1 className="font-medium text-lg text-white">Processing Conversation</h1>
-						{triggerRunId && (
-							<Badge
-								className={`w-fit uppercase tracking-wide ${
-									isRealtime
-										? "bg-[#FF5A36] text-white shadow-[0_0_25px_rgba(255,90,54,0.45)]"
-										: "border border-white/40 border-dashed bg-transparent text-white/80"
-								}`}
-							>
-								{isRealtime ? "Live via Trigger.dev" : "Waiting for Trigger.dev"}
-							</Badge>
-						)}
-					</div>
-					<p className="text-gray-400 text-sm">{fileName}</p>
-				</div>
-			</div>
-
-			{/* Main Content - Centered & Clean */}
-			<div className="flex min-h-[calc(100vh-300px)] items-center justify-center p-8">
-				<div className="w-full max-w-lg text-center">
-					{/* Primary Progress Indicator */}
-					<div className="mb-8">
-						<div className="mx-auto mb-6 h-24 w-24">
-							<div className="relative h-full w-full">
-								{/* Background circle */}
-								<svg className="h-full w-full rotate-[-90deg]" viewBox="0 0 36 36">
-									<path
-										d="m18,2.0845
-											a 15.9155,15.9155 0 0,1 0,31.831
-											a 15.9155,15.9155 0 0,1 0,-31.831"
-										fill="none"
-										stroke="rgba(59, 130, 246, 0.2)"
-										strokeWidth="3"
-									/>
-									{/* Progress circle */}
-									<path
-										d="m18,2.0845
-											a 15.9155,15.9155 0 0,1 0,31.831
-											a 15.9155,15.9155 0 0,1 0,-31.831"
-										fill="none"
-										stroke="rgb(59, 130, 246)"
-										strokeWidth="3"
-										strokeDasharray={`${progress}, 100`}
-										className="transition-all duration-1000 ease-out"
-									/>
-								</svg>
-								{/* Percentage in center */}
-								<div className="absolute inset-0 flex items-center justify-center">
-									<span className="font-light text-2xl text-white">{Math.round(progress)}%</span>
-								</div>
-							</div>
-						</div>
-
-						{/* Processing Stage */}
-						<h2 className="mb-2 font-light text-white text-xl">{processingStage}</h2>
-						{isRealtime && (
-							<p className="mb-1 text-[#FF8A66] text-[11px] uppercase tracking-[0.28em]">
-								Realtime updates via Trigger.dev
-							</p>
-						)}
-						<p className="text-gray-400 text-sm">
-							{Math.max(1, Math.ceil((100 - progress) / 20))}{" "}
-							{Math.ceil((100 - progress) / 20) === 1 ? "minute" : "minutes"} remaining
-						</p>
-					</div>
-
-					{/* Educational Content - Minimal */}
-					<div className="rounded-lg bg-gray-900/50 p-6 backdrop-blur">
-						<div className="mb-4 flex justify-center">
-							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/20">
-								<IconComponent className="h-6 w-6 text-blue-400" />
-							</div>
-						</div>
-
-						<h3 className="mb-3 font-medium text-lg text-white">{currentCard.title}</h3>
-						<p className="text-gray-300 text-sm leading-relaxed">{currentCard.content}</p>
-
-						{/* Simple dots indicator */}
-						<div className="mt-6 flex justify-center gap-2">
-							{educationalCards.map((_, index) => (
-								<button
-									key={index}
-									onClick={() => goToCard(index)}
-									className={`h-1.5 w-1.5 rounded-full transition-all ${
-										index === currentCardIndex ? "bg-blue-400" : "bg-gray-600"
-									}`}
-								/>
-							))}
-						</div>
+		<div className="flex min-h-screen items-center justify-center bg-background p-4">
+			<div className="w-full max-w-sm space-y-8 text-center">
+				{/* Spinner */}
+				<div className="flex justify-center">
+					<div className="relative">
+						<Loader2 className="h-16 w-16 animate-spin text-primary" />
+						{isRealtime && <span className="-right-1 -top-1 absolute h-3 w-3 rounded-full bg-green-500" />}
 					</div>
 				</div>
+
+				{/* Status */}
+				<div className="space-y-2">
+					<h1 className="font-medium text-foreground text-xl">{displayStage}</h1>
+					<p className="text-muted-foreground text-sm">{fileName}</p>
+				</div>
+
+				{/* Progress bar */}
+				<div className="space-y-2">
+					<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+						<div
+							className="h-full bg-primary transition-all duration-500 ease-out"
+							style={{ width: `${displayProgress}%` }}
+						/>
+					</div>
+					<div className="flex justify-between text-muted-foreground text-xs">
+						<span>{Math.round(displayProgress)}%</span>
+						<span>{getStatusText()}</span>
+					</div>
+				</div>
+
+				{/* Navigation safety message */}
+				<p className="text-muted-foreground text-sm">
+					{showUploadProgress
+						? "Please stay on this page while uploading. Leaving will cancel the upload."
+						: "You can safely navigate away. We'll notify you when processing is complete."}
+				</p>
+
+				{/* Debug info (only in development or when stuck) */}
+				{(status === "loading" || hasError) && (
+					<div className="space-y-1 rounded-md bg-muted/50 p-3 text-left font-mono text-xs">
+						<div className="text-muted-foreground">
+							Interview: {interviewId ? interviewId.slice(0, 8) + "..." : "—"}
+						</div>
+						<div className="text-muted-foreground">Run: {triggerRunId ? triggerRunId.slice(0, 12) + "..." : "—"}</div>
+						<div className="text-muted-foreground">
+							Status: {status} | Realtime: {isRealtime ? "yes" : "no"}
+						</div>
+						{hasError && <div className="text-destructive">{processingStage}</div>}
+					</div>
+				)}
 			</div>
 		</div>
 	)

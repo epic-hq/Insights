@@ -20,11 +20,11 @@ export const semanticSearchPeopleTool = createTool({
 			),
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to search within. Defaults to the current project in context."),
 		kindSlugFilter: z
 			.string()
-			.optional()
+			.nullish()
 			.describe(
 				"Optional: Filter by facet kind (e.g., 'role', 'title', 'company_size', 'industry'). Leave empty to search all facet types."
 			),
@@ -32,11 +32,11 @@ export const semanticSearchPeopleTool = createTool({
 			.number()
 			.min(0)
 			.max(1)
-			.optional()
+			.nullish()
 			.describe(
 				"Similarity threshold (0-1). Higher = more strict. Default: 0.5. Recommended: 0.4-0.6 for broad searches, 0.6-0.8 for precise matches."
 			),
-		matchCount: z.number().int().min(1).max(50).optional().describe("Maximum number of people to return. Default: 10"),
+		matchCount: z.number().int().min(1).max(50).nullish().describe("Maximum number of people to return. Default: 10"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

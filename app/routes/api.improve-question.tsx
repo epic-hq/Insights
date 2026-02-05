@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import { runBamlWithBilling, userBillingContext } from "~/lib/billing"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 
@@ -11,6 +11,11 @@ export async function action({ request }: ActionFunctionArgs) {
 	const langfuse = getLangfuseClient()
 	const lfTrace = (langfuse as any).trace?.({ name: "api.improve-question" })
 	try {
+		// Get user from request
+		const { client: supabase } = getServerClient(request)
+		const { data: jwt } = await supabase.auth.getClaims()
+		const accountId = jwt?.claims.sub || "anonymous"
+
 		const { question, project_id } = await request.json()
 		if (!question || typeof question !== "string") {
 			return Response.json({ error: "Missing question" }, { status: 400 })
@@ -19,7 +24,6 @@ export async function action({ request }: ActionFunctionArgs) {
 		let research_context = "General interview planning context"
 		if (project_id) {
 			try {
-				const { client: supabase } = getServerClient(request)
 				const ctx = await getProjectContextGeneric(supabase, project_id as string)
 				const meta: any = ctx?.merged || {}
 				const orgs = Array.isArray(meta.target_orgs) ? meta.target_orgs.join(", ") : meta.target_orgs || ""
@@ -32,28 +36,34 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 		}
 
+		const billingCtx = userBillingContext(accountId, accountId, "question_improvement")
+
 		// Prefer GPT‑4o‑mini for rewrite variety (friendlier + examples)
 		let primary: string | null = null
 		try {
-			const { result: batch } = await runBamlWithTracing({
-				functionName: "EvaluateQuestionSet",
-				traceName: "baml.evaluate-question-set.single",
-				input: { question, research_context },
-				metadata: { route: "api.improve-question" },
-				logUsageLabel: "EvaluateQuestionSet",
-				bamlCall: (client) => client.EvaluateQuestionSet([question], research_context),
-			})
+			const { result: batch } = await runBamlWithBilling(
+				billingCtx,
+				{
+					functionName: "EvaluateQuestionSet",
+					traceName: "baml.evaluate-question-set.single",
+					bamlCall: (client) => client.EvaluateQuestionSet([question], research_context),
+					resourceType: "question",
+				},
+				`improve-question:${accountId}:${question.slice(0, 30)}:${Date.now()}`
+			)
 			primary = batch?.evaluations?.[0]?.improvement?.suggested_rewrite || null
 		} catch (err) {
 			console.warn("EvaluateQuestionSet failed, falling back:", err)
-			const { result: evalResult } = await runBamlWithTracing({
-				functionName: "EvaluateInterviewQuestion",
-				traceName: "baml.evaluate-interview-question",
-				input: { question, research_context },
-				metadata: { route: "api.improve-question" },
-				logUsageLabel: "EvaluateInterviewQuestion",
-				bamlCall: (client) => client.EvaluateInterviewQuestion(question, research_context),
-			})
+			const { result: evalResult } = await runBamlWithBilling(
+				billingCtx,
+				{
+					functionName: "EvaluateInterviewQuestion",
+					traceName: "baml.evaluate-interview-question",
+					bamlCall: (client) => client.EvaluateInterviewQuestion(question, research_context),
+					resourceType: "question",
+				},
+				`improve-question-fallback:${accountId}:${question.slice(0, 30)}:${Date.now()}`
+			)
 			primary = evalResult?.improvement?.suggested_rewrite || null
 		}
 

@@ -39,6 +39,7 @@ export const fetchProjectSectionTool = createTool({
 	description: "Fetch a specific project section by kind (e.g., target_orgs, target_roles, research_goal)",
 	inputSchema: z.object({
 		kind: z.string().describe("Section kind to fetch (e.g., target_orgs, target_roles)"),
+		project_id: z.string().nullish().describe("Project ID (optional, uses runtime context if not provided)"),
 	}),
 	outputSchema: baseOutput.extend({
 		section: sectionOutputSchema.nullable().optional(),
@@ -46,7 +47,17 @@ export const fetchProjectSectionTool = createTool({
 	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { projectId } = ensureContext(context)
+
+			// Use input project_id or fall back to runtime context
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
+			const projectId = input.project_id || runtimeProjectId
+
+			if (!projectId) {
+				return {
+					success: false,
+					message: "Missing project_id in both input and runtime context",
+				}
+			}
 
 			const { data, error } = await supabase
 				.from("project_sections")
@@ -100,10 +111,11 @@ export const updateProjectSectionMetaTool = createTool({
 		meta: z.record(z.string(), z.any()).describe("JSON meta object to update"),
 		mergeMeta: z
 			.boolean()
-			.optional()
+			.nullish()
 			.default(false)
 			.describe("If true, merge with existing meta (append to arrays, merge objects)"),
-		contentMd: z.string().optional().describe("Optional markdown content to update"),
+		contentMd: z.string().nullish().describe("Optional markdown content to update"),
+		project_id: z.string().nullish().describe("Project ID (optional, uses runtime context if not provided)"),
 	}),
 	outputSchema: baseOutput.extend({
 		section: sectionOutputSchema.nullable().optional(),
@@ -111,7 +123,19 @@ export const updateProjectSectionMetaTool = createTool({
 	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { projectId, userId } = ensureContext(context)
+
+			// Use input project_id or fall back to runtime context
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
+			const runtimeUserId = context?.requestContext?.get?.("user_id") as string | undefined
+			const projectId = input.project_id || runtimeProjectId
+			const userId = runtimeUserId || "system"
+
+			if (!projectId) {
+				return {
+					success: false,
+					message: "Missing project_id in both input and runtime context",
+				}
+			}
 
 			// Fetch existing section if merging
 			let finalMeta = input.meta
@@ -215,11 +239,12 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 	description: "Delete specific keys from a section's meta JSON object, or remove items from meta arrays",
 	inputSchema: z.object({
 		kind: z.string().describe("Section kind (e.g., target_orgs, target_roles)"),
-		keys: z.array(z.string()).optional().describe("Meta keys to delete entirely"),
+		keys: z.array(z.string()).nullish().describe("Meta keys to delete entirely"),
 		removeFromArrays: z
 			.record(z.string(), z.array(z.string()))
-			.optional()
+			.nullish()
 			.describe("Remove specific items from array fields. Format: { fieldName: [items to remove] }"),
+		project_id: z.string().nullish().describe("Project ID (optional, uses runtime context if not provided)"),
 	}),
 	outputSchema: baseOutput.extend({
 		section: sectionOutputSchema.nullable().optional(),
@@ -227,7 +252,19 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 	execute: async (input, context?) => {
 		try {
 			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { projectId, userId } = ensureContext(context)
+
+			// Use input project_id or fall back to runtime context
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
+			const runtimeUserId = context?.requestContext?.get?.("user_id") as string | undefined
+			const projectId = input.project_id || runtimeProjectId
+			const userId = runtimeUserId || "system"
+
+			if (!projectId) {
+				return {
+					success: false,
+					message: "Missing project_id in both input and runtime context",
+				}
+			}
 
 			// Fetch existing section
 			const { data: existing, error: fetchError } = await supabase

@@ -46,7 +46,7 @@ export const capabilityLookupTool = createTool({
 	description:
 		"Return a concise list of this agent's capabilities and guardrails. Use when the user asks 'what can you do' or when clarifying scope.",
 	inputSchema: z.object({
-		query: z.string().optional().describe("Optional filter string to narrow the capability list."),
+		query: z.string().nullish().describe("Optional filter string to narrow the capability list."),
 	}),
 	outputSchema: z.object({
 		capabilities: z.array(

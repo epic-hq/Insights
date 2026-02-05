@@ -59,25 +59,25 @@ Operations:
 - read: Get document content by kind
 - list: List all documents for the project`,
 	inputSchema: z.object({
-		projectId: z.string().optional().describe("Project ID. Defaults to current project in context."),
+		projectId: z.string().nullish().describe("Project ID. Defaults to current project in context."),
 		operation: z
 			.enum(["create", "update", "upsert", "read", "list"])
 			.describe("Operation to perform: create, update, upsert, read, or list"),
 		kind: z
 			.string()
-			.optional()
+			.nullish()
 			.describe(
 				"Document type identifier (e.g., 'positioning_statement', 'seo_strategy'). Required for create/update/upsert/read."
 			),
 		content: z
 			.any()
-			.optional()
+			.nullish()
 			.describe(
 				"Markdown content of the document (string or object that will be JSON stringified). Required for create/update/upsert."
 			),
 		metadata: z
 			.any()
-			.optional()
+			.nullish()
 			.nullable()
 			.describe(
 				"Optional metadata to store with the document (JSON object). If content is an object, it will be stored in metadata.structured."

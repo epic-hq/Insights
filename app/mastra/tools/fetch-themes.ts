@@ -16,10 +16,10 @@ export const fetchThemesTool = createTool({
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
+			.nullish()
 			.describe("Project ID to fetch themes from. Defaults to the current project in context."),
-		themeSearch: z.string().optional().describe("Case-insensitive search string to match theme names or statements."),
-		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of themes to return."),
+		themeSearch: z.string().nullish().describe("Case-insensitive search string to match theme names or statements."),
+		limit: z.number().int().min(1).max(100).nullish().describe("Maximum number of themes to return."),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

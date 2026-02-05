@@ -150,10 +150,21 @@ export async function extractAllMediaUrls(pageUrl: string): Promise<ExtractionRe
 	}
 
 	try {
+		// Determine referer based on the URL (needed for Vimeo, etc.)
+		let referer = ""
+		if (pageUrl.includes("vimeo.com")) {
+			referer = "https://vimeo.com/"
+		} else if (pageUrl.includes("zight.com") || pageUrl.includes("share.zight.com")) {
+			referer = "https://zight.com/"
+		}
+
 		const response = await fetch(pageUrl, {
 			headers: {
-				"User-Agent": "Mozilla/5.0 (compatible; UpsightBot/1.0)",
+				// Use a real browser User-Agent - bot UAs get limited content from video sites
+				"User-Agent":
+					"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 				Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+				...(referer && { Referer: referer }),
 			},
 		})
 
@@ -167,8 +178,14 @@ export async function extractAllMediaUrls(pageUrl: string): Promise<ExtractionRe
 		// Try to find video URLs in common patterns
 		const patterns: Array<{ pattern: RegExp; source: string }> = [
 			// Open Graph video meta tags
-			{ pattern: /<meta[^>]+property=["']og:video(?::url)?["'][^>]+content=["']([^"']+)["']/gi, source: "og:video" },
-			{ pattern: /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?::url)?["']/gi, source: "og:video" },
+			{
+				pattern: /<meta[^>]+property=["']og:video(?::url)?["'][^>]+content=["']([^"']+)["']/gi,
+				source: "og:video",
+			},
+			{
+				pattern: /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?::url)?["']/gi,
+				source: "og:video",
+			},
 			// Twitter video meta tags
 			{
 				pattern: /<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/gi,
@@ -179,13 +196,22 @@ export async function extractAllMediaUrls(pageUrl: string): Promise<ExtractionRe
 				source: "twitter:player",
 			},
 			// HTML5 video source tags
-			{ pattern: /<source[^>]+src=["']([^"']+)["'][^>]*type=["']video\/[^"']+["']/gi, source: "video-source" },
+			{
+				pattern: /<source[^>]+src=["']([^"']+)["'][^>]*type=["']video\/[^"']+["']/gi,
+				source: "video-source",
+			},
 			{ pattern: /<video[^>]+src=["']([^"']+)["']/gi, source: "video-tag" },
 			// Audio tags
 			{ pattern: /<audio[^>]+src=["']([^"']+)["']/gi, source: "audio-tag" },
-			{ pattern: /<source[^>]+src=["']([^"']+)["'][^>]*type=["']audio\/[^"']+["']/gi, source: "audio-source" },
+			{
+				pattern: /<source[^>]+src=["']([^"']+)["'][^>]*type=["']audio\/[^"']+["']/gi,
+				source: "audio-source",
+			},
 			// Direct links to media files in href
-			{ pattern: /<a[^>]+href=["']([^"']+\.(?:mp4|mp3|m4a|wav|webm|ogg|mov))["']/gi, source: "link-href" },
+			{
+				pattern: /<a[^>]+href=["']([^"']+\.(?:mp4|mp3|m4a|wav|webm|ogg|mov))["']/gi,
+				source: "link-href",
+			},
 		]
 
 		for (const { pattern, source } of patterns) {
@@ -285,9 +311,11 @@ export async function extractBestMediaUrl(pageUrl: string): Promise<string | nul
  * - If it's already a direct media URL, returns it as-is
  * - If it's a webpage, extracts the best media URL from it
  */
-export async function resolveToMediaUrl(
-	url: string
-): Promise<{ mediaUrl: string | null; isStreaming: boolean; mediaType: MediaUrlType }> {
+export async function resolveToMediaUrl(url: string): Promise<{
+	mediaUrl: string | null
+	isStreaming: boolean
+	mediaType: MediaUrlType
+}> {
 	// Check if it's already a direct media URL
 	if (isDirectMediaUrl(url)) {
 		return {

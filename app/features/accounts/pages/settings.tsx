@@ -1,8 +1,17 @@
-import { Globe, GripVertical, Loader2, Sparkles, Trash2, X } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { ArrowRight, Calendar, Globe, GripVertical, Loader2, Sparkles, Trash2, X } from "lucide-react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { useActionData, useFetcher, useLoaderData, useLocation } from "react-router"
+import {
+	redirect,
+	useActionData,
+	useFetcher,
+	useLoaderData,
+	useLocation,
+	useNavigate,
+	useSearchParams,
+} from "react-router"
 import { toast } from "sonner"
+import { PicaConnectButton } from "~/components/integrations/PicaConnectButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -11,6 +20,7 @@ import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import { hasFeature, PLANS, type PlanId } from "~/config/plans"
 import { loadAccountMetadata, updateAccountMetadata } from "~/features/accounts/server/account-settings.server"
 import {
 	type AccountSettingsMetadata,
@@ -18,6 +28,8 @@ import {
 	normalizeStageId,
 	type OpportunityStageConfig,
 } from "~/features/opportunities/stage-config"
+import { type CalendarConnection, getCalendarConnection } from "~/lib/integrations/calendar.server"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { researchCompanyWebsite } from "~/mastra/tools/research-company-website"
 import { userContext } from "~/server/user-context"
 
@@ -30,7 +42,7 @@ interface CompanyContext {
 	company_description: string | null
 	customer_problem: string | null
 	offerings: string[] | null
-	target_industries: string[] | null
+	target_orgs: string[] | null
 	target_company_sizes: string[] | null
 	target_roles: string[] | null
 	competitors: string[] | null
@@ -39,8 +51,18 @@ interface CompanyContext {
 
 type LoaderData = {
 	accountId: string
+	userId: string
+	accountName: string | null
 	metadata: AccountSettingsMetadata
 	companyContext: CompanyContext
+	isOnboarding: boolean
+	defaultProjectId: string | null
+	calendarConnection: {
+		connected: boolean
+		email: string | null
+		lastSyncedAt: string | null
+	} | null
+	hasCalendarFeature: boolean
 }
 
 const DEFAULT_JOURNEY_STAGES: OpportunityStageConfig[] = [
@@ -145,38 +167,103 @@ const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
 	},
 ]
 
-export async function loader({ context, params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 	const accountId = params.accountId
+	const userId = ctx.claims?.sub
 
 	if (!accountId) throw new Response("Account ID is required", { status: 400 })
+	if (!supabase) throw new Response("Database connection unavailable", { status: 500 })
+
+	// Check if this is onboarding mode
+	const url = new URL(request.url)
+	const isOnboarding = url.searchParams.get("onboarding") === "1"
 
 	const metadata = await loadAccountMetadata({ supabase, accountId })
 
-	// Load company context from accounts.accounts table
+	// Load account name and company context from accounts.accounts table
 	const { data: account } = await supabase
 		.schema("accounts")
 		.from("accounts")
 		.select(
-			"website_url, company_description, customer_problem, offerings, target_industries, target_company_sizes, target_roles, competitors, industry"
+			"name, website_url, company_description, customer_problem, offerings, target_orgs, target_company_sizes, target_roles, competitors, industry"
 		)
 		.eq("id", accountId)
 		.single()
+
+	// Get plan from billing_subscriptions (single source of truth)
+	let planId: PlanId = "free"
+	const { data: subscription } = await supabaseAdmin
+		.schema("accounts")
+		.from("billing_subscriptions")
+		.select("plan_name, status")
+		.eq("account_id", accountId)
+		.in("status", ["active", "trialing"])
+		.order("created_at", { ascending: false })
+		.limit(1)
+		.maybeSingle()
+
+	if (subscription?.plan_name) {
+		const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId
+		if (normalizedPlan in PLANS) {
+			planId = normalizedPlan
+		}
+	}
+
+	const hasCalendarFeature = hasFeature(planId, "calendar_sync")
+
+	// Load calendar connection status if user is logged in
+	let calendarConnection: LoaderData["calendarConnection"] = null
+	if (userId && hasCalendarFeature) {
+		const connection = await getCalendarConnection(supabase, userId, "google")
+		if (connection) {
+			calendarConnection = {
+				connected: true,
+				email: connection.provider_email,
+				lastSyncedAt: connection.last_synced_at,
+			}
+		}
+	}
 
 	const companyContext: CompanyContext = {
 		website_url: account?.website_url ?? null,
 		company_description: account?.company_description ?? null,
 		customer_problem: account?.customer_problem ?? null,
 		offerings: account?.offerings ?? null,
-		target_industries: account?.target_industries ?? null,
+		target_orgs: account?.target_orgs ?? null,
 		target_company_sizes: account?.target_company_sizes ?? null,
 		target_roles: account?.target_roles ?? null,
 		competitors: account?.competitors ?? null,
 		industry: account?.industry ?? null,
 	}
 
-	return { accountId, metadata, companyContext }
+	// Redirect onboarding mode to the project setup chat flow
+	let defaultProjectId: string | null = null
+	if (isOnboarding && userId) {
+		const { data: userSettings } = await supabase
+			.from("user_settings")
+			.select("last_used_project_id")
+			.eq("user_id", userId)
+			.single()
+		defaultProjectId = userSettings?.last_used_project_id ?? null
+		if (defaultProjectId) {
+			return redirect(`/a/${accountId}/${defaultProjectId}/setup?onboarding=1`)
+		}
+		return redirect(`/a/${accountId}/home`)
+	}
+
+	return {
+		accountId,
+		userId: userId ?? "",
+		accountName: account?.name ?? null,
+		metadata,
+		companyContext,
+		isOnboarding,
+		defaultProjectId,
+		calendarConnection,
+		hasCalendarFeature,
+	}
 }
 
 export async function action({ context, request, params }: ActionFunctionArgs) {
@@ -185,9 +272,25 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 	const accountId = params.accountId
 
 	if (!accountId) throw new Response("Account ID is required", { status: 400 })
+	if (!supabase) throw new Response("Database connection unavailable", { status: 500 })
 
 	const formData = await request.formData()
 	const intent = formData.get("intent") as string
+
+	// Handle account name update
+	if (intent === "update_account_name") {
+		const name = formData.get("name") as string
+		const { error } = await supabase
+			.schema("accounts")
+			.from("accounts")
+			.update({ name: name || null })
+			.eq("id", accountId)
+
+		if (error) {
+			return Response.json({ error: error.message }, { status: 500 })
+		}
+		return Response.json({ success: true })
+	}
 
 	// Handle company context update
 	if (intent === "update_company_context") {
@@ -203,7 +306,7 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 					company_description: data.company_description,
 					customer_problem: data.customer_problem,
 					offerings: data.offerings,
-					target_industries: data.target_industries,
+					target_orgs: data.target_orgs,
 					target_company_sizes: data.target_company_sizes,
 					target_roles: data.target_roles,
 					competitors: data.competitors,
@@ -369,6 +472,13 @@ function CompanyContextSection({
 	const [data, setData] = useState<CompanyContext>(context)
 	const [hasChanges, setHasChanges] = useState(false)
 
+	// Generate stable IDs for form elements
+	const id = useId()
+	const websiteUrlId = `${id}-website-url`
+	const companyDescriptionId = `${id}-company-description`
+	const customerProblemId = `${id}-customer-problem`
+	const industryId = `${id}-industry`
+
 	const updateField = <K extends keyof CompanyContext>(key: K, value: CompanyContext[K]) => {
 		setData((prev) => ({ ...prev, [key]: value }))
 		setHasChanges(true)
@@ -385,148 +495,273 @@ function CompanyContextSection({
 	}, [context])
 
 	return (
-		<Card className="border-border/60">
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2 text-xl">
-					<Globe className="h-5 w-5" />
-					Company Context
-				</CardTitle>
-				<CardDescription>
-					Set once for your account. AI uses this context for question generation, analysis, and lens application across
-					all projects.
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-6">
-				{/* Website URL with Research */}
-				<div className="space-y-2">
-					<Label htmlFor="website_url">Company Website</Label>
-					<div className="flex gap-2">
-						<Input
-							id="website_url"
-							type="url"
-							placeholder="https://yourcompany.com"
-							value={data.website_url || ""}
-							onChange={(e) => updateField("website_url", e.target.value)}
-							className="flex-1"
+		<div>
+			<div className="mb-4 flex items-center gap-2">
+				<Globe className="h-5 w-5" />
+				<h2 className="font-semibold text-xl">Company Context</h2>
+			</div>
+			<Card className="border-border/60">
+				<CardHeader>
+					<CardDescription>
+						Set once for your account. AI uses this context for question generation, analysis, and lens application
+						across all projects.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-6">
+					{/* Website URL with Research */}
+					<div className="space-y-2">
+						<Label htmlFor={websiteUrlId}>Company Website</Label>
+						<div className="flex gap-2">
+							<Input
+								id={websiteUrlId}
+								type="url"
+								placeholder="https://yourcompany.com"
+								value={data.website_url || ""}
+								onChange={(e) => updateField("website_url", e.target.value)}
+								className="flex-1"
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => data.website_url && onResearch(data.website_url)}
+								disabled={!data.website_url || isResearching}
+							>
+								{isResearching ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Researching...
+									</>
+								) : (
+									<>
+										<Sparkles className="mr-2 h-4 w-4" />
+										Auto-fill
+									</>
+								)}
+							</Button>
+						</div>
+						<p className="text-muted-foreground text-xs">
+							Enter your website and click Auto-fill to populate fields automatically
+						</p>
+					</div>
+
+					{/* Description */}
+					<div className="space-y-2">
+						<Label htmlFor={companyDescriptionId}>Company Description</Label>
+						<Textarea
+							id={companyDescriptionId}
+							placeholder="Brief description of what your company does (1-2 sentences)"
+							value={data.company_description || ""}
+							onChange={(e) => updateField("company_description", e.target.value)}
+							rows={2}
 						/>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => data.website_url && onResearch(data.website_url)}
-							disabled={!data.website_url || isResearching}
-						>
-							{isResearching ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Researching...
-								</>
-							) : (
-								<>
-									<Sparkles className="mr-2 h-4 w-4" />
-									Auto-fill
-								</>
-							)}
+					</div>
+
+					{/* Customer Problem */}
+					<div className="space-y-2">
+						<Label htmlFor={customerProblemId}>Customer Problem</Label>
+						<Textarea
+							id={customerProblemId}
+							placeholder="The main problem or pain point you solve for customers"
+							value={data.customer_problem || ""}
+							onChange={(e) => updateField("customer_problem", e.target.value)}
+							rows={2}
+						/>
+					</div>
+
+					{/* Industry */}
+					<div className="space-y-2">
+						<Label htmlFor={industryId}>Industry</Label>
+						<Input
+							id={industryId}
+							placeholder="e.g., B2B SaaS, Healthcare Technology, Fintech"
+							value={data.industry || ""}
+							onChange={(e) => updateField("industry", e.target.value)}
+						/>
+					</div>
+
+					{/* Offerings */}
+					<div className="space-y-2">
+						<Label>Products & Services</Label>
+						<TagInput
+							value={data.offerings || []}
+							onChange={(v) => updateField("offerings", v)}
+							placeholder="Type and press Enter to add..."
+						/>
+						<p className="text-muted-foreground text-xs">Main products or services you offer</p>
+					</div>
+
+					{/* Target Organizations */}
+					<div className="space-y-2">
+						<Label>Target Organizations</Label>
+						<TagInput
+							value={data.target_orgs || []}
+							onChange={(v) => updateField("target_orgs", v)}
+							placeholder="e.g., Enterprise hospital networks, Fintech startups..."
+						/>
+					</div>
+
+					{/* Target Company Sizes */}
+					<div className="space-y-2">
+						<Label>Target Company Sizes</Label>
+						<TagInput
+							value={data.target_company_sizes || []}
+							onChange={(v) => updateField("target_company_sizes", v)}
+							placeholder="e.g., Startup, SMB, Enterprise..."
+						/>
+					</div>
+
+					{/* Target Roles */}
+					<div className="space-y-2">
+						<Label>Target Roles</Label>
+						<TagInput
+							value={data.target_roles || []}
+							onChange={(v) => updateField("target_roles", v)}
+							placeholder="e.g., Product Manager, CTO, VP Engineering..."
+						/>
+					</div>
+
+					{/* Competitors */}
+					<div className="space-y-2">
+						<Label>Competitors</Label>
+						<TagInput
+							value={data.competitors || []}
+							onChange={(v) => updateField("competitors", v)}
+							placeholder="Known competitors..."
+						/>
+					</div>
+
+					{/* Save Button */}
+					<div className="flex justify-end">
+						<Button type="button" onClick={handleSave} disabled={!hasChanges} className="gap-2">
+							Save Company Context
 						</Button>
 					</div>
-					<p className="text-muted-foreground text-xs">
-						Enter your website and click Auto-fill to populate fields automatically
-					</p>
-				</div>
+				</CardContent>
+			</Card>
+		</div>
+	)
+}
 
-				{/* Description */}
-				<div className="space-y-2">
-					<Label htmlFor="company_description">Company Description</Label>
-					<Textarea
-						id="company_description"
-						placeholder="Brief description of what your company does (1-2 sentences)"
-						value={data.company_description || ""}
-						onChange={(e) => updateField("company_description", e.target.value)}
-						rows={2}
-					/>
-				</div>
+/**
+ * Calendar Integration Section - Connect Google Calendar (Pro plan)
+ */
+function CalendarIntegrationSection({
+	accountId,
+	userId,
+	connection,
+	hasFeature,
+}: {
+	accountId: string
+	userId: string
+	connection: LoaderData["calendarConnection"]
+	hasFeature: boolean
+}) {
+	const disconnectFetcher = useFetcher()
+	const isDisconnecting = disconnectFetcher.state === "submitting"
 
-				{/* Customer Problem */}
-				<div className="space-y-2">
-					<Label htmlFor="customer_problem">Customer Problem</Label>
-					<Textarea
-						id="customer_problem"
-						placeholder="The main problem or pain point you solve for customers"
-						value={data.customer_problem || ""}
-						onChange={(e) => updateField("customer_problem", e.target.value)}
-						rows={2}
-					/>
-				</div>
+	// Handle disconnect response
+	useEffect(() => {
+		if (disconnectFetcher.state === "idle" && disconnectFetcher.data) {
+			const result = disconnectFetcher.data as {
+				success?: boolean
+				error?: string
+			}
+			if (result.success) {
+				toast.success("Calendar disconnected")
+				// Reload page to update state
+				window.location.reload()
+			} else if (result.error) {
+				toast.error(result.error)
+			}
+		}
+	}, [disconnectFetcher.state, disconnectFetcher.data])
 
-				{/* Industry */}
-				<div className="space-y-2">
-					<Label htmlFor="industry">Industry</Label>
-					<Input
-						id="industry"
-						placeholder="e.g., B2B SaaS, Healthcare Technology, Fintech"
-						value={data.industry || ""}
-						onChange={(e) => updateField("industry", e.target.value)}
-					/>
-				</div>
+	const handleDisconnect = () => {
+		const formData = new FormData()
+		formData.append("provider", "google")
+		disconnectFetcher.submit(formData, {
+			method: "POST",
+			action: "/api/calendar/disconnect",
+		})
+	}
 
-				{/* Offerings */}
-				<div className="space-y-2">
-					<Label>Products & Services</Label>
-					<TagInput
-						value={data.offerings || []}
-						onChange={(v) => updateField("offerings", v)}
-						placeholder="Type and press Enter to add..."
-					/>
-					<p className="text-muted-foreground text-xs">Main products or services you offer</p>
-				</div>
-
-				{/* Target Industries */}
-				<div className="space-y-2">
-					<Label>Target Industries</Label>
-					<TagInput
-						value={data.target_industries || []}
-						onChange={(v) => updateField("target_industries", v)}
-						placeholder="e.g., Healthcare, Financial Services..."
-					/>
-				</div>
-
-				{/* Target Company Sizes */}
-				<div className="space-y-2">
-					<Label>Target Company Sizes</Label>
-					<TagInput
-						value={data.target_company_sizes || []}
-						onChange={(v) => updateField("target_company_sizes", v)}
-						placeholder="e.g., Startup, SMB, Enterprise..."
-					/>
-				</div>
-
-				{/* Target Roles */}
-				<div className="space-y-2">
-					<Label>Target Roles</Label>
-					<TagInput
-						value={data.target_roles || []}
-						onChange={(v) => updateField("target_roles", v)}
-						placeholder="e.g., Product Manager, CTO, VP Engineering..."
-					/>
-				</div>
-
-				{/* Competitors */}
-				<div className="space-y-2">
-					<Label>Competitors</Label>
-					<TagInput
-						value={data.competitors || []}
-						onChange={(v) => updateField("competitors", v)}
-						placeholder="Known competitors..."
-					/>
-				</div>
-
-				{/* Save Button */}
-				<div className="flex justify-end">
-					<Button type="button" onClick={handleSave} disabled={!hasChanges} className="gap-2">
-						Save Company Context
-					</Button>
-				</div>
-			</CardContent>
-		</Card>
+	return (
+		<div>
+			<div className="mb-4 flex items-center gap-2">
+				<Calendar className="h-5 w-5" />
+				<h2 className="font-semibold text-xl">Calendar Integration</h2>
+				<Badge variant="secondary" className="text-xs">
+					Pro
+				</Badge>
+			</div>
+			<Card className="border-border/60">
+				<CardHeader>
+					<CardDescription>
+						Connect your Google Calendar to enable Meeting Intelligence - auto-generated meeting briefs and follow-up
+						drafts.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{!hasFeature ? (
+						<div className="rounded-md border border-muted bg-muted/20 p-4 text-center">
+							<p className="mb-2 text-muted-foreground text-sm">Calendar integration requires the Pro plan.</p>
+							<Button asChild variant="outline" size="sm">
+								<a href="/pricing">Upgrade to Pro</a>
+							</Button>
+						</div>
+					) : connection?.connected ? (
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+									<Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
+								</div>
+								<div>
+									<p className="font-medium text-sm">Google Calendar Connected</p>
+									{connection.email && <p className="text-muted-foreground text-xs">{connection.email}</p>}
+									{connection.lastSyncedAt && (
+										<p className="text-muted-foreground text-xs">
+											Last synced: {new Date(connection.lastSyncedAt).toLocaleDateString()}
+										</p>
+									)}
+								</div>
+							</div>
+							<Button variant="outline" size="sm" onClick={handleDisconnect} disabled={isDisconnecting}>
+								{isDisconnecting ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Disconnecting...
+									</>
+								) : (
+									"Disconnect"
+								)}
+							</Button>
+						</div>
+					) : (
+						<div className="flex items-center justify-between">
+							<div>
+								<p className="font-medium text-sm">Connect Google Calendar</p>
+								<p className="text-muted-foreground text-xs">
+									We&apos;ll only read your calendar events (not modify them).
+								</p>
+							</div>
+							<PicaConnectButton
+								userId={userId}
+								accountId={accountId}
+								platform="google-calendar"
+								onSuccess={() => {
+									toast.success("Google Calendar connected")
+									window.location.reload()
+								}}
+								onError={(err) => toast.error(err)}
+								size="sm"
+							>
+								Connect Calendar
+							</PicaConnectButton>
+						</div>
+					)}
+				</CardContent>
+			</Card>
+		</div>
 	)
 }
 
@@ -725,18 +960,86 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 }
 
 export default function AccountSettingsPage() {
-	const { accountId, metadata, companyContext } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
+	const {
+		accountId,
+		userId,
+		accountName,
+		metadata,
+		companyContext,
+		isOnboarding,
+		defaultProjectId,
+		calendarConnection,
+		hasCalendarFeature,
+	} = useLoaderData<typeof loader>()
+	const [searchParams, setSearchParams] = useSearchParams()
+	const actionData = useActionData<typeof action>() as { success?: boolean; error?: string } | undefined
 	const _location = useLocation()
+	const navigate = useNavigate()
 	const fetcher = useFetcher()
 	const researchFetcher = useFetcher()
 	const companyFetcher = useFetcher()
+	const accountNameFetcher = useFetcher()
+	const [hasSavedInOnboarding, setHasSavedInOnboarding] = useState(false)
+
+	// Account name state
+	const [localAccountName, setLocalAccountName] = useState(accountName || "")
+	const [accountNameHasChanges, setAccountNameHasChanges] = useState(false)
+	const accountNameInputId = useId()
+
+	// Handle account name save
+	const handleSaveAccountName = () => {
+		const formData = new FormData()
+		formData.append("intent", "update_account_name")
+		formData.append("name", localAccountName)
+		accountNameFetcher.submit(formData, { method: "POST" })
+		setAccountNameHasChanges(false)
+	}
+
+	// Handle account name fetcher response
+	useEffect(() => {
+		if (accountNameFetcher.state === "idle" && accountNameFetcher.data) {
+			const result = accountNameFetcher.data as {
+				success?: boolean
+				error?: string
+			}
+			if (result.success) {
+				toast.success("Account name saved")
+			} else if (result.error) {
+				toast.error(result.error)
+			}
+		}
+	}, [accountNameFetcher.state, accountNameFetcher.data])
+
+	// Handle calendar OAuth callback URL params
+	useEffect(() => {
+		const calendarConnected = searchParams.get("calendar_connected")
+		const calendarError = searchParams.get("calendar_error")
+
+		if (calendarConnected === "1") {
+			toast.success("Google Calendar connected successfully")
+			// Clean up URL params
+			searchParams.delete("calendar_connected")
+			setSearchParams(searchParams, { replace: true })
+		} else if (calendarError) {
+			const errorMessages: Record<string, string> = {
+				oauth_denied: "Calendar access was denied",
+				invalid_callback: "Invalid OAuth callback",
+				invalid_state: "Invalid authentication state",
+				token_exchange: "Failed to connect calendar. Please try again.",
+			}
+			toast.error(errorMessages[calendarError] || "Failed to connect calendar")
+			// Clean up URL params
+			searchParams.delete("calendar_error")
+			setSearchParams(searchParams, { replace: true })
+		}
+	}, [searchParams, setSearchParams])
 
 	// Track local company context state for UI updates
 	const [localCompanyContext, setLocalCompanyContext] = useState<CompanyContext>(companyContext)
 	const [isResearching, setIsResearching] = useState(false)
+	const researchedUrlRef = useRef<string | null>(null)
 
-	// Handle research results
+	// Handle research results - auto-save after populating
 	useEffect(() => {
 		if (researchFetcher.state === "idle" && researchFetcher.data) {
 			setIsResearching(false)
@@ -748,20 +1051,36 @@ export default function AccountSettingsPage() {
 					customer_problem?: string
 					offerings?: string[]
 					target_orgs?: string[]
+					target_roles?: string[]
+					competitors?: string[]
 					industry?: string
 				}
 			}
 			if (result.success && result.data) {
-				// Merge research results with existing context
-				setLocalCompanyContext((prev) => ({
-					...prev,
-					company_description: result.data?.description || prev.company_description,
-					customer_problem: result.data?.customer_problem || prev.customer_problem,
-					offerings: result.data?.offerings || prev.offerings,
-					target_roles: result.data?.target_orgs || prev.target_roles,
-					industry: result.data?.industry || prev.industry,
-				}))
-				toast.success("Company info auto-filled from website")
+				// Merge research results with existing context, preserving the researched URL
+				const researchedUrl = researchedUrlRef.current
+				const updatedContext: CompanyContext = {
+					...localCompanyContext,
+					website_url: researchedUrl || localCompanyContext.website_url,
+					company_description: result.data?.description || localCompanyContext.company_description,
+					customer_problem: result.data?.customer_problem || localCompanyContext.customer_problem,
+					offerings: result.data?.offerings || localCompanyContext.offerings,
+					target_orgs: result.data?.target_orgs || localCompanyContext.target_orgs,
+					target_roles: result.data?.target_roles || localCompanyContext.target_roles,
+					competitors: result.data?.competitors || localCompanyContext.competitors,
+					industry: result.data?.industry || localCompanyContext.industry,
+					target_company_sizes: localCompanyContext.target_company_sizes,
+				}
+				setLocalCompanyContext(updatedContext)
+				researchedUrlRef.current = null
+
+				// Auto-save the researched data so user doesn't lose it
+				const formData = new FormData()
+				formData.append("intent", "update_company_context")
+				formData.append("payload", JSON.stringify(updatedContext))
+				companyFetcher.submit(formData, { method: "POST" })
+
+				toast.success("Company info auto-filled and saved")
 			} else if (result.error) {
 				toast.error(result.error)
 			}
@@ -777,14 +1096,18 @@ export default function AccountSettingsPage() {
 			}
 			if (result.success) {
 				toast.success("Company context saved")
+				if (isOnboarding) {
+					setHasSavedInOnboarding(true)
+				}
 			} else if (result.error) {
 				toast.error(result.error)
 			}
 		}
-	}, [companyFetcher.state, companyFetcher.data])
+	}, [companyFetcher.state, companyFetcher.data, isOnboarding])
 
 	const handleResearchWebsite = (url: string) => {
 		setIsResearching(true)
+		researchedUrlRef.current = url // Track URL for when results come back
 		const formData = new FormData()
 		formData.append("intent", "research_website")
 		formData.append("website_url", url)
@@ -910,6 +1233,71 @@ export default function AccountSettingsPage() {
 		void scheduleSave("priority", { priorityClusters: items }, { debounce: true })
 	}
 
+	const handleContinueToProjectSetup = () => {
+		if (defaultProjectId) {
+			navigate(`/a/${accountId}/${defaultProjectId}/setup`)
+		} else {
+			// Fallback to dashboard if no project ID
+			navigate(`/a/${accountId}`)
+		}
+	}
+
+	// Onboarding mode: Focused UI for company context only
+	if (isOnboarding) {
+		return (
+			<div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-8">
+				{/* Phase indicator */}
+				<div className="text-center">
+					<div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm">
+						<span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-xs">
+							1
+						</span>
+						<span className="font-medium">Define</span>
+						<span className="text-muted-foreground">→ Collect → Learn</span>
+					</div>
+				</div>
+
+				<header className="text-center">
+					<h1 className="mb-2 font-semibold text-2xl text-foreground">Welcome! Let's set up your company</h1>
+					<p className="text-muted-foreground">
+						Tell us about your company so we can help you get the most relevant insights from your customer
+						conversations.
+					</p>
+				</header>
+
+				{actionData?.error && (
+					<div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">
+						{actionData.error}
+					</div>
+				)}
+
+				<CompanyContextSection
+					context={localCompanyContext}
+					onSave={handleSaveCompanyContext}
+					onResearch={handleResearchWebsite}
+					isResearching={isResearching}
+				/>
+
+				{/* Continue button */}
+				<div className="flex justify-center">
+					<Button
+						size="lg"
+						onClick={handleContinueToProjectSetup}
+						disabled={!hasSavedInOnboarding && !localCompanyContext.website_url}
+						className="gap-2"
+					>
+						Continue to Project Setup
+						<ArrowRight className="h-4 w-4" />
+					</Button>
+				</div>
+
+				<p className="text-center text-muted-foreground text-sm">
+					You can always update these settings later from Account Settings.
+				</p>
+			</div>
+		)
+	}
+
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8">
 			<div>
@@ -927,6 +1315,38 @@ export default function AccountSettingsPage() {
 			)}
 
 			<div className="space-y-6">
+				{/* Account Name */}
+				<Card className="border-border/60">
+					<CardHeader>
+						<CardTitle className="text-xl">Account Name</CardTitle>
+						<CardDescription>The name displayed in the sidebar and account switcher.</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex gap-3">
+							<div className="flex-1">
+								<Label htmlFor={accountNameInputId} className="sr-only">
+									Account Name
+								</Label>
+								<Input
+									id={accountNameInputId}
+									value={localAccountName}
+									onChange={(e) => {
+										setLocalAccountName(e.target.value)
+										setAccountNameHasChanges(true)
+									}}
+									placeholder="My Company"
+								/>
+							</div>
+							<Button
+								onClick={handleSaveAccountName}
+								disabled={!accountNameHasChanges || accountNameFetcher.state === "submitting"}
+							>
+								{accountNameFetcher.state === "submitting" ? "Saving..." : "Save"}
+							</Button>
+						</div>
+					</CardContent>
+				</Card>
+
 				{/* Company Context - set once, inherited by all projects */}
 				<CompanyContextSection
 					context={localCompanyContext}
@@ -935,10 +1355,18 @@ export default function AccountSettingsPage() {
 					isResearching={isResearching}
 				/>
 
+				{/* Calendar Integration - Pro feature */}
+				<CalendarIntegrationSection
+					accountId={accountId}
+					userId={userId}
+					connection={calendarConnection}
+					hasFeature={hasCalendarFeature}
+				/>
+
 				<Separator className="my-8" />
 
 				<div>
-					<h2 className="mb-2 font-semibold text-xl">Pipeline Configuration</h2>
+					<h2 className="mb-2 font-semibold text-xl">System Settings</h2>
 					<p className="text-muted-foreground text-sm">
 						Configure stages and categories for opportunities, journeys, and tasks.
 					</p>
