@@ -8,9 +8,10 @@
  * - Responsive: collapses to hamburger on mobile
  */
 
-import { Menu, Search, X } from "lucide-react";
-import { useState } from "react";
+import { Menu, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useParams } from "react-router";
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -46,10 +47,6 @@ interface TopNavigationProps {
     name?: string | null;
     personal_account?: boolean | null;
   }>;
-  /** Callback to toggle AI panel */
-  onToggleAIPanel?: () => void;
-  /** Whether AI panel is open */
-  isAIPanelOpen?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -163,8 +160,6 @@ function MobileNavItem({
 
 export function TopNavigation({
   accounts = [],
-  onToggleAIPanel,
-  isAIPanelOpen,
   className,
 }: TopNavigationProps) {
   const params = useParams();
@@ -176,22 +171,45 @@ export function TopNavigation({
 
   const { counts } = useSidebarCounts(accountId, projectId);
 
+  // Feature flags for gated nav items
+  const { isEnabled: journeyEnabled } = usePostHogFeatureFlag("ffYourJourney");
+
+  // Filter out items gated behind disabled feature flags
+  const filteredCategories = useMemo(() => {
+    const flagMap: Record<string, boolean> = {
+      ffYourJourney: journeyEnabled,
+    };
+    return TOP_NAV_CATEGORIES.map((category) => ({
+      ...category,
+      items: category.items.filter((item) => {
+        if (item.featureFlag) return flagMap[item.featureFlag] ?? false;
+        return true;
+      }),
+    })).filter((category) => category.items.length > 0);
+  }, [journeyEnabled]);
+
   // Determine which category is active based on current path
   const getActiveCategory = () => {
     const path = location.pathname;
     if (
       path.includes("/setup") ||
       path.includes("/questions") ||
-      path.includes("/priorities")
+      path.includes("/ask")
     )
       return "plan";
-    if (path.includes("/interviews") || path.includes("/ask")) return "sources";
+    if (
+      path.includes("/interviews") ||
+      path.includes("/sources") ||
+      path.includes("/responses")
+    )
+      return "sources";
     if (path.includes("/insights") || path.includes("/lenses"))
       return "insights";
     if (
       path.includes("/people") ||
       path.includes("/organizations") ||
-      path.includes("/opportunities")
+      path.includes("/opportunities") ||
+      path.includes("/priorities")
     )
       return "crm";
     return null;
@@ -225,7 +243,7 @@ export function TopNavigation({
 
           {/* Desktop Navigation */}
           <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-            {TOP_NAV_CATEGORIES.map((category) => (
+            {filteredCategories.map((category) => (
               <NavDropdown
                 key={category.key}
                 category={category}
@@ -238,17 +256,6 @@ export function TopNavigation({
 
           {/* Right side controls */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* AI Panel Toggle (desktop) */}
-            <Button
-              variant={isAIPanelOpen ? "secondary" : "ghost"}
-              size="icon"
-              onClick={onToggleAIPanel}
-              className="hidden md:flex"
-              title="Toggle AI Assistant"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-
             {/* User Profile (desktop) - avatar only, email shows in dropdown */}
             <div className="hidden md:block">
               <UserProfile collapsed />
@@ -290,7 +297,7 @@ export function TopNavigation({
             <TeamSwitcher accounts={accounts} collapsed={false} />
 
             {/* Navigation Categories */}
-            {TOP_NAV_CATEGORIES.map((category) => (
+            {filteredCategories.map((category) => (
               <div key={category.key}>
                 <h3 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
                   {category.title}

@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Glasses,
   Lightbulb,
+  Map,
   MessageSquare,
   MessageSquareText,
   ScrollText,
@@ -35,6 +36,8 @@ export interface TopNavItem {
   to: (routes: RouteDefinitions) => string;
   /** Badge count key for displaying counts */
   countKey?: string;
+  /** PostHog feature flag key — item hidden when flag is off */
+  featureFlag?: string;
 }
 
 export interface TopNavCategory {
@@ -78,19 +81,19 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         to: (routes) => routes.questions.index(),
       },
       {
-        key: "tasks",
-        title: "Tasks",
-        description: "Research priorities this week",
-        icon: CheckSquare,
-        to: (routes) => routes.priorities(),
-        countKey: "highPriorityTasks",
-      },
-      {
         key: "surveys",
-        title: "Surveys",
+        title: "Create a Survey",
         description: "Collect responses via shareable links",
         icon: ScrollText,
         to: (routes) => routes.ask.index(),
+      },
+      {
+        key: "journey",
+        title: "Your Journey",
+        description: "Track your research progress",
+        icon: Map,
+        to: (routes) => routes.dashboard(),
+        featureFlag: "ffYourJourney",
       },
     ],
   },
@@ -186,6 +189,14 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         icon: Briefcase,
         to: (routes) => routes.opportunities.index(),
         countKey: "opportunities",
+      },
+      {
+        key: "tasks",
+        title: "Tasks",
+        description: "Research priorities this week",
+        icon: CheckSquare,
+        to: (routes) => routes.priorities(),
+        countKey: "highPriorityTasks",
       },
     ],
   },

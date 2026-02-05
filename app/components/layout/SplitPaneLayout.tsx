@@ -117,13 +117,7 @@ export function SplitPaneLayout({
       <ProjectStatusAgentProvider>
         <div className="flex h-screen w-full flex-col">
           {/* Top Navigation - hidden on mobile, shown on desktop */}
-          {showMainNav && !isMobile && (
-            <TopNavigation
-              accounts={accounts}
-              onToggleAIPanel={handleAIPanelToggle}
-              isAIPanelOpen={isAIPanelOpen}
-            />
-          )}
+          {showMainNav && !isMobile && <TopNavigation accounts={accounts} />}
 
           {/* Main content area with AI panel */}
           <div className="flex min-h-0 flex-1">

@@ -34,7 +34,8 @@ import {
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useNavigate, useParams } from "react-router";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -601,6 +602,11 @@ export function OnboardingWalkthrough({
   const [showCompletion, setShowCompletion] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const fetcher = useFetcher();
+  const navigate = useNavigate();
+  const params = useParams();
+  const accountId = params.accountId || "";
+  const projectId = params.projectId || "";
+  const routes = useProjectRoutesFromIds(accountId, projectId);
 
   const steps = [
     { component: JobFunctionStep, canProceed: Boolean(data.jobFunction) },
@@ -651,8 +657,11 @@ export function OnboardingWalkthrough({
 
   const handleContinueToCompany = useCallback(() => {
     onOpenChange(false);
-    // Stay on current page - the AI assistant panel is available for next steps
-  }, [onOpenChange]);
+    // Navigate to context/setup page
+    if (accountId && projectId) {
+      navigate(routes.projects.setup());
+    }
+  }, [onOpenChange, navigate, routes, accountId, projectId]);
 
   // Clear confetti after animation
   useEffect(() => {

@@ -210,7 +210,7 @@ export function AIAssistantPanel({
     return (
       <div
         className={cn(
-          "flex h-full w-12 flex-col items-center border-r bg-muted/30 py-4",
+          "flex h-full w-12 flex-col items-center border-r bg-muted/50 py-4 shadow-[1px_0_6px_-2px_rgba(0,0,0,0.06)]",
           className,
         )}
       >
@@ -260,12 +260,12 @@ export function AIAssistantPanel({
   return (
     <div
       className={cn(
-        "flex h-full w-96 flex-col border-r bg-muted/30",
+        "flex h-full w-96 flex-col border-r bg-muted/50 shadow-[1px_0_6px_-2px_rgba(0,0,0,0.06)]",
         className,
       )}
     >
       {/* Header with collapse button */}
-      <div className="flex items-center justify-between border-b p-3">
+      <div className="flex items-center justify-between border-b bg-background/60 p-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
           <span className="font-semibold text-sm">Uppy Assistant</span>
