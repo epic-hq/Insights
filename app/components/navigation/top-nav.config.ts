@@ -137,13 +137,14 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         icon: Glasses,
         to: (routes) => routes.lenses.library(),
       },
-      {
-        key: "reports",
-        title: "Reports",
-        description: "Share findings with your team",
-        icon: BookOpen,
-        to: (routes) => routes.insights.cards(),
-      },
+      // Reports page not yet implemented - hiding until shared views feature is built
+      // {
+      //   key: "reports",
+      //   title: "Reports",
+      //   description: "Share findings with your team",
+      //   icon: BookOpen,
+      //   to: (routes) => routes.insights.cards(),
+      // },
     ],
   },
   {
