@@ -1096,6 +1096,134 @@ body {
   margin-top: 5px;
 }
 
+/* Evidence styling */
+.evidence-count {
+  font-size: 12px;
+  color: #888;
+  font-weight: normal;
+}
+
+.evidence-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.evidence-entry {
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+  border-left: 3px solid #4CAF50;
+  position: relative;
+}
+
+.evidence-entry.is-question {
+  border-left-color: #0077FF;
+}
+
+.evidence-entry.newest-entry {
+  background-color: #2d3b4a;
+  animation: evidenceFadeIn 0.5s ease-out;
+}
+
+@keyframes evidenceFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.evidence-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.evidence-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.evidence-tag.pain {
+  background-color: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.evidence-tag.goal {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.evidence-tag.tool {
+  background-color: rgba(156, 39, 176, 0.2);
+  color: #CE93D8;
+}
+
+.evidence-tag.workflow {
+  background-color: rgba(0, 188, 212, 0.2);
+  color: #00BCD4;
+}
+
+.evidence-tag.probe {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: #2196F3;
+}
+
+.evidence-gist {
+  flex: 1;
+}
+
+.evidence-speaker {
+  font-weight: 600;
+  color: #888;
+  margin-right: 4px;
+}
+
+.evidence-text {
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.evidence-verbatim {
+  margin-top: 8px;
+  padding-left: 10px;
+  border-left: 2px solid #444;
+  color: #888;
+  font-size: 11px;
+  font-style: italic;
+  display: none;
+}
+
+.evidence-entry.expanded .evidence-verbatim {
+  display: block;
+}
+
+.evidence-expand-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 10px;
+}
+
+.evidence-expand-btn:hover {
+  color: #999;
+}
+
 /* Chat Input */
 .chat-input-container {
   position: fixed;

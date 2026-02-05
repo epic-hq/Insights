@@ -806,6 +806,154 @@ function updateDebugTranscript(transcript) {
   }
 }
 
+/**
+ * Derive a category tag from evidence properties
+ */
+function deriveEvidenceTag(evidence) {
+  // Check for pain points
+  if (evidence.pains?.length) {
+    return { label: "pain", className: "pain" };
+  }
+  // Check for goals/gains
+  if (
+    evidence.gains?.length ||
+    evidence.facet_mentions?.some((f) => f.kind_slug === "goal")
+  ) {
+    return { label: "goal", className: "goal" };
+  }
+  // Check for tool mentions
+  if (evidence.facet_mentions?.some((f) => f.kind_slug === "tool")) {
+    return { label: "tool", className: "tool" };
+  }
+  // Check for workflow
+  if (evidence.facet_mentions?.some((f) => f.kind_slug === "workflow")) {
+    return { label: "workflow", className: "workflow" };
+  }
+  // Questions from interviewer
+  if (evidence.isQuestion) {
+    return { label: "probe", className: "probe" };
+  }
+  return null;
+}
+
+/**
+ * Update the evidence section in the debug panel
+ * Called when new evidence is extracted from the backend
+ */
+function updateDebugEvidence(evidenceData) {
+  const evidenceContent = document.getElementById("evidenceContent");
+  const evidenceCount = document.getElementById("evidenceCount");
+  if (!evidenceContent) return;
+
+  const { evidence, people, interactionContext } = evidenceData;
+
+  // Update count
+  if (evidenceCount) {
+    const count = evidence?.length || 0;
+    evidenceCount.textContent = `${count} insight${count !== 1 ? "s" : ""}`;
+  }
+
+  // Check if user was at bottom before clearing content
+  const wasAtBottom =
+    evidenceContent.scrollTop + evidenceContent.clientHeight >=
+    evidenceContent.scrollHeight - 5;
+
+  // Clear previous content
+  evidenceContent.innerHTML = "";
+
+  if (!evidence || evidence.length === 0) {
+    // Show placeholder if no evidence
+    evidenceContent.innerHTML = `
+      <div class="placeholder-content">
+        <p>Insights will appear here during recording</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Create evidence entries container
+  const evidenceDiv = document.createElement("div");
+  evidenceDiv.className = "evidence-entries";
+
+  // Add each evidence entry
+  evidence.forEach((item, index) => {
+    const entryDiv = document.createElement("div");
+    entryDiv.className = "evidence-entry";
+
+    // Add question indicator
+    if (item.isQuestion) {
+      entryDiv.classList.add("is-question");
+    }
+
+    // Highlight newest entry
+    if (index === evidence.length - 1) {
+      entryDiv.classList.add("newest-entry");
+    }
+
+    // Get speaker display
+    const speakerDisplay = item.speaker_label || item.person_key || "Unknown";
+
+    // Get tag
+    const tag = deriveEvidenceTag(item);
+
+    // Build HTML
+    let tagHtml = "";
+    if (tag) {
+      tagHtml = `<span class="evidence-tag ${tag.className}">${tag.label}</span>`;
+    }
+
+    let verbatimHtml = "";
+    if (item.verbatim) {
+      verbatimHtml = `<div class="evidence-verbatim">"${item.verbatim}"</div>`;
+    }
+
+    entryDiv.innerHTML = `
+      <div class="evidence-header">
+        ${tagHtml}
+        <div class="evidence-gist">
+          <span class="evidence-speaker">${speakerDisplay}:</span>
+          <span class="evidence-text">${item.gist}</span>
+        </div>
+      </div>
+      ${verbatimHtml}
+      ${item.verbatim ? '<button class="evidence-expand-btn">expand</button>' : ""}
+    `;
+
+    // Add expand toggle if there's a verbatim quote
+    if (item.verbatim) {
+      const expandBtn = entryDiv.querySelector(".evidence-expand-btn");
+      if (expandBtn) {
+        expandBtn.addEventListener("click", () => {
+          entryDiv.classList.toggle("expanded");
+          expandBtn.textContent = entryDiv.classList.contains("expanded")
+            ? "collapse"
+            : "expand";
+        });
+      }
+    }
+
+    evidenceDiv.appendChild(entryDiv);
+  });
+
+  evidenceContent.appendChild(evidenceDiv);
+
+  // Auto-scroll if user was at bottom
+  if (wasAtBottom) {
+    setTimeout(() => {
+      evidenceContent.scrollTop = evidenceContent.scrollHeight;
+    }, 0);
+  }
+
+  // Highlight debug panel toggle if panel is closed
+  const debugPanel = document.getElementById("debugPanel");
+  if (debugPanel && debugPanel.classList.contains("hidden")) {
+    const debugPanelToggle = document.getElementById("debugPanelToggle");
+    if (debugPanelToggle) {
+      debugPanelToggle.classList.add("has-new-content");
+    }
+  }
+}
+
 // Function to update the video preview in the debug panel
 function updateDebugVideoPreview(frameData) {
   // Get the image data from the frame
@@ -1650,6 +1798,52 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
     });
+  });
+
+  // Listen for real-time evidence extraction updates
+  window.electronAPI.onEvidenceUpdated((data) => {
+    console.log("Evidence updated:", data);
+
+    const { noteId, evidence, people, interactionContext } = data;
+
+    // Only handle evidence for the currently open meeting
+    if (currentEditingMeetingId === noteId) {
+      console.log(`Received ${evidence?.length || 0} evidence items`);
+
+      // Update the evidence section in the debug panel
+      updateDebugEvidence({ evidence, people, interactionContext });
+
+      // Show notification if panel is closed
+      const debugPanel = document.getElementById("debugPanel");
+      if (
+        debugPanel &&
+        debugPanel.classList.contains("hidden") &&
+        evidence?.length > 0
+      ) {
+        const latestEvidence = evidence[evidence.length - 1];
+
+        // Create a mini notification for new evidence
+        const miniNotification = document.createElement("div");
+        miniNotification.className = "debug-notification evidence-notification";
+        miniNotification.innerHTML = `
+          <span class="debug-notification-title">New Insight:</span>
+          <span class="debug-notification-text">${latestEvidence.gist?.slice(0, 50)}${latestEvidence.gist?.length > 50 ? "..." : ""}</span>
+        `;
+
+        // Add to document
+        document.body.appendChild(miniNotification);
+
+        // Remove after a short time
+        setTimeout(() => {
+          miniNotification.classList.add("fade-out");
+          setTimeout(() => {
+            if (document.body.contains(miniNotification)) {
+              document.body.removeChild(miniNotification);
+            }
+          }, 500);
+        }, 4000);
+      }
+    }
   });
 
   // Listen for summary generation events

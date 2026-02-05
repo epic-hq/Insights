@@ -69,4 +69,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("meeting-detection-status", (_, data) => callback(data)),
   onMeetingTitleUpdated: (callback) =>
     ipcRenderer.on("meeting-title-updated", (_, data) => callback(data)),
+  onEvidenceUpdated: (callback) =>
+    ipcRenderer.on("evidence-updated", (_, data) => callback(data)),
 });
