@@ -85,6 +85,10 @@ const routes = [
       "api/update-ui-preference",
       "./features/users/api/update-ui-preference.tsx",
     ),
+    route(
+      "api/user-settings/onboarding",
+      "./routes/api.user-settings.onboarding.tsx",
+    ),
 
     // Account-scoped routes
     route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -271,10 +275,6 @@ const routes = [
   route("api/interview-status", "./routes/api.interview-status.tsx"),
   route("api/interviews/delete", "./routes/api.interviews.delete.tsx"),
   route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
-  route(
-    "api/user-settings/onboarding",
-    "./routes/api.user-settings.onboarding.tsx",
-  ),
   route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),
   route("api/create-project", "./routes/api.create-project.tsx"),
   route("api/save-project-goals", "./routes/api.save-project-goals.tsx"),

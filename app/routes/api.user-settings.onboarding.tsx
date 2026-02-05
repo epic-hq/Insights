@@ -6,6 +6,7 @@
  * This data is used to personalize AI recommendations.
  */
 
+import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { userContext } from "~/server/user-context";
 import type { Database } from "~/types";
@@ -24,6 +25,12 @@ export async function action({ context, request }: ActionFunctionArgs) {
   const accountId = ctx.account_id;
 
   if (!supabase || !userId) {
+    consola.error(
+      "[onboarding] Unauthorized — supabase:",
+      !!supabase,
+      "userId:",
+      userId,
+    );
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -91,8 +98,16 @@ export async function action({ context, request }: ActionFunctionArgs) {
   );
 
   if (updateError) {
+    consola.error("[onboarding] Upsert failed:", updateError.message);
     return Response.json({ error: updateError.message }, { status: 500 });
   }
+
+  consola.info(
+    "[onboarding] Saved onboarding data for user:",
+    userId,
+    "completed:",
+    onboardingData.completed,
+  );
 
   // Also update account's target company size if we have an account
   if (accountId && onboardingData.companySize) {
