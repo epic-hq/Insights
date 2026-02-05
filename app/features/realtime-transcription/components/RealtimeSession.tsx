@@ -144,9 +144,24 @@ class PcmProcessor extends AudioWorkletProcessor {
 registerProcessor("pcm-processor", PcmProcessor)
 `;
 
+// ── Component Props ───────────────────────────────────────────────────────
+
+interface RealtimeSessionProps {
+  /** Optional participant names to label speakers (e.g., ["Alice", "Bob"]) */
+  participantNames?: string[];
+  /** Project ID for saving evidence to database (optional for demo) */
+  projectId?: string;
+  /** Interview ID for linking evidence (optional for demo) */
+  interviewId?: string;
+}
+
 // ── Component ────────────────────────────────────────────────────────────
 
-export function RealtimeSession() {
+export function RealtimeSession({
+  participantNames = [],
+  projectId,
+  interviewId,
+}: RealtimeSessionProps) {
   // Core state
   const [mode, setMode] = useState<SessionMode>("idle");
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
@@ -187,6 +202,27 @@ export function RealtimeSession() {
   // Scroll refs
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const evidenceEndRef = useRef<HTMLDivElement>(null);
+
+  // Map generic speaker labels to participant names
+  const speakerNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (participantNames.length > 0) {
+      // Map SPEAKER A -> first name, SPEAKER B -> second name, etc.
+      const labels = ["SPEAKER A", "SPEAKER B", "SPEAKER C", "SPEAKER D"];
+      labels.forEach((label, idx) => {
+        if (participantNames[idx]) {
+          map[label] = participantNames[idx];
+        }
+      });
+    }
+    return map;
+  }, [participantNames]);
+
+  // Helper to get display name for a speaker
+  const getDisplayName = useCallback(
+    (speaker: string) => speakerNameMap[speaker] || speaker,
+    [speakerNameMap],
+  );
 
   // Derive unique speakers from turns
   const uniqueSpeakers = useMemo(() => {
@@ -793,7 +829,7 @@ export function RealtimeSession() {
                         variant="secondary"
                         className="shrink-0 font-mono text-xs"
                       >
-                        {turn.speaker}
+                        {getDisplayName(turn.speaker)}
                       </Badge>
                       <span className="font-mono text-muted-foreground text-xs">
                         {formatDuration(turn.startMs)}
@@ -937,7 +973,7 @@ export function RealtimeSession() {
               <div className="flex flex-wrap gap-2">
                 {uniqueSpeakers.map((speaker) => (
                   <Badge key={speaker} variant="outline" className="text-xs">
-                    {speaker}
+                    {getDisplayName(speaker)}
                   </Badge>
                 ))}
                 {people.length > 0 && (
