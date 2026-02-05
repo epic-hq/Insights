@@ -1,14 +1,53 @@
-# Task System Onboarding: "Mission Control" Design
+# Task System Onboarding: "The Journey" Design
 
 ## Vision
 
-Transform the task system from a plain table into an **inviting, visual mission control** that new users land on after onboarding. Instead of a wall of text rows, users see a curated set of **action cards** arranged in a bento-style grid that communicates: "Here's your journey — pick where to start."
+Transform the task system into a **visual adventure map** — a winding path through a landscape where each stop is a milestone. Users see themselves as an explorer on a journey: the path is laid out before them, they can see how far they've come, and each step reveals a "deck" of action cards to play. Completed cards earn gold stars and shrink out of the way, keeping focus on what's next.
 
-The design philosophy: **Apple simplicity meets game-board warmth**. Every card feels like an invitation, not an obligation.
+Think **Duolingo's skill path meets a board game meets Dora the Explorer** — but with the polish and restraint of Apple's design language.
+
+The design philosophy: **You are on an adventure. Each card is a move. The mountain summit is mastery.**
 
 ---
 
-## 1. Hashtag-Based Task Categories
+## 1. The Journey Metaphor
+
+### Core Concept
+
+The entire onboarding IS a journey map. A winding illustrated path moves left-to-right through a landscape, with 4 "stops" (phases) along the route. Each stop is a large, glowing node you can click to reveal a deck of playing cards — the tasks for that phase.
+
+```
+   [YOU]
+    |
+    v
+ ○═══════○ · · · · ○ · · · · · · ○ · · · · · ⭐
+ Get      Gather    Find          Take        SUMMIT!
+ Set Up   Evidence  Patterns      Action
+ (done!)  (active)  (upcoming)    (locked)
+```
+
+The user's avatar sits at their current position on the path. Behind them, completed stops are green with checkmarks. Ahead, the path fades into atmospheric mystery — mountains, trees, clouds — creating a pull to keep going.
+
+### The Landscape
+
+The background is an atmospheric **night-sky mountain landscape**:
+- Deep navy/slate sky with subtle twinkling stars
+- Layered mountain silhouettes in the distance
+- Palm trees and grass tufts along the ground
+- A summit marker (flag + "SUMMIT!") at the journey's end
+- The aesthetic is calm and adventurous — not childish, not corporate
+
+### Why This Works
+
+1. **Spatial memory** — Users remember WHERE they are on the path, not just a number
+2. **Pull of the summit** — Seeing the end creates motivation to complete
+3. **Non-linear within linear** — The path is sequential, but each stop has parallel cards
+4. **Natural focus** — Completed stops collapse, upcoming stops peek, current stop is fully open
+5. **Celebration is built-in** — Stars, path progression, avatar movement all feel earned
+
+---
+
+## 2. Hashtag-Based Task Categories
 
 Tasks are split into two primary hashtag groups, plus a shared foundation:
 
@@ -18,582 +57,530 @@ Tasks are split into two primary hashtag groups, plus a shared foundation:
 | `#sales` | Emerald/Teal | Target, Handshake, TrendingUp | Sales reps, AEs, founders doing sales |
 | `#foundations` | Amber/Warm | Settings, Shield, Palette | Everyone (shared setup tasks) |
 
-The `tags` array on each task stores these hashtags. The UI filters and groups by them. A task can have multiple hashtags if it spans both worlds (e.g., "Create Interview Guide" is `#research` but also useful for `#sales` discovery calls).
+The `tags` array on each task stores these hashtags. The journey map theme shifts based on the primary hashtag:
+- **#research journey**: Mountain expedition theme ("Climb to clarity")
+- **#sales journey**: Ocean voyage theme ("Navigate to the deal")
+- Both share the same mechanics, just different atmosphere
 
 ---
 
-## 2. Onboarding Task Sets by Use Case
+## 3. Onboarding Task Sets by Use Case
 
-When a user completes onboarding and selects their research mode / lens, we seed a curated set of tasks. Each task has a **size** (how prominent the card is), **order** (suggested sequence), and **parallel group** (tasks that can be done in any order within the group).
+When a user completes onboarding and selects their research mode / lens, we seed a curated set of tasks. Each task has a **card type** (hero vs. standard), **phase**, and **parallel group**.
 
 ### Use Case A: Customer Research / Discovery (`#research`)
 
 ```
-Phase 1: "Get Set Up" (parallel group)
-├── [LARGE]  Upload Your First Conversation     — 5 min
-├── [MEDIUM] Create an Interview Guide           — 10 min
-└── [MEDIUM] Define Your Target Personas         — 10 min
+Stop 1: "Get Set Up" (parallel — do in any order)
+├── [HERO]     Upload Your First Conversation     — 5 min
+├── [STANDARD] Create an Interview Guide           — 10 min
+└── [STANDARD] Define Your Target Personas         — 10 min
 
-Phase 2: "Gather Evidence" (parallel group)
-├── [LARGE]  Run Your First Interview            — 15 min
-├── [MEDIUM] Review AI-Generated Evidence        — 5 min
-└── [SMALL]  Add People from Conversations       — 3 min
+Stop 2: "Gather Evidence" (parallel)
+├── [HERO]     Run Your First Interview            — 15 min
+├── [STANDARD] Review AI-Generated Evidence        — 5 min
+└── [STANDARD] Add People from Conversations       — 3 min
 
-Phase 3: "Find Patterns" (sequential)
-├── [MEDIUM] Explore Themes & Insights           — 5 min
-└── [MEDIUM] Create Your First Insight           — 10 min
+Stop 3: "Find Patterns" (sequential)
+├── [STANDARD] Explore Themes & Insights           — 5 min
+└── [STANDARD] Create Your First Insight           — 10 min
 
-Phase 4: "Take Action" (parallel group)
-├── [SMALL]  Share a Finding with Your Team      — 3 min
-└── [SMALL]  Create a Task from an Insight       — 3 min
+Stop 4: "Take Action" (parallel)
+├── [STANDARD] Share a Finding with Your Team      — 3 min
+└── [STANDARD] Create a Task from an Insight       — 3 min
 ```
 
 ### Use Case B: Sales / BANT Qualification (`#sales`)
 
 ```
-Phase 1: "Set Up Your Pipeline" (parallel group)
-├── [LARGE]  Import Your Contacts & Accounts     — 5 min
-├── [MEDIUM] Create a Sales Call Template         — 10 min
-└── [MEDIUM] Configure BANT Qualification Lens    — 5 min
+Stop 1: "Set Up Your Pipeline" (parallel)
+├── [HERO]     Import Your Contacts & Accounts     — 5 min
+├── [STANDARD] Create a Sales Call Template         — 10 min
+└── [STANDARD] Configure BANT Qualification Lens    — 5 min
 
-Phase 2: "Run Conversations" (parallel group)
-├── [LARGE]  Record Your First Sales Call         — 15 min
-├── [MEDIUM] Review Deal Qualification Scores     — 5 min
-└── [SMALL]  Tag Key Objections                   — 3 min
+Stop 2: "Run Conversations" (parallel)
+├── [HERO]     Record Your First Sales Call         — 15 min
+├── [STANDARD] Review Deal Qualification Scores     — 5 min
+└── [STANDARD] Tag Key Objections                   — 3 min
 
-Phase 3: "Build Intelligence" (parallel group)
-├── [MEDIUM] Explore Objection Patterns           — 5 min
-├── [MEDIUM] Create an Opportunity                — 5 min
-└── [SMALL]  Link Evidence to a Deal              — 3 min
+Stop 3: "Build Intelligence" (parallel)
+├── [STANDARD] Explore Objection Patterns           — 5 min
+├── [STANDARD] Create an Opportunity                — 5 min
+└── [STANDARD] Link Evidence to a Deal              — 3 min
 
-Phase 4: "Scale Your Process" (parallel group)
-├── [SMALL]  Invite a Team Member                 — 2 min
-└── [SMALL]  Set Up Email Follow-Up Templates     — 5 min
+Stop 4: "Scale Your Process" (parallel)
+├── [STANDARD] Invite a Team Member                 — 2 min
+└── [STANDARD] Set Up Email Follow-Up Templates     — 5 min
 ```
 
 ### Use Case C: Survey / Feedback (`#research`)
 
 ```
-Phase 1: "Launch Your Survey" (parallel group)
-├── [LARGE]  Create Your First Survey             — 10 min
-├── [MEDIUM] Customize Survey Questions           — 10 min
-└── [SMALL]  Set Up Survey Distribution           — 5 min
+Stop 1: "Launch Your Survey" (parallel)
+├── [HERO]     Create Your First Survey             — 10 min
+├── [STANDARD] Customize Survey Questions           — 10 min
+└── [STANDARD] Set Up Survey Distribution           — 5 min
 
-Phase 2: "Collect Responses" (sequential)
-├── [LARGE]  Share Your Survey Link               — 2 min
-└── [MEDIUM] Monitor Incoming Responses           — 3 min
+Stop 2: "Collect Responses" (sequential)
+├── [HERO]     Share Your Survey Link               — 2 min
+└── [STANDARD] Monitor Incoming Responses           — 3 min
 
-Phase 3: "Analyze Results" (parallel group)
-├── [MEDIUM] Review AI-Extracted Evidence         — 5 min
-├── [MEDIUM] Explore Response Themes              — 5 min
-└── [SMALL]  Create Insights from Patterns        — 10 min
+Stop 3: "Analyze Results" (parallel)
+├── [STANDARD] Review AI-Extracted Evidence         — 5 min
+├── [STANDARD] Explore Response Themes              — 5 min
+└── [STANDARD] Create Insights from Patterns        — 10 min
 
-Phase 4: "Act on Findings" (parallel group)
-├── [SMALL]  Share Survey Results                  — 3 min
-└── [SMALL]  Create Tasks from Key Findings        — 5 min
+Stop 4: "Act on Findings" (parallel)
+├── [STANDARD] Share Survey Results                  — 3 min
+└── [STANDARD] Create Tasks from Key Findings        — 5 min
 ```
 
 ### Use Case D: User Testing (`#research`)
 
 ```
-Phase 1: "Prepare Your Test" (parallel group)
-├── [LARGE]  Create a Test Script                 — 10 min
-├── [MEDIUM] Define Success Criteria              — 5 min
-└── [SMALL]  Set Up Your Testing Lens             — 3 min
+Stop 1: "Prepare Your Test" (parallel)
+├── [HERO]     Create a Test Script                 — 10 min
+├── [STANDARD] Define Success Criteria              — 5 min
+└── [STANDARD] Set Up Your Testing Lens             — 3 min
 
-Phase 2: "Run Sessions" (parallel group)
-├── [LARGE]  Record Your First Test Session       — 20 min
-├── [MEDIUM] Review Usability Scores              — 5 min
-└── [SMALL]  Tag Friction Points                  — 5 min
+Stop 2: "Run Sessions" (parallel)
+├── [HERO]     Record Your First Test Session       — 20 min
+├── [STANDARD] Review Usability Scores              — 5 min
+└── [STANDARD] Tag Friction Points                  — 5 min
 
-Phase 3: "Synthesize" (parallel group)
-├── [MEDIUM] Explore Usability Patterns           — 5 min
-└── [MEDIUM] Create a Findings Report             — 10 min
+Stop 3: "Synthesize" (parallel)
+├── [STANDARD] Explore Usability Patterns           — 5 min
+└── [STANDARD] Create a Findings Report             — 10 min
 
-Phase 4: "Improve" (parallel group)
-├── [SMALL]  Create Tasks for Fixes               — 5 min
-└── [SMALL]  Share with Your Product Team          — 3 min
+Stop 4: "Improve" (parallel)
+├── [STANDARD] Create Tasks for Fixes               — 5 min
+└── [STANDARD] Share with Your Product Team          — 3 min
 ```
 
 ---
 
-## 3. Visual Design: The Bento Mission Board
+## 4. Visual Design: The Journey Map
 
-### Layout Concept
+### Interactive Mockup
 
-The layout uses a **CSS Grid bento box** where cards have different spans based on their importance. Phase headers are subtle but clear. The whole thing feels like a well-designed game board.
+**Open the mockup**: `docs/features/task-onboarding-journey-mockup.html`
+
+Open this file in a browser to see the interactive prototype with:
+- Winding path through a mountain landscape
+- 4 stops with different states (completed, active, upcoming, locked)
+- Player avatar at current position
+- Click any stop to reveal/hide its card deck
+- Hero cards with animated waveform preview
+- Completed cards with gold stars
+- "Next Up" floating card for quick access
+- Progress bar in the top bar
+- Summit marker at the journey's end
+
+### Layout Structure
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│  "Your Research Journey"                              3/10 complete │
-│  ─────────────────────────────────────────────────────────────────  │
-│                                                                     │
-│  ┌─── Phase 1: Get Set Up ──────────────────────────────────────┐  │
-│  │                                                               │  │
-│  │  ┌───────────────────────────┐  ┌────────────┐ ┌──────────┐ │  │
-│  │  │                           │  │            │ │          │ │  │
-│  │  │   📎 Upload Your First    │  │ 📝 Create  │ │ 👤 Define│ │  │
-│  │  │      Conversation         │  │ Interview  │ │ Target   │ │  │
-│  │  │                           │  │ Guide      │ │ Personas │ │  │
-│  │  │   "Drop a recording or    │  │            │ │          │ │  │
-│  │  │    paste a transcript     │  │  ~10 min   │ │  ~10 min │ │  │
-│  │  │    to see the magic"      │  │            │ │          │ │  │
-│  │  │                           │  │  [Start →] │ │ [Start →]│ │  │
-│  │  │   ~5 min    [Start →]     │  │            │ │          │ │  │
-│  │  │                           │  └────────────┘ └──────────┘ │  │
-│  │  └───────────────────────────┘                               │  │
-│  │                                                               │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-│  ┌─── Phase 2: Gather Evidence ─────────────────────────────────┐  │
-│  │                                                               │  │
-│  │  ┌───────────────────────────┐  ┌────────────┐ ┌──────────┐ │  │
-│  │  │                           │  │            │ │  ○ Add   │ │  │
-│  │  │   🎙️ Run Your First       │  │ ✨ Review   │ │  People  │ │  │
-│  │  │      Interview            │  │ AI Evidence│ │  ~3 min  │ │  │
-│  │  │                           │  │  ~5 min    │ │          │ │  │
-│  │  │   ~15 min   [Start →]     │  │  [Start →] │ │ [Start →]│ │  │
-│  │  └───────────────────────────┘  └────────────┘ └──────────┘ │  │
-│  │                                                               │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-│  ... Phase 3 & 4 (slightly muted until Phase 1-2 progress) ...     │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ [Your Research Journey]                              [3 of 12] ━━━━━░░░░░░ │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ ★★★                              ☆☆☆                                        │
+│                                                                              │
+│        ┌─[YOU]─┐                                                             │
+│        │ Avatar│                                                             │
+│        └───┬───┘                                                             │
+│            │                                                                 │
+│   ●════════●· · · · · · ●· · · · · · · · ○· · · · · · · ⊙                  │
+│   ✓ Get    ★ Gather      Find              Take          SUMMIT             │
+│   Set Up   Evidence      Patterns          Action        ⭐                  │
+│                                                                              │
+│   [cards    [cards       [cards            [locked        [Research          │
+│    done &    expanded     collapsed]        cards]         Pro!]             │
+│    shrunk]   below]                                                          │
+│                                                                              │
+│            ┌─────────────────┐                                               │
+│            │ 🎙 HERO CARD     │                                              │
+│            │ Run Your First   │                                              │
+│            │ Interview        │                                              │
+│            │                  │                                              │
+│            │ ┌──────────────┐│                                               │
+│            │ │ ▊▌▋▊▍▌▊▋▍▌ ││ ← animated waveform                          │
+│            │ └──────────────┘│                                               │
+│            │ ~15 min   Start→│                                               │
+│            └─────────────────┘                                               │
+│            ┌─────────────────┐                                               │
+│            │ ✨ Review AI     │                                              │
+│            │   Evidence       │                                              │
+│            │ ~5 min    Start→ │                                              │
+│            └─────────────────┘                                               │
+│            ┌─────────────────┐                                               │
+│            │ 👤+ Add People   │                                              │
+│            │ ~3 min    Start→ │                                              │
+│            └─────────────────┘                                               │
+│                                                                              │
+│  🌴        🌿          🌴🌴           🌿       ⛰️ ⛰️ ⛰️        🏔️          │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Stop Node States
+
+| State | Visual | Behavior |
+|-------|--------|----------|
+| **Completed** | Green circle + checkmark. Solid green glow. | Click to view completed cards (shrunk with gold stars). Cards are dimmed. |
+| **Active** | Indigo/violet circle + pulsing glow animation. Player avatar is here. | Cards are expanded by default. Hero card has accent border + preview. |
+| **Upcoming** | Semi-transparent indigo outline circle. | Click to peek at cards. Cards are interactive but path hasn't reached here. |
+| **Locked** | Dashed gray circle + lock icon. | Click shows cards in disabled state. "Unlocks after Phase X" label. |
+
+### The Path
+
+The path between stops is rendered as:
+- **Completed segments**: Solid gradient line (green → indigo)
+- **Active segment**: Dotted/dashed line with subtle animation (marching ants)
+- **Future segments**: Faint dotted line
+
+The path **winds** — alternating up and down (odd stops higher, even stops lower) to create a sense of terrain traversal, not just a flat timeline.
+
+### Player Avatar
+
+- Circular avatar (user's photo or default icon) with amber/gold border
+- Positioned at the current active stop
+- Gentle bouncing animation (translateY oscillation)
+- "YOU" label beneath
+- When a phase completes → avatar animates along the path to the next stop (0.8s cubic-bezier for a satisfying spring)
+
+---
+
+## 5. The Playing Card Design
+
+### Card Types
+
+**Hero Card** (one per stop):
+- Slightly larger, 2px indigo top border with gradient
+- Contains an animated preview (waveform, node graph, etc.)
+- More prominent CTA button
+- This is the "main quest" of each stop
+
+**Standard Card**:
+- Clean, compact design
+- Icon + title + description + time + CTA
+- These are "side quests" that support the hero task
 
 ### Card Anatomy
-
-Each task card has a consistent structure but varies in size:
 
 ```
 ┌─────────────────────────────────────┐
 │  ┌──────┐                           │
-│  │ ICON │  Task Title               │
-│  └──────┘  Short encouraging desc   │
+│  │ ICON │  Task Title               │  ← Icon in colored rounded square
+│  └──────┘  Short encouraging desc   │     matching #hashtag color
 │                                     │
 │  ┌─────────────────────────────┐    │
-│  │   [Preview / Illustration]  │    │  ← LARGE cards only
-│  │   showing what the result   │    │
-│  │   looks like                │    │
+│  │   [Animated Preview]        │    │  ← Hero cards only:
+│  │   waveform / node graph /   │    │     live SVG animation showing
+│  │   flowing data viz          │    │     what the result looks like
 │  └─────────────────────────────┘    │
 │                                     │
-│  ⏱ ~5 min          #research       │
-│                          [Start →]  │
+│  ⏱ ~5 min  #research    [Start →]  │  ← Time, tag, action CTA
 └─────────────────────────────────────┘
 ```
 
-### Card Sizes (CSS Grid Spans)
+### Card States & Transitions
 
-| Size | Grid Span | When to Use |
-|------|-----------|-------------|
-| **LARGE** | `col-span-2 row-span-2` | Hero tasks — first-time experiences, "aha moment" actions |
-| **MEDIUM** | `col-span-1 row-span-2` or `col-span-2 row-span-1` | Important but not the main event |
-| **SMALL** | `col-span-1 row-span-1` | Quick wins, supporting actions |
+| State | Visual | Gold Star |
+|-------|--------|-----------|
+| **Ready** | Full opacity. Glassmorphic dark background. Hover lifts 2px with deeper shadow. | No |
+| **In Progress** | 4px left border in hashtag color. Subtle inner glow. | No |
+| **Done** | Shrinks to 95% scale. Green tint overlay. Opacity 70%. | YES — gold star in top-right corner |
 
-### Card States
+### Gold Star
 
-Cards transition through visual states:
+When a card is completed:
+1. A gold star (SVG, `#fbbf24` fill) appears in the top-right corner with a pop-in animation
+2. The card text changes to "Completed" in green
+3. The card scales down to 95% and dims to 70% opacity
+4. The CTA button is replaced with a green checkmark
 
-| State | Visual Treatment |
-|-------|-----------------|
-| **Locked** | Slightly transparent (opacity-60), subtle lock icon, no CTA button. Shown when prerequisites aren't met. |
-| **Ready** | Full opacity, subtle pulse/glow on border (a soft breathing animation). Inviting hover lift effect. |
-| **In Progress** | Indigo/emerald left border accent (matches hashtag). Progress indicator if multi-step. |
-| **Completed** | Checkmark overlay, card slightly dimmed with satisfaction green tint. Confetti burst on first completion. |
+This creates a satisfying "done!" feeling while shrinking the card out of focus so the remaining tasks feel more prominent.
 
-### Color System
+### "Next Up" Floating Card
 
-```
-Card backgrounds (light mode):
-  Ready:       white with subtle gradient to brand tint
-  Completed:   slate-50 with green-50 tint
-  Locked:      slate-100 with opacity
-
-Card backgrounds (dark mode):
-  Ready:       slate-900 with subtle gradient
-  Completed:   slate-900 with emerald-900/20 tint
-  Locked:      slate-900/60
-
-Accent colors per hashtag:
-  #research:    indigo-500 → violet-500 gradient
-  #sales:       emerald-500 → teal-500 gradient
-  #foundations:  amber-500 → orange-500 gradient
-
-Phase headers:
-  Subtle uppercase text, light divider line, phase number badge
-```
+A sticky card in the top-right corner always shows the recommended next task:
+- Fixed position, doesn't scroll
+- Shows title + short description + "Start This Step" CTA
+- Clicking it scrolls to and expands the relevant stop
+- This gives focus even when the user is exploring other parts of the map
 
 ---
 
-## 4. Interaction Design
+## 6. Interaction Design
 
-### Hover & Click
+### Scrolling & Navigation
 
-- **Hover**: Card lifts 2px (translateY), shadow deepens, border brightens slightly. 200ms ease-out.
-- **Click "Start"**: Navigates to the relevant feature page with a contextual onboarding tooltip/coach mark. The task auto-transitions to `in_progress`.
-- **Click card body**: Expands an inline detail panel (or navigates to task detail) showing full description, tips, and a preview.
+- The journey scrolls **horizontally** (the path extends left-to-right)
+- Mouse wheel scrolls horizontally (with smooth scroll-snap)
+- Clicking a stop auto-scrolls to center it
+- Keyboard: Left/Right arrows navigate between stops
+- Mobile: Swipe left/right
 
-### Progress & Celebration
+### Stop Click Behavior
 
-- **Per-phase progress bar**: Thin bar under each phase header showing completion ratio.
-- **Overall progress ring**: Top-right corner, shows total completion. Uses the goal-gradient effect (accelerating fill).
-- **Milestone celebrations**:
-  - First task completed → Subtle confetti + "Great start!" toast
-  - Phase completed → Phase header gets a check badge + brief celebration
-  - All tasks completed → Full celebration screen, transition to "normal" task view
+1. **Click a stop node** → Expands/collapses its card deck (accordion style — only one open at a time)
+2. **Click a card CTA** → Navigates to the feature page + marks task as `in_progress`
+3. **Complete a task** (detected by system) → Card gets gold star, counter updates, avatar considers moving
+
+### Celebrations
+
+| Trigger | Animation |
+|---------|-----------|
+| **First task completed** | Gold star pop-in + subtle confetti burst + "Great start!" toast |
+| **Stop completed** | All cards get stars → celebration modal ("Phase Complete!") → avatar animates to next stop |
+| **Journey completed** | Full celebration screen → "Research Pro Unlocked!" → transition to normal task view |
 
 ### Progressive Disclosure
 
-- **Phase 1 cards**: Always fully visible and interactive
-- **Phase 2 cards**: Visible but slightly muted until any Phase 1 task starts
-- **Phase 3-4 cards**: Collapsed to a "peek" row showing titles only, expand on click or when Phase 2 progresses
-- This prevents overwhelm while showing the full journey ahead
-
-### Transition to Regular Task View
-
-Once a user completes 50%+ of onboarding tasks (or dismisses the onboarding view), the UI smoothly transitions to the standard task table/list view. A toggle allows switching back: "Show Mission Board" / "Show Task List".
+- **Completed stops**: Node is green with checkmark. Cards hidden by default (click to review). The stop takes up less visual space.
+- **Active stop**: Fully expanded. Player avatar bouncing here. Cards visible.
+- **Next stop**: Node visible and clickable. Cards peeking (visible but slightly muted).
+- **Locked stops**: Dashed circle, lock icon, "Unlocks after Phase X" label. Cards shown in disabled/gray state if clicked.
 
 ---
 
-## 5. Imagery & Icon Strategy
+## 7. Imagery, Icons & Atmosphere
+
+### Landscape Elements
+
+The background creates atmosphere without distracting:
+
+| Element | Treatment | Purpose |
+|---------|-----------|---------|
+| **Night sky** | Deep navy (#0f1729) with CSS gradient | Calm, focused environment |
+| **Stars** | 80+ tiny white dots with twinkle animation (random opacity oscillation) | Ambient life |
+| **Mountains** | 2 layers of SVG silhouettes in slate-800/slate-900, parallax-offset | Depth, "summit" destination |
+| **Ground** | Wavy SVG terrain strip in slate-800 | Grounds the path |
+| **Trees** | SVG palm tree silhouettes at 10-15% opacity | Tropical adventure feel |
+| **Summit flag** | Golden flag at journey's end with "SUMMIT" label | Clear goal |
 
 ### Icon Selection (lucide-react)
 
-Each task gets a carefully chosen icon that instantly communicates what it is:
-
 ```
-Upload Conversation     → Upload, FileAudio, Mic
-Create Interview Guide  → FileText, ClipboardList, Pen
-Define Personas         → Users, UserCircle, Fingerprint
-Run Interview           → Mic, Video, Phone
-Review Evidence         → Sparkles, Eye, Search
-Add People              → UserPlus, Users
-Explore Themes          → Layers, GitBranch, Network
-Create Insight          → Lightbulb, Zap, Brain
-Share Finding           → Share2, Send, Forward
-Create Task             → CheckSquare, ListTodo, Target
-Import Contacts         → Import, Database, Upload
-Record Sales Call       → PhoneCall, Mic, Radio
-Review Qualification    → BarChart3, Target, CheckCircle
-Tag Objections          → Tag, MessageSquare, Shield
-Create Opportunity      → Briefcase, TrendingUp, Star
-Invite Team Member      → UserPlus, Mail, Link
-Create Survey           → ClipboardList, ListChecks, FormInput
+Upload Conversation     → Upload
+Create Interview Guide  → FileText
+Define Personas         → Users
+Run Interview           → Mic
+Review Evidence         → Sparkles (star polygon)
+Add People              → UserPlus
+Explore Themes          → Layers
+Create Insight          → Lightbulb
+Share Finding           → Share2
+Create Task             → CheckCircle
+Import Contacts         → Upload
+Record Sales Call       → Mic
+Review Qualification    → BarChart3
+Tag Objections          → Tag
+Create Opportunity      → Briefcase
+Invite Team Member      → UserPlus
+Create Survey           → ClipboardList
 ```
 
-### Illustration / Preview Strategy
+### Hero Card Preview Animations
 
-For LARGE cards, include a small preview image or illustration that shows what the result looks like:
+Instead of static images, hero cards use **simple SVG/CSS animations** that hint at the result:
 
-**Option A: Screenshot Previews (Recommended for v1)**
-- Use actual mini-screenshots of the feature they'll use
-- Show the "after" state: what it looks like when evidence is generated, when themes appear
-- Gives users a concrete mental model before they start
-- Implementation: Static images stored in `/public/onboarding/`
+| Task | Preview Animation |
+|------|------------------|
+| Upload Conversation | Audio waveform bars oscillating (10 bars, staggered animation-delay) |
+| Run Your First Interview | Two speech bubble icons with a connecting line, pulsing |
+| Explore Themes | Node graph with dots connecting and clustering |
+| Import Contacts | Rows sliding in from left and stacking into a grid |
+| Create Survey | Checkbox items appearing one by one with a check animation |
 
-**Option B: Abstract Illustrations (Future Enhancement)**
-- Custom minimal illustrations in the app's brand style
-- Geometric/abstract representations (like Linear's or Notion's style)
-- Example: For "Upload Conversation" — a simple waveform transforming into text bubbles
-- Implementation: SVG components or Lottie animations
-
-### Image Generation Prompts
-
-If using AI image generation for card illustrations, here are prompts:
+### AI Image Generation Prompts (for static fallback)
 
 **For "Upload Your First Conversation":**
-> Minimal flat illustration, abstract audio waveform transforming into organized text cards, indigo and violet gradient, clean white background, geometric style, no text, suitable for 400x200px card preview
+> Minimal flat illustration, abstract audio waveform transforming into organized insight cards, indigo and violet gradient on dark navy background, geometric low-poly style, no text, 400x200px
 
 **For "Run Your First Interview":**
-> Minimal flat illustration, two abstract figures in conversation with speech bubbles becoming highlighted evidence cards, warm indigo tones, clean geometric style, no text, suitable for 400x200px card preview
+> Minimal flat illustration, two abstract figures having a conversation, speech bubbles becoming highlighted evidence cards, warm indigo tones on dark background, geometric style, no text, 400x200px
 
 **For "Explore Themes & Insights":**
-> Minimal flat illustration, abstract nodes and connections forming clusters, data points grouping into color-coded theme circles, violet and indigo palette, clean geometric style, no text
-
-**For "Import Contacts & Accounts":**
-> Minimal flat illustration, abstract spreadsheet rows flowing and organizing into clean contact cards, emerald and teal gradient, geometric style, no text
-
-**For "Create Your First Survey":**
-> Minimal flat illustration, abstract form fields and checkboxes arranged in an inviting layout, responses flowing in as data points, indigo palette, geometric style, no text
-
-### Color-Coded Phase Badges
-
-Each phase gets a numbered badge with the hashtag color:
-
-```
-Phase 1: "Get Set Up"        → Circular badge "1" with hashtag gradient
-Phase 2: "Gather Evidence"   → Circular badge "2"
-Phase 3: "Find Patterns"     → Circular badge "3"
-Phase 4: "Take Action"       → Circular badge "4" with star/sparkle accent
-```
+> Minimal flat illustration, abstract nodes and connections forming clusters, data points grouping into color-coded theme circles, violet and indigo on dark navy, geometric style, no text
 
 ---
 
-## 6. Responsive Behavior
+## 8. Responsive Behavior
 
 | Breakpoint | Layout |
 |------------|--------|
-| **Desktop (1200px+)** | 4-column bento grid, full card previews |
-| **Tablet (768-1199px)** | 2-column grid, LARGE cards span full width |
-| **Mobile (< 768px)** | Single column, cards stack vertically, LARGE cards get extra height for preview |
+| **Desktop (1200px+)** | Horizontal scroll journey, stops spread out, full card decks |
+| **Tablet (768-1199px)** | Horizontal scroll but stops closer together, cards slightly narrower |
+| **Mobile (< 768px)** | **Vertical journey** — path goes top-to-bottom instead of left-to-right. Stops stack vertically. Cards use full width. Swipe up/down. |
 
 ---
 
-## 7. Data Model Changes
+## 9. Data Model
 
-### New Fields on `tasks` Table
+### No Schema Changes Required
 
-No schema changes required. We leverage existing fields:
+We leverage existing fields on the `tasks` table:
 
-- `tags[]` — Store `#research`, `#sales`, `#foundations` hashtags
-- `stage` — Maps to our phases (repurpose: `phase-1`, `phase-2`, etc., or keep descriptive)
-- `estimated_effort` — Already exists (S/M/L/XL), we can also use description for "~5 min"
-- `depends_on_task_ids[]` — Express prerequisite relationships
-- `priority` — Use to determine card size (3=LARGE, 2=MEDIUM, 1=SMALL)
+| Field | Usage |
+|-------|-------|
+| `tags[]` | Store `#research`, `#sales`, `#foundations` hashtags |
+| `stage` | Phase identifier: `phase-1`, `phase-2`, `phase-3`, `phase-4` |
+| `estimated_effort` | Card time estimate (S=3min, M=10min, L=15min, XL=20min) |
+| `depends_on_task_ids[]` | Phase prerequisite relationships |
+| `priority` | Card type (3=Hero, 2=Standard, 1=Quick) |
+| `cluster` | Set to `Onboarding` for journey tasks |
 
-### New: Onboarding Task Template System
-
-Add a template/seed system that maps use cases to task sets:
+### Onboarding Task Template System
 
 ```typescript
 // app/features/tasks/onboarding-templates.ts
 
-type OnboardingTemplate = {
-  id: string
-  useCase: 'research' | 'sales' | 'survey' | 'user-testing' | 'consulting'
-  tasks: OnboardingTaskTemplate[]
+type JourneyStop = {
+  phase: number
+  title: string           // "Get Set Up", "Gather Evidence", etc.
+  subtitle: string        // "Foundation for your research"
+  icon: string            // lucide icon for the stop node
+  tasks: JourneyTask[]
 }
 
-type OnboardingTaskTemplate = {
+type JourneyTask = {
   title: string
-  description: string
-  hashtags: string[]          // e.g., ['#research', '#foundations']
-  phase: number               // 1-4
-  parallelGroup: string       // tasks in same group can be done in any order
-  cardSize: 'large' | 'medium' | 'small'
+  description: string     // Short encouraging description
+  hashtags: string[]      // ['#research'] or ['#sales']
+  isHero: boolean         // Hero card (has preview, larger)
   estimatedMinutes: number
-  icon: string                // lucide icon name
-  ctaLabel: string            // "Upload Recording", "Start Interview", etc.
-  ctaRoute: string            // relative route to navigate to
-  previewImage?: string       // path to preview image for large cards
-  prerequisitePhase?: number  // optional: don't unlock until this phase has progress
+  icon: string            // lucide icon name
+  ctaLabel: string        // "Upload Recording", "Start Interview"
+  ctaRoute: string        // relative route within project
+  previewType?: 'waveform' | 'nodes' | 'list' | 'chat' | 'checklist'
 }
-```
 
-### Seeding Logic
-
-```typescript
-// During onboarding completion or first visit to tasks page:
-async function seedOnboardingTasks(useCase: string, accountId: string, projectId: string) {
-  const template = ONBOARDING_TEMPLATES[useCase]
-
-  const tasks = template.tasks.map(t => ({
-    title: t.title,
-    description: t.description,
-    tags: t.hashtags,
-    stage: `phase-${t.phase}`,
-    priority: t.cardSize === 'large' ? 3 : t.cardSize === 'medium' ? 2 : 1,
-    estimated_effort: minutesToEffort(t.estimatedMinutes),
-    status: 'todo',
-    cluster: 'Onboarding',
-    // Store card metadata in description or a new metadata field
-  }))
-
-  // Insert with depends_on relationships between phases
-  await insertTasksWithDependencies(tasks)
+type JourneyTemplate = {
+  id: string
+  useCase: 'research' | 'sales' | 'survey' | 'user-testing'
+  title: string           // "Your Research Journey"
+  summitLabel: string     // "Research Pro" or "Sales Pro"
+  stops: JourneyStop[]
 }
 ```
 
 ---
 
-## 8. Component Architecture
+## 10. Component Architecture
 
 ### New Components
 
 ```
-app/features/tasks/components/
-├── MissionBoard.tsx              # Main bento grid container
-├── MissionBoardCard.tsx          # Individual task card (handles all sizes/states)
-├── MissionBoardPhase.tsx         # Phase header with progress bar
-├── MissionBoardProgress.tsx      # Overall progress ring (top-right)
-├── MissionBoardCelebration.tsx   # Confetti/celebration overlays
-├── MissionBoardToggle.tsx        # Switch between Mission Board ↔ Table view
-└── onboarding-templates.ts       # Task template definitions per use case
+app/features/tasks/components/journey/
+├── JourneyMap.tsx              # Main horizontal scroll container + landscape
+├── JourneyPath.tsx             # SVG path connecting stops
+├── JourneyStop.tsx             # Clickable stop node (circle + label)
+├── JourneyPlayer.tsx           # User avatar that moves along the path
+├── JourneyCardDeck.tsx         # Expanding deck of cards under a stop
+├── JourneyCard.tsx             # Individual playing card
+├── JourneyCardPreview.tsx      # Animated preview for hero cards
+├── JourneyProgress.tsx         # Top bar progress pill
+├── JourneyNextUp.tsx           # Floating "next up" card
+├── JourneyCelebration.tsx      # Phase/journey completion celebration
+├── JourneySummit.tsx           # Summit marker at end
+├── JourneyLandscape.tsx        # Background SVGs (mountains, trees, stars)
+└── journey-templates.ts        # Task template definitions per use case
 ```
 
-### MissionBoard.tsx (Simplified Structure)
+### Key Implementation Notes
 
-```tsx
-function MissionBoard({ tasks, projectPath }) {
-  const phases = groupTasksByPhase(tasks)
-  const completionRatio = getCompletionRatio(tasks)
+**JourneyMap.tsx** — Container:
+- Horizontal scroll with `overflow-x: auto`
+- `scroll-snap-type: x mandatory` for stop-to-stop snapping
+- Renders landscape, path, stops, and player
+- Manages which stop is expanded (accordion state)
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Your Research Journey
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Complete these steps to unlock the full power of UpSight
-          </p>
-        </div>
-        <MissionBoardProgress ratio={completionRatio} />
-      </div>
+**JourneyStop.tsx** — Stop nodes:
+- Position alternates vertically (odd=higher, even=lower) for winding path feel
+- Click handler toggles card deck expansion
+- State derived from task completion: completed/active/upcoming/locked
 
-      {/* Phases */}
-      {phases.map((phase, i) => (
-        <MissionBoardPhase
-          key={phase.number}
-          phase={phase}
-          isActive={i === 0 || phases[i-1].hasProgress}
-          projectPath={projectPath}
-        />
-      ))}
-    </div>
-  )
-}
-```
+**JourneyCard.tsx** — Playing cards:
+- Uses glassmorphic dark background (`rgba(30, 41, 59, 0.9)` + `backdrop-filter: blur`)
+- Hover: `translateY(-2px)` + shadow deepening + top border fade-in
+- Done state: `scale(0.95)` + `opacity: 0.7` + green tint + gold star SVG
 
-### MissionBoardCard.tsx (Key Design Element)
-
-```tsx
-function MissionBoardCard({ task, size, state, projectPath }) {
-  return (
-    <div className={cn(
-      // Base card
-      "group relative rounded-2xl border p-5 transition-all duration-200",
-      // Size-based grid span
-      size === 'large' && "col-span-2 row-span-2",
-      size === 'medium' && "col-span-1 row-span-2",
-      size === 'small' && "col-span-1 row-span-1",
-      // State-based styling
-      state === 'ready' && "bg-card hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-border",
-      state === 'locked' && "bg-muted/50 opacity-60 cursor-not-allowed",
-      state === 'in_progress' && "bg-card border-l-4 border-l-indigo-500 shadow-sm",
-      state === 'completed' && "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800",
-    )}>
-      {/* Icon + Title */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className={cn(
-          "rounded-xl p-2.5",
-          task.hashtags.includes('#research') && "bg-indigo-100 dark:bg-indigo-900/30",
-          task.hashtags.includes('#sales') && "bg-emerald-100 dark:bg-emerald-900/30",
-        )}>
-          <DynamicIcon name={task.icon} className="h-5 w-5" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-sm leading-tight">{task.title}</h3>
-          <p className="text-muted-foreground text-xs mt-1">{task.description}</p>
-        </div>
-      </div>
-
-      {/* Preview image for large cards */}
-      {size === 'large' && task.previewImage && (
-        <div className="rounded-lg overflow-hidden bg-muted/50 mb-3">
-          <img src={task.previewImage} alt="" className="w-full h-32 object-cover" />
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-auto pt-3">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">
-            ~{task.estimatedMinutes} min
-          </span>
-          {task.hashtags.map(tag => (
-            <span key={tag} className="text-xs text-muted-foreground/60">{tag}</span>
-          ))}
-        </div>
-
-        {state === 'ready' && (
-          <Link
-            to={task.ctaRoute}
-            className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1"
-          >
-            {task.ctaLabel} <ArrowRight className="h-3 w-3" />
-          </Link>
-        )}
-
-        {state === 'completed' && (
-          <Check className="h-4 w-4 text-green-600" />
-        )}
-      </div>
-
-      {/* Completion state overlay */}
-      {state === 'completed' && (
-        <div className="absolute inset-0 rounded-2xl bg-green-500/5 pointer-events-none" />
-      )}
-    </div>
-  )
-}
-```
+**JourneyPlayer.tsx** — Avatar:
+- Absolute positioned, moves via CSS transition (`transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)`)
+- Bounce animation: `translateY` oscillation on 2s loop
+- Position calculated from current active stop's DOM position
 
 ---
 
-## 9. Implementation Plan
+## 11. Implementation Plan
 
-### Phase 1: Foundation (Task Templates + Hashtag Seeding)
-1. Create `onboarding-templates.ts` with task definitions for each use case
+### Phase 1: Foundation
+1. Create `journey-templates.ts` with task definitions for all 4 use cases
 2. Update `seedTasks` to accept a `useCase` parameter and seed from templates
-3. Add hashtag tags to seeded tasks
+3. Add hashtag tags and phase stages to seeded tasks
 4. Wire seeding to onboarding flow completion
 
-### Phase 2: Mission Board UI
-1. Build `MissionBoardCard` component with all size variants and states
-2. Build `MissionBoardPhase` with progress bars
-3. Build `MissionBoard` container with CSS Grid bento layout
-4. Build `MissionBoardProgress` ring component
-5. Add route/page for the mission board view
+### Phase 2: Journey Map UI
+1. Build `JourneyLandscape.tsx` (stars, mountains, terrain SVGs)
+2. Build `JourneyStop.tsx` with all 4 states
+3. Build `JourneyPath.tsx` (SVG connecting line between stops)
+4. Build `JourneyMap.tsx` container with horizontal scroll
+5. Build `JourneyPlayer.tsx` avatar with bounce animation
 
-### Phase 3: Interactions & Polish
-1. Add hover/click animations (translate, shadow transitions)
-2. Add confetti celebration on first task completion
-3. Implement progressive disclosure (phase muting/collapsing)
-4. Add "Start" CTA routing to feature pages with context
-5. Add toggle between Mission Board and Table view
+### Phase 3: Playing Cards
+1. Build `JourneyCard.tsx` with ready/done states
+2. Build `JourneyCardPreview.tsx` with animated previews
+3. Build `JourneyCardDeck.tsx` with expand/collapse
+4. Build `JourneyNextUp.tsx` floating card
+5. Build `JourneyProgress.tsx` top bar
 
-### Phase 4: Imagery & Delight
-1. Create or generate preview images for large cards
-2. Add coach marks / tooltips on first visit to each feature
-3. Add milestone celebrations (phase complete, all complete)
-4. Implement "graduation" transition to normal task view
+### Phase 4: Interactions & Delight
+1. Gold star animation on card completion
+2. Player avatar path animation on phase completion
+3. `JourneyCelebration.tsx` for phase/journey milestones
+4. Scroll-to-stop on click with smooth scrolling
+5. `JourneySummit.tsx` completion reward
 
----
-
-## 10. Key Design Principles
-
-1. **Invitation, not obligation** — Cards should feel like gifts to open, not chores to check off
-2. **Show the destination** — Preview images and descriptions paint a picture of what success looks like
-3. **Respect non-linearity** — Parallel groups let users follow their curiosity, not a rigid sequence
-4. **Celebrate progress** — Every completion, no matter how small, gets acknowledged
-5. **Progressive revelation** — Don't overwhelm with 15 tasks at once; reveal as the user is ready
-6. **Maintain escape velocity** — Users can always switch to the table view or dismiss onboarding
-7. **Hashtag identity** — The `#research` / `#sales` split gives users a sense that this tool knows who they are
+### Phase 5: Integration
+1. Add journey route to `app/routes.ts`
+2. Connect task completion detection (auto-complete when user performs action)
+3. Add toggle between Journey Map and Table view
+4. Mobile vertical layout adaptation
+5. Persist journey state per user
 
 ---
 
-## 11. Inspirational References
+## 12. Design Principles
+
+1. **Adventure, not administration** — This is a journey, not a to-do list
+2. **Show the summit** — The endpoint is always visible, pulling users forward
+3. **Cards are moves** — Each card is a concrete action, not a vague objective
+4. **Celebrate every win** — Gold stars, checkmarks, confetti — progress feels good
+5. **Focus on next** — Done cards shrink. The "Next Up" card is always visible.
+6. **Non-linear within linear** — Stops are sequential. Cards within a stop are parallel.
+7. **Escape hatch** — Users can always switch to the standard table view
+
+---
+
+## 13. Inspirational References
 
 | Reference | What to Take |
 |-----------|-------------|
-| **Linear's onboarding** | Clean card layout, minimal chrome, keyboard-friendly |
+| **Duolingo's path** | Winding skill path, celebration animations, progress visualization |
+| **Candy Crush map** | Left-to-right progression through themed landscapes |
+| **Board game aesthetics** | Stops/nodes, dice-roll energy, "your turn" excitement |
+| **Apple's bento grid** (for cards) | Clean card layout with variable prominence |
+| **GitHub's contribution graph** | Satisfaction of filling in progress visually |
+| **RPG skill trees** | Branch points, locked/unlocked states, character progression |
 | **Notion's getting started** | Each step teaches one concept, builds competency |
-| **Figma's animated onboarding** | Fast, visual, lets you try things immediately |
-| **Apple's bento grid** (product pages) | Variable card sizes creating visual rhythm |
-| **21st.dev bento components** | Aceternity-style grid with glassmorphism cards |
-| **Duolingo's lesson map** | Non-linear progression, celebration at milestones, visual fun |
-| **Stripe's dashboard setup** | Guided but not patronizing, clean progress indicators |
 
 ---
 
-## 12. Open Questions
+## 14. Open Questions
 
-1. **Should we auto-complete tasks?** If a user uploads a conversation outside the mission board, should the "Upload Conversation" task auto-complete? (Recommended: yes, via background check)
-2. **Persistence of mission board** — Should it always be accessible, or fade after onboarding? (Recommended: always accessible via toggle, but default to table after 70% completion)
-3. **Custom task addition** — Can users add their own tasks to the mission board, or only to the table view? (Recommended: table view only, mission board stays curated)
-4. **Team vs individual** — If one team member completes a task, does it complete for everyone? (Recommended: per-user, since each person needs to learn)
+1. **Should we auto-complete tasks?** If a user uploads a conversation outside the journey, should the "Upload Conversation" card auto-complete? (Recommended: yes, via background check)
+2. **Theme selection** — Should users pick their landscape theme (mountain/ocean/forest) or should it be tied to hashtag (#research=mountain, #sales=ocean)?
+3. **Persistence** — Should the journey always be accessible, or fade after completion? (Recommended: always accessible via toggle, but default to table after 70% completion)
+4. **Team vs individual** — If one team member completes a card, does it complete for everyone? (Recommended: per-user journey, since each person needs to learn)
+5. **Lottie vs CSS** — Should we use Lottie files for richer landscape animations, or keep it pure CSS/SVG for performance? (Recommended: CSS/SVG for v1, add Lottie for v2 polish)
