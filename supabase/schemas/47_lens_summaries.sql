@@ -8,7 +8,7 @@
 CREATE TABLE IF NOT EXISTS public.conversation_lens_summaries (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-  template_key text NOT NULL REFERENCES public.conversation_lens_templates(template_key) ON DELETE CASCADE,
+  template_key text NOT NULL,  -- No FK: allows special keys like '__cross_lens__' for cross-lens synthesis
   account_id uuid NOT NULL REFERENCES accounts.accounts(id) ON DELETE CASCADE,
 
   -- Synthesis data

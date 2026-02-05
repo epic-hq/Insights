@@ -533,6 +533,38 @@ export interface ConversationTakeaways {
   
 }
 
+export interface CrossLensFinding {
+  title: string
+  description: string
+  severity: "critical" | "important" | "notable"
+  people_count: number
+  mention_count: number
+  category: string
+  supporting_lenses: string[]
+  
+}
+
+export interface CrossLensRecommendedAction {
+  title: string
+  description: string
+  priority: "high" | "medium" | "low"
+  category: string
+  
+}
+
+export interface CrossLensSynthesisResult {
+  executive_summary: string
+  key_findings: CrossLensFinding[]
+  person_snapshots: PersonSnapshot[]
+  recommended_actions: CrossLensRecommendedAction[]
+  patterns: string[]
+  risks: string[]
+  overall_confidence: number
+  analysis_count: number
+  lens_count: number
+  
+}
+
 export interface DealAdvisorRecommendation {
   status_assessment: string
   recommendations: string[]
@@ -1298,6 +1330,15 @@ export interface PersonSegmentInput {
   title?: string | null
   role?: string | null
   company?: string | null
+  
+}
+
+export interface PersonSnapshot {
+  person_name: string
+  role?: string | null
+  organization?: string | null
+  key_needs: string[]
+  engagement_signal: string
   
 }
 
