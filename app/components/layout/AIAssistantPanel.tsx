@@ -11,15 +11,17 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
+  Plus,
   Search,
   Sparkles,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { useCurrentProject } from "~/contexts/current-project-context";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { useSidebarCounts } from "~/hooks/useSidebarCounts";
 import { cn } from "~/lib/utils";
@@ -189,11 +191,7 @@ export function AIAssistantPanel({
   className,
   suppressPersistence = false,
 }: AIAssistantPanelProps) {
-  const params = useParams();
-  const accountId = params.accountId || "";
-  const projectId = params.projectId || "";
-  const projectPath =
-    accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+  const { accountId, projectId, projectPath } = useCurrentProject();
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const { counts } = useSidebarCounts(accountId, projectId);
 
@@ -207,6 +205,16 @@ export function AIAssistantPanel({
   const handleToggle = useCallback(() => {
     onOpenChange(!isOpen);
   }, [isOpen, onOpenChange]);
+
+  // Ref to the chat's clearChat function, registered via callback
+  const clearChatRef = useRef<(() => void) | null>(null);
+  const handleClearChatRef = useCallback((fn: (() => void) | null) => {
+    clearChatRef.current = fn;
+  }, []);
+
+  const handleNewChat = useCallback(() => {
+    clearChatRef.current?.();
+  }, []);
 
   // Collapsed state - just show icon strip
   if (!isOpen) {
@@ -267,21 +275,32 @@ export function AIAssistantPanel({
         className,
       )}
     >
-      {/* Header with collapse button */}
+      {/* Header with new chat + collapse buttons */}
       <div className="flex items-center justify-between border-b bg-background/60 p-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
           <span className="font-semibold text-sm">Uppy Assistant</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleToggle}
-          className="h-8 w-8"
-          title="Collapse panel"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNewChat}
+            className="h-8 w-8"
+            title="New chat"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggle}
+            className="h-8 w-8"
+            title="Collapse panel"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Content area */}
@@ -299,6 +318,7 @@ export function AIAssistantPanel({
               projectId={projectId}
               systemContext={systemContext}
               embedded
+              onClearChatRef={handleClearChatRef}
             />
           </div>
         )}

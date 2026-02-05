@@ -9,7 +9,7 @@
  */
 
 import { Menu, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
 import { Badge } from "~/components/ui/badge";
@@ -61,12 +61,24 @@ interface NavDropdownProps {
 
 function NavDropdown({ category, routes, counts, isActive }: NavDropdownProps) {
   const [open, setOpen] = useState(false);
+  const closeTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleMouseEnter = useCallback(() => {
+    clearTimeout(closeTimeout.current);
+    setOpen(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    closeTimeout.current = setTimeout(() => setOpen(false), 150);
+  }, []);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           className={cn(
             "flex items-center gap-1 px-3 py-2 font-medium text-sm transition-colors",
             "hover:text-foreground focus:outline-none",
@@ -91,7 +103,12 @@ function NavDropdown({ category, routes, counts, isActive }: NavDropdownProps) {
           </svg>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
+      <DropdownMenuContent
+        align="start"
+        className="w-72"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <DropdownMenuLabel className="text-muted-foreground text-xs">
           {category.description}
         </DropdownMenuLabel>
