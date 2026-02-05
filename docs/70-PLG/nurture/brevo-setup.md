@@ -2,51 +2,79 @@
 
 ## Overview
 
-This document details how to implement automated email campaigns using PostHog cohorts for segmentation and Brevo (formerly Sendinblue) for delivery.
-For the canonical plan, see `/docs/70-PLG/nurture/plan.md`.
+**PostHog handles segmentation. Brevo handles email delivery. No sync code needed.**
 
-**Why Brevo:**
-- **Cost-effective**: Free tier (300 emails/day), then $25/mo for 20k emails vs $99/mo alternatives
-- **All-in-one**: Transactional + marketing emails in one platform
-- **Features**: Email, SMS, automation workflows, CRM, forms, landing pages
-- **Proven scale**: Used by major companies (IBM, Microsoft, Toyota)
-- **Strong API**: Easy cohort sync with webhooks for event tracking
+PostHog's native CDP destination pushes contact attributes to Brevo in real-time. Brevo automation workflows trigger when those attributes change. There is no custom sync task — it's all built-in.
 
 **Related docs:**
+- [Email Sequences](./email-sequences.md) - Full email content for all 18 templates
 - [Activation Strategy](../strategy/activation-strategy.md) - Campaign strategy and messaging
 - [PostHog Tracking](../../60-ops-observability/posthog-tracking.md) - Event definitions and cohorts
 - [Email Setup](../../20-features-prds/features/email.md) - DNS and deliverability
 
 ---
 
-## Architecture
+## How It Works
+
+```mermaid
+flowchart LR
+    subgraph PostHog["PostHog (Segmentation)"]
+        A[User activity] --> B[updateUserMetricsTask\ndaily 2am UTC]
+        B --> C[Person properties updated\nlifecycle_stage, is_activated, etc.]
+        C --> D[Cohort membership\nautomatically recalculated]
+    end
+
+    subgraph CDP["PostHog CDP (Bridge)"]
+        C -->|"$identify / $set events"| E[Native Brevo Destination\nreal-time, zero code]
+    end
+
+    subgraph Brevo["Brevo (Email Delivery)"]
+        E --> F[Contact attributes updated\nLIFECYCLE_STAGE, PLAN, etc.]
+        F --> G{Automation workflow\ntrigger condition met?}
+        G -->|Yes| H[Send email sequence\nwith wait steps]
+        H --> I[Track opens/clicks/bounces]
+    end
+
+    I -->|Webhook| A
+```
+
+### Single source of truth
+
+`updateUserMetricsTask` (Trigger.dev, daily 2am UTC) is the **single source of truth** for all segmentation logic. It computes properties like `is_activated`, `is_power_user`, `lifecycle_stage`, `days_since_signup`, etc. Everything downstream just reacts:
+
+- **PostHog cohorts** = saved filters on those properties, for dashboard monitoring only
+- **Brevo automations** = trigger on the same properties, pushed via CDP
+
+Brevo has **no awareness of PostHog cohorts**. It only sees contact attributes. The segmentation logic lives in one place (the metrics task), not duplicated across platforms.
+
+### The chain
 
 ```
-┌─────────────┐                          ┌─────────────┐
-│  PostHog    │──────────────────────────▶│   Brevo     │
-│  Events     │   Native CDP Destination │   Contacts  │
-└─────────────┘                          └─────────────┘
-       │                                         │
-       │ cohorts                                 │ lists
-       ▼                                         ▼
-┌─────────────┐                          ┌─────────────┐
-│  Cohorts    │                          │Automations  │
-│  (filters)  │                          │ (workflows) │
-└─────────────┘                          └─────────────┘
+updateUserMetricsTask runs (daily 2am)
+  → Sets person properties via $set
+    → PostHog CDP destination fires (real-time)
+      → Brevo contact attributes updated
+        → Brevo workflow evaluates entry/exit conditions
+          → Emails sent (or contact exits sequence)
 ```
 
-**Flow:**
-1. PostHog tracks user behavior → fires events
-2. **PostHog CDP sends events to Brevo** (native destination, real-time)
-3. Brevo creates/updates contacts automatically
-4. Brevo automation workflows trigger based on contact attributes or list membership
-5. Emails sent via Brevo with tracking (opens, clicks, bounces)
+**If the daily task doesn't run, nothing updates.** That's the one dependency to monitor.
 
-**Why use PostHog's native Brevo destination:**
-- ✅ Real-time updates (not batch sync)
-- ✅ Zero code to maintain
-- ✅ Built-in by PostHog, more reliable
-- ✅ Automatic person property mapping
+### What lives where
+
+| Concern | Where | Why there |
+|---------|-------|-----------|
+| Segmentation logic | `updateUserMetricsTask` | Single source of truth, all computed properties |
+| Segment monitoring | PostHog cohorts | Dashboard visibility into segment sizes |
+| Attribute sync | PostHog CDP → Brevo | Automatic, real-time, zero code |
+| Email trigger + timing | Brevo automation workflows | Reacts to attribute values pushed from PostHog |
+| Email content | Brevo templates (IDs 1-18) | Managed via API or Brevo UI |
+| Engagement tracking | Brevo → PostHog webhook | Opens, clicks, bounces flow back to PostHog |
+
+**Why Brevo:**
+- **Cost-effective**: Free tier (300 emails/day), then $25/mo for 20k emails
+- **All-in-one**: Transactional + marketing emails in one platform
+- **Strong API**: Templates, contacts, and lists all manageable via API
 
 ---
 
