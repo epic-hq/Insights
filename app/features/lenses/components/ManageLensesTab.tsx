@@ -1,9 +1,6 @@
 /**
- * Manage Lenses Tab - Full-page lens management as a tab in the Analysis page
- *
- * Shows detailed info about each lens template: summary, sections, fields,
- * category, and enable/disable toggles. Replaces the old modal dialog.
- * Custom lens creation navigates to an inline creation flow (not a modal).
+ * Manage Lenses Tab - Compact lens management as a tab in the Analysis page.
+ * Shows all lenses in a dense grid with toggle, summary, and expandable detail.
  */
 
 import {
@@ -25,13 +22,6 @@ import { useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -59,13 +49,13 @@ type ManageLensesTabProps = {
 function getCategoryIcon(category: string | null) {
   switch (category) {
     case "research":
-      return <FlaskConical className="h-5 w-5" />;
+      return <FlaskConical className="h-4 w-4" />;
     case "sales":
-      return <Briefcase className="h-5 w-5" />;
+      return <Briefcase className="h-4 w-4" />;
     case "product":
-      return <Package className="h-5 w-5" />;
+      return <Package className="h-4 w-4" />;
     default:
-      return <Sparkles className="h-5 w-5" />;
+      return <Sparkles className="h-4 w-4" />;
   }
 }
 
@@ -78,24 +68,11 @@ function getCategoryColor(category: string | null) {
     case "product":
       return "text-green-600 bg-green-100 dark:bg-green-950/30 dark:text-green-300";
     default:
-      return "text-muted-foreground bg-muted";
+      return "text-foreground/70 bg-muted";
   }
 }
 
-function getCategoryLabel(category: string | null) {
-  switch (category) {
-    case "research":
-      return "Research";
-    case "sales":
-      return "Sales";
-    case "product":
-      return "Product";
-    default:
-      return "General";
-  }
-}
-
-function LensTemplateCard({
+function LensTemplateRow({
   template,
   isEnabled,
   isSubmitting,
@@ -123,219 +100,149 @@ function LensTemplateCard({
     (sum, s) => sum + (s.fields?.length || 0),
     0,
   );
-  const entities = template.template_definition?.entities || [];
   const isPending = isSubmitting && pendingToggle === template.template_key;
 
   return (
-    <Card className={!isEnabled ? "opacity-60" : undefined}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <div
-              className={`rounded-lg p-2 mt-0.5 flex-shrink-0 ${getCategoryColor(template.category)}`}
-            >
-              {getCategoryIcon(template.category)}
-            </div>
-            <div className="min-w-0">
-              <CardTitle className="text-base">
-                {template.template_name}
-              </CardTitle>
-              {template.summary && (
-                <CardDescription className="mt-1 line-clamp-2">
-                  {template.summary}
-                </CardDescription>
-              )}
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                <Badge variant="outline" className="text-xs">
-                  {getCategoryLabel(template.category)}
-                </Badge>
-                {isCustom && (
-                  <Badge variant="secondary" className="text-xs">
-                    Custom
-                  </Badge>
-                )}
-                {isCustom && !template.is_public && (
-                  <Badge variant="outline" className="text-xs">
-                    <EyeOff className="mr-1 h-3 w-3" />
-                    Private
-                  </Badge>
-                )}
-                {template.created_by_name && (
-                  <span className="text-muted-foreground text-xs">
-                    by {template.created_by_name}
-                  </span>
-                )}
-              </div>
-            </div>
+    <div
+      className={`rounded-lg border px-4 py-3 ${!isEnabled ? "opacity-50" : ""}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className={`rounded-md p-1.5 flex-shrink-0 ${getCategoryColor(template.category)}`}
+          >
+            {getCategoryIcon(template.category)}
           </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {isPending && (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            )}
-            <Switch
-              checked={isEnabled}
-              onCheckedChange={(checked) =>
-                onToggle(template.template_key, checked)
-              }
-              disabled={isPending}
-              aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
-            />
-            {isCustom && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {isOwner ? (
-                    <>
-                      <DropdownMenuItem onClick={() => onEdit(template)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          onToggleVisibility(
-                            template.template_key,
-                            !template.is_public,
-                          )
-                        }
-                      >
-                        {template.is_public ? (
-                          <>
-                            <EyeOff className="mr-2 h-4 w-4" />
-                            Make Private
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Share with Team
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDelete(template.template_key)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <DropdownMenuItem
-                      disabled
-                      className="text-muted-foreground"
-                    >
-                      Shared by team member
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm truncate">
+                {template.template_name}
+              </span>
+              {isCustom && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  Custom
+                </Badge>
+              )}
+              {isCustom && !template.is_public && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  Private
+                </Badge>
+              )}
+            </div>
+            {template.summary && (
+              <p className="text-xs text-foreground/60 truncate mt-0.5">
+                {template.summary}
+              </p>
             )}
           </div>
         </div>
-      </CardHeader>
 
-      {/* Expandable sections detail */}
-      {sections.length > 0 && (
-        <Collapsible open={expanded} onOpenChange={setExpanded}>
-          <div className="px-6 pb-2">
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {expanded ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
-                {sections.length} section{sections.length !== 1 ? "s" : ""}{" "}
-                &middot; {totalFields} field{totalFields !== 1 ? "s" : ""}
-                {entities.length > 0 && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {sections.length > 0 && (
+            <span className="text-xs text-foreground/50 hidden sm:inline">
+              {sections.length}s &middot; {totalFields}f
+            </span>
+          )}
+          {isPending && (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground/40" />
+          )}
+          <Switch
+            checked={isEnabled}
+            onCheckedChange={(checked) =>
+              onToggle(template.template_key, checked)
+            }
+            disabled={isPending}
+            aria-label={`${isEnabled ? "Disable" : "Enable"} ${template.template_name}`}
+          />
+          {isCustom && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isOwner ? (
                   <>
-                    {" "}
-                    &middot; {entities.length} entit
-                    {entities.length !== 1 ? "ies" : "y"}
-                  </>
-                )}
-              </button>
-            </CollapsibleTrigger>
-          </div>
-
-          <CollapsibleContent>
-            <CardContent className="pt-0 space-y-3">
-              {sections.map((section) => (
-                <div
-                  key={section.section_key}
-                  className="rounded-lg border bg-muted/20 p-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-sm">
-                        {section.section_name}
-                      </p>
-                      {section.description && (
-                        <p className="text-muted-foreground text-xs mt-0.5">
-                          {section.description}
-                        </p>
+                    <DropdownMenuItem onClick={() => onEdit(template)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onToggleVisibility(
+                          template.template_key,
+                          !template.is_public,
+                        )
+                      }
+                    >
+                      {template.is_public ? (
+                        <>
+                          <EyeOff className="mr-2 h-4 w-4" />
+                          Make Private
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Share with Team
+                        </>
                       )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {section.fields.map((field) => (
-                      <Badge
-                        key={field.field_key}
-                        variant="outline"
-                        className="text-xs font-normal"
-                      >
-                        {field.field_name}
-                        <span className="ml-1 text-muted-foreground">
-                          ({field.field_type})
-                        </span>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onDelete(template.template_key)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem disabled className="text-foreground/50">
+                    Shared by team member
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {sections.length > 0 && (
+            <Collapsible open={expanded} onOpenChange={setExpanded}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  {expanded ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          )}
+        </div>
+      </div>
 
-              {entities.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Entity Extraction
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {entities.map((entity) => (
-                      <Badge
-                        key={entity}
-                        variant="secondary"
-                        className="text-xs"
-                      >
-                        {entity}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {template.nlp_source && (
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="font-medium text-muted-foreground text-xs mb-1">
-                    Original description
-                  </p>
-                  <p className="text-sm text-muted-foreground italic">
-                    "{template.nlp_source}"
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
+      {/* Expandable detail */}
+      {sections.length > 0 && expanded && (
+        <div className="mt-3 pt-3 border-t space-y-2">
+          {sections.map((section) => (
+            <div key={section.section_key}>
+              <p className="text-xs font-medium">{section.section_name}</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {section.fields.map((field) => (
+                  <Badge
+                    key={field.field_key}
+                    variant="outline"
+                    className="text-[10px] font-normal py-0"
+                  >
+                    {field.field_name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -366,7 +273,6 @@ export function ManageLensesTab({
     return initialEnabled;
   })();
 
-  // Sort: custom first, then by category
   const sortedTemplates = [...templates].sort((a, b) => {
     if (a.is_system !== b.is_system) return a.is_system ? 1 : -1;
     const catOrder = ["sales", "research", "product"];
@@ -436,30 +342,27 @@ export function ManageLensesTab({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header with stats and create button */}
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-muted-foreground text-sm">
-            {enabledCount} of {templates.length} lenses enabled. Enabled lenses
-            automatically analyze new conversations.
-          </p>
-        </div>
-        <Button onClick={onCreateLens} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Custom Lens
+        <p className="text-sm">
+          {enabledCount} of {templates.length} lenses enabled
+        </p>
+        <Button onClick={onCreateLens} size="sm" className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" />
+          Create Lens
         </Button>
       </div>
 
-      {/* Custom lenses section */}
+      {/* Custom lenses */}
       {customTemplates.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-            Custom Lenses ({customTemplates.length})
+        <div className="space-y-2">
+          <h3 className="font-medium text-xs uppercase tracking-wide text-foreground/50">
+            Custom ({customTemplates.length})
           </h3>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
             {customTemplates.map((template) => (
-              <LensTemplateCard
+              <LensTemplateRow
                 key={template.template_key}
                 template={template}
                 isEnabled={enabledLenses.includes(template.template_key)}
@@ -476,16 +379,16 @@ export function ManageLensesTab({
         </div>
       )}
 
-      {/* System lenses section */}
-      <div className="space-y-3">
+      {/* Built-in lenses */}
+      <div className="space-y-2">
         {customTemplates.length > 0 && (
-          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-            Built-in Lenses ({systemTemplates.length})
+          <h3 className="font-medium text-xs uppercase tracking-wide text-foreground/50">
+            Built-in ({systemTemplates.length})
           </h3>
         )}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
           {systemTemplates.map((template) => (
-            <LensTemplateCard
+            <LensTemplateRow
               key={template.template_key}
               template={template}
               isEnabled={enabledLenses.includes(template.template_key)}
@@ -501,7 +404,6 @@ export function ManageLensesTab({
         </div>
       </div>
 
-      {/* Edit lens dialog — keep as dialog since it's a quick edit */}
       {editingTemplate && (
         <EditLensDialog
           open={!!editingTemplate}
