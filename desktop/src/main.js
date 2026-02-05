@@ -798,7 +798,14 @@ function initSDK() {
       global.activeMeetingIds &&
       global.activeMeetingIds[evt.window.id]
     ) {
+      const noteId = global.activeMeetingIds[evt.window.id].noteId;
       console.log(`Cleaning up meeting tracking for: ${evt.window.id}`);
+
+      // Clean up evidence extraction state
+      if (noteId) {
+        evidenceExtractionState.cleanup(noteId);
+      }
+
       delete global.activeMeetingIds[evt.window.id];
     }
 
@@ -1799,6 +1806,193 @@ async function processParticipantJoin(evt) {
 
 let currentUnknownSpeaker = -1;
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Real-time Evidence Extraction State
+// ══════════════════════════════════════════════════════════════════════════════
+// Track evidence extraction state per meeting to enable incremental extraction
+// during the meeting instead of waiting for post-meeting upload/webhook.
+const evidenceExtractionState = {
+  // Map of noteId -> { lastExtractedIndex, batchIndex, isExtracting, pendingTimer }
+  meetings: {},
+
+  // Get or create state for a meeting
+  getState(noteId) {
+    if (!this.meetings[noteId]) {
+      this.meetings[noteId] = {
+        lastExtractedIndex: 0,
+        batchIndex: 0,
+        isExtracting: false,
+        pendingTimer: null,
+        evidence: [],
+        people: [],
+      };
+    }
+    return this.meetings[noteId];
+  },
+
+  // Clean up state for a meeting
+  cleanup(noteId) {
+    const state = this.meetings[noteId];
+    if (state?.pendingTimer) {
+      clearTimeout(state.pendingTimer);
+    }
+    delete this.meetings[noteId];
+  },
+};
+
+// Extract evidence from transcript turns via UpSight backend
+async function extractRealtimeEvidence(noteId, utterances, batchIndex) {
+  try {
+    const accessToken = await auth.getAccessToken();
+    if (!accessToken) {
+      console.log("[realtime-evidence] No access token, skipping extraction");
+      return null;
+    }
+
+    console.log(
+      `[realtime-evidence] Extracting from ${utterances.length} utterances (batch ${batchIndex})`,
+    );
+
+    const response = await axios.post(
+      `${UPSIGHT_API_URL}/api/desktop/realtime-evidence`,
+      {
+        utterances,
+        language: "en",
+        sessionId: noteId,
+        batchIndex,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 60000, // 60 second timeout for BAML extraction
+      },
+    );
+
+    console.log(
+      `[realtime-evidence] Extracted ${response.data.evidence?.length || 0} evidence items`,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "[realtime-evidence] Extraction failed:",
+      error.response?.data?.error || error.message,
+    );
+    return null;
+  }
+}
+
+// Schedule evidence extraction for a meeting (debounced)
+async function scheduleEvidenceExtraction(noteId) {
+  const state = evidenceExtractionState.getState(noteId);
+
+  // Clear any pending timer
+  if (state.pendingTimer) {
+    clearTimeout(state.pendingTimer);
+    state.pendingTimer = null;
+  }
+
+  // Don't schedule if already extracting
+  if (state.isExtracting) {
+    return;
+  }
+
+  // Get the meeting's transcript
+  const meetingsData = await fileOperationManager.readMeetingsData();
+  const meeting = meetingsData.pastMeetings.find((m) => m.id === noteId);
+  if (!meeting?.transcript) {
+    return;
+  }
+
+  const transcriptCount = meeting.transcript.length;
+  const newTurns = transcriptCount - state.lastExtractedIndex;
+
+  // Extract every 2 turns or after 3 second idle
+  if (newTurns >= 2) {
+    // Extract immediately
+    performEvidenceExtraction(noteId, meeting.transcript);
+  } else if (newTurns > 0) {
+    // Schedule extraction after idle period
+    state.pendingTimer = setTimeout(() => {
+      performEvidenceExtraction(noteId, meeting.transcript);
+    }, 3000);
+  }
+}
+
+// Perform the actual evidence extraction
+async function performEvidenceExtraction(noteId, transcript) {
+  const state = evidenceExtractionState.getState(noteId);
+
+  // Skip if already extracting or no new turns
+  if (state.isExtracting || transcript.length <= state.lastExtractedIndex) {
+    return;
+  }
+
+  state.isExtracting = true;
+
+  try {
+    // Get all turns since last extraction
+    const newTurns = transcript.slice(state.lastExtractedIndex);
+
+    // Format for the API
+    const utterances = newTurns.map((turn, idx) => ({
+      speaker: turn.speaker,
+      text: turn.text,
+      start: null, // We don't have precise timestamps from Recall SDK
+      end: null,
+    }));
+
+    const result = await extractRealtimeEvidence(
+      noteId,
+      utterances,
+      state.batchIndex++,
+    );
+
+    if (result) {
+      // Track last extracted position
+      state.lastExtractedIndex = transcript.length;
+
+      // Accumulate evidence (deduplicate by gist)
+      if (result.evidence?.length) {
+        const existingGists = new Set(state.evidence.map((e) => e.gist));
+        const newEvidence = result.evidence.filter(
+          (e) => !existingGists.has(e.gist),
+        );
+        state.evidence.push(...newEvidence);
+      }
+
+      // Accumulate people (deduplicate by person_key)
+      if (result.people?.length) {
+        const existingKeys = new Set(state.people.map((p) => p.person_key));
+        const newPeople = result.people.filter(
+          (p) => !existingKeys.has(p.person_key),
+        );
+        state.people.push(...newPeople);
+      }
+
+      // Notify renderer with accumulated evidence
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("evidence-updated", {
+          noteId,
+          evidence: state.evidence,
+          people: state.people,
+          interactionContext: result.interactionContext,
+        });
+      }
+
+      console.log(
+        `[realtime-evidence] Total evidence for ${noteId}: ${state.evidence.length} items`,
+      );
+    }
+  } catch (error) {
+    console.error("[realtime-evidence] Extraction error:", error);
+  } finally {
+    state.isExtracting = false;
+  }
+}
+
 async function processTranscriptProviderData(evt) {
   // let speakerId = evt.data.data.payload.
   try {
@@ -1896,6 +2090,11 @@ async function processTranscriptData(evt) {
       // Return the updated data to be written
       return meetingsData;
     });
+
+    // ═══ Real-time Evidence Extraction ═══
+    // Schedule evidence extraction after transcript is saved.
+    // This enables near real-time insights during the meeting.
+    scheduleEvidenceExtraction(noteId);
 
     console.log(`Processed transcript data for meeting: ${noteId}`);
   } catch (error) {
