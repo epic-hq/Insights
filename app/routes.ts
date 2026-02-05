@@ -30,6 +30,7 @@ import signupChatRoutes from "./features/signup-chat/routes";
 import teamsRoutes, {
   teamsAccountRoutes as teamRoutes,
 } from "./features/teams/routes";
+import realtimeTranscriptionRoutes from "./features/realtime-transcription/routes";
 import voiceRoutes from "./features/voice/routes";
 
 const routes = [
@@ -348,6 +349,10 @@ const routes = [
     "apple-touch-icon-precomposed.png",
     "./routes/apple-touch-icon-precomposed[.]png.ts",
   ),
+
+  // Realtime transcription prototype
+  ...realtimeTranscriptionRoutes,
+  route("api/realtime-evidence", "./routes/api.realtime-evidence.tsx"),
 
   // Test routes
   route("test/upsight", "./routes/test.upsight.tsx"),
