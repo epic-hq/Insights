@@ -144,9 +144,9 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
         countKey: "themes",
       },
       {
-        key: "saved-views",
-        title: "Saved Views",
-        description: "Custom analysis templates",
+        key: "analysis",
+        title: "Analysis",
+        description: "Cross-lens insights by person and topic",
         icon: Glasses,
         to: (routes) => routes.lenses.library(),
       },

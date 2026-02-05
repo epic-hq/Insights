@@ -82,8 +82,8 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
       },
       {
         key: "lenses",
-        title: "Lenses",
-        description: "Choose how to analyze your content.",
+        title: "Analysis",
+        description: "Cross-lens insights by person and topic.",
         icon: Glasses,
         to: (routes) => routes.lenses.library(),
       },
