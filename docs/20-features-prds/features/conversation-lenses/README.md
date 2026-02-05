@@ -15,16 +15,19 @@ Apply structured analytical frameworks to interview conversations for extracting
 
 - **Source Code**: `app/features/lenses/`
 - **Database Schema**: `supabase/migrations/20251202140000_conversation_lenses.sql`
-- **BAML Contracts**: `baml_src/apply_conversation_lens.baml`
-- **Trigger Tasks**: `src/trigger/lens/`
+- **BAML Contracts**: `baml_src/apply_conversation_lens.baml`, `baml_src/synthesize_cross_lens.baml`
+- **Trigger Tasks**: `src/trigger/lens/applyLens.ts`, `src/trigger/lens/synthesizeCrossLens.ts`
 
-## Status: MVP Complete
+## Status: Analysis Page Live
 
-The MVP implementation is complete with the following capabilities:
+The lens system includes per-interview analysis and a project-wide Analysis page:
 
 - 6 system lens templates (Project Research, Customer Discovery, Sales BANT, etc.)
 - Auto-application after interview finalization
-- Tabbed UI for viewing lens analyses
+- **Analysis page** (`/lenses`) with three tabs: Overview, By Person, By Lens
+- **Cross-lens synthesis** — AI-generated executive briefing combining all lens results
+- Per-person consolidated results with drill-down sheets
+- Template management via settings dialog
 - Inline editing of text fields
 - Evidence timestamp badges with media navigation
 - Generic rendering from template definitions

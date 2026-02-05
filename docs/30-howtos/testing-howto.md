@@ -42,13 +42,33 @@ Our testing approach prioritizes **business logic validation** and **database in
 
 - **Target**: Database operations, loaders, actions, complex queries, schema changes, edge functions, job queues, AI/LLM/BAML services
 - **Location**: `app/test/integration/`
-- **Real Database**: Uses seeded Supabase test instance locally. Staging database is in Supabase Cloud and can be used for integration tests (needed for job queues PGMQ and Edge Functions used by upload interview).
-- **Examples**: Interview upload workflow, backfill operations, junction table queries
+- **Real Database**: Tests run against the production Supabase instance using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from `.env` via `dotenvx`
+- **Examples**: Survey response save workflow (`survey-response-save.integration.test.ts`), interview upload, backfill operations
 - **Runtime**: ~500ms per test, focuses on high-risk areas
+- **Pattern**: Each test creates unique test data (UUIDs, timestamped slugs), cleans up in `afterAll`
 
 ## Test Setup
 
-<!-- TODO: ... fill in -->
+### Integration Test Environment
+
+Integration tests use the real Supabase instance (not a local emulator). Environment variables are injected via `dotenvx`:
+
+```bash
+# Run a specific integration test
+dotenvx run -- vitest run app/test/integration/survey-response-save.integration.test.ts
+```
+
+Tests create an admin client directly from env vars and mock only the Supabase client factory so the action under test uses the same connection:
+
+```typescript
+const adminDb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+vi.mock("~/lib/supabase/client.server", () => ({
+  createSupabaseAdminClient: () => adminDb,
+}));
+```
+
+**Note**: The `testDb` helper in `app/test/utils/testDb.ts` uses `TEST_SUPABASE_URL` which points to a local Supabase instance (`127.0.0.1:54321`). For integration tests against the real database, create the client directly from `SUPABASE_URL` as shown above.
 
 ## Running Tests
 
@@ -63,6 +83,9 @@ pnpm run test
 # Integration tests (real DB operations)
 npm run test:integration
 pnpm run test:integration
+
+# Integration tests with env vars (for tests using real Supabase)
+dotenvx run -- vitest run app/test/integration/survey-response-save.integration.test.ts
 
 # All tests (unit + integration)
 npm run test:all

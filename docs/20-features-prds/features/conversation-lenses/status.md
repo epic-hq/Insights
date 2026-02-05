@@ -1,7 +1,7 @@
 # Conversation Lenses Implementation Status
 
-**Last Updated**: 2025-12-02
-**Status**: 🟡 Partially Implemented - Sales Lens functional, Product/Research lenses need UI
+**Last Updated**: 2026-02-05
+**Status**: 🟢 Analysis Page Live - Overview, By Person, By Lens tabs with cross-lens synthesis
 
 ---
 
@@ -151,53 +151,58 @@ Goal: Determine monetization model
 
 **Mentioned In**: `docs/_lens-based-architecture-v2.md` line 59
 
-### 4. Lens Selector UI
-**Status**: ❌ Not Implemented
+### 4. Analysis Page (Lens Selector + Aggregation)
+**Status**: ✅ Implemented
 
-**Critical Gap**: No UI to switch between different lens views
+The Analysis page (`/lenses`) replaces the old Lens Library with three tabs:
 
-**Expected Location**: Interview detail page or project dashboard
+1. **Overview Tab** — AI-synthesized executive briefing across all lenses (cross-lens synthesis)
+2. **By Person Tab** — Per-person consolidated lens results with drill-down sheets
+3. **By Lens Tab** — Per-template aggregate view showing all analyses for a given lens
 
-**Mockup**:
-```
-┌─────────────────────────────────────────────┐
-│ View Interview Through:                      │
-│ ○ Sales Lens     ○ Product Lens             │
-│ ○ Research Lens  ○ Support Lens             │
-│ ○ Custom...                                  │
-└─────────────────────────────────────────────┘
-```
+**Route**: `app/features/lenses/pages/analysis.tsx`
+
+**Components**:
+- `AnalysisOverviewTab.tsx` — Executive summary, key findings, person snapshots, recommended actions
+- `AnalysisByPersonTab.tsx` — People grid with lens result counts
+- `AnalysisByLensTab.tsx` — Lens template cards with interview analysis counts
+- `PersonAnalysisSheet.tsx` — Side sheet with full per-person lens details
+- `ManageLensesDialog.tsx` — Template management (gear icon, replaces old Library page)
+
+**Data Loading**: `loadAnalysisData.server.ts` — Server-side loader aggregating lens analyses, templates, and cross-lens synthesis
+
+**Cross-Lens Synthesis**: Trigger.dev task `lens.synthesize-cross-lens` combines ALL lens analyses into a unified executive briefing stored in `conversation_lens_summaries` with `template_key = '__cross_lens__'`
+
+**BAML Contract**: `baml_src/synthesize_cross_lens.baml` — Produces `CrossLensSynthesisResult` with executive summary, key findings, person snapshots, recommended actions, patterns, and risks
 
 ### 5. Multi-Interview Lens Aggregation
-**Status**: ❌ Not Implemented
+**Status**: ✅ Implemented (via Analysis page)
 
-**Purpose**: Aggregate lens insights across all interviews in a project
-
-**Example**: "Product Lens for Project X" shows pain matrix across ALL interviews, not just one
+Project-level aggregation surfaces in the Analysis page's By Lens tab. Each lens template shows the count of analyses across all interviews, with drill-down to individual results.
 
 ---
 
 ## 🔧 Implementation Gaps
 
-### Critical Gaps
+### Resolved
 
-1. **No Lens Selector UI** ⚠️
-   - Users can't choose which lens to view
-   - Sales lens only shows if feature flag enabled
-   - No discoverability
+1. **~~No Lens Selector UI~~** ✅ — Analysis page provides Overview/By Person/By Lens tabs
+2. **~~Multi-Interview Aggregation~~** ✅ — Analysis page aggregates across all interviews
+3. **~~Cross-Lens Synthesis~~** ✅ — `lens.synthesize-cross-lens` Trigger.dev task
 
-2. **Product Lens Not Wired Up**
+### Remaining Gaps
+
+1. **Product Lens Not Wired Up**
    - Page exists but no data flow
    - Pain matrix generation not integrated
-   - No route/navigation to access it
 
-3. **Research Lens Missing Entirely**
+2. **Research Lens Missing Entirely**
    - Critical for research users
    - Tables exist but no synthesis logic
 
-4. **Lens Generation Not Automated**
-   - Sales lens requires manual trigger
-   - Should auto-generate after interview analysis completes
+3. **Lens Generation Not Fully Automated**
+   - Auto-applies after interview finalization
+   - Cross-lens synthesis triggered manually from Analysis page completes
 
 ### Data Flow Gaps
 
