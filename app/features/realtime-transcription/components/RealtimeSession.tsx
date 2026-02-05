@@ -8,18 +8,20 @@
  * Audio capture uses AudioWorklet with PCM16 downsampling (48kHz -> 16kHz),
  * streamed to the server-side AssemblyAI WebSocket proxy at /ws/realtime-transcribe.
  */
+
+import type { EvidenceTurn, Person } from "baml_client"
+import { AlertCircle, FileText, Loader2, Mic, Play, Radio, Sparkles, Square, Users } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { cn } from "~/lib/utils"
-import type { EvidenceTurn, Person } from "baml_client"
-import { Mic, Square, Play, Loader2, Radio, AlertCircle, Users, Sparkles, FileText } from "lucide-react"
+import { deduplicateEvidence, downsampleTo16kPCM16, formatDuration } from "../lib/audio"
 import { EvidenceCard } from "./EvidenceCard"
 
 // ── Types ────────────────────────────────────────────────────────────────
 
-interface TranscriptTurn {
+export interface TranscriptTurn {
 	id: string
 	speaker: string
 	text: string
@@ -121,33 +123,6 @@ class PcmProcessor extends AudioWorkletProcessor {
 registerProcessor("pcm-processor", PcmProcessor)
 `
 
-const TARGET_SAMPLE_RATE = 16000
-
-function downsampleTo16kPCM16(input: Float32Array, inputRate: number): Int16Array | null {
-	const ratio = inputRate / TARGET_SAMPLE_RATE
-	const outputLen = Math.floor(input.length / ratio)
-	if (outputLen < 1) return null
-	const out = new Int16Array(outputLen)
-	for (let i = 0; i < outputLen; i++) {
-		const srcIdx = i * ratio
-		const lo = Math.floor(srcIdx)
-		const hi = Math.min(lo + 1, input.length - 1)
-		const frac = srcIdx - lo
-		const sample = input[lo] + frac * (input[hi] - input[lo])
-		out[i] = Math.max(-32767, Math.min(32767, Math.round(sample * 32767)))
-	}
-	return out
-}
-
-// ── Utility ──────────────────────────────────────────────────────────────
-
-function formatDuration(ms: number): string {
-	const totalSec = Math.floor(ms / 1000)
-	const min = Math.floor(totalSec / 60)
-	const sec = totalSec % 60
-	return `${min.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`
-}
-
 // ── Component ────────────────────────────────────────────────────────────
 
 export function RealtimeSession() {
@@ -241,11 +216,7 @@ export function RealtimeSession() {
 			if (data.evidence?.length) {
 				const newIds = new Set<string>()
 				setEvidence((prev) => {
-					// Deduplicate by gist + verbatim
-					const existingKeys = new Set(prev.map((e) => `${e.gist}::${e.verbatim}`))
-					const fresh = data.evidence.filter(
-						(e: EvidenceTurn) => !existingKeys.has(`${e.gist}::${e.verbatim}`),
-					)
+					const fresh = deduplicateEvidence(prev, data.evidence)
 					for (const e of fresh) {
 						newIds.add(`${e.gist}::${e.verbatim}`)
 					}
@@ -300,7 +271,7 @@ export function RealtimeSession() {
 				scheduleExtraction()
 			}
 		},
-		[extractEvidence, scheduleExtraction],
+		[extractEvidence, scheduleExtraction]
 	)
 
 	// ── Live recording ──────────────────────────────────────────────────
@@ -364,9 +335,7 @@ export function RealtimeSession() {
 								speaker: "SPEAKER A",
 								text: msg.transcript,
 								startMs: msg.words?.[0]?.start ? msg.words[0].start * 1000 : Date.now() - startTimeRef.current,
-								endMs: msg.words?.at(-1)?.end
-									? msg.words.at(-1).end * 1000
-									: Date.now() - startTimeRef.current,
+								endMs: msg.words?.at(-1)?.end ? msg.words.at(-1).end * 1000 : Date.now() - startTimeRef.current,
 								isFinal: true,
 							}
 							setCurrentCaption("")
@@ -467,38 +436,32 @@ export function RealtimeSession() {
 
 		for (const entry of SAMPLE_CONVERSATION) {
 			cumulativeDelay += entry.delayMs
-			const timer = setTimeout(
-				() => {
-					const turn: TranscriptTurn = {
-						id: `sim-${++turnCounter}`,
-						speaker: entry.speaker,
-						text: entry.text,
-						startMs: cumulativeDelay,
-						endMs: cumulativeDelay + entry.text.length * 30, // rough estimate
-						isFinal: true,
-					}
-					addTurn(turn)
-				},
-				cumulativeDelay + 500,
-			) // small buffer
+			const timer = setTimeout(() => {
+				const turn: TranscriptTurn = {
+					id: `sim-${++turnCounter}`,
+					speaker: entry.speaker,
+					text: entry.text,
+					startMs: cumulativeDelay,
+					endMs: cumulativeDelay + entry.text.length * 30, // rough estimate
+					isFinal: true,
+				}
+				addTurn(turn)
+			}, cumulativeDelay + 500) // small buffer
 			timers.push(timer)
 		}
 
 		// Auto-stop after all turns + buffer
-		const stopTimer = setTimeout(
-			() => {
-				setMode("stopped")
-				if (durationTimerRef.current) {
-					clearInterval(durationTimerRef.current)
-					durationTimerRef.current = null
-				}
-				// Final extraction
-				if (allTurnsRef.current.length > lastExtractedCountRef.current) {
-					extractEvidence()
-				}
-			},
-			cumulativeDelay + 3000,
-		)
+		const stopTimer = setTimeout(() => {
+			setMode("stopped")
+			if (durationTimerRef.current) {
+				clearInterval(durationTimerRef.current)
+				durationTimerRef.current = null
+			}
+			// Final extraction
+			if (allTurnsRef.current.length > lastExtractedCountRef.current) {
+				extractEvidence()
+			}
+		}, cumulativeDelay + 3000)
 		timers.push(stopTimer)
 
 		simTimersRef.current = timers
@@ -545,19 +508,14 @@ export function RealtimeSession() {
 	const isActive = mode === "recording" || mode === "simulating"
 
 	return (
-		<div className="flex flex-col h-screen bg-background">
+		<div className="flex h-screen flex-col bg-background">
 			{/* ── Header ──────────────────────────────────────────────── */}
-			<header className="border-b px-6 py-4 shrink-0">
+			<header className="shrink-0 border-b px-6 py-4">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						<div className="flex items-center gap-2">
-							<Radio
-								className={cn(
-									"h-5 w-5",
-									isActive ? "text-red-500 animate-pulse" : "text-muted-foreground",
-								)}
-							/>
-							<h1 className="text-lg font-semibold">Realtime Transcription & Evidence</h1>
+							<Radio className={cn("h-5 w-5", isActive ? "animate-pulse text-red-500" : "text-muted-foreground")} />
+							<h1 className="font-semibold text-lg">Realtime Transcription & Evidence</h1>
 						</div>
 						<Badge variant="outline" className="text-xs">
 							Prototype
@@ -565,7 +523,7 @@ export function RealtimeSession() {
 					</div>
 					<div className="flex items-center gap-4">
 						{/* Stats */}
-						<div className="flex items-center gap-3 text-sm text-muted-foreground">
+						<div className="flex items-center gap-3 text-muted-foreground text-sm">
 							<span className="flex items-center gap-1">
 								<FileText className="h-3.5 w-3.5" />
 								{turns.length} turns
@@ -588,7 +546,7 @@ export function RealtimeSession() {
 			</header>
 
 			{/* ── Controls ─────────────────────────────────────────────── */}
-			<div className="border-b px-6 py-3 shrink-0 flex items-center gap-3">
+			<div className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
 				{mode === "idle" && (
 					<>
 						<Button onClick={startRecording} variant="default" size="sm" className="gap-2">
@@ -607,10 +565,10 @@ export function RealtimeSession() {
 							<Square className="h-4 w-4" />
 							Stop Recording
 						</Button>
-						<div className="flex items-center gap-2 text-sm text-red-500">
+						<div className="flex items-center gap-2 text-red-500 text-sm">
 							<span className="relative flex h-2.5 w-2.5">
-								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-								<span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+								<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+								<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
 							</span>
 							Recording...
 						</div>
@@ -622,7 +580,7 @@ export function RealtimeSession() {
 							<Square className="h-4 w-4" />
 							Stop Simulation
 						</Button>
-						<div className="flex items-center gap-2 text-sm text-blue-500">
+						<div className="flex items-center gap-2 text-blue-500 text-sm">
 							<Loader2 className="h-3.5 w-3.5 animate-spin" />
 							Simulating conversation...
 						</div>
@@ -643,7 +601,7 @@ export function RealtimeSession() {
 							New Session
 						</Button>
 						{extractionStatus === "processing" && (
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+							<div className="flex items-center gap-2 text-muted-foreground text-sm">
 								<Loader2 className="h-3.5 w-3.5 animate-spin" />
 								Running final extraction...
 							</div>
@@ -653,7 +611,7 @@ export function RealtimeSession() {
 
 				{/* Extraction status */}
 				{extractionStatus === "processing" && mode !== "stopped" && (
-					<div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
+					<div className="ml-auto flex items-center gap-2 text-muted-foreground text-sm">
 						<Loader2 className="h-3.5 w-3.5 animate-spin" />
 						Extracting evidence...
 					</div>
@@ -661,7 +619,7 @@ export function RealtimeSession() {
 
 				{/* Error */}
 				{error && (
-					<div className="flex items-center gap-2 text-sm text-destructive ml-auto">
+					<div className="ml-auto flex items-center gap-2 text-destructive text-sm">
 						<AlertCircle className="h-3.5 w-3.5" />
 						{error}
 					</div>
@@ -671,17 +629,17 @@ export function RealtimeSession() {
 			{/* ── Main content: split view ─────────────────────────────── */}
 			<div className="flex flex-1 overflow-hidden">
 				{/* Left: Transcript */}
-				<div className="w-1/2 border-r flex flex-col">
-					<div className="px-4 py-3 border-b bg-muted/30 shrink-0">
-						<h2 className="text-sm font-semibold flex items-center gap-2">
+				<div className="flex w-1/2 flex-col border-r">
+					<div className="shrink-0 border-b bg-muted/30 px-4 py-3">
+						<h2 className="flex items-center gap-2 font-semibold text-sm">
 							<FileText className="h-4 w-4" />
 							Live Transcript
 						</h2>
 					</div>
 					<ScrollArea className="flex-1">
-						<div className="p-4 space-y-3">
+						<div className="space-y-3 p-4">
 							{turns.length === 0 && !currentCaption && (
-								<p className="text-sm text-muted-foreground text-center py-8">
+								<p className="py-8 text-center text-muted-foreground text-sm">
 									{mode === "idle"
 										? "Start recording or simulate a conversation to see the live transcript."
 										: "Waiting for speech..."}
@@ -689,25 +647,23 @@ export function RealtimeSession() {
 							)}
 							{turns.map((turn) => (
 								<div key={turn.id} className="group">
-									<div className="flex items-baseline gap-2 mb-1">
-										<Badge variant="secondary" className="text-xs font-mono shrink-0">
+									<div className="mb-1 flex items-baseline gap-2">
+										<Badge variant="secondary" className="shrink-0 font-mono text-xs">
 											{turn.speaker}
 										</Badge>
-										<span className="text-xs text-muted-foreground font-mono">
-											{formatDuration(turn.startMs)}
-										</span>
+										<span className="font-mono text-muted-foreground text-xs">{formatDuration(turn.startMs)}</span>
 									</div>
-									<p className="text-sm leading-relaxed pl-1">{turn.text}</p>
+									<p className="pl-1 text-sm leading-relaxed">{turn.text}</p>
 								</div>
 							))}
 							{currentCaption && (
 								<div className="group opacity-60">
-									<div className="flex items-baseline gap-2 mb-1">
-										<Badge variant="outline" className="text-xs font-mono">
+									<div className="mb-1 flex items-baseline gap-2">
+										<Badge variant="outline" className="font-mono text-xs">
 											...
 										</Badge>
 									</div>
-									<p className="text-sm leading-relaxed pl-1 italic">{currentCaption}</p>
+									<p className="pl-1 text-sm italic leading-relaxed">{currentCaption}</p>
 								</div>
 							)}
 							<div ref={transcriptEndRef} />
@@ -716,9 +672,9 @@ export function RealtimeSession() {
 				</div>
 
 				{/* Right: Evidence */}
-				<div className="w-1/2 flex flex-col">
-					<div className="px-4 py-3 border-b bg-muted/30 shrink-0">
-						<h2 className="text-sm font-semibold flex items-center gap-2">
+				<div className="flex w-1/2 flex-col">
+					<div className="shrink-0 border-b bg-muted/30 px-4 py-3">
+						<h2 className="flex items-center gap-2 font-semibold text-sm">
 							<Sparkles className="h-4 w-4" />
 							Evidence Stream
 							{evidence.length > 0 && (
@@ -729,20 +685,18 @@ export function RealtimeSession() {
 						</h2>
 					</div>
 					<ScrollArea className="flex-1">
-						<div className="p-4 space-y-3">
+						<div className="space-y-3 p-4">
 							{evidence.length === 0 && (
-								<div className="text-center py-8 space-y-2">
+								<div className="space-y-2 py-8 text-center">
 									{extractionStatus === "processing" ? (
 										<>
-											<Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
-											<p className="text-sm text-muted-foreground">
-												Analyzing transcript for evidence...
-											</p>
+											<Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+											<p className="text-muted-foreground text-sm">Analyzing transcript for evidence...</p>
 										</>
 									) : (
 										<>
-											<Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
-											<p className="text-sm text-muted-foreground">
+											<Sparkles className="mx-auto h-8 w-8 text-muted-foreground" />
+											<p className="text-muted-foreground text-sm">
 												Evidence turns will appear here as they are extracted from the conversation.
 											</p>
 										</>
@@ -763,8 +717,8 @@ export function RealtimeSession() {
 
 					{/* People panel */}
 					{people.length > 0 && (
-						<div className="border-t px-4 py-3 shrink-0 bg-muted/30">
-							<h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+						<div className="shrink-0 border-t bg-muted/30 px-4 py-3">
+							<h3 className="mb-2 flex items-center gap-1 font-semibold text-muted-foreground text-xs">
 								<Users className="h-3 w-3" />
 								Identified Speakers
 							</h3>
@@ -772,9 +726,7 @@ export function RealtimeSession() {
 								{people.map((person) => (
 									<Badge key={person.person_key} variant="outline" className="text-xs">
 										{person.inferred_name || person.person_name || person.person_key}
-										{person.role && (
-											<span className="text-muted-foreground ml-1">({person.role})</span>
-										)}
+										{person.role && <span className="ml-1 text-muted-foreground">({person.role})</span>}
 									</Badge>
 								))}
 							</div>

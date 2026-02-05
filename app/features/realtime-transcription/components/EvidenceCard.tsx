@@ -3,24 +3,18 @@
  * extracted from real-time transcription. Shows gist, verbatim quote,
  * facet tags, empathy map signals, and timestamp anchor.
  */
+
+import type { EvidenceTurn, FacetMention } from "baml_client"
+import { Clock, Lightbulb, MessageCircleQuestion } from "lucide-react"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
-import type { EvidenceTurn, FacetMention } from "baml_client"
-import { Lightbulb, MessageCircleQuestion, Clock } from "lucide-react"
+import { formatMs } from "../lib/audio"
 
 interface EvidenceCardProps {
 	evidence: EvidenceTurn
 	index: number
 	isNew?: boolean
-}
-
-function formatMs(ms: number | null | undefined): string {
-	if (ms == null) return "--:--"
-	const totalSec = Math.floor(ms / 1000)
-	const min = Math.floor(totalSec / 60)
-	const sec = totalSec % 60
-	return `${min}:${sec.toString().padStart(2, "0")}`
 }
 
 const FACET_COLORS: Record<string, string> = {
@@ -52,24 +46,24 @@ export function EvidenceCard({ evidence, index, isNew }: EvidenceCardProps) {
 	return (
 		<Card
 			className={cn(
-				"transition-all duration-500 border-l-4",
+				"border-l-4 transition-all duration-500",
 				evidence.isQuestion ? "border-l-blue-400" : "border-l-emerald-400",
-				isNew && "animate-in slide-in-from-right-4 fade-in duration-500",
+				isNew && "slide-in-from-right-4 fade-in animate-in duration-500"
 			)}
 		>
-			<CardContent className="p-4 space-y-3">
+			<CardContent className="space-y-3 p-4">
 				{/* Header: gist + question badge */}
 				<div className="flex items-start justify-between gap-2">
-					<div className="flex items-start gap-2 min-w-0">
+					<div className="flex min-w-0 items-start gap-2">
 						{evidence.isQuestion ? (
-							<MessageCircleQuestion className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+							<MessageCircleQuestion className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
 						) : (
-							<Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+							<Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
 						)}
-						<h4 className="text-sm font-semibold leading-tight">{evidence.gist}</h4>
+						<h4 className="font-semibold text-sm leading-tight">{evidence.gist}</h4>
 					</div>
 					{evidence.anchors?.start_ms != null && (
-						<span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+						<span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
 							<Clock className="h-3 w-3" />
 							{formatMs(evidence.anchors.start_ms)}
 						</span>
@@ -77,20 +71,20 @@ export function EvidenceCard({ evidence, index, isNew }: EvidenceCardProps) {
 				</div>
 
 				{/* Verbatim quote */}
-				<blockquote className="text-sm text-muted-foreground italic border-l-2 border-muted pl-3">
+				<blockquote className="border-muted border-l-2 pl-3 text-muted-foreground text-sm italic">
 					&ldquo;{evidence.verbatim}&rdquo;
 				</blockquote>
 
 				{/* Speaker */}
 				{evidence.person_key && (
-					<p className="text-xs text-muted-foreground">
+					<p className="text-muted-foreground text-xs">
 						Speaker: <span className="font-medium">{evidence.speaker_label || evidence.person_key}</span>
 					</p>
 				)}
 
 				{/* Why it matters */}
 				{evidence.why_it_matters && (
-					<p className="text-xs text-muted-foreground">
+					<p className="text-muted-foreground text-xs">
 						<span className="font-medium">Why it matters:</span> {evidence.why_it_matters}
 					</p>
 				)}
@@ -100,8 +94,8 @@ export function EvidenceCard({ evidence, index, isNew }: EvidenceCardProps) {
 					<div className="space-y-1">
 						{empathySignals.map((signal) => (
 							<div key={signal.label} className="flex items-start gap-1.5">
-								<span className="text-xs font-medium text-muted-foreground w-12 shrink-0">{signal.label}:</span>
-								<span className="text-xs text-muted-foreground">{signal.items.join("; ")}</span>
+								<span className="w-12 shrink-0 font-medium text-muted-foreground text-xs">{signal.label}:</span>
+								<span className="text-muted-foreground text-xs">{signal.items.join("; ")}</span>
 							</div>
 						))}
 					</div>
@@ -114,7 +108,7 @@ export function EvidenceCard({ evidence, index, isNew }: EvidenceCardProps) {
 							<Badge
 								key={`${facet.kind_slug}-${facet.value}-${i}`}
 								variant="secondary"
-								className={cn("text-xs px-1.5 py-0", FACET_COLORS[facet.kind_slug] || FACET_COLORS.context)}
+								className={cn("px-1.5 py-0 text-xs", FACET_COLORS[facet.kind_slug] || FACET_COLORS.context)}
 							>
 								{facet.kind_slug}: {facet.value}
 							</Badge>
