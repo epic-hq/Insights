@@ -2,16 +2,14 @@
  * OnboardingWalkthrough - New user onboarding modal
  *
  * Multi-step walkthrough that collects:
- * 1. Job function/role (aligned with JOB_FUNCTIONS constant)
- * 2. Primary use case for UpSight (including surveys)
- * 3. Company size (aligned with TARGET_COMPANY_SIZE_CATEGORIES)
+ * 1. Job function/role (4-column compact grid)
+ * 2. Use cases — multi-select (what brings you to UpSight)
+ * 3. Company size
  *
- * Data is stored in user_settings and organization, then fed to AI chat
- * for personalized recommendations. After completion, redirects to company
- * onboarding flow.
+ * Modal is scrollable so continue buttons are always reachable.
  */
 
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -58,14 +56,14 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.04,
-      delayChildren: 0.1,
+      staggerChildren: 0.03,
+      delayChildren: 0.05,
     },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 8, scale: 0.96 },
+  hidden: { opacity: 0, y: 6, scale: 0.97 },
   visible: {
     opacity: 1,
     y: 0,
@@ -86,13 +84,9 @@ export interface OnboardingData {
 }
 
 interface OnboardingWalkthroughProps {
-  /** Whether the modal is open */
   open: boolean;
-  /** Callback when modal should close */
   onOpenChange: (open: boolean) => void;
-  /** Callback when onboarding is completed */
   onComplete?: (data: OnboardingData) => void;
-  /** Initial data if resuming */
   initialData?: Partial<OnboardingData>;
 }
 
@@ -116,59 +110,45 @@ const JOB_FUNCTION_ICONS: Record<
   executive: Briefcase,
 };
 
-// Map DB job functions to onboarding-friendly display
 const JOB_FUNCTIONS = DB_JOB_FUNCTIONS.map((job) => ({
   value: job.value,
   label: job.label,
   icon: JOB_FUNCTION_ICONS[job.value] || Briefcase,
 }));
 
-// Use cases with survey prominently featured
 const USE_CASES = [
   {
     value: "surveys",
     label: "Surveys & Feedback",
-    description:
-      "Collect responses via shareable surveys and analyze feedback at scale",
     icon: ClipboardList,
-    highlight: true, // Feature this one
   },
   {
     value: "customer_discovery",
     label: "Customer Discovery",
-    description:
-      "Understand customer needs and validate product ideas through interviews",
     icon: Search,
   },
   {
     value: "sales_intelligence",
     label: "Sales Intelligence",
-    description:
-      "Track conversations, extract insights, and improve deal outcomes",
     icon: TrendingUp,
   },
   {
     value: "user_research",
     label: "User Research",
-    description:
-      "Conduct interviews and synthesize findings into actionable insights",
     icon: Microscope,
   },
   {
     value: "customer_success",
     label: "Customer Success",
-    description: "Monitor customer health, track feedback, and reduce churn",
     icon: HeartHandshake,
   },
   {
     value: "competitive_intel",
     label: "Competitive Intelligence",
-    description: "Track market trends and what customers say about competitors",
     icon: Target,
   },
 ];
 
-// Company sizes from the database constants
 const COMPANY_SIZES = TARGET_COMPANY_SIZE_CATEGORIES.map((cat) => ({
   value: cat.value,
   label: cat.label,
@@ -186,22 +166,19 @@ function JobFunctionStep({ data, onChange }: StepProps) {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="space-y-6"
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="space-y-4"
     >
-      <div className="space-y-2 text-center">
-        <h3 className="font-semibold text-xl tracking-tight">
+      <div className="text-center">
+        <h3 className="font-semibold text-lg tracking-tight">
           What's your role?
         </h3>
-        <p className="text-muted-foreground text-sm">
-          This helps us tailor your experience
-        </p>
       </div>
 
       <RadioGroup
         value={data.jobFunction || ""}
         onValueChange={(value) => onChange("jobFunction", value)}
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+        className="grid grid-cols-3 gap-2 sm:grid-cols-4"
       >
         <motion.div
           variants={containerVariants}
@@ -217,11 +194,10 @@ function JobFunctionStep({ data, onChange }: StepProps) {
                 <Label
                   htmlFor={`job-${job.value}`}
                   className={cn(
-                    "group relative flex cursor-pointer flex-col items-center gap-2.5 rounded-xl border-2 p-4 text-center transition-all duration-200",
-                    "hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm",
-                    "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2",
+                    "group relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-2.5 text-center transition-all duration-200",
+                    "hover:border-primary/50 hover:bg-primary/5",
                     isSelected
-                      ? "border-primary bg-primary/10 shadow-md"
+                      ? "border-primary bg-primary/10"
                       : "border-border",
                   )}
                 >
@@ -232,17 +208,17 @@ function JobFunctionStep({ data, onChange }: StepProps) {
                   />
                   <div
                     className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
+                      "flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200",
                       isSelected
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground group-hover:bg-primary/15 group-hover:text-primary",
                     )}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                   </div>
                   <span
                     className={cn(
-                      "text-sm font-medium leading-tight transition-colors",
+                      "text-xs font-medium leading-tight transition-colors",
                       isSelected && "text-primary",
                     )}
                   >
@@ -257,10 +233,10 @@ function JobFunctionStep({ data, onChange }: StepProps) {
                         stiffness: 500,
                         damping: 25,
                       }}
-                      className="absolute -top-1.5 -right-1.5"
+                      className="absolute -top-1 -right-1"
                     >
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                        <Check className="h-3 w-3" strokeWidth={3} />
+                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-2.5 w-2.5" strokeWidth={3} />
                       </div>
                     </motion.div>
                   )}
@@ -275,111 +251,95 @@ function JobFunctionStep({ data, onChange }: StepProps) {
 }
 
 function UseCaseStep({ data, onChange }: StepProps) {
+  // Parse comma-separated string into Set for multi-select
+  const selected = new Set(
+    (data.primaryUseCase || "").split(",").filter(Boolean),
+  );
+
+  const toggleUseCase = (value: string) => {
+    const next = new Set(selected);
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    onChange("primaryUseCase", Array.from(next).join(","));
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="space-y-6"
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="space-y-4"
     >
-      <div className="space-y-2 text-center">
-        <h3 className="font-semibold text-xl tracking-tight">
+      <div className="text-center">
+        <h3 className="font-semibold text-lg tracking-tight">
           What brings you to UpSight?
         </h3>
-        <p className="text-muted-foreground text-sm">
-          Select your primary use case
-        </p>
+        <p className="text-muted-foreground text-xs">Select all that apply</p>
       </div>
 
-      <RadioGroup
-        value={data.primaryUseCase || ""}
-        onValueChange={(value) => onChange("primaryUseCase", value)}
-        className="space-y-3"
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-2 gap-2"
       >
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="contents"
-        >
-          {USE_CASES.map((useCase) => {
-            const isSelected = data.primaryUseCase === useCase.value;
-            const Icon = useCase.icon;
-            return (
-              <motion.div key={useCase.value} variants={itemVariants}>
-                <Label
-                  htmlFor={`use-${useCase.value}`}
-                  className={cn(
-                    "group relative flex cursor-pointer items-start gap-4 rounded-xl border-2 p-4 transition-all duration-200",
-                    "hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm",
-                    "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2",
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-md"
-                      : useCase.highlight
-                        ? "border-primary/30 bg-primary/5"
-                        : "border-border",
-                  )}
+        {USE_CASES.map((useCase) => {
+          const isSelected = selected.has(useCase.value);
+          const Icon = useCase.icon;
+          return (
+            <motion.button
+              key={useCase.value}
+              type="button"
+              variants={itemVariants}
+              onClick={() => toggleUseCase(useCase.value)}
+              className={cn(
+                "group relative flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 text-left transition-all duration-200",
+                "hover:border-primary/50 hover:bg-primary/5",
+                isSelected ? "border-primary bg-primary/10" : "border-border",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
+                  isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground group-hover:bg-primary/15 group-hover:text-primary",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+              </div>
+              <span
+                className={cn(
+                  "font-medium text-sm transition-colors",
+                  isSelected && "text-primary",
+                )}
+              >
+                {useCase.label}
+              </span>
+              {isSelected && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 500,
+                    damping: 25,
+                  }}
+                  className="absolute -top-1 -right-1"
                 >
-                  <RadioGroupItem
-                    value={useCase.value}
-                    id={`use-${useCase.value}`}
-                    className="sr-only"
-                  />
-                  <div
-                    className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-200",
-                      isSelected
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : useCase.highlight
-                          ? "bg-primary/20 text-primary"
-                          : "bg-muted text-muted-foreground group-hover:bg-primary/15 group-hover:text-primary",
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
+                  <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
                   </div>
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "font-medium text-sm transition-colors",
-                          isSelected && "text-primary",
-                        )}
-                      >
-                        {useCase.label}
-                      </span>
-                      {useCase.highlight && !isSelected && (
-                        <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary ring-1 ring-inset ring-primary/20">
-                          Popular
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      {useCase.description}
-                    </p>
-                  </div>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 500,
-                        damping: 25,
-                      }}
-                      className="absolute top-3 right-3"
-                    >
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                      </div>
-                    </motion.div>
-                  )}
-                </Label>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </RadioGroup>
+                </motion.div>
+              )}
+            </motion.button>
+          );
+        })}
+      </motion.div>
     </motion.div>
   );
 }
@@ -390,22 +350,19 @@ function CompanySizeStep({ data, onChange }: StepProps) {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="space-y-6"
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="space-y-4"
     >
-      <div className="space-y-2 text-center">
-        <h3 className="font-semibold text-xl tracking-tight">
+      <div className="text-center">
+        <h3 className="font-semibold text-lg tracking-tight">
           How big is your company?
         </h3>
-        <p className="text-muted-foreground text-sm">
-          This helps us recommend the right workflows
-        </p>
       </div>
 
       <RadioGroup
         value={data.companySize || ""}
         onValueChange={(value) => onChange("companySize", value)}
-        className="grid grid-cols-2 gap-4"
+        className="grid grid-cols-2 gap-3"
       >
         <motion.div
           variants={containerVariants}
@@ -420,11 +377,10 @@ function CompanySizeStep({ data, onChange }: StepProps) {
                 <Label
                   htmlFor={`size-${size.value}`}
                   className={cn(
-                    "group relative flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-5 text-center transition-all duration-200",
-                    "hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm",
-                    "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2",
+                    "group relative flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 p-4 text-center transition-all duration-200",
+                    "hover:border-primary/50 hover:bg-primary/5",
                     isSelected
-                      ? "border-primary bg-primary/10 shadow-md"
+                      ? "border-primary bg-primary/10"
                       : "border-border",
                   )}
                 >
@@ -435,13 +391,13 @@ function CompanySizeStep({ data, onChange }: StepProps) {
                   />
                   <span
                     className={cn(
-                      "font-semibold text-base transition-colors",
+                      "font-semibold text-sm transition-colors",
                       isSelected && "text-primary",
                     )}
                   >
                     {size.label}
                   </span>
-                  <span className="text-muted-foreground text-xs leading-relaxed">
+                  <span className="text-muted-foreground text-xs">
                     {size.description}
                   </span>
                   {isSelected && (
@@ -453,10 +409,10 @@ function CompanySizeStep({ data, onChange }: StepProps) {
                         stiffness: 500,
                         damping: 25,
                       }}
-                      className="absolute -top-1.5 -right-1.5"
+                      className="absolute -top-1 -right-1"
                     >
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                        <Check className="h-3 w-3" strokeWidth={3} />
+                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-2.5 w-2.5" strokeWidth={3} />
                       </div>
                     </motion.div>
                   )}
@@ -470,7 +426,6 @@ function CompanySizeStep({ data, onChange }: StepProps) {
   );
 }
 
-/** Confetti particle with deterministic properties for smooth animation */
 interface ConfettiParticleProps {
   delay: number;
   x: number;
@@ -517,7 +472,6 @@ function ConfettiParticle({
 }
 
 function ConfettiCelebration() {
-  // Pre-compute particle properties for consistent rendering
   const colors = [
     "#3b82f6",
     "#10b981",
@@ -556,7 +510,7 @@ function CompletionStep() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex flex-col items-center gap-6 py-8 text-center"
+      className="flex flex-col items-center gap-5 py-6 text-center"
     >
       <motion.div
         initial={{ scale: 0, rotate: -180 }}
@@ -569,22 +523,20 @@ function CompletionStep() {
         }}
         className="relative"
       >
-        {/* Glow effect behind icon */}
         <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
-        <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary to-primary/70 shadow-lg shadow-primary/25">
-          <Sparkles className="h-12 w-12 text-primary-foreground" />
+        <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary to-primary/70 shadow-lg shadow-primary/25">
+          <Sparkles className="h-10 w-10 text-primary-foreground" />
         </div>
       </motion.div>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35, duration: 0.4 }}
-        className="space-y-3"
+        className="space-y-2"
       >
-        <h3 className="font-bold text-2xl tracking-tight">You're all set!</h3>
-        <p className="mx-auto max-w-[280px] text-muted-foreground leading-relaxed">
-          Your experience is personalized. Ask the AI assistant for help getting
-          started.
+        <h3 className="font-bold text-xl tracking-tight">You're all set!</h3>
+        <p className="mx-auto max-w-[260px] text-muted-foreground text-sm leading-relaxed">
+          Your experience is personalized. Let's get started.
         </p>
       </motion.div>
     </motion.div>
@@ -610,7 +562,12 @@ export function OnboardingWalkthrough({
 
   const steps = [
     { component: JobFunctionStep, canProceed: Boolean(data.jobFunction) },
-    { component: UseCaseStep, canProceed: Boolean(data.primaryUseCase) },
+    {
+      component: UseCaseStep,
+      canProceed: Boolean(
+        data.primaryUseCase && data.primaryUseCase.length > 0,
+      ),
+    },
     { component: CompanySizeStep, canProceed: Boolean(data.companySize) },
   ];
 
@@ -627,11 +584,9 @@ export function OnboardingWalkthrough({
 
   const handleNext = useCallback(() => {
     if (isLastStep) {
-      // Show completion animation
       setShowCompletion(true);
       setShowConfetti(true);
 
-      // Complete onboarding data
       const completeData: OnboardingData = {
         jobFunction: data.jobFunction || "",
         primaryUseCase: data.primaryUseCase || "",
@@ -639,7 +594,6 @@ export function OnboardingWalkthrough({
         completed: true,
       };
 
-      // Save to server
       fetcher.submit(
         { onboardingData: JSON.stringify(completeData) },
         { method: "POST", action: "/api/user-settings/onboarding" },
@@ -657,13 +611,11 @@ export function OnboardingWalkthrough({
 
   const handleContinueToCompany = useCallback(() => {
     onOpenChange(false);
-    // Navigate to context/setup page with welcome flag for form-first experience
     if (accountId && projectId) {
       navigate(`${routes.projects.setup()}?welcome=1`);
     }
   }, [onOpenChange, navigate, routes, accountId, projectId]);
 
-  // Clear confetti after animation
   useEffect(() => {
     if (showConfetti) {
       const timer = setTimeout(() => setShowConfetti(false), 3000);
@@ -679,7 +631,7 @@ export function OnboardingWalkthrough({
       onOpenChange={showCompletion ? undefined : onOpenChange}
     >
       <DialogContent
-        className="overflow-hidden sm:max-w-[460px]"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-[480px]"
         showCloseButton={!showCompletion}
       >
         {showConfetti && <ConfettiCelebration />}
@@ -695,7 +647,7 @@ export function OnboardingWalkthrough({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="flex justify-center pt-2 pb-2"
+                className="flex justify-center pb-2"
               >
                 <Button
                   onClick={handleContinueToCompany}
@@ -710,18 +662,18 @@ export function OnboardingWalkthrough({
             </motion.div>
           ) : (
             <motion.div key="steps">
-              <DialogHeader className="pb-4">
-                <DialogTitle className="text-center text-xl">
+              <DialogHeader className="pb-3">
+                <DialogTitle className="text-center text-lg">
                   Welcome to UpSight
                 </DialogTitle>
-                <DialogDescription className="text-center">
+                <DialogDescription className="text-center text-xs">
                   Quick setup to personalize your experience
                 </DialogDescription>
               </DialogHeader>
 
-              {/* Progress indicator with accessibility */}
+              {/* Progress dots */}
               <div
-                className="flex justify-center gap-2 pb-4"
+                className="flex justify-center gap-2 pb-3"
                 role="progressbar"
                 aria-valuenow={step + 1}
                 aria-valuemin={1}
@@ -736,17 +688,14 @@ export function OnboardingWalkthrough({
                       index <= step ? "bg-primary" : "bg-muted",
                     )}
                     initial={{ width: 28 }}
-                    animate={{
-                      width: index === step ? 40 : 28,
-                    }}
+                    animate={{ width: index === step ? 40 : 28 }}
                     transition={{ duration: 0.3 }}
-                    aria-current={index === step ? "step" : undefined}
                   />
                 ))}
               </div>
 
-              {/* Step content with better height handling */}
-              <div className="min-h-[340px] sm:min-h-[320px]">
+              {/* Step content */}
+              <div className="min-h-[240px]">
                 <AnimatePresence mode="wait">
                   <StepComponent
                     key={step}
@@ -756,8 +705,8 @@ export function OnboardingWalkthrough({
                 </AnimatePresence>
               </div>
 
-              {/* Footer with improved button states */}
-              <div className="flex items-center justify-between gap-3 pt-4 border-t border-border/50">
+              {/* Footer */}
+              <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4">
                 <Button
                   variant="ghost"
                   onClick={handleBack}

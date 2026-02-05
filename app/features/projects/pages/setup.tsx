@@ -1038,9 +1038,8 @@ export default function ProjectSetupPage() {
       setFormStep(0);
       setFormDirection(1);
     } else if (isWelcomeFlow) {
-      // Welcome flow: show review summary before navigating away
-      setFormPhase("review");
-      setFormDirection(1);
+      // Welcome flow: skip review — CapturedPane sidebar already shows context status
+      handleNext();
     } else {
       // All questions done - go to questions generation
       handleNext();

@@ -237,7 +237,7 @@ export function CapturedPane({
   variant = "floating",
 }: CapturedPaneProps) {
   const isSidebar = variant === "sidebar";
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expanded, setExpanded] = useState(isSidebar || defaultExpanded);
   const [activeTab, setActiveTab] = useState<"company" | "project">("company");
 
   // Separate fields by category
@@ -376,31 +376,58 @@ export function CapturedPane({
     </>
   );
 
-  // Sidebar variant: static card, always expanded, with progress bar
+  // Sidebar variant: collapsible card with progress bar
   if (isSidebar) {
     return (
       <div
         className={cn("overflow-hidden rounded-xl border bg-card", className)}
       >
-        {/* Header with progress bar */}
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground text-sm">
-              Context
-            </span>
-            <span className="text-muted-foreground text-xs">
-              {totalCaptured}/{totalFields} fields
-            </span>
+        {/* Header with progress bar — click to toggle */}
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="flex w-full items-center justify-between border-b px-4 py-3 text-left transition-colors hover:bg-muted/50"
+          aria-expanded={expanded}
+          aria-label={
+            expanded ? "Collapse context panel" : "Expand context panel"
+          }
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-foreground text-sm">
+                Context
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {totalCaptured}/{totalFields} fields
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
-          {/* Progress bar */}
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-        {renderContent()}
+          {expanded ? (
+            <ChevronUp className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+        </button>
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              {renderContent()}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

@@ -76,18 +76,19 @@ export async function action({ context, request }: ActionFunctionArgs) {
     },
   };
 
-  // Update user_settings with job function as role and onboarding_completed flag
-  const { error: updateError } = await supabase
-    .from("user_settings")
-    .update({
-      role: onboardingData.jobFunction || settings?.role,
+  // Upsert user_settings — ensures onboarding_completed is set even if row didn't exist yet
+  const { error: updateError } = await supabase.from("user_settings").upsert(
+    {
+      user_id: userId,
+      role: onboardingData.jobFunction || settings?.role || null,
       onboarding_completed: onboardingData.completed,
       onboarding_steps:
         nextSteps as Database["public"]["Tables"]["user_settings"]["Update"]["onboarding_steps"],
       metadata:
         nextMetadata as Database["public"]["Tables"]["user_settings"]["Update"]["metadata"],
-    })
-    .eq("user_id", userId);
+    },
+    { onConflict: "user_id" },
+  );
 
   if (updateError) {
     return Response.json({ error: updateError.message }, { status: 500 });
