@@ -862,7 +862,7 @@ export function RealtimeSession({
             variant="ghost"
             size="sm"
             onClick={() => setShowTranscript(true)}
-            className="absolute top-1/2 left-0 z-10 h-auto -translate-y-1/2 rounded-l-none rounded-r-md border border-l-0 bg-background px-1 py-4 shadow-sm"
+            className="-translate-y-1/2 absolute top-1/2 left-0 z-10 h-auto rounded-r-md rounded-l-none border border-l-0 bg-background px-1 py-4 shadow-sm"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -957,6 +957,7 @@ export function RealtimeSession({
                   index={idx}
                   isNew={newEvidenceIds.has(`${ev.gist}::${ev.verbatim}`)}
                   compact={isStopped}
+                  speakerNames={speakerNameMap}
                 />
               ))}
               <div ref={evidenceEndRef} />
