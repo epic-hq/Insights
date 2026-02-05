@@ -259,11 +259,11 @@ export function AIAssistantPanel({
     );
   }
 
-  // Expanded state - full panel
+  // Expanded state - full panel (width controlled by parent ResizablePanel)
   return (
     <div
       className={cn(
-        "flex h-full w-96 flex-col border-r bg-muted/50 shadow-[1px_0_6px_-2px_rgba(0,0,0,0.06)]",
+        "flex h-full min-w-[280px] flex-col border-r bg-muted/50 shadow-[1px_0_6px_-2px_rgba(0,0,0,0.06)]",
         className,
       )}
     >
