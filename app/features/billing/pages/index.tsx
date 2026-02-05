@@ -14,7 +14,6 @@ import { toast } from "sonner"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
 import { PLANS, type PlanId } from "~/config/plans"
 import { getPostHogServerClient } from "~/lib/posthog.server"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
@@ -198,52 +197,48 @@ export default function BillingPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
+		<div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
 			{/* Header */}
-			<div className="space-y-2">
-				<h1 className="font-semibold text-3xl">Billing</h1>
-				<p className="text-muted-foreground">Manage your subscription for {accountName}.</p>
+			<div className="space-y-1">
+				<h1 className="font-semibold text-2xl">Billing</h1>
+				<p className="text-muted-foreground text-sm">Manage your subscription for {accountName}.</p>
 			</div>
 
-			{/* Current Plan Card */}
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
+			{/* Current Plan Card - compact inline style */}
+			<div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-card px-5 py-4">
+				<div className="flex items-center gap-3">
+					<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+						<CreditCard className="h-5 w-5 text-primary" />
+					</div>
 					<div>
-						<CardTitle className="flex items-center gap-2">
-							Current Plan
-							<Badge variant={currentPlan === "free" ? "secondary" : "default"}>{plan.name}</Badge>
-						</CardTitle>
-						<CardDescription>
-							{currentPlan === "free" ? (
-								"You're on the free tier. Upgrade to unlock more features."
-							) : renewalDate ? (
-								<>Next billing date: {renewalDate}</>
-							) : (
-								"Active subscription"
-							)}
-						</CardDescription>
-					</div>
-					<div className="text-right">
-						<div className="font-bold text-3xl">
-							${plan.price.monthly}
-							{plan.price.monthly > 0 && <span className="font-normal text-muted-foreground text-sm">/mo</span>}
+						<div className="flex items-center gap-2">
+							<span className="font-medium text-sm">Current Plan</span>
+							<Badge variant={currentPlan === "free" ? "secondary" : "default"} className="text-xs">
+								{plan.name}
+							</Badge>
 						</div>
-						{plan.perUser && <p className="text-muted-foreground text-sm">per user</p>}
+						<p className="text-muted-foreground text-xs">
+							{currentPlan === "free"
+								? "Free tier — upgrade to unlock more"
+								: renewalDate
+									? `Renews ${renewalDate}`
+									: "Active subscription"}
+						</p>
 					</div>
-				</CardHeader>
-				{hasBillingCustomer && (
-					<CardFooter>
-						<Button variant="outline" asChild>
-							<Link to="/api/billing/portal">
-								<CreditCard className="mr-2 h-4 w-4" />
-								Manage Subscription
-							</Link>
+				</div>
+				<div className="flex items-center gap-4">
+					<div className="text-right">
+						<span className="font-semibold text-xl">${plan.price.monthly}</span>
+						{plan.price.monthly > 0 && <span className="text-muted-foreground text-sm">/mo</span>}
+						{plan.perUser && <span className="text-muted-foreground text-xs"> per user</span>}
+					</div>
+					{hasBillingCustomer && (
+						<Button variant="outline" size="sm" asChild>
+							<Link to="/api/billing/portal">Manage</Link>
 						</Button>
-					</CardFooter>
-				)}
-			</Card>
-
-			<Separator />
+					)}
+				</div>
+			</div>
 
 			{/* Compare Plans */}
 			<div className="space-y-4">
@@ -350,21 +345,27 @@ export default function BillingPage() {
 				</div>
 			</div>
 
-			{/* Help Section */}
-			<Card className="bg-muted/50">
-				<CardContent className="flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
-					<div>
-						<h3 className="font-semibold">Need help choosing a plan?</h3>
-						<p className="text-muted-foreground text-sm">Talk to our team to find the best fit for your needs.</p>
+			{/* Help Section - compact inline */}
+			<div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-muted/30 px-5 py-4">
+				<div className="flex items-center gap-4">
+					<img
+						src="https://pub-0332ea3a4c2e45899d4c374547d95427.r2.dev/Calling-amico.svg"
+						alt="Illustration of a support call"
+						className="hidden h-16 w-16 object-contain sm:block"
+						loading="lazy"
+					/>
+					<div className="space-y-0.5">
+						<h3 className="font-medium text-sm">Need help choosing a plan?</h3>
+						<p className="text-muted-foreground text-xs">Talk to our team — 15 min, no pressure.</p>
 					</div>
-					<Button variant="outline" asChild>
-						<a href="https://cal.com/rickmoy" target="_blank" rel="noopener noreferrer">
-							<Calendar className="mr-2 h-4 w-4" />
-							Schedule a Call
-						</a>
-					</Button>
-				</CardContent>
-			</Card>
+				</div>
+				<Button variant="outline" size="sm" asChild>
+					<a href="https://cal.com/rickmoy" target="_blank" rel="noopener noreferrer">
+						<Calendar className="mr-2 h-4 w-4" />
+						Schedule a Call
+					</a>
+				</Button>
+			</div>
 		</div>
 	)
 }

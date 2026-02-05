@@ -3,8 +3,7 @@
  *
  * Features:
  * - Collapsible panel (384px expanded, 48px collapsed)
- * - Dismissable top task card (collapses to compact button)
- * - Dismissable context card
+ * - Dismissable "Next Steps" card with smart prioritized tasks
  * - Integrated chat (no redundant header)
  */
 
@@ -12,7 +11,6 @@ import {
   CheckSquare,
   ChevronLeft,
   ChevronRight,
-  Eye,
   Search,
   Sparkles,
   X,
@@ -58,10 +56,13 @@ function getTopTasks(
   const highPriorityTasks = counts.highPriorityTasks ?? 0;
   const encounters = counts.encounters ?? 0;
   const themes = counts.themes ?? 0;
+  const insights = counts.insights ?? 0;
+  const people = counts.people ?? 0;
 
+  // Priority 1: Actionable items that need attention
   if (surveyResponses > 0) {
     tasks.push({
-      title: `Review ${surveyResponses} survey response${surveyResponses > 1 ? "s" : ""}`,
+      title: `Review ${surveyResponses} new survey response${surveyResponses > 1 ? "s" : ""}`,
       link: routes.ask.index(),
     });
   }
@@ -73,21 +74,41 @@ function getTopTasks(
     });
   }
 
+  // Priority 2: Progress-based suggestions
   if (encounters > 0 && themes === 0) {
     tasks.push({
-      title: "Analyze your conversations",
+      title: `${encounters} conversation${encounters > 1 ? "s" : ""} ready — run analysis to find themes`,
       link: routes.interviews.index(),
+    });
+  } else if (themes > 0 && insights === 0) {
+    tasks.push({
+      title: `${themes} theme${themes > 1 ? "s" : ""} found — generate your first insight`,
+      link: routes.insights.table(),
+    });
+  } else if (themes > 0 && encounters >= 3 && insights > 0) {
+    tasks.push({
+      title: `${themes} theme${themes > 1 ? "s" : ""} across ${encounters} conversations — synthesize findings`,
+      link: routes.insights.table(),
     });
   }
 
+  // Priority 3: Growth nudges
+  if (people > 0 && tasks.length < 3) {
+    tasks.push({
+      title: `${people} contact${people > 1 ? "s" : ""} tracked — review & segment`,
+      link: routes.people.index(),
+    });
+  }
+
+  // Fallback: Get started
   if (tasks.length === 0) {
     tasks.push({
-      title: "Upload a conversation",
+      title: "Upload a conversation or create a survey to get started",
       link: routes.interviews.upload(),
     });
   }
 
-  return tasks.slice(0, 2);
+  return tasks.slice(0, 3);
 }
 
 interface TopTasksProps {
@@ -151,103 +172,6 @@ function TopTasks({ routes, counts }: TopTasksProps) {
             >
               {task.title}
             </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-interface ContextCardProps {
-  routes: RouteDefinitions;
-  counts: Record<string, number | undefined>;
-}
-
-function ContextCard({ routes, counts }: ContextCardProps) {
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("ai-panel-context-dismissed") === "true";
-  });
-
-  const insights: Array<{ text: string; link?: string }> = [];
-  const themes = counts.themes ?? 0;
-  const encounters = counts.encounters ?? 0;
-  const people = counts.people ?? 0;
-
-  if (themes > 0) {
-    insights.push({
-      text: `${themes} theme${themes > 1 ? "s" : ""} emerging`,
-      link: routes.insights.table(),
-    });
-  }
-
-  if (encounters > 0 && themes === 0) {
-    insights.push({
-      text: `${encounters} conversation${encounters > 1 ? "s" : ""} ready`,
-      link: routes.interviews.index(),
-    });
-  }
-
-  if (people > 0) {
-    insights.push({
-      text: `${people} contact${people > 1 ? "s" : ""} tracked`,
-      link: routes.people.index(),
-    });
-  }
-
-  if (insights.length === 0) {
-    return null;
-  }
-
-  const handleDismiss = () => {
-    setDismissed(true);
-    localStorage.setItem("ai-panel-context-dismissed", "true");
-  };
-
-  const handleShow = () => {
-    setDismissed(false);
-    localStorage.setItem("ai-panel-context-dismissed", "false");
-  };
-
-  if (dismissed) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleShow}
-        className="justify-start gap-2 text-muted-foreground"
-      >
-        <Eye className="h-4 w-4" />
-        What's happening
-      </Button>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-medium text-xs text-muted-foreground uppercase tracking-wider">
-          What's happening
-        </span>
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-          title="Dismiss"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <ul className="space-y-1">
-        {insights.slice(0, 3).map((insight, index) => (
-          <li key={index} className="text-sm">
-            {insight.link ? (
-              <Link to={insight.link} className="text-primary hover:underline">
-                {insight.text}
-              </Link>
-            ) : (
-              <span className="text-muted-foreground">{insight.text}</span>
-            )}
           </li>
         ))}
       </ul>
@@ -362,7 +286,6 @@ export function AIAssistantPanel({
         {/* Dismissable cards */}
         <div className="flex flex-col gap-2">
           {projectPath && <TopTasks routes={routes} counts={counts} />}
-          {projectPath && <ContextCard routes={routes} counts={counts} />}
         </div>
 
         {/* Chat - goes directly into chat interface, no extra header */}

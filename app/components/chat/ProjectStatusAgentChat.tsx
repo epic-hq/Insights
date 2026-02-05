@@ -1098,7 +1098,7 @@ export function ProjectStatusAgentChat({
               placeholder="Ask.."
               rows={2}
               disabled={isBusy}
-              className="min-h-[72px] resize-y border-2 border-border pr-12 focus-visible:border-primary"
+              className="min-h-[72px] resize-y border-2 border-muted-foreground/30 pr-12 focus-visible:border-primary"
             />
             {isVoiceSupported && (
               <TooltipProvider>

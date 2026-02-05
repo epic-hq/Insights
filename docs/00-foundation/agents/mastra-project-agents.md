@@ -150,6 +150,7 @@ The recommendation engine generates suggestions based on project state:
 
 ## Related References
 
+- `docs/00-foundation/agents/recommendation-memory.md` (recommendation tracking & decision memory)
 - `docs/20-features-prds/features/project-chat.md` (project setup workflow)
 - `docs/10-architecture/api/mobile-api-reference.md` (project status agent API)
 - `docs/architecture/agentic-system-strategy.md` (system-level strategy)
