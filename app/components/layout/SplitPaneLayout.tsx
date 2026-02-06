@@ -31,7 +31,6 @@ import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
 import { cn } from "~/lib/utils";
 import { BottomTabBar } from "../navigation/BottomTabBar";
-import { ProfileSheet } from "../navigation/ProfileSheet";
 import { TopNavigation } from "../navigation/TopNavigation";
 import { useOnboarding } from "../onboarding";
 import { AIAssistantPanel } from "./AIAssistantPanel";
@@ -99,14 +98,18 @@ export function SplitPaneLayout({
     }
   }, [isWelcomeFlow]);
 
-  // Profile sheet state (mobile)
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const showMainNav = !isOnboarding;
 
   // Should we show the mobile navigation?
   const showMobileNav = isMobile && showJourneyNav && showMainNav;
 
   const accounts = protectedData?.accounts?.filter(Boolean) ?? [];
+
+  // Track AI panel width for dynamic content padding
+  const [aiPanelWidth, setAIPanelWidth] = useState(440);
+  const handleAIPanelWidthChange = useCallback((width: number) => {
+    setAIPanelWidth(width);
+  }, []);
 
   const handleAIPanelOpenChange = useCallback((open: boolean) => {
     setIsAIPanelOpen(open);
@@ -119,15 +122,20 @@ export function SplitPaneLayout({
     <SidebarProvider>
       <ProjectStatusAgentProvider>
         <div className="flex min-h-0 w-full flex-1 flex-col">
-          {/* Top Navigation - hidden on mobile, shown on desktop */}
-          {showMainNav && !isMobile && <TopNavigation accounts={accounts} />}
+          {/* Top Navigation - shown on both desktop and mobile */}
+          {showMainNav && <TopNavigation accounts={accounts} />}
 
-          {/* Main content - always full width */}
+          {/* Main content - shifts right when AI panel is expanded */}
           <main
             className={cn(
-              "flex min-h-0 flex-1 flex-col overflow-auto",
+              "flex min-h-0 flex-1 flex-col overflow-auto transition-[padding] duration-200",
               showMobileNav ? "pb-[72px]" : "",
             )}
+            style={
+              showAIPanel && isAIPanelOpen
+                ? { paddingLeft: aiPanelWidth + 20 }
+                : undefined
+            }
           >
             <Outlet />
           </main>
@@ -137,6 +145,7 @@ export function SplitPaneLayout({
             <AIAssistantPanel
               isOpen={isAIPanelOpen}
               onOpenChange={handleAIPanelOpenChange}
+              onWidthChange={handleAIPanelWidthChange}
               accounts={accounts}
               systemContext={combinedSystemContext}
               suppressPersistence={isWelcomeFlow}
@@ -147,23 +156,13 @@ export function SplitPaneLayout({
           {showMobileNav && (
             <BottomTabBar
               routes={{
-                dashboard: routes.projects.dashboard(),
-                contacts: routes.people.index(),
-                content: routes.interviews.index(),
+                plan: routes.projects.setup(),
+                sources: routes.interviews.index(),
                 chat: routes.projects.projectChat(),
-                insights: routes.insights.cards(),
+                insights: routes.insights.table(),
+                crm: routes.people.index(),
                 upload: routes.interviews.upload(),
               }}
-              onProfileClick={() => setIsProfileOpen(true)}
-            />
-          )}
-
-          {/* Profile Sheet (mobile) */}
-          {isMobile && (
-            <ProfileSheet
-              open={isProfileOpen}
-              onOpenChange={setIsProfileOpen}
-              accountSettingsHref={`/a/${accountId}/settings`}
             />
           )}
         </div>
