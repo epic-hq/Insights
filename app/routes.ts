@@ -27,15 +27,15 @@ import prioritiesRoutes from "./features/priorities/routes";
 import projectChatRoutes from "./features/project-chat/routes";
 import projectsRoutes from "./features/projects/routes";
 import questionsRoutes from "./features/questions/routes";
+import realtimeTranscriptionRoutes from "./features/realtime-transcription/routes";
 import responsesRoutes from "./features/responses/routes";
 import segmentsRoutes from "./features/segments/routes";
-import sourcesRoutes from "./features/sources/routes";
 import signupChatRoutes from "./features/signup-chat/routes";
+import sourcesRoutes from "./features/sources/routes";
 import teamsRoutes, {
   teamsAccountRoutes as teamRoutes,
 } from "./features/teams/routes";
 import voiceRoutes from "./features/voice/routes";
-import realtimeTranscriptionRoutes from "./features/realtime-transcription/routes";
 
 const routes = [
   // Public marketing landing page
@@ -249,6 +249,10 @@ const routes = [
   route(
     "api/desktop/recordings/:recordingId/status",
     "./routes/api.desktop.recordings.$recordingId.status.ts",
+  ),
+  route(
+    "api/desktop/realtime-evidence",
+    "./routes/api.desktop.realtime-evidence.ts",
   ),
   route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
 
