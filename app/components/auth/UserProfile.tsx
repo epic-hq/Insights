@@ -76,7 +76,7 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 
 	const handleThemeToggle = () => {
 		setTheme(theme === "light" ? "dark" : "light")
-	};
+	}
 
 	return (
 		<SidebarMenu>
@@ -134,10 +134,7 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 									<span>My Responses</span>
 								</Link>
 							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleThemeToggle}
-								className="flex w-full items-center gap-2"
-							>
+							<DropdownMenuItem onClick={handleThemeToggle} className="flex w-full items-center gap-2">
 								<ThemeToggle />
 								<span>Theme</span>
 							</DropdownMenuItem>

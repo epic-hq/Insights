@@ -22,13 +22,7 @@ import { useState } from "react"
 import { useFetcher, useRevalidator } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -38,9 +32,9 @@ import {
 } from "~/components/ui/dropdown-menu"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { Switch } from "~/components/ui/switch"
+import type { LensTemplate } from "../lib/loadLensAnalyses.server"
 import { CreateLensDialog } from "./CreateLensDialog"
 import { EditLensDialog } from "./EditLensDialog"
-import type { LensTemplate } from "../lib/loadLensAnalyses.server"
 
 type ManageLensesDialogProps = {
 	open: boolean
@@ -116,9 +110,7 @@ export function ManageLensesDialog({
 	})
 
 	const handleToggle = (templateKey: string, enabled: boolean) => {
-		const newEnabled = enabled
-			? [...initialEnabled, templateKey]
-			: initialEnabled.filter((key) => key !== templateKey)
+		const newEnabled = enabled ? [...initialEnabled, templateKey] : initialEnabled.filter((key) => key !== templateKey)
 
 		fetcher.submit(
 			{
@@ -128,7 +120,7 @@ export function ManageLensesDialog({
 				toggle_lens: templateKey,
 				enabled: String(enabled),
 			},
-			{ method: "post" },
+			{ method: "post" }
 		)
 	}
 
@@ -141,7 +133,7 @@ export function ManageLensesDialog({
 				template_key: templateKey,
 				account_id: accountId,
 			},
-			{ method: "POST", action: "/api/lens-templates" },
+			{ method: "POST", action: "/api/lens-templates" }
 		)
 	}
 
@@ -153,7 +145,7 @@ export function ManageLensesDialog({
 				account_id: accountId,
 				is_public: String(isPublic),
 			},
-			{ method: "POST", action: "/api/lens-templates" },
+			{ method: "POST", action: "/api/lens-templates" }
 		)
 	}
 
@@ -166,9 +158,7 @@ export function ManageLensesDialog({
 		setEditingTemplate(null)
 	}
 
-	const enabledCount = enabledLenses.filter((key) =>
-		templates.some((t) => t.template_key === key),
-	).length
+	const enabledCount = enabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
 
 	return (
 		<>
@@ -177,13 +167,13 @@ export function ManageLensesDialog({
 					<DialogHeader className="px-6 pt-6 pb-2">
 						<DialogTitle>Manage Lenses</DialogTitle>
 						<DialogDescription>
-							{enabledCount} of {templates.length} lenses enabled.
-							Toggle lenses to control which analyses run on your conversations.
+							{enabledCount} of {templates.length} lenses enabled. Toggle lenses to control which analyses run on your
+							conversations.
 						</DialogDescription>
 					</DialogHeader>
 
 					<ScrollArea className="max-h-[60vh]">
-						<div className="px-6 pb-6 space-y-1">
+						<div className="space-y-1 px-6 pb-6">
 							{sortedTemplates.map((template) => {
 								const isEnabled = enabledLenses.includes(template.template_key)
 								const isCustom = !template.is_system
@@ -194,18 +184,18 @@ export function ManageLensesDialog({
 										key={template.template_key}
 										className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50"
 									>
-										<div className="flex items-center gap-3 min-w-0">
+										<div className="flex min-w-0 items-center gap-3">
 											<div className={`rounded-md p-1.5 ${getCategoryColor(template.category)}`}>
 												{getCategoryIcon(template.category)}
 											</div>
 											<div className="min-w-0">
-												<p className="font-medium text-sm truncate">{template.template_name}</p>
+												<p className="truncate font-medium text-sm">{template.template_name}</p>
 												<div className="flex items-center gap-1.5">
-													<Badge variant="outline" className="text-[10px] px-1 py-0">
+													<Badge variant="outline" className="px-1 py-0 text-[10px]">
 														{isCustom ? "Custom" : template.category || "general"}
 													</Badge>
 													{isCustom && !template.is_public && (
-														<Badge variant="outline" className="text-[10px] px-1 py-0">
+														<Badge variant="outline" className="px-1 py-0 text-[10px]">
 															<EyeOff className="mr-0.5 h-2.5 w-2.5" />
 															Private
 														</Badge>
@@ -214,7 +204,7 @@ export function ManageLensesDialog({
 											</div>
 										</div>
 
-										<div className="flex items-center gap-2 flex-shrink-0">
+										<div className="flex flex-shrink-0 items-center gap-2">
 											{isSubmitting && pendingToggle === template.template_key && (
 												<Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
 											)}
@@ -239,9 +229,7 @@ export function ManageLensesDialog({
 																	Edit
 																</DropdownMenuItem>
 																<DropdownMenuItem
-																	onClick={() =>
-																		handleToggleVisibility(template.template_key, !template.is_public)
-																	}
+																	onClick={() => handleToggleVisibility(template.template_key, !template.is_public)}
 																>
 																	{template.is_public ? (
 																		<>

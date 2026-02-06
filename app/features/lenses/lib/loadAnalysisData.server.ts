@@ -5,11 +5,11 @@
  * Efficient: uses batch queries then assembles in JS rather than N+1.
  */
 
-import consola from "consola"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
+import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config"
 import type { Database } from "~/types/supabase.types"
 import type { LensTemplate } from "./loadLensAnalyses.server"
-import { PLATFORM_DEFAULT_LENS_KEYS, type AccountSettingsMetadata } from "~/features/opportunities/stage-config"
 
 // ============================================================================
 // Types
@@ -117,7 +117,7 @@ export type PersonLensHighlight = {
 export async function loadAnalysisPageData(
 	db: SupabaseClient<Database>,
 	projectId: string,
-	accountId: string,
+	accountId: string
 ): Promise<{
 	overview: AnalysisOverview
 	people: PersonAnalysisSummary[]
@@ -181,13 +181,17 @@ export async function loadAnalysisPageData(
 		// 8. All syntheses for the project
 		db
 			.from("conversation_lens_summaries")
-			.select("id, template_key, status, executive_summary, key_takeaways, recommendations, conflicts_to_review, overall_confidence, interview_count, processed_at")
+			.select(
+				"id, template_key, status, executive_summary, key_takeaways, recommendations, conflicts_to_review, overall_confidence, interview_count, processed_at"
+			)
 			.eq("project_id", projectId),
 
 		// 9. Cross-lens synthesis (stored with special template_key)
 		db
 			.from("conversation_lens_summaries")
-			.select("id, status, executive_summary, key_takeaways, recommendations, overall_confidence, interview_count, processed_at")
+			.select(
+				"id, status, executive_summary, key_takeaways, recommendations, overall_confidence, interview_count, processed_at"
+			)
 			.eq("project_id", projectId)
 			.eq("template_key", "__cross_lens__")
 			.maybeSingle(),
@@ -297,7 +301,12 @@ export async function loadAnalysisPageData(
 			recommendedActions: ((clsData.recommendations as any[]) || []).map((r) =>
 				typeof r === "string"
 					? { title: r, description: "", priority: "medium" as const, category: "general" }
-					: { title: r.title || r, description: r.description || "", priority: r.priority || "medium", category: r.category || "general" },
+					: {
+							title: r.title || r,
+							description: r.description || "",
+							priority: r.priority || "medium",
+							category: r.category || "general",
+						}
 			),
 			overallConfidence: clsData.overall_confidence,
 			processedAt: clsData.processed_at,
@@ -340,12 +349,28 @@ export async function loadAnalysisPageData(
 							// Detect pains and goals from field keys/names
 							const lowerKey = fieldKey.toLowerCase()
 							const lowerName = fieldName.toLowerCase()
-							if (lowerKey.includes("pain") || lowerName.includes("pain") || lowerKey.includes("challenge") || lowerName.includes("frustrat")) {
-								const items = field.value.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean)
+							if (
+								lowerKey.includes("pain") ||
+								lowerName.includes("pain") ||
+								lowerKey.includes("challenge") ||
+								lowerName.includes("frustrat")
+							) {
+								const items = field.value
+									.split(/[,;]/)
+									.map((s: string) => s.trim())
+									.filter(Boolean)
 								items.forEach((item: string) => pains.add(item.slice(0, 100)))
 							}
-							if (lowerKey.includes("goal") || lowerName.includes("goal") || lowerKey.includes("desire") || lowerKey.includes("outcome")) {
-								const items = field.value.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean)
+							if (
+								lowerKey.includes("goal") ||
+								lowerName.includes("goal") ||
+								lowerKey.includes("desire") ||
+								lowerKey.includes("outcome")
+							) {
+								const items = field.value
+									.split(/[,;]/)
+									.map((s: string) => s.trim())
+									.filter(Boolean)
 								items.forEach((item: string) => goals.add(item.slice(0, 100)))
 							}
 							if (lowerKey.includes("sentiment") || lowerKey.includes("emotion")) {
@@ -420,7 +445,7 @@ function deduplicateHighlights(highlights: PersonLensHighlight[]): PersonLensHig
 	const byKey = new Map<string, PersonLensHighlight>()
 	for (const h of highlights) {
 		const existing = byKey.get(h.templateKey)
-		if (!existing || (h.fields.length > existing.fields.length)) {
+		if (!existing || h.fields.length > existing.fields.length) {
 			byKey.set(h.templateKey, h)
 		}
 	}
@@ -433,7 +458,7 @@ function deduplicateHighlights(highlights: PersonLensHighlight[]): PersonLensHig
 async function loadEnabledLenses(
 	db: SupabaseClient<Database>,
 	projectId: string,
-	accountId: string,
+	accountId: string
 ): Promise<string[]> {
 	let enabledLenses: string[] = [...PLATFORM_DEFAULT_LENS_KEYS]
 
@@ -452,11 +477,7 @@ async function loadEnabledLenses(
 	}
 
 	// Project overrides
-	const { data: project } = await db
-		.from("projects")
-		.select("project_settings")
-		.eq("id", projectId)
-		.single()
+	const { data: project } = await db.from("projects").select("project_settings").eq("id", projectId).single()
 
 	if (project?.project_settings) {
 		const settings = project.project_settings as Record<string, unknown>

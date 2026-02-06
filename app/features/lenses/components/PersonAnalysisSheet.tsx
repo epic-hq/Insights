@@ -25,13 +25,7 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { Separator } from "~/components/ui/separator"
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "~/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "~/components/ui/sheet"
 import type { PersonAnalysisSummary, PersonLensHighlight } from "../lib/loadAnalysisData.server"
 
 type SheetProps = {
@@ -42,17 +36,20 @@ type SheetProps = {
 }
 
 function getInitials(name: string): string {
-	return name
-		.split(" ")
-		.map((w) => w[0])
-		.join("")
-		.toUpperCase()
-		.slice(0, 2) || "?"
+	return (
+		name
+			.split(" ")
+			.map((w) => w[0])
+			.join("")
+			.toUpperCase()
+			.slice(0, 2) || "?"
+	)
 }
 
 function getCategoryIcon(templateKey: string) {
 	if (templateKey.includes("sales") || templateKey.includes("bant")) return <Briefcase className="h-3.5 w-3.5" />
-	if (templateKey.includes("research") || templateKey.includes("discovery")) return <FlaskConical className="h-3.5 w-3.5" />
+	if (templateKey.includes("research") || templateKey.includes("discovery"))
+		return <FlaskConical className="h-3.5 w-3.5" />
 	if (templateKey.includes("product")) return <Package className="h-3.5 w-3.5" />
 	return <Glasses className="h-3.5 w-3.5" />
 }
@@ -66,12 +63,10 @@ function LensHighlightCard({ highlight }: { highlight: PersonLensHighlight }) {
 					<CardTitle className="text-sm">{highlight.templateName}</CardTitle>
 				</div>
 			</CardHeader>
-			<CardContent className="p-3 pt-0 space-y-2">
+			<CardContent className="space-y-2 p-3 pt-0">
 				{/* Executive summary */}
 				{highlight.executiveSummary && (
-					<p className="text-muted-foreground text-xs leading-relaxed">
-						{highlight.executiveSummary}
-					</p>
+					<p className="text-muted-foreground text-xs leading-relaxed">{highlight.executiveSummary}</p>
 				)}
 
 				{/* Key fields */}
@@ -79,12 +74,8 @@ function LensHighlightCard({ highlight }: { highlight: PersonLensHighlight }) {
 					<div className="space-y-1.5">
 						{highlight.fields.slice(0, 4).map((field) => (
 							<div key={field.key} className="flex gap-2 text-xs">
-								<span className="font-medium text-muted-foreground min-w-0 flex-shrink-0">
-									{field.name}:
-								</span>
-								<span className="text-foreground min-w-0 truncate">
-									{field.value}
-								</span>
+								<span className="min-w-0 flex-shrink-0 font-medium text-muted-foreground">{field.name}:</span>
+								<span className="min-w-0 truncate text-foreground">{field.value}</span>
 							</div>
 						))}
 					</div>
@@ -103,24 +94,22 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="w-full sm:max-w-lg p-0">
+			<SheetContent className="w-full p-0 sm:max-w-lg">
 				<ScrollArea className="h-full">
-					<div className="p-6 space-y-6">
+					<div className="space-y-6 p-6">
 						{/* Header */}
 						<SheetHeader className="space-y-3">
 							<div className="flex items-start gap-4">
 								<Avatar className="h-14 w-14 flex-shrink-0">
 									{person.imageUrl && <AvatarImage src={person.imageUrl} alt={person.name} />}
-									<AvatarFallback className="bg-primary/10 text-primary">
-										{getInitials(person.name)}
-									</AvatarFallback>
+									<AvatarFallback className="bg-primary/10 text-primary">{getInitials(person.name)}</AvatarFallback>
 								</Avatar>
 								<div className="min-w-0 flex-1">
 									<SheetTitle className="text-xl">{person.name}</SheetTitle>
 									<SheetDescription>
 										{[person.title, person.company].filter(Boolean).join(" @ ") || "No title"}
 									</SheetDescription>
-									<div className="flex items-center gap-2 mt-2">
+									<div className="mt-2 flex items-center gap-2">
 										{person.interviewCount > 0 && (
 											<Badge variant="secondary" className="gap-1 text-xs">
 												<MessageSquare className="h-3 w-3" />
@@ -169,10 +158,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 								</h3>
 								<ul className="space-y-1.5">
 									{person.keyPains.map((pain) => (
-										<li
-											key={pain}
-											className="flex items-start gap-2 text-sm"
-										>
+										<li key={pain} className="flex items-start gap-2 text-sm">
 											<span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-400" />
 											<span className="text-muted-foreground">{pain}</span>
 										</li>
@@ -190,10 +176,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 								</h3>
 								<ul className="space-y-1.5">
 									{person.keyGoals.map((goal) => (
-										<li
-											key={goal}
-											className="flex items-start gap-2 text-sm"
-										>
+										<li key={goal} className="flex items-start gap-2 text-sm">
 											<span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-400" />
 											<span className="text-muted-foreground">{goal}</span>
 										</li>
@@ -219,10 +202,8 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 						{!hasHighlights && !hasPains && !hasGoals && (
 							<div className="py-8 text-center">
 								<FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-								<p className="text-muted-foreground text-sm">
-									No analysis data yet for this person.
-								</p>
-								<p className="text-muted-foreground/70 text-xs mt-1">
+								<p className="text-muted-foreground text-sm">No analysis data yet for this person.</p>
+								<p className="mt-1 text-muted-foreground/70 text-xs">
 									Analysis runs automatically after conversations are processed.
 								</p>
 							</div>
@@ -231,7 +212,7 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 						{/* Sentiment */}
 						{person.sentiment && (
 							<div className="rounded-lg border bg-muted/20 p-3">
-								<p className="text-muted-foreground text-xs font-medium uppercase tracking-wide mb-1">
+								<p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
 									Overall Sentiment
 								</p>
 								<p className="text-sm">{person.sentiment}</p>

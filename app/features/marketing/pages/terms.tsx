@@ -11,7 +11,8 @@ export const meta: MetaFunction = () => {
 		{ title: "Terms of Service | DeepLight" },
 		{
 			name: "description",
-			content: "DeepLight Terms of Service - The agreement governing your use of our conversation intelligence platform.",
+			content:
+				"DeepLight Terms of Service - The agreement governing your use of our conversation intelligence platform.",
 		},
 	]
 }
@@ -35,16 +36,15 @@ export default function TermsOfServicePage() {
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">1. Agreement to Terms</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								These Terms of Service ("Terms") constitute a legally binding agreement between you ("you" or
-								"User") and DeepLight ("we," "us," or "Company") governing your access to and use of the DeepLight
-								conversation intelligence platform, including any associated websites, applications, and services
-								(collectively, the "Service").
+								These Terms of Service ("Terms") constitute a legally binding agreement between you ("you" or "User")
+								and DeepLight ("we," "us," or "Company") governing your access to and use of the DeepLight conversation
+								intelligence platform, including any associated websites, applications, and services (collectively, the
+								"Service").
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								By accessing or using the Service, you agree to be bound by these Terms and our Privacy Policy. If
-								you are using the Service on behalf of an organization, you represent that you have authority to
-								bind that organization to these Terms, and "you" refers to both you individually and the
-								organization.
+								By accessing or using the Service, you agree to be bound by these Terms and our Privacy Policy. If you
+								are using the Service on behalf of an organization, you represent that you have authority to bind that
+								organization to these Terms, and "you" refers to both you individually and the organization.
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								If you do not agree to these Terms, you may not access or use the Service.
@@ -82,8 +82,8 @@ export default function TermsOfServicePage() {
 
 							<h3 className="mb-3 font-semibold text-xl">3.2 Account Security</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								You are responsible for maintaining the confidentiality of your account credentials. You must notify
-								us immediately at{" "}
+								You are responsible for maintaining the confidentiality of your account credentials. You must notify us
+								immediately at{" "}
 								<a href="mailto:security@deeplight.io" className="text-orange-600 hover:underline">
 									security@deeplight.io
 								</a>{" "}
@@ -96,9 +96,9 @@ export default function TermsOfServicePage() {
 
 							<h3 className="mb-3 font-semibold text-xl">4.1 Subscription Plans</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								The Service is offered under various subscription plans with different features and pricing. Details
-								of current plans are available on our pricing page. We reserve the right to modify our plans and
-								pricing with reasonable notice.
+								The Service is offered under various subscription plans with different features and pricing. Details of
+								current plans are available on our pricing page. We reserve the right to modify our plans and pricing
+								with reasonable notice.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">4.2 Payment Terms</h3>
@@ -112,8 +112,8 @@ export default function TermsOfServicePage() {
 							<h3 className="mb-3 font-semibold text-xl">4.3 Automatic Renewal</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								Subscriptions automatically renew at the end of each billing period unless cancelled. You may cancel
-								your subscription at any time through your account settings. Cancellation takes effect at the end of
-								the current billing period.
+								your subscription at any time through your account settings. Cancellation takes effect at the end of the
+								current billing period.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">4.4 Free Trials</h3>
@@ -136,12 +136,12 @@ export default function TermsOfServicePage() {
 							<h3 className="mb-3 font-semibold text-xl">5.2 License Grant</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								By uploading User Content, you grant us a limited, non-exclusive, worldwide license to use, process,
-								store, and display your User Content solely to provide the Service to you. This license terminates
-								when you delete your User Content or close your account.
+								store, and display your User Content solely to provide the Service to you. This license terminates when
+								you delete your User Content or close your account.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">5.3 AI and Machine Learning</h3>
-							<p className="mb-4 rounded-lg border-l-4 border-orange-500 bg-orange-50 p-4 text-slate-700">
+							<p className="mb-4 rounded-lg border-orange-500 border-l-4 bg-orange-50 p-4 text-slate-700">
 								<strong>Important:</strong> We do NOT use your User Content to train our artificial intelligence or
 								machine learning models. Your recordings, transcripts, and insights remain confidential and are used
 								solely to provide the Service to you.
@@ -167,17 +167,17 @@ export default function TermsOfServicePage() {
 							</p>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>
-									<strong>Consent Requirements:</strong> You are solely responsible for obtaining all legally
-									required consents before recording any conversation. Laws regarding recording consent vary by
-									jurisdiction; many require consent from all parties.
+									<strong>Consent Requirements:</strong> You are solely responsible for obtaining all legally required
+									consents before recording any conversation. Laws regarding recording consent vary by jurisdiction;
+									many require consent from all parties.
 								</li>
 								<li>
 									<strong>Compliance:</strong> You will comply with all applicable federal, state, local, and
 									international laws regarding the recording of conversations.
 								</li>
 								<li>
-									<strong>Notice:</strong> You will provide appropriate notice to participants that a conversation
-									is being recorded.
+									<strong>Notice:</strong> You will provide appropriate notice to participants that a conversation is
+									being recorded.
 								</li>
 								<li>
 									<strong>Prohibited Recordings:</strong> You will not record conversations where recording is
@@ -185,24 +185,20 @@ export default function TermsOfServicePage() {
 								</li>
 							</ul>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								DeepLight provides consent management tools to assist you, but these tools do not substitute for
-								your legal obligations.
+								DeepLight provides consent management tools to assist you, but these tools do not substitute for your
+								legal obligations.
 							</p>
 						</section>
 
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">7. Acceptable Use Policy</h2>
-							<p className="mb-4 text-slate-700 leading-relaxed">
-								You agree not to use the Service to:
-							</p>
+							<p className="mb-4 text-slate-700 leading-relaxed">You agree not to use the Service to:</p>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>Violate any applicable law, regulation, or third-party rights</li>
 								<li>Upload content that is illegal, defamatory, obscene, threatening, or harassing</li>
 								<li>Infringe any intellectual property rights</li>
 								<li>Distribute malware, viruses, or other harmful code</li>
-								<li>
-									Attempt to gain unauthorized access to the Service, other accounts, or computer systems
-								</li>
+								<li>Attempt to gain unauthorized access to the Service, other accounts, or computer systems</li>
 								<li>Interfere with or disrupt the Service or its infrastructure</li>
 								<li>Reverse engineer, decompile, or disassemble any part of the Service</li>
 								<li>Use the Service for competitive analysis or to build a competing product</li>
@@ -215,8 +211,8 @@ export default function TermsOfServicePage() {
 								</li>
 							</ul>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								We may investigate and take appropriate action against violations, including suspending or
-								terminating your account.
+								We may investigate and take appropriate action against violations, including suspending or terminating
+								your account.
 							</p>
 						</section>
 
@@ -225,32 +221,31 @@ export default function TermsOfServicePage() {
 
 							<h3 className="mb-3 font-semibold text-xl">8.1 Our Intellectual Property</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								The Service, including its software, design, features, content, and documentation, is owned by
-								DeepLight and protected by intellectual property laws. Except for the limited license to use the
-								Service granted herein, we retain all rights, title, and interest in the Service.
+								The Service, including its software, design, features, content, and documentation, is owned by DeepLight
+								and protected by intellectual property laws. Except for the limited license to use the Service granted
+								herein, we retain all rights, title, and interest in the Service.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">8.2 Trademarks</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								"DeepLight" and our logos are trademarks of DeepLight. You may not use our trademarks without our
-								prior written consent.
+								"DeepLight" and our logos are trademarks of DeepLight. You may not use our trademarks without our prior
+								written consent.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">8.3 Feedback</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								If you provide suggestions, ideas, or feedback about the Service ("Feedback"), you grant us an
-								unrestricted, perpetual, irrevocable license to use such Feedback for any purpose without
-								compensation or attribution.
+								unrestricted, perpetual, irrevocable license to use such Feedback for any purpose without compensation
+								or attribution.
 							</p>
 						</section>
 
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">9. Third-Party Services</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								The Service may integrate with or link to third-party services (e.g., CRM systems, calendar apps,
-								video conferencing platforms). Your use of such services is governed by their own terms and privacy
-								policies. We are not responsible for the content, functionality, or practices of third-party
-								services.
+								The Service may integrate with or link to third-party services (e.g., CRM systems, calendar apps, video
+								conferencing platforms). Your use of such services is governed by their own terms and privacy policies.
+								We are not responsible for the content, functionality, or practices of third-party services.
 							</p>
 						</section>
 
@@ -258,16 +253,16 @@ export default function TermsOfServicePage() {
 							<h2 className="mb-4 font-semibold text-2xl">10. Disclaimer of Warranties</h2>
 							<p className="mb-4 rounded-lg bg-slate-100 p-4 font-semibold text-slate-700">
 								THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
-								IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-								PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+								IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+								PURPOSE, TITLE, AND NON-INFRINGEMENT.
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">We do not warrant that:</p>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>The Service will be uninterrupted, error-free, or secure</li>
 								<li>Defects will be corrected</li>
 								<li>
-									Transcription or AI-generated analysis will be completely accurate (accuracy may vary based on
-									audio quality, accents, technical terminology, and other factors)
+									Transcription or AI-generated analysis will be completely accurate (accuracy may vary based on audio
+									quality, accents, technical terminology, and other factors)
 								</li>
 								<li>The Service will meet your specific requirements</li>
 							</ul>
@@ -281,17 +276,17 @@ export default function TermsOfServicePage() {
 							<h2 className="mb-4 font-semibold text-2xl">11. Limitation of Liability</h2>
 							<p className="mb-4 rounded-lg bg-slate-100 p-4 font-semibold text-slate-700">
 								TO THE MAXIMUM EXTENT PERMITTED BY LAW, DEEPLIGHT SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
-								SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR USE, ARISING
-								OUT OF OR RELATED TO YOUR USE OF THE SERVICE, REGARDLESS OF THE THEORY OF LIABILITY.
+								SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR USE, ARISING OUT
+								OF OR RELATED TO YOUR USE OF THE SERVICE, REGARDLESS OF THE THEORY OF LIABILITY.
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								Our total liability for any claims arising from or related to these Terms or the Service shall not
-								exceed the greater of: (a) the amounts you paid to us in the twelve (12) months preceding the claim,
-								or (b) one hundred dollars ($100).
+								exceed the greater of: (a) the amounts you paid to us in the twelve (12) months preceding the claim, or
+								(b) one hundred dollars ($100).
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								These limitations apply even if DeepLight has been advised of the possibility of such damages and
-								even if a remedy fails of its essential purpose.
+								These limitations apply even if DeepLight has been advised of the possibility of such damages and even
+								if a remedy fails of its essential purpose.
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								Some jurisdictions do not allow the exclusion or limitation of certain damages, so some of the above
@@ -302,8 +297,8 @@ export default function TermsOfServicePage() {
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">12. Indemnification</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								You agree to indemnify, defend, and hold harmless DeepLight and its officers, directors, employees,
-								and agents from and against any claims, liabilities, damages, losses, costs, and expenses (including
+								You agree to indemnify, defend, and hold harmless DeepLight and its officers, directors, employees, and
+								agents from and against any claims, liabilities, damages, losses, costs, and expenses (including
 								reasonable attorneys' fees) arising out of or related to:
 							</p>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
@@ -342,12 +337,11 @@ export default function TermsOfServicePage() {
 								<li>Your right to access and use the Service immediately ceases</li>
 								<li>You may request export of your data within 30 days</li>
 								<li>
-									We may delete your data after 30 days (or as required by our data retention policy or applicable
-									law)
+									We may delete your data after 30 days (or as required by our data retention policy or applicable law)
 								</li>
 								<li>
-									Sections that by their nature should survive termination will survive (including Sections 8, 10,
-									11, 12, and 14-17)
+									Sections that by their nature should survive termination will survive (including Sections 8, 10, 11,
+									12, and 14-17)
 								</li>
 							</ul>
 						</section>
@@ -372,8 +366,8 @@ export default function TermsOfServicePage() {
 
 							<h3 className="mb-3 font-semibold text-xl">14.3 Jurisdiction</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								Any legal action or proceeding arising under these Terms shall be brought exclusively in the federal
-								or state courts located in Delaware, and you consent to personal jurisdiction in such courts.
+								Any legal action or proceeding arising under these Terms shall be brought exclusively in the federal or
+								state courts located in Delaware, and you consent to personal jurisdiction in such courts.
 							</p>
 						</section>
 
@@ -381,8 +375,8 @@ export default function TermsOfServicePage() {
 							<h2 className="mb-4 font-semibold text-2xl">15. Changes to Terms</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								We may modify these Terms at any time. We will notify you of material changes by posting the updated
-								Terms on our website and/or sending you an email. Your continued use of the Service after the
-								effective date of any changes constitutes acceptance of the modified Terms.
+								Terms on our website and/or sending you an email. Your continued use of the Service after the effective
+								date of any changes constitutes acceptance of the modified Terms.
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								If you do not agree to the modified Terms, you must stop using the Service before the changes take
@@ -395,32 +389,32 @@ export default function TermsOfServicePage() {
 
 							<h3 className="mb-3 font-semibold text-xl">16.1 Entire Agreement</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								These Terms, together with our Privacy Policy and any other agreements referenced herein, constitute
-								the entire agreement between you and DeepLight regarding the Service.
+								These Terms, together with our Privacy Policy and any other agreements referenced herein, constitute the
+								entire agreement between you and DeepLight regarding the Service.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">16.2 Severability</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								If any provision of these Terms is found to be unenforceable, the remaining provisions will continue
-								in full force and effect.
+								If any provision of these Terms is found to be unenforceable, the remaining provisions will continue in
+								full force and effect.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">16.3 Waiver</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								Our failure to enforce any provision of these Terms does not constitute a waiver of that provision
-								or any other provision.
+								Our failure to enforce any provision of these Terms does not constitute a waiver of that provision or
+								any other provision.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">16.4 Assignment</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								You may not assign or transfer these Terms without our prior written consent. We may assign these
-								Terms without restriction.
+								You may not assign or transfer these Terms without our prior written consent. We may assign these Terms
+								without restriction.
 							</p>
 
 							<h3 className="mb-3 font-semibold text-xl">16.5 Notices</h3>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								We may provide notices to you via email to the address associated with your account or by posting on
-								our website.
+								We may provide notices to you via email to the address associated with your account or by posting on our
+								website.
 							</p>
 						</section>
 

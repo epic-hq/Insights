@@ -20,7 +20,7 @@ import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Progress } from "~/components/ui/progress"
-import type { LensStat, KeyTakeaway } from "../lib/loadAnalysisData.server"
+import type { KeyTakeaway, LensStat } from "../lib/loadAnalysisData.server"
 
 type ByLensTabProps = {
 	lensStats: LensStat[]
@@ -69,24 +69,16 @@ function getCategoryBadgeVariant(category: KeyTakeaway["category"]) {
 	}
 }
 
-function LensStatCard({
-	stat,
-	routes,
-}: {
-	stat: LensStat
-	routes: any
-}) {
-	const percentage = stat.totalInterviews > 0
-		? Math.round((stat.completedCount / stat.totalInterviews) * 100)
-		: 0
+function LensStatCard({ stat, routes }: { stat: LensStat; routes: any }) {
+	const percentage = stat.totalInterviews > 0 ? Math.round((stat.completedCount / stat.totalInterviews) * 100) : 0
 	const hasSynthesis = stat.synthesis?.status === "completed"
 	const summary = stat.synthesis?.executiveSummary
 	const takeaways = stat.synthesis?.keyTakeaways || []
 	const recommendations = stat.synthesis?.recommendations || []
 
 	return (
-		<Link to={routes.lenses.byTemplateKey(stat.templateKey)} className="block group">
-			<Card className="transition-all hover:shadow-md hover:border-primary/30">
+		<Link to={routes.lenses.byTemplateKey(stat.templateKey)} className="group block">
+			<Card className="transition-all hover:border-primary/30 hover:shadow-md">
 				<CardHeader className="pb-3">
 					<div className="flex items-start justify-between">
 						<div className="flex items-center gap-3">
@@ -94,7 +86,7 @@ function LensStatCard({
 								{getCategoryIcon(stat.category)}
 							</div>
 							<div>
-								<CardTitle className="text-base group-hover:text-primary transition-colors">
+								<CardTitle className="text-base transition-colors group-hover:text-primary">
 									{stat.templateName}
 								</CardTitle>
 								<CardDescription className="mt-0.5">
@@ -102,14 +94,14 @@ function LensStatCard({
 								</CardDescription>
 							</div>
 						</div>
-						<ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 mt-1" />
+						<ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
 					</div>
 				</CardHeader>
 
 				<CardContent className="space-y-4">
 					{/* Coverage bar */}
 					<div>
-						<div className="flex items-center justify-between mb-1">
+						<div className="mb-1 flex items-center justify-between">
 							<span className="text-muted-foreground text-xs">Coverage</span>
 							<span className="font-medium text-xs">{percentage}%</span>
 						</div>
@@ -118,14 +110,12 @@ function LensStatCard({
 
 					{/* Synthesis summary */}
 					{hasSynthesis && summary && (
-						<div className="rounded-lg bg-muted/30 p-3 space-y-2">
+						<div className="space-y-2 rounded-lg bg-muted/30 p-3">
 							<div className="flex items-center gap-1.5">
 								<Sparkles className="h-3.5 w-3.5 text-primary" />
-								<span className="font-medium text-xs text-muted-foreground">AI Summary</span>
+								<span className="font-medium text-muted-foreground text-xs">AI Summary</span>
 							</div>
-							<p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-								{summary}
-							</p>
+							<p className="line-clamp-3 text-muted-foreground text-sm leading-relaxed">{summary}</p>
 						</div>
 					)}
 
@@ -134,13 +124,11 @@ function LensStatCard({
 						<div className="space-y-2">
 							{takeaways.slice(0, 2).map((takeaway, i) => (
 								<div key={i} className="flex items-start gap-2">
-									<Lightbulb className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
+									<Lightbulb className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
 									<div className="min-w-0">
 										<span className="font-medium text-xs">{takeaway.title}</span>
-										<span className="text-muted-foreground text-xs ml-1.5">
-											{takeaway.insight.length > 80
-												? `${takeaway.insight.slice(0, 80)}...`
-												: takeaway.insight}
+										<span className="ml-1.5 text-muted-foreground text-xs">
+											{takeaway.insight.length > 80 ? `${takeaway.insight.slice(0, 80)}...` : takeaway.insight}
 										</span>
 									</div>
 								</div>
@@ -190,8 +178,8 @@ export function AnalysisByLensTab({ lensStats, routes, projectPath }: ByLensTabP
 				<Glasses className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
 				<h2 className="mb-2 font-semibold text-xl">No lenses configured</h2>
 				<p className="mx-auto max-w-md text-muted-foreground">
-					Enable analysis lenses to automatically extract structured insights from your conversations.
-					Use the "Manage Lenses" button above to get started.
+					Enable analysis lenses to automatically extract structured insights from your conversations. Use the "Manage
+					Lenses" button above to get started.
 				</p>
 			</div>
 		)
@@ -216,7 +204,7 @@ export function AnalysisByLensTab({ lensStats, routes, projectPath }: ByLensTabP
 			{withoutData.length > 0 && (
 				<div className="space-y-3">
 					{withData.length > 0 && (
-						<h3 className="text-muted-foreground text-sm font-medium pt-2">
+						<h3 className="pt-2 font-medium text-muted-foreground text-sm">
 							Enabled but no data ({withoutData.length})
 						</h3>
 					)}

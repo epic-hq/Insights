@@ -117,9 +117,7 @@ vi.mock("~/env.server", () => ({
 }))
 
 vi.mock("@polar-sh/sdk", () => ({
-	Polar: vi.fn(function () {
-		return mocks.mockPolar
-	}),
+	Polar: vi.fn(() => mocks.mockPolar),
 }))
 
 vi.mock("@polar-sh/hono", () => ({
@@ -211,7 +209,9 @@ describe("Billing checkout", () => {
 		})
 		mocks.accountUserBuilder.maybeSingleQueue.push({ data: null, error: null })
 
-		const response = await checkoutLoader({ request: buildRequest("http://localhost/api/billing/checkout?plan=starter") } as any)
+		const response = await checkoutLoader({
+			request: buildRequest("http://localhost/api/billing/checkout?plan=starter"),
+		} as any)
 
 		expect(response.status).toBe(302)
 		expect(response.headers.get("Location")).toBe("/pricing?error=owner_required")
@@ -230,7 +230,9 @@ describe("Billing checkout", () => {
 		mocks.billingSubsBuilder.maybeSingleQueue.push({ data: null, error: null })
 		mocks.mockPolar.checkouts.create.mockResolvedValue({ id: "chk_1", url: "https://checkout.test/1" })
 
-		const response = await checkoutLoader({ request: buildRequest("http://localhost/api/billing/checkout?plan=starter") } as any)
+		const response = await checkoutLoader({
+			request: buildRequest("http://localhost/api/billing/checkout?plan=starter"),
+		} as any)
 
 		expect(response.status).toBe(302)
 		expect(response.headers.get("Location")).toBe("https://checkout.test/1")
@@ -257,7 +259,9 @@ describe("Billing checkout", () => {
 		})
 		mocks.billingSubsBuilder.updateQueue.push({ data: null, error: null })
 
-		const response = await checkoutLoader({ request: buildRequest("http://localhost/api/billing/checkout?plan=starter") } as any)
+		const response = await checkoutLoader({
+			request: buildRequest("http://localhost/api/billing/checkout?plan=starter"),
+		} as any)
 
 		expect(response.status).toBe(302)
 		expect(mocks.mockPolar.subscriptions.update).toHaveBeenCalledWith({

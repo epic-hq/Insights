@@ -5,15 +5,8 @@
  * Click a person to expand an inline detail panel.
  */
 
-import {
-	ChevronRight,
-	MessageSquare,
-	Search,
-	Target,
-	User,
-	AlertTriangle,
-} from "lucide-react"
-import { useState, useMemo } from "react"
+import { AlertTriangle, ChevronRight, MessageSquare, Search, Target, User } from "lucide-react"
+import { useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
@@ -29,23 +22,17 @@ type ByPersonTabProps = {
 }
 
 function getInitials(name: string): string {
-	return name
-		.split(" ")
-		.map((w) => w[0])
-		.join("")
-		.toUpperCase()
-		.slice(0, 2) || "?"
+	return (
+		name
+			.split(" ")
+			.map((w) => w[0])
+			.join("")
+			.toUpperCase()
+			.slice(0, 2) || "?"
+	)
 }
 
-function PersonCard({
-	person,
-	onClick,
-	routes,
-}: {
-	person: PersonAnalysisSummary
-	onClick: () => void
-	routes: any
-}) {
+function PersonCard({ person, onClick, routes }: { person: PersonAnalysisSummary; onClick: () => void; routes: any }) {
 	const hasAnalysis = person.lensHighlights.length > 0
 	const hasPains = person.keyPains.length > 0
 	const hasGoals = person.keyGoals.length > 0
@@ -54,18 +41,13 @@ function PersonCard({
 	const topSummary = person.lensHighlights.find((h) => h.executiveSummary)?.executiveSummary
 
 	return (
-		<Card
-			className="cursor-pointer transition-all hover:shadow-md hover:border-primary/30"
-			onClick={onClick}
-		>
+		<Card className="cursor-pointer transition-all hover:border-primary/30 hover:shadow-md" onClick={onClick}>
 			<CardContent className="p-4">
 				<div className="flex gap-4">
 					{/* Avatar */}
 					<Avatar className="h-12 w-12 flex-shrink-0">
 						{person.imageUrl && <AvatarImage src={person.imageUrl} alt={person.name} />}
-						<AvatarFallback className="bg-primary/10 text-primary text-sm">
-							{getInitials(person.name)}
-						</AvatarFallback>
+						<AvatarFallback className="bg-primary/10 text-primary text-sm">{getInitials(person.name)}</AvatarFallback>
 					</Avatar>
 
 					{/* Content */}
@@ -78,7 +60,7 @@ function PersonCard({
 									{[person.title, person.company].filter(Boolean).join(" @ ") || "No title"}
 								</p>
 							</div>
-							<div className="flex items-center gap-1.5 flex-shrink-0">
+							<div className="flex flex-shrink-0 items-center gap-1.5">
 								{person.interviewCount > 0 && (
 									<Badge variant="secondary" className="gap-1 px-1.5 py-0 text-[10px]">
 										<MessageSquare className="h-2.5 w-2.5" />
@@ -94,11 +76,7 @@ function PersonCard({
 						</div>
 
 						{/* Key findings preview */}
-						{topSummary && (
-							<p className="line-clamp-2 text-muted-foreground text-xs leading-relaxed">
-								{topSummary}
-							</p>
-						)}
+						{topSummary && <p className="line-clamp-2 text-muted-foreground text-xs leading-relaxed">{topSummary}</p>}
 
 						{/* Pains and goals badges */}
 						{(hasPains || hasGoals) && (
@@ -130,11 +108,7 @@ function PersonCard({
 						{hasAnalysis && (
 							<div className="flex items-center gap-1">
 								{person.lensHighlights.map((h) => (
-									<Badge
-										key={h.templateKey}
-										variant="secondary"
-										className="px-1.5 py-0 text-[10px]"
-									>
+									<Badge key={h.templateKey} variant="secondary" className="px-1.5 py-0 text-[10px]">
 										{h.templateName}
 									</Badge>
 								))}
@@ -160,9 +134,7 @@ export function AnalysisByPersonTab({ people, routes, projectPath }: ByPersonTab
 		const q = searchQuery.toLowerCase()
 		return people.filter(
 			(p) =>
-				p.name.toLowerCase().includes(q) ||
-				p.title?.toLowerCase().includes(q) ||
-				p.company?.toLowerCase().includes(q),
+				p.name.toLowerCase().includes(q) || p.title?.toLowerCase().includes(q) || p.company?.toLowerCase().includes(q)
 		)
 	}, [people, searchQuery])
 
@@ -176,8 +148,8 @@ export function AnalysisByPersonTab({ people, routes, projectPath }: ByPersonTab
 				<User className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
 				<h2 className="mb-2 font-semibold text-xl">No people yet</h2>
 				<p className="mx-auto max-w-md text-muted-foreground">
-					People are automatically identified from your interviews and surveys.
-					Start conversations to see analysis per person.
+					People are automatically identified from your interviews and surveys. Start conversations to see analysis per
+					person.
 				</p>
 			</div>
 		)
@@ -188,7 +160,7 @@ export function AnalysisByPersonTab({ people, routes, projectPath }: ByPersonTab
 			<div className="space-y-6">
 				{/* Search */}
 				<div className="relative max-w-md">
-					<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						placeholder="Search people..."
 						value={searchQuery}
@@ -201,12 +173,7 @@ export function AnalysisByPersonTab({ people, routes, projectPath }: ByPersonTab
 				{withAnalysis.length > 0 && (
 					<div className="space-y-3">
 						{withAnalysis.map((person) => (
-							<PersonCard
-								key={person.id}
-								person={person}
-								onClick={() => setSelectedPerson(person)}
-								routes={routes}
-							/>
+							<PersonCard key={person.id} person={person} onClick={() => setSelectedPerson(person)} routes={routes} />
 						))}
 					</div>
 				)}
@@ -215,26 +182,19 @@ export function AnalysisByPersonTab({ people, routes, projectPath }: ByPersonTab
 				{withoutAnalysis.length > 0 && (
 					<div className="space-y-3">
 						{withAnalysis.length > 0 && (
-							<h3 className="text-muted-foreground text-sm font-medium pt-2">
+							<h3 className="pt-2 font-medium text-muted-foreground text-sm">
 								Awaiting analysis ({withoutAnalysis.length})
 							</h3>
 						)}
 						{withoutAnalysis.map((person) => (
-							<PersonCard
-								key={person.id}
-								person={person}
-								onClick={() => setSelectedPerson(person)}
-								routes={routes}
-							/>
+							<PersonCard key={person.id} person={person} onClick={() => setSelectedPerson(person)} routes={routes} />
 						))}
 					</div>
 				)}
 
 				{/* No results */}
 				{filteredPeople.length === 0 && searchQuery && (
-					<div className="py-12 text-center text-muted-foreground">
-						No people matching "{searchQuery}"
-					</div>
+					<div className="py-12 text-center text-muted-foreground">No people matching "{searchQuery}"</div>
 				)}
 			</div>
 

@@ -33,13 +33,13 @@ export default function PrivacyPolicyPage() {
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">1. Introduction</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								DeepLight ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy
-								explains how we collect, use, disclose, and safeguard your information when you use our
-								conversation intelligence platform and related services (collectively, the "Service").
+								DeepLight ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains
+								how we collect, use, disclose, and safeguard your information when you use our conversation intelligence
+								platform and related services (collectively, the "Service").
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								By using our Service, you consent to the data practices described in this policy. If you do not
-								agree with our policies and practices, please do not use our Service.
+								By using our Service, you consent to the data practices described in this policy. If you do not agree
+								with our policies and practices, please do not use our Service.
 							</p>
 						</section>
 
@@ -49,8 +49,8 @@ export default function PrivacyPolicyPage() {
 							<h3 className="mb-3 font-semibold text-xl">2.1 Information You Provide</h3>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>
-									<strong>Account Information:</strong> Name, email address, company name, job title, and phone
-									number when you register for an account.
+									<strong>Account Information:</strong> Name, email address, company name, job title, and phone number
+									when you register for an account.
 								</li>
 								<li>
 									<strong>Audio and Video Content:</strong> Interview recordings, meeting recordings, and other
@@ -61,8 +61,8 @@ export default function PrivacyPolicyPage() {
 									audio/video content.
 								</li>
 								<li>
-									<strong>Payment Information:</strong> Billing address and payment details (processed securely
-									through our payment processor).
+									<strong>Payment Information:</strong> Billing address and payment details (processed securely through
+									our payment processor).
 								</li>
 								<li>
 									<strong>Communications:</strong> Information you provide when contacting our support team or
@@ -77,20 +77,20 @@ export default function PrivacyPolicyPage() {
 									taken.
 								</li>
 								<li>
-									<strong>Device Information:</strong> IP address, browser type, operating system, device
-									identifiers, and screen resolution.
+									<strong>Device Information:</strong> IP address, browser type, operating system, device identifiers,
+									and screen resolution.
 								</li>
 								<li>
-									<strong>Cookies and Tracking Technologies:</strong> Session cookies, analytics cookies, and
-									similar technologies (see Section 7).
+									<strong>Cookies and Tracking Technologies:</strong> Session cookies, analytics cookies, and similar
+									technologies (see Section 7).
 								</li>
 							</ul>
 
 							<h3 className="mb-3 font-semibold text-xl">2.3 Information from Third Parties</h3>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>
-									<strong>Integration Data:</strong> Information from services you connect to DeepLight (e.g.,
-									calendar integrations, CRM systems).
+									<strong>Integration Data:</strong> Information from services you connect to DeepLight (e.g., calendar
+									integrations, CRM systems).
 								</li>
 								<li>
 									<strong>Single Sign-On:</strong> Basic profile information from identity providers if you use SSO.
@@ -112,18 +112,16 @@ export default function PrivacyPolicyPage() {
 								<li>Protect against fraud, abuse, and security threats</li>
 								<li>Comply with legal obligations</li>
 							</ul>
-							<p className="mb-4 rounded-lg border-l-4 border-orange-500 bg-orange-50 p-4 text-slate-700">
-								<strong>Important:</strong> We do NOT use your audio recordings, transcripts, or customer data to
-								train our AI models. Your content remains yours and is only processed to provide the Service to
-								you.
+							<p className="mb-4 rounded-lg border-orange-500 border-l-4 bg-orange-50 p-4 text-slate-700">
+								<strong>Important:</strong> We do NOT use your audio recordings, transcripts, or customer data to train
+								our AI models. Your content remains yours and is only processed to provide the Service to you.
 							</p>
 						</section>
 
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">4. How We Share Your Information</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								We do not sell your personal information. We may share your information in the following
-								circumstances:
+								We do not sell your personal information. We may share your information in the following circumstances:
 							</p>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>
@@ -135,15 +133,15 @@ export default function PrivacyPolicyPage() {
 									configured in your account settings.
 								</li>
 								<li>
-									<strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets,
-									with appropriate confidentiality protections.
+									<strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets, with
+									appropriate confidentiality protections.
 								</li>
 								<li>
 									<strong>Legal Requirements:</strong> When required by law, legal process, or government request.
 								</li>
 								<li>
-									<strong>Protection of Rights:</strong> To protect the rights, property, or safety of DeepLight,
-									our users, or the public.
+									<strong>Protection of Rights:</strong> To protect the rights, property, or safety of DeepLight, our
+									users, or the public.
 								</li>
 								<li>
 									<strong>With Your Consent:</strong> For any other purpose with your explicit consent.
@@ -154,8 +152,8 @@ export default function PrivacyPolicyPage() {
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">5. Data Retention</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								We retain your information for as long as your account is active or as needed to provide the
-								Service. Specific retention periods:
+								We retain your information for as long as your account is active or as needed to provide the Service.
+								Specific retention periods:
 							</p>
 							<ul className="mb-4 list-disc space-y-2 pl-6 text-slate-700">
 								<li>
@@ -174,8 +172,8 @@ export default function PrivacyPolicyPage() {
 								</li>
 							</ul>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								Enterprise customers may configure custom retention policies. Upon account termination, you may
-								request data export within 30 days.
+								Enterprise customers may configure custom retention policies. Upon account termination, you may request
+								data export within 30 days.
 							</p>
 						</section>
 
@@ -192,8 +190,8 @@ export default function PrivacyPolicyPage() {
 									<strong>Correction:</strong> Request correction of inaccurate or incomplete information.
 								</li>
 								<li>
-									<strong>Deletion:</strong> Request deletion of your personal information (subject to legal
-									retention requirements).
+									<strong>Deletion:</strong> Request deletion of your personal information (subject to legal retention
+									requirements).
 								</li>
 								<li>
 									<strong>Portability:</strong> Request a machine-readable copy of your data.
@@ -234,8 +232,8 @@ export default function PrivacyPolicyPage() {
 								</li>
 							</ul>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								You can control cookies through your browser settings. Note that disabling certain cookies may
-								affect the functionality of the Service.
+								You can control cookies through your browser settings. Note that disabling certain cookies may affect
+								the functionality of the Service.
 							</p>
 						</section>
 
@@ -252,8 +250,8 @@ export default function PrivacyPolicyPage() {
 								<li>Employee security training and background checks</li>
 							</ul>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								While we strive to protect your information, no method of transmission over the Internet is 100%
-								secure. We cannot guarantee absolute security.
+								While we strive to protect your information, no method of transmission over the Internet is 100% secure.
+								We cannot guarantee absolute security.
 							</p>
 						</section>
 
@@ -273,10 +271,10 @@ export default function PrivacyPolicyPage() {
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">10. Recording Consent</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								If you use DeepLight to record conversations, you are responsible for obtaining appropriate consent
-								from all participants in accordance with applicable laws. Many jurisdictions require all-party
-								consent for recording conversations. DeepLight provides tools to help you obtain and document
-								consent, but the legal responsibility remains with you.
+								If you use DeepLight to record conversations, you are responsible for obtaining appropriate consent from
+								all participants in accordance with applicable laws. Many jurisdictions require all-party consent for
+								recording conversations. DeepLight provides tools to help you obtain and document consent, but the legal
+								responsibility remains with you.
 							</p>
 						</section>
 
@@ -311,8 +309,8 @@ export default function PrivacyPolicyPage() {
 									interests, legal obligations, or your consent.
 								</li>
 								<li>
-									<strong>Data Protection Authority:</strong> You have the right to lodge a complaint with your
-									local supervisory authority.
+									<strong>Data Protection Authority:</strong> You have the right to lodge a complaint with your local
+									supervisory authority.
 								</li>
 								<li>
 									<strong>Data Protection Officer:</strong> You may contact our DPO at{" "}
@@ -326,19 +324,18 @@ export default function PrivacyPolicyPage() {
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">13. Children's Privacy</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								Our Service is not intended for children under 16 years of age. We do not knowingly collect
-								personal information from children under 16. If we learn we have collected information from a child
-								under 16, we will delete it promptly. If you believe we have collected information from a child,
-								please contact us.
+								Our Service is not intended for children under 16 years of age. We do not knowingly collect personal
+								information from children under 16. If we learn we have collected information from a child under 16, we
+								will delete it promptly. If you believe we have collected information from a child, please contact us.
 							</p>
 						</section>
 
 						<section className="mb-10">
 							<h2 className="mb-4 font-semibold text-2xl">14. Changes to This Policy</h2>
 							<p className="mb-4 text-slate-700 leading-relaxed">
-								We may update this Privacy Policy from time to time. We will notify you of material changes by
-								posting the new policy on this page and updating the "Last Updated" date. For significant changes,
-								we will provide additional notice via email or through the Service.
+								We may update this Privacy Policy from time to time. We will notify you of material changes by posting
+								the new policy on this page and updating the "Last Updated" date. For significant changes, we will
+								provide additional notice via email or through the Service.
 							</p>
 							<p className="mb-4 text-slate-700 leading-relaxed">
 								Your continued use of the Service after any changes constitutes acceptance of the updated policy.
