@@ -1,20 +1,19 @@
 /**
- * AIAssistantPanel - Collapsible AI assistant sidebar panel
+ * AIAssistantPanel - Floating AI assistant widget
  *
  * Features:
- * - Collapsible panel (384px expanded, 48px collapsed)
- * - Dismissable "Next Steps" card with smart prioritized tasks
- * - Integrated chat (no redundant header)
+ * - Collapsed: Prominent floating action button (bottom-left) with color pop
+ * - Expanded: Floating panel overlay with chat, journey progress, and tasks
+ * - Positioned outside the layout flow (fixed positioning)
  */
 
 import {
   CheckSquare,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
   History,
   Map,
+  Minus,
   Plus,
-  Search,
   Sparkles,
   X,
 } from "lucide-react";
@@ -99,10 +98,10 @@ function ChatThreadSelector({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-7 w-7 text-slate-400 hover:text-white"
           title="Chat history"
         >
-          <History className="h-4 w-4" />
+          <History className="h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
@@ -167,22 +166,22 @@ function JourneyProgressBar({
   return (
     <Link
       to={routes.journey()}
-      className="block rounded-lg border border-primary/20 bg-primary/5 p-3 transition-colors hover:bg-primary/10"
+      className="block rounded-lg border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/10"
     >
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Map className="h-3.5 w-3.5 text-primary" />
-          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+          <Map className="h-3 w-3 text-blue-400" />
+          <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">
             Journey
           </span>
         </div>
-        <span className="font-semibold text-primary text-xs">
+        <span className="font-semibold text-blue-400 text-[10px]">
           {completedCards}/{totalCards}
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
+      <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-600"
+          className="h-full rounded-full bg-blue-500 transition-[width] duration-600"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -226,7 +225,6 @@ function getTopTasks(
   const insights = counts.insights ?? 0;
   const people = counts.people ?? 0;
 
-  // Priority 1: Actionable items that need attention
   if (surveyResponses > 0) {
     tasks.push({
       title: `Review ${surveyResponses} new survey response${surveyResponses > 1 ? "s" : ""}`,
@@ -241,36 +239,33 @@ function getTopTasks(
     });
   }
 
-  // Priority 2: Progress-based suggestions
   if (encounters > 0 && themes === 0) {
     tasks.push({
-      title: `${encounters} conversation${encounters > 1 ? "s" : ""} ready — run analysis to find themes`,
+      title: `${encounters} conversation${encounters > 1 ? "s" : ""} ready — run analysis`,
       link: routes.interviews.index(),
     });
   } else if (themes > 0 && insights === 0) {
     tasks.push({
-      title: `${themes} theme${themes > 1 ? "s" : ""} found — generate your first insight`,
+      title: `${themes} theme${themes > 1 ? "s" : ""} found — generate insights`,
       link: routes.insights.table(),
     });
   } else if (themes > 0 && encounters >= 3 && insights > 0) {
     tasks.push({
-      title: `${themes} theme${themes > 1 ? "s" : ""} across ${encounters} conversations — synthesize findings`,
+      title: `${themes} theme${themes > 1 ? "s" : ""} across ${encounters} conversations`,
       link: routes.insights.table(),
     });
   }
 
-  // Priority 3: Growth nudges
   if (people > 0 && tasks.length < 3) {
     tasks.push({
-      title: `${people} contact${people > 1 ? "s" : ""} tracked — review & segment`,
+      title: `${people} contact${people > 1 ? "s" : ""} — review & segment`,
       link: routes.people.index(),
     });
   }
 
-  // Fallback: Get started
   if (tasks.length === 0) {
     tasks.push({
-      title: "Upload a conversation or create a survey to get started",
+      title: "Upload a conversation or create a survey",
       link: routes.interviews.upload(),
     });
   }
@@ -303,39 +298,38 @@ function TopTasks({ routes, counts }: TopTasksProps) {
 
   if (dismissed) {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
+      <button
+        type="button"
         onClick={handleShow}
-        className="justify-start gap-2 text-muted-foreground"
+        className="flex items-center gap-1.5 text-slate-400 text-xs hover:text-slate-200"
       >
-        <CheckSquare className="h-4 w-4" />
-        Next steps
-      </Button>
+        <CheckSquare className="h-3 w-3" />
+        Show next steps
+      </button>
     );
   }
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+    <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">
           Next Steps
         </span>
         <button
           type="button"
           onClick={handleDismiss}
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+          className="rounded p-0.5 text-slate-500 hover:text-slate-300"
           title="Dismiss"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3 w-3" />
         </button>
       </div>
-      <ul className="space-y-1.5">
+      <ul className="space-y-0.5">
         {tasks.map((task) => (
           <li key={task.link}>
             <Link
               to={task.link}
-              className="block rounded-md px-2 py-1.5 text-primary text-sm transition-colors hover:bg-primary/10 hover:underline"
+              className="block rounded-md px-2 py-1 text-blue-400 text-xs transition-colors hover:bg-white/10 hover:text-blue-300"
             >
               {task.title}
             </Link>
@@ -358,7 +352,7 @@ export function AIAssistantPanel({
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const { counts } = useSidebarCounts(accountId, projectId);
 
-  // Persist panel state to localStorage (skip during welcome flow to avoid overwriting user's preference)
+  // Persist panel state to localStorage
   useEffect(() => {
     if (typeof window !== "undefined" && !suppressPersistence) {
       localStorage.setItem("ai-panel-open", String(isOpen));
@@ -369,7 +363,7 @@ export function AIAssistantPanel({
     onOpenChange(!isOpen);
   }, [isOpen, onOpenChange]);
 
-  // Ref to the chat's clearChat function, registered via callback
+  // Ref to the chat's clearChat function
   const clearChatRef = useRef<(() => void) | null>(null);
   const handleClearChatRef = useCallback((fn: (() => void) | null) => {
     clearChatRef.current = fn;
@@ -392,72 +386,60 @@ export function AIAssistantPanel({
     loadThreadRef.current?.(threadId);
   }, []);
 
-  // Collapsed state - just show icon strip
+  const taskCount = counts.highPriorityTasks ?? 0;
+
+  // Collapsed state — floating action button
   if (!isOpen) {
     return (
-      <div
+      <button
+        type="button"
+        onClick={handleToggle}
         className={cn(
-          "flex h-full w-12 flex-col items-center border-r bg-slate-100 py-4 shadow-[1px_0_6px_-2px_rgba(0,0,0,0.06)]",
+          "group fixed bottom-6 left-6 z-50 flex h-14 w-14 items-center justify-center",
+          "rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700",
+          "shadow-lg shadow-blue-600/25 ring-1 ring-white/20",
+          "transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-blue-600/30",
+          "active:scale-95",
           className,
         )}
+        title="Open Uppy Assistant"
       >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleToggle}
-          className="mb-4"
-          title="Expand Uppy Assistant"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-
-        <div className="flex flex-col items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggle}
-            className="relative"
-            title="Open Uppy Assistant"
+        <Sparkles className="h-6 w-6 text-white transition-transform group-hover:rotate-12" />
+        {taskCount > 0 && (
+          <Badge
+            variant="destructive"
+            className="-top-1.5 -right-1.5 absolute flex h-5 w-5 items-center justify-center p-0 text-[10px]"
           >
-            <Sparkles className="h-5 w-5 text-primary" />
-            {(counts.highPriorityTasks ?? 0) > 0 && (
-              <Badge
-                variant="destructive"
-                className="-top-1 -right-1 absolute flex h-4 w-4 items-center justify-center p-0 text-[10px]"
-              >
-                {counts.highPriorityTasks}
-              </Badge>
-            )}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggle}
-            title="Search"
-          >
-            <Search className="h-5 w-5 text-muted-foreground" />
-          </Button>
-        </div>
-      </div>
+            {taskCount}
+          </Badge>
+        )}
+      </button>
     );
   }
 
-  // Expanded state - full panel (width controlled by parent ResizablePanel)
+  // Expanded state — floating panel overlay
   return (
     <div
       className={cn(
-        "flex h-full min-w-[280px] flex-col border-r bg-slate-100 shadow-[1px_0_6px_-2px_rgba(0,0,0,0.06)]",
+        "fixed bottom-6 left-6 z-50 flex w-[400px] flex-col",
+        "rounded-2xl bg-slate-900 text-slate-100",
+        "shadow-2xl shadow-black/40 ring-1 ring-white/10",
+        "animate-in fade-in slide-in-from-bottom-4 duration-200",
         className,
       )}
+      style={{ maxHeight: "calc(100vh - 120px)" }}
     >
-      {/* Header with new chat + collapse buttons */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 p-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm">Uppy Assistant</span>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <span className="font-semibold text-sm text-white">
+            Uppy Assistant
+          </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {accountId && projectId && (
             <ChatThreadSelector
               accountId={accountId}
@@ -470,27 +452,27 @@ export function AIAssistantPanel({
             variant="ghost"
             size="icon"
             onClick={handleNewChat}
-            className="h-8 w-8"
+            className="h-7 w-7 text-slate-400 hover:text-white"
             title="New chat"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={handleToggle}
-            className="h-8 w-8"
-            title="Collapse panel"
+            className="h-7 w-7 text-slate-400 hover:text-white"
+            title="Minimize"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <Minus className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Content area */}
-      <div className="flex flex-1 flex-col gap-2 overflow-hidden p-3">
-        {/* Journey progress + next steps */}
-        <div className="flex flex-col gap-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Journey progress + next steps (collapsible) */}
+        <div className="flex flex-shrink-0 flex-col gap-2 border-b border-white/5 px-4 py-3">
           {projectId && (
             <JourneyProgressBar
               routes={routes}
@@ -501,7 +483,7 @@ export function AIAssistantPanel({
           {projectPath && <TopTasks routes={routes} counts={counts} />}
         </div>
 
-        {/* Chat - goes directly into chat interface, no extra header */}
+        {/* Chat */}
         {accountId && projectId && (
           <div className="min-h-0 flex-1">
             <ProjectStatusAgentChat

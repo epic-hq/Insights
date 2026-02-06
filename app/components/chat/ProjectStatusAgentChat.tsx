@@ -1045,7 +1045,12 @@ export function ProjectStatusAgentChat({
     <>
       <div className="min-h-0 flex-1 overflow-hidden">
         {visibleMessages.length === 0 ? (
-          <div className="flex flex-row gap-2 text-foreground/70 text-primary text-xs sm:text-sm">
+          <div
+            className={cn(
+              "flex flex-row gap-2 text-xs sm:text-sm",
+              embedded ? "text-slate-300" : "text-foreground/70 text-primary",
+            )}
+          >
             <Bot />
             Hey, how can I help?
           </div>
@@ -1077,7 +1082,12 @@ export function ProjectStatusAgentChat({
                     className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                   >
                     <div className="max-w-[85%]">
-                      <div className="mb-1 text-[10px] text-foreground/60 uppercase tracking-wide">
+                      <div
+                        className={cn(
+                          "mb-1 text-[10px] uppercase tracking-wide",
+                          embedded ? "text-slate-400" : "text-foreground/60",
+                        )}
+                      >
                         {isUser ? "You" : "Uppy Assistant"}
                       </div>
                       <div
@@ -1085,7 +1095,9 @@ export function ProjectStatusAgentChat({
                           "whitespace-pre-wrap rounded-lg px-3 py-2 shadow-sm",
                           isUser
                             ? "bg-blue-600 text-white"
-                            : "bg-background text-foreground ring-1 ring-border/60",
+                            : embedded
+                              ? "bg-slate-800 text-slate-100 ring-1 ring-white/10"
+                              : "bg-background text-foreground ring-1 ring-border/60",
                         )}
                         onClick={!isUser ? handleAssistantLinkClick : undefined}
                       >
@@ -1162,91 +1174,103 @@ export function ProjectStatusAgentChat({
             ))}
           </Suggestions>
         )}
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit}>
           <div className="relative">
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(event) => setInput(event.currentTarget.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask.."
+              placeholder="Ask Uppy anything..."
               rows={2}
               disabled={isBusy}
-              className="min-h-[72px] resize-y border-2 border-border pr-12 focus-visible:border-primary"
+              className={cn(
+                "min-h-[60px] resize-none rounded-xl border-2 pr-20 shadow-sm focus-visible:ring-1",
+                embedded
+                  ? "border-white/15 bg-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:border-blue-500 focus-visible:ring-blue-500/30"
+                  : "border-border bg-white focus-visible:border-primary focus-visible:ring-primary/30 dark:bg-zinc-900",
+              )}
             />
-            {isVoiceSupported && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <VoiceButton
-                      state={voiceButtonState}
-                      onPress={() => {
-                        if (isVoiceRecording) {
-                          stopVoiceRecording();
-                        } else {
-                          startVoiceRecording();
-                        }
-                      }}
-                      icon={<Mic className="h-4 w-4" />}
-                      size="icon"
-                      variant="ghost"
-                      disabled={isTranscribing}
-                      className="absolute right-2 bottom-2 h-8 w-8"
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Transcribe your voice into commands for AI</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            {statusMessage && (
-              <span
-                className="mr-auto text-muted-foreground text-xs"
-                aria-live="polite"
-              >
-                {statusMessage}
-              </span>
-            )}
-            <div className="flex items-start gap-2">
-              {isVoiceEnabled && (
-                <ProjectStatusVoiceChat
-                  accountId={accountId}
-                  projectId={projectId}
-                />
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              {isVoiceSupported && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <VoiceButton
+                        state={voiceButtonState}
+                        onPress={() => {
+                          if (isVoiceRecording) {
+                            stopVoiceRecording();
+                          } else {
+                            startVoiceRecording();
+                          }
+                        }}
+                        icon={<Mic className="h-4 w-4" />}
+                        size="icon"
+                        variant="ghost"
+                        disabled={isTranscribing}
+                        className="h-7 w-7"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Voice input</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               {isBusy ? (
                 <button
                   type="button"
                   onClick={stop}
-                  className="flex h-8 items-center gap-1.5 rounded-md bg-red-600 px-3 font-medium text-sm text-white hover:bg-red-700"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700"
+                  title="Stop"
                 >
                   <Square className="h-3.5 w-3.5" />
-                  Stop
                 </button>
               ) : (
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 font-medium text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:opacity-40"
+                  title="Send"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  Send
                 </button>
               )}
             </div>
           </div>
+          {(statusMessage || isVoiceEnabled) && (
+            <div className="mt-1.5 flex items-center gap-2">
+              {statusMessage && (
+                <span
+                  className="text-muted-foreground text-xs"
+                  aria-live="polite"
+                >
+                  {statusMessage}
+                </span>
+              )}
+              {isVoiceEnabled && (
+                <div className="ml-auto">
+                  <ProjectStatusVoiceChat
+                    accountId={accountId}
+                    projectId={projectId}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </form>
       </div>
     </>
   );
 
   // Embedded mode: no Card chrome, just chat content filling the parent container
+  // Uses dark-aware styling for the floating panel
   if (embedded) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">{chatContent}</div>
+      <div className="flex h-full flex-col overflow-hidden p-3">
+        {chatContent}
+      </div>
     );
   }
 
