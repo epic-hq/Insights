@@ -22,7 +22,7 @@ const FinalizeRequestSchema = z.object({
       z.object({
         speaker: z.string(),
         text: z.string(),
-        timestamp_ms: z.number().optional(),
+        timestamp_ms: z.coerce.number().optional(),
       }),
     )
     .optional(),
@@ -311,12 +311,33 @@ export async function action({ request }: ActionFunctionArgs) {
       statusUpdate.created_by = user.id;
     }
 
+    // Re-fetch to get latest processing_metadata (transcript step may have updated it)
+    const { data: freshInterview } = await supabase
+      .from("interviews")
+      .select("processing_metadata")
+      .eq("id", interview_id)
+      .single();
+
+    if (freshInterview) {
+      statusUpdate.processing_metadata = {
+        ...((freshInterview.processing_metadata as object) || {}),
+        finalized_at: new Date().toISOString(),
+        tasks_created: results.tasks_created,
+        people_resolved: results.people_resolved,
+      };
+    }
+
     const { error: statusError } = await supabase
       .from("interviews")
       .update(statusUpdate)
       .eq("id", interview_id);
 
-    if (!statusError) {
+    if (statusError) {
+      consola.error(
+        "[desktop-finalize] Status update failed:",
+        statusError.message,
+      );
+    } else {
       results.status_updated = true;
     }
 

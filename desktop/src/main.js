@@ -1156,23 +1156,12 @@ function initSDK() {
       windowId: evt.window.id,
     });
 
-    // Clean up the global tracking when a meeting ends
-    if (
-      evt.window &&
-      evt.window.id &&
-      global.activeMeetingIds &&
-      global.activeMeetingIds[evt.window.id]
-    ) {
-      const noteId = global.activeMeetingIds[evt.window.id].noteId;
-      console.log(`Cleaning up meeting tracking for: ${evt.window.id}`);
-
-      // Clean up evidence extraction state
-      if (noteId) {
-        evidenceExtractionState.cleanup(noteId);
-      }
-
-      delete global.activeMeetingIds[evt.window.id];
-    }
+    // Do NOT delete activeMeetingIds here — recording-ended fires AFTER meeting-closed
+    // and needs the noteId, interviewId, and interviewPromise data.
+    // Cleanup is done in recording-ended after finalize/upload complete.
+    console.log(
+      `[meeting-closed] Window ${evt.window.id} — preserving activeMeetingIds for recording-ended`,
+    );
 
     detectedMeeting = null;
     // Clean up recorded window tracking so future meetings in this window can be detected
@@ -1190,9 +1179,8 @@ function initSDK() {
   RecallAiSdk.addEventListener("recording-ended", async (evt) => {
     console.log("Recording ended:", evt);
 
-    // Mark this window as recorded so we don't re-detect it
-    recordedWindowIds.add(evt.window.id);
-    detectedMeeting = null;
+    // Do NOT null detectedMeeting — user may still be in the meeting and want to re-record.
+    // detectedMeeting is only nulled in meeting-closed (when the meeting window actually closes).
 
     // Log the SDK recording-ended event
     sdkLogger.logEvent("recording-ended", {
@@ -1202,14 +1190,25 @@ function initSDK() {
     // Get noteId and interviewId before any cleanup
     let noteId = null;
     let interviewId = null;
+    const windowId = evt.window?.id;
+
+    console.log(`[recording-ended] Window ID: ${windowId}`);
+    console.log(
+      `[recording-ended] activeMeetingIds keys:`,
+      global.activeMeetingIds ? Object.keys(global.activeMeetingIds) : "none",
+    );
+
     const meetingInfo =
-      evt.window?.id && global.activeMeetingIds?.[evt.window.id]
-        ? global.activeMeetingIds[evt.window.id]
+      windowId && global.activeMeetingIds?.[windowId]
+        ? global.activeMeetingIds[windowId]
         : null;
 
     if (meetingInfo) {
       noteId = meetingInfo.noteId;
       interviewId = meetingInfo.interviewId;
+      console.log(
+        `[recording-ended] Found meetingInfo: noteId=${noteId}, interviewId=${interviewId}, hasPromise=${!!meetingInfo.interviewPromise}`,
+      );
 
       // If interviewId not yet set, await the creation promise (race condition fix)
       if (!interviewId && meetingInfo.interviewPromise) {
@@ -1228,6 +1227,10 @@ function initSDK() {
           );
         }
       }
+    } else {
+      console.log(
+        `[recording-ended] No meetingInfo found for window ${windowId}`,
+      );
     }
 
     try {
@@ -1254,7 +1257,9 @@ function initSDK() {
         const formattedTranscript = meeting.transcript.map((t) => ({
           speaker: t.speaker,
           text: t.text,
-          timestamp_ms: t.timestamp,
+          timestamp_ms: t.timestamp
+            ? new Date(t.timestamp).getTime()
+            : undefined,
         }));
 
         let durationSeconds = null;
@@ -1305,6 +1310,24 @@ function initSDK() {
       }
     } catch (error) {
       console.error("Error handling recording ended:", error);
+    }
+
+    // Clean up activeMeetingIds and evidence state now that recording-ended is done
+    if (windowId && global.activeMeetingIds?.[windowId]) {
+      const cleanupNoteId = global.activeMeetingIds[windowId].noteId;
+      if (cleanupNoteId) {
+        evidenceExtractionState.cleanup(cleanupNoteId);
+      }
+      delete global.activeMeetingIds[windowId];
+      console.log(
+        `[recording-ended] Cleaned up activeMeetingIds for window ${windowId}`,
+      );
+    }
+
+    // Allow re-recording in this window — remove from recorded set
+    // (meeting-closed already deleted it, but recording-ended re-added it at the top)
+    if (windowId) {
+      recordedWindowIds.delete(windowId);
     }
   });
 
@@ -1963,6 +1986,9 @@ async function createMeetingNoteAndRecord(platformName) {
       ? detectedMeeting.window.title
       : `${platformName} Meeting - ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
+    // Capture window ID in local variable — detectedMeeting can be nulled by meeting-closed
+    const meetingWindowId = detectedMeeting.window.id;
+
     // Create interview record in UpSight backend
     // Store promise so recording-ended can await it if needed
     const interviewPromise = createInterviewRecord(
@@ -1971,12 +1997,12 @@ async function createMeetingNoteAndRecord(platformName) {
       id,
     ).then((result) => {
       if (result) {
-        // Store the interview ID for later updates
+        // Store the interview ID using captured local variable (not live detectedMeeting ref)
         if (
           global.activeMeetingIds &&
-          global.activeMeetingIds[detectedMeeting.window.id]
+          global.activeMeetingIds[meetingWindowId]
         ) {
-          global.activeMeetingIds[detectedMeeting.window.id].interviewId =
+          global.activeMeetingIds[meetingWindowId].interviewId =
             result.interview_id;
         }
         // Also store in evidence extraction state for real-time persistence
@@ -1987,15 +2013,15 @@ async function createMeetingNoteAndRecord(platformName) {
         );
         return result.interview_id;
       }
+      console.warn(
+        "[createInterviewRecord] Returned null — interview not created",
+      );
       return null;
     });
 
     // Store promise so recording-ended handler can await if interviewId not yet set
-    if (
-      global.activeMeetingIds &&
-      global.activeMeetingIds[detectedMeeting.window.id]
-    ) {
-      global.activeMeetingIds[detectedMeeting.window.id].interviewPromise =
+    if (global.activeMeetingIds && global.activeMeetingIds[meetingWindowId]) {
+      global.activeMeetingIds[meetingWindowId].interviewPromise =
         interviewPromise;
     }
 
@@ -2015,22 +2041,19 @@ async function createMeetingNoteAndRecord(platformName) {
       date: now.toISOString(),
       participants: [],
       content: template,
-      recordingId: detectedMeeting.window.id,
+      recordingId: meetingWindowId,
       platform: platformName,
       transcript: [], // Initialize an empty array for transcript data
     };
 
     // Update the active meeting tracking with the note ID
-    if (
-      global.activeMeetingIds &&
-      global.activeMeetingIds[detectedMeeting.window.id]
-    ) {
-      global.activeMeetingIds[detectedMeeting.window.id].noteId = id;
+    if (global.activeMeetingIds && global.activeMeetingIds[meetingWindowId]) {
+      global.activeMeetingIds[meetingWindowId].noteId = id;
     }
 
     // Register this meeting in our active recordings tracker (even before starting)
     // This ensures the UI knows about it immediately
-    activeRecordings.addRecording(detectedMeeting.window.id, id, platformName);
+    activeRecordings.addRecording(meetingWindowId, id, platformName);
 
     // Add to pastMeetings
     meetingsData.pastMeetings.unshift(newMeeting);

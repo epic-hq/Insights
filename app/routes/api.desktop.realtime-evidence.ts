@@ -102,36 +102,37 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Build existing evidence context for deduplication
     const existingContext = existingEvidence?.length
-      ? `\nALREADY EXTRACTED (do NOT re-extract these):
+      ? `\nPREVIOUSLY EXTRACTED (avoid exact duplicates):
 ${existingEvidence.map((g, i) => `${i + 1}. ${g}`).join("\n")}
 
-For each insight, decide:
-- "new": genuinely new insight NOT covered above
-- "update": strengthens/clarifies an existing item (set updates_gist to the existing gist it replaces)
-- "skip": redundant, small talk, or already captured
+For each insight, set action:
+- "new": a new insight not already in the list above
+- "update": strengthens/adds detail to an existing item (set updates_gist to the gist it updates)
+- "skip": exact duplicate of something already extracted
 
-Be very selective. Most conversation is NOT evidence. Only extract truly new, substantive insights.\n`
+Keep extracting new insights from the transcript — having prior evidence does NOT mean you should stop. New topics, details, or speakers always warrant new evidence.\n`
       : "";
 
     const { object: result } = await generateObject({
       model: openai("gpt-4o-mini"),
       schema: EvidenceSchema,
-      prompt: `Extract ONLY real, specific insights from this conversation transcript. Do NOT invent or assume anything not explicitly stated.
+      prompt: `Extract specific insights from this conversation transcript. Stick to what was actually said — do not invent or assume.
 
 EVIDENCE types:
-- pain: problems, frustrations, blockers the speaker explicitly mentions
-- goal: desired outcomes the speaker explicitly states
-- workflow: specific processes the speaker describes
-- tool: specific tools/products the speaker names
-- context: specific background facts the speaker shares
+- pain: problems, frustrations, blockers mentioned
+- goal: desired outcomes stated
+- workflow: specific processes described
+- tool: specific tools/products named
+- context: specific background facts shared (company, role, situation, etc.)
 ${existingContext}
-TASKS: Only extract action items that someone explicitly commits to or assigns.
+TASKS: Extract action items someone explicitly commits to or assigns.
 
-CRITICAL RULES:
-- Only extract what is ACTUALLY SAID in the transcript. Never infer or generate generic business insights.
-- If the transcript is just greetings, small talk, or lacks substance, return EMPTY arrays.
+RULES:
+- Extract what is ACTUALLY SAID. Do not generate generic business insights.
 - Use the speaker's actual words for verbatim quotes.
-- If speaker is unknown, omit speaker_label rather than using "Unknown Speaker".
+- If speaker is unknown, omit speaker_label.
+- Even short statements can contain evidence — a single sentence about a pain point or goal counts.
+- Only return EMPTY arrays if the transcript is purely greetings or small talk with zero informational content.
 
 Transcript:
 ${transcript}`,

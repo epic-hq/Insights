@@ -63,6 +63,29 @@ function isChiefOfStaffPrompt(text: string): boolean {
   return wordBoundaryTriggers.some((trigger) => normalized.includes(trigger));
 }
 
+function isSetupPrompt(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  if (!normalized) return false;
+
+  const triggers = [
+    "help me set up",
+    "set up this project",
+    "setup this project",
+    "define my research",
+    "research goal",
+    "company website",
+    "company context",
+    "edit my context",
+    "update my research goal",
+    "change my industry",
+    "update my company",
+    "fill in my project",
+    "project setup",
+    "set up my project",
+  ];
+  return triggers.some((t) => normalized.includes(t));
+}
+
 function isSurveyCreationPrompt(text: string): boolean {
   const normalized = text.toLowerCase().trim();
   if (!normalized) return false;
@@ -163,13 +186,16 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   const lastUserText = getLastUserText(sanitizedMessages);
   const shouldUseChiefOfStaff = isChiefOfStaffPrompt(lastUserText);
   const shouldUseSurveyAgent = isSurveyCreationPrompt(lastUserText);
+  const shouldUseSetupAgent = isSetupPrompt(lastUserText);
   const targetAgentId = shouldUseChiefOfStaff
     ? "chiefOfStaffAgent"
     : shouldUseSurveyAgent
       ? "researchAgent"
-      : "projectStatusAgent";
+      : shouldUseSetupAgent
+        ? "projectSetupAgent"
+        : "projectStatusAgent";
 
-  if (shouldUseChiefOfStaff || shouldUseSurveyAgent) {
+  if (shouldUseChiefOfStaff || shouldUseSurveyAgent || shouldUseSetupAgent) {
     consola.info("project-status: routing override", {
       targetAgentId,
       lastUserText,

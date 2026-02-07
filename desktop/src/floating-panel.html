@@ -1181,14 +1181,12 @@
           tagClass = item.category;
         }
 
-        const speaker = item.speaker_label || 'Unknown';
+        const speaker = item.speaker_label || '';
 
         card.innerHTML = `
           <div class="tag-badge ${tagClass}">${tagClass}</div>
           <div class="evidence-content">
-            <div class="evidence-meta">
-              <span class="evidence-speaker">${speaker}</span>
-            </div>
+            ${speaker ? `<div class="evidence-meta"><span class="evidence-speaker">${speaker}</span></div>` : ''}
             <div class="evidence-gist">${item.gist}</div>
           </div>
           <button class="delete-btn" onclick="deleteItem(this)" title="Delete">

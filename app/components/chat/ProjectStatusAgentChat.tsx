@@ -842,6 +842,15 @@ export function ProjectStatusAgentChat({
   const toolSuggestions = useMemo(() => {
     // Initial suggestions based on project state
     if (displayableMessages.length === 0) {
+      // Setup-aware suggestions when on /setup page
+      if (location.pathname.endsWith("/setup")) {
+        return [
+          "Help me set up this project",
+          "Research my company website",
+          "Define research goals",
+        ];
+      }
+
       const interviewMatch = systemContext.match(
         /Interviews conducted:\s*(\d+)/,
       );
@@ -918,7 +927,7 @@ export function ProjectStatusAgentChat({
     }
 
     return [];
-  }, [displayableMessages]);
+  }, [displayableMessages, location.pathname, systemContext]);
 
   // Fallback: Generate suggestions if no tool calls found
   useEffect(() => {

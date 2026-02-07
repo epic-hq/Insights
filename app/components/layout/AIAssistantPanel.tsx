@@ -9,7 +9,6 @@
 
 import {
   CheckSquare,
-  ChevronDown,
   History,
   Map,
   Minus,
@@ -21,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
 import { Badge } from "~/components/ui/badge";
+import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -146,49 +146,6 @@ function ChatThreadSelector({
   );
 }
 
-interface JourneyProgressBarProps {
-  routes: RouteDefinitions;
-  counts: Record<string, number | undefined>;
-  projectId: string;
-}
-
-function JourneyProgressBar({
-  routes,
-  counts,
-  projectId,
-}: JourneyProgressBarProps) {
-  const { progress } = useJourneyProgress(projectId);
-  const totalCards = getTotalCards();
-  const completedCards = getCompletedCardCount(counts, progress);
-  const progressPercent =
-    totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
-
-  return (
-    <Link
-      to={routes.journey()}
-      className="block rounded-lg bg-white/[0.06] p-2.5 transition-colors hover:bg-white/[0.1]"
-    >
-      <div className="mb-1.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Map className="h-3 w-3 text-blue-400" />
-          <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">
-            Journey
-          </span>
-        </div>
-        <span className="font-semibold text-blue-400 text-[10px]">
-          {completedCards}/{totalCards}
-        </span>
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-blue-500 transition-[width] duration-600"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-    </Link>
-  );
-}
-
 const PANEL_WIDTH_MIN = 360;
 const PANEL_WIDTH_MAX = 600;
 const PANEL_WIDTH_DEFAULT = 440;
@@ -283,9 +240,10 @@ function getTopTasks(
 interface TopTasksProps {
   routes: RouteDefinitions;
   counts: Record<string, number | undefined>;
+  projectId?: string;
 }
 
-function TopTasks({ routes, counts }: TopTasksProps) {
+function TopTasks({ routes, counts, projectId }: TopTasksProps) {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("ai-panel-tasks-dismissed") === "true";
@@ -303,16 +261,47 @@ function TopTasks({ routes, counts }: TopTasksProps) {
 
   const tasks = getTopTasks(routes, counts);
 
+  // Compact journey progress for inline display
+  const { progress } = useJourneyProgress(projectId || "");
+  const totalCards = getTotalCards();
+  const completedCards = getCompletedCardCount(counts, progress);
+  const progressPercent =
+    totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
+
+  const journeyBadge = projectId ? (
+    <Link
+      to={routes.journey()}
+      className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[10px] transition-colors hover:bg-white/[0.08]"
+      title="View journey map"
+    >
+      <Map className="h-2.5 w-2.5 text-blue-400" />
+      <div className="flex items-center gap-1">
+        <div className="h-1 w-12 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-blue-500 transition-[width] duration-600"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <span className="font-semibold text-blue-400">
+          {completedCards}/{totalCards}
+        </span>
+      </div>
+    </Link>
+  ) : null;
+
   if (dismissed) {
     return (
-      <button
-        type="button"
-        onClick={handleShow}
-        className="flex items-center gap-1.5 text-slate-400 text-xs hover:text-slate-200"
-      >
-        <CheckSquare className="h-3 w-3" />
-        Show next steps
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={handleShow}
+          className="flex items-center gap-1.5 text-slate-400 text-xs hover:text-slate-200"
+        >
+          <CheckSquare className="h-3 w-3" />
+          Show next steps
+        </button>
+        {journeyBadge}
+      </div>
     );
   }
 
@@ -322,14 +311,17 @@ function TopTasks({ routes, counts }: TopTasksProps) {
         <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">
           Next Steps
         </span>
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="rounded p-0.5 text-slate-500 hover:text-slate-300"
-          title="Dismiss"
-        >
-          <X className="h-3 w-3" />
-        </button>
+        <div className="flex items-center gap-1">
+          {journeyBadge}
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="rounded p-0.5 text-slate-500 hover:text-slate-300"
+            title="Dismiss"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
       </div>
       <ul className="space-y-0.5">
         {tasks.map((task) => (
@@ -359,6 +351,29 @@ export function AIAssistantPanel({
   const { accountId, projectId, projectPath } = useCurrentProject();
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const { counts } = useSidebarCounts(accountId, projectId);
+  const { isExpanded, setIsExpanded } = useProjectStatusAgent();
+
+  // Sync context isExpanded → panel open state (skip initial mount to respect localStorage)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // On mount, sync context to match panel state (from localStorage)
+      setIsExpanded(isOpen);
+      return;
+    }
+    // After mount, context changes drive the panel
+    if (isExpanded !== isOpen) {
+      onOpenChange(isExpanded);
+    }
+  }, [isExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync panel open state → context (when toggled via panel controls)
+  useEffect(() => {
+    if (isOpen !== isExpanded) {
+      setIsExpanded(isOpen);
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Panel width state with localStorage persistence
   const [panelWidth, setPanelWidth] = useState(() => {
@@ -550,17 +565,12 @@ export function AIAssistantPanel({
         </div>
       </div>
 
-      {/* Journey progress + next steps */}
-      <div className="flex flex-shrink-0 flex-col gap-2 border-b border-white/[0.06] px-4 py-2.5">
-        {projectId && (
-          <JourneyProgressBar
-            routes={routes}
-            counts={counts}
-            projectId={projectId}
-          />
-        )}
-        {projectPath && <TopTasks routes={routes} counts={counts} />}
-      </div>
+      {/* Next steps with inline journey progress */}
+      {projectPath && (
+        <div className="flex flex-shrink-0 flex-col gap-2 border-b border-white/[0.06] px-4 py-2.5">
+          <TopTasks routes={routes} counts={counts} projectId={projectId} />
+        </div>
+      )}
 
       {/* Chat — fills remaining space */}
       {accountId && projectId && (

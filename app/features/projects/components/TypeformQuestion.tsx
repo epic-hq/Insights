@@ -323,7 +323,7 @@ export function TypeformQuestion({
 											) : (
 												<>
 													<Search className="h-4 w-4" />
-													<span className="hidden sm:inline">Auto-fill</span>
+													<span className="hidden sm:inline">Research</span>
 												</>
 											)}
 										</Button>

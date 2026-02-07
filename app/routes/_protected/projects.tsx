@@ -25,10 +25,7 @@ import {
   ResizablePanelGroup,
 } from "~/components/ui/resizable";
 import { CurrentProjectProvider } from "~/contexts/current-project-context";
-import {
-  ProjectStatusAgentProvider,
-  useProjectStatusAgent,
-} from "~/contexts/project-status-agent-context";
+import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
 import { getProjectById } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
 import { currentProjectContext } from "~/server/current-project-context";
@@ -289,13 +286,11 @@ export default function Projects() {
 
   return (
     <CurrentProjectProvider>
-      <ProjectStatusAgentProvider>
-        <ProjectLayout
-          statusData={statusData}
-          project={project}
-          userProfileContext={userProfileContext}
-        />
-      </ProjectStatusAgentProvider>
+      <ProjectLayout
+        statusData={statusData}
+        project={project}
+        userProfileContext={userProfileContext}
+      />
     </CurrentProjectProvider>
   );
 }

@@ -245,6 +245,14 @@ const routes = [
     "./routes/api.desktop.realtime-evidence.ts",
   ),
   route("api/desktop/interviews", "./routes/api.desktop.interviews.ts"),
+  route(
+    "api/desktop/interviews/finalize",
+    "./routes/api.desktop.interviews.finalize.ts",
+  ),
+  route(
+    "api/desktop/interviews/upload-media",
+    "./routes/api.desktop.interviews.upload-media.ts",
+  ),
   route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
 
   // API routes
