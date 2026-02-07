@@ -19,7 +19,7 @@ import { AuthProvider } from "~/contexts/AuthContext";
 import { CurrentProjectProvider } from "~/contexts/current-project-context";
 import { getProjects } from "~/features/projects/db";
 import { useDeviceDetection } from "~/hooks/useDeviceDetection";
-import { provisionLegacyTrial } from "~/lib/billing/polar.server";
+import { provisionTrial } from "~/lib/billing/polar.server";
 import {
   getAuthenticatedUser,
   getRlsClient,
@@ -236,7 +236,7 @@ export async function loader({ context }: Route.LoaderArgs) {
       }
     }
 
-    // Check for existing subscription or provision legacy trial (once per user)
+    // Check for existing subscription or provision free trial (once per user)
     let trialInfo: TrialInfo = {
       isOnTrial: false,
       planName: "",
@@ -274,12 +274,12 @@ export async function loader({ context }: Route.LoaderArgs) {
         }
         // If active/canceled/etc, trialInfo stays as default (not on trial)
       } else {
-        // No subscription for current account - check if we should provision legacy trial
+        // No subscription for current account - check if we should provision trial
         // Only provision ONCE per user (check user_settings flag)
-        const legacyTrialProvisioned =
+        const trialProvisioned =
           user.user_settings?.legacy_trial_provisioned_at;
 
-        if (!legacyTrialProvisioned) {
+        if (!trialProvisioned) {
           // IMPORTANT: Provision trial to user's OWNED team account, not current account
           // This ensures trials go to the team the user owns, not to invited teams
           const ownedTeamAccount = (user.accounts || []).find(
@@ -297,7 +297,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
             if (!existingSub) {
               consola.info(
-                "[PROTECTED_LAYOUT] No subscription on owned team, provisioning legacy trial",
+                "[PROTECTED_LAYOUT] No subscription on owned team, provisioning trial",
                 {
                   ownedTeamAccountId: ownedTeamAccount.account_id,
                   ownedTeamName: ownedTeamAccount.name,
@@ -306,14 +306,14 @@ export async function loader({ context }: Route.LoaderArgs) {
                 },
               );
 
-              const legacyTrial = await provisionLegacyTrial({
+              const trial = await provisionTrial({
                 accountId: ownedTeamAccount.account_id,
                 email: user.claims?.email,
-                planId: "pro", // Give existing users Pro trial
+                planId: "pro", // Give new users Pro trial
               });
 
-              if (legacyTrial) {
-                // Mark user as having received legacy trial
+              if (trial) {
+                // Mark user as having received trial
                 await supabaseAdmin
                   .from("user_settings")
                   .update({
@@ -324,16 +324,16 @@ export async function loader({ context }: Route.LoaderArgs) {
                 // Only show trial info if the owned team is the current account
                 if (ownedTeamAccount.account_id === currentAccountId) {
                   trialInfo = {
-                    isOnTrial: legacyTrial.isOnTrial,
-                    planName: legacyTrial.planName,
-                    trialEnd: legacyTrial.trialEnd,
+                    isOnTrial: trial.isOnTrial,
+                    planName: trial.planName,
+                    trialEnd: trial.trialEnd,
                     accountId: ownedTeamAccount.account_id,
                   };
                 }
 
-                consola.info("[PROTECTED_LAYOUT] Legacy trial provisioned", {
+                consola.info("[PROTECTED_LAYOUT] Trial provisioned", {
                   accountId: ownedTeamAccount.account_id,
-                  trialEnd: legacyTrial.trialEnd,
+                  trialEnd: trial.trialEnd,
                 });
               }
             } else {
@@ -361,9 +361,9 @@ export async function loader({ context }: Route.LoaderArgs) {
           }
         } else {
           consola.debug(
-            "[PROTECTED_LAYOUT] Legacy trial already provisioned, skipping",
+            "[PROTECTED_LAYOUT] Trial already provisioned, skipping",
             {
-              provisionedAt: legacyTrialProvisioned,
+              provisionedAt: trialProvisioned,
             },
           );
         }
