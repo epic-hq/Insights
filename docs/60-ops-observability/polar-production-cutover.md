@@ -78,3 +78,55 @@ If billing fails:
 1. Disable or rotate `POLAR_ACCESS_TOKEN`.
 2. Temporarily hide billing upgrade UI if needed.
 3. Investigate webhook errors and missing product IDs.
+
+## Lessons Learned
+
+### Customer Portal Authentication
+The customer portal requires using the Polar SDK's `customerSessions.create()` API to generate authenticated session URLs. Direct URL construction (`polar.sh/portal?customer_id=...`) does not work.
+
+**Implementation** (`app/routes/api.billing.portal.tsx`):
+```typescript
+const polar = new Polar({
+  accessToken,
+  server: server === "sandbox" ? "sandbox" : "production",
+});
+const session = await polar.customerSessions.create({
+  customerId: customer.id,
+});
+return redirect(session.customerPortalUrl);
+```
+
+**Required token scope**: `POLAR_ACCESS_TOKEN` must include `customer_sessions:write` scope. Regenerate the token in Polar dashboard if getting 403 `insufficient_scope` errors.
+
+### Trial System Architecture
+The app uses a `provider`-based billing system to differentiate free trials from paid subscriptions:
+- `provider='trial'`: Auto-provisioned 14-day free trial for new users
+- `provider='polar'`: Real paid subscriptions via Polar
+
+**Trial cleanup on payment**: Trials are automatically removed when a user purchases a subscription. The `removeTrial()` function in `app/lib/billing/polar.server.ts` is called from webhook handlers (`handleSubscriptionCreated` and `handleSubscriptionActive`) to delete trial records when a real subscription activates.
+
+**Avoid double-trialing**: Disable free trial periods on Polar products themselves in the Polar dashboard. The app-level trial system handles the free trial period - having both app-level and Polar product-level trials creates confusion.
+
+### Database Cleanup Best Practices
+When cleaning up billing data:
+- **Always scope to specific account_id** when deleting subscriptions or customers
+- Delete in FK constraint order: `billing_subscriptions` before `billing_customers`
+- Use Supabase SQL editor for manual cleanup rather than CLI commands if Supabase CLI version is outdated
+
+Example scoped cleanup:
+```sql
+DELETE FROM accounts.billing_subscriptions
+WHERE provider = 'trial' AND account_id = '<specific-account-id>';
+
+DELETE FROM accounts.billing_customers
+WHERE provider = 'trial' AND account_id = '<specific-account-id>';
+```
+
+### Migration Best Practices
+When renaming provider values in the database, create a migration to update existing records:
+```sql
+UPDATE accounts.billing_subscriptions SET provider = 'trial' WHERE provider = 'legacy';
+UPDATE accounts.billing_customers SET provider = 'trial' WHERE provider = 'legacy';
+```
+
+Apply with: `npx supabase db push`

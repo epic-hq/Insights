@@ -32,6 +32,24 @@ npm ci
 npm start
 ```
 
+## Building for Production
+
+For production builds, code signing, and notarization instructions, see the comprehensive guide:
+
+**[Desktop Build & Deploy Guide](../docs/30-howtos/desktop-build-deploy.md)**
+
+Quick reference:
+```sh
+# Package without installer
+npm run package
+
+# Create DMG installer (with code signing)
+npm run make
+
+# Create notarized DMG (requires Apple ID credentials)
+APPLE_ID="your@email.com" APPLE_ID_PASSWORD="app-specific-password" npm run make
+```
+
 # Screenshots
 
 ![Screenshot 2025-06-16 at 10 10 57 PM](https://github.com/user-attachments/assets/9df12246-b5be-466d-958e-e09ff0b4b3cb)

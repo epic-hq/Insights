@@ -27,12 +27,13 @@ Key capabilities include:
 
 | Guide | Purpose |
 |-------|---------|
-| [Supabase Guide](docs/supabase-howto.md) | Database changes, declarative schemas, migrations |
-| [CRUD Patterns](docs/crud-pattern-howto.md) | Standard patterns for data operations |
-| [Deploy Guide](docs/deploy-howto.md) | Deployment to Fly.io |
-| [Trigger.dev Deploy](docs/trigger-dev-deployment.md) | Background task deployment |
-| [Testing Guide](docs/testing-howto.md) | Unit and integration testing |
-| [Storybook Guide](docs/storybook-guide.md) | Component development |
+| [Supabase Guide](docs/30-howtos/supabase-howto.md) | Database changes, declarative schemas, migrations |
+| [CRUD Patterns](docs/30-howtos/crud-pattern-howto.md) | Standard patterns for data operations |
+| [Deploy Guide](docs/30-howtos/deploy-howto.md) | Deployment to Fly.io |
+| [Trigger.dev Deploy](docs/30-howtos/trigger-dev-deployment.md) | Background task deployment |
+| [Testing Guide](docs/30-howtos/testing-howto.md) | Unit and integration testing |
+| [Storybook Guide](docs/30-howtos/storybook-guide.md) | Component development |
+| [Desktop Build & Deploy](docs/30-howtos/desktop-build-deploy.md) | Building, code signing, and notarizing the Electron desktop app |
 
 ## Coding Conventions
 
