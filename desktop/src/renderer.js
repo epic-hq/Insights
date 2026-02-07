@@ -2562,6 +2562,18 @@ function initializeFloatingPanel() {
     );
   }
 
+  // Floating panel record button
+  const floatingRecordBtn = document.getElementById("floatingRecordBtn");
+  if (floatingRecordBtn) {
+    floatingRecordBtn.addEventListener("click", async () => {
+      // Trigger the same recording logic as the main record button
+      const mainRecordButton = document.getElementById("recordButton");
+      if (mainRecordButton) {
+        mainRecordButton.click();
+      }
+    });
+  }
+
   // Tab switching
   const tabs = document.querySelectorAll(".floating-panel-tab");
   tabs.forEach((tab) => {
@@ -2864,23 +2876,37 @@ function loadFloatingPanelState() {
 }
 
 /**
- * Update the floating panel's recording indicator
+ * Update the floating panel's recording indicator and record button
  */
 function updateFloatingRecordingIndicator(state, startTime = null) {
   const indicator = document.getElementById("floatingRecordingIndicator");
   const timer = document.getElementById("floatingRecordingTimer");
-  if (!indicator) return;
+  const recordBtn = document.getElementById("floatingRecordBtn");
+  const recordLabel = recordBtn?.querySelector(".floating-record-label");
 
-  if (state === "recording") {
-    indicator.classList.remove("hidden", "paused", "stopped");
-    // Timer is managed by the main updateRecordingIndicator function
-  } else if (state === "paused") {
-    indicator.classList.remove("hidden", "stopped");
-    indicator.classList.add("paused");
-  } else {
-    indicator.classList.add("hidden");
-    indicator.classList.remove("paused", "stopped");
-    if (timer) timer.textContent = "00:00";
+  // Update indicator
+  if (indicator) {
+    if (state === "recording") {
+      indicator.classList.remove("hidden", "paused", "stopped");
+    } else if (state === "paused") {
+      indicator.classList.remove("hidden", "stopped");
+      indicator.classList.add("paused");
+    } else {
+      indicator.classList.add("hidden");
+      indicator.classList.remove("paused", "stopped");
+      if (timer) timer.textContent = "00:00";
+    }
+  }
+
+  // Update record button
+  if (recordBtn) {
+    if (state === "recording") {
+      recordBtn.classList.add("recording");
+      if (recordLabel) recordLabel.textContent = "Stop";
+    } else {
+      recordBtn.classList.remove("recording");
+      if (recordLabel) recordLabel.textContent = "Record";
+    }
   }
 }
 

@@ -166,7 +166,7 @@ function JourneyProgressBar({
   return (
     <Link
       to={routes.journey()}
-      className="block rounded-lg border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/10"
+      className="block rounded-lg bg-white/[0.06] p-2.5 transition-colors hover:bg-white/[0.1]"
     >
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -189,11 +189,18 @@ function JourneyProgressBar({
   );
 }
 
+const PANEL_WIDTH_MIN = 360;
+const PANEL_WIDTH_MAX = 600;
+const PANEL_WIDTH_DEFAULT = 440;
+const PANEL_WIDTH_KEY = "ai-panel-width";
+
 interface AIAssistantPanelProps {
   /** Whether the panel is open/expanded */
   isOpen: boolean;
   /** Callback when panel open state changes */
   onOpenChange: (open: boolean) => void;
+  /** Callback when panel width changes (for layout padding) */
+  onWidthChange?: (width: number) => void;
   /** Accounts for team switcher */
   accounts?: Array<{
     account_id: string;
@@ -310,7 +317,7 @@ function TopTasks({ routes, counts }: TopTasksProps) {
   }
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+    <div className="rounded-lg bg-white/[0.06] p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
         <span className="font-medium text-slate-400 text-[10px] uppercase tracking-wider">
           Next Steps
@@ -329,7 +336,7 @@ function TopTasks({ routes, counts }: TopTasksProps) {
           <li key={task.link}>
             <Link
               to={task.link}
-              className="block rounded-md px-2 py-1 text-blue-400 text-xs transition-colors hover:bg-white/10 hover:text-blue-300"
+              className="block rounded-md px-2 py-1 text-blue-400 text-xs transition-colors hover:bg-white/[0.06] hover:text-blue-300"
             >
               {task.title}
             </Link>
@@ -343,6 +350,7 @@ function TopTasks({ routes, counts }: TopTasksProps) {
 export function AIAssistantPanel({
   isOpen,
   onOpenChange,
+  onWidthChange,
   accounts = [],
   systemContext = "",
   className,
@@ -351,6 +359,28 @@ export function AIAssistantPanel({
   const { accountId, projectId, projectPath } = useCurrentProject();
   const routes = useProjectRoutesFromIds(accountId, projectId);
   const { counts } = useSidebarCounts(accountId, projectId);
+
+  // Panel width state with localStorage persistence
+  const [panelWidth, setPanelWidth] = useState(() => {
+    if (typeof window === "undefined") return PANEL_WIDTH_DEFAULT;
+    const stored = localStorage.getItem(PANEL_WIDTH_KEY);
+    if (stored) {
+      const parsed = Number.parseInt(stored, 10);
+      if (
+        !Number.isNaN(parsed) &&
+        parsed >= PANEL_WIDTH_MIN &&
+        parsed <= PANEL_WIDTH_MAX
+      ) {
+        return parsed;
+      }
+    }
+    return PANEL_WIDTH_DEFAULT;
+  });
+
+  // Emit width on mount and when it changes
+  useEffect(() => {
+    onWidthChange?.(panelWidth);
+  }, [panelWidth, onWidthChange]);
 
   // Persist panel state to localStorage
   useEffect(() => {
@@ -362,6 +392,45 @@ export function AIAssistantPanel({
   const handleToggle = useCallback(() => {
     onOpenChange(!isOpen);
   }, [isOpen, onOpenChange]);
+
+  // Resize drag handling
+  const isResizing = useRef(false);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizing.current = true;
+      const startX = e.clientX;
+      const startWidth = panelWidth;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const delta = ev.clientX - startX;
+        const newWidth = Math.min(
+          PANEL_WIDTH_MAX,
+          Math.max(PANEL_WIDTH_MIN, startWidth + delta),
+        );
+        setPanelWidth(newWidth);
+      };
+
+      const onMouseUp = () => {
+        isResizing.current = false;
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        // Persist final width
+        setPanelWidth((w) => {
+          localStorage.setItem(PANEL_WIDTH_KEY, String(w));
+          return w;
+        });
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [panelWidth],
+  );
 
   // Ref to the chat's clearChat function
   const clearChatRef = useRef<(() => void) | null>(null);
@@ -395,7 +464,7 @@ export function AIAssistantPanel({
         type="button"
         onClick={handleToggle}
         className={cn(
-          "group fixed bottom-6 left-6 z-50 flex h-14 w-14 items-center justify-center",
+          "group fixed top-[60px] left-4 z-50 flex h-14 w-14 items-center justify-center",
           "rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700",
           "shadow-lg shadow-blue-600/25 ring-1 ring-white/20",
           "transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-blue-600/30",
@@ -421,24 +490,36 @@ export function AIAssistantPanel({
   return (
     <div
       className={cn(
-        "fixed bottom-6 left-6 z-50 flex w-[400px] flex-col",
-        "rounded-2xl bg-slate-900 text-slate-100",
-        "shadow-2xl shadow-black/40 ring-1 ring-white/10",
-        "animate-in fade-in slide-in-from-bottom-4 duration-200",
+        "fixed top-[60px] left-4 z-50 flex flex-col",
+        "overflow-hidden rounded-2xl bg-slate-800/95 backdrop-blur-xl",
+        "shadow-xl shadow-black/20 ring-1 ring-white/[0.08]",
+        "animate-in fade-in slide-in-from-top-4 duration-200",
         className,
       )}
-      style={{ maxHeight: "calc(100vh - 120px)" }}
+      style={{ width: panelWidth, height: "calc(100vh - 72px)" }}
     >
+      {/* Resize handle — right edge */}
+      <div
+        onMouseDown={handleResizeStart}
+        className="group absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize transition-colors hover:bg-white/15"
+        title="Drag to resize"
+      >
+        <div className="absolute top-1/2 right-0.5 h-8 w-0.5 -translate-y-1/2 rounded-full bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+      </div>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700">
-            <Sparkles className="h-4 w-4 text-white" />
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="flex cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-80"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/20">
+            <Sparkles className="h-3.5 w-3.5 text-white" />
           </div>
           <span className="font-semibold text-sm text-white">
             Uppy Assistant
           </span>
-        </div>
+        </button>
         <div className="flex items-center gap-0.5">
           {accountId && projectId && (
             <ChatThreadSelector
@@ -469,34 +550,31 @@ export function AIAssistantPanel({
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* Journey progress + next steps (collapsible) */}
-        <div className="flex flex-shrink-0 flex-col gap-2 border-b border-white/5 px-4 py-3">
-          {projectId && (
-            <JourneyProgressBar
-              routes={routes}
-              counts={counts}
-              projectId={projectId}
-            />
-          )}
-          {projectPath && <TopTasks routes={routes} counts={counts} />}
-        </div>
-
-        {/* Chat */}
-        {accountId && projectId && (
-          <div className="min-h-0 flex-1">
-            <ProjectStatusAgentChat
-              accountId={accountId}
-              projectId={projectId}
-              systemContext={systemContext}
-              embedded
-              onClearChatRef={handleClearChatRef}
-              onLoadThreadRef={handleLoadThreadRef}
-            />
-          </div>
+      {/* Journey progress + next steps */}
+      <div className="flex flex-shrink-0 flex-col gap-2 border-b border-white/[0.06] px-4 py-2.5">
+        {projectId && (
+          <JourneyProgressBar
+            routes={routes}
+            counts={counts}
+            projectId={projectId}
+          />
         )}
+        {projectPath && <TopTasks routes={routes} counts={counts} />}
       </div>
+
+      {/* Chat — fills remaining space */}
+      {accountId && projectId && (
+        <div className="min-h-0 flex-1">
+          <ProjectStatusAgentChat
+            accountId={accountId}
+            projectId={projectId}
+            systemContext={systemContext}
+            embedded
+            onClearChatRef={handleClearChatRef}
+            onLoadThreadRef={handleLoadThreadRef}
+          />
+        </div>
+      )}
     </div>
   );
 }

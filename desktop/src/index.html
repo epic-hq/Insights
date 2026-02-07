@@ -313,8 +313,8 @@ Chat with meeting transcript: https://notes.granola.ai/d/393a95cf-4788-4a47-9deb
       </svg>
     </button>
 
-    <!-- Floating Panel (New UX Design) -->
-    <div class="floating-panel compact" id="floatingPanel">
+    <!-- Floating Panel (New UX Design) - DISABLED: Now uses separate window -->
+    <div class="floating-panel compact hidden" id="floatingPanel" style="display: none !important;">
       <div class="floating-panel-header" id="floatingPanelDragRegion">
         <div class="floating-panel-title">
           <svg class="floating-panel-logo" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -344,6 +344,19 @@ Chat with meeting transcript: https://notes.granola.ai/d/393a95cf-4788-4a47-9deb
             </svg>
           </button>
         </div>
+      </div>
+
+      <!-- Recording Controls -->
+      <div class="floating-panel-recording-controls" id="floatingRecordingControls">
+        <button class="floating-record-btn" id="floatingRecordBtn" title="Start Recording">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="record-icon">
+            <circle cx="12" cy="12" r="6" fill="currentColor"/>
+          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="stop-icon" style="display: none;">
+            <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+          </svg>
+          <span class="floating-record-label" id="floatingRecordLabel">Record</span>
+        </button>
       </div>
 
       <div class="floating-panel-tabs" id="floatingPanelTabs">

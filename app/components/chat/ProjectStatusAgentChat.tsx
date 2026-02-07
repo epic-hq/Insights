@@ -1048,7 +1048,7 @@ export function ProjectStatusAgentChat({
           <div
             className={cn(
               "flex flex-row gap-2 text-xs sm:text-sm",
-              embedded ? "text-slate-300" : "text-foreground/70 text-primary",
+              embedded ? "text-slate-400" : "text-foreground/70",
             )}
           >
             <Bot />
@@ -1085,7 +1085,7 @@ export function ProjectStatusAgentChat({
                       <div
                         className={cn(
                           "mb-1 text-[10px] uppercase tracking-wide",
-                          embedded ? "text-slate-400" : "text-foreground/60",
+                          embedded ? "text-slate-500" : "text-foreground/60",
                         )}
                       >
                         {isUser ? "You" : "Uppy Assistant"}
@@ -1096,7 +1096,7 @@ export function ProjectStatusAgentChat({
                           isUser
                             ? "bg-blue-600 text-white"
                             : embedded
-                              ? "bg-slate-800 text-slate-100 ring-1 ring-white/10"
+                              ? "bg-slate-700/50 text-slate-200 ring-1 ring-white/[0.06]"
                               : "bg-background text-foreground ring-1 ring-border/60",
                         )}
                         onClick={!isUser ? handleAssistantLinkClick : undefined}
@@ -1185,10 +1185,10 @@ export function ProjectStatusAgentChat({
               rows={2}
               disabled={isBusy}
               className={cn(
-                "min-h-[60px] resize-none rounded-xl border-2 pr-20 shadow-sm focus-visible:ring-1",
+                "min-h-[60px] resize-none rounded-xl pr-20 shadow-sm focus-visible:ring-1",
                 embedded
-                  ? "border-white/15 bg-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:border-blue-500 focus-visible:ring-blue-500/30"
-                  : "border-border bg-white focus-visible:border-primary focus-visible:ring-primary/30 dark:bg-zinc-900",
+                  ? "border border-white/10 bg-slate-700/60 text-slate-100 placeholder:text-slate-400 focus-visible:border-blue-500/50 focus-visible:ring-blue-500/20"
+                  : "border-2 border-border bg-white focus-visible:border-primary focus-visible:ring-primary/30 dark:bg-zinc-900",
               )}
             />
             <div className="absolute right-2 bottom-2 flex items-center gap-1">

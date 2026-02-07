@@ -39,10 +39,10 @@ export interface OnboardingDashboardProps {
 export function OnboardingDashboard({
 	projectName,
 	projectPath,
-	projectId,
+	projectId: _projectId,
 	hasGoals,
 	hasLenses: _hasLenses,
-	hasCompanyContext,
+	hasCompanyContext: _hasCompanyContext,
 	hasPrompts = false,
 	hasConversations = false,
 	hasAppliedLenses = false,
@@ -51,24 +51,18 @@ export function OnboardingDashboard({
 }: OnboardingDashboardProps) {
 	// Determine current phase
 	// Plan phase requires: context (company + goals) AND interview prompts
-	const hasContext = hasCompanyContext && hasGoals
-	const phase1Complete = hasContext && hasPrompts
+	const phase1Complete = hasGoals && hasPrompts
 	const phase2Complete = hasConversations
-	const phase3Complete = hasAppliedLenses
+	const _phase3Complete = hasAppliedLenses
 
 	const currentPhase = phase1Complete ? (phase2Complete ? 3 : 2) : 1
-
-	// Within Plan phase, determine sub-step
-	const needsCompanySetup = !hasCompanyContext
-	const needsProjectSetup = hasCompanyContext && !hasGoals
-	const needsQuestionsSetup = hasContext && !hasPrompts
 
 	return (
 		<div className={cn("mx-auto max-w-2xl", className)}>
 			{/* Header */}
 			{!hideHeader && (
 				<header className="mb-8 text-center">
-					<h1 className="mb-2 font-semibold text-2xl text-foreground">Setup</h1>
+					<h1 className="mb-2 font-semibold text-2xl text-foreground">Get Started</h1>
 					<p className="text-muted-foreground">Let's set up your research project</p>
 				</header>
 			)}
@@ -76,72 +70,24 @@ export function OnboardingDashboard({
 			{/* Current Phase Content */}
 			<Card className="mb-6">
 				<CardContent className="p-6">
-					{/* Phase 1: Define */}
-					{currentPhase === 1 && needsCompanySetup && (
+					{/* Phase 1: Define - Simplified to single step */}
+					{currentPhase === 1 && (
 						<div className="space-y-6">
 							<div className="text-center">
 								<div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
 									<Building2 className="h-6 w-6 text-primary" />
 								</div>
-								<h2 className="mb-2 font-semibold text-lg">First, tell us about your company</h2>
+								<h2 className="mb-2 font-semibold text-lg">Start your research journey</h2>
 								<p className="mx-auto max-w-md text-muted-foreground text-sm">
-									Set up your company context so we can tailor insights and questions to your business.
+									Set up your project context and begin collecting insights from your conversations.
 								</p>
 							</div>
 
 							<div className="space-y-3">
-								<Link to={`${projectPath}/setup`}>
+								<Link to={`${projectPath}/journey`}>
 									<Button className="w-full gap-2" size="lg">
 										<Building2 className="h-5 w-5" />
-										Set Up Company Context
-										<ArrowRight className="ml-auto h-4 w-4" />
-									</Button>
-								</Link>
-							</div>
-						</div>
-					)}
-
-					{currentPhase === 1 && needsProjectSetup && (
-						<div className="space-y-6">
-							<div className="text-center">
-								<div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-									<Settings className="h-6 w-6 text-primary" />
-								</div>
-								<h2 className="mb-2 font-semibold text-lg">What do you want to learn?</h2>
-								<p className="mx-auto max-w-md text-muted-foreground text-sm">
-									Tell us about your research goals so we can help you get the most relevant insights.
-								</p>
-							</div>
-
-							<div className="space-y-3">
-								<Link to={`${projectPath}/setup`}>
-									<Button className="w-full gap-2" size="lg">
-										<FileText className="h-5 w-5" />
-										Set Up Project Context
-										<ArrowRight className="ml-auto h-4 w-4" />
-									</Button>
-								</Link>
-							</div>
-						</div>
-					)}
-
-					{currentPhase === 1 && needsQuestionsSetup && (
-						<div className="space-y-6">
-							<div className="text-center">
-								<div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-									<FileText className="h-6 w-6 text-primary" />
-								</div>
-								<h2 className="mb-2 font-semibold text-lg">Generate interview questions</h2>
-								<p className="mx-auto max-w-md text-muted-foreground text-sm">
-									Create AI-powered interview questions based on your research goals to guide your conversations.
-								</p>
-							</div>
-
-							<div className="space-y-3">
-								<Link to={`${projectPath}/questions`}>
-									<Button className="w-full gap-2" size="lg">
-										<FileText className="h-5 w-5" />
-										Generate Questions
+										Get Started
 										<ArrowRight className="ml-auto h-4 w-4" />
 									</Button>
 								</Link>

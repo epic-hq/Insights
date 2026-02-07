@@ -74,6 +74,8 @@ You are the Chief of Staff for project ${projectId}. Your job is to orient the u
     fetchProjectStatusContext: fetchProjectStatusContextTool,
     fetchTasks: fetchTasksTool,
     recommendNextActions: recommendNextActionsTool,
+    // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+    "recommend-next-actions": recommendNextActionsTool,
     suggestNextSteps: suggestionTool,
   }),
   memory: new Memory({

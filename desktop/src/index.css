@@ -1544,6 +1544,56 @@ body {
   background: #475569;
 }
 
+/* Recording Controls in Floating Panel */
+.floating-panel-recording-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.floating-record-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: #334155;
+  border: none;
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.floating-record-btn:hover {
+  background: #475569;
+}
+
+.floating-record-btn.recording {
+  background: #ef4444;
+  color: white;
+}
+
+.floating-record-btn.recording:hover {
+  background: #dc2626;
+}
+
+.floating-record-btn.recording .record-icon {
+  display: none;
+}
+
+.floating-record-btn.recording .stop-icon {
+  display: block !important;
+}
+
+.floating-record-label {
+  min-width: 40px;
+}
+
 /* Panel Tabs */
 .floating-panel-tabs {
   display: flex;

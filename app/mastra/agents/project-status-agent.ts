@@ -126,6 +126,8 @@ const project_status_agent_tools = {
   importPeopleFromTable: importPeopleFromTableTool,
   importOpportunitiesFromTable: importOpportunitiesFromTableTool,
   recommendNextActions: recommendNextActionsTool,
+  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+  "recommend-next-actions": recommendNextActionsTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);

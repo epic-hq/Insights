@@ -107,6 +107,11 @@ export async function action({ request }: ActionFunctionArgs) {
               ],
             },
           ],
+          // 7-day retention - no storage charges (we upload to our own R2)
+          retention: {
+            type: "timed",
+            hours: 168,
+          },
         },
       }),
     });
