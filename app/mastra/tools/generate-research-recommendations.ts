@@ -358,7 +358,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
             target_evidence: targetEvidence,
             gap: gap,
           },
-          navigateTo: `/themes/${topTheme.id}`,
+          navigateTo: `/insights/${topTheme.id}`,
         });
       }
 
@@ -382,7 +382,8 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
           category: "follow_up",
           title: `Follow up with ${topStaleContact.name} (${topStaleContact.days_since} days since last contact)`,
           description: `${topStaleContact.name} is a high ICP match (${Math.round((icpScore?.score || 0) * 100)}%) but hasn't been contacted in ${topStaleContact.days_since} days. Re-engage to maintain relationship.`,
-          reasoning: `High-value contacts should be engaged at least every 14 days. This contact matches your ICP well but conversation has gone stale.`,
+          reasoning:
+            "High-value contacts should be engaged at least every 14 days. This contact matches your ICP well but conversation has gone stale.",
           action_type: "follow_up_contact",
           action_data: {
             person_id: topStaleContact.person_id,
@@ -415,7 +416,8 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
             category: "icp_validation",
             title: `Interview ${person?.firstname} ${person?.lastname} (${Math.round(topMatch.score * 100)}% ICP match)`,
             description: `This person is a strong ICP match but hasn't been interviewed yet. Great opportunity to validate your assumptions.`,
-            reasoning: `High ICP scores indicate this person fits your target profile. Interviewing them can validate product-market fit and generate high-quality insights.`,
+            reasoning:
+              "High ICP scores indicate this person fits your target profile. Interviewing them can validate product-market fit and generate high-quality insights.",
             action_type: "schedule_interview",
             action_data: {
               person_id: topMatch.person_id,
