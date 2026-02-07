@@ -72,16 +72,6 @@ const routes = [
 
     // Protected API routes
     route("api/tasks/deduplicate", "./routes/api.tasks.deduplicate.ts"),
-    route("api/similar-themes", "./routes/api.similar-themes.tsx"),
-    route("api/delete-empty-themes", "./routes/api.delete-empty-themes.tsx"),
-    route("api/generate-suggestions", "./routes/api.generate-suggestions.tsx"),
-    route("api/share/enable", "./routes/api.share.enable.tsx"),
-    route("api/share/disable", "./routes/api.share.disable.tsx"),
-    route(
-      "api/project-setup/website",
-      "./routes/api.project-setup.website.tsx",
-    ),
-    route("api/skip-setup", "./routes/api.skip-setup.tsx"),
     route(
       "api/update-ui-preference",
       "./features/users/api/update-ui-preference.tsx",
@@ -90,6 +80,8 @@ const routes = [
       "api/user-settings/onboarding",
       "./routes/api.user-settings.onboarding.tsx",
     ),
+    route("api/share/enable", "./routes/api.share.enable.tsx"),
+    route("api/share/disable", "./routes/api.share.disable.tsx"),
 
     // Account-scoped routes
     route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -116,6 +108,8 @@ const routes = [
         index("./features/dashboard-v3/pages/index.tsx"),
         // Legacy project status screen
         route("project-status", "./features/projects/pages/project-index.tsx"),
+        // Project setup (context & goals)
+        route("setup", "./features/projects/pages/setup.tsx"),
         // Mobile routes
         ...dashboardRoutes,
         route(
@@ -147,10 +141,6 @@ const routes = [
         // Project-scoped onboarding route
         route("new", "./features/onboarding/pages/new.tsx"),
 
-        // Project setup route
-        route("setup", "./features/projects/pages/setup.tsx"),
-        // Preview redesigned setup route
-        route("setup-preview", "./routes/preview.setup.tsx"),
         // Research workflow route
         route(
           "research-workflow",
@@ -185,7 +175,7 @@ const routes = [
           "./routes/api.interviews.realtime-finalize.tsx",
         ),
 
-        // Project-setup agent chat API (project-scoped)
+        // Project setup chat API (project-scoped)
         route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
         route(
           "api/chat/project-setup/history",
@@ -254,6 +244,7 @@ const routes = [
     "api/desktop/realtime-evidence",
     "./routes/api.desktop.realtime-evidence.ts",
   ),
+  route("api/desktop/interviews", "./routes/api.desktop.interviews.ts"),
   route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
 
   // API routes
@@ -289,6 +280,7 @@ const routes = [
   route("api/trigger-run-token", "./routes/api.trigger-run-token.tsx"),
   route("api/daily-brief", "./routes/api.daily-brief.tsx"),
   route("api/generate-questions", "./routes/api.generate-questions.tsx"),
+  route("api/generate-suggestions", "./routes/api.generate-suggestions.tsx"),
   route("api/project-status", "./routes/api.project-status.tsx"),
   route(
     "api/analyze-project-status",
