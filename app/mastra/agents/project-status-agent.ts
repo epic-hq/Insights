@@ -17,6 +17,7 @@ import { fetchThemesTool } from "../tools/fetch-themes";
 import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateDocumentLinkTool } from "../tools/generate-document-link";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { generateResearchRecommendationsTool } from "../tools/generate-research-recommendations";
 import { getCurrentDateTool } from "../tools/get-current-date";
 import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table";
 import { importPeopleFromTableTool } from "../tools/import-people-from-table";
@@ -128,6 +129,8 @@ const project_status_agent_tools = {
   recommendNextActions: recommendNextActionsTool,
   // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
   "recommend-next-actions": recommendNextActionsTool,
+  generateResearchRecommendations: generateResearchRecommendationsTool,
+  "generate-research-recommendations": generateResearchRecommendationsTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
@@ -160,12 +163,27 @@ First call "fetchProjectStatusContext" with scopes=["sections","status"] and inc
 - NEVER tell a user with existing research data that their project "isn't set up yet" -- that dismisses their work.
 
 ## Proactive Recommendations
-When the user asks "what should I do next?", "what's the next step?", or seems unsure how to proceed:
-- Call "recommendNextActions" with projectId=${projectId} to get personalized suggestions
-- The tool analyzes themes, evidence levels, interviews, and surveys to recommend 1-3 next actions
-- Each recommendation includes a "navigateTo" path - use this to create clickable links AND call "navigateToPage" to take the user there
-- Example: If recommendation has navigateTo="/setup", link it like **[Complete project setup](/a/{accountId}/{projectId}/setup)** and then call navigateToPage({path: "/setup"})
-- Present recommendations clearly with the reasoning provided
+When the user asks research-related questions like:
+- "Who should I talk to next?"
+- "What insights need validation?"
+- "Where are my research gaps?"
+- "Which contacts are getting stale?"
+- "What should I do next?" (research context)
+
+Call "generateResearchRecommendations" with projectId=${projectId} to get cross-lens synthesized recommendations:
+- Combines data from Research Coverage + ICP Match + Value Priorities
+- Returns 1-3 prioritized recommendations with full evidence traceability
+- Each recommendation includes:
+  - Priority (1=critical, 2=important, 3=opportunity)
+  - Category (research_coverage, icp_validation, insight_validation, follow_up)
+  - Current confidence → Target confidence scores
+  - Action type (schedule_interview, validate_theme, follow_up_contact, etc.)
+  - navigateTo path for direct navigation
+- Present recommendations with their reasoning and confidence levels
+- Use navigateTo to create clickable links: **[Validate "Theme Name"](/a/{accountId}/{projectId}/themes/{themeId})**
+- Example output: "Your 'Instill Confidence with Reliable Tools' theme has LOW confidence (45%) with only 2 mentions. Interview 3 more people to reach HIGH confidence (85%+)."
+
+For general project guidance (non-research): use "recommendNextActions" as fallback
 
 ## Response Quality Standards
 - **Be specific**: "Budget is the #1 blocker (4/6 prospects)" not "budget is a concern"
