@@ -61,7 +61,13 @@ type ICPMatchSectionProps = {
   };
 };
 
-function BandBadge({ band }: { band: string | null }) {
+function BandBadge({
+  band,
+  confidence,
+}: {
+  band: string | null;
+  confidence?: number | null;
+}) {
   switch (band) {
     case "HIGH":
       return (
@@ -82,6 +88,16 @@ function BandBadge({ band }: { band: string | null }) {
         </Badge>
       );
     default:
+      if (confidence === 0) {
+        return (
+          <Badge
+            variant="outline"
+            className="border-purple-200 px-1.5 py-0 text-[10px] text-purple-600 dark:border-purple-800 dark:text-purple-400"
+          >
+            No data
+          </Badge>
+        );
+      }
       return (
         <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
           No match
@@ -175,6 +191,10 @@ export function ICPMatchSection({
   };
 
   const totalScored = scoredPeople.length;
+  const indeterminateCount = scoredPeople.filter(
+    (p) => p.confidence === 0,
+  ).length;
+  const noMatchCount = (distribution?.NONE || 0) - indeterminateCount;
   const hasCriteria =
     initialCriteria.target_roles.length > 0 ||
     initialCriteria.target_orgs.length > 0 ||
@@ -333,12 +353,22 @@ export function ICPMatchSection({
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="font-semibold text-lg text-muted-foreground">
-                    {distribution?.NONE || 0}
+                    {noMatchCount > 0 ? noMatchCount : 0}
                   </span>
                   <span className="text-muted-foreground text-xs">
                     No match
                   </span>
                 </div>
+                {indeterminateCount > 0 && (
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-semibold text-lg text-purple-600 dark:text-purple-400">
+                      {indeterminateCount}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      No data
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -371,12 +401,20 @@ export function ICPMatchSection({
                       )}
                     </div>
                     <div className="flex flex-shrink-0 items-center gap-2">
+                      {person.confidence != null && person.confidence > 0 && (
+                        <span className="text-[10px] text-foreground/30">
+                          {Math.round(person.confidence * 100)}% conf
+                        </span>
+                      )}
                       <span className="tabular-nums text-foreground/50">
-                        {person.score != null
+                        {person.score != null && person.confidence !== 0
                           ? `${Math.round(person.score * 100)}%`
                           : "—"}
                       </span>
-                      <BandBadge band={person.band} />
+                      <BandBadge
+                        band={person.band}
+                        confidence={person.confidence}
+                      />
                     </div>
                   </div>
                 ))}
