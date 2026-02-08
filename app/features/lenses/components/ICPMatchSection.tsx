@@ -63,8 +63,6 @@ export function ICPMatchSection({
   );
 
   const handleSaveCriteria = async () => {
-    const fetcher = useFetcher();
-
     // Save to project_sections (project-level overrides)
     try {
       const res = await fetch("/api/icp-criteria", {
@@ -89,9 +87,12 @@ export function ICPMatchSection({
       });
 
       if (res.ok) {
-        toast.success("ICP criteria updated");
+        toast.success("ICP criteria saved");
         setIsEditing(false);
         revalidator.revalidate();
+
+        // Trigger re-scoring after save
+        await handleScoreICP();
       } else {
         toast.error("Failed to save criteria");
       }
