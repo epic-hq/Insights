@@ -4,8 +4,8 @@ import type { Database } from "~/../supabase/types";
 import {
   isPlaceholderPerson,
   normalizeSpeakerLabel,
-  upsertPersonWithCompanyAwareConflict,
 } from "~/features/interviews/peopleNormalization.server";
+import { resolveOrCreatePerson } from "~/lib/people/resolution.server";
 
 export type RawPerson = {
   person_key: string;
@@ -66,30 +66,32 @@ export async function mapRawPeopleToInterviewLinks({
     }
 
     const transcriptKey = normalizeSpeakerLabel(raw.speaker_label);
-    const payload: PersonUpsertPayload = {
-      account_id: accountId,
-      project_id: projectId,
-      firstname: baseName.split(" ")[0] || null,
-      lastname: baseName.split(" ").slice(1).join(" ") || null,
-      company: raw.organization || "", // DB has NOT NULL default ''
-      role: raw.role ?? null,
-    };
 
-    const upserted = await upsertPersonWithCompanyAwareConflict(
-      db,
-      payload,
-      null,
-    );
+    // Use shared resolution module for consistent person matching across all paths
+    const result = await resolveOrCreatePerson(db, accountId, projectId, {
+      name: baseName,
+      firstname: baseName.split(" ")[0] || undefined,
+      lastname: baseName.split(" ").slice(1).join(" ") || undefined,
+      company: raw.organization || undefined,
+      role: raw.role || undefined,
+      person_type: raw.role === "interviewer" ? "internal" : null,
+      source: "baml_extraction",
+    });
 
-    personIdByKey.set(raw.person_key, upserted.id);
-    if (transcriptKey) speakerLabelByPersonId.set(upserted.id, transcriptKey);
+    personIdByKey.set(raw.person_key, result.person.id);
+    if (transcriptKey)
+      speakerLabelByPersonId.set(result.person.id, transcriptKey);
     mapped.push({
-      personId: upserted.id,
+      personId: result.person.id,
       personKey: raw.person_key,
       transcriptKey,
-      name: upserted.name,
+      name: result.person.name,
       role: raw.role ?? null,
     });
+
+    consola.debug(
+      `[personMapping] Resolved ${raw.person_key} → ${result.person.id} (${result.matchedBy})`,
+    );
   }
 
   return { mapped, personIdByKey, speakerLabelByPersonId };
