@@ -70,10 +70,10 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { useCurrentProject } from "~/contexts/current-project-context";
+import { BandBadge } from "~/features/lenses/components/ICPMatchSection";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { COMPANY_SIZE_RANGES } from "~/lib/constants/options";
 import { cn } from "~/lib/utils";
-import { BandBadge } from "~/features/lenses/components/ICPMatchSection";
 import { EditableNameField } from "./EditableNameField";
 
 export interface PersonTableRow {
@@ -723,17 +723,17 @@ export function PeopleDataTable({
   const columnLabels = useMemo<Record<string, string>>(
     () => ({
       organization: "Organization",
+      icpBand: "ICP Match",
       orgRole: "Role at Org",
       title: "Title",
+      jobFunction: "Job Function",
+      seniority: "Seniority",
       conversationCount: "Conversations",
       evidenceCount: "Evidence",
       stakeholderStatus: "Status",
-      updatedAt: "Last updated",
-      jobFunction: "Job Function",
-      seniority: "Seniority",
-      segment: "Segment",
       companySize: "Company Size",
-      icpBand: "ICP Match",
+      updatedAt: "Last updated",
+      segment: "Segment",
     }),
     [],
   );
@@ -797,6 +797,27 @@ export function PeopleDataTable({
           />
         ),
         enableSorting: false,
+      },
+      {
+        accessorKey: "icpBand",
+        header: "ICP Match",
+        cell: ({ row }) => (
+          <BandBadge
+            band={row.original.icpBand ?? null}
+            confidence={row.original.icpConfidence}
+          />
+        ),
+        enableSorting: true,
+        sortingFn: (a, b) => {
+          const order: Record<string, number> = {
+            HIGH: 3,
+            MEDIUM: 2,
+            LOW: 1,
+          };
+          const aVal = order[a.original.icpBand ?? ""] ?? 0;
+          const bVal = order[b.original.icpBand ?? ""] ?? 0;
+          return aVal - bVal;
+        },
       },
       {
         id: "orgRole",
@@ -921,27 +942,6 @@ export function PeopleDataTable({
           );
         },
         enableSorting: true,
-      },
-      {
-        accessorKey: "icpBand",
-        header: "ICP Match",
-        cell: ({ row }) => (
-          <BandBadge
-            band={row.original.icpBand ?? null}
-            confidence={row.original.icpConfidence}
-          />
-        ),
-        enableSorting: true,
-        sortingFn: (a, b) => {
-          const order: Record<string, number> = {
-            HIGH: 3,
-            MEDIUM: 2,
-            LOW: 1,
-          };
-          const aVal = order[a.original.icpBand ?? ""] ?? 0;
-          const bVal = order[b.original.icpBand ?? ""] ?? 0;
-          return aVal - bVal;
-        },
       },
     ],
     [routes.people, routes.organizations.detail, organizations, updateEndpoint],
