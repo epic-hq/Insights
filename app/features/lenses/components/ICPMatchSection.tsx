@@ -2,12 +2,12 @@
  * ICP Match Section - Editable ICP criteria and scoring for people
  *
  * Shows current ICP criteria, allows editing, and triggers re-scoring.
- * Displays distribution of ICP match scores with matched people names.
+ * Displays a sortable data table of ICP scored people with inline editing.
  * Shows data quality warnings when people records are missing fields.
  */
 
 import { AlertTriangle, Pencil, Target } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRevalidator } from "react-router";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
@@ -29,19 +29,14 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-
-type ScoredPerson = {
-  name: string;
-  title: string | null;
-  company: string | null;
-  band: string | null;
-  score: number | null;
-  confidence: number | null;
-};
+import type { ICPScoredPerson } from "./AnalysisByPersonTab";
+import { EditPersonDataSheet } from "./EditPersonDataSheet";
+import { ICPScoredPeopleTable } from "./ICPScoredPeopleTable";
 
 type ICPMatchSectionProps = {
   accountId: string;
   projectId: string;
+  projectPath: string;
   initialCriteria: {
     target_orgs: string[];
     target_roles: string[];
@@ -53,7 +48,8 @@ type ICPMatchSectionProps = {
     LOW: number;
     NONE: number;
   };
-  scoredPeople: ScoredPerson[];
+  scoredPeople: ICPScoredPerson[];
+  organizations: { id: string; name: string }[];
   dataQuality: {
     totalPeople: number;
     withTitle: number;
@@ -61,7 +57,7 @@ type ICPMatchSectionProps = {
   };
 };
 
-function BandBadge({
+export function BandBadge({
   band,
   confidence,
 }: {
@@ -109,14 +105,28 @@ function BandBadge({
 export function ICPMatchSection({
   accountId,
   projectId,
+  projectPath,
   initialCriteria,
   distribution,
   scoredPeople,
+  organizations,
   dataQuality,
 }: ICPMatchSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
   const revalidator = useRevalidator();
+
+  // Derive editing person from latest scoredPeople so data stays fresh after revalidation
+  const editingPersonIndex = useMemo(
+    () =>
+      editingPersonId
+        ? scoredPeople.findIndex((p) => p.person_id === editingPersonId)
+        : -1,
+    [editingPersonId, scoredPeople],
+  );
+  const editingPerson =
+    editingPersonIndex >= 0 ? scoredPeople[editingPersonIndex] : null;
 
   // Local state for editing
   const [roles, setRoles] = useState(initialCriteria.target_roles.join(", "));
@@ -187,6 +197,31 @@ export function ICPMatchSection({
       toast.error("Failed to start ICP scoring");
     } finally {
       setIsScoring(false);
+    }
+  };
+
+  const handleEditPerson = (person: ICPScoredPerson) => {
+    setEditingPersonId(person.person_id);
+  };
+
+  const handlePersonSaved = (personId: string) => {
+    // Advance to the next person with missing data for a to-do list feel
+    const missingDataPeople = scoredPeople.filter(
+      (p) => (!p.title || !p.company) && p.person_id !== personId,
+    );
+    if (missingDataPeople.length > 0) {
+      setEditingPersonId(missingDataPeople[0].person_id);
+    } else {
+      setEditingPersonId(null);
+    }
+  };
+
+  const handleNavigatePerson = (direction: "prev" | "next") => {
+    if (editingPersonIndex < 0) return;
+    const newIndex =
+      direction === "prev" ? editingPersonIndex - 1 : editingPersonIndex + 1;
+    if (newIndex >= 0 && newIndex < scoredPeople.length) {
+      setEditingPersonId(scoredPeople[newIndex].person_id);
     }
   };
 
@@ -319,8 +354,7 @@ export function ICPMatchSection({
                       company.{" "}
                     </span>
                   )}
-                  Add titles and companies to people records for better ICP
-                  matching.
+                  Edit people below to fill in missing data.
                 </p>
               </div>
             </div>
@@ -373,52 +407,17 @@ export function ICPMatchSection({
             </div>
           )}
 
-          {/* Matched People Detail */}
+          {/* People Scores Table */}
           {scoredPeople.length > 0 && (
             <div className="border-t pt-4">
               <p className="mb-2 font-medium text-foreground/60 text-xs">
                 People Scores
               </p>
-              <div className="max-h-48 space-y-1.5 overflow-y-auto">
-                {scoredPeople.map((person, i) => (
-                  <div
-                    key={`${person.name}-${i}`}
-                    className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-muted/50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="font-medium">{person.name}</span>
-                      {(person.title || person.company) && (
-                        <span className="ml-1.5 text-foreground/50">
-                          {[person.title, person.company]
-                            .filter(Boolean)
-                            .join(" @ ")}
-                        </span>
-                      )}
-                      {!person.title && !person.company && (
-                        <span className="ml-1.5 italic text-foreground/30">
-                          no title/company
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-shrink-0 items-center gap-2">
-                      {person.confidence != null && person.confidence > 0 && (
-                        <span className="text-[10px] text-foreground/30">
-                          {Math.round(person.confidence * 100)}% conf
-                        </span>
-                      )}
-                      <span className="tabular-nums text-foreground/50">
-                        {person.score != null && person.confidence !== 0
-                          ? `${Math.round(person.score * 100)}%`
-                          : "—"}
-                      </span>
-                      <BandBadge
-                        band={person.band}
-                        confidence={person.confidence}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ICPScoredPeopleTable
+                people={scoredPeople}
+                projectPath={projectPath}
+                onEditPerson={handleEditPerson}
+              />
             </div>
           )}
 
@@ -442,7 +441,23 @@ export function ICPMatchSection({
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* Edit Person Drawer */}
+      <EditPersonDataSheet
+        person={editingPerson}
+        open={!!editingPerson}
+        onOpenChange={(open) => !open && setEditingPersonId(null)}
+        projectPath={projectPath}
+        organizations={organizations}
+        onSaved={handlePersonSaved}
+        onNavigate={handleNavigatePerson}
+        hasPrev={editingPersonIndex > 0}
+        hasNext={
+          editingPersonIndex >= 0 &&
+          editingPersonIndex < scoredPeople.length - 1
+        }
+      />
+
+      {/* Edit Criteria Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
