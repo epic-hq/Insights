@@ -118,6 +118,13 @@ export const action: ActionFunction = async ({ context, request, params }) => {
       }
 
       if (targetOrgId) {
+        // Clear is_primary on all existing links before setting the new one
+        await supabase
+          .from("people_organizations")
+          .update({ is_primary: false })
+          .eq("person_id", personId)
+          .eq("account_id", accountId);
+
         // Link person to organization via junction table
         const { error: linkError } = await linkPersonToOrganization({
           supabase,
