@@ -65,7 +65,7 @@ export function ICPMatchSection({
   const handleSaveCriteria = async () => {
     // Save to project_sections (project-level overrides)
     try {
-      const res = await fetch("/api/icp-criteria", {
+      const res = await fetch(`/a/${accountId}/${projectId}/api/icp-criteria`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,11 +105,14 @@ export function ICPMatchSection({
   const handleScoreICP = async () => {
     setIsScoring(true);
     try {
-      const res = await fetch("/api/score-icp-matches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, force: true }),
-      });
+      const res = await fetch(
+        `/a/${accountId}/${projectId}/api/score-icp-matches`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, force: true }),
+        },
+      );
       const data = await res.json();
       if (data.success) {
         toast.success("ICP scoring started", {
