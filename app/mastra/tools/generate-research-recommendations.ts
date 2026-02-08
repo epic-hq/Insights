@@ -175,7 +175,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					)
 				`,
           )
-          .eq("account_id", accountId)
+          .eq("project_id", projectId)
           .order("created_at", { ascending: false });
 
       if (interviewPeopleError) {
