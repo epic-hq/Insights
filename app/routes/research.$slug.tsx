@@ -405,12 +405,12 @@ type StartSignupResult = {
 
 type StartSignupPayload =
 	| {
-			email: string
-			firstName?: string | null
-			lastName?: string | null
-			responseId?: string | null
-			responseMode?: Mode
-	  }
+		email: string
+		firstName?: string | null
+		lastName?: string | null
+		responseId?: string | null
+		responseMode?: Mode
+	}
 	| { phone: string; responseId?: string | null; responseMode?: Mode }
 	| { responseId?: string | null; responseMode?: Mode } // anonymous
 
@@ -638,7 +638,12 @@ export default function ResearchLinkPage() {
 			const urlEmail = urlParams.get("email")
 			const urlResponseId = urlParams.get("responseId")
 
-			// If we have URL params, use those (coming from embed)
+			// Also check for personalized link params (standalone email/phone without responseId)
+			const urlPhone = urlParams.get("phone")
+			const urlFirstName = urlParams.get("first_name") || urlParams.get("name")?.split(" ")[0] || null
+			const urlLastName = urlParams.get("last_name") || urlParams.get("name")?.split(" ").slice(1).join(" ") || null
+
+			// If we have URL params, use those (coming from embed or personalized link)
 			if (urlEmail && urlResponseId) {
 				void startSignup(slug, {
 					email: urlEmail,
@@ -677,6 +682,108 @@ export default function ResearchLinkPage() {
 					})
 				return
 			}
+
+			// Personalized link: standalone ?email (no responseId) — auto-submit for known people
+			if (urlEmail && !urlResponseId && list.identity_field === "email") {
+				setEmail(urlEmail)
+				if (urlFirstName) setFirstName(urlFirstName)
+				if (urlLastName) setLastName(urlLastName)
+				void startSignup(slug, {
+					email: urlEmail,
+					responseMode: resolvedMode,
+				})
+					.then((result) => {
+						setResponseId(result.responseId)
+						setResponses(result.responses || {})
+						window.localStorage.setItem(
+							storageKey,
+							JSON.stringify({ email: urlEmail, responseId: result.responseId })
+						)
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
+						if (initialIndex >= questions.length) {
+							setStage("complete")
+						} else if (result.personId) {
+							// Known person — skip identity gate entirely
+							setCurrentIndex(initialIndex)
+							setStage(list.instructions ? "instructions" : "survey")
+							const existingValue = result.responses?.[questions[initialIndex]?.id]
+							setCurrentAnswer(existingValue ?? "")
+						} else if (urlFirstName) {
+							// Unknown person but name provided via URL — create person and skip to survey
+							void startSignup(slug, {
+								email: urlEmail,
+								firstName: urlFirstName,
+								lastName: urlLastName,
+								responseId: result.responseId,
+								responseMode: resolvedMode,
+							}).then((personResult) => {
+								setResponseId(personResult.responseId)
+								setResponses(personResult.responses || {})
+								setCurrentIndex(initialIndex)
+								setStage(list.instructions ? "instructions" : "survey")
+								const existingValue = personResult.responses?.[questions[initialIndex]?.id]
+								setCurrentAnswer(existingValue ?? "")
+							}).catch(() => {
+								// Fall through — person creation failed, show name form
+								setCurrentIndex(initialIndex)
+								setStage("name")
+							})
+						} else {
+							// Unknown person, no name — show name collection form
+							setCurrentIndex(initialIndex)
+							setStage("name")
+						}
+					})
+					.catch(() => {
+						// Auto-submit failed — show pre-filled email form for manual confirmation
+						setInitializing(false)
+					})
+					.finally(() => {
+						setInitializing(false)
+					})
+				return
+			}
+
+			// Personalized link: standalone ?phone (no responseId)
+			if (urlPhone && !urlResponseId && list.identity_field === "phone") {
+				setPhone(urlPhone)
+				void startSignup(slug, {
+					phone: urlPhone,
+					responseMode: resolvedMode,
+				})
+					.then((result) => {
+						setResponseId(result.responseId)
+						setResponses(result.responses || {})
+						window.localStorage.setItem(
+							storageKey,
+							JSON.stringify({ phone: urlPhone, responseId: result.responseId })
+						)
+						const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
+						if (initialIndex >= questions.length) {
+							setStage("complete")
+						} else {
+							// Phone-identified: skip to survey (person lookup happens server-side)
+							setCurrentIndex(initialIndex)
+							setStage(list.instructions ? "instructions" : "survey")
+							const existingValue = result.responses?.[questions[initialIndex]?.id]
+							setCurrentAnswer(existingValue ?? "")
+						}
+					})
+					.catch(() => {
+						// Auto-submit failed — show pre-filled phone form
+						setInitializing(false)
+					})
+					.finally(() => {
+						setInitializing(false)
+					})
+				return
+			}
+
+			// Pre-fill only (email/phone present but identity_field doesn't match — just populate the field)
+			if (urlEmail) setEmail(urlEmail)
+			if (urlPhone) setPhone(urlPhone)
+			if (urlFirstName) setFirstName(urlFirstName)
+			if (urlLastName) setLastName(urlLastName)
 
 			// Otherwise check localStorage for existing session
 			const stored = window.localStorage.getItem(storageKey)
@@ -811,7 +918,7 @@ export default function ResearchLinkPage() {
 		} catch {
 			setInitializing(false)
 		}
-	}, [questions, slug, storageKey, resolvedMode, list.identity_mode, list.instructions])
+	}, [questions, slug, storageKey, resolvedMode, list.identity_mode, list.identity_field, list.instructions])
 
 	useEffect(() => {
 		if (stage === "survey" && resolvedMode === "form") {
