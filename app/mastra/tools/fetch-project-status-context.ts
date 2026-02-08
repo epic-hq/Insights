@@ -28,6 +28,7 @@ const detailScopes = [
 ] as const;
 
 type DetailScope = (typeof detailScopes)[number];
+const defaultDetailScopes: readonly DetailScope[] = ["status", "sections"];
 
 type ProjectSectionRow = Database["public"]["Tables"]["project_sections"]["Row"];
 type InsightRow = Database["public"]["Tables"]["themes"]["Row"];
@@ -444,8 +445,8 @@ export const fetchProjectStatusContextTool = createTool({
 
 		const projectId = (input.projectId ?? runtimeProjectId ?? "").trim();
 		const runtimeAccountIdString = runtimeAccountId ? String(runtimeAccountId).trim() : undefined;
-		const includeEvidence = input.includeEvidence !== false;
-		const scopes = (input.scopes && input.scopes.length > 0 ? input.scopes : detailScopes) as DetailScope[];
+		const scopes = (input.scopes && input.scopes.length > 0 ? input.scopes : defaultDetailScopes) as DetailScope[];
+		const includeEvidence = input.includeEvidence ?? scopes.includes("evidence");
 		const scopeSet = new Set<DetailScope>(scopes);
 
 		const insightLimit = input.insightLimit ?? DEFAULT_INSIGHT_LIMIT;

@@ -14,11 +14,13 @@ type ToolResult = {
 	data?: Record<string, unknown>;
 };
 
-const mockSupabase = {
-	from: vi.fn(),
-};
-
-const getProjectStatusDataMock = vi.fn();
+const { mockSupabase, getProjectStatusDataMock } = vi.hoisted(() => ({
+	mockSupabase: {
+		from: vi.fn(),
+		schema: vi.fn(),
+	},
+	getProjectStatusDataMock: vi.fn(),
+}));
 
 vi.mock("~/lib/supabase/client.server", () => ({
 	supabaseAdmin: mockSupabase,
@@ -31,7 +33,18 @@ vi.mock("~/utils/project-status.server", () => ({
 describe("fetchProjectStatusContextTool", () => {
 	beforeEach(() => {
 		mockSupabase.from.mockReset();
+		mockSupabase.schema.mockReset();
 		getProjectStatusDataMock.mockReset();
+
+		mockSupabase.schema.mockReturnValue({
+			from: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnValue({
+					eq: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+					}),
+				}),
+			}),
+		});
 	});
 
 	it("returns missing project message when no project context provided", async () => {
@@ -248,6 +261,13 @@ describe("fetchProjectStatusContextTool", () => {
 					});
 					return builder;
 				}
+				case "person_scale": {
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => Promise.resolve({ data: [], error: null });
+					return builder;
+				}
 				default:
 					throw new Error(`Unexpected table ${table}`);
 			}
@@ -268,5 +288,198 @@ describe("fetchProjectStatusContextTool", () => {
 		expect(person?.name).toBe("Jane Doe");
 		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.");
 		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview");
+	});
+
+	it("defaults to lean scopes (status + sections) when scopes are omitted", async () => {
+		const now = new Date().toISOString();
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "project_sections":
+					return {
+						select: () => ({
+							eq: () => ({
+								order: () => ({
+									order: () =>
+										Promise.resolve({
+											data: [
+												{
+													id: "section-1",
+													kind: "goal",
+													content_md: "Find the top buying signals",
+													meta: null,
+													position: 1,
+													created_at: now,
+													updated_at: now,
+												},
+											],
+											error: null,
+										}),
+								}),
+							}),
+						}),
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		getProjectStatusDataMock.mockResolvedValue(null);
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123" },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect(result.scopes).toEqual(["status", "sections"]);
+		expect((result.data as any)?.sections).toHaveLength(1);
+		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase);
+	});
+
+	it("includes evidence details by default when evidence scope is requested", async () => {
+		const now = new Date().toISOString();
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "evidence":
+					return {
+						select: () => ({
+							eq: () => ({
+								order: () => ({
+									limit: () =>
+										Promise.resolve({
+											data: [
+												{
+													id: "ev-1",
+													gist: "Pricing confusion blocks purchases",
+													verbatim: "I cannot tell which plan fits our team",
+													context_summary: null,
+													modality: "interview",
+													journey_stage: "evaluation",
+													topic: "pricing",
+													support: "high",
+													is_question: false,
+													interview_id: "int-1",
+													project_id: "project-123",
+													created_at: now,
+													updated_at: now,
+													says: null,
+													does: null,
+													thinks: null,
+													feels: null,
+													pains: null,
+													gains: null,
+													anchors: null,
+												},
+											],
+											error: null,
+										}),
+								}),
+							}),
+						}),
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["evidence"] },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.evidence).toHaveLength(1);
+		expect((result.data as any)?.evidence?.[0]?.gist).toContain("Pricing confusion");
+	});
+
+	it("skips evidence query when includeEvidence is false", async () => {
+		const now = new Date().toISOString();
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			if (table === "projects") {
+				return {
+					select: () => ({
+						eq: () => ({
+							maybeSingle: () =>
+								Promise.resolve({
+									data: {
+										id: "project-123",
+										account_id: "account-123",
+										name: "Test Project",
+										description: null,
+										created_at: now,
+										updated_at: now,
+									},
+									error: null,
+								}),
+						}),
+					}),
+				};
+			}
+
+			if (table === "evidence") {
+				throw new Error("Evidence table should not be queried when includeEvidence=false");
+			}
+
+			throw new Error(`Unexpected table ${table}`);
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["evidence"], includeEvidence: false },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.evidence).toEqual([]);
+		expect(result.message).toContain("Evidence details omitted by includeEvidence=false");
 	});
 });

@@ -373,6 +373,7 @@ Require approval for:
 - **Observability** is via Langfuse in `app/routes/api.chat.*` handlers.
 
 For a deeper operational checklist, see: `docs/architecture/agentic-system-planning-guide.md`.
+For responsibility migration by phase, see: `docs/00-foundation/agents/responsibility-phase-map.md`.
 
 ---
 
@@ -475,25 +476,50 @@ Want me to help you prioritize who to reach out to?"
 
 ## Implementation Approach
 
-### Phase 1: Foundation
-1. Create `assessProjectState` tool - comprehensive state analysis
-2. Create `recommendNextActions` tool - smart suggestions
-3. Enhance Uppy instructions for state-aware responses
+### Phase 0: Routing + Cost Controls (now)
+1. Replace regex route overrides in `api.chat.project-status.tsx` with an LLM intent router (`gpt-4o-mini`) and structured output.
+2. Keep `projectStatusAgent` as lightweight orchestrator and router; do not expand its prompt or tool surface.
+3. Lower orchestration loop limits (`maxSteps`) per target agent.
+4. Make `fetchProjectStatusContext` lean-by-default (`scopes=["status","sections"]`) unless richer scopes are explicitly requested.
+5. Add benchmark gates before rollout: latency, token usage, recommendation quality.
 
-### Phase 2: Capability Expansion
-4. Create `createSurveyFromRecommendation` tool
-5. Create `findTargetUsers` tool
-6. Create `generateMarketingInsights` tool
+### Phase 1: Foundation (partially complete)
+1. `assessProjectState` tool (complete).
+2. `recommendNextActions` tool/workflow (complete).
+3. Improve concise, state-aware responses for Uppy (complete baseline).
+4. Standardize "generic project guidance" responses in Chief of Staff format for low-token turns.
+
+### Phase 2: Capability Rebalancing (next)
+1. Move execution-heavy tools out of `projectStatusAgent` into specialists.
+2. Keep strategic reasoning centralized in `chiefOfStaffAgent` (including ICP guidance and prioritization).
+3. Route survey/interview execution through `researchAgent`, people operations through `peopleAgent`, and pipeline/ops through `opsAgent`.
+4. Target orchestrator tool count: `< 20` (soft limit), ideally 12-16.
 
 ### Phase 3: Proactive Intelligence
-7. Add scheduled state assessments
-8. Surface recommendations in UI (not just chat)
-9. Implement notification triggers
+1. Add scheduled state assessments and stale-data nudges.
+2. Surface recommendations outside chat (in-app cards, inbox, weekly digests).
+3. Add notification triggers tied to confidence shifts and stale ICP validation.
 
-### Phase 4: Memory & Learning
-10. Track user decisions and outcomes
-11. Learn from patterns across users
-12. Personalize recommendations
+### Phase 4: Memory + Learning
+1. Track recommendation decisions/outcomes (`accepted`, `declined`, `deferred`) and feed into next-action ranking.
+2. Add thread rotation + summary compaction to cap context growth without losing continuity.
+3. Learn cross-session user preferences and decision patterns.
+4. Personalize recommendation tone/shape while keeping deterministic safety rails.
+
+### ICP Reasoning Placement
+1. **Now**: ICP reasoning lives in `chiefOfStaffAgent` as a strategic worker (who to talk to next, where confidence is weak, what to validate).
+2. **Later**: introduce a dedicated `icpStrategyAgent` only when ICP work becomes a standalone workflow domain with distinct memory + tooling.
+
+### Benchmark + Confidence Tracking
+Track each optimization as an experiment and record confidence before full rollout.
+
+| Change | Target | Guardrail | Initial Confidence |
+|------|--------|-----------|--------------------|
+| LLM intent router (replace regex routing) | Better routing flexibility, lower prompt/tool churn | No rise in misroutes on eval set | 0.84 |
+| Step-budget tuning by agent (`maxSteps`) | Lower latency and fewer runaway loops | No increase in failed tool workflows | 0.85 |
+| Lean default context scopes | Lower token usage on generic turns | No drop in answer relevance for status questions | 0.87 |
+| Fast standardized guidance path + cache | Lower repeated compute on broad guidance prompts | Keep recommendation quality within 5% of baseline | 0.82 |
+| Tool rebalancing (`projectStatusAgent` < 20 tools) | Lower orchestrator complexity and cost | No loss of task completion across core journeys | 0.80 |
 
 ---
 

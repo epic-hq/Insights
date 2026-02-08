@@ -1,11 +1,13 @@
 import { handleChatStream, handleNetworkStream } from "@mastra/ai-sdk";
 import { RequestContext } from "@mastra/core/di";
-import { createUIMessageStreamResponse } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse, generateObject } from "ai";
 import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
 import {
 	clearActiveBillingContext,
 	estimateOpenAICost,
+	openai as instrumentedOpenai,
 	setActiveBillingContext,
 	userBillingContext,
 } from "~/lib/billing/instrumented-openai.server";
@@ -33,72 +35,94 @@ function getLastUserText(messages: Array<{ role?: string; content?: unknown; par
 	return "";
 }
 
-function isChiefOfStaffPrompt(text: string): boolean {
-	const normalized = text.toLowerCase().trim();
-	if (!normalized) return false;
+const routingTargetAgents = ["projectStatusAgent", "chiefOfStaffAgent", "researchAgent", "projectSetupAgent"] as const;
+type RoutingTargetAgent = (typeof routingTargetAgents)[number];
 
-	// Exact phrase triggers (high confidence)
-	const phraseTriggers = [
-		"what should i do next",
-		"what's next",
-		"whats next",
-		"what should we focus on",
-		"where should we focus",
-		"what to do now",
-		"chief of staff",
-		"suggest next steps",
-	];
-	if (phraseTriggers.some((trigger) => normalized.includes(trigger))) return true;
+const intentRoutingSchema = z.object({
+	targetAgentId: z.enum(routingTargetAgents),
+	confidence: z.number().min(0).max(1),
+	responseMode: z.enum(["normal", "fast_standardized"]).default("normal"),
+	rationale: z.string().max(240).optional(),
+});
 
-	// Word-boundary triggers to avoid false positives like "explain the pricing plan"
-	const wordBoundaryTriggers = ["next steps", "prioritize my", "roadmap for", "help me plan"];
-	return wordBoundaryTriggers.some((trigger) => normalized.includes(trigger));
+const ROUTING_CONFIDENCE_THRESHOLD = 0.68;
+const FAST_STANDARDIZED_MAX_STEPS = 2;
+const FAST_STANDARDIZED_CACHE_TTL_MS = 3 * 60 * 1000;
+const MAX_SYSTEM_CONTEXT_CHARS = 3000;
+const MAX_FAST_SYSTEM_CONTEXT_CHARS = 800;
+
+const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
+	projectStatusAgent: 6,
+	chiefOfStaffAgent: 4,
+	researchAgent: 5,
+	projectSetupAgent: 5,
+};
+
+const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
+	projectStatusAgent: "gpt-4.1",
+	chiefOfStaffAgent: "gpt-4o-mini",
+	researchAgent: "gpt-4o",
+	projectSetupAgent: "gpt-5.1",
+};
+
+type FastGuidanceCacheEntry = {
+	text: string;
+	expiresAt: number;
+};
+
+const fastGuidanceCache = new Map<string, FastGuidanceCacheEntry>();
+
+function hashString(input: string): string {
+	let hash = 2166136261;
+	for (let index = 0; index < input.length; index += 1) {
+		hash ^= input.charCodeAt(index);
+		hash = Math.imul(hash, 16777619);
+	}
+	return (hash >>> 0).toString(16);
 }
 
-function isSetupPrompt(text: string): boolean {
-	const normalized = text.toLowerCase().trim();
-	if (!normalized) return false;
-
-	const triggers = [
-		"help me set up",
-		"set up this project",
-		"setup this project",
-		"define my research",
-		"research goal",
-		"company website",
-		"company context",
-		"edit my context",
-		"update my research goal",
-		"change my industry",
-		"update my company",
-		"fill in my project",
-		"project setup",
-		"set up my project",
-	];
-	return triggers.some((t) => normalized.includes(t));
+function streamPlainAssistantText(text: string) {
+	return createUIMessageStream({
+		execute: async ({ writer }) => {
+			const messageChunkId = `cached-${Date.now().toString(36)}`;
+			writer.write({ type: "start" });
+			writer.write({ type: "start-step" });
+			writer.write({ type: "text-start", id: messageChunkId });
+			writer.write({ type: "text-delta", id: messageChunkId, delta: text });
+			writer.write({ type: "text-end", id: messageChunkId });
+			writer.write({ type: "finish-step" });
+			writer.write({ type: "finish", finishReason: "stop" });
+		},
+	});
 }
 
-function isSurveyCreationPrompt(text: string): boolean {
-	const normalized = text.toLowerCase().trim();
-	if (!normalized) return false;
-	// Must include creation intent AND survey/waitlist concept
-	const creationTriggers = ["create", "make", "build", "set up", "setup", "start", "new", "launch"];
-	const surveyTriggers = [
-		"survey",
-		"waitlist",
-		"wait list",
-		"ask link",
-		"signup",
-		"sign up",
-		"feedback form",
-		"qualifying questions",
-		"lead capture",
-		"beta signup",
-		"interest form",
-	];
-	const hasCreation = creationTriggers.some((t) => normalized.includes(t));
-	const hasSurvey = surveyTriggers.some((t) => normalized.includes(t));
-	return hasCreation && hasSurvey;
+async function routeAgentByIntent(lastUserText: string): Promise<z.infer<typeof intentRoutingSchema> | null> {
+	const prompt = lastUserText.trim();
+	if (!prompt) return null;
+
+	try {
+		const result = await generateObject({
+			model: instrumentedOpenai("gpt-4o-mini"),
+			schema: intentRoutingSchema,
+			temperature: 0,
+			prompt: `Classify this user message for agent routing.
+
+Choose exactly one target:
+- projectSetupAgent: onboarding, setup, research goals, company context capture.
+- chiefOfStaffAgent: strategic guidance, prioritization, "what should I do next", project-level recommendations.
+- researchAgent: creating/managing surveys, interview prompts, interview operations.
+- projectStatusAgent: default catch-all for project status and general requests.
+
+Set responseMode="fast_standardized" only when the user asks broad strategic guidance without asking for execution details.
+Message: """${prompt.slice(0, 1200)}"""`,
+		});
+		return result.object;
+	} catch (error) {
+		consola.warn("project-status: intent routing failed, falling back to projectStatusAgent", {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return null;
+	}
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -157,23 +181,37 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const runtimeMessages = lastUserIndex >= 0 ? sanitizedMessages.slice(lastUserIndex) : sanitizedMessages;
 
 	const lastUserText = getLastUserText(sanitizedMessages);
-	const shouldUseChiefOfStaff = isChiefOfStaffPrompt(lastUserText);
-	const shouldUseSurveyAgent = isSurveyCreationPrompt(lastUserText);
-	const shouldUseSetupAgent = isSetupPrompt(lastUserText);
-	const targetAgentId = shouldUseChiefOfStaff
-		? "chiefOfStaffAgent"
-		: shouldUseSurveyAgent
-			? "researchAgent"
-			: shouldUseSetupAgent
-				? "projectSetupAgent"
-				: "projectStatusAgent";
+	const routeDecision = await routeAgentByIntent(lastUserText);
+	const targetAgentId: RoutingTargetAgent =
+		routeDecision && routeDecision.confidence >= ROUTING_CONFIDENCE_THRESHOLD
+			? routeDecision.targetAgentId
+			: "projectStatusAgent";
+	const isFastStandardized =
+		targetAgentId === "chiefOfStaffAgent" && routeDecision?.responseMode === "fast_standardized";
+	const targetMaxSteps = isFastStandardized
+		? Math.min(MAX_STEPS_BY_AGENT[targetAgentId], FAST_STANDARDIZED_MAX_STEPS)
+		: MAX_STEPS_BY_AGENT[targetAgentId];
+	const systemContext =
+		typeof system === "string"
+			? system.slice(0, isFastStandardized ? MAX_FAST_SYSTEM_CONTEXT_CHARS : MAX_SYSTEM_CONTEXT_CHARS)
+			: "";
 
-	if (shouldUseChiefOfStaff || shouldUseSurveyAgent || shouldUseSetupAgent) {
-		consola.info("project-status: routing override", {
-			targetAgentId,
-			lastUserText,
+	if (typeof system === "string" && system.length > systemContext.length) {
+		consola.debug("project-status: truncated system context", {
+			originalLength: system.length,
+			truncatedLength: systemContext.length,
+			isFastStandardized,
 		});
 	}
+
+	consola.info("project-status: intent routing", {
+		targetAgentId,
+		targetMaxSteps,
+		isFastStandardized,
+		routingConfidence: routeDecision?.confidence ?? null,
+		responseMode: routeDecision?.responseMode ?? "normal",
+		rationale: routeDecision?.rationale ?? null,
+	});
 
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`;
 
@@ -206,6 +244,28 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	requestContext.set("project_id", projectId);
 	if (userTimezone) {
 		requestContext.set("user_timezone", userTimezone);
+	}
+	if (routeDecision?.responseMode) {
+		requestContext.set("response_mode", routeDecision.responseMode);
+	}
+	const fastGuidanceCacheKey = isFastStandardized
+		? `${projectId}:${hashString(lastUserText.trim().toLowerCase())}:${hashString(systemContext)}`
+		: null;
+
+	if (fastGuidanceCacheKey) {
+		const cached = fastGuidanceCache.get(fastGuidanceCacheKey);
+		if (cached && cached.expiresAt > Date.now()) {
+			consola.info("project-status: fast standardized cache hit", {
+				targetAgentId,
+				projectId,
+			});
+			return createUIMessageStreamResponse({
+				stream: streamPlainAssistantText(cached.text),
+			});
+		}
+		if (cached) {
+			fastGuidanceCache.delete(fastGuidanceCacheKey);
+		}
 	}
 
 	// Set up billing context for agent LLM calls
@@ -248,7 +308,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 	const buildAgentParams = (useThreadId: string) => ({
 		messages: runtimeMessages,
-		maxSteps: 10, // Prevent infinite tool loops (default is 5)
+		maxSteps: targetMaxSteps,
 		clientTools: {
 			navigateToPage: navigateToPageTool,
 			switchAgent: switchAgentTool,
@@ -262,7 +322,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			? [
 					{
 						role: "system" as const,
-						content: `## Context from the client's UI:\n${system}`,
+						content: `## Context from the client's UI:\n${systemContext}`,
 					},
 				]
 			: undefined,
@@ -273,9 +333,16 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			text?: string;
 			steps?: unknown[];
 		}) => {
+			if (isFastStandardized && fastGuidanceCacheKey && data.text?.trim()) {
+				fastGuidanceCache.set(fastGuidanceCacheKey, {
+					text: data.text.trim(),
+					expiresAt: Date.now() + FAST_STANDARDIZED_CACHE_TTL_MS,
+				});
+			}
+
 			const usage = data.usage;
 			if (usage && (usage.inputTokens || usage.outputTokens) && billingCtx.accountId) {
-				const model = "gpt-4o"; // Default model for agents
+				const model = BILLING_MODEL_BY_AGENT[targetAgentId] || "gpt-4o";
 				const inputTokens = usage.inputTokens || 0;
 				const outputTokens = usage.outputTokens || 0;
 				const costUsd = estimateOpenAICost(model, inputTokens, outputTokens);
@@ -333,8 +400,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 						mastra,
 						agentId: targetAgentId,
 						params: buildAgentParams(threadId),
-						sendReasoning: true,
-						sendSources: true,
+						sendReasoning: targetAgentId === "researchAgent" && !isFastStandardized,
+						sendSources: !isFastStandardized,
 					});
 	} catch (error) {
 		// Check if this is the "No tool call found" error from corrupted memory
@@ -352,8 +419,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 							mastra,
 							agentId: targetAgentId,
 							params: buildAgentParams(threadId),
-							sendReasoning: true,
-							sendSources: true,
+							sendReasoning: targetAgentId === "researchAgent" && !isFastStandardized,
+							sendSources: !isFastStandardized,
 						});
 		} else {
 			throw error;

@@ -23,6 +23,32 @@ export const chiefOfStaffAgent = new Agent({
 			const projectId = requestContext.get("project_id");
 			const accountId = requestContext.get("account_id");
 			const userId = requestContext.get("user_id");
+			const responseMode = requestContext.get("response_mode");
+			const isFastStandardized = responseMode === "fast_standardized";
+
+			if (isFastStandardized) {
+				return `
+You are the Chief of Staff for project ${projectId}. Produce a fast, standardized answer for broad "what should I do next?" guidance.
+
+# Fast Mode Rules
+- Keep total response under 90 words.
+- Make at most ONE data call:
+  - First call fetchProjectStatusContext with scopes=["status","sections"], includeEvidence=false, and small limits.
+  - Call recommendNextActions only if status/sections are missing, stale, or ambiguous.
+- Do not call fetchTasks unless user explicitly asks about tasks.
+- Return only this structure:
+  Status: <1 sentence with concrete counts when available>.
+  Next:
+  1) <single-line action + why>
+  2) <single-line action + why>
+- No preamble, no headings, no long analysis.
+
+# Context
+- Account: ${accountId}
+- Project: ${projectId}
+- User: ${userId}
+`;
+			}
 
 			return `
 You are the Chief of Staff for project ${projectId}. Your job is to orient the user and recommend the next 2-3 concrete actions based on real project data.

@@ -368,5 +368,5 @@ Please try:
 	}),
 	// TokenLimiterProcessor prevents context window overflow
 	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(100_000)],
+	outputProcessors: [new TokenLimiterProcessor(45_000)],
 });
