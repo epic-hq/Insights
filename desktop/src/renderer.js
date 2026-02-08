@@ -333,6 +333,11 @@ function showHomeView() {
   document.getElementById("backButton").style.display = "none";
   document.getElementById("newNoteBtn").style.display = "block";
   document.getElementById("toggleSidebar").style.display = "none";
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
+  if (toggleDebugPanelBtn) {
+    toggleDebugPanelBtn.style.display = "none";
+  }
+  closeDebugPanel();
 
   // Show Record Meeting button and set its state based on meeting detection
   const joinMeetingBtn = document.getElementById("joinMeetingBtn");
@@ -360,6 +365,10 @@ function showEditorView(meetingId) {
   document.getElementById("backButton").style.display = "block";
   document.getElementById("newNoteBtn").style.display = "none";
   document.getElementById("toggleSidebar").style.display = "none"; // Hide the sidebar toggle
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
+  if (toggleDebugPanelBtn) {
+    toggleDebugPanelBtn.style.display = "inline-flex";
+  }
 
   // Always hide the join meeting button when in editor view
   const joinMeetingBtn = document.getElementById("joinMeetingBtn");
@@ -432,50 +441,7 @@ function showEditorView(meetingId) {
     // Update debug panel with any available data if it's open
     const debugPanel = document.getElementById("debugPanel");
     if (debugPanel && !debugPanel.classList.contains("hidden")) {
-      // Update transcript if available
-      if (meeting.transcript && meeting.transcript.length > 0) {
-        updateDebugTranscript(meeting.transcript);
-      } else {
-        // Clear transcript area if no transcript
-        const transcriptContent = document.getElementById("transcriptContent");
-        if (transcriptContent) {
-          transcriptContent.innerHTML = `
-            <div class="placeholder-content">
-              <p>No transcript available yet</p>
-            </div>
-          `;
-        }
-      }
-
-      // Update participants if available
-      if (meeting.participants && meeting.participants.length > 0) {
-        updateDebugParticipants(meeting.participants);
-      } else {
-        // Clear participants area if no participants
-        const participantsContent = document.getElementById(
-          "participantsContent",
-        );
-        if (participantsContent) {
-          participantsContent.innerHTML = `
-            <div class="placeholder-content">
-              <p>No participants detected yet</p>
-            </div>
-          `;
-        }
-      }
-
-      // Reset video preview when changing notes
-      const videoContent = document.getElementById("videoContent");
-      if (videoContent) {
-        videoContent.innerHTML = `
-          <div class="placeholder-content video-placeholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="#999"/>
-            </svg>
-            <p>Video preview will appear here</p>
-          </div>
-        `;
-      }
+      refreshDebugPanelContent(meeting);
     }
   }, 50);
 }
@@ -1151,122 +1117,154 @@ function updateDebugParticipants(participants) {
   participantsContent.appendChild(participantsList);
 }
 
+const DEBUG_PANEL_CLOSED_ICON = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
+  </svg>
+`;
+
+const DEBUG_PANEL_OPEN_ICON = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.99 11H20v2H7.99v3L4 12l3.99-4v3z" fill="currentColor"/>
+  </svg>
+`;
+
+function getCurrentMeetingForDebugPanel() {
+  if (!currentEditingMeetingId) return null;
+  return [...upcomingMeetings, ...pastMeetings].find(
+    (meeting) => meeting.id === currentEditingMeetingId,
+  );
+}
+
+function refreshDebugPanelContent(meeting = getCurrentMeetingForDebugPanel()) {
+  if (!meeting) return;
+
+  if (meeting.transcript && meeting.transcript.length > 0) {
+    updateDebugTranscript(meeting.transcript);
+  } else {
+    const transcriptContent = document.getElementById("transcriptContent");
+    if (transcriptContent) {
+      transcriptContent.innerHTML = `
+        <div class="placeholder-content">
+          <p>No transcript available yet</p>
+        </div>
+      `;
+    }
+  }
+
+  if (meeting.participants && meeting.participants.length > 0) {
+    updateDebugParticipants(meeting.participants);
+  } else {
+    const participantsContent = document.getElementById("participantsContent");
+    if (participantsContent) {
+      participantsContent.innerHTML = `
+        <div class="placeholder-content">
+          <p>No participants detected yet</p>
+        </div>
+      `;
+    }
+  }
+
+  const videoContent = document.getElementById("videoContent");
+  if (videoContent) {
+    videoContent.innerHTML = `
+      <div class="placeholder-content video-placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="#64748b"/>
+        </svg>
+        <p>Video preview will appear here</p>
+      </div>
+    `;
+  }
+}
+
+function setDebugPanelToggleState(isOpen) {
+  const debugPanelToggle = document.getElementById("debugPanelToggle");
+  if (!debugPanelToggle) return;
+  debugPanelToggle.innerHTML = isOpen
+    ? DEBUG_PANEL_OPEN_ICON
+    : DEBUG_PANEL_CLOSED_ICON;
+  debugPanelToggle.classList.toggle("panel-open", isOpen);
+}
+
+function setDebugHeaderButtonState(isOpen) {
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
+  if (!toggleDebugPanelBtn) return;
+  toggleDebugPanelBtn.classList.toggle("active", isOpen);
+  toggleDebugPanelBtn.textContent = isOpen ? "Hide Debug" : "Debug";
+}
+
+function openDebugPanel({ refresh = true } = {}) {
+  const debugPanel = document.getElementById("debugPanel");
+  const appContainer = document.querySelector(".app-container");
+  const debugPanelToggle = document.getElementById("debugPanelToggle");
+  if (!debugPanel || !appContainer) return;
+
+  debugPanel.classList.remove("hidden");
+  appContainer.classList.add("debug-panel-open");
+  if (debugPanelToggle) {
+    debugPanelToggle.classList.remove("has-new-content");
+  }
+  setDebugPanelToggleState(true);
+  setDebugHeaderButtonState(true);
+
+  if (refresh) {
+    refreshDebugPanelContent();
+  }
+}
+
+function closeDebugPanel() {
+  const debugPanel = document.getElementById("debugPanel");
+  const appContainer = document.querySelector(".app-container");
+  if (!debugPanel || !appContainer) return;
+
+  debugPanel.classList.add("hidden");
+  appContainer.classList.remove("debug-panel-open");
+  setDebugPanelToggleState(false);
+  setDebugHeaderButtonState(false);
+}
+
+function toggleDebugPanel() {
+  const debugPanel = document.getElementById("debugPanel");
+  if (!debugPanel) return;
+  if (debugPanel.classList.contains("hidden")) {
+    openDebugPanel();
+  } else {
+    closeDebugPanel();
+  }
+}
+
 // Function to initialize the debug panel
 function initDebugPanel() {
   const debugPanelToggle = document.getElementById("debugPanelToggle");
-  const debugPanel = document.getElementById("debugPanel");
   const closeDebugPanelBtn = document.getElementById("closeDebugPanelBtn");
+  const toggleDebugPanelBtn = document.getElementById("toggleDebugPanelBtn");
 
-  // Set up toggle button for the debug panel
-  if (debugPanelToggle && debugPanel) {
-    debugPanelToggle.addEventListener("click", () => {
-      // Toggle the debug panel visibility
-      if (debugPanel.classList.contains("hidden")) {
-        debugPanel.classList.remove("hidden");
-        document
-          .querySelector(".app-container")
-          .classList.add("debug-panel-open");
-
-        // Update the toggle button position and remove any notification indicators
-        debugPanelToggle.style.right = "50%";
-        debugPanelToggle.classList.remove("has-new-content");
-        debugPanelToggle.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7.99 11H20v2H7.99v3L4 12l3.99-4v3z" fill="currentColor"/>
-          </svg>
-        `;
-
-        // If there's an active meeting, refresh the debug panels with latest data
-        if (currentEditingMeetingId) {
-          const meeting = [...upcomingMeetings, ...pastMeetings].find(
-            (m) => m.id === currentEditingMeetingId,
-          );
-          if (meeting) {
-            // Update transcript if available
-            if (meeting.transcript && meeting.transcript.length > 0) {
-              updateDebugTranscript(meeting.transcript);
-            } else {
-              // Clear transcript area if no transcript
-              const transcriptContent =
-                document.getElementById("transcriptContent");
-              if (transcriptContent) {
-                transcriptContent.innerHTML = `
-                  <div class="placeholder-content">
-                    <p>No transcript available yet</p>
-                  </div>
-                `;
-              }
-            }
-
-            // Update participants if available
-            if (meeting.participants && meeting.participants.length > 0) {
-              updateDebugParticipants(meeting.participants);
-            } else {
-              // Clear participants area if no participants
-              const participantsContent = document.getElementById(
-                "participantsContent",
-              );
-              if (participantsContent) {
-                participantsContent.innerHTML = `
-                  <div class="placeholder-content">
-                    <p>No participants detected yet</p>
-                  </div>
-                `;
-              }
-            }
-
-            // Reset video preview when opening debug panel
-            const videoContent = document.getElementById("videoContent");
-            if (videoContent) {
-              videoContent.innerHTML = `
-                <div class="placeholder-content video-placeholder">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="#999"/>
-                  </svg>
-                  <p>Video preview will appear here</p>
-                </div>
-              `;
-            }
-          }
-        }
-      } else {
-        debugPanel.classList.add("hidden");
-        document
-          .querySelector(".app-container")
-          .classList.remove("debug-panel-open");
-
-        // Reset the toggle button position
-        debugPanelToggle.style.right = "0";
-        debugPanelToggle.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
-          </svg>
-        `;
-      }
-    });
+  if (debugPanelToggle) {
+    debugPanelToggle.addEventListener("click", toggleDebugPanel);
   }
 
-  // Set up close button for the debug panel
-  if (closeDebugPanelBtn && debugPanel) {
-    closeDebugPanelBtn.addEventListener("click", () => {
-      debugPanel.classList.add("hidden");
-      // Restore the editorView to full width
-      document
-        .querySelector(".app-container")
-        .classList.remove("debug-panel-open");
-
-      // Reset the toggle button position and icon
-      const debugPanelToggle = document.getElementById("debugPanelToggle");
-      if (debugPanelToggle) {
-        debugPanelToggle.style.right = "0";
-        debugPanelToggle.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z" fill="currentColor"/>
-          </svg>
-        `;
-      }
-    });
+  if (closeDebugPanelBtn) {
+    closeDebugPanelBtn.addEventListener("click", closeDebugPanel);
   }
+
+  if (toggleDebugPanelBtn) {
+    toggleDebugPanelBtn.addEventListener("click", toggleDebugPanel);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.shiftKey &&
+      event.key.toLowerCase() === "d"
+    ) {
+      event.preventDefault();
+      toggleDebugPanel();
+    }
+  });
+
+  setDebugPanelToggleState(false);
+  setDebugHeaderButtonState(false);
 
   // Set up clear button for the logger section
   const clearLoggerBtn = document.getElementById("clearLoggerBtn");

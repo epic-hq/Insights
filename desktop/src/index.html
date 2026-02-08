@@ -27,6 +27,7 @@
         <div class="header-right">
           <button class="btn new-note-btn" id="newNoteBtn">Record In-person Meeting</button>
           <button class="btn join-meeting-btn" id="joinMeetingBtn">Record Meeting</button>
+          <button class="btn debug-mode-btn" id="toggleDebugPanelBtn" style="display: none;">Debug</button>
           <button id="toggleSidebar" class="btn toggle-sidebar-btn" style="display: none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 18H21V16H3V18ZM3 13H21V11H3V13ZM3 6V8H21V6H3Z" fill="#666666"/>
@@ -213,7 +214,7 @@ Chat with meeting transcript: https://notes.granola.ai/d/393a95cf-4788-4a47-9deb
     <div class="debug-panel hidden" id="debugPanel">
       <div class="debug-panel-header" id="debug-drag-region">
         <div class="debug-panel-title-row">
-          <h3>UpSight</h3>
+          <h3>UpSight Live Debug</h3>
           <div class="recording-indicator hidden" id="recordingIndicator">
             <div class="recording-dot"></div>
             <span class="recording-timer" id="recordingTimer">00:00</span>
