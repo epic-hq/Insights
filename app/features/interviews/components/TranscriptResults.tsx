@@ -113,6 +113,11 @@ export function TranscriptResults({ data, rawTranscript, participants = [], onSp
 			if (anyWithName?.people?.name) return anyWithName.people.name;
 		}
 
+		// If speaker key is already a readable name, render it directly.
+		if (!/^[A-Z]$/.test(normalizedKey) && !/^SPEAKER\s+[A-Z0-9]+$/.test(normalizedKey)) {
+			return speakerKey;
+		}
+
 		return `Speaker ${normalizedKey}`;
 	};
 

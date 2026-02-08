@@ -56,12 +56,70 @@ interface RealtimeEvidenceRequest {
 	utterances: Array<{
 		speaker: string;
 		text: string;
+		timestamp_ms?: number | null;
 	}>;
 	existingEvidence?: string[]; // Gists of already-extracted evidence for deduplication
 	sessionId?: string;
 	batchIndex?: number;
 	interviewId?: string; // Database interview ID for persistence
 }
+
+const normalizeForMatch = (value: string | null | undefined) =>
+	(value || "")
+		.toLowerCase()
+		.replace(/[^\w\s]/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
+
+function findBestTimestampMsForEvidence(
+	utterances: RealtimeEvidenceRequest["utterances"],
+	candidateText: string,
+	speakerLabel?: string
+): number | null {
+	if (!utterances.length) return null;
+
+	const normalizedSpeaker = normalizeForMatch(speakerLabel);
+	const speakerScoped = normalizedSpeaker
+		? utterances.filter((u) => normalizeForMatch(u.speaker) === normalizedSpeaker)
+		: utterances;
+	const pool = speakerScoped.length ? speakerScoped : utterances;
+
+	const normalizedCandidate = normalizeForMatch(candidateText);
+	if (!normalizedCandidate) {
+		const firstTs = pool.find((u) => typeof u.timestamp_ms === "number")?.timestamp_ms;
+		return typeof firstTs === "number" && Number.isFinite(firstTs) ? Math.max(0, firstTs) : null;
+	}
+
+	const exactMatch = pool.find((u) => {
+		const utteranceText = normalizeForMatch(u.text);
+		return utteranceText.includes(normalizedCandidate) || normalizedCandidate.includes(utteranceText);
+	});
+	if (exactMatch && typeof exactMatch.timestamp_ms === "number" && Number.isFinite(exactMatch.timestamp_ms)) {
+		return Math.max(0, exactMatch.timestamp_ms);
+	}
+
+	const candidateWords = new Set(normalizedCandidate.split(" ").filter((word) => word.length > 3));
+	let best: { ts: number | null; overlap: number } = { ts: null, overlap: 0 };
+	for (const utterance of pool) {
+		const utteranceWords = normalizeForMatch(utterance.text)
+			.split(" ")
+			.filter((word) => word.length > 3);
+		const overlap = utteranceWords.filter((word) => candidateWords.has(word)).length;
+		if (overlap > best.overlap) {
+			best = {
+				ts:
+					typeof utterance.timestamp_ms === "number" && Number.isFinite(utterance.timestamp_ms)
+						? Math.max(0, utterance.timestamp_ms)
+						: null,
+				overlap,
+			};
+		}
+	}
+
+	return best.ts;
+}
+
+const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -180,9 +238,55 @@ ${transcript}`,
 
 					// Create facet resolver for this account
 					const facetResolver = new FacetResolver(supabase, account_id);
+					const { data: interviewPeople } = await supabase
+						.from("interview_people")
+						.select("person_id, transcript_key, display_name, people(name)")
+						.eq("interview_id", interviewId);
+
+					const resolveSpeakerPersonId = (speakerLabel: string | undefined) => {
+						const normalizedSpeaker = normalizeForMatch(speakerLabel);
+						if (!normalizedSpeaker || normalizedSpeaker === "unknown speaker") return null;
+						if (!interviewPeople?.length) return null;
+
+						const directMatch = interviewPeople.find((person) => {
+							const names = [
+								normalizeForMatch(person.display_name),
+								normalizeForMatch(person.transcript_key),
+								normalizeForMatch(person.people?.name || null),
+							].filter(Boolean);
+							return names.some((name) => name === normalizedSpeaker);
+						});
+						if (directMatch) return directMatch.person_id;
+
+						const normalizedKey = normalizedSpeaker.replace(/^speaker\s+/i, "").trim();
+						if (!normalizedKey) return null;
+
+						const keyMatch = interviewPeople.find((person) => {
+							const transcriptKey = normalizeForMatch(person.transcript_key);
+							return (
+								transcriptKey === normalizedKey ||
+								transcriptKey === `speaker ${normalizedKey}` ||
+								`speaker ${transcriptKey}` === normalizedSpeaker
+							);
+						});
+
+						return keyMatch?.person_id || null;
+					};
 
 					for (const e of actionableEvidence) {
 						const verbatim = e.verbatim || e.gist;
+						const anchorStartMs = findBestTimestampMsForEvidence(utterances, verbatim || e.gist, e.speaker_label);
+						const anchors =
+							anchorStartMs !== null || e.speaker_label
+								? [
+										{
+											type: "transcript",
+											start_ms: anchorStartMs,
+											speaker: e.speaker_label || null,
+										},
+									]
+								: null;
+						const speakerPersonId = resolveSpeakerPersonId(e.speaker_label);
 
 						if (e.action === "update" && e.updates_gist) {
 							// Update existing evidence record by matching gist
@@ -192,6 +296,7 @@ ${transcript}`,
 									verbatim,
 									gist: e.gist,
 									chunk: verbatim,
+									anchors,
 								})
 								.eq("interview_id", interviewId)
 								.eq("gist", e.updates_gist);
@@ -210,6 +315,7 @@ ${transcript}`,
 									verbatim,
 									gist: e.gist,
 									chunk: verbatim,
+									anchors,
 									confidence: "low",
 									source_type: "primary",
 									method: "interview",
@@ -247,6 +353,26 @@ ${transcript}`,
 									consola.warn(`[desktop-realtime-evidence] Failed to save evidence_facet: ${facetError.message}`);
 								}
 							}
+
+							if (speakerPersonId) {
+								const { error: evidencePeopleError } = await supabase.from("evidence_people").upsert(
+									{
+										account_id,
+										project_id,
+										evidence_id: savedEvidence.id,
+										person_id: speakerPersonId,
+										role: "speaker",
+										confidence: 0.9,
+									},
+									{ onConflict: "evidence_id,person_id,account_id" }
+								);
+
+								if (evidencePeopleError) {
+									consola.warn(
+										`[desktop-realtime-evidence] Failed to save evidence_people: ${evidencePeopleError.message}`
+									);
+								}
+							}
 						}
 					}
 
@@ -267,8 +393,8 @@ ${transcript}`,
 						})
 						.eq("id", interviewId);
 				}
-			} catch (persistError: any) {
-				consola.error("[desktop-realtime-evidence] Persistence error:", persistError.message);
+			} catch (persistError: unknown) {
+				consola.error("[desktop-realtime-evidence] Persistence error:", getErrorMessage(persistError));
 				// Don't fail the request - evidence was extracted, just not persisted
 			}
 		}
@@ -280,8 +406,8 @@ ${transcript}`,
 			batchIndex,
 			savedEvidenceIds, // Return IDs so desktop can track what's persisted
 		});
-	} catch (error: any) {
+	} catch (error: unknown) {
 		consola.error("[desktop-realtime-evidence] Extraction failed:", error);
-		return Response.json({ error: error?.message || "Evidence extraction failed" }, { status: 500 });
+		return Response.json({ error: getErrorMessage(error) || "Evidence extraction failed" }, { status: 500 });
 	}
 }

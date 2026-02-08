@@ -169,8 +169,8 @@ function deriveMediaFormat(
 		if (sourceType.includes("video")) return "video";
 		// Recall recordings are typically video
 		if (sourceType === "recall") return "video";
-		// Realtime recordings default to audio
-		if (sourceType === "realtime_recording") return "audio";
+		// Desktop realtime recordings are mp4 captures in current pipeline
+		if (sourceType === "realtime_recording") return "video";
 	}
 
 	// 3. Check semantic media_type for hints
@@ -1495,20 +1495,25 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const _primaryParticipant = participants[0]?.people;
 
 	// Calculate transcript speakers for the Manage Participants dialog
-	// Derive from transcript_formatted utterances since speaker_transcripts column was removed
+	// Derive from transcript_formatted utterances/speaker_transcripts
 	const transcriptSpeakers = useMemo(() => {
 		const transcriptData = interview.transcript_formatted as
-			| { utterances?: Array<{ speaker: string }> }
+			| { utterances?: Array<{ speaker: string }>; speaker_transcripts?: Array<{ speaker: string }> }
 			| null
 			| undefined;
 
-		if (!transcriptData?.utterances || !Array.isArray(transcriptData.utterances)) {
+		const utterances =
+			(Array.isArray(transcriptData?.utterances) && transcriptData.utterances) ||
+			(Array.isArray(transcriptData?.speaker_transcripts) && transcriptData.speaker_transcripts) ||
+			[];
+
+		if (!utterances.length) {
 			return [];
 		}
 
 		// Extract unique speakers from utterances
 		const uniqueSpeakers = new Set<string>();
-		for (const utterance of transcriptData.utterances) {
+		for (const utterance of utterances) {
 			if (utterance.speaker) {
 				uniqueSpeakers.add(utterance.speaker);
 			}

@@ -56,6 +56,16 @@ const LOG_FILE = path.join(app.getPath("userData"), "upsight-debug.log");
 const _origLog = console.log;
 const _origError = console.error;
 const _origWarn = console.warn;
+function safeStdWrite(fn, args) {
+  try {
+    fn(...args);
+  } catch (error) {
+    // Detached/dev sessions can lose stdout/stderr; avoid crashing on EIO.
+    if (error?.code !== "EIO") {
+      throw error;
+    }
+  }
+}
 function fileLog(level, ...args) {
   const msg = args
     .map((a) =>
@@ -68,15 +78,15 @@ function fileLog(level, ...args) {
   } catch (_) {}
 }
 console.log = (...args) => {
-  _origLog(...args);
+  safeStdWrite(_origLog, args);
   fileLog("LOG", ...args);
 };
 console.error = (...args) => {
-  _origError(...args);
+  safeStdWrite(_origError, args);
   fileLog("ERR", ...args);
 };
 console.warn = (...args) => {
-  _origWarn(...args);
+  safeStdWrite(_origWarn, args);
   fileLog("WARN", ...args);
 };
 // Truncate log file on startup
@@ -581,6 +591,17 @@ app.whenReady().then(() => {
   initSDK();
 
   createWindow();
+
+  // Dev-only helper: force floating panel for UI testing without waiting for detection.
+  if (process.env.UPSIGHT_SHOW_FLOATING_PANEL === "1") {
+    setTimeout(() => {
+      try {
+        showFloatingPanel();
+      } catch (error) {
+        console.error("Failed to force-show floating panel:", error);
+      }
+    }, 1500);
+  }
 
   // When the window is ready, send the initial meeting detection status
   mainWindow.webContents.on("did-finish-load", () => {
@@ -1301,9 +1322,12 @@ function initSDK() {
         const formattedTranscript = meeting.transcript.map((t) => ({
           speaker: t.speaker,
           text: t.text,
-          timestamp_ms: t.timestamp
-            ? new Date(t.timestamp).getTime()
-            : undefined,
+          timestamp_ms:
+            typeof t.timestamp_ms === "number"
+              ? t.timestamp_ms
+              : t.timestamp
+                ? new Date(t.timestamp).getTime() - new Date(meeting.date).getTime()
+                : undefined,
         }));
 
         let durationSeconds = null;
@@ -2374,6 +2398,46 @@ function extractPlatformUserId(platform, extraData, fallbackId) {
   }
 }
 
+function isGenericParticipantName(name) {
+  if (!name || typeof name !== "string") {
+    return true;
+  }
+
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (
+    normalized === "host" ||
+    normalized === "guest" ||
+    normalized === "participant" ||
+    normalized === "unknown" ||
+    normalized === "unknown speaker" ||
+    normalized === "unknown participant"
+  ) {
+    return true;
+  }
+
+  return normalized.includes("others");
+}
+
+function fallbackNameFromEmail(email) {
+  if (!email || typeof email !== "string") {
+    return null;
+  }
+
+  const localPart = email.split("@")[0]?.trim();
+  if (!localPart) {
+    return null;
+  }
+
+  return localPart
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Function to process participant join events
 async function processParticipantJoin(evt) {
   try {
@@ -2413,17 +2477,6 @@ async function processParticipantJoin(evt) {
       `Participant joined: ${participantName} (ID: ${participantId}, Host: ${isHost}, Email: ${email || "N/A"})`,
     );
 
-    // Skip "Host" and "Guest" generic names
-    if (
-      participantName === "Host" ||
-      participantName === "Guest" ||
-      participantName.includes("others") ||
-      participantName.split(" ").length > 3
-    ) {
-      console.log(`Skipping generic participant name: ${participantName}`);
-      return;
-    }
-
     // Use the file operation manager to safely update the meetings data
     await fileOperationManager.scheduleOperation(async (meetingsData) => {
       // Find the meeting note with this ID
@@ -2442,10 +2495,6 @@ async function processParticipantJoin(evt) {
       }
 
       // Check if participant already exists (based on ID)
-      const existingParticipantIndex = meeting.participants.findIndex(
-        (p) => p.id === participantId,
-      );
-
       // Extract platform-specific user ID for cross-meeting identity
       const platformUserId = extractPlatformUserId(
         platform,
@@ -2453,9 +2502,23 @@ async function processParticipantJoin(evt) {
         participantId,
       );
 
+      const displayName = isGenericParticipantName(participantName)
+        ? fallbackNameFromEmail(email) || participantName
+        : participantName;
+
+      const existingParticipantIndex = meeting.participants.findIndex((p) => {
+        if (!p) return false;
+        if (participantId && p.id === participantId) return true;
+        if (platformUserId && p.platformUserId === platformUserId) return true;
+        if (email && p.email && p.email.toLowerCase() === email.toLowerCase()) {
+          return true;
+        }
+        return false;
+      });
+
       const participantObj = {
         id: participantId,
-        name: participantName,
+        name: displayName,
         isHost: isHost,
         platform: platform,
         email: email,
@@ -2472,7 +2535,9 @@ async function processParticipantJoin(evt) {
         meeting.participants.push(participantObj);
       }
 
-      console.log(`Added/updated participant data for meeting: ${noteId}`);
+      console.log(
+        `Added/updated participant data for meeting: ${noteId} (${displayName})`,
+      );
 
       // Notify the renderer if this note is currently being edited
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -2595,28 +2660,80 @@ async function extractRealtimeEvidence(
  * @param {Array} aiPeople - People extracted by AI from transcript
  * @returns {Array} Merged people array with enriched data
  */
+function normalizeNameForMatch(name) {
+  if (!name || typeof name !== "string") return "";
+  return name.toLowerCase().replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function createRecallPersonKey(participant, index = 0) {
+  const rawKey =
+    participant?.platformUserId || participant?.email || participant?.id;
+  if (rawKey && typeof rawKey === "string") {
+    return `recall_${rawKey.toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
+  }
+  return `recall_participant_${index + 1}`;
+}
+
 function mergePeopleData(recallParticipants, aiPeople) {
   const merged = [];
+  const matchedParticipantIds = new Set();
+  const usedKeys = new Set();
 
-  // For each AI-extracted person, try to match with Recall participant
   for (const aiPerson of aiPeople || []) {
+    const aiName = normalizeNameForMatch(aiPerson.person_name);
     const match = recallParticipants?.find((p) => {
-      if (!p.name || !aiPerson.person_name) return false;
-      // Simple fuzzy match: check if one name contains the other (case-insensitive)
-      const pName = p.name.toLowerCase();
-      const aiName = aiPerson.person_name.toLowerCase();
-      return pName.includes(aiName) || aiName.includes(pName);
+      const participantName = normalizeNameForMatch(p?.name);
+      if (!participantName || !aiName) return false;
+      return participantName.includes(aiName) || aiName.includes(participantName);
     });
 
+    if (match?.id) {
+      matchedParticipantIds.add(match.id);
+    }
+
+    const personKey =
+      aiPerson.person_key || createRecallPersonKey(match || aiPerson, merged.length);
+    usedKeys.add(personKey);
+
     merged.push({
-      person_key: aiPerson.person_key,
-      person_name: aiPerson.person_name,
-      role: aiPerson.role,
-      // Enrich with Recall data if matched
-      recall_participant_id: match?.platformUserId,
+      person_key: personKey,
+      person_name:
+        aiPerson.person_name ||
+        (isGenericParticipantName(match?.name)
+          ? fallbackNameFromEmail(match?.email) || match?.name
+          : match?.name) ||
+        "Unknown Participant",
+      role: aiPerson.role || (match?.isHost ? "interviewer" : "participant"),
+      recall_participant_id: match?.platformUserId || match?.id,
       recall_platform: match?.platform,
       email: match?.email,
       is_host: match?.isHost,
+    });
+  }
+
+  // Add Recall participants that AI did not extract to avoid dropping real attendees.
+  for (const [index, participant] of (recallParticipants || []).entries()) {
+    if (!participant) continue;
+    if (participant.id && matchedParticipantIds.has(participant.id)) continue;
+
+    let personKey = createRecallPersonKey(participant, index);
+    if (usedKeys.has(personKey)) {
+      personKey = `${personKey}_${index + 1}`;
+    }
+    usedKeys.add(personKey);
+
+    const participantName = isGenericParticipantName(participant.name)
+      ? fallbackNameFromEmail(participant.email) || participant.name
+      : participant.name;
+
+    merged.push({
+      person_key: personKey,
+      person_name: participantName || "Unknown Participant",
+      role: participant.isHost ? "interviewer" : "participant",
+      recall_participant_id: participant.platformUserId || participant.id,
+      recall_platform: participant.platform,
+      email: participant.email || null,
+      is_host: participant.isHost || false,
     });
   }
 
@@ -3013,6 +3130,12 @@ async function performEvidenceExtraction(noteId) {
     const utterances = turnsToProcess.map((turn) => ({
       speaker: turn.speaker,
       text: turn.text,
+      timestamp_ms:
+        typeof turn.timestamp_ms === "number"
+          ? turn.timestamp_ms
+          : turn.timestamp && meeting.date
+            ? new Date(turn.timestamp).getTime() - new Date(meeting.date).getTime()
+            : null,
     }));
 
     // Pass existing evidence gists for deduplication
@@ -3137,6 +3260,41 @@ async function processTranscriptProviderData(evt) {
   }
 }
 
+function resolveSpeakerFromTranscriptParticipant(
+  transcriptParticipant,
+  meetingParticipants,
+) {
+  const participantName = transcriptParticipant?.name || "";
+  if (!isGenericParticipantName(participantName)) {
+    return participantName;
+  }
+
+  const participantId =
+    transcriptParticipant?.id ||
+    transcriptParticipant?.participant_id ||
+    transcriptParticipant?.user_id ||
+    null;
+  if (participantId && Array.isArray(meetingParticipants)) {
+    const matchedById = meetingParticipants.find(
+      (p) =>
+        p &&
+        (p.id === participantId ||
+          p.platformUserId === participantId ||
+          p.id?.toString() === participantId?.toString() ||
+          p.platformUserId?.toString() === participantId?.toString()),
+    );
+    if (matchedById && !isGenericParticipantName(matchedById.name)) {
+      return matchedById.name;
+    }
+  }
+
+  if (currentUnknownSpeaker !== -1) {
+    return `Speaker ${currentUnknownSpeaker}`;
+  }
+
+  return "Unknown Speaker";
+}
+
 // Function to process transcript data and store it with the meeting note
 async function processTranscriptData(evt) {
   try {
@@ -3164,24 +3322,9 @@ async function processTranscriptData(evt) {
       return; // No words to process
     }
 
-    // Get speaker information
-    let speaker;
-    if (
-      evt.data.data.participant?.name &&
-      evt.data.data.participant?.name !== "Host" &&
-      evt.data.data.participant?.name !== "Guest"
-    ) {
-      speaker = evt.data.data.participant?.name;
-    } else if (currentUnknownSpeaker !== -1) {
-      speaker = `Speaker ${currentUnknownSpeaker}`;
-    } else {
-      speaker = "Unknown Speaker";
-    }
-
     // Combine all words into a single text
     const text = words.map((word) => word.text).join(" ");
-
-    console.log(`Transcript from ${speaker}: "${text}"`);
+    let resolvedSpeaker = "Unknown Speaker";
 
     // Use the file operation manager to safely update the meetings data
     await fileOperationManager.scheduleOperation(async (meetingsData) => {
@@ -3196,6 +3339,12 @@ async function processTranscriptData(evt) {
 
       // Add the transcript data
       const meeting = meetingsData.pastMeetings[noteIndex];
+      resolvedSpeaker = resolveSpeakerFromTranscriptParticipant(
+        evt.data.data.participant,
+        meeting.participants || [],
+      );
+
+      console.log(`Transcript from ${resolvedSpeaker}: "${text}"`);
 
       // Initialize transcript array if it doesn't exist
       if (!meeting.transcript) {
@@ -3208,21 +3357,30 @@ async function processTranscriptData(evt) {
       const now = new Date();
       let merged = false;
 
-      if (lastEntry && lastEntry.speaker === speaker) {
+      if (lastEntry && lastEntry.speaker === resolvedSpeaker) {
         const lastTime = new Date(lastEntry.timestamp);
         if (now - lastTime < MERGE_WINDOW_MS) {
           // Merge: append text to existing entry
           lastEntry.text += " " + text;
           lastEntry.timestamp = now.toISOString();
+          if (meeting.date) {
+            lastEntry.timestamp_ms =
+              new Date(lastEntry.timestamp).getTime() -
+              new Date(meeting.date).getTime();
+          }
           merged = true;
         }
       }
 
       if (!merged) {
+        const timestampMs = meeting.date
+          ? new Date(now.toISOString()).getTime() - new Date(meeting.date).getTime()
+          : null;
         meeting.transcript.push({
           text,
-          speaker,
+          speaker: resolvedSpeaker,
           timestamp: now.toISOString(),
+          timestamp_ms: timestampMs,
         });
       }
 
@@ -3237,7 +3395,7 @@ async function processTranscriptData(evt) {
 
       // Also send transcript to floating panel
       sendTranscriptToPanel({
-        speaker,
+        speaker: resolvedSpeaker,
         text: merged ? lastEntry.text : text,
         timestamp: now.toISOString(),
         merged,
