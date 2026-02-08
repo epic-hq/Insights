@@ -261,6 +261,7 @@ const routes = [
     "api/desktop/interviews/upload-media",
     "./routes/api.desktop.interviews.upload-media.ts",
   ),
+  route("api/desktop/people/resolve", "./routes/api.desktop.people.resolve.ts"),
   route("api/recall-webhook", "./routes/api.recall-webhook.ts"),
 
   // API routes
