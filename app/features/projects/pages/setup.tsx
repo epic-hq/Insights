@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Pencil,
   SlidersHorizontal,
+  Target,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
@@ -32,8 +33,14 @@ import {
 } from "react-router";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { useOptionalProjectStatusAgent } from "~/contexts/project-status-agent-context";
-import { cn } from "~/lib/utils";
 import {
   type CapturedField,
   CapturedPane,
@@ -45,6 +52,7 @@ import {
 } from "~/features/projects/contexts/project-setup-context";
 import { getProjectById } from "~/features/projects/db";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
 import { userContext } from "~/server/user-context";
 
 type TemplatePrefill = {
@@ -237,6 +245,65 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 // Uppy (project status agent) is visible on this page — no hideProjectStatusAgent
 export const handle = {};
+
+/**
+ * ICP Scoring Card
+ * Allows users to trigger ICP match scoring for all people in the project
+ */
+function ICPScoringCard({ projectId }: { projectId: string }) {
+  const [isScoring, setIsScoring] = useState(false);
+
+  const handleScoreICP = async () => {
+    setIsScoring(true);
+    try {
+      const res = await fetch("/api/score-icp-matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, force: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("ICP scoring started", {
+          description: "All people will be scored against your ICP criteria",
+        });
+      } else {
+        toast.error(data.error || "Failed to start ICP scoring");
+      }
+    } catch (error) {
+      console.error("Failed to trigger ICP scoring:", error);
+      toast.error("Failed to start ICP scoring");
+    } finally {
+      setIsScoring(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Target className="h-4 w-4 text-primary" />
+          </div>
+          <CardTitle className="text-base">ICP Match Scoring</CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          Score all contacts against your Ideal Customer Profile
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          onClick={handleScoreICP}
+          disabled={isScoring}
+          variant="outline"
+          size="sm"
+          className="w-full"
+        >
+          {isScoring ? "Scoring..." : "Score ICP Matches Now"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * Field definitions for the CapturedPane
@@ -1148,7 +1215,7 @@ export default function ProjectSetupPage() {
           type="button"
           onClick={switchToFormMode}
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+            "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium text-sm transition-all",
             !isInChatMode
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -1161,7 +1228,7 @@ export default function ProjectSetupPage() {
           type="button"
           onClick={switchToChatMode}
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+            "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium text-sm transition-all",
             isInChatMode
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -1289,7 +1356,7 @@ export default function ProjectSetupPage() {
                   {modeToggle}
                 </div>
                 <div className="flex-[2] lg:max-w-sm">
-                  <div className="sticky top-6">
+                  <div className="sticky top-6 space-y-4">
                     <SetupCapturedPane
                       localFields={localCapturedFields}
                       accountData={accountData}
@@ -1297,6 +1364,7 @@ export default function ProjectSetupPage() {
                       onEditField={handleEditField}
                       variant="sidebar"
                     />
+                    <ICPScoringCard projectId={projectId} />
                   </div>
                 </div>
               </motion.div>
