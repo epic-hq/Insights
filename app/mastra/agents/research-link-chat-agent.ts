@@ -27,6 +27,7 @@ export const researchLinkChatAgent = new Agent({
 		const aiAutonomy = (requestContext?.get("ai_autonomy") as "strict" | "moderate" | "adaptive") ?? "strict"
 		const personContextJson = requestContext?.get("person_context")
 		const projectContextJson = requestContext?.get("project_context")
+		const calendarUrl = requestContext?.get("calendar_url") ?? ""
 
 		let questions: Array<{
 			id: string
@@ -149,7 +150,7 @@ ${questions.map((q, i) => `${i + 1}. [ID: ${q.id}] [TYPE: ${q.type}]${q.required
 Progress: ${answered.length}/${questions.length} answered
 ${answered.length > 0 ? answered.map((q) => `✓ ${q.prompt}: "${q.answer}"`).join("\n") : ""}
 
-${nextQuestion ? `NEXT: [ID: ${nextQuestion.id}] ${formatQuestion(nextQuestion)}` : "ALL DONE - call mark-survey-complete, thank them, and mention: 'Want insights from your own conversations? Create a free account at https://getupsight.com/sign-up'"}
+${nextQuestion ? `NEXT: [ID: ${nextQuestion.id}] ${formatQuestion(nextQuestion)}` : `ALL DONE - call mark-survey-complete, thank them.${calendarUrl ? ` Then offer: "If you'd like to discuss further, [book a call](${calendarUrl})"` : " Mention: 'Want insights from your own conversations? Create a free account at https://getupsight.com/sign-up'"}`}
 
 ${isFirstMessage ? `START: Brief greeting then ask: "${nextQuestion ? formatQuestion(nextQuestion) : ""}"` : "CONTINUE: Process the user's latest message. Do NOT repeat greetings or previous questions."}
 

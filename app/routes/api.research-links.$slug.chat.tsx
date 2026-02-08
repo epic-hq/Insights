@@ -84,9 +84,9 @@ function computeReachablePath(
 	const remainingQuestions = surveyComplete
 		? []
 		: questions.slice(currentIndex).filter((q) => {
-				const answer = responses[q.id]
-				return answer === undefined || answer === null || answer === ""
-			})
+			const answer = responses[q.id]
+			return answer === undefined || answer === null || answer === ""
+		})
 
 	return {
 		answeredPath,
@@ -153,7 +153,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const { data: list, error } = await supabase
 		.from("research_links")
 		.select(
-			"id, name, description, hero_title, hero_subtitle, instructions, questions, account_id, project_id, ai_autonomy"
+			"id, name, description, hero_title, hero_subtitle, instructions, questions, account_id, project_id, ai_autonomy, calendar_url"
 		)
 		.eq("slug", slug)
 		.eq("is_live", true)
@@ -279,9 +279,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	// The agent needs full conversation history to maintain context
 	const sanitizedMessages = Array.isArray(payload.messages)
 		? payload.messages.map((m) => ({
-				role: m.role as "user" | "assistant",
-				content: extractMessageContent(m),
-			}))
+			role: m.role as "user" | "assistant",
+			content: extractMessageContent(m),
+		}))
 		: []
 
 	consola.info("research-link-chat: message processing", {
@@ -317,10 +317,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		"next_question_full",
 		nextQuestion
 			? JSON.stringify({
-					id: nextQuestion.id,
-					prompt: nextQuestion.prompt,
-					type: nextQuestion.type,
-				})
+				id: nextQuestion.id,
+				prompt: nextQuestion.prompt,
+				type: nextQuestion.type,
+			})
 			: ""
 	)
 	// Tell agent if survey is complete (branching may end survey early)
@@ -331,6 +331,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	// Pass AI autonomy setting
 	requestContext.set("ai_autonomy", aiAutonomy)
+
+	// Pass calendar URL if configured (for agent to offer booking)
+	if (list.calendar_url) {
+		requestContext.set("calendar_url", list.calendar_url)
+	}
 
 	// Pass person context if available (only for moderate/adaptive modes)
 	if (personContext) {

@@ -46,6 +46,40 @@ import { extractUtmParamsFromSearch, hasUtmParams } from "~/utils/utm"
 const emailSchema = z.string().email()
 const phoneSchema = z.string().min(7, "Enter a valid phone number")
 
+/** Render text with markdown-style [label](url) converted to clickable links */
+function renderChatText(text: string) {
+	const matches = [...text.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)]
+	if (matches.length === 0) return text
+
+	const parts: React.ReactNode[] = []
+	let lastIndex = 0
+
+	for (const match of matches) {
+		const idx = match.index ?? 0
+		if (idx > lastIndex) {
+			parts.push(text.slice(lastIndex, idx))
+		}
+		parts.push(
+			<a
+				key={idx}
+				href={match[2]}
+				target="_blank"
+				rel="noreferrer"
+				className="font-medium underline hover:opacity-80"
+			>
+				{match[1]}
+			</a>
+		)
+		lastIndex = idx + match[0].length
+	}
+
+	if (lastIndex < text.length) {
+		parts.push(text.slice(lastIndex))
+	}
+
+	return parts
+}
+
 // Type definitions used by ChatSection (moved before component)
 type ResponseValue = string | string[] | boolean | null
 type ResponseRecord = Record<string, ResponseValue>
@@ -229,7 +263,7 @@ function ChatSection({
 											: "rounded-bl-md bg-white/10 text-white/90"
 									)}
 								>
-									{text}
+									{message.role === "assistant" ? renderChatText(text) : text}
 								</div>
 							</div>
 						)
@@ -406,13 +440,13 @@ type StartSignupResult = {
 
 type StartSignupPayload =
 	| {
-			email: string
-			firstName?: string | null
-			lastName?: string | null
-			responseId?: string | null
-			responseMode?: Mode
-			utmParams?: Record<string, string> | null
-	  }
+		email: string
+		firstName?: string | null
+		lastName?: string | null
+		responseId?: string | null
+		responseMode?: Mode
+		utmParams?: Record<string, string> | null
+	}
 	| { phone: string; responseId?: string | null; responseMode?: Mode; utmParams?: Record<string, string> | null }
 	| { responseId?: string | null; responseMode?: Mode; utmParams?: Record<string, string> | null } // anonymous
 
