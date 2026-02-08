@@ -168,6 +168,7 @@ export const ResearchLinkResponseStartSchema = z.object({
 	email: z.string({ required_error: "Email is required" }).email("Enter a valid email"),
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
+	utmParams: z.record(z.string()).optional().nullable(),
 })
 
 /**
@@ -176,6 +177,7 @@ export const ResearchLinkResponseStartSchema = z.object({
 export const ResearchLinkAnonymousStartSchema = z.object({
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
+	utmParams: z.record(z.string()).optional().nullable(),
 })
 
 /**
@@ -185,6 +187,7 @@ export const ResearchLinkPhoneStartSchema = z.object({
 	phone: z.string({ required_error: "Phone number is required" }).min(7, "Enter a valid phone number"),
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
+	utmParams: z.record(z.string()).optional().nullable(),
 })
 
 /**
@@ -196,6 +199,7 @@ export const ResearchLinkCreatePersonSchema = z.object({
 	lastName: z.string().optional().nullable(),
 	responseId: z.string().uuid({ message: "Response ID is required" }),
 	responseMode: z.enum(["form", "chat"]).optional(),
+	utmParams: z.record(z.string()).optional().nullable(),
 })
 
 export const ResearchLinkResponseSaveSchema = z.object({

@@ -56,6 +56,7 @@ create table if not exists public.research_link_responses (
     response_mode text not null default 'form' check (response_mode in ('form', 'chat', 'voice')),
     video_url text,
     completed boolean not null default false,
+    utm_params jsonb, -- campaign attribution (utm_source, utm_medium, utm_campaign, etc.)
     evidence_id uuid, -- FK to evidence (added later via ALTER to avoid circular deps)
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()

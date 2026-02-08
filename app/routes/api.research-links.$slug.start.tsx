@@ -125,6 +125,7 @@ async function handleAnonymousStart(
 	const existingResponseId = parsed.data.responseId
 	const responseMode =
 		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form")
+	const utmParams = parsed.data.utmParams ?? null
 
 	// If we have an existing response ID, try to resume it
 	if (existingResponseId) {
@@ -156,6 +157,7 @@ async function handleAnonymousStart(
 			responses: {},
 			completed: false,
 			response_mode: responseMode,
+			...(utmParams ? { utm_params: utmParams } : {}),
 		})
 		.select("id")
 		.maybeSingle()
@@ -195,6 +197,7 @@ async function handlePhoneStart(
 	const existingResponseId = parsed.data.responseId
 	const responseMode =
 		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form")
+	const utmParams = parsed.data.utmParams ?? null
 
 	// If we have an existing response ID, try to resume it
 	if (existingResponseId) {
@@ -262,6 +265,7 @@ async function handlePhoneStart(
 			responses: {},
 			completed: false,
 			response_mode: responseMode,
+			...(utmParams ? { utm_params: utmParams } : {}),
 		})
 		.select("id")
 		.maybeSingle()
@@ -302,6 +306,7 @@ async function handleEmailStart(
 	const existingResponseId = parsed.data.responseId
 	const responseMode =
 		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form")
+	const utmParams = parsed.data.utmParams ?? null
 
 	// If we have an existing response ID, try to resume it
 	if (existingResponseId) {
@@ -343,6 +348,23 @@ async function handleEmailStart(
 	}
 
 	if (existing) {
+		let personId = existing.person_id
+
+		// Backfill: if response exists but person_id is null, re-check people table
+		if (!personId) {
+			const { data: backfillPeople } = await supabase
+				.from("people")
+				.select("id")
+				.eq("account_id", list.account_id)
+				.eq("primary_email", normalizedEmail)
+				.limit(1)
+			const backfillPerson = backfillPeople?.[0]
+			if (backfillPerson) {
+				personId = backfillPerson.id
+				await supabase.from("research_link_responses").update({ person_id: backfillPerson.id }).eq("id", existing.id)
+			}
+		}
+
 		await supabase
 			.from("research_link_responses")
 			.update({
@@ -354,19 +376,21 @@ async function handleEmailStart(
 			responseId: existing.id,
 			responses: existing.responses ?? {},
 			completed: existing.completed ?? false,
-			personId: existing.person_id,
+			personId,
 			identityMode: "identified",
 			identityField: "email",
 		})
 	}
 
 	// Look up person by email in the people table for this account
-	const { data: existingPerson } = await supabase
+	// Use limit(1) instead of maybeSingle() to handle duplicate people records gracefully
+	const { data: existingPeople } = await supabase
 		.from("people")
 		.select("id, name, firstname, lastname")
 		.eq("account_id", list.account_id)
 		.eq("primary_email", normalizedEmail)
-		.maybeSingle()
+		.limit(1)
+	const existingPerson = existingPeople?.[0] ?? null
 
 	if (existingPerson) {
 		// Person exists - create response linked to them
@@ -379,6 +403,7 @@ async function handleEmailStart(
 				responses: {},
 				completed: false,
 				response_mode: responseMode,
+				...(utmParams ? { utm_params: utmParams } : {}),
 			})
 			.select("id")
 			.maybeSingle()
@@ -406,6 +431,7 @@ async function handleEmailStart(
 			responses: {},
 			completed: false,
 			response_mode: responseMode,
+			...(utmParams ? { utm_params: utmParams } : {}),
 		})
 		.select("id")
 		.maybeSingle()

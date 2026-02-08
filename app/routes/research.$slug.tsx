@@ -41,6 +41,7 @@ import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { cn } from "~/lib/utils"
 import { createR2PresignedUrl } from "~/utils/r2.server"
+import { extractUtmParamsFromSearch, hasUtmParams } from "~/utils/utm"
 
 const emailSchema = z.string().email()
 const phoneSchema = z.string().min(7, "Enter a valid phone number")
@@ -405,14 +406,15 @@ type StartSignupResult = {
 
 type StartSignupPayload =
 	| {
-		email: string
-		firstName?: string | null
-		lastName?: string | null
-		responseId?: string | null
-		responseMode?: Mode
-	}
-	| { phone: string; responseId?: string | null; responseMode?: Mode }
-	| { responseId?: string | null; responseMode?: Mode } // anonymous
+			email: string
+			firstName?: string | null
+			lastName?: string | null
+			responseId?: string | null
+			responseMode?: Mode
+			utmParams?: Record<string, string> | null
+	  }
+	| { phone: string; responseId?: string | null; responseMode?: Mode; utmParams?: Record<string, string> | null }
+	| { responseId?: string | null; responseMode?: Mode; utmParams?: Record<string, string> | null } // anonymous
 
 async function startSignup(slug: string, payload: StartSignupPayload): Promise<StartSignupResult> {
 	const response = await fetch(`/api/research-links/${slug}/start`, {
@@ -476,6 +478,7 @@ export default function ResearchLinkPage() {
 	const [copiedLink, setCopiedLink] = useState(false)
 	const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null)
 	const [isReviewing, setIsReviewing] = useState(false)
+	const utmParamsRef = useRef<Record<string, string> | undefined>(undefined)
 
 	const resolvedMode = list.allow_chat ? mode : "form"
 	const hasMultipleModes = list.allow_chat || list.allow_voice
@@ -643,12 +646,18 @@ export default function ResearchLinkPage() {
 			const urlFirstName = urlParams.get("first_name") || urlParams.get("name")?.split(" ")[0] || null
 			const urlLastName = urlParams.get("last_name") || urlParams.get("name")?.split(" ").slice(1).join(" ") || null
 
+			// Extract UTM params for campaign attribution (store in ref for manual submits)
+			const utmParams = extractUtmParamsFromSearch(urlParams)
+			const utmPayload = hasUtmParams(utmParams) ? utmParams : undefined
+			if (utmPayload) utmParamsRef.current = utmPayload
+
 			// If we have URL params, use those (coming from embed or personalized link)
 			if (urlEmail && urlResponseId) {
 				void startSignup(slug, {
 					email: urlEmail,
 					responseId: urlResponseId,
 					responseMode: resolvedMode,
+					utmParams: utmPayload,
 				})
 					.then((result) => {
 						setEmail(urlEmail)
@@ -691,14 +700,12 @@ export default function ResearchLinkPage() {
 				void startSignup(slug, {
 					email: urlEmail,
 					responseMode: resolvedMode,
+					utmParams: utmPayload,
 				})
 					.then((result) => {
 						setResponseId(result.responseId)
 						setResponses(result.responses || {})
-						window.localStorage.setItem(
-							storageKey,
-							JSON.stringify({ email: urlEmail, responseId: result.responseId })
-						)
+						window.localStorage.setItem(storageKey, JSON.stringify({ email: urlEmail, responseId: result.responseId }))
 						const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
 						if (initialIndex >= questions.length) {
 							setStage("complete")
@@ -716,18 +723,21 @@ export default function ResearchLinkPage() {
 								lastName: urlLastName,
 								responseId: result.responseId,
 								responseMode: resolvedMode,
-							}).then((personResult) => {
-								setResponseId(personResult.responseId)
-								setResponses(personResult.responses || {})
-								setCurrentIndex(initialIndex)
-								setStage(list.instructions ? "instructions" : "survey")
-								const existingValue = personResult.responses?.[questions[initialIndex]?.id]
-								setCurrentAnswer(existingValue ?? "")
-							}).catch(() => {
-								// Fall through — person creation failed, show name form
-								setCurrentIndex(initialIndex)
-								setStage("name")
+								utmParams: utmPayload,
 							})
+								.then((personResult) => {
+									setResponseId(personResult.responseId)
+									setResponses(personResult.responses || {})
+									setCurrentIndex(initialIndex)
+									setStage(list.instructions ? "instructions" : "survey")
+									const existingValue = personResult.responses?.[questions[initialIndex]?.id]
+									setCurrentAnswer(existingValue ?? "")
+								})
+								.catch(() => {
+									// Fall through — person creation failed, show name form
+									setCurrentIndex(initialIndex)
+									setStage("name")
+								})
 						} else {
 							// Unknown person, no name — show name collection form
 							setCurrentIndex(initialIndex)
@@ -750,14 +760,12 @@ export default function ResearchLinkPage() {
 				void startSignup(slug, {
 					phone: urlPhone,
 					responseMode: resolvedMode,
+					utmParams: utmPayload,
 				})
 					.then((result) => {
 						setResponseId(result.responseId)
 						setResponses(result.responses || {})
-						window.localStorage.setItem(
-							storageKey,
-							JSON.stringify({ phone: urlPhone, responseId: result.responseId })
-						)
+						window.localStorage.setItem(storageKey, JSON.stringify({ phone: urlPhone, responseId: result.responseId }))
 						const initialIndex = findNextQuestionIndex(result.responses || {}, questions)
 						if (initialIndex >= questions.length) {
 							setStage("complete")
@@ -790,7 +798,7 @@ export default function ResearchLinkPage() {
 			if (!stored) {
 				// For anonymous mode with no stored session, auto-start the survey
 				if (list.identity_mode === "anonymous") {
-					void startSignup(slug, { responseMode: resolvedMode })
+					void startSignup(slug, { responseMode: resolvedMode, utmParams: utmPayload })
 						.then((result) => {
 							setResponseId(result.responseId)
 							setResponses(result.responses || {})
@@ -949,6 +957,7 @@ export default function ResearchLinkPage() {
 				email: email.trim(),
 				responseId,
 				responseMode: resolvedMode,
+				utmParams: utmParamsRef.current,
 			})
 			setResponseId(result.responseId)
 			setResponses(result.responses || {})
@@ -988,6 +997,7 @@ export default function ResearchLinkPage() {
 				phone: phone.trim().replace(/\s+/g, ""),
 				responseId,
 				responseMode: resolvedMode,
+				utmParams: utmParamsRef.current,
 			})
 			setResponseId(result.responseId)
 			setResponses(result.responses || {})
