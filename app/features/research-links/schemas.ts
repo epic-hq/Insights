@@ -7,8 +7,20 @@ export const ResearchLinkQuestionSchema = z.object({
 	prompt: z.string().min(1, "Question text is required"),
 	required: z.boolean().default(false),
 	type: z
-		.enum(["auto", "short_text", "long_text", "single_select", "multi_select", "likert", "image_select"])
-		.default("auto"),
+		.string()
+		.default("auto")
+		.transform((val) => {
+			const valid = [
+				"auto",
+				"short_text",
+				"long_text",
+				"single_select",
+				"multi_select",
+				"likert",
+				"image_select",
+			] as const
+			return (valid as readonly string[]).includes(val) ? (val as (typeof valid)[number]) : "short_text"
+		}),
 	placeholder: z.string().optional().nullable(),
 	helperText: z.string().optional().nullable(),
 	options: z.array(z.string()).optional().nullable(),

@@ -405,12 +405,12 @@ type StartSignupResult = {
 
 type StartSignupPayload =
 	| {
-			email: string
-			firstName?: string | null
-			lastName?: string | null
-			responseId?: string | null
-			responseMode?: Mode
-	  }
+		email: string
+		firstName?: string | null
+		lastName?: string | null
+		responseId?: string | null
+		responseMode?: Mode
+	}
 	| { phone: string; responseId?: string | null; responseMode?: Mode }
 	| { responseId?: string | null; responseMode?: Mode } // anonymous
 
@@ -1053,16 +1053,9 @@ export default function ResearchLinkPage() {
 									</div>
 								)}
 
-								{/* Description after video */}
-								{(list.hero_subtitle || list.description) && (
-									<p className="text-sm text-white/80 leading-relaxed">{list.hero_subtitle || list.description}</p>
-								)}
-
-								{/* Instructions (optional detailed guidance) */}
+								{/* Instructions for the respondent */}
 								{list.instructions && (
-									<div className="prose prose-sm prose-invert max-w-none rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 prose-li:text-white/60 prose-li:text-xs prose-p:text-white/60 prose-p:text-xs prose-ul:text-white/60 prose-ul:text-xs prose-p:leading-relaxed">
-										<Streamdown>{list.instructions}</Streamdown>
-									</div>
+									<p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>
 								)}
 
 								{/* Mode selector - show when multiple modes available */}
@@ -1145,7 +1138,6 @@ export default function ResearchLinkPage() {
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
 										required
 									/>
-									<p className="text-right text-white/50 text-xs">{list.hero_cta_helper || ""}</p>
 								</div>
 								<div className="flex justify-end">
 									<Button
@@ -1176,9 +1168,9 @@ export default function ResearchLinkPage() {
 									</div>
 								)}
 
-								{/* Description after video */}
-								{(list.hero_subtitle || list.description) && (
-									<p className="text-sm text-white/80 leading-relaxed">{list.hero_subtitle || list.description}</p>
+								{/* Instructions for the respondent */}
+								{list.instructions && (
+									<p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>
 								)}
 
 								{/* Mode selector - show when multiple modes available */}
@@ -1261,7 +1253,6 @@ export default function ResearchLinkPage() {
 										className="border-white/10 bg-black/40 text-white placeholder:text-white/40"
 										required
 									/>
-									<p className="text-right text-white/50 text-xs">{list.hero_cta_helper || ""}</p>
 								</div>
 								<div className="flex justify-end">
 									<Button

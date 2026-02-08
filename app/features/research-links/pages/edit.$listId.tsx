@@ -1,11 +1,10 @@
 import slugify from "@sindresorhus/slugify"
 import { motion } from "framer-motion"
-import { Check, Copy, ExternalLink } from "lucide-react"
+import { ArrowLeft, Check, Copy, ExternalLink } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
@@ -286,7 +285,7 @@ export default function EditResearchLinkPage() {
 	const [heroSubtitle, setHeroSubtitle] = useState(list.hero_subtitle ?? "")
 	const [instructions, setInstructions] = useState((list as { instructions?: string | null }).instructions ?? "")
 	const [heroCtaLabel, setHeroCtaLabel] = useState(list.hero_cta_label ?? "Continue")
-	const [heroCtaHelper, setHeroCtaHelper] = useState(list.hero_cta_helper ?? "Let's get started")
+	const [heroCtaHelper, setHeroCtaHelper] = useState(list.hero_cta_helper ?? "")
 	const [calendarUrl, setCalendarUrl] = useState(list.calendar_url ?? "")
 	const [redirectUrl, setRedirectUrl] = useState(list.redirect_url ?? "")
 	const [allowChat, setAllowChat] = useState(Boolean(list.allow_chat))
@@ -379,446 +378,446 @@ export default function EditResearchLinkPage() {
 
 	return (
 		<PageContainer className="max-w-3xl space-y-4">
-			<Form method="post" className="grid gap-6 lg:grid-cols-[minmax(0,400px),minmax(240px,280px)]">
-				<div className="min-w-0 space-y-4">
-					{/* Alerts */}
-					{actionData?.errors?._form ? (
-						<Alert variant="destructive">
-							<AlertTitle>Unable to save</AlertTitle>
-							<AlertDescription>{actionData.errors._form}</AlertDescription>
-						</Alert>
-					) : null}
-					{actionData?.ok ? (
-						<Alert variant="default">
-							<AlertTitle>Saved</AlertTitle>
-							<AlertDescription>Your research link settings were updated.</AlertDescription>
-						</Alert>
-					) : null}
-
-					{/* Basics */}
-					<div className="space-y-1.5">
-						<h3 className="font-medium text-foreground/80 text-sm">Basics</h3>
-						<Card>
-							<CardContent className="space-y-3 py-3">
-								<div className="grid gap-4 sm:grid-cols-2">
-									<div className="space-y-1.5">
-										<Label htmlFor="name" className="text-muted-foreground text-xs">
-											Internal name
-										</Label>
-										<Input
-											id="name"
-											name="name"
-											value={name}
-											onChange={(event) => setName(event.target.value)}
-											required
-											className="h-9"
-										/>
-										{actionData?.errors?.name ? (
-											<p className="text-destructive text-xs">{actionData.errors.name}</p>
-										) : null}
-									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="slug" className="text-muted-foreground text-xs">
-											Public slug
-										</Label>
-										<Input
-											id="slug"
-											name="slug"
-											value={slug}
-											onChange={(event) => {
-												// Slugify as user types for URL-safe slugs
-												const slugified = slugify(event.target.value, {
-													lowercase: true,
-													preserveLeadingUnderscore: false,
-												})
-												setSlug(slugified)
-												setSlugEdited(true)
-											}}
-											required
-											className="h-9"
-										/>
-										{actionData?.errors?.slug ? (
-											<p className="text-destructive text-xs">{actionData.errors.slug}</p>
-										) : null}
-									</div>
-								</div>
-								<p className="text-muted-foreground text-xs">Link:</p>
-								<div className="space-y-2">
-									<div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
-										<span className="break-all font-mono">{publicLink}</span>
-									</div>
-									<div className="flex flex-wrap gap-2">
-										<Button type="button" variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
-											{copiedLink ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-											{copiedLink ? "Copied" : "Copy link"}
-										</Button>
-										<Button asChild variant="outline" size="sm" className="gap-2">
-											<a href={publicLink} target="_blank" rel="noreferrer">
-												<ExternalLink className="h-4 w-4" />
-												Open in new tab
-											</a>
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+			<Form method="post" className="space-y-4">
+				{/* Sticky top bar with actions */}
+				<div className="-mx-4 sticky top-0 z-20 border-border/40 border-b bg-background/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+					<div className="flex items-center justify-between gap-3">
+						<div className="flex items-center gap-2 overflow-hidden">
+							<Link to={routes.ask.index()} className="shrink-0 text-muted-foreground hover:text-foreground">
+								<ArrowLeft className="h-4 w-4" />
+							</Link>
+							<span className="truncate font-medium text-sm">{name || "Untitled"}</span>
+							{actionData?.ok && <span className="shrink-0 text-green-600 text-xs">Saved</span>}
+						</div>
+						<div className="flex items-center gap-2">
+							<Button asChild variant="ghost" size="sm">
+								<Link to={routes.ask.responses(list.id)}>Responses</Link>
+							</Button>
+							<Button type="submit" size="sm" disabled={isSubmitting}>
+								{isSubmitting ? "Saving..." : "Save changes"}
+							</Button>
+						</div>
 					</div>
+					{actionData?.errors?._form && <p className="mt-1.5 text-destructive text-xs">{actionData.errors._form}</p>}
+				</div>
 
-					<Tabs defaultValue="landing" className="space-y-4">
-						<TabsList className="w-full justify-start">
-							<TabsTrigger value="landing">Landing page</TabsTrigger>
-							<TabsTrigger value="video">Intro video</TabsTrigger>
-							<TabsTrigger value="questions">Questions</TabsTrigger>
-							<TabsTrigger value="options">Options</TabsTrigger>
-							<TabsTrigger value="embed">Embed</TabsTrigger>
-						</TabsList>
-
-						<TabsContent value="landing" className="space-y-1.5">
-							<h3 className="font-medium text-foreground/80 text-sm">Landing Page</h3>
+				<div className="grid gap-6 lg:grid-cols-[minmax(0,400px),minmax(240px,280px)]">
+					<div className="min-w-0 space-y-4">
+						{/* Basics */}
+						<div className="space-y-1.5">
+							<h3 className="font-medium text-foreground/80 text-sm">Basics</h3>
 							<Card>
 								<CardContent className="space-y-3 py-3">
-									<div className="space-y-1.5">
-										<Label htmlFor="hero_title" className="text-muted-foreground text-xs">
-											Headline
-										</Label>
-										<Input
-											id="hero_title"
-											name="hero_title"
-											value={heroTitle}
-											onChange={(event) => setHeroTitle(event.target.value)}
-											placeholder="Share your thoughts"
-											className="h-9"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="hero_subtitle" className="text-muted-foreground text-xs">
-											Description
-										</Label>
-										<Textarea
-											id="hero_subtitle"
-											name="hero_subtitle"
-											value={heroSubtitle}
-											onChange={(event) => setHeroSubtitle(event.target.value)}
-											rows={2}
-											placeholder="Brief description shown on landing page"
-											className="resize-none"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="instructions" className="text-muted-foreground text-xs">
-											Instructions
-										</Label>
-										<Textarea
-											id="instructions"
-											name="instructions"
-											value={instructions}
-											onChange={(event) => setInstructions(event.target.value)}
-											rows={3}
-											placeholder="Detailed instructions shown before starting the survey (optional)"
-											className="resize-none"
-										/>
-									</div>
 									<div className="grid gap-4 sm:grid-cols-2">
 										<div className="space-y-1.5">
-											<Label htmlFor="hero_cta_label" className="text-muted-foreground text-xs">
-												Button text
+											<Label htmlFor="name" className="text-muted-foreground text-xs">
+												Internal name
 											</Label>
 											<Input
-												id="hero_cta_label"
-												name="hero_cta_label"
-												value={heroCtaLabel}
-												onChange={(event) => setHeroCtaLabel(event.target.value)}
+												id="name"
+												name="name"
+												value={name}
+												onChange={(event) => setName(event.target.value)}
+												required
+												className="h-9"
+											/>
+											{actionData?.errors?.name ? (
+												<p className="text-destructive text-xs">{actionData.errors.name}</p>
+											) : null}
+										</div>
+										<div className="space-y-1.5">
+											<Label htmlFor="slug" className="text-muted-foreground text-xs">
+												Public slug
+											</Label>
+											<Input
+												id="slug"
+												name="slug"
+												value={slug}
+												onChange={(event) => {
+													// Slugify as user types for URL-safe slugs
+													const slugified = slugify(event.target.value, {
+														lowercase: true,
+														preserveLeadingUnderscore: false,
+													})
+													setSlug(slugified)
+													setSlugEdited(true)
+												}}
+												required
+												className="h-9"
+											/>
+											{actionData?.errors?.slug ? (
+												<p className="text-destructive text-xs">{actionData.errors.slug}</p>
+											) : null}
+										</div>
+									</div>
+									<p className="text-muted-foreground text-xs">Link:</p>
+									<div className="space-y-2">
+										<div className="rounded-md border bg-muted/40 px-2.5 py-2 text-foreground/70 text-xs">
+											<span className="break-all font-mono">{publicLink}</span>
+										</div>
+										<div className="flex flex-wrap gap-2">
+											<Button type="button" variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
+												{copiedLink ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+												{copiedLink ? "Copied" : "Copy link"}
+											</Button>
+											<Button asChild variant="outline" size="sm" className="gap-2">
+												<a href={publicLink} target="_blank" rel="noreferrer">
+													<ExternalLink className="h-4 w-4" />
+													Open in new tab
+												</a>
+											</Button>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+
+						<Tabs defaultValue="landing" className="space-y-4">
+							<TabsList className="w-full justify-start">
+								<TabsTrigger value="landing">Landing page</TabsTrigger>
+								<TabsTrigger value="questions">Questions</TabsTrigger>
+								<TabsTrigger value="options">Options</TabsTrigger>
+								<TabsTrigger value="embed">Embed</TabsTrigger>
+							</TabsList>
+
+							<TabsContent value="landing" className="space-y-1.5">
+								<h3 className="font-medium text-foreground/80 text-sm">Landing Page</h3>
+								<Card>
+									<CardContent className="space-y-3 py-3">
+										<div className="space-y-1.5">
+											<Label htmlFor="hero_title" className="text-muted-foreground text-xs">
+												Headline
+											</Label>
+											<Input
+												id="hero_title"
+												name="hero_title"
+												value={heroTitle}
+												onChange={(event) => setHeroTitle(event.target.value)}
+												placeholder="Share your thoughts"
 												className="h-9"
 											/>
 										</div>
 										<div className="space-y-1.5">
-											<Label htmlFor="hero_cta_helper" className="text-muted-foreground text-xs">
-												Helper text
+											<Label htmlFor="hero_subtitle" className="text-muted-foreground text-xs">
+												Description
 											</Label>
-											<Input
-												id="hero_cta_helper"
-												name="hero_cta_helper"
-												value={heroCtaHelper}
-												onChange={(event) => setHeroCtaHelper(event.target.value)}
-												className="h-9"
+											<Textarea
+												id="hero_subtitle"
+												name="hero_subtitle"
+												value={heroSubtitle}
+												onChange={(event) => setHeroSubtitle(event.target.value)}
+												rows={2}
+												placeholder="Brief description shown on landing page"
+												className="resize-none"
 											/>
 										</div>
-									</div>
-								</CardContent>
-							</Card>
-						</TabsContent>
-
-						<TabsContent value="video" className="space-y-1.5">
-							<h3 className="font-medium text-foreground/80 text-sm">Walkthrough Video</h3>
-							<WalkthroughRecorder
-								listId={list.id}
-								existingVideoUrl={walkthroughVideoUrl}
-								onUploadComplete={(url) => {
-									setWalkthroughVideoUrl(url)
-									setWalkthroughThumbnailUrl(null)
-								}}
-								onDelete={() => {
-									setWalkthroughVideoUrl(null)
-									setWalkthroughThumbnailUrl(null)
-								}}
-							/>
-						</TabsContent>
-
-						<TabsContent value="questions" className="space-y-1.5">
-							<h3 className="font-medium text-foreground/80 text-sm">Questions</h3>
-							<Card>
-								<CardContent className="py-3">
-									<QuestionListEditor questions={questions} onChange={setQuestions} listId={listId} />
-									{actionData?.errors?.questions ? (
-										<p className="mt-3 text-destructive text-xs">{actionData.errors.questions}</p>
-									) : null}
-								</CardContent>
-							</Card>
-						</TabsContent>
-
-						<TabsContent value="options" className="space-y-1.5">
-							<h3 className="font-medium text-foreground/80 text-sm">Options</h3>
-							<Card>
-								<CardContent className="space-y-2 py-3">
-									{/* Identity Type - simplified to three options (FIRST - what users see first) */}
-									<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-										<div className="min-w-0">
-											<p className="font-medium text-sm">Identification</p>
-											<p className="truncate text-muted-foreground text-xs">How respondents identify themselves</p>
+										<div className="space-y-1.5">
+											<Label htmlFor="instructions" className="text-muted-foreground text-xs">
+												Instructions
+											</Label>
+											<Textarea
+												id="instructions"
+												name="instructions"
+												value={instructions}
+												onChange={(event) => setInstructions(event.target.value)}
+												rows={3}
+												placeholder="Detailed instructions shown before starting the survey (optional)"
+												className="resize-none"
+											/>
 										</div>
-										<div className="flex items-center gap-1.5">
-											<Button
-												type="button"
-												variant={identityType === "anonymous" ? "default" : "ghost"}
-												size="sm"
-												className="h-7 px-2.5"
-												onClick={() => setIdentityType("anonymous")}
-											>
-												Anonymous
-											</Button>
-											<Button
-												type="button"
-												variant={identityType === "email" ? "default" : "ghost"}
-												size="sm"
-												className="h-7 px-2.5"
-												onClick={() => setIdentityType("email")}
-											>
-												Email
-											</Button>
-											<Button
-												type="button"
-												variant={identityType === "phone" ? "default" : "ghost"}
-												size="sm"
-												className="h-7 px-2.5"
-												onClick={() => setIdentityType("phone")}
-											>
-												Phone
-											</Button>
-										</div>
-										<input type="hidden" name="identity_type" value={identityType} />
-									</div>
-									<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-										<div className="min-w-0">
-											<p className="font-medium text-sm">Chat mode</p>
-											<p className="truncate text-muted-foreground text-xs">Let respondents talk instead of type</p>
-										</div>
-										<Switch checked={allowChat} onCheckedChange={setAllowChat} />
-										<input type="hidden" name="allow_chat" value={String(allowChat)} />
-									</div>
-									<div className="flex items-center justify-between gap-4 rounded-md border border-violet-500/30 border-dashed bg-violet-500/5 px-3 py-2.5">
-										<div className="min-w-0">
-											<div className="flex items-center gap-2">
-												<p className="font-medium text-sm">Voice mode</p>
-												<span className="rounded bg-violet-500/20 px-1.5 py-0.5 font-medium text-[10px] text-violet-600">
-													Experimental
-												</span>
+										<div className="grid gap-4 sm:grid-cols-2">
+											<div className="space-y-1.5">
+												<Label htmlFor="hero_cta_label" className="text-muted-foreground text-xs">
+													Button text
+												</Label>
+												<Input
+													id="hero_cta_label"
+													name="hero_cta_label"
+													value={heroCtaLabel}
+													onChange={(event) => setHeroCtaLabel(event.target.value)}
+													className="h-9"
+												/>
 											</div>
-											<p className="truncate text-muted-foreground text-xs">
-												AI voice agent for conversational interviews
-											</p>
+											<div className="space-y-1.5">
+												<Label htmlFor="hero_cta_helper" className="text-muted-foreground text-xs">
+													Helper text
+												</Label>
+												<Input
+													id="hero_cta_helper"
+													name="hero_cta_helper"
+													value={heroCtaHelper}
+													onChange={(event) => setHeroCtaHelper(event.target.value)}
+													className="h-9"
+												/>
+											</div>
 										</div>
-										<Switch checked={allowVoice} onCheckedChange={setAllowVoice} />
-										<input type="hidden" name="allow_voice" value={String(allowVoice)} />
-									</div>
-									<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-										<div className="min-w-0">
-											<p className="font-medium text-sm">Video responses</p>
-											<p className="truncate text-muted-foreground text-xs">Let respondents record video feedback</p>
+										{/* Intro video — part of the landing page */}
+										<div className="border-t pt-3">
+											<Label className="text-muted-foreground text-xs">Intro video</Label>
+											<div className="mt-1.5">
+												<WalkthroughRecorder
+													listId={list.id}
+													existingVideoUrl={walkthroughVideoUrl}
+													onUploadComplete={(url) => {
+														setWalkthroughVideoUrl(url)
+														setWalkthroughThumbnailUrl(null)
+													}}
+													onDelete={() => {
+														setWalkthroughVideoUrl(null)
+														setWalkthroughThumbnailUrl(null)
+													}}
+												/>
+											</div>
 										</div>
-										<Switch checked={allowVideo} onCheckedChange={setAllowVideo} />
-										<input type="hidden" name="allow_video" value={String(allowVideo)} />
-									</div>
-									<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-										<div className="min-w-0">
-											<p className="font-medium text-sm">Default mode</p>
-										</div>
-										<div className="flex items-center gap-1.5">
-											<Button
-												type="button"
-												variant={defaultResponseMode === "form" ? "default" : "ghost"}
-												size="sm"
-												className="h-7 px-2.5"
-												onClick={() => setDefaultResponseMode("form")}
-											>
-												Form
-											</Button>
-											<Button
-												type="button"
-												variant={defaultResponseMode === "chat" ? "default" : "ghost"}
-												size="sm"
-												className="h-7 px-2.5"
-												onClick={() => setDefaultResponseMode("chat")}
-												disabled={!allowChat}
-											>
-												Chat
-											</Button>
-											<Button
-												type="button"
-												variant={defaultResponseMode === "voice" ? "default" : "ghost"}
-												size="sm"
-												className="h-7 px-2.5"
-												onClick={() => setDefaultResponseMode("voice")}
-												disabled={!allowVoice}
-											>
-												Voice
-											</Button>
-										</div>
-										<input type="hidden" name="default_response_mode" value={defaultResponseMode} />
-									</div>
-									{/* AI Autonomy - only show when chat or voice enabled */}
-									{(allowChat || allowVoice) && (
-										<div className="flex items-center justify-between gap-4 rounded-md border border-blue-500/30 border-dashed bg-blue-500/5 px-3 py-2.5">
+									</CardContent>
+								</Card>
+							</TabsContent>
+
+							<TabsContent value="questions" className="space-y-1.5">
+								<h3 className="font-medium text-foreground/80 text-sm">Questions</h3>
+								<Card>
+									<CardContent className="py-3">
+										<QuestionListEditor questions={questions} onChange={setQuestions} listId={listId} />
+										{actionData?.errors?.questions ? (
+											<p className="mt-3 text-destructive text-xs">{actionData.errors.questions}</p>
+										) : null}
+									</CardContent>
+								</Card>
+							</TabsContent>
+
+							<TabsContent value="options" className="space-y-1.5">
+								<h3 className="font-medium text-foreground/80 text-sm">Options</h3>
+								<Card>
+									<CardContent className="space-y-2 py-3">
+										{/* Identity Type - simplified to three options (FIRST - what users see first) */}
+										<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
 											<div className="min-w-0">
-												<div className="flex items-center gap-2">
-													<p className="font-medium text-sm">AI autonomy</p>
-													{aiAutonomy === "adaptive" && (
-														<span className="rounded bg-blue-500/20 px-1.5 py-0.5 font-medium text-[10px] text-blue-600">
-															Pro
-														</span>
-													)}
-												</div>
-												<p className="text-muted-foreground text-xs">
-													{aiAutonomy === "strict" && "Follows questions exactly"}
-													{aiAutonomy === "moderate" && "Can ask brief follow-ups"}
-													{aiAutonomy === "adaptive" && "Adapts based on respondent context"}
-												</p>
+												<p className="font-medium text-sm">Identification</p>
+												<p className="truncate text-muted-foreground text-xs">How respondents identify themselves</p>
 											</div>
 											<div className="flex items-center gap-1.5">
 												<Button
 													type="button"
-													variant={aiAutonomy === "strict" ? "default" : "ghost"}
+													variant={identityType === "anonymous" ? "default" : "ghost"}
 													size="sm"
 													className="h-7 px-2.5"
-													onClick={() => setAiAutonomy("strict")}
+													onClick={() => setIdentityType("anonymous")}
 												>
-													Strict
+													Anonymous
 												</Button>
 												<Button
 													type="button"
-													variant={aiAutonomy === "moderate" ? "default" : "ghost"}
+													variant={identityType === "email" ? "default" : "ghost"}
 													size="sm"
 													className="h-7 px-2.5"
-													onClick={() => setAiAutonomy("moderate")}
+													onClick={() => setIdentityType("email")}
 												>
-													Moderate
+													Email
 												</Button>
 												<Button
 													type="button"
-													variant={aiAutonomy === "adaptive" ? "default" : "ghost"}
+													variant={identityType === "phone" ? "default" : "ghost"}
 													size="sm"
 													className="h-7 px-2.5"
-													onClick={() => setAiAutonomy("adaptive")}
+													onClick={() => setIdentityType("phone")}
 												>
-													Adaptive
+													Phone
 												</Button>
 											</div>
-											<input type="hidden" name="ai_autonomy" value={aiAutonomy} />
+											<input type="hidden" name="identity_type" value={identityType} />
 										</div>
-									)}
-									<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
-										<div className="min-w-0">
-											<p className="font-medium text-sm">Live</p>
-											<p className="truncate text-muted-foreground text-xs">Accessible via public link</p>
+										<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+											<div className="min-w-0">
+												<p className="font-medium text-sm">Chat mode</p>
+												<p className="truncate text-muted-foreground text-xs">Let respondents talk instead of type</p>
+											</div>
+											<Switch checked={allowChat} onCheckedChange={setAllowChat} />
+											<input type="hidden" name="allow_chat" value={String(allowChat)} />
 										</div>
-										<Switch checked={isLive} onCheckedChange={setIsLive} />
-										<input type="hidden" name="is_live" value={String(isLive)} />
-									</div>
-									<div className="grid gap-3 pt-2 sm:grid-cols-2">
-										<div className="space-y-1.5">
-											<Label htmlFor="calendar_url" className="text-foreground text-xs">
-												Calendar link
-											</Label>
-											<Input
-												id="calendar_url"
-												name="calendar_url"
-												value={calendarUrl}
-												onChange={(event) => setCalendarUrl(event.target.value)}
-												placeholder="https://cal.com/..."
-												className="h-9"
-											/>
-											{actionData?.errors?.calendarUrl ? (
-												<p className="text-destructive text-xs">{actionData.errors.calendarUrl}</p>
-											) : null}
+										<div className="flex items-center justify-between gap-4 rounded-md border border-violet-500/30 border-dashed bg-violet-500/5 px-3 py-2.5">
+											<div className="min-w-0">
+												<div className="flex items-center gap-2">
+													<p className="font-medium text-sm">Voice mode</p>
+													<span className="rounded bg-violet-500/20 px-1.5 py-0.5 font-medium text-[10px] text-violet-600">
+														Experimental
+													</span>
+												</div>
+												<p className="truncate text-muted-foreground text-xs">
+													AI voice agent for conversational interviews
+												</p>
+											</div>
+											<Switch checked={allowVoice} onCheckedChange={setAllowVoice} />
+											<input type="hidden" name="allow_voice" value={String(allowVoice)} />
 										</div>
-										<div className="space-y-1.5">
-											<Label htmlFor="redirect_url" className="text-foreground text-xs">
-												Redirect after
-											</Label>
-											<Input
-												id="redirect_url"
-												name="redirect_url"
-												value={redirectUrl}
-												onChange={(event) => setRedirectUrl(event.target.value)}
-												placeholder="https://..."
-												className="h-9"
-											/>
-											{actionData?.errors?.redirectUrl ? (
-												<p className="text-destructive text-xs">{actionData.errors.redirectUrl}</p>
-											) : null}
+										<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+											<div className="min-w-0">
+												<p className="font-medium text-sm">Video responses</p>
+												<p className="truncate text-muted-foreground text-xs">Let respondents record video feedback</p>
+											</div>
+											<Switch checked={allowVideo} onCheckedChange={setAllowVideo} />
+											<input type="hidden" name="allow_video" value={String(allowVideo)} />
 										</div>
-									</div>
-								</CardContent>
-							</Card>
-						</TabsContent>
+										<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+											<div className="min-w-0">
+												<p className="font-medium text-sm">Default mode</p>
+											</div>
+											<div className="flex items-center gap-1.5">
+												<Button
+													type="button"
+													variant={defaultResponseMode === "form" ? "default" : "ghost"}
+													size="sm"
+													className="h-7 px-2.5"
+													onClick={() => setDefaultResponseMode("form")}
+												>
+													Form
+												</Button>
+												<Button
+													type="button"
+													variant={defaultResponseMode === "chat" ? "default" : "ghost"}
+													size="sm"
+													className="h-7 px-2.5"
+													onClick={() => setDefaultResponseMode("chat")}
+													disabled={!allowChat}
+												>
+													Chat
+												</Button>
+												<Button
+													type="button"
+													variant={defaultResponseMode === "voice" ? "default" : "ghost"}
+													size="sm"
+													className="h-7 px-2.5"
+													onClick={() => setDefaultResponseMode("voice")}
+													disabled={!allowVoice}
+												>
+													Voice
+												</Button>
+											</div>
+											<input type="hidden" name="default_response_mode" value={defaultResponseMode} />
+										</div>
+										{/* AI Autonomy - only show when chat or voice enabled */}
+										{(allowChat || allowVoice) && (
+											<div className="flex items-center justify-between gap-4 rounded-md border border-blue-500/30 border-dashed bg-blue-500/5 px-3 py-2.5">
+												<div className="min-w-0">
+													<div className="flex items-center gap-2">
+														<p className="font-medium text-sm">AI autonomy</p>
+														{aiAutonomy === "adaptive" && (
+															<span className="rounded bg-blue-500/20 px-1.5 py-0.5 font-medium text-[10px] text-blue-600">
+																Pro
+															</span>
+														)}
+													</div>
+													<p className="text-muted-foreground text-xs">
+														{aiAutonomy === "strict" && "Follows questions exactly"}
+														{aiAutonomy === "moderate" && "Can ask brief follow-ups"}
+														{aiAutonomy === "adaptive" && "Adapts based on respondent context"}
+													</p>
+												</div>
+												<div className="flex items-center gap-1.5">
+													<Button
+														type="button"
+														variant={aiAutonomy === "strict" ? "default" : "ghost"}
+														size="sm"
+														className="h-7 px-2.5"
+														onClick={() => setAiAutonomy("strict")}
+													>
+														Strict
+													</Button>
+													<Button
+														type="button"
+														variant={aiAutonomy === "moderate" ? "default" : "ghost"}
+														size="sm"
+														className="h-7 px-2.5"
+														onClick={() => setAiAutonomy("moderate")}
+													>
+														Moderate
+													</Button>
+													<Button
+														type="button"
+														variant={aiAutonomy === "adaptive" ? "default" : "ghost"}
+														size="sm"
+														className="h-7 px-2.5"
+														onClick={() => setAiAutonomy("adaptive")}
+													>
+														Adaptive
+													</Button>
+												</div>
+												<input type="hidden" name="ai_autonomy" value={aiAutonomy} />
+											</div>
+										)}
+										<div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2.5">
+											<div className="min-w-0">
+												<p className="font-medium text-sm">Live</p>
+												<p className="truncate text-muted-foreground text-xs">Accessible via public link</p>
+											</div>
+											<Switch checked={isLive} onCheckedChange={setIsLive} />
+											<input type="hidden" name="is_live" value={String(isLive)} />
+										</div>
+										<div className="grid gap-3 pt-2 sm:grid-cols-2">
+											<div className="space-y-1.5">
+												<Label htmlFor="calendar_url" className="text-foreground text-xs">
+													Calendar link
+												</Label>
+												<Input
+													id="calendar_url"
+													name="calendar_url"
+													value={calendarUrl}
+													onChange={(event) => setCalendarUrl(event.target.value)}
+													placeholder="https://cal.com/..."
+													className="h-9"
+												/>
+												{actionData?.errors?.calendarUrl ? (
+													<p className="text-destructive text-xs">{actionData.errors.calendarUrl}</p>
+												) : null}
+											</div>
+											<div className="space-y-1.5">
+												<Label htmlFor="redirect_url" className="text-foreground text-xs">
+													Redirect after
+												</Label>
+												<Input
+													id="redirect_url"
+													name="redirect_url"
+													value={redirectUrl}
+													onChange={(event) => setRedirectUrl(event.target.value)}
+													placeholder="https://..."
+													className="h-9"
+												/>
+												{actionData?.errors?.redirectUrl ? (
+													<p className="text-destructive text-xs">{actionData.errors.redirectUrl}</p>
+												) : null}
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							</TabsContent>
 
-						<TabsContent value="embed" className="min-w-0 space-y-1.5 overflow-hidden">
-							<h3 className="font-medium text-foreground/80 text-sm">Embed on Your Website</h3>
-							<p className="text-muted-foreground text-xs">
-								Add this form to your website for waitlists, feedback collection, or lead capture.
-							</p>
-							<EmbedCodeGenerator
-								slug={slug}
-								heroTitle={heroTitle}
-								heroCtaLabel={heroCtaLabel}
-								walkthroughVideoUrl={walkthroughVideoUrl}
-								walkthroughThumbnailUrl={walkthroughThumbnailUrl}
-							/>
-						</TabsContent>
-					</Tabs>
+							<TabsContent value="embed" className="min-w-0 space-y-1.5 overflow-hidden">
+								<h3 className="font-medium text-foreground/80 text-sm">Embed on Your Website</h3>
+								<p className="text-muted-foreground text-xs">
+									Add this form to your website for waitlists, feedback collection, or lead capture.
+								</p>
+								<EmbedCodeGenerator
+									slug={slug}
+									heroTitle={heroTitle}
+									heroCtaLabel={heroCtaLabel}
+									walkthroughVideoUrl={walkthroughVideoUrl}
+									walkthroughThumbnailUrl={walkthroughThumbnailUrl}
+								/>
+							</TabsContent>
+						</Tabs>
 
-					<input type="hidden" name="questions" value={questionsJson} />
-					<div className="flex items-center justify-end gap-3">
-						<Button asChild variant="outline">
-							<Link to={routes.ask.index()}>Back to links</Link>
-						</Button>
-						<Button type="submit" disabled={isSubmitting}>
-							{isSubmitting ? "Saving..." : "Save changes"}
-						</Button>
-						<Button asChild variant="secondary">
-							<Link to={routes.ask.responses(list.id)}>View responses</Link>
-						</Button>
+						<input type="hidden" name="questions" value={questionsJson} />
 					</div>
-				</div>
 
-				<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-					<ResearchLinkPreview
-						heroTitle={heroTitle}
-						heroSubtitle={heroSubtitle}
-						heroCtaLabel={heroCtaLabel}
-						heroCtaHelper={heroCtaHelper}
-						questions={questions}
-					/>
-				</motion.div>
+					<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+						<ResearchLinkPreview
+							heroTitle={heroTitle}
+							heroSubtitle={heroSubtitle}
+							heroCtaLabel={heroCtaLabel}
+							heroCtaHelper={heroCtaHelper}
+							questions={questions}
+						/>
+					</motion.div>
+				</div>
 			</Form>
 		</PageContainer>
 	)

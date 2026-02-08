@@ -1,11 +1,26 @@
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowDown, ArrowUp, GripVertical, Image, Loader2, Plus, Trash2, Upload, Video, X } from "lucide-react"
+import {
+	ArrowDown,
+	ArrowUp,
+	ChevronDown,
+	ChevronRight,
+	GripVertical,
+	Image,
+	Loader2,
+	Plus,
+	Settings2,
+	Trash2,
+	Upload,
+	Video,
+	X,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Switch } from "~/components/ui/switch"
 import { Textarea } from "~/components/ui/textarea"
+import { cn } from "~/lib/utils"
 import type { ResearchLinkQuestion } from "../schemas"
 import { createEmptyQuestion } from "../schemas"
 import { QuestionBranchingEditor } from "./QuestionBranchingEditor"
@@ -51,6 +66,104 @@ function OptionsInput({
 			placeholder="Options (comma separated)"
 			className="h-8 text-xs"
 		/>
+	)
+}
+
+/**
+ * Collapsible section for helper text, video prompt, and skip logic.
+ * Auto-expands when any field is populated. Reduces visual density.
+ */
+function QuestionAdvancedSection({
+	question,
+	questions,
+	index,
+	listId,
+	updateQuestion,
+}: {
+	question: ResearchLinkQuestion
+	questions: ResearchLinkQuestion[]
+	index: number
+	listId?: string
+	updateQuestion: (id: string, updates: Partial<ResearchLinkQuestion>) => void
+}) {
+	const hasContent =
+		Boolean(question.helperText) || Boolean(question.videoUrl) || Boolean(question.branching?.rules?.length)
+	const [isOpen, setIsOpen] = useState(hasContent)
+
+	const badgeCount = [question.helperText, question.videoUrl, question.branching?.rules?.length].filter(Boolean).length
+
+	return (
+		<div className="border-border/30 border-t pt-2">
+			<button
+				type="button"
+				onClick={() => setIsOpen(!isOpen)}
+				className={cn(
+					"flex w-full items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors",
+					isOpen ? "text-foreground/70" : "text-muted-foreground hover:text-foreground/70"
+				)}
+			>
+				{isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+				<Settings2 className="h-3 w-3" />
+				<span>More options</span>
+				{!isOpen && badgeCount > 0 && (
+					<span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary">
+						{badgeCount}
+					</span>
+				)}
+			</button>
+			{isOpen && (
+				<div className="mt-2 space-y-3">
+					<Input
+						value={question.helperText ?? ""}
+						onChange={(event) =>
+							updateQuestion(question.id, {
+								helperText: event.target.value || null,
+							})
+						}
+						onBlur={(event) =>
+							updateQuestion(question.id, {
+								helperText: event.target.value.trim() || null,
+							})
+						}
+						placeholder="Helper text (optional hint shown below question)"
+						className="h-8 text-xs placeholder:text-muted-foreground"
+					/>
+					{listId ? (
+						<QuestionVideoEditor
+							listId={listId}
+							questionId={question.id}
+							existingVideoUrl={question.videoUrl}
+							onVideoChange={(videoUrl) => updateQuestion(question.id, { videoUrl })}
+						/>
+					) : (
+						<div className="flex items-center gap-2">
+							<Video className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+							<Input
+								value={question.videoUrl ?? ""}
+								onChange={(event) =>
+									updateQuestion(question.id, {
+										videoUrl: event.target.value || null,
+									})
+								}
+								onBlur={(event) =>
+									updateQuestion(question.id, {
+										videoUrl: event.target.value.trim() || null,
+									})
+								}
+								placeholder="Video URL (optional intro video for this question)"
+								className="h-8 text-xs placeholder:text-muted-foreground"
+							/>
+						</div>
+					)}
+					<QuestionBranchingEditor
+						question={question}
+						allQuestions={questions}
+						questionIndex={index}
+						onChange={(branching) => updateQuestion(question.id, { branching })}
+					/>
+				</div>
+			)}
+		</div>
 	)
 }
 
@@ -574,56 +687,13 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 										</Button>
 									</div>
 								)}
-								{/* Helper text / hint shown below question */}
-								<Input
-									value={question.helperText ?? ""}
-									onChange={(event) =>
-										updateQuestion(question.id, {
-											helperText: event.target.value || null,
-										})
-									}
-									onBlur={(event) =>
-										updateQuestion(question.id, {
-											helperText: event.target.value.trim() || null,
-										})
-									}
-									placeholder="Helper text (optional hint shown below question)"
-									className="h-8 text-xs placeholder:text-muted-foreground"
-								/>
-								{/* Video prompt - record, upload, or URL */}
-								{listId ? (
-									<QuestionVideoEditor
-										listId={listId}
-										questionId={question.id}
-										existingVideoUrl={question.videoUrl}
-										onVideoChange={(videoUrl) => updateQuestion(question.id, { videoUrl })}
-									/>
-								) : (
-									<div className="flex items-center gap-2">
-										<Video className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-										<Input
-											value={question.videoUrl ?? ""}
-											onChange={(event) =>
-												updateQuestion(question.id, {
-													videoUrl: event.target.value || null,
-												})
-											}
-											onBlur={(event) =>
-												updateQuestion(question.id, {
-													videoUrl: event.target.value.trim() || null,
-												})
-											}
-											placeholder="Video URL (optional intro video for this question)"
-											className="h-8 text-xs placeholder:text-muted-foreground"
-										/>
-									</div>
-								)}
-								{/* Skip Logic / Branching */}
-								<QuestionBranchingEditor
+								{/* Collapsible: Helper text, Video, Skip Logic */}
+								<QuestionAdvancedSection
 									question={question}
-									allQuestions={questions}
-									questionIndex={index}
-									onChange={(branching) => updateQuestion(question.id, { branching })}
+									questions={questions}
+									index={index}
+									listId={listId}
+									updateQuestion={updateQuestion}
 								/>
 							</div>
 						</div>

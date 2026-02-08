@@ -18,7 +18,7 @@ const RequestSchema = z.object({
 	projectContext: z.string().optional().default(""),
 })
 
-const QuestionTypeSchema = z.enum(["short_text", "long_text", "single_select", "multi_select", "rating", "email"])
+const QuestionTypeSchema = z.enum(["short_text", "long_text", "single_select", "multi_select", "likert"])
 
 const GeneratedQuestionSchema = z.object({
 	prompt: z.string(),
@@ -40,7 +40,12 @@ const GuidelineSchema = z.object({
 
 const SurveyGenerationSchema = z.object({
 	name: z.string().describe("Concise survey title, 3-6 words"),
-	description: z.string().describe("Brief description of the survey's purpose"),
+	description: z.string().describe("Brief internal description of the survey's purpose (not shown to respondents)"),
+	instructions: z
+		.string()
+		.describe(
+			"1-2 sentence friendly instructions for the respondent, written in second person. Example: 'We'd love to hear about your experience. This should take about 5 minutes.'"
+		),
 	questions: z.array(GeneratedQuestionSchema).min(3).max(10),
 	guidelines: z.array(GuidelineSchema).optional().default([]),
 	insights: z.string().optional().describe("Any insights about the user's research goals"),
@@ -84,12 +89,11 @@ TASK:
 QUESTION DESIGN PRINCIPLES:
 - Start with a qualifying/segmentation question if the user mentioned different groups
 - Use the right question type:
-  - short_text: Names, titles, simple facts
+  - short_text: Names, titles, simple facts, emails, contact info
   - long_text: Opinions, experiences, detailed feedback
   - single_select: Mutually exclusive choices (provide options array)
   - multi_select: Multiple selections allowed (provide options array)
-  - rating: Satisfaction, likelihood, preference scales
-  - email: Contact collection
+  - likert: Satisfaction, likelihood, preference scales (numeric rating)
 - Make questions conversational and easy to answer
 - Each question should provide unique insight
 - Order questions logically - easier questions first, sensitive/complex later
@@ -159,6 +163,7 @@ Generate a survey that will help the user gather the insights they described.`,
 		return Response.json({
 			name: result.object.name,
 			description: result.object.description,
+			instructions: result.object.instructions,
 			questions,
 			guidelines,
 			insights: result.object.insights,
