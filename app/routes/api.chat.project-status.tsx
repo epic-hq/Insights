@@ -16,6 +16,7 @@ import { getLangfuseClient } from "~/lib/langfuse.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { fetchTopThemesWithPeopleTool } from "~/mastra/tools/fetch-top-themes-with-people";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
 import { userContext } from "~/server/user-context";
@@ -41,7 +42,7 @@ type RoutingTargetAgent = (typeof routingTargetAgents)[number];
 const intentRoutingSchema = z.object({
 	targetAgentId: z.enum(routingTargetAgents),
 	confidence: z.number().min(0).max(1),
-	responseMode: z.enum(["normal", "fast_standardized"]).default("normal"),
+	responseMode: z.enum(["normal", "fast_standardized", "theme_people_snapshot"]).default("normal"),
 	rationale: z.string().max(240).optional(),
 });
 
@@ -114,6 +115,7 @@ Choose exactly one target:
 - projectStatusAgent: default catch-all for project status and general requests.
 
 Set responseMode="fast_standardized" only when the user asks broad strategic guidance without asking for execution details.
+Set responseMode="theme_people_snapshot" when user asks for top/common themes and who has those themes.
 Message: """${prompt.slice(0, 1200)}"""`,
 		});
 		return result.object;
@@ -247,6 +249,37 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 	if (routeDecision?.responseMode) {
 		requestContext.set("response_mode", routeDecision.responseMode);
+	}
+
+	if (routeDecision?.responseMode === "theme_people_snapshot") {
+		const topThemesResult = await fetchTopThemesWithPeopleTool.execute(
+			{
+				projectId,
+				limit: 2,
+				peoplePerTheme: 6,
+			},
+			{ requestContext }
+		);
+
+		const message = topThemesResult.success
+			? topThemesResult.topThemes.length > 0
+				? `Top themes right now:\n${topThemesResult.topThemes
+						.map((theme, index) => {
+							const people = theme.people
+								.map((person) => person.name ?? "Unknown")
+								.filter((name) => name.trim().length > 0)
+								.slice(0, 6)
+								.join(", ");
+							const themeLabel = theme.url ? `[${theme.name}](${theme.url})` : theme.name;
+							return `${index + 1}. ${themeLabel} (${theme.evidenceCount} mentions)${people ? ` — People: ${people}` : ""}`;
+						})
+						.join("\n")}`
+				: "I couldn't find any themes with evidence links yet in this project."
+			: "I couldn't load theme data right now. Please try again.";
+
+		return createUIMessageStreamResponse({
+			stream: streamPlainAssistantText(message),
+		});
 	}
 	const fastGuidanceCacheKey = isFastStandardized
 		? `${projectId}:${hashString(lastUserText.trim().toLowerCase())}:${hashString(systemContext)}`

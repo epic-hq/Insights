@@ -13,6 +13,7 @@ import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
 import { fetchSegmentsTool } from "../tools/fetch-segments";
+import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { fetchThemesTool } from "../tools/fetch-themes";
 import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateDocumentLinkTool } from "../tools/generate-document-link";
@@ -104,6 +105,7 @@ const project_status_agent_tools = {
 	semanticSearchAssets: semanticSearchAssetsTool,
 	fetchProjectGoals: fetchProjectGoalsTool,
 	fetchThemes: fetchThemesTool,
+	fetchTopThemesWithPeople: fetchTopThemesWithPeopleTool,
 	fetchPainMatrixCache: fetchPainMatrixCacheTool,
 	fetchSegments: fetchSegmentsTool,
 	fetchConversationLenses: fetchConversationLensesTool,
@@ -221,6 +223,9 @@ Call "getCurrentDate" first for any date/time questions.
 - Use "generateResearchRecommendations" for actionable next-step recommendations based on ICP scores
 
 **Finding Evidence & Patterns**:
+- For questions like "top themes", "most common themes", or "who has this theme", ALWAYS call "fetchTopThemesWithPeople" first.
+  - If totalThemes > 0, NEVER claim there are no themes.
+  - If totalThemes = 0, explicitly say no themes with evidence were found and suggest the next action.
 - "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
 - Survey and interview data are handled by the ResearchAgent sub-agent.
   **MANDATORY: Link EVERY survey quote/citation to its source:**

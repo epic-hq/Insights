@@ -8,6 +8,7 @@ import { setActiveBillingContext, userBillingContext } from "~/lib/billing/instr
 import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { fetchTopThemesWithPeopleTool } from "~/mastra/tools/fetch-top-themes-with-people";
 import { action } from "./api.chat.project-status";
 
 vi.mock("@mastra/ai-sdk", () => ({
@@ -64,6 +65,12 @@ vi.mock("~/mastra/tools/context-utils", () => ({
 	resolveAccountIdFromProject: vi.fn(),
 }));
 
+vi.mock("~/mastra/tools/fetch-top-themes-with-people", () => ({
+	fetchTopThemesWithPeopleTool: {
+		execute: vi.fn(),
+	},
+}));
+
 vi.mock("~/mastra/tools/navigate-to-page", () => ({
 	navigateToPageTool: {},
 }));
@@ -85,6 +92,7 @@ const mockedRecordUsageOnly = vi.mocked(recordUsageOnly);
 const mockedSetActiveBillingContext = vi.mocked(setActiveBillingContext);
 const mockedUserBillingContext = vi.mocked(userBillingContext);
 const mockedResolveAccountIdFromProject = vi.mocked(resolveAccountIdFromProject);
+const mockedFetchTopThemesWithPeopleToolExecute = vi.mocked(fetchTopThemesWithPeopleTool.execute);
 
 type MockedMemory = {
 	listThreadsByResourceId: ReturnType<typeof vi.fn>;
@@ -152,6 +160,27 @@ describe("api.chat.project-status", () => {
 				responseMode: "fast_standardized",
 				rationale: "broad strategic guidance",
 			},
+		} as any);
+		mockedFetchTopThemesWithPeopleToolExecute.mockResolvedValue({
+			success: true,
+			message: "ok",
+			projectId: "project-1",
+			totalThemes: 1,
+			topThemes: [
+				{
+					themeId: "theme-1",
+					name: "Automation Demand",
+					statement: "Manual work is too high",
+					evidenceCount: 12,
+					peopleCount: 3,
+					updatedAt: null,
+					url: "https://getupsight.com/a/acct-1/project-1/themes/theme-1",
+					people: [
+						{ personId: "p1", name: "Alice", mentionCount: 3 },
+						{ personId: "p2", name: "Bob", mentionCount: 2 },
+					],
+				},
+			],
 		} as any);
 	});
 
@@ -242,5 +271,23 @@ describe("api.chat.project-status", () => {
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.maxSteps).toBe(6);
 		expect(mockedCreateUIMessageStreamResponse).toHaveBeenCalled();
+	});
+
+	it("uses deterministic theme snapshot mode without invoking agent streams", async () => {
+		mockedGenerateObject.mockResolvedValue({
+			object: {
+				targetAgentId: "projectStatusAgent",
+				confidence: 0.95,
+				responseMode: "theme_people_snapshot",
+				rationale: "theme summary with attribution",
+			},
+		} as any);
+
+		const response = await action(buildArgs({ message: "what are top 2 themes and who has them?" }));
+		expect(response.status).toBe(200);
+		expect(mockedFetchTopThemesWithPeopleToolExecute).toHaveBeenCalledTimes(1);
+		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		expect(mockedCreateUIMessageStream).toHaveBeenCalledTimes(1);
 	});
 });
