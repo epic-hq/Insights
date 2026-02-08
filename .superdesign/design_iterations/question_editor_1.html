@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Question Editor — Improved UX</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { font-family: 'Inter', sans-serif !important; }
+  body { background: #0a0a0b !important; color: #e5e5e5 !important; }
+  h1, h2, h3, h4, h5, h6 { color: #fafafa !important; }
+  .card { background: #141416 !important; border: 1px solid rgba(255,255,255,0.06) !important; border-radius: 12px !important; }
+  .card-header { border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
+  .input-field { background: #1a1a1e !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; color: #e5e5e5 !important; }
+  .input-field:focus { border-color: rgba(255,255,255,0.2) !important; outline: none !important; }
+  .input-field::placeholder { color: #666 !important; }
+  .badge { background: rgba(139,92,246,0.12) !important; color: #a78bfa !important; border-radius: 9999px !important; }
+  .badge-amber { background: rgba(245,158,11,0.12) !important; color: #fbbf24 !important; }
+  .toggle-btn { background: transparent !important; border: none !important; cursor: pointer !important; }
+  .type-pill { background: #1a1a1e !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; padding: 4px 10px !important; font-size: 12px !important; color: #999 !important; }
+  .type-pill.active { background: rgba(139,92,246,0.12) !important; border-color: rgba(139,92,246,0.3) !important; color: #a78bfa !important; }
+  .more-options-btn { color: #666 !important; transition: color 0.15s !important; }
+  .more-options-btn:hover { color: #999 !important; }
+  .section-label { font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; color: #555 !important; font-weight: 600 !important; }
+  .skip-logic-tag { background: rgba(59,130,246,0.1) !important; border: 1px solid rgba(59,130,246,0.2) !important; border-radius: 6px !important; color: #60a5fa !important; }
+  .ai-tag { background: rgba(168,85,247,0.1) !important; border: 1px solid rgba(168,85,247,0.2) !important; border-radius: 6px !important; color: #c084fc !important; }
+  .option-chip { background: #1a1a1e !important; border: 1px solid rgba(255,255,255,0.06) !important; border-radius: 6px !important; }
+  .divider { border-top: 1px solid rgba(255,255,255,0.04) !important; }
+</style>
+</head>
+<body class="p-8 max-w-2xl mx-auto">
+
+<!-- Header -->
+<div class="mb-8">
+  <div class="flex items-center gap-2 mb-2">
+    <span class="text-xs text-gray-500 uppercase tracking-wider font-semibold">BMAD UX Iteration</span>
+    <span class="badge text-xs px-2 py-0.5">v1</span>
+  </div>
+  <h1 class="text-2xl font-bold mb-1">Question Editor — Collapsed by Default</h1>
+  <p class="text-sm text-gray-500">Reduces visual density by hiding helper text, video, and skip logic behind "More options". Auto-expands when populated.</p>
+</div>
+
+<!-- Comparison Labels -->
+<div class="flex gap-4 mb-6">
+  <div class="flex-1">
+    <div class="section-label mb-3">Collapsed State (default)</div>
+  </div>
+</div>
+
+<!-- Question 1: Collapsed — simple text question -->
+<div class="card mb-3">
+  <div class="card-header flex items-center justify-between px-3 py-2">
+    <div class="flex items-center gap-2">
+      <svg class="w-3.5 h-3.5 text-gray-600 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+      <span class="text-xs font-semibold text-gray-500 tabular-nums">1</span>
+    </div>
+    <div class="flex items-center gap-1">
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg></button>
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100 hover:text-red-400"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+    </div>
+  </div>
+  <div class="px-3 py-3 space-y-3">
+    <textarea class="input-field w-full px-3 py-2 text-sm resize-none" rows="1" style="min-height:2.5rem">What role best describes your involvement with Startup San Diego?</textarea>
+    <div class="flex items-center gap-2">
+      <span class="type-pill active text-xs">Select one</span>
+      <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+        <div class="w-7 h-4 bg-violet-600 rounded-full relative"><div class="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div></div>
+        Required
+      </label>
+    </div>
+    <!-- Options for select -->
+    <input class="input-field w-full px-3 py-1.5 text-xs" value="Member, Sponsor, Volunteer, Community Partner, Other" />
+    <!-- Collapsed more options -->
+    <div class="divider pt-2">
+      <button class="more-options-btn flex items-center gap-1.5 text-xs px-1 py-1 w-full">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>More options</span>
+        <span class="badge text-[10px] px-1.5 py-0.5 ml-1">1</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Question 2: Collapsed — simple text question, no extras -->
+<div class="card mb-3">
+  <div class="card-header flex items-center justify-between px-3 py-2">
+    <div class="flex items-center gap-2">
+      <svg class="w-3.5 h-3.5 text-gray-600 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+      <span class="text-xs font-semibold text-gray-500 tabular-nums">2</span>
+    </div>
+    <div class="flex items-center gap-1">
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg></button>
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100 hover:text-red-400"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+    </div>
+  </div>
+  <div class="px-3 py-3 space-y-3">
+    <textarea class="input-field w-full px-3 py-2 text-sm resize-none" rows="1" style="min-height:2.5rem">What originally motivated you to get involved with Startup San Diego?</textarea>
+    <div class="flex items-center gap-2">
+      <span class="type-pill text-xs">Auto</span>
+      <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+        <div class="w-7 h-4 bg-violet-600 rounded-full relative"><div class="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div></div>
+        Required
+      </label>
+    </div>
+    <!-- Collapsed more options — no badge (nothing configured) -->
+    <div class="divider pt-2">
+      <button class="more-options-btn flex items-center gap-1.5 text-xs px-1 py-1 w-full">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>More options</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Separator -->
+<div class="my-8">
+  <div class="section-label mb-3">Expanded State (auto-opens when populated, or user clicks)</div>
+</div>
+
+<!-- Question 3: Expanded — has skip logic + helper text -->
+<div class="card mb-3" style="border-color: rgba(139,92,246,0.15) !important;">
+  <div class="card-header flex items-center justify-between px-3 py-2">
+    <div class="flex items-center gap-2">
+      <svg class="w-3.5 h-3.5 text-gray-600 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+      <span class="text-xs font-semibold text-gray-500 tabular-nums">3</span>
+    </div>
+    <div class="flex items-center gap-1">
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg></button>
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="toggle-btn p-1 opacity-50 hover:opacity-100 hover:text-red-400"><svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+    </div>
+  </div>
+  <div class="px-3 py-3 space-y-3">
+    <textarea class="input-field w-full px-3 py-2 text-sm resize-none" rows="1" style="min-height:2.5rem">What's your annual budget for sponsorship and community partnerships?</textarea>
+    <div class="flex items-center gap-2">
+      <span class="type-pill active text-xs">Select one</span>
+      <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+        <div class="w-7 h-4 bg-violet-600 rounded-full relative"><div class="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div></div>
+        Required
+      </label>
+    </div>
+    <input class="input-field w-full px-3 py-1.5 text-xs" value="Under $5k, $5k-$25k, $25k-$100k, Over $100k" />
+
+    <!-- Expanded more options -->
+    <div class="divider pt-2">
+      <button class="more-options-btn flex items-center gap-1.5 text-xs px-1 py-1 w-full" style="color: #999 !important;">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>More options</span>
+      </button>
+
+      <!-- Expanded content -->
+      <div class="mt-3 space-y-3">
+        <input class="input-field w-full px-3 py-1.5 text-xs" placeholder="Helper text (optional hint shown below question)" value="This helps us understand sponsorship tiers" />
+
+        <div class="flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <input class="input-field w-full px-3 py-1.5 text-xs" placeholder="Video URL (optional intro video for this question)" />
+        </div>
+
+        <!-- Skip Logic section -->
+        <div class="rounded-lg p-3" style="background: rgba(59,130,246,0.04) !important; border: 1px solid rgba(59,130,246,0.1) !important;">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span class="text-xs font-medium text-blue-300">Skip Logic</span>
+              <span class="ai-tag text-[10px] px-1.5 py-0.5 ml-1 flex items-center gap-1">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                AI generated
+              </span>
+            </div>
+            <button class="text-xs text-blue-400 hover:text-blue-300">+ Add rule</button>
+          </div>
+          <!-- Rule -->
+          <div class="flex items-center gap-2 text-xs p-2 rounded" style="background: rgba(59,130,246,0.06) !important;">
+            <span class="text-gray-500">If</span>
+            <span class="skip-logic-tag px-2 py-0.5">equals "Sponsor"</span>
+            <span class="text-gray-500">→</span>
+            <span class="text-gray-400">skip to</span>
+            <span class="skip-logic-tag px-2 py-0.5">Q3: Budget question</span>
+            <button class="ml-auto opacity-50 hover:opacity-100 hover:text-red-400"><svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add question button -->
+<button class="w-full py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors" style="border: 1px dashed rgba(255,255,255,0.08) !important; background: rgba(255,255,255,0.02) !important;">
+  + Add question
+</button>
+
+<!-- Design Notes -->
+<div class="mt-12 p-6 rounded-xl" style="background: rgba(139,92,246,0.05) !important; border: 1px solid rgba(139,92,246,0.15) !important;">
+  <h3 class="text-sm font-semibold mb-3" style="color: #a78bfa !important;">Design Notes</h3>
+  <ul class="space-y-2 text-xs text-gray-400">
+    <li><strong class="text-gray-300">Collapsed by default</strong> — Helper text, video, and skip logic hidden behind "More options" toggle</li>
+    <li><strong class="text-gray-300">Badge count</strong> — Shows number of configured advanced options when collapsed (e.g., "1" if skip logic is set)</li>
+    <li><strong class="text-gray-300">Auto-expand</strong> — If helper text, video URL, or branching rules exist, section starts expanded</li>
+    <li><strong class="text-gray-300">AI-generated tag</strong> — Skip logic rules from voice generation show purple "AI generated" badge</li>
+    <li><strong class="text-gray-300">Visual hierarchy</strong> — Question text + type + options are always visible (the essentials). Everything else is progressive disclosure.</li>
+    <li><strong class="text-gray-300">Density reduction</strong> — ~40% less vertical space per question card in collapsed state</li>
+  </ul>
+</div>
+
+</body>
+</html>
