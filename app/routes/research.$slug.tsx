@@ -405,12 +405,12 @@ type StartSignupResult = {
 
 type StartSignupPayload =
 	| {
-		email: string
-		firstName?: string | null
-		lastName?: string | null
-		responseId?: string | null
-		responseMode?: Mode
-	}
+			email: string
+			firstName?: string | null
+			lastName?: string | null
+			responseId?: string | null
+			responseMode?: Mode
+	  }
 	| { phone: string; responseId?: string | null; responseMode?: Mode }
 	| { responseId?: string | null; responseMode?: Mode } // anonymous
 
@@ -1054,9 +1054,7 @@ export default function ResearchLinkPage() {
 								)}
 
 								{/* Instructions for the respondent */}
-								{list.instructions && (
-									<p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>
-								)}
+								{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 								{/* Mode selector - show when multiple modes available */}
 								{(list.allow_chat || list.allow_voice || list.calendar_url) && (
@@ -1169,9 +1167,7 @@ export default function ResearchLinkPage() {
 								)}
 
 								{/* Instructions for the respondent */}
-								{list.instructions && (
-									<p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>
-								)}
+								{list.instructions && <p className="text-sm text-white/80 leading-relaxed">{list.instructions}</p>}
 
 								{/* Mode selector - show when multiple modes available */}
 								{(list.allow_chat || list.allow_voice || list.calendar_url) && (
