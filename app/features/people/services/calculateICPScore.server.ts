@@ -27,7 +27,7 @@ type PersonWithOrg = {
   title: string | null;
   company: string | null;
   facets: Record<string, any> | null;
-  organization: {
+  organizations: {
     id: string;
     name: string | null;
     industry: string | null;
@@ -97,10 +97,10 @@ function scoreOrgMatch(
 ): { score: number; matched?: string } {
   if (targetOrgs.length === 0) return { score: 0.5 }; // Neutral if no criteria
 
-  const industry = person.organization?.industry?.toLowerCase() || "";
+  const industry = person.organizations?.industry?.toLowerCase() || "";
   const companyName = (
     person.company ||
-    person.organization?.name ||
+    person.organizations?.name ||
     ""
   ).toLowerCase();
 
@@ -143,7 +143,7 @@ function scoreSizeMatch(
 ): { score: number; matched?: string } {
   if (targetSizes.length === 0) return { score: 0.5 }; // Neutral if no criteria
 
-  const companySize = person.organization?.company_size?.toLowerCase() || "";
+  const companySize = person.organizations?.company_size?.toLowerCase() || "";
   if (!companySize) return { score: 0 }; // No data
 
   // Exact match (1.0)
@@ -176,8 +176,8 @@ function calculateConfidence(person: PersonWithOrg): number {
   let confidence = 0;
 
   if (person.title) confidence += 0.3;
-  if (person.company || person.organization?.name) confidence += 0.3;
-  if (person.organization?.id) confidence += 0.2; // Has org link
+  if (person.company || person.organizations?.name) confidence += 0.3;
+  if (person.organizations?.id) confidence += 0.2; // Has org link
   if (person.facets && Object.keys(person.facets).length > 0) confidence += 0.2;
 
   return Math.min(confidence, 1.0);
@@ -204,6 +204,7 @@ export async function getICPCriteria(opts: {
 }): Promise<ICPCriteria> {
   // Load account-level defaults
   const { data: account, error: accountError } = await opts.supabase
+    .schema("accounts")
     .from("accounts")
     .select("target_orgs, target_roles, target_company_sizes")
     .eq("id", opts.accountId)
@@ -279,7 +280,7 @@ export async function calculateICPScore(opts: {
 			title,
 			company,
 			facets,
-			organization:organization_id (
+			organizations:organization_id (
 				id,
 				name,
 				industry,
