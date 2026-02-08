@@ -105,7 +105,6 @@ const routes = [
         "api/sales/create-workspace",
         "./routes/api.sales.create-workspace.tsx",
       ),
-      route("api/score-icp-matches", "./routes/api.score-icp-matches.tsx"),
 
       // Nested project detail children - Layout route with sidebar
       route(":projectId", "./routes/_protected/projects.tsx", [
@@ -165,6 +164,9 @@ const routes = [
         ),
         // Mentionable users API for @mentions (needs project context)
         route("api/mentionable-users", "./routes/api/mentionable-users.ts"),
+
+        // ICP scoring API (project-scoped)
+        route("api/score-icp-matches", "./routes/api.score-icp-matches.tsx"),
 
         // Realtime interviews APIs (project-scoped)
         route(
