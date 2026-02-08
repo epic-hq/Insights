@@ -113,6 +113,9 @@ cadre-devkit-claude/
 .claude-design/
 .claude/skills/
 
+# Obsidian local workspace (user-specific)
+.obsidian/
+
 # Generated visualization files
 graph.html
 
