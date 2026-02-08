@@ -2287,6 +2287,49 @@ async function processVideoFrame(evt) {
   }
 }
 
+/**
+ * Extract platform-specific user ID from participant data
+ * Returns stable identifier for cross-meeting identity matching
+ *
+ * @param {string} platform - Platform name (zoom, teams, google-meet, etc.)
+ * @param {object} extraData - Platform-specific extra data from Recall SDK
+ * @param {string} fallbackId - Fallback to participant.id if no specific ID found
+ * @returns {string} Platform user ID for identity matching
+ */
+function extractPlatformUserId(platform, extraData, fallbackId) {
+  if (!platform || !extraData) {
+    return fallbackId;
+  }
+
+  // Extract platform-specific stable identifiers
+  switch (platform.toLowerCase()) {
+    case "zoom":
+      // Zoom provides conf_user_id which is stable across meetings
+      return extraData.conf_user_id || extraData.user_id || fallbackId;
+
+    case "microsoft-teams":
+    case "teams":
+      // Teams provides user_id in extra_data
+      return extraData.user_id || extraData.aad_object_id || fallbackId;
+
+    case "google-meet":
+    case "meet":
+      // Google Meet provides user_id
+      return extraData.user_id || extraData.google_user_id || fallbackId;
+
+    case "webex":
+      // Webex provides webex_id
+      return extraData.webex_id || extraData.user_id || fallbackId;
+
+    default:
+      // For unknown platforms, use participant.id
+      console.log(
+        `Unknown platform '${platform}', using fallback ID: ${fallbackId}`,
+      );
+      return fallbackId;
+  }
+}
+
 // Function to process participant join events
 async function processParticipantJoin(evt) {
   try {
@@ -2319,9 +2362,11 @@ async function processParticipantJoin(evt) {
     const participantId = participantData.id;
     const isHost = participantData.is_host;
     const platform = participantData.platform;
+    const email = participantData.email || null; // Available via Calendar Integration
+    const extraData = participantData.extra_data || {}; // Platform-specific data
 
     console.log(
-      `Participant joined: ${participantName} (ID: ${participantId}, Host: ${isHost})`,
+      `Participant joined: ${participantName} (ID: ${participantId}, Host: ${isHost}, Email: ${email || "N/A"})`,
     );
 
     // Skip "Host" and "Guest" generic names
@@ -2357,26 +2402,30 @@ async function processParticipantJoin(evt) {
         (p) => p.id === participantId,
       );
 
+      // Extract platform-specific user ID for cross-meeting identity
+      const platformUserId = extractPlatformUserId(
+        platform,
+        extraData,
+        participantId,
+      );
+
+      const participantObj = {
+        id: participantId,
+        name: participantName,
+        isHost: isHost,
+        platform: platform,
+        email: email,
+        platformUserId: platformUserId,
+        joinTime: new Date().toISOString(),
+        status: "active",
+      };
+
       if (existingParticipantIndex !== -1) {
         // Update existing participant
-        meeting.participants[existingParticipantIndex] = {
-          id: participantId,
-          name: participantName,
-          isHost: isHost,
-          platform: platform,
-          joinTime: new Date().toISOString(),
-          status: "active",
-        };
+        meeting.participants[existingParticipantIndex] = participantObj;
       } else {
         // Add new participant
-        meeting.participants.push({
-          id: participantId,
-          name: participantName,
-          isHost: isHost,
-          platform: platform,
-          joinTime: new Date().toISOString(),
-          status: "active",
-        });
+        meeting.participants.push(participantObj);
       }
 
       console.log(`Added/updated participant data for meeting: ${noteId}`);
@@ -2494,6 +2543,46 @@ async function extractRealtimeEvidence(
 
 // Finalize an interview when recording ends
 // Sends accumulated transcript, tasks, and people to the backend
+/**
+ * Merge Recall SDK participant data with AI-extracted people
+ * Matches AI-extracted people with Recall participants by name similarity
+ *
+ * @param {Array} recallParticipants - Participants from Recall SDK join events
+ * @param {Array} aiPeople - People extracted by AI from transcript
+ * @returns {Array} Merged people array with enriched data
+ */
+function mergePeopleData(recallParticipants, aiPeople) {
+  const merged = [];
+
+  // For each AI-extracted person, try to match with Recall participant
+  for (const aiPerson of aiPeople || []) {
+    const match = recallParticipants?.find((p) => {
+      if (!p.name || !aiPerson.person_name) return false;
+      // Simple fuzzy match: check if one name contains the other (case-insensitive)
+      const pName = p.name.toLowerCase();
+      const aiName = aiPerson.person_name.toLowerCase();
+      return pName.includes(aiName) || aiName.includes(pName);
+    });
+
+    merged.push({
+      person_key: aiPerson.person_key,
+      person_name: aiPerson.person_name,
+      role: aiPerson.role,
+      // Enrich with Recall data if matched
+      recall_participant_id: match?.platformUserId,
+      recall_platform: match?.platform,
+      email: match?.email,
+      is_host: match?.isHost,
+    });
+  }
+
+  console.log(
+    `[mergePeople] Merged ${aiPeople?.length || 0} AI people with ${recallParticipants?.length || 0} Recall participants → ${merged.length} enriched people`,
+  );
+
+  return merged;
+}
+
 async function finalizeInterview(
   noteId,
   interviewId,
@@ -2516,17 +2605,98 @@ async function finalizeInterview(
     // Get accumulated state
     const state = evidenceExtractionState.getState(noteId);
 
-    console.log(
-      `[finalize] Finalizing interview ${interviewId} with ${transcript?.length || 0} turns, ${state.tasks?.length || 0} tasks, ${state.people?.length || 0} people`,
+    // Get meeting data for Recall participants
+    let recallParticipants = [];
+    try {
+      const meetingsData = await loadMeetingsData();
+      const meeting = meetingsData.pastMeetings.find((m) => m.id === noteId);
+      recallParticipants = meeting?.participants || [];
+      console.log(
+        `[finalize] Found ${recallParticipants.length} Recall participants for meeting`,
+      );
+    } catch (error) {
+      console.warn("[finalize] Could not load Recall participants:", error);
+    }
+
+    // Merge AI-extracted people with Recall participant data
+    const enrichedPeople = mergePeopleData(
+      recallParticipants,
+      state.people || [],
     );
 
+    console.log(
+      `[finalize] Finalizing interview ${interviewId} with ${transcript?.length || 0} turns, ${state.tasks?.length || 0} tasks, ${enrichedPeople.length} people`,
+    );
+
+    // Step 1: Resolve people via new API endpoint
+    let peopleMap = new Map(); // person_key → person_id
+    if (enrichedPeople.length > 0) {
+      try {
+        // Get account and project IDs from auth context
+        const user = await auth.getUser();
+        const accountId = user?.app_metadata?.claims?.sub;
+        const projectId =
+          global.selectedProjectId || user?.user_metadata?.default_project_id;
+
+        if (!accountId || !projectId) {
+          console.warn(
+            "[finalize] Missing accountId or projectId, skipping person resolution",
+          );
+        } else {
+          const resolveResponse = await axios.post(
+            `${UPSIGHT_API_URL}/api/desktop/people/resolve`,
+            {
+              accountId: accountId,
+              projectId: projectId,
+              people: enrichedPeople,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              timeout: 15000,
+            },
+          );
+
+          const { resolved, errors } = resolveResponse.data;
+
+          // Build person_key → person_id map
+          for (const item of resolved || []) {
+            peopleMap.set(item.person_key, item.person_id);
+            console.log(
+              `[finalize] Resolved ${item.person_key} → ${item.person_id} (${item.matched_by})`,
+            );
+          }
+
+          if (errors?.length > 0) {
+            console.warn(`[finalize] Person resolution errors:`, errors);
+          }
+
+          console.log(
+            `[finalize] Resolved ${resolved?.length || 0} people, ${errors?.length || 0} errors`,
+          );
+        }
+      } catch (error) {
+        console.error("[finalize] Person resolution failed:", error.message);
+        console.warn(
+          "[finalize] Continuing with finalization without person IDs",
+        );
+      }
+    }
+
+    // Step 2: Finalize interview with enriched data
     const response = await axios.post(
       `${UPSIGHT_API_URL}/api/desktop/interviews/finalize`,
       {
         interview_id: interviewId,
         transcript: transcript || [],
         tasks: state.tasks || [],
-        people: state.people || [],
+        people: enrichedPeople,
+        people_map: Array.from(peopleMap.entries()).map(([key, id]) => ({
+          person_key: key,
+          person_id: id,
+        })),
         duration_seconds: durationSeconds,
         platform: platform,
       },
