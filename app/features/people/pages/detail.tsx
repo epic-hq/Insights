@@ -1,7 +1,7 @@
-import consola from "consola"
-import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, Trash2, UserCircle } from "lucide-react"
-import { useMemo } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
+import consola from "consola";
+import { Edit2, FileText, MoreVertical, Paperclip, RefreshCw, Trash2, UserCircle } from "lucide-react";
+import { useMemo } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
 import {
 	Link,
 	redirect,
@@ -12,50 +12,55 @@ import {
 	useNavigation,
 	useParams,
 	useSearchParams,
-} from "react-router-dom"
-import { InlineEditableField } from "~/components/InlineEditableField"
-import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
-import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
-import { deletePerson, getPersonById, updatePerson } from "~/features/people/db"
-import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server"
-import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { getFacetCatalog } from "~/lib/database/facets.server"
-import { userContext } from "~/server/user-context"
-import type { Insight } from "~/types"
-import { createProjectRoutes } from "~/utils/routes.server"
-import { getImageUrl } from "~/utils/storeImage.server"
-import { EditableNameField } from "../components/EditableNameField"
-import { PersonEvidenceTab } from "../components/PersonEvidenceTab"
-import { PersonOverviewTab } from "../components/PersonOverviewTab"
-import { PersonProfileTab } from "../components/PersonProfileTab"
-import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server"
+} from "react-router-dom";
+import { InlineEditableField } from "~/components/InlineEditableField";
+import { DetailPageHeader } from "~/components/layout/DetailPageHeader";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { BackButton } from "~/components/ui/back-button";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3";
+import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db";
+import { deletePerson, getPersonById, updatePerson } from "~/features/people/db";
+import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server";
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { getFacetCatalog } from "~/lib/database/facets.server";
+import { userContext } from "~/server/user-context";
+import type { Insight } from "~/types";
+import { createProjectRoutes } from "~/utils/routes.server";
+import { getImageUrl } from "~/utils/storeImage.server";
+import { EditableNameField } from "../components/EditableNameField";
+import { PersonEvidenceTab } from "../components/PersonEvidenceTab";
+import { PersonOverviewTab } from "../components/PersonOverviewTab";
+import { PersonProfileTab } from "../components/PersonProfileTab";
+import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.person?.name || "Person"} | Insights` },
 		{ name: "description", content: "Person details and interview history" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const personId = params.personId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const personId = params.personId;
 
 	// consola.info("PersonDetail loader start", { accountId, projectId, personId, params })
 
@@ -64,10 +69,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			accountId,
 			projectId,
 			personId,
-		})
+		});
 		throw new Response("Account ID, Project ID, and Person ID are required", {
 			status: 400,
-		})
+		});
 	}
 
 	try {
@@ -80,7 +85,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			}),
 			getFacetCatalog({ db: supabase, accountId, projectId }),
 			getOrganizations({ supabase, accountId, projectId }),
-		])
+		]);
 
 		// Fetch assets linked to this person via junction table
 		const { data: linkedAssets } = await supabase
@@ -96,7 +101,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			.eq("person_id", personId)
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false })
-			.limit(20)
+			.limit(20);
 
 		// Fetch research link responses for this person
 		const { data: researchLinkResponses } = await supabase
@@ -119,20 +124,20 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			)
 			.eq("person_id", personId)
 			.order("created_at", { ascending: false })
-			.limit(50)
+			.limit(50);
 
 		const relatedAssets = (linkedAssets || [])
 			.filter((link) => link.project_assets)
 			.map((link) => ({
 				...(link.project_assets as {
-					id: string
-					title: string
-					asset_type: string
-					created_at: string
-					description: string | null
+					id: string;
+					title: string;
+					asset_type: string;
+					created_at: string;
+					description: string | null;
 				}),
 				relationship_type: link.relationship_type,
-			}))
+			}));
 
 		// Fetch survey responses for this person via direct person_id on evidence_facet
 		const { data: surveyResponses } = await supabase
@@ -158,62 +163,62 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			.eq("project_id", projectId)
 			.eq("person_id", personId) // Direct filter - cleaner than going through evidence_people
 			.order("created_at", { ascending: false })
-			.limit(50)
+			.limit(50);
 
 		// Transform and group survey responses by interview
 		const surveyResponsesGrouped = new Map<
 			string,
 			{
-				interviewId: string
-				interviewTitle: string
+				interviewId: string;
+				interviewTitle: string;
 				responses: Array<{
-					id: string
-					question: string
-					answer: string
-					createdAt: string
-				}>
+					id: string;
+					question: string;
+					answer: string;
+					createdAt: string;
+				}>;
 			}
-		>()
+		>();
 		for (const facet of surveyResponses || []) {
 			const evidence = facet.evidence as {
-				id: string
-				interview_id: string
-				interviews: { id: string; title: string | null }
-			} | null
-			if (!evidence?.interviews) continue
-			const interviewId = evidence.interviews.id
-			const interviewTitle = evidence.interviews.title || "Survey"
+				id: string;
+				interview_id: string;
+				interviews: { id: string; title: string | null };
+			} | null;
+			if (!evidence?.interviews) continue;
+			const interviewId = evidence.interviews.id;
+			const interviewTitle = evidence.interviews.title || "Survey";
 			if (!surveyResponsesGrouped.has(interviewId)) {
 				surveyResponsesGrouped.set(interviewId, {
 					interviewId,
 					interviewTitle,
 					responses: [],
-				})
+				});
 			}
 			surveyResponsesGrouped.get(interviewId)?.responses.push({
 				id: facet.id,
 				question: facet.label || "",
 				answer: facet.quote || "",
 				createdAt: facet.created_at || "",
-			})
+			});
 		}
-		const surveyResponsesList = Array.from(surveyResponsesGrouped.values())
+		const surveyResponsesList = Array.from(surveyResponsesGrouped.values());
 
 		// Fetch themes linked to this person via evidence_facet → theme_evidence → themes
 		const { data: personFacets } = await supabase
 			.from("evidence_facet")
 			.select("evidence_id")
 			.eq("project_id", projectId)
-			.eq("person_id", personId)
+			.eq("person_id", personId);
 
-		const evidenceIdsForThemes = [...new Set((personFacets || []).map((f) => f.evidence_id))]
+		const evidenceIdsForThemes = [...new Set((personFacets || []).map((f) => f.evidence_id))];
 
 		let personThemes: Array<{
-			id: string
-			name: string
-			statement: string | null
-			evidence_count: number
-		}> = []
+			id: string;
+			name: string;
+			statement: string | null;
+			evidence_count: number;
+		}> = [];
 
 		if (evidenceIdsForThemes.length > 0) {
 			const { data: themeLinks } = await supabase
@@ -229,27 +234,27 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         `
 				)
 				.eq("project_id", projectId)
-				.in("evidence_id", evidenceIdsForThemes)
+				.in("evidence_id", evidenceIdsForThemes);
 
 			// Aggregate theme counts
-			const themeMap = new Map<string, { id: string; name: string; statement: string | null; count: number }>()
+			const themeMap = new Map<string, { id: string; name: string; statement: string | null; count: number }>();
 			for (const link of themeLinks || []) {
 				const theme = link.themes as {
-					id: string
-					name: string
-					statement: string | null
-				}
-				if (!theme) continue
-				const existing = themeMap.get(theme.id)
+					id: string;
+					name: string;
+					statement: string | null;
+				};
+				if (!theme) continue;
+				const existing = themeMap.get(theme.id);
 				if (existing) {
-					existing.count++
+					existing.count++;
 				} else {
 					themeMap.set(theme.id, {
 						id: theme.id,
 						name: theme.name,
 						statement: theme.statement,
 						count: 1,
-					})
+					});
 				}
 			}
 			personThemes = Array.from(themeMap.values())
@@ -259,7 +264,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					statement: t.statement,
 					evidence_count: t.count,
 				}))
-				.sort((a, b) => b.evidence_count - a.evidence_count)
+				.sort((a, b) => b.evidence_count - a.evidence_count);
 		}
 
 		if (!person) {
@@ -267,14 +272,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				accountId,
 				projectId,
 				personId,
-			})
-			throw new Response("Person not found", { status: 404 })
+			});
+			throw new Response("Person not found", { status: 404 });
 		}
 		if (organizations.error) {
 			consola.error("PersonDetail loader: organizations fetch error", {
 				error: organizations.error,
-			})
-			throw new Response("Failed to load organizations", { status: 500 })
+			});
+			throw new Response("Failed to load organizations", { status: 500 });
 		}
 
 		// Refresh or reuse facet lens summaries in-line so the accordion always has a headline
@@ -283,19 +288,19 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			person,
 			projectId,
 			accountId,
-		})
+		});
 
 		// Convert R2 key to presigned URL if needed
-		let imageUrl = person.image_url
+		let imageUrl = person.image_url;
 		if (imageUrl?.startsWith("images/")) {
-			imageUrl = getImageUrl(imageUrl) ?? null
+			imageUrl = getImageUrl(imageUrl) ?? null;
 		}
 
 		const personWithFacetSummaries = {
 			...person,
 			person_facet_summaries: facetSummaries,
 			image_url: imageUrl,
-		}
+		};
 
 		consola.info("PersonDetail loader success", {
 			personId: person.id,
@@ -304,7 +309,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			surveyResponsesCount: surveyResponsesList.length,
 			themesCount: personThemes.length,
 			researchLinkResponsesCount: researchLinkResponses?.length ?? 0,
-		})
+		});
 		return {
 			person: personWithFacetSummaries,
 			catalog,
@@ -313,37 +318,37 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			surveyResponses: surveyResponsesList,
 			personThemes,
 			researchLinkResponses: researchLinkResponses ?? [],
-		}
+		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error)
+		const message = error instanceof Error ? error.message : String(error);
 		consola.error("PersonDetail loader error", {
 			accountId,
 			projectId,
 			personId,
 			message,
 			error,
-		})
-		throw new Response("Failed to load person", { status: 500 })
+		});
+		throw new Response("Failed to load person", { status: 500 });
 	}
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const personId = params.personId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const personId = params.personId;
 
 	if (!accountId || !projectId || !personId) {
 		throw new Response("Account ID, Project ID, and Person ID are required", {
 			status: 400,
-		})
+		});
 	}
 
-	const routes = createProjectRoutes(accountId, projectId)
-	const formData = await request.formData()
-	const intent = formData.get("_action")
+	const routes = createProjectRoutes(accountId, projectId);
+	const formData = await request.formData();
+	const intent = formData.get("_action");
 
 	if (intent === "refresh-description") {
 		try {
@@ -352,7 +357,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				accountId,
 				projectId,
 				id: personId,
-			})
+			});
 			const [summary] = await Promise.all([
 				generatePersonDescription({
 					supabase,
@@ -366,31 +371,31 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 					accountId,
 					force: true,
 				}),
-			])
+			]);
 			await updatePerson({
 				supabase,
 				accountId,
 				projectId,
 				id: personId,
 				data: { description: summary },
-			})
+			});
 			// Return success data instead of redirect to allow fetcher to handle revalidation
-			return { refresh: { success: true, description: summary } }
+			return { refresh: { success: true, description: summary } };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Failed to refresh description."
-			return { refresh: { error: message } }
+			const message = error instanceof Error ? error.message : "Failed to refresh description.";
+			return { refresh: { error: message } };
 		}
 	}
 
 	if (intent === "link-organization") {
-		const organizationId = (formData.get("organization_id") as string | null)?.trim()
+		const organizationId = (formData.get("organization_id") as string | null)?.trim();
 		if (!organizationId) {
-			return { organization: { error: "Organization is required" } }
+			return { organization: { error: "Organization is required" } };
 		}
 
-		const role = (formData.get("role") as string | null)?.trim() || null
-		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null
-		const notes = (formData.get("notes") as string | null)?.trim() || null
+		const role = (formData.get("role") as string | null)?.trim() || null;
+		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null;
+		const notes = (formData.get("notes") as string | null)?.trim() || null;
 
 		const { error } = await linkPersonToOrganization({
 			supabase,
@@ -401,19 +406,19 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			role,
 			relationshipStatus,
 			notes,
-		})
+		});
 
 		if (error) {
-			return { organization: { error: "Failed to link organization" } }
+			return { organization: { error: "Failed to link organization" } };
 		}
 
-		return redirect(routes.people.detail(personId))
+		return redirect(routes.people.detail(personId));
 	}
 
 	if (intent === "unlink-organization") {
-		const organizationId = formData.get("organization_id") as string | null
+		const organizationId = formData.get("organization_id") as string | null;
 		if (!organizationId) {
-			return { organization: { error: "Organization is required" } }
+			return { organization: { error: "Organization is required" } };
 		}
 
 		const { error } = await unlinkPersonFromOrganization({
@@ -422,19 +427,19 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			personId,
 			organizationId,
-		})
+		});
 
 		if (error) {
-			return { organization: { error: "Failed to unlink organization" } }
+			return { organization: { error: "Failed to unlink organization" } };
 		}
 
-		return redirect(routes.people.detail(personId))
+		return redirect(routes.people.detail(personId));
 	}
 
 	if (intent === "add-facet-signal") {
-		const facetAccountId = formData.get("facet_account_id") as string | null
+		const facetAccountId = formData.get("facet_account_id") as string | null;
 		if (!facetAccountId) {
-			return { facet: { error: "Facet is required" } }
+			return { facet: { error: "Facet is required" } };
 		}
 
 		const { error } = await supabase.from("person_facet").insert({
@@ -445,22 +450,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			source: "manual",
 			confidence: 1.0,
 			noted_at: new Date().toISOString(),
-		})
+		});
 
 		if (error) {
-			consola.error("Failed to add facet signal:", error)
-			return { facet: { error: "Failed to add facet signal" } }
+			consola.error("Failed to add facet signal:", error);
+			return { facet: { error: "Failed to add facet signal" } };
 		}
 
-		return redirect(routes.people.detail(personId))
+		return redirect(routes.people.detail(personId));
 	}
 
 	if (intent === "create-and-add-facet-signal") {
-		const kindSlug = (formData.get("kind_slug") as string | null)?.trim()
-		const facetLabel = (formData.get("facet_label") as string | null)?.trim()
+		const kindSlug = (formData.get("kind_slug") as string | null)?.trim();
+		const facetLabel = (formData.get("facet_label") as string | null)?.trim();
 
 		if (!kindSlug || !facetLabel) {
-			return { facet: { error: "Facet kind and label are required" } }
+			return { facet: { error: "Facet kind and label are required" } };
 		}
 
 		// Get the facet kind
@@ -468,10 +473,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.from("facet_kind_global")
 			.select("id")
 			.eq("slug", kindSlug)
-			.single()
+			.single();
 
 		if (kindError || !kind) {
-			return { facet: { error: "Invalid facet kind" } }
+			return { facet: { error: "Invalid facet kind" } };
 		}
 
 		// Create slug from label
@@ -479,7 +484,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.toLowerCase()
 			.trim()
 			.replace(/\s+/g, "-")
-			.replace(/[^a-z0-9-]/g, "")
+			.replace(/[^a-z0-9-]/g, "");
 
 		// Create or get the facet_account
 		const { data: existingFacet } = await supabase
@@ -488,12 +493,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.eq("account_id", accountId)
 			.eq("kind_id", kind.id)
 			.eq("slug", slug)
-			.single()
+			.single();
 
-		let facetAccountId: number
+		let facetAccountId: number;
 
 		if (existingFacet) {
-			facetAccountId = existingFacet.id
+			facetAccountId = existingFacet.id;
 		} else {
 			const { data: newFacet, error: createError } = await supabase
 				.from("facet_account")
@@ -505,14 +510,14 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 					is_active: true,
 				})
 				.select("id")
-				.single()
+				.single();
 
 			if (createError || !newFacet) {
-				consola.error("Failed to create facet:", createError)
-				return { facet: { error: "Failed to create facet" } }
+				consola.error("Failed to create facet:", createError);
+				return { facet: { error: "Failed to create facet" } };
 			}
 
-			facetAccountId = newFacet.id
+			facetAccountId = newFacet.id;
 		}
 
 		// Link the facet to the person
@@ -524,34 +529,34 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			source: "manual",
 			confidence: 1.0,
 			noted_at: new Date().toISOString(),
-		})
+		});
 
 		if (linkError) {
-			consola.error("Failed to link facet to person:", linkError)
-			return { facet: { error: "Failed to link facet to person" } }
+			consola.error("Failed to link facet to person:", linkError);
+			return { facet: { error: "Failed to link facet to person" } };
 		}
 
-		return redirect(routes.people.detail(personId))
+		return redirect(routes.people.detail(personId));
 	}
 
 	if (intent === "remove-facet-signal") {
-		const facetAccountId = formData.get("facet_account_id") as string | null
+		const facetAccountId = formData.get("facet_account_id") as string | null;
 		if (!facetAccountId) {
-			return { facet: { error: "Facet is required" } }
+			return { facet: { error: "Facet is required" } };
 		}
 
 		const { error } = await supabase
 			.from("person_facet")
 			.delete()
 			.eq("person_id", personId)
-			.eq("facet_account_id", Number.parseInt(facetAccountId, 10))
+			.eq("facet_account_id", Number.parseInt(facetAccountId, 10));
 
 		if (error) {
-			consola.error("Failed to remove facet signal:", error)
-			return { facet: { error: "Failed to remove facet signal" } }
+			consola.error("Failed to remove facet signal:", error);
+			return { facet: { error: "Failed to remove facet signal" } };
 		}
 
-		return redirect(routes.people.detail(personId))
+		return redirect(routes.people.detail(personId));
 	}
 
 	if (intent === "delete") {
@@ -561,18 +566,18 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				id: personId,
 				accountId,
 				projectId,
-			})
-			return redirect(routes.people.index())
+			});
+			return redirect(routes.people.index());
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Failed to delete person"
-			consola.error("Failed to delete person:", error)
-			return { delete: { error: message } }
+			const message = error instanceof Error ? error.message : "Failed to delete person";
+			consola.error("Failed to delete person:", error);
+			return { delete: { error: message } };
 		}
 	}
 
 	if (intent === "update-field") {
-		const field = formData.get("field") as string
-		const value = formData.get("value") as string
+		const field = formData.get("field") as string;
+		const value = formData.get("value") as string;
 
 		// Whitelist of allowed fields to update
 		const allowedFields = [
@@ -584,10 +589,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			"primary_email",
 			"primary_phone",
 			"linkedin_url",
-		]
+		];
 
 		if (!allowedFields.includes(field)) {
-			return { error: `Field ${field} is not editable` }
+			return { error: `Field ${field} is not editable` };
 		}
 
 		await updatePerson({
@@ -596,19 +601,19 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			id: personId,
 			data: { [field]: value || null },
-		})
+		});
 
-		return { success: true, field }
+		return { success: true, field };
 	}
 
 	if (intent === "create-and-link-organization") {
-		const name = (formData.get("name") as string | null)?.trim()
+		const name = (formData.get("name") as string | null)?.trim();
 		if (!name) {
-			return { organization: { error: "Organization name is required" } }
+			return { organization: { error: "Organization name is required" } };
 		}
 
-		const headquartersLocation = (formData.get("headquarters_location") as string | null)?.trim() || null
-		const role = (formData.get("role") as string | null)?.trim() || null
+		const headquartersLocation = (formData.get("headquarters_location") as string | null)?.trim() || null;
+		const role = (formData.get("role") as string | null)?.trim() || null;
 
 		// Create the organization
 		const { data: newOrg, error: createError } = await supabase
@@ -620,10 +625,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				headquarters_location: headquartersLocation,
 			})
 			.select()
-			.single()
+			.single();
 
 		if (createError || !newOrg) {
-			return { organization: { error: "Failed to create organization" } }
+			return { organization: { error: "Failed to create organization" } };
 		}
 
 		// Link the person to the new organization
@@ -636,38 +641,38 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			role,
 			relationshipStatus: null,
 			notes: null,
-		})
+		});
 
 		if (linkError) {
 			return {
 				organization: { error: "Organization created but failed to link" },
-			}
+			};
 		}
 
-		return redirect(routes.people.detail(personId))
+		return redirect(routes.people.detail(personId));
 	}
 
-	return redirect(routes.people.detail(personId))
+	return redirect(routes.people.detail(personId));
 }
 
 export default function PersonDetail() {
 	const { person, catalog, organizations, relatedAssets, surveyResponses, personThemes, researchLinkResponses } =
-		useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
-	const _organizationActionData = actionData?.organization
-	const refreshError = actionData?.refresh?.error
-	const { projectPath } = useCurrentProject()
-	const { accountId, projectId } = useParams()
-	const navigate = useNavigate()
-	const _navigation = useNavigation()
-	const refreshFetcher = useFetcher<typeof action>()
-	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
-	const routesByPath = useProjectRoutes(projectPath || "")
-	const routes = accountId && projectId ? routesByIds : routesByPath
-	const [searchParams, setSearchParams] = useSearchParams()
-	const activeTab = searchParams.get("tab") || "overview"
+		useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
+	const _organizationActionData = actionData?.organization;
+	const refreshError = actionData?.refresh?.error;
+	const { projectPath } = useCurrentProject();
+	const { accountId, projectId } = useParams();
+	const navigate = useNavigate();
+	const _navigation = useNavigation();
+	const refreshFetcher = useFetcher<typeof action>();
+	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "");
+	const routesByPath = useProjectRoutes(projectPath || "");
+	const routes = accountId && projectId ? routesByIds : routesByPath;
+	const [searchParams, setSearchParams] = useSearchParams();
+	const activeTab = searchParams.get("tab") || "overview";
 
-	const allInterviewLinks = (person.interview_people || []).filter((ip) => ip.interviews?.id)
+	const allInterviewLinks = (person.interview_people || []).filter((ip) => ip.interviews?.id);
 	// Split into conversations (interviews), notes, surveys, and chats
 	const interviewLinks = allInterviewLinks.filter(
 		(ip) =>
@@ -675,73 +680,75 @@ export default function PersonDetail() {
 			ip.interviews?.source_type !== "survey_response" &&
 			ip.interviews?.source_type !== "public_chat" &&
 			ip.interviews?.media_type !== "voice_memo"
-	)
+	);
 	const noteLinks = allInterviewLinks.filter(
 		(ip) => ip.interviews?.source_type === "note" || ip.interviews?.media_type === "voice_memo"
-	)
-	const surveyLinks = allInterviewLinks.filter((ip) => ip.interviews?.source_type === "survey_response")
-	const chatLinks = allInterviewLinks.filter((ip) => ip.interviews?.source_type === "public_chat")
-	const peoplePersonas = person.people_personas || []
-	const primaryPersona = peoplePersonas.length > 0 ? peoplePersonas[0] : null
-	const persona = primaryPersona?.personas
-	const themeColor = persona?.color_hex || "#6366f1"
-	const name = person.name || "Unnamed Person"
+	);
+	const surveyLinks = allInterviewLinks.filter((ip) => ip.interviews?.source_type === "survey_response");
+	const chatLinks = allInterviewLinks.filter((ip) => ip.interviews?.source_type === "public_chat");
+	const peoplePersonas = person.people_personas || [];
+	const primaryPersona = peoplePersonas.length > 0 ? peoplePersonas[0] : null;
+	const persona = primaryPersona?.personas;
+	const themeColor = persona?.color_hex || "#6366f1";
+	const name = person.name || "Unnamed Person";
 	const _descriptionText =
 		person.description ||
 		[person.title, person.segment, persona?.name].filter(Boolean).join(" • ") ||
-		"Interview participant profile"
+		"Interview participant profile";
 	const initials =
 		(name || "?")
 			.split(" ")
 			.map((w) => w[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 	const relatedInsights = useMemo(() => {
-		const collected = new Map<string, Insight>()
+		const collected = new Map<string, Insight>();
 		for (const link of interviewLinks) {
-			const interviewInsights = Array.isArray(link.interviews?.insights) ? (link.interviews?.insights as Insight[]) : []
+			const interviewInsights = Array.isArray(link.interviews?.insights)
+				? (link.interviews?.insights as Insight[])
+				: [];
 			for (const insight of interviewInsights) {
 				if (insight?.id && !collected.has(insight.id)) {
-					collected.set(insight.id, insight)
+					collected.set(insight.id, insight);
 				}
 			}
 		}
-		return Array.from(collected.values())
-	}, [interviewLinks])
+		return Array.from(collected.values());
+	}, [interviewLinks]);
 
 	const facetsById = useMemo(() => {
-		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>()
+		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>();
 		for (const facet of catalog.facets) {
 			map.set(facet.facet_account_id, {
 				label: facet.label,
 				alias: facet.alias,
 				kind_slug: facet.kind_slug,
-			})
+			});
 		}
-		return map
-	}, [catalog])
+		return map;
+	}, [catalog]);
 
 	const facetSummaryMap = useMemo(() => {
-		const map = new Map<string, { summary: string; generated_at: string | null }>()
+		const map = new Map<string, { summary: string; generated_at: string | null }>();
 		for (const row of person.person_facet_summaries ?? []) {
 			map.set(row.kind_slug, {
 				summary: row.summary,
 				generated_at: row.generated_at ?? null,
-			})
+			});
 		}
-		return map
-	}, [person.person_facet_summaries])
+		return map;
+	}, [person.person_facet_summaries]);
 
 	const personFacets = useMemo(() => {
 		return (person.person_facet ?? []).map((row) => {
-			const meta = facetsById.get(row.facet_account_id)
+			const meta = facetsById.get(row.facet_account_id);
 			const joinedFacet = row.facet as {
-				label?: string | null
-				facet_kind_global?: { slug?: string | null } | null
-			} | null
-			const fallbackLabel = joinedFacet?.label ?? null
-			const fallbackKindSlug = joinedFacet?.facet_kind_global?.slug ?? ""
+				label?: string | null;
+				facet_kind_global?: { slug?: string | null } | null;
+			} | null;
+			const fallbackLabel = joinedFacet?.label ?? null;
+			const fallbackKindSlug = joinedFacet?.facet_kind_global?.slug ?? "";
 
 			return {
 				facet_account_id: row.facet_account_id,
@@ -749,26 +756,26 @@ export default function PersonDetail() {
 				kind_slug: meta?.kind_slug || fallbackKindSlug || "",
 				source: row.source || null,
 				confidence: row.confidence ?? null,
-			}
-		})
-	}, [person.person_facet, facetsById])
+			};
+		});
+	}, [person.person_facet, facetsById]);
 
 	const facetsGrouped = useMemo(() => {
-		const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]))
-		const groups = new Map<string, { label: string; facets: typeof personFacets }>()
+		const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]));
+		const groups = new Map<string, { label: string; facets: typeof personFacets }>();
 		for (const facet of personFacets) {
-			const key = facet.kind_slug || "other"
-			const label = kindLabelMap.get(facet.kind_slug) ?? (facet.kind_slug || "Other")
+			const key = facet.kind_slug || "other";
+			const label = kindLabelMap.get(facet.kind_slug) ?? (facet.kind_slug || "Other");
 			if (!groups.has(key)) {
-				groups.set(key, { label, facets: [] })
+				groups.set(key, { label, facets: [] });
 			}
-			groups.get(key)?.facets.push(facet)
+			groups.get(key)?.facets.push(facet);
 		}
 		return Array.from(groups.entries()).map(([slug, value]) => ({
 			kind_slug: slug,
 			...value,
-		}))
-	}, [personFacets, catalog.kinds])
+		}));
+	}, [personFacets, catalog.kinds]);
 
 	const facetLensGroups = useMemo(() => {
 		// Filter out survey_response - shown in dedicated "Imported Data" section instead
@@ -777,60 +784,60 @@ export default function PersonDetail() {
 			.map((group) => ({
 				...group,
 				summary: facetSummaryMap.get(group.kind_slug)?.summary ?? null,
-			}))
-	}, [facetsGrouped, facetSummaryMap])
+			}));
+	}, [facetsGrouped, facetSummaryMap]);
 
 	const availableFacetsByKind = useMemo(() => {
-		const grouped: Record<string, Array<{ id: number; label: string; slug: string }>> = {}
+		const grouped: Record<string, Array<{ id: number; label: string; slug: string }>> = {};
 		for (const facet of catalog.facets) {
-			const kindSlug = facet.kind_slug
+			const kindSlug = facet.kind_slug;
 			if (!grouped[kindSlug]) {
-				grouped[kindSlug] = []
+				grouped[kindSlug] = [];
 			}
 			grouped[kindSlug].push({
 				id: facet.facet_account_id,
 				label: facet.label,
 				slug: facet.slug || facet.label.toLowerCase().replace(/\s+/g, "-"),
-			})
+			});
 		}
-		return grouped
-	}, [catalog.facets])
+		return grouped;
+	}, [catalog.facets]);
 
 	const linkedOrganizations = useMemo(() => {
-		return (person.people_organizations ?? []).filter((link) => link.organization)
-	}, [person.people_organizations])
+		return (person.people_organizations ?? []).filter((link) => link.organization);
+	}, [person.people_organizations]);
 
 	const sortedLinkedOrganizations = useMemo(() => {
 		return [...linkedOrganizations].sort((a, b) => {
-			const nameA = a.organization?.name || ""
-			const nameB = b.organization?.name || ""
-			return nameA.localeCompare(nameB)
-		})
-	}, [linkedOrganizations])
+			const nameA = a.organization?.name || "";
+			const nameB = b.organization?.name || "";
+			return nameA.localeCompare(nameB);
+		});
+	}, [linkedOrganizations]);
 
 	// Get primary organization for segment data
 	const primaryOrg = useMemo(() => {
-		const primary = linkedOrganizations.find((link) => link.is_primary)
-		return primary?.organization ?? linkedOrganizations[0]?.organization ?? null
-	}, [linkedOrganizations])
+		const primary = linkedOrganizations.find((link) => link.is_primary);
+		return primary?.organization ?? linkedOrganizations[0]?.organization ?? null;
+	}, [linkedOrganizations]);
 
 	const availableOrganizations = useMemo(() => {
 		const linkedIds = new Set(
 			linkedOrganizations.map((link) => link.organization?.id).filter((id): id is string => Boolean(id))
-		)
+		);
 		return organizations
 			.filter((organization) => !linkedIds.has(organization.id))
 			.slice()
-			.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
-	}, [linkedOrganizations, organizations])
+			.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+	}, [linkedOrganizations, organizations]);
 
 	// Organization linking is now handled by LinkOrganizationDialog modal
 
 	const handleAttachRecording = () => {
-		if (!person.id) return
-		const destination = `${routes.interviews.upload()}?personId=${person.id}`
-		navigate(destination)
-	}
+		if (!person.id) return;
+		const destination = `${routes.interviews.upload()}?personId=${person.id}`;
+		navigate(destination);
+	};
 
 	const metadataNode = (
 		<>
@@ -851,13 +858,13 @@ export default function PersonDetail() {
 				</Link>
 			)}
 		</>
-	)
+	);
 	const avatarNode = (
 		<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
 			{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
 			<AvatarFallback style={{ backgroundColor: `${themeColor}33`, color: themeColor }}>{initials}</AvatarFallback>
 		</Avatar>
-	)
+	);
 	const personaBadgeNode = persona?.name ? (
 		<div className="mb-3 flex justify-start">
 			<Link to={routes.personas.detail(persona.id)}>
@@ -874,13 +881,13 @@ export default function PersonDetail() {
 				</Badge>
 			</Link>
 		</div>
-	) : null
+	) : null;
 
 	// Segment data badges for the header - only meaningful role info, not duplicated org data
 	const segmentBadges: Array<{ label: string; value: string }> = [
 		person.job_function ? { label: "Function", value: person.job_function } : null,
 		person.seniority_level ? { label: "Seniority", value: person.seniority_level } : null,
-	].filter((item): item is { label: string; value: string } => Boolean(item?.value))
+	].filter((item): item is { label: string; value: string } => Boolean(item?.value));
 
 	const segmentBadgesNode =
 		segmentBadges.length > 0
@@ -894,11 +901,11 @@ export default function PersonDetail() {
 						<span className="text-foreground">{item.value}</span>
 					</Badge>
 				))
-			: null
+			: null;
 
-	const isRefreshingDescription = refreshFetcher.state === "submitting" || refreshFetcher.state === "loading"
-	const fetcherRefreshError = refreshFetcher.data?.refresh?.error
-	const isFacetSummaryPending = facetLensGroups.some((group) => !group.summary)
+	const isRefreshingDescription = refreshFetcher.state === "submitting" || refreshFetcher.state === "loading";
+	const fetcherRefreshError = refreshFetcher.data?.refresh?.error;
+	const isFacetSummaryPending = facetLensGroups.some((group) => !group.summary);
 
 	return (
 		<div className="relative min-h-screen bg-muted/20">
@@ -932,7 +939,7 @@ export default function PersonDetail() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									refreshFetcher.submit({ _action: "refresh-description" }, { method: "post" })
+									refreshFetcher.submit({ _action: "refresh-description" }, { method: "post" });
 								}}
 								disabled={isRefreshingDescription}
 							>
@@ -947,7 +954,7 @@ export default function PersonDetail() {
 											`Are you sure you want to delete ${person.name || "this person"}? This action cannot be undone.`
 										)
 									) {
-										refreshFetcher.submit({ _action: "delete" }, { method: "post" })
+										refreshFetcher.submit({ _action: "delete" }, { method: "post" });
 									}
 								}}
 							>
@@ -991,7 +998,7 @@ export default function PersonDetail() {
 				<Tabs
 					value={activeTab}
 					onValueChange={(value) => {
-						setSearchParams({ tab: value })
+						setSearchParams({ tab: value });
 					}}
 					className="w-full"
 				>
@@ -1034,5 +1041,5 @@ export default function PersonDetail() {
 				</Tabs>
 			</PageContainer>
 		</div>
-	)
+	);
 }

@@ -8,69 +8,69 @@
  * - Applied conversation lenses
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import type { Database } from "~/types"
-import { getProjectContextGeneric } from "./db"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import type { Database } from "~/types";
+import { getProjectContextGeneric } from "./db";
 
 interface AccountContext {
-	company_description: string | null
-	customer_problem: string | null
-	industry: string | null
-	offerings: string[] | null
-	competitors: string[] | null
-	target_orgs: string[] | null
-	target_roles: string[] | null
+	company_description: string | null;
+	customer_problem: string | null;
+	industry: string | null;
+	offerings: string[] | null;
+	competitors: string[] | null;
+	target_orgs: string[] | null;
+	target_roles: string[] | null;
 }
 
 interface ThemeSummary {
-	name: string
-	statement: string | null
-	evidenceCount: number
+	name: string;
+	statement: string | null;
+	evidenceCount: number;
 }
 
 interface PersonaSummary {
-	name: string
-	description: string | null
-	goals: string[]
-	pains: string[]
-	frustrations: string[]
-	percentage: number | null
+	name: string;
+	description: string | null;
+	goals: string[];
+	pains: string[];
+	frustrations: string[];
+	percentage: number | null;
 }
 
 interface LensSummary {
-	templateKey: string
-	templateName: string
-	primaryObjective: string | null
+	templateKey: string;
+	templateName: string;
+	primaryObjective: string | null;
 }
 
 export interface EnhancedProjectContext {
 	// From project sections
-	target_orgs: string
-	target_roles: string
-	research_goal: string
-	research_goal_details: string
-	assumptions: string
-	unknowns: string
-	research_mode: string | null
-	custom_instructions: string
+	target_orgs: string;
+	target_roles: string;
+	research_goal: string;
+	research_goal_details: string;
+	assumptions: string;
+	unknowns: string;
+	research_mode: string | null;
+	custom_instructions: string;
 
 	// Account-level context
-	company_description: string | null
-	customer_problem: string | null
-	industry: string | null
-	offerings: string | null
-	competitors: string | null
+	company_description: string | null;
+	customer_problem: string | null;
+	industry: string | null;
+	offerings: string | null;
+	competitors: string | null;
 
 	// Synthesized from prior research
-	themes: ThemeSummary[]
-	personas: PersonaSummary[]
-	lenses: LensSummary[]
+	themes: ThemeSummary[];
+	personas: PersonaSummary[];
+	lenses: LensSummary[];
 }
 
-const MAX_THEMES = 8
-const MAX_PERSONAS = 5
-const MAX_LENSES = 4
+const MAX_THEMES = 8;
+const MAX_PERSONAS = 5;
+const MAX_LENSES = 4;
 
 export async function getEnhancedProjectContext(
 	supabase: SupabaseClient<Database>,
@@ -78,16 +78,16 @@ export async function getEnhancedProjectContext(
 ): Promise<EnhancedProjectContext | null> {
 	try {
 		// Get basic project context from sections
-		const basicContext = await getProjectContextGeneric(supabase, projectId)
+		const basicContext = await getProjectContextGeneric(supabase, projectId);
 		if (!basicContext) {
-			consola.warn("[enhanced-context] No basic project context found")
-			return null
+			consola.warn("[enhanced-context] No basic project context found");
+			return null;
 		}
 
-		const meta = basicContext.merged as Record<string, unknown>
+		const meta = basicContext.merged as Record<string, unknown>;
 
 		// Get project to find account_id
-		const { data: project } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
+		const { data: project } = await supabase.from("projects").select("account_id").eq("id", projectId).single();
 
 		// Fetch all additional context in parallel
 		const [accountResult, themesResult, personasResult, lensesResult] = await Promise.all([
@@ -133,13 +133,13 @@ export async function getEnhancedProjectContext(
 				.eq("project_id", projectId)
 				.eq("status", "completed")
 				.limit(MAX_LENSES),
-		])
+		]);
 
 		// Process account context
-		const account = accountResult.data as AccountContext | null
+		const account = accountResult.data as AccountContext | null;
 
 		// Process themes - sort by evidence count and take top N
-		const themes: ThemeSummary[] = []
+		const themes: ThemeSummary[] = [];
 		if (themesResult.data) {
 			const themesWithCount = themesResult.data
 				.map((t: any) => ({
@@ -148,13 +148,13 @@ export async function getEnhancedProjectContext(
 					evidenceCount: t.theme_evidence?.[0]?.count ?? 0,
 				}))
 				.sort((a, b) => b.evidenceCount - a.evidenceCount)
-				.slice(0, MAX_THEMES)
+				.slice(0, MAX_THEMES);
 
-			themes.push(...themesWithCount)
+			themes.push(...themesWithCount);
 		}
 
 		// Process personas
-		const personas: PersonaSummary[] = []
+		const personas: PersonaSummary[] = [];
 		if (personasResult.data) {
 			for (const p of personasResult.data) {
 				personas.push({
@@ -164,31 +164,31 @@ export async function getEnhancedProjectContext(
 					pains: Array.isArray(p.pains) ? p.pains.filter(Boolean) : [],
 					frustrations: Array.isArray(p.frustrations) ? p.frustrations.filter(Boolean) : [],
 					percentage: p.percentage,
-				})
+				});
 			}
 		}
 
 		// Process lenses - just use template_key as identifier
-		const lenses: LensSummary[] = []
+		const lenses: LensSummary[] = [];
 		if (lensesResult.data) {
 			const lensData = lensesResult.data as unknown as Array<{
-				template_key: string
-			}>
+				template_key: string;
+			}>;
 			for (const l of lensData) {
 				lenses.push({
 					templateKey: l.template_key,
 					templateName: l.template_key, // Use key as name since we skip the join
 					primaryObjective: null,
-				})
+				});
 			}
 		}
 
 		// Helper to join arrays
 		const joinArray = (val: unknown): string => {
-			if (Array.isArray(val)) return val.filter(Boolean).join(", ")
-			if (typeof val === "string") return val
-			return ""
-		}
+			if (Array.isArray(val)) return val.filter(Boolean).join(", ");
+			if (typeof val === "string") return val;
+			return "";
+		};
 
 		return {
 			// Basic project context
@@ -212,10 +212,10 @@ export async function getEnhancedProjectContext(
 			themes,
 			personas,
 			lenses,
-		}
+		};
 	} catch (error) {
-		consola.error("[enhanced-context] Error fetching enhanced context:", error)
-		return null
+		consola.error("[enhanced-context] Error fetching enhanced context:", error);
+		return null;
 	}
 }
 
@@ -223,49 +223,49 @@ export async function getEnhancedProjectContext(
  * Build custom instructions string that incorporates all context
  */
 export function buildEnhancedCustomInstructions(context: EnhancedProjectContext, baseInstructions = ""): string {
-	const parts: string[] = []
+	const parts: string[] = [];
 
 	if (baseInstructions.trim()) {
-		parts.push(baseInstructions.trim())
+		parts.push(baseInstructions.trim());
 	}
 
 	// Add company context
 	if (context.company_description) {
-		parts.push(`COMPANY CONTEXT: ${context.company_description}`)
+		parts.push(`COMPANY CONTEXT: ${context.company_description}`);
 	}
 
 	if (context.industry) {
-		parts.push(`INDUSTRY: ${context.industry}`)
+		parts.push(`INDUSTRY: ${context.industry}`);
 	}
 
 	// Add existing themes to avoid repetition and encourage deeper exploration
 	if (context.themes.length > 0) {
-		const themesList = context.themes.map((t) => `- ${t.name}${t.statement ? `: ${t.statement}` : ""}`).join("\n")
+		const themesList = context.themes.map((t) => `- ${t.name}${t.statement ? `: ${t.statement}` : ""}`).join("\n");
 		parts.push(
 			`EXISTING THEMES FROM PRIOR RESEARCH (avoid re-asking basics, explore deeper or adjacent areas):\n${themesList}`
-		)
+		);
 	}
 
 	// Add persona context for tailored questions
 	if (context.personas.length > 0) {
 		const personasList = context.personas
 			.map((p) => {
-				const details: string[] = []
-				if (p.goals.length) details.push(`Goals: ${p.goals.slice(0, 3).join("; ")}`)
-				if (p.pains.length) details.push(`Pains: ${p.pains.slice(0, 3).join("; ")}`)
-				return `- ${p.name}${p.percentage ? ` (${p.percentage}%)` : ""}: ${details.join(". ")}`
+				const details: string[] = [];
+				if (p.goals.length) details.push(`Goals: ${p.goals.slice(0, 3).join("; ")}`);
+				if (p.pains.length) details.push(`Pains: ${p.pains.slice(0, 3).join("; ")}`);
+				return `- ${p.name}${p.percentage ? ` (${p.percentage}%)` : ""}: ${details.join(". ")}`;
 			})
-			.join("\n")
-		parts.push(`KNOWN PERSONAS (tailor questions to their specific perspectives):\n${personasList}`)
+			.join("\n");
+		parts.push(`KNOWN PERSONAS (tailor questions to their specific perspectives):\n${personasList}`);
 	}
 
 	// Add lens objectives
 	if (context.lenses.length > 0) {
 		const lensesList = context.lenses
 			.map((l) => `- ${l.templateName}: ${l.primaryObjective || "No objective specified"}`)
-			.join("\n")
-		parts.push(`ACTIVE ANALYSIS FRAMEWORKS (ensure questions help fill these frameworks):\n${lensesList}`)
+			.join("\n");
+		parts.push(`ACTIVE ANALYSIS FRAMEWORKS (ensure questions help fill these frameworks):\n${lensesList}`);
 	}
 
-	return parts.join("\n\n")
+	return parts.join("\n\n");
 }

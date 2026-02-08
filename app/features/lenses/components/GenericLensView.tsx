@@ -21,35 +21,35 @@ import {
 	User,
 	Users,
 	XCircle,
-} from "lucide-react"
-import { useState } from "react"
-import { Link, useFetcher } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
-import { EvidenceModal } from "./EvidenceModal"
-import { EvidenceTimestampBadges, hydrateEvidenceRefs } from "./EvidenceTimestampBadges"
+} from "lucide-react";
+import { useState } from "react";
+import { Link, useFetcher } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server";
+import { EvidenceModal } from "./EvidenceModal";
+import { EvidenceTimestampBadges, hydrateEvidenceRefs } from "./EvidenceTimestampBadges";
 
 type EvidenceRecord = {
-	id: string
-	anchors?: unknown
-	start_ms?: number | null
-	gist?: string | null
-}
+	id: string;
+	anchors?: unknown;
+	start_ms?: number | null;
+	gist?: string | null;
+};
 
 type Props = {
-	analysis: LensAnalysisWithTemplate | null
-	template?: LensTemplate
-	isLoading?: boolean
-	editable?: boolean
+	analysis: LensAnalysisWithTemplate | null;
+	template?: LensTemplate;
+	isLoading?: boolean;
+	editable?: boolean;
 	/** Map of evidence ID to evidence record for hydrating timestamps */
-	evidenceMap?: Map<string, EvidenceRecord>
-}
+	evidenceMap?: Map<string, EvidenceRecord>;
+};
 
 /**
  * Parse a text_array value that might be stored as a string
@@ -57,50 +57,50 @@ type Props = {
  */
 function parseTextArrayValue(value: any): string[] | null {
 	if (Array.isArray(value)) {
-		return value.length > 0 ? value : null
+		return value.length > 0 ? value : null;
 	}
 
 	if (typeof value === "string") {
-		const trimmed = value.trim()
+		const trimmed = value.trim();
 		// Check if it looks like a string-encoded array: [item1, item2, ...]
 		if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
 			// Try to parse as JSON first
 			try {
-				const parsed = JSON.parse(trimmed)
+				const parsed = JSON.parse(trimmed);
 				if (Array.isArray(parsed) && parsed.length > 0) {
-					return parsed
+					return parsed;
 				}
 			} catch {
 				// Not valid JSON, try manual parsing
 				// Format: [item1, item2., item3]
-				const inner = trimmed.slice(1, -1).trim()
+				const inner = trimmed.slice(1, -1).trim();
 				if (inner) {
 					// Split by comma, but be careful of commas inside items
 					// Simple split works for most cases
 					const items = inner
 						.split(/,\s*(?=[A-Z])/)
 						.map((s) => s.trim())
-						.filter(Boolean)
+						.filter(Boolean);
 					if (items.length > 0) {
-						return items
+						return items;
 					}
 				}
 			}
 		}
 		// Single non-empty string - return as single-item array
 		if (trimmed) {
-			return [trimmed]
+			return [trimmed];
 		}
 	}
 
-	return null
+	return null;
 }
 
 type EvidenceRefForField = {
-	evidenceId: string
-	startMs?: number | null
-	transcriptSnippet?: string | null
-}
+	evidenceId: string;
+	startMs?: number | null;
+	transcriptSnippet?: string | null;
+};
 
 /**
  * Distribute evidence refs across array items
@@ -109,42 +109,42 @@ type EvidenceRefForField = {
  * Otherwise, distribute round-robin style
  */
 function distributeEvidenceToItems(items: string[], evidenceRefs: EvidenceRefForField[]): EvidenceRefForField[][] {
-	const result: EvidenceRefForField[][] = items.map(() => [])
+	const result: EvidenceRefForField[][] = items.map(() => []);
 
 	if (items.length === evidenceRefs.length) {
 		// Perfect 1:1 mapping
 		evidenceRefs.forEach((ev, i) => {
-			result[i].push(ev)
-		})
+			result[i].push(ev);
+		});
 	} else if (evidenceRefs.length > 0) {
 		// Distribute evidence across items
 		// Simple approach: assign evidence to items proportionally
 		evidenceRefs.forEach((ev, i) => {
-			const targetIndex = Math.floor((i / evidenceRefs.length) * items.length)
-			result[Math.min(targetIndex, items.length - 1)].push(ev)
-		})
+			const targetIndex = Math.floor((i / evidenceRefs.length) * items.length);
+			result[Math.min(targetIndex, items.length - 1)].push(ev);
+		});
 	}
 
-	return result
+	return result;
 }
 
 /**
  * Inline evidence link that opens a modal instead of navigating
  */
 function InlineEvidenceLink({ evidenceRef, projectPath }: { evidenceRef: EvidenceRefForField; projectPath: string }) {
-	const [modalOpen, setModalOpen] = useState(false)
-	const ms = evidenceRef.startMs ?? 0
-	const startTime = Math.floor(ms / 1000)
-	const timeLabel = `${Math.floor(ms / 1000 / 60)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`
+	const [modalOpen, setModalOpen] = useState(false);
+	const ms = evidenceRef.startMs ?? 0;
+	const startTime = Math.floor(ms / 1000);
+	const timeLabel = `${Math.floor(ms / 1000 / 60)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
 	return (
 		<>
 			<button
 				type="button"
 				onClick={(e) => {
-					e.preventDefault()
-					e.stopPropagation()
-					setModalOpen(true)
+					e.preventDefault();
+					e.stopPropagation();
+					setModalOpen(true);
 				}}
 				className="font-mono text-primary text-xs hover:underline"
 				title={evidenceRef.transcriptSnippet || "View evidence"}
@@ -159,7 +159,7 @@ function InlineEvidenceLink({ evidenceRef, projectPath }: { evidenceRef: Evidenc
 				projectPath={projectPath}
 			/>
 		</>
-	)
+	);
 }
 
 /**
@@ -171,42 +171,42 @@ function QALensView({
 	analysisData,
 	evidenceMap,
 }: {
-	analysis: LensAnalysisWithTemplate | null
-	analysisData: any
-	evidenceMap?: Map<string, EvidenceRecord>
+	analysis: LensAnalysisWithTemplate | null;
+	analysisData: any;
+	evidenceMap?: Map<string, EvidenceRecord>;
 }) {
-	const qaPairs = Array.isArray(analysisData?.qa_pairs) ? analysisData.qa_pairs : []
+	const qaPairs = Array.isArray(analysisData?.qa_pairs) ? analysisData.qa_pairs : [];
 	const unansweredQuestions = Array.isArray(analysisData?.unanswered_questions)
 		? analysisData.unanswered_questions.filter(Boolean)
-		: []
-	const keyTakeaways = Array.isArray(analysisData?.key_takeaways) ? analysisData.key_takeaways.filter(Boolean) : []
-	const topics = Array.isArray(analysisData?.topics_covered) ? analysisData.topics_covered.filter(Boolean) : []
-	const confidence = analysis?.confidence_score ?? analysisData?.overall_confidence ?? null
+		: [];
+	const keyTakeaways = Array.isArray(analysisData?.key_takeaways) ? analysisData.key_takeaways.filter(Boolean) : [];
+	const topics = Array.isArray(analysisData?.topics_covered) ? analysisData.topics_covered.filter(Boolean) : [];
+	const confidence = analysis?.confidence_score ?? analysisData?.overall_confidence ?? null;
 
 	// Collect follow-ups: combine unanswered items + flagged pairs
-	const followUps: Array<{ question: string; reason: string }> = []
-	const seen = new Set<string>()
+	const followUps: Array<{ question: string; reason: string }> = [];
+	const seen = new Set<string>();
 	for (const question of unansweredQuestions) {
 		if (typeof question === "string" && question.trim() && !seen.has(question.trim())) {
-			seen.add(question.trim())
-			followUps.push({ question: question.trim(), reason: "Unanswered" })
+			seen.add(question.trim());
+			followUps.push({ question: question.trim(), reason: "Unanswered" });
 		}
 	}
 	for (const pair of qaPairs) {
-		const text = typeof pair?.question === "string" ? pair.question.trim() : ""
+		const text = typeof pair?.question === "string" ? pair.question.trim() : "";
 		if (pair?.follow_up_needed && text && !seen.has(text)) {
-			seen.add(text)
-			followUps.push({ question: text, reason: "Needs follow-up" })
+			seen.add(text);
+			followUps.push({ question: text, reason: "Needs follow-up" });
 		}
 	}
 
 	const renderEvidenceBadges = (evidenceIds?: string[]) => {
-		if (!evidenceIds || evidenceIds.length === 0) return null
-		const refs = evidenceMap ? hydrateEvidenceRefs(evidenceIds, evidenceMap) : undefined
+		if (!evidenceIds || evidenceIds.length === 0) return null;
+		const refs = evidenceMap ? hydrateEvidenceRefs(evidenceIds, evidenceMap) : undefined;
 		return (
 			<EvidenceTimestampBadges evidenceRefs={refs} evidenceIds={!refs ? evidenceIds : undefined} className="mt-2" />
-		)
-	}
+		);
+	};
 
 	return (
 		<div className="space-y-6">
@@ -282,7 +282,7 @@ function QALensView({
 										{renderEvidenceBadges(pair?.answer_evidence_ids)}
 									</div>
 								</div>
-							)
+							);
 						})}
 					</div>
 				)}
@@ -321,7 +321,7 @@ function QALensView({
 				</section>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
@@ -337,22 +337,22 @@ function FieldValue({
 	evidenceRefs,
 	projectPath,
 }: {
-	value: any
-	fieldType: string
-	editable?: boolean
-	onSubmit?: (value: string) => void
-	evidenceRefs?: EvidenceRefForField[]
-	projectPath?: string
+	value: any;
+	fieldType: string;
+	editable?: boolean;
+	onSubmit?: (value: string) => void;
+	evidenceRefs?: EvidenceRefForField[];
+	projectPath?: string;
 }) {
 	if (value === null || value === undefined) {
-		return <span className="text-muted-foreground italic">Not captured</span>
+		return <span className="text-muted-foreground italic">Not captured</span>;
 	}
 
 	switch (fieldType) {
 		case "text_array": {
-			const arrayValue = parseTextArrayValue(value)
+			const arrayValue = parseTextArrayValue(value);
 			if (!arrayValue) {
-				return <span className="text-muted-foreground italic">None</span>
+				return <span className="text-muted-foreground italic">None</span>;
 			}
 
 			// If we have evidence refs and projectPath, try to match evidence to items by text similarity
@@ -360,12 +360,12 @@ function FieldValue({
 			const evidencePerItem =
 				evidenceRefs && projectPath && evidenceRefs.length > 0
 					? distributeEvidenceToItems(arrayValue, evidenceRefs)
-					: null
+					: null;
 
 			return (
 				<ul className="list-inside list-disc space-y-1">
 					{arrayValue.map((item, i) => {
-						const itemEvidence = evidencePerItem?.[i]
+						const itemEvidence = evidencePerItem?.[i];
 
 						return (
 							<li key={i} className="text-sm">
@@ -378,17 +378,17 @@ function FieldValue({
 									</span>
 								)}
 							</li>
-						)
+						);
 					})}
 				</ul>
-			)
+			);
 		}
 
 		case "boolean":
-			return value ? <Badge variant="default">Yes</Badge> : <Badge variant="secondary">No</Badge>
+			return value ? <Badge variant="default">Yes</Badge> : <Badge variant="secondary">No</Badge>;
 
 		case "numeric":
-			return <span className="font-mono">{value}</span>
+			return <span className="font-mono">{value}</span>;
 
 		case "date":
 			return (
@@ -399,7 +399,7 @@ function FieldValue({
 						day: "numeric",
 					})}
 				</span>
-			)
+			);
 
 		default:
 			// Text fields support inline editing
@@ -413,9 +413,9 @@ function FieldValue({
 						placeholder="Click to edit"
 						showEditButton
 					/>
-				)
+				);
 			}
-			return <span>{String(value)}</span>
+			return <span>{String(value)}</span>;
 	}
 }
 
@@ -423,7 +423,7 @@ function FieldValue({
  * Render confidence indicator with tooltip explanation
  */
 function ConfidenceIndicator({ confidence }: { confidence: string | number | null }) {
-	if (!confidence) return null
+	if (!confidence) return null;
 
 	const level =
 		typeof confidence === "number"
@@ -432,16 +432,16 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 				: confidence > 0.4
 					? "medium"
 					: "low"
-			: confidence.toLowerCase()
+			: confidence.toLowerCase();
 
 	const colors = {
 		high: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 		medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
 		low: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 		inconclusive: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-	}
+	};
 
-	const tooltipText = "AI confidence score based on transcript clarity, explicit statements, and supporting evidence"
+	const tooltipText = "AI confidence score based on transcript clarity, explicit statements, and supporting evidence";
 
 	return (
 		<TooltipProvider>
@@ -456,7 +456,7 @@ function ConfidenceIndicator({ confidence }: { confidence: string | number | nul
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 /**
@@ -471,43 +471,43 @@ function SectionView({
 	evidenceMap,
 	projectPath,
 }: {
-	sectionDef: LensTemplate["template_definition"]["sections"][0]
-	fields: any[]
-	editable?: boolean
-	onFieldUpdate?: (sectionKey: string, fieldKey: string, value: string) => void
-	evidenceMap?: Map<string, EvidenceRecord>
-	projectPath?: string
+	sectionDef: LensTemplate["template_definition"]["sections"][0];
+	fields: any[];
+	editable?: boolean;
+	onFieldUpdate?: (sectionKey: string, fieldKey: string, value: string) => void;
+	evidenceMap?: Map<string, EvidenceRecord>;
+	projectPath?: string;
 }) {
 	if (!fields || fields.length === 0) {
-		return <div className="py-4 text-muted-foreground text-sm italic">No data extracted for this section</div>
+		return <div className="py-4 text-muted-foreground text-sm italic">No data extracted for this section</div>;
 	}
 
 	// Build a map for quick lookup
-	const fieldMap = new Map(fields.map((f) => [f.field_key, f]))
+	const fieldMap = new Map(fields.map((f) => [f.field_key, f]));
 
 	return (
 		<div className="space-y-3 rounded-lg border bg-card p-4">
 			{sectionDef.fields.map((fieldDef) => {
-				const field = fieldMap.get(fieldDef.field_key)
-				const hasValue = field && field.value !== null && field.value !== undefined
-				const isTextArray = fieldDef.field_type === "text_array"
+				const field = fieldMap.get(fieldDef.field_key);
+				const hasValue = field && field.value !== null && field.value !== undefined;
+				const isTextArray = fieldDef.field_type === "text_array";
 
 				// For text_array, check if it has actual items
-				const arrayValue = isTextArray && hasValue ? parseTextArrayValue(field.value) : null
-				const effectivelyHasValue = isTextArray ? (arrayValue?.length ?? 0) > 0 : hasValue
+				const arrayValue = isTextArray && hasValue ? parseTextArrayValue(field.value) : null;
+				const effectivelyHasValue = isTextArray ? (arrayValue?.length ?? 0) > 0 : hasValue;
 
-				const isTextType = fieldDef.field_type === "text"
-				const canEdit = !!(editable && isTextType && onFieldUpdate && hasValue)
+				const isTextType = fieldDef.field_type === "text";
+				const canEdit = !!(editable && isTextType && onFieldUpdate && hasValue);
 
 				// Hydrate evidence refs with timestamps if we have the evidence map
 				const evidenceRefs =
 					hasValue && field.evidence_ids?.length > 0 && evidenceMap
 						? hydrateEvidenceRefs(field.evidence_ids, evidenceMap)
-						: undefined
+						: undefined;
 
 				// Status icon
-				const StatusIcon = effectivelyHasValue ? CheckCircle2 : XCircle
-				const statusIconColor = effectivelyHasValue ? "text-emerald-600" : "text-gray-400"
+				const StatusIcon = effectivelyHasValue ? CheckCircle2 : XCircle;
+				const statusIconColor = effectivelyHasValue ? "text-emerald-600" : "text-gray-400";
 
 				return (
 					<div key={fieldDef.field_key} className="flex items-start gap-3">
@@ -541,10 +541,10 @@ function SectionView({
 							)}
 						</div>
 					</div>
-				)
+				);
 			})}
 		</div>
-	)
+	);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -555,7 +555,7 @@ const INFLUENCE_BADGE_COLORS: Record<string, string> = {
 	high: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
 	medium: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
 	low: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
-}
+};
 
 const LABEL_DISPLAY: Record<string, { label: string; className: string }> = {
 	economic_buyer: {
@@ -570,7 +570,7 @@ const LABEL_DISPLAY: Record<string, { label: string; className: string }> = {
 	},
 	end_user: { label: "End User", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
 	coach: { label: "Coach", className: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
-}
+};
 
 /**
  * Render a stakeholder card with linking and inline editing support
@@ -582,16 +582,16 @@ function StakeholderCard({
 	editable,
 	onUpdate,
 }: {
-	stakeholder: any
-	routes?: ReturnType<typeof useProjectRoutes>
-	evidenceMap?: Map<string, EvidenceRecord>
-	editable?: boolean
-	onUpdate?: (updates: Record<string, unknown>) => void
+	stakeholder: any;
+	routes?: ReturnType<typeof useProjectRoutes>;
+	evidenceMap?: Map<string, EvidenceRecord>;
+	editable?: boolean;
+	onUpdate?: (updates: Record<string, unknown>) => void;
 }) {
 	const evidenceRefs =
 		stakeholder.evidence_ids?.length > 0 && evidenceMap
 			? hydrateEvidenceRefs(stakeholder.evidence_ids, evidenceMap)
-			: undefined
+			: undefined;
 
 	return (
 		<div className="rounded-lg border bg-card p-3">
@@ -657,12 +657,12 @@ function StakeholderCard({
 			{stakeholder.labels?.length > 0 && (
 				<div className="mt-2 flex flex-wrap gap-1">
 					{stakeholder.labels.map((label: string) => {
-						const displayInfo = LABEL_DISPLAY[label] || { label, className: "bg-gray-100 text-gray-600" }
+						const displayInfo = LABEL_DISPLAY[label] || { label, className: "bg-gray-100 text-gray-600" };
 						return (
 							<Badge key={label} variant="secondary" className={cn("text-xs", displayInfo.className)}>
 								{displayInfo.label}
 							</Badge>
-						)
+						);
 					})}
 				</div>
 			)}
@@ -676,7 +676,7 @@ function StakeholderCard({
 				/>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
@@ -690,16 +690,16 @@ function NextStepCard({
 	onUpdate,
 	routes,
 }: {
-	nextStep: any
-	evidenceMap?: Map<string, EvidenceRecord>
-	editable?: boolean
-	onUpdate?: (updates: Record<string, unknown>) => void
-	routes?: ReturnType<typeof useProjectRoutes>
+	nextStep: any;
+	evidenceMap?: Map<string, EvidenceRecord>;
+	editable?: boolean;
+	onUpdate?: (updates: Record<string, unknown>) => void;
+	routes?: ReturnType<typeof useProjectRoutes>;
 }) {
 	const evidenceRefs =
 		nextStep.evidence_ids?.length > 0 && evidenceMap
 			? hydrateEvidenceRefs(nextStep.evidence_ids, evidenceMap)
-			: undefined
+			: undefined;
 
 	// Task status colors (from tasks table)
 	const taskStatusColors: Record<string, string> = {
@@ -710,16 +710,16 @@ function NextStepCard({
 		review: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
 		done: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 		archived: "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
-	}
+	};
 
 	// Legacy next_step status colors (for pre-task-linking data)
 	const legacyStatusColors: Record<string, string> = {
 		pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
 		in_progress: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
 		completed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-	}
+	};
 
-	const statusColors = nextStep.task_id ? taskStatusColors : legacyStatusColors
+	const statusColors = nextStep.task_id ? taskStatusColors : legacyStatusColors;
 
 	return (
 		<div className="rounded-lg border bg-card p-3">
@@ -815,7 +815,7 @@ function NextStepCard({
 				/>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
@@ -827,21 +827,21 @@ function ObjectionCard({
 	editable,
 	onUpdate,
 }: {
-	objection: any
-	evidenceMap?: Map<string, EvidenceRecord>
-	editable?: boolean
-	onUpdate?: (updates: Record<string, unknown>) => void
+	objection: any;
+	evidenceMap?: Map<string, EvidenceRecord>;
+	editable?: boolean;
+	onUpdate?: (updates: Record<string, unknown>) => void;
 }) {
 	const evidenceRefs =
 		objection.evidence_ids?.length > 0 && evidenceMap
 			? hydrateEvidenceRefs(objection.evidence_ids, evidenceMap)
-			: undefined
+			: undefined;
 
 	const statusColors: Record<string, string> = {
 		raised: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 		addressed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 		unresolved: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
-	}
+	};
 
 	return (
 		<div className="rounded-lg border bg-card p-3">
@@ -899,26 +899,26 @@ function ObjectionCard({
 				/>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
  * Render hygiene warnings
  */
 function HygieneWarnings({ hygiene }: { hygiene: any[] }) {
-	if (!hygiene || hygiene.length === 0) return null
+	if (!hygiene || hygiene.length === 0) return null;
 
 	const severityIcons: Record<string, React.ReactNode> = {
 		critical: <AlertCircle className="h-4 w-4 text-red-600" />,
 		warning: <AlertTriangle className="h-4 w-4 text-amber-600" />,
 		info: <Info className="h-4 w-4 text-blue-600" />,
-	}
+	};
 
 	const severityColors: Record<string, string> = {
 		critical: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30",
 		warning: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/30",
 		info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30",
-	}
+	};
 
 	return (
 		<Card>
@@ -943,7 +943,7 @@ function HygieneWarnings({ hygiene }: { hygiene: any[] }) {
 				))}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 /**
@@ -957,46 +957,46 @@ function StatusIndicator({ status, errorMessage }: { status: string; errorMessag
 					<Clock className="h-5 w-5" />
 					<span>Analysis pending...</span>
 				</div>
-			)
+			);
 		case "processing":
 			return (
 				<div className="flex items-center gap-2 py-8 text-blue-600">
 					<Loader2 className="h-5 w-5 animate-spin" />
 					<span>Analyzing conversation...</span>
 				</div>
-			)
+			);
 		case "failed":
 			return (
 				<div className="flex items-center gap-2 py-8 text-destructive">
 					<AlertCircle className="h-5 w-5" />
 					<span>{errorMessage || "Analysis failed"}</span>
 				</div>
-			)
+			);
 		case "completed":
-			return null
+			return null;
 		default:
-			return null
+			return null;
 	}
 }
 
 export function GenericLensView({ analysis, template, isLoading, editable = false, evidenceMap }: Props) {
-	const fetcher = useFetcher()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+	const fetcher = useFetcher();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
 
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-12">
 				<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 			</div>
-		)
+		);
 	}
 
 	// Use template from analysis if not provided separately
-	const templateDef = template?.template_definition || analysis?.template.template_definition
+	const templateDef = template?.template_definition || analysis?.template.template_definition;
 
 	if (!analysis && !template) {
-		return <div className="py-12 text-center text-muted-foreground">No analysis available</div>
+		return <div className="py-12 text-center text-muted-foreground">No analysis available</div>;
 	}
 
 	// Show status for non-completed analyses
@@ -1011,39 +1011,39 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 					<StatusIndicator status={analysis.status} errorMessage={analysis.error_message} />
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	// No template definition
 	if (!templateDef) {
-		return <div className="py-12 text-center text-muted-foreground">Template definition not available</div>
+		return <div className="py-12 text-center text-muted-foreground">Template definition not available</div>;
 	}
 
-	const analysisData = analysis?.analysis_data || {}
-	const sections = analysisData.sections || []
-	const templateKey = template?.template_key || analysis?.template_key
+	const analysisData = analysis?.analysis_data || {};
+	const sections = analysisData.sections || [];
+	const templateKey = template?.template_key || analysis?.template_key;
 
 	// Dedicated presentation for Q&A lens (qa-summary) focused on readable Q/A pairs
 	if (templateKey === "qa-summary") {
-		return <QALensView analysis={analysis} analysisData={analysisData} evidenceMap={evidenceMap} />
+		return <QALensView analysis={analysis} analysisData={analysisData} evidenceMap={evidenceMap} />;
 	}
 
 	// Build a map of section data by section_key
 	// Format: sections[].fields = [{field_key, value, confidence, evidence_ids}]
 	// Also includes summary for each section
-	const sectionDataMap: Record<string, { fields: any[]; summary?: string }> = {}
+	const sectionDataMap: Record<string, { fields: any[]; summary?: string }> = {};
 	for (const section of sections) {
 		if (section.section_key) {
 			sectionDataMap[section.section_key] = {
 				fields: section.fields || [],
 				summary: section.summary,
-			}
+			};
 		}
 	}
 
 	// Handler for field updates via inline edit
 	const handleFieldUpdate = (sectionKey: string, fieldKey: string, value: string) => {
-		if (!analysis?.id) return
+		if (!analysis?.id) return;
 
 		fetcher.submit(
 			{
@@ -1056,8 +1056,8 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 				method: "post",
 				action: "/api/update-lens-analysis-field",
 			}
-		)
-	}
+		);
+	};
 
 	// Handler for entity updates via inline edit
 	const handleEntityUpdate = (
@@ -1065,7 +1065,7 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 		entityIndex: number,
 		updates: Record<string, unknown>
 	) => {
-		if (!analysis?.id) return
+		if (!analysis?.id) return;
 
 		fetcher.submit(
 			{
@@ -1078,8 +1078,8 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 				method: "post",
 				action: "/api/update-lens-entity",
 			}
-		)
-	}
+		);
+	};
 
 	return (
 		<div className="space-y-6">
@@ -1102,9 +1102,9 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 
 			{/* Render each section */}
 			{templateDef.sections.map((sectionDef) => {
-				const sectionData = sectionDataMap[sectionDef.section_key]
-				const hasSummary = sectionData?.summary
-				const hasFields = sectionData?.fields && sectionData.fields.length > 0
+				const sectionData = sectionDataMap[sectionDef.section_key];
+				const hasSummary = sectionData?.summary;
+				const hasFields = sectionData?.fields && sectionData.fields.length > 0;
 
 				return (
 					<Card key={sectionDef.section_key}>
@@ -1140,7 +1140,7 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 							)}
 						</CardContent>
 					</Card>
-				)
+				);
 			})}
 
 			{/* Rich Entity Rendering - Stakeholders */}
@@ -1299,5 +1299,5 @@ export function GenericLensView({ analysis, template, isLoading, editable = fals
 				</div>
 			)}
 		</div>
-	)
+	);
 }

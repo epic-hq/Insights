@@ -1,69 +1,69 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database, ResearchLink, ResearchLinkResponse } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, ResearchLink, ResearchLinkResponse } from "~/types";
 
 /**
  * Project research context for generating recommendations.
  * Contains aggregated project state for determining what actions to suggest.
  */
 export interface ProjectResearchContext {
-	projectId: string
-	accountId: string
+	projectId: string;
+	accountId: string;
 
 	// Project setup state
-	hasGoals: boolean
+	hasGoals: boolean;
 	projectSections: Array<{
-		kind: string
-		content_md: string | null
-	}>
+		kind: string;
+		content_md: string | null;
+	}>;
 
 	// Research progress
-	interviewCount: number
-	surveyCount: number
-	surveyResponseCount: number
+	interviewCount: number;
+	surveyCount: number;
+	surveyResponseCount: number;
 
 	// Themes and evidence
 	themes: Array<{
-		id: string
-		name: string
-		jtbd: string | null
-		pain: string | null
-		desired_outcome: string | null
-		motivation: string | null
-		evidence_count: number
-	}>
+		id: string;
+		name: string;
+		jtbd: string | null;
+		pain: string | null;
+		desired_outcome: string | null;
+		motivation: string | null;
+		evidence_count: number;
+	}>;
 
 	// Existing questions (to avoid duplication)
 	interviewPrompts: Array<{
-		id: string
-		text: string
-		category: string | null
-	}>
+		id: string;
+		text: string;
+		category: string | null;
+	}>;
 
 	// Previous surveys
 	previousSurveys: Array<{
-		id: string
-		name: string
-		response_count: number
-		created_at: string
-	}>
+		id: string;
+		name: string;
+		response_count: number;
+		created_at: string;
+	}>;
 
 	// Account context
 	accountContext: {
-		company_description: string | null
-		customer_problem: string | null
-		offerings: string | null
-		target_roles: string | null
-	} | null
+		company_description: string | null;
+		customer_problem: string | null;
+		offerings: string | null;
+		target_roles: string | null;
+	} | null;
 
 	// Data quality metrics for oversight
 	dataQuality: {
 		/** People with titles but missing job_function or seniority_level */
-		peopleNeedingSegments: number
+		peopleNeedingSegments: number;
 		/** Total people in project */
-		totalPeople: number
+		totalPeople: number;
 		/** People with no title at all */
-		peopleWithoutTitles: number
-	}
+		peopleWithoutTitles: number;
+	};
 }
 
 /**
@@ -74,8 +74,8 @@ export async function getProjectResearchContext({
 	supabase,
 	projectId,
 }: {
-	supabase: SupabaseClient<Database>
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	projectId: string;
 }): Promise<ProjectResearchContext> {
 	const [projectResult, sectionsResult, themesResult, promptsResult, surveysResult, interviewCountResult] =
 		await Promise.all([
@@ -128,61 +128,61 @@ export async function getProjectResearchContext({
 				.from("interviews")
 				.select("id", { count: "exact", head: true })
 				.eq("project_id", projectId),
-		])
+		]);
 
 	// Get evidence counts for themes via the theme_evidence junction table
-	const themeIds = themesResult.data?.map((t) => t.id) ?? []
-	const evidenceCountMap = new Map<string, number>()
+	const themeIds = themesResult.data?.map((t) => t.id) ?? [];
+	const evidenceCountMap = new Map<string, number>();
 
 	if (themeIds.length > 0) {
 		const { data: themeEvidenceRows } = await supabase
 			.from("theme_evidence")
 			.select("theme_id")
-			.in("theme_id", themeIds)
+			.in("theme_id", themeIds);
 
 		for (const row of themeEvidenceRows ?? []) {
 			if (row.theme_id) {
-				evidenceCountMap.set(row.theme_id, (evidenceCountMap.get(row.theme_id) ?? 0) + 1)
+				evidenceCountMap.set(row.theme_id, (evidenceCountMap.get(row.theme_id) ?? 0) + 1);
 			}
 		}
 	}
 
 	// Get survey response counts
-	const surveyIds = surveysResult.data?.map((s) => s.id) ?? []
-	const surveyResponseMap = new Map<string, number>()
-	let totalSurveyResponses = 0
+	const surveyIds = surveysResult.data?.map((s) => s.id) ?? [];
+	const surveyResponseMap = new Map<string, number>();
+	let totalSurveyResponses = 0;
 
 	if (surveyIds.length > 0) {
 		const { data: responseCounts } = await supabase.rpc("get_research_link_response_counts", {
 			link_ids: surveyIds,
-		})
+		});
 
 		for (const row of responseCounts ?? []) {
-			const count = Number(row.response_count) ?? 0
-			surveyResponseMap.set(row.research_link_id, count)
-			totalSurveyResponses += count
+			const count = Number(row.response_count) ?? 0;
+			surveyResponseMap.set(row.research_link_id, count);
+			totalSurveyResponses += count;
 		}
 	}
 
 	// Determine if project has goals set (check multiple goal-related sections)
-	const goalKinds = ["goal", "research_goal", "research_goal_details"]
+	const goalKinds = ["goal", "research_goal", "research_goal_details"];
 	const hasGoals =
 		sectionsResult.data?.some((s) => goalKinds.includes(s.kind) && s.content_md && s.content_md.trim().length > 0) ??
-		false
+		false;
 
 	// Get data quality metrics for people/segments
-	const accountId = projectResult.data?.account_id ?? ""
+	const accountId = projectResult.data?.account_id ?? "";
 	let dataQuality = {
 		peopleNeedingSegments: 0,
 		totalPeople: 0,
 		peopleWithoutTitles: 0,
-	}
+	};
 
 	if (accountId) {
 		const { data: peopleStats } = await supabase
 			.from("people")
 			.select("id, title, job_function, seniority_level")
-			.eq("account_id", accountId)
+			.eq("account_id", accountId);
 
 		if (peopleStats) {
 			dataQuality = {
@@ -190,12 +190,12 @@ export async function getProjectResearchContext({
 				peopleWithoutTitles: peopleStats.filter((p) => !p.title).length,
 				// People with titles but missing job_function or seniority_level
 				peopleNeedingSegments: peopleStats.filter((p) => p.title && (!p.job_function || !p.seniority_level)).length,
-			}
+			};
 		}
 	}
 
 	// Build account context from joined data
-	const accountData = projectResult.data?.accounts
+	const accountData = projectResult.data?.accounts;
 	const accountContext = accountData
 		? {
 				company_description: (accountData as any).company_description ?? null,
@@ -203,7 +203,7 @@ export async function getProjectResearchContext({
 				offerings: (accountData as any).offerings ?? null,
 				target_roles: (accountData as any).target_roles ?? null,
 			}
-		: null
+		: null;
 
 	return {
 		projectId,
@@ -231,59 +231,59 @@ export async function getProjectResearchContext({
 		accountContext,
 
 		dataQuality,
-	}
+	};
 }
 
 interface GetLinksArgs {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId?: string
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId?: string;
 }
 
 export async function getResearchLinks({ supabase, accountId, projectId }: GetLinksArgs) {
-	let query = supabase.from("research_links").select("*").eq("account_id", accountId)
+	let query = supabase.from("research_links").select("*").eq("account_id", accountId);
 
 	// Filter by project if provided
 	if (projectId) {
-		query = query.eq("project_id", projectId)
+		query = query.eq("project_id", projectId);
 	}
 
 	const { data: links, error } = await query.order("created_at", {
 		ascending: false,
-	})
+	});
 
 	if (error || !links?.length) {
-		return { data: links, error }
+		return { data: links, error };
 	}
 
-	const linkIds = links.map((link) => link.id)
+	const linkIds = links.map((link) => link.id);
 	const { data: counts, error: countError } = await supabase.rpc("get_research_link_response_counts", {
 		link_ids: linkIds,
-	})
+	});
 
-	const countByLinkId = new Map<string, number>()
+	const countByLinkId = new Map<string, number>();
 	for (const row of counts ?? []) {
-		countByLinkId.set(row.research_link_id, Number(row.response_count) ?? 0)
+		countByLinkId.set(row.research_link_id, Number(row.response_count) ?? 0);
 	}
 
 	const merged = links.map((link) => ({
 		...link,
 		research_link_responses: [{ count: countByLinkId.get(link.id) ?? 0 }],
-	}))
+	}));
 
 	return {
 		data: merged as Array<ResearchLink & { research_link_responses: Array<{ count: number }> }>,
 		error: error ?? countError ?? null,
-	}
+	};
 }
 
 export async function getResearchLinkById({ supabase, accountId, listId }: GetLinksArgs & { listId: string }) {
-	return supabase.from("research_links").select("*").eq("account_id", accountId).eq("id", listId).maybeSingle()
+	return supabase.from("research_links").select("*").eq("account_id", accountId).eq("id", listId).maybeSingle();
 }
 
 export type ResponseWithPerson = ResearchLinkResponse & {
-	person: { id: string; name: string | null } | null
-}
+	person: { id: string; name: string | null } | null;
+};
 
 export async function getResearchLinkWithResponses({ supabase, accountId, listId }: GetLinksArgs & { listId: string }) {
 	const [listResult, responsesResult] = await Promise.all([
@@ -293,18 +293,18 @@ export async function getResearchLinkWithResponses({ supabase, accountId, listId
 			.select("*, person:people(id, name)")
 			.eq("research_link_id", listId)
 			.order("created_at", { ascending: false }),
-	])
+	]);
 
 	return {
 		list: listResult.data as ResearchLink | null,
 		listError: listResult.error,
 		responses: responsesResult.data as ResponseWithPerson[] | null,
 		responsesError: responsesResult.error,
-	}
+	};
 }
 
 export async function getResearchLinkBySlug({ supabase, slug }: { supabase: SupabaseClient<Database>; slug: string }) {
-	return supabase.from("research_links").select("*").eq("slug", slug).maybeSingle()
+	return supabase.from("research_links").select("*").eq("slug", slug).maybeSingle();
 }
 
 /**
@@ -317,44 +317,44 @@ export async function saveResearchLinkAnswer({
 	questionId,
 	answer,
 }: {
-	supabase: SupabaseClient<Database>
-	responseId: string
-	questionId: string
-	answer: string | string[]
+	supabase: SupabaseClient<Database>;
+	responseId: string;
+	questionId: string;
+	answer: string | string[];
 }): Promise<{ success: boolean; error?: string }> {
 	// Get existing responses to merge with
 	const { data: existing, error: fetchError } = await supabase
 		.from("research_link_responses")
 		.select("responses")
 		.eq("id", responseId)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (fetchError) {
-		return { success: false, error: fetchError.message }
+		return { success: false, error: fetchError.message };
 	}
 
 	if (!existing) {
-		return { success: false, error: "Response not found" }
+		return { success: false, error: "Response not found" };
 	}
 
 	// Merge with existing responses
-	const existingResponses = (existing.responses as Record<string, unknown>) ?? {}
+	const existingResponses = (existing.responses as Record<string, unknown>) ?? {};
 	const updatedResponses = {
 		...existingResponses,
 		[questionId]: answer,
-	}
+	};
 
 	// Save updated responses
 	const { error: updateError } = await supabase
 		.from("research_link_responses")
 		.update({ responses: updatedResponses })
-		.eq("id", responseId)
+		.eq("id", responseId);
 
 	if (updateError) {
-		return { success: false, error: updateError.message }
+		return { success: false, error: updateError.message };
 	}
 
-	return { success: true }
+	return { success: true };
 }
 
 /**
@@ -364,23 +364,23 @@ export async function markResearchLinkComplete({
 	supabase,
 	responseId,
 }: {
-	supabase: SupabaseClient<Database>
-	responseId: string
+	supabase: SupabaseClient<Database>;
+	responseId: string;
 }): Promise<{ success: boolean; error?: string }> {
-	const { error } = await supabase.from("research_link_responses").update({ completed: true }).eq("id", responseId)
+	const { error } = await supabase.from("research_link_responses").update({ completed: true }).eq("id", responseId);
 
 	if (error) {
-		return { success: false, error: error.message }
+		return { success: false, error: error.message };
 	}
 
 	// Trigger background task to extract evidence from text responses
 	try {
-		const { extractSurveyEvidenceTask } = await import("~/../src/trigger/survey/extractSurveyEvidence")
-		await extractSurveyEvidenceTask.trigger({ responseId })
+		const { extractSurveyEvidenceTask } = await import("~/../src/trigger/survey/extractSurveyEvidence");
+		await extractSurveyEvidenceTask.trigger({ responseId });
 	} catch (triggerError) {
 		// Log but don't fail - the response is marked complete
-		console.error("[markResearchLinkComplete] Failed to trigger evidence extraction:", triggerError)
+		console.error("[markResearchLinkComplete] Failed to trigger evidence extraction:", triggerError);
 	}
 
-	return { success: true }
+	return { success: true };
 }

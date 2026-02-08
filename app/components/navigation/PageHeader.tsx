@@ -1,19 +1,19 @@
-import React from "react"
-import { Link } from "react-router-dom"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import Breadcrumbs from "./Breadcrumbs"
+import React from "react";
+import { Link } from "react-router-dom";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import Breadcrumbs from "./Breadcrumbs";
 
 interface BreadcrumbItem {
-	label: string
-	path: string
+	label: string;
+	path: string;
 }
 
 interface PageHeaderProps {
-	title: string
-	showBreadcrumbs?: boolean
-	breadcrumbs?: BreadcrumbItem[]
-	className?: string
+	title: string;
+	showBreadcrumbs?: boolean;
+	breadcrumbs?: BreadcrumbItem[];
+	className?: string;
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({
@@ -22,8 +22,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
 	breadcrumbs,
 	className = "",
 }) => {
-	const { projectPath } = useCurrentProject()
-	const _routes = useProjectRoutes(projectPath || "")
+	const { projectPath } = useCurrentProject();
+	const _routes = useProjectRoutes(projectPath || "");
 
 	return (
 		<header className={`mx-auto max-w-[1440px] px-4 py-2 ${className}`}>
@@ -67,7 +67,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
 				{/* {title && <h1 className="font-bold text-2xl">{title}</h1>} */}
 			</div>
 		</header>
-	)
-}
+	);
+};
 
-export default PageHeader
+export default PageHeader;

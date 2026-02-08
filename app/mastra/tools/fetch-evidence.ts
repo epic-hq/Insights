@@ -1,18 +1,18 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { evidenceDetailSchema } from "~/schemas"
-import type { Database, Evidence, Insight, Interview } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { evidenceDetailSchema } from "~/schemas";
+import type { Database, Evidence, Insight, Interview } from "~/types";
 
-const DEFAULT_EVIDENCE_LIMIT = 50
+const DEFAULT_EVIDENCE_LIMIT = 50;
 
 function normalizeDate(value: unknown) {
-	if (!value) return null
-	if (value instanceof Date) return value.toISOString()
-	if (typeof value === "string") return value
-	return null
+	if (!value) return null;
+	if (value instanceof Date) return value.toISOString();
+	if (typeof value === "string") return value;
+	return null;
 }
 
 export const fetchEvidenceTool = createTool({
@@ -74,30 +74,30 @@ export const fetchEvidenceTool = createTool({
 		}),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined
-		const projectId = input.projectId ?? runtimeProjectIdStr ?? null
-		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
-		const interviewId = input.interviewId?.trim()
-		const personId = input.personId?.trim()
-		const evidenceSearch = (input.evidenceSearch ?? "").trim()
-		const sanitizedEvidenceSearch = evidenceSearch.replace(/[%*"'()]/g, "").trim()
-		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
-		const includeInterview = input.includeInterview ?? true
-		const includePerson = input.includePerson ?? true
-		const includeInsights = input.includeInsights ?? false
-		const modality = input.modality
-		const confidence = input.confidence
+		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined;
+		const projectId = input.projectId ?? runtimeProjectIdStr ?? null;
+		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined;
+		const interviewId = input.interviewId?.trim();
+		const personId = input.personId?.trim();
+		const evidenceSearch = (input.evidenceSearch ?? "").trim();
+		const sanitizedEvidenceSearch = evidenceSearch.replace(/[%*"'()]/g, "").trim();
+		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT;
+		const includeInterview = input.includeInterview ?? true;
+		const includePerson = input.includePerson ?? true;
+		const includeInsights = input.includeInsights ?? false;
+		const modality = input.modality;
+		const confidence = input.confidence;
 
 		const filtersApplied = {
 			interviewId: interviewId || null,
 			personId: personId || null,
 			modality: modality || null,
 			confidence: confidence || null,
-		}
+		};
 
 		consola.debug("fetch-evidence: execute start", {
 			projectId,
@@ -111,10 +111,10 @@ export const fetchEvidenceTool = createTool({
 			includeInsights,
 			modality,
 			confidence,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("fetch-evidence: missing projectId")
+			consola.warn("fetch-evidence: missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
@@ -123,11 +123,11 @@ export const fetchEvidenceTool = createTool({
 				totalCount: 0,
 				searchApplied: null,
 				filtersApplied,
-			}
+			};
 		}
 
 		// At this point, projectId is guaranteed to be a string
-		const projectIdStr = projectId as string
+		const projectIdStr = projectId as string;
 
 		try {
 			// Build the base query for evidence
@@ -161,70 +161,70 @@ export const fetchEvidenceTool = createTool({
 					updated_at
 				`
 				)
-				.eq("project_id", projectIdStr)
+				.eq("project_id", projectIdStr);
 
 			// Apply filters
 			if (interviewId) {
-				query = query.eq("interview_id", interviewId)
+				query = query.eq("interview_id", interviewId);
 			}
 
 			if (modality) {
-				query = query.eq("modality", modality)
+				query = query.eq("modality", modality);
 			}
 
 			if (confidence) {
-				query = query.eq("confidence", confidence)
+				query = query.eq("confidence", confidence);
 			}
 
 			// Execute the main query (without search filter for counting)
 			const { data: evidenceData, error: evidenceError } = await query
 				.order("created_at", { ascending: false })
-				.limit(evidenceLimit * 2) // Fetch more to allow for filtering
+				.limit(evidenceLimit * 2); // Fetch more to allow for filtering
 
 			if (evidenceError) {
-				consola.error("fetch-evidence: failed to fetch evidence", evidenceError)
-				throw evidenceError
+				consola.error("fetch-evidence: failed to fetch evidence", evidenceError);
+				throw evidenceError;
 			}
 
-			let evidenceRows = (evidenceData as Evidence[] | null) ?? []
+			let evidenceRows = (evidenceData as Evidence[] | null) ?? [];
 
 			// Get evidence IDs for related data queries
-			const evidenceIds = evidenceRows.map((row) => row.id)
+			const evidenceIds = evidenceRows.map((row) => row.id);
 
 			// Filter by person if specified
 			if (personId && evidenceIds.length > 0) {
 				const { data: personEvidenceIds } = await supabase
 					.from("interview_people")
 					.select("interview_id")
-					.eq("person_id", personId)
+					.eq("person_id", personId);
 
 				if (personEvidenceIds) {
-					const interviewIds = personEvidenceIds.map((ip) => ip.interview_id).filter(Boolean)
-					evidenceRows = evidenceRows.filter((row) => row.interview_id && interviewIds.includes(row.interview_id))
+					const interviewIds = personEvidenceIds.map((ip) => ip.interview_id).filter(Boolean);
+					evidenceRows = evidenceRows.filter((row) => row.interview_id && interviewIds.includes(row.interview_id));
 				}
 			}
 
 			// Apply JavaScript-based search filtering if search term provided
 			if (sanitizedEvidenceSearch) {
-				const searchLower = sanitizedEvidenceSearch.toLowerCase()
+				const searchLower = sanitizedEvidenceSearch.toLowerCase();
 				evidenceRows = evidenceRows.filter((row) => {
 					const searchableText = [row.gist, row.verbatim, row.chunk, row.context_summary, row.citation]
 						.filter(Boolean)
 						.join(" ")
-						.toLowerCase()
+						.toLowerCase();
 
-					return searchableText.includes(searchLower)
-				})
+					return searchableText.includes(searchLower);
+				});
 			}
 
 			// Apply limit after filtering
-			evidenceRows = evidenceRows.slice(0, evidenceLimit)
+			evidenceRows = evidenceRows.slice(0, evidenceLimit);
 
 			// Get total count for pagination info
 			const { count: totalCount } = await supabase
 				.from("evidence")
 				.select("*", { count: "exact", head: true })
-				.eq("project_id", projectIdStr)
+				.eq("project_id", projectIdStr);
 
 			// Fetch additional related data if requested
 			const [interviewData, personData, insightsData] = await Promise.all([
@@ -260,34 +260,34 @@ export const fetchEvidenceTool = createTool({
 								evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
 							)
 					: Promise.resolve({ data: null }),
-			])
+			]);
 
 			// Organize related data by interview_id for efficient lookup
 			const interviewsById = new Map<
 				string,
 				{
-					id: string
-					title: string | null
-					interviewDate: string | null
-					status: string | null
+					id: string;
+					title: string | null;
+					interviewDate: string | null;
+					status: string | null;
 				}
-			>()
+			>();
 			const peopleByInterviewId = new Map<
 				string,
 				Array<{
-					id: string
-					name: string | null
-					role: string | null
+					id: string;
+					name: string | null;
+					role: string | null;
 				}>
-			>()
+			>();
 			const insightsByInterviewId = new Map<
 				string,
 				Array<{
-					id: string
-					name: string | null
-					summary: string | null
+					id: string;
+					name: string | null;
+					summary: string | null;
 				}>
-			>()
+			>();
 
 			if (interviewData?.data) {
 				for (const interview of interviewData.data as Interview[]) {
@@ -296,39 +296,39 @@ export const fetchEvidenceTool = createTool({
 						title: interview.title,
 						interviewDate: normalizeDate(interview.interview_date),
 						status: interview.status,
-					})
+					});
 				}
 			}
 
 			if (personData?.data) {
 				for (const ip of personData.data as unknown as Array<{
-					interview_id: string
-					people: { id: string; name: string | null } | null
+					interview_id: string;
+					people: { id: string; name: string | null } | null;
 				}>) {
-					const existing = peopleByInterviewId.get(ip.interview_id) ?? []
+					const existing = peopleByInterviewId.get(ip.interview_id) ?? [];
 					if (ip.people) {
 						existing.push({
 							id: ip.people.id,
 							name: ip.people.name,
 							role: null, // role not selected in this query
-						})
+						});
 					}
-					peopleByInterviewId.set(ip.interview_id, existing)
+					peopleByInterviewId.set(ip.interview_id, existing);
 				}
 			}
 
 			if (insightsData?.data) {
 				const insightsWithInterviewId = (insightsData.data as Insight[]).filter(
 					(insight): insight is Insight & { interview_id: string } => Boolean(insight.interview_id)
-				)
+				);
 				for (const insight of insightsWithInterviewId) {
-					const existing = insightsByInterviewId.get(insight.interview_id) ?? []
+					const existing = insightsByInterviewId.get(insight.interview_id) ?? [];
 					existing.push({
 						id: insight.id,
 						name: insight.name,
 						summary: insight.details || null,
-					})
-					insightsByInterviewId.set(insight.interview_id, existing)
+					});
+					insightsByInterviewId.set(insight.interview_id, existing);
 				}
 			}
 
@@ -352,11 +352,11 @@ export const fetchEvidenceTool = createTool({
 				personRole: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.role ?? null) : null,
 				insightCount: row.interview_id ? (insightsByInterviewId.get(row.interview_id)?.length ?? 0) : 0,
 				url: null,
-			}))
+			}));
 
 			const message = sanitizedEvidenceSearch
 				? `Found ${evidence.length} evidence records matching "${sanitizedEvidenceSearch}".`
-				: `Retrieved ${evidence.length} evidence records.`
+				: `Retrieved ${evidence.length} evidence records.`;
 
 			return {
 				success: true,
@@ -366,9 +366,9 @@ export const fetchEvidenceTool = createTool({
 				totalCount: totalCount ?? 0,
 				searchApplied: sanitizedEvidenceSearch || null,
 				filtersApplied,
-			}
+			};
 		} catch (error) {
-			consola.error("fetch-evidence: unexpected error", error)
+			consola.error("fetch-evidence: unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error fetching evidence.",
@@ -377,7 +377,7 @@ export const fetchEvidenceTool = createTool({
 				totalCount: 0,
 				searchApplied: null,
 				filtersApplied,
-			}
+			};
 		}
 	},
-})
+});

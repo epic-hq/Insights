@@ -1,72 +1,72 @@
-import { formatDistance } from "date-fns"
-import { Calendar, Clock, Download, File, FileText, Image as ImageIcon, User } from "lucide-react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import MediaTypeIcon from "~/components/ui/MediaTypeIcon"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
+import { formatDistance } from "date-fns";
+import { Calendar, Clock, Download, File, FileText, Image as ImageIcon, User } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import MediaTypeIcon from "~/components/ui/MediaTypeIcon";
+import { cn } from "~/lib/utils";
+import type { Database } from "~/types";
 
-type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
+type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"];
 
 interface DocumentViewerProps {
 	interview: InterviewRow & {
 		interview_people?: Array<{
 			people?: {
-				name?: string
-				segment?: string
-			}
-			role?: string
-		}>
-	}
-	className?: string
+				name?: string;
+				segment?: string;
+			};
+			role?: string;
+		}>;
+	};
+	className?: string;
 }
 
 export function DocumentViewer({ interview, className }: DocumentViewerProps) {
-	const primaryParticipant = interview.interview_people?.[0]
-	const participantName = primaryParticipant?.people?.name
-	const participantSegment = primaryParticipant?.people?.segment
+	const primaryParticipant = interview.interview_people?.[0];
+	const participantName = primaryParticipant?.people?.name;
+	const participantSegment = primaryParticipant?.people?.segment;
 
 	const getStatusColor = (status?: string | null) => {
-		if (!status) return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+		if (!status) return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
 
 		switch (status.toLowerCase()) {
 			case "ready":
-				return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+				return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
 			case "transcribed":
 			case "transcribing":
-				return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+				return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
 			case "processing":
-				return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+				return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
 			case "uploaded":
 			case "uploading":
-				return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+				return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
 			case "error":
 			case "failed":
-				return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+				return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
 			default:
-				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
 		}
-	}
+	};
 
 	const formatStatus = (status?: string | null) => {
-		if (!status) return "Saved"
-		return status.charAt(0).toUpperCase() + status.slice(1)
-	}
+		if (!status) return "Saved";
+		return status.charAt(0).toUpperCase() + status.slice(1);
+	};
 
 	const isTextContent =
 		interview.source_type === "transcript" ||
 		interview.source_type === "note" ||
 		(interview.transcript && !interview.media_url) ||
-		interview.observations_and_notes
+		interview.observations_and_notes;
 	const isImage =
 		interview.file_extension &&
-		["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(interview.file_extension.toLowerCase())
-	const isDocument = interview.source_type === "document" || !isTextContent
+		["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(interview.file_extension.toLowerCase());
+	const isDocument = interview.source_type === "document" || !isTextContent;
 
 	// Clean up media URL - should be an absolute URL (R2 presigned URL)
 	// The loader should have converted R2 keys to presigned URLs
 	// If media_url is still a relative path, it means the database has a bad value
-	const _mediaUrl = interview.media_url
+	const _mediaUrl = interview.media_url;
 
 	return (
 		<div className={cn("mx-auto max-w-4xl px-4 py-8", className)}>
@@ -291,5 +291,5 @@ export function DocumentViewer({ interview, className }: DocumentViewerProps) {
 				)}
 			</div>
 		</div>
-	)
+	);
 }

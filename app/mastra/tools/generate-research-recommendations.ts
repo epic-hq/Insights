@@ -15,10 +15,10 @@
  *  interview 3 more SMB users to validate pricing doesn't vary by segment."
  */
 
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
 
 const RecommendationSchema = z.object({
 	id: z.string(),
@@ -43,7 +43,7 @@ const RecommendationSchema = z.object({
 	action_type: z.enum(["schedule_interview", "create_survey", "validate_theme", "follow_up_contact", "review_data"]),
 	action_data: z.record(z.unknown()).optional().describe("Data needed to execute action"),
 	navigateTo: z.string().optional().describe("Route to navigate user to"),
-})
+});
 
 const OutputSchema = z.object({
 	success: z.boolean(),
@@ -54,7 +54,7 @@ const OutputSchema = z.object({
 		returned_top_n: z.number(),
 		computation_timestamp: z.string(),
 	}),
-})
+});
 
 export const generateResearchRecommendationsTool = createTool({
 	id: "generate-research-recommendations",
@@ -77,18 +77,18 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 	outputSchema: OutputSchema,
 	execute: async (input, context?) => {
 		// Dynamic imports to avoid static ~/  imports (Mastra pattern)
-		const { supabaseAdmin } = await import("~/lib/supabase/client.server")
-		const { Database } = await import("~/types")
+		const { supabaseAdmin } = await import("~/lib/supabase/client.server");
+		const { Database } = await import("~/types");
 
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const projectId = input.projectId
-		const accountId = input.accountId ?? context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const projectId = input.projectId;
+		const accountId = input.accountId ?? context?.requestContext?.get?.("account_id");
 
 		consola.debug("generate-research-recommendations: execute start", {
 			projectId,
 			accountId,
 			maxRecommendations: input.maxRecommendations,
-		})
+		});
 
 		if (!projectId) {
 			return {
@@ -100,11 +100,11 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					returned_top_n: 0,
 					computation_timestamp: new Date().toISOString(),
 				},
-			}
+			};
 		}
 
 		try {
-			const recommendations: z.infer<typeof RecommendationSchema>[] = []
+			const recommendations: z.infer<typeof RecommendationSchema>[] = [];
 
 			// ======================================================================
 			// STEP 1: Fetch Research Coverage Data
@@ -117,14 +117,14 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 				.eq("project_id", projectId)
 				.gt("open_answer_count", 0)
 				.order("open_answer_count", { ascending: false })
-				.limit(5)
+				.limit(5);
 
 			if (questionsError) {
-				consola.warn("Failed to fetch unanswered questions:", questionsError)
+				consola.warn("Failed to fetch unanswered questions:", questionsError);
 			}
 
 			// Query stale contacts (14+ days since last interview)
-			const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+			const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 			const { data: recentInterviewPeople, error: interviewPeopleError } = await supabase
 				.from("interview_people")
 				.select(
@@ -141,40 +141,40 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 				`
 				)
 				.eq("project_id", projectId)
-				.order("created_at", { ascending: false })
+				.order("created_at", { ascending: false });
 
 			if (interviewPeopleError) {
-				consola.warn("Failed to fetch interview people:", interviewPeopleError)
+				consola.warn("Failed to fetch interview people:", interviewPeopleError);
 			}
 
 			// Find stale contacts (people with last interview > 14 days ago)
 			const staleContacts: Array<{
-				person_id: string
-				name: string
-				title?: string
-				company?: string
-				days_since: number
-				last_interview_date: string
-			}> = []
+				person_id: string;
+				name: string;
+				title?: string;
+				company?: string;
+				days_since: number;
+				last_interview_date: string;
+			}> = [];
 
 			if (recentInterviewPeople) {
-				const personLastInterviewMap = new Map<string, Date>()
+				const personLastInterviewMap = new Map<string, Date>();
 
 				for (const ip of recentInterviewPeople) {
-					const personId = ip.person_id
-					const interviewDate = new Date(ip.created_at)
+					const personId = ip.person_id;
+					const interviewDate = new Date(ip.created_at);
 
 					if (!personLastInterviewMap.has(personId) || interviewDate > personLastInterviewMap.get(personId)!) {
-						personLastInterviewMap.set(personId, interviewDate)
+						personLastInterviewMap.set(personId, interviewDate);
 					}
 				}
 
-				const now = new Date()
+				const now = new Date();
 				for (const [personId, lastDate] of personLastInterviewMap.entries()) {
-					const daysSince = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+					const daysSince = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
 
 					if (daysSince >= 14) {
-						const personData = recentInterviewPeople.find((ip) => ip.person_id === personId)?.people
+						const personData = recentInterviewPeople.find((ip) => ip.person_id === personId)?.people;
 						if (personData) {
 							staleContacts.push({
 								person_id: personId,
@@ -183,7 +183,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 								company: personData.company || undefined,
 								days_since: daysSince,
 								last_interview_date: lastDate.toISOString(),
-							})
+							});
 						}
 					}
 				}
@@ -213,10 +213,10 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 				.eq("kind_slug", "icp_match")
 				.gte("score", 0.8) // High ICP matches (80%+)
 				.order("score", { ascending: false })
-				.limit(10)
+				.limit(10);
 
 			if (icpError) {
-				consola.warn("Failed to fetch ICP scores:", icpError)
+				consola.warn("Failed to fetch ICP scores:", icpError);
 			}
 
 			// ======================================================================
@@ -237,34 +237,34 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 				`
 				)
 				.eq("project_id", projectId)
-				.limit(20)
+				.limit(20);
 
 			if (themesError) {
-				consola.warn("Failed to fetch themes:", themesError)
+				consola.warn("Failed to fetch themes:", themesError);
 			}
 
 			// Calculate confidence for themes (evidence_count from junction table)
 			const themesWithConfidence = (themes || [])
 				.map((theme) => {
-					const evidence_count = theme.theme_evidence?.length || 0
+					const evidence_count = theme.theme_evidence?.length || 0;
 
-					let confidence = 0
+					let confidence = 0;
 					if (evidence_count >= 5)
-						confidence = 0.85 // HIGH
+						confidence = 0.85; // HIGH
 					else if (evidence_count >= 3)
-						confidence = 0.65 // MEDIUM
-					else confidence = 0.45 // LOW
+						confidence = 0.65; // MEDIUM
+					else confidence = 0.45; // LOW
 
 					return {
 						...theme,
 						evidence_count,
 						confidence,
 						confidence_label: confidence >= 0.8 ? "HIGH" : confidence >= 0.6 ? "MEDIUM" : "LOW",
-					}
+					};
 				})
-				.sort((a, b) => a.evidence_count - b.evidence_count) // Sort by evidence count ascending
+				.sort((a, b) => a.evidence_count - b.evidence_count); // Sort by evidence count ascending
 
-			const lowConfidenceThemes = themesWithConfidence.filter((t) => t.confidence < 0.8 && t.evidence_count < 10)
+			const lowConfidenceThemes = themesWithConfidence.filter((t) => t.confidence < 0.8 && t.evidence_count < 10);
 
 			// ======================================================================
 			// STEP 4: Generate Recommendations (Deterministic Rules)
@@ -272,7 +272,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 
 			// RULE 1: Unanswered Questions (Priority 1 - Critical)
 			if (unansweredQuestions && unansweredQuestions.length > 0) {
-				const topQuestion = unansweredQuestions[0]
+				const topQuestion = unansweredQuestions[0];
 
 				recommendations.push({
 					id: `rec-unanswered-${topQuestion.id}`,
@@ -287,14 +287,14 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 						needed_responses: topQuestion.open_answer_count,
 					},
 					navigateTo: `/questions/${topQuestion.id}`,
-				})
+				});
 			}
 
 			// RULE 2: Low-Confidence Themes (Priority 2 - Important)
 			if (lowConfidenceThemes.length > 0) {
-				const topTheme = lowConfidenceThemes[0]
-				const targetEvidence = 5
-				const gap = targetEvidence - topTheme.evidence_count
+				const topTheme = lowConfidenceThemes[0];
+				const targetEvidence = 5;
+				const gap = targetEvidence - topTheme.evidence_count;
 
 				recommendations.push({
 					id: `rec-validate-theme-${topTheme.id}`,
@@ -314,18 +314,18 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 						gap: gap,
 					},
 					navigateTo: `/insights/${topTheme.id}`,
-				})
+				});
 			}
 
 			// RULE 3: Stale High-ICP Contacts (Priority 2 - Re-engagement)
 			const staleHighICPContacts = staleContacts.filter((contact) => {
-				const icpScore = icpScores?.find((s) => s.person_id === contact.person_id)
-				return icpScore && icpScore.score >= 0.8
-			})
+				const icpScore = icpScores?.find((s) => s.person_id === contact.person_id);
+				return icpScore && icpScore.score >= 0.8;
+			});
 
 			if (staleHighICPContacts.length > 0) {
-				const topStaleContact = staleHighICPContacts[0]
-				const icpScore = icpScores?.find((s) => s.person_id === topStaleContact.person_id)
+				const topStaleContact = staleHighICPContacts[0];
+				const icpScore = icpScores?.find((s) => s.person_id === topStaleContact.person_id);
 
 				recommendations.push({
 					id: `rec-follow-up-${topStaleContact.person_id}`,
@@ -344,20 +344,20 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 						last_contact: topStaleContact.last_interview_date,
 					},
 					navigateTo: `/people/${topStaleContact.person_id}`,
-				})
+				});
 			}
 
 			// RULE 4: High ICP Matches Never Interviewed (Priority 3 - Opportunity)
 			if (icpScores && icpScores.length > 0) {
 				// Find ICP matches that have NO interview_people records
 				const neverInterviewedHighICP = icpScores.filter((icp) => {
-					const hasInterview = recentInterviewPeople?.some((ip) => ip.person_id === icp.person_id)
-					return !hasInterview
-				})
+					const hasInterview = recentInterviewPeople?.some((ip) => ip.person_id === icp.person_id);
+					return !hasInterview;
+				});
 
 				if (neverInterviewedHighICP.length > 0) {
-					const topMatch = neverInterviewedHighICP[0]
-					const person = topMatch.people
+					const topMatch = neverInterviewedHighICP[0];
+					const person = topMatch.people;
 
 					recommendations.push({
 						id: `rec-icp-match-${topMatch.person_id}`,
@@ -375,7 +375,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 							icp_confidence: topMatch.confidence,
 						},
 						navigateTo: `/people/${topMatch.person_id}`,
-					})
+					});
 				}
 			}
 
@@ -385,13 +385,13 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 
 			const sortedRecommendations = recommendations
 				.sort((a, b) => a.priority - b.priority)
-				.slice(0, input.maxRecommendations)
+				.slice(0, input.maxRecommendations);
 
 			consola.debug("generate-research-recommendations: generated", {
 				projectId,
 				total_generated: recommendations.length,
 				returned: sortedRecommendations.length,
-			})
+			});
 
 			return {
 				success: true,
@@ -402,9 +402,9 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					returned_top_n: sortedRecommendations.length,
 					computation_timestamp: new Date().toISOString(),
 				},
-			}
+			};
 		} catch (error) {
-			consola.error("generate-research-recommendations: error", error)
+			consola.error("generate-research-recommendations: error", error);
 			return {
 				success: false,
 				message: `Error generating recommendations: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -414,7 +414,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 					returned_top_n: 0,
 					computation_timestamp: new Date().toISOString(),
 				},
-			}
+			};
 		}
 	},
-})
+});

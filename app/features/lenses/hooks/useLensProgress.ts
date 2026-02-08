@@ -4,26 +4,26 @@
  * Uses the onComplete callback from useRealtimeRun - the proper way.
  */
 
-import { useRealtimeRun } from "@trigger.dev/react-hooks"
-import { useCallback, useMemo } from "react"
+import { useRealtimeRun } from "@trigger.dev/react-hooks";
+import { useCallback, useMemo } from "react";
 
 export interface LensProgressInfo {
-	status: string
-	progress: number
-	label: string
-	isComplete: boolean
-	hasError: boolean
+	status: string;
+	progress: number;
+	label: string;
+	isComplete: boolean;
+	hasError: boolean;
 }
 
 interface UseLensProgressOptions {
-	runId: string | null | undefined
-	accessToken: string | null | undefined
+	runId: string | null | undefined;
+	accessToken: string | null | undefined;
 	/** Called when the run completes (success or error) */
-	onComplete?: () => void
+	onComplete?: () => void;
 }
 
 export function useLensProgress({ runId, accessToken, onComplete }: UseLensProgressOptions) {
-	const shouldSubscribe = Boolean(runId && accessToken)
+	const shouldSubscribe = Boolean(runId && accessToken);
 
 	// Wrap onComplete to add logging
 	const handleComplete = useCallback(
@@ -32,30 +32,33 @@ export function useLensProgress({ runId, accessToken, onComplete }: UseLensProgr
 				runId: run?.id,
 				status: run?.status,
 				error: err?.message,
-			})
-			onComplete?.()
+			});
+			onComplete?.();
 		},
 		[onComplete]
-	)
+	);
 
 	// Build options with onComplete callback - this is the key
 	const realtimeOptions = useMemo(() => {
 		if (!shouldSubscribe) {
-			return { enabled: false as const }
+			return { enabled: false as const };
 		}
 		return {
 			accessToken: accessToken as string,
 			onComplete: handleComplete,
 			stopOnCompletion: true, // Stop subscription when done
-		}
-	}, [shouldSubscribe, accessToken, handleComplete])
+		};
+	}, [shouldSubscribe, accessToken, handleComplete]);
 
 	// Subscribe to the run
-	const { run, error: realtimeError } = useRealtimeRun(shouldSubscribe ? (runId as string) : undefined, realtimeOptions)
+	const { run, error: realtimeError } = useRealtimeRun(
+		shouldSubscribe ? (runId as string) : undefined,
+		realtimeOptions
+	);
 
 	// Log subscription state
 	if (shouldSubscribe && !run && !realtimeError) {
-		console.log("[useLensProgress] Waiting for run data...", runId)
+		console.log("[useLensProgress] Waiting for run data...", runId);
 	}
 
 	// Calculate progress info from run
@@ -67,12 +70,12 @@ export function useLensProgress({ runId, accessToken, onComplete }: UseLensProgr
 				label: realtimeError ? "Connection error" : "",
 				isComplete: false,
 				hasError: Boolean(realtimeError),
-			}
+			};
 		}
 
-		const status = run.status ?? "UNKNOWN"
-		const isComplete = status === "COMPLETED"
-		const hasError = status === "FAILED" || status === "CANCELED"
+		const status = run.status ?? "UNKNOWN";
+		const isComplete = status === "COMPLETED";
+		const hasError = status === "FAILED" || status === "CANCELED";
 
 		// Get progress from task metadata
 		const percent =
@@ -84,7 +87,7 @@ export function useLensProgress({ runId, accessToken, onComplete }: UseLensProgr
 						? 0
 						: status === "EXECUTING"
 							? 50
-							: 10
+							: 10;
 
 		const label =
 			typeof run.metadata?.stageLabel === "string"
@@ -95,9 +98,9 @@ export function useLensProgress({ runId, accessToken, onComplete }: UseLensProgr
 						? "Failed"
 						: status === "EXECUTING"
 							? "Processing..."
-							: "Queued..."
+							: "Queued...";
 
-		console.log("[useLensProgress] Run status:", status, "progress:", percent)
+		console.log("[useLensProgress] Run status:", status, "progress:", percent);
 
 		return {
 			status,
@@ -105,13 +108,13 @@ export function useLensProgress({ runId, accessToken, onComplete }: UseLensProgr
 			label,
 			isComplete,
 			hasError,
-		}
-	}, [run, realtimeError])
+		};
+	}, [run, realtimeError]);
 
 	return {
 		progressInfo,
 		isSubscribed: shouldSubscribe && !realtimeError,
 		run,
 		error: realtimeError,
-	}
+	};
 }

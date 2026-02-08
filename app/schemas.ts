@@ -5,10 +5,10 @@
 // schemas scattered across components/tools.
 // -------------------------------------------------------
 
-import { z } from "zod"
+import { z } from "zod";
 
 // Reusable utility schemas
-const nullableString = z.string().nullable()
+const nullableString = z.string().nullable();
 
 // Contact info schema (shared across person-related schemas)
 export const contactInfoSchema = z
@@ -18,7 +18,7 @@ export const contactInfoSchema = z
 		addresses: z.array(z.string()).optional(),
 		social_profiles: z.record(z.string(), z.string()).optional(),
 	})
-	.nullable()
+	.nullable();
 
 // Person detail schema (used by fetch-people-details tool)
 export const personDetailSchema = z.object({
@@ -119,7 +119,7 @@ export const personDetailSchema = z.object({
 	created_at: nullableString,
 	updated_at: nullableString,
 	url: nullableString,
-})
+});
 
 // Evidence detail schema (used by fetch-evidence tool) - further simplified
 export const evidenceDetailSchema = z.object({
@@ -141,7 +141,7 @@ export const evidenceDetailSchema = z.object({
 	personRole: z.string().nullable(),
 	insightCount: z.number().nullable(),
 	url: nullableString,
-})
+});
 
 // Project goals schema (used by fetch-project-goals tool)
 export const projectGoalsSchema = z.object({
@@ -155,7 +155,7 @@ export const projectGoalsSchema = z.object({
 	unknowns: z.array(z.string()).nullable(),
 	customInstructions: nullableString,
 	settings: z.record(z.string(), z.unknown()).nullable(),
-})
+});
 
 // Personas detail schema (used by fetch-personas tool)
 export const personasDetailSchema = z.object({
@@ -170,7 +170,7 @@ export const personasDetailSchema = z.object({
 	createdAt: nullableString,
 	updatedAt: nullableString,
 	url: nullableString,
-})
+});
 
 // Theme detail schema (used by fetch-themes tool)
 export const themeDetailSchema = z.object({
@@ -185,12 +185,12 @@ export const themeDetailSchema = z.object({
 	createdAt: nullableString,
 	updatedAt: nullableString,
 	url: nullableString,
-})
+});
 
 // Type exports - use these instead of z.infer<typeof schema> everywhere
-export type PersonDetail = z.infer<typeof personDetailSchema>
-export type EvidenceDetail = z.infer<typeof evidenceDetailSchema>
-export type ContactInfo = z.infer<typeof contactInfoSchema>
-export type ProjectGoals = z.infer<typeof projectGoalsSchema>
-export type ThemeDetail = z.infer<typeof themeDetailSchema>
-export type PersonasDetail = z.infer<typeof personasDetailSchema>
+export type PersonDetail = z.infer<typeof personDetailSchema>;
+export type EvidenceDetail = z.infer<typeof evidenceDetailSchema>;
+export type ContactInfo = z.infer<typeof contactInfoSchema>;
+export type ProjectGoals = z.infer<typeof projectGoalsSchema>;
+export type ThemeDetail = z.infer<typeof themeDetailSchema>;
+export type PersonasDetail = z.infer<typeof personasDetailSchema>;

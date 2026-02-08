@@ -1,8 +1,8 @@
-import type { ComponentProps } from "react"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import type { ComponentProps } from "react";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
-type SuggestionsProps = ComponentProps<"div">
+type SuggestionsProps = ComponentProps<"div">;
 
 export const Suggestions = ({ className, ...props }: SuggestionsProps) => (
 	<div
@@ -11,11 +11,11 @@ export const Suggestions = ({ className, ...props }: SuggestionsProps) => (
 		aria-label="Suggested prompts"
 		{...props}
 	/>
-)
+);
 
 interface SuggestionProps extends Omit<ComponentProps<typeof Button>, "onClick"> {
-	suggestion: string
-	onClick?: (suggestion: string) => void
+	suggestion: string;
+	onClick?: (suggestion: string) => void;
 }
 
 export const Suggestion = ({ suggestion, onClick, className, ...props }: SuggestionProps) => (
@@ -37,4 +37,4 @@ export const Suggestion = ({ suggestion, onClick, className, ...props }: Suggest
 	>
 		{suggestion}
 	</Button>
-)
+);

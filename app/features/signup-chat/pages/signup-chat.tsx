@@ -1,11 +1,11 @@
 // CopilotKit removed
 
 // CopilotKit UI removed
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
-import { useEffect, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { useEffect, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router";
 
 // Add custom CSS for progress animation
 const _progressStyles = `
@@ -13,36 +13,36 @@ const _progressStyles = `
   from { width: 0%; }
   to { width: 100%; }
 }
-`
+`;
 
-import consola from "consola"
-import { ArrowLeft, Mic } from "lucide-react"
-import type { z } from "zod"
-import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
-import { SignupDataWatcher } from "~/features/signup-chat/components/SignupDataWatcher"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
-import { cn } from "~/lib/utils"
-import type { SignupAgentState } from "~/mastra/agents"
-import { memory } from "~/mastra/memory"
+import consola from "consola";
+import { ArrowLeft, Mic } from "lucide-react";
+import type { z } from "zod";
+import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard";
+import { SignupDataWatcher } from "~/features/signup-chat/components/SignupDataWatcher";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
+import type { SignupAgentState } from "~/mastra/agents";
+import { memory } from "~/mastra/memory";
 
-type AgentState = z.infer<typeof SignupAgentState>
+type AgentState = z.infer<typeof SignupAgentState>;
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-	const { user } = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request);
 	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
 	// Optional restart to clear prior answers
-	const url = new URL(request.url)
-	const restart = url.searchParams.get("restart") === "1"
+	const url = new URL(request.url);
+	const restart = url.searchParams.get("restart") === "1";
 	if (restart) {
 		await supabase.rpc("upsert_signup_data", {
 			p_user_id: user.sub,
 			p_signup_data: { completed: false },
-		})
+		});
 	}
 
 	// Get existing chat data from user_settings
@@ -50,9 +50,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		.from("user_settings")
 		.select("signup_data")
 		.eq("user_id", user.sub)
-		.single()
+		.single();
 
-	const existingChatData = userSettings?.signup_data as AgentState
+	const existingChatData = userSettings?.signup_data as AgentState;
 
 	// Basic usage with default parameters
 	const result = await memory.listThreadsByResourceId({
@@ -60,10 +60,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		orderBy: { field: "createdAt", direction: "DESC" },
 		page: 0,
 		perPage: 100,
-	})
+	});
 
-	consola.log("Result: ", result)
-	let threadId = ""
+	consola.log("Result: ", result);
+	let threadId = "";
 
 	if (!(result?.total > 0)) {
 		const newThread = await memory.createThread({
@@ -72,11 +72,11 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 			metadata: {
 				user_id: user.sub,
 			},
-		})
-		consola.log("New thread created: ", newThread)
-		threadId = newThread.id
+		});
+		consola.log("New thread created: ", newThread);
+		threadId = newThread.id;
 	} else {
-		threadId = result.threads[0].id
+		threadId = result.threads[0].id;
 	}
 
 	// Get messages in the V2 format (roughly equivalent to AI SDK's UIMessage format)
@@ -85,9 +85,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		selectBy: {
 			last: 50,
 		},
-	})
+	});
 
-	const mastraBase = (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, "")
+	const mastraBase = (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, "");
 	return data({
 		user,
 		existingChatData,
@@ -96,44 +96,44 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		result,
 		messages,
 		threadId,
-	})
+	});
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-	const { user } = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request);
 	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const formData = await request.formData()
-	const action = formData.get("action")
+	const formData = await request.formData();
+	const action = formData.get("action");
 
 	if (action === "save_chat_data") {
-		const chatData = JSON.parse(formData.get("chatData") as string) as AgentState
+		const chatData = JSON.parse(formData.get("chatData") as string) as AgentState;
 
-		const { client: supabase } = getServerClient(request)
+		const { client: supabase } = getServerClient(request);
 
 		// Use the upsert function to save signup chat data
 		const { error } = await supabase.rpc("upsert_signup_data", {
 			p_user_id: user.sub,
 			p_signup_data: chatData,
-		})
+		});
 
 		if (error) {
 			// Using throw instead of console.error for better error handling
 			throw new Response(`Error saving chat data: ${error.message}`, {
 				status: 500,
-			})
+			});
 		}
 
-		return data({ success: true })
+		return data({ success: true });
 	}
 
-	return data({ success: false, error: "Invalid action" }, { status: 400 })
+	return data({ success: false, error: "Invalid action" }, { status: 400 });
 }
 
 export default function SignupChat() {
-	const { clientEnv } = useRouteLoaderData("root")
+	const { clientEnv } = useRouteLoaderData("root");
 	const {
 		existingChatData,
 		copilotRuntimeUrl,
@@ -141,11 +141,11 @@ export default function SignupChat() {
 		threadId,
 		messages: loaderMessages,
 		mastraUrl,
-	} = useLoaderData() as any
-	const navigate = useNavigate()
-	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
-	const [onboardingData, setOnboardingData] = useState(existingChatData)
-	const _chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
+	} = useLoaderData() as any;
+	const navigate = useNavigate();
+	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false));
+	const [onboardingData, setOnboardingData] = useState(existingChatData);
+	const _chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true");
 
 	// If signup chat is not required, or it's already completed, send users home immediately.
 	useEffect(() => {
@@ -155,9 +155,9 @@ export default function SignupChat() {
 		// 	navigate("/signup-chat/completed")
 		// }
 		if (chatCompleted) {
-			navigate("/signup-chat/completed")
+			navigate("/signup-chat/completed");
 		}
-	}, [chatCompleted, navigate])
+	}, [chatCompleted, navigate]);
 
 	// Subscription moved into SignupDataWatcher component
 
@@ -279,16 +279,16 @@ export default function SignupChat() {
 				</div>
 			</main>
 		</div>
-	)
+	);
 }
 
 function _ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 	// Placeholder now that CopilotKit is removed
-	const state = existingChatData
+	const state = existingChatData;
 
 	useEffect(() => {
-		consola.log("[signupAgent state]", state)
-	}, [state])
+		consola.log("[signupAgent state]", state);
+	}, [state]);
 
 	return (
 		<div className="flex flex-1 flex-col">
@@ -324,7 +324,7 @@ function _ModernChatInterface({ existingChatData }: { existingChatData?: any }) 
 				<div
 					className="mt-8 text-center"
 					onClick={() => {
-						alert("Coming soon")
+						alert("Coming soon");
 					}}
 				>
 					<div className="mb-4 flex items-center justify-center gap-4">
@@ -344,7 +344,7 @@ function _ModernChatInterface({ existingChatData }: { existingChatData?: any }) 
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 function _AiSdkChat() {
@@ -352,7 +352,7 @@ function _AiSdkChat() {
 		transport: new DefaultChatTransport({
 			api: "http://localhost:4111/chat/signup",
 		}),
-	})
+	});
 
 	return (
 		<div>
@@ -361,22 +361,22 @@ function _AiSdkChat() {
 			{messages.map((message) => {
 				switch (message.role) {
 					case "user":
-						return <div key={message.id}>{message.parts.map((part) => part).join("")}</div>
+						return <div key={message.id}>{message.parts.map((part) => part).join("")}</div>;
 					case "assistant":
-						return <div key={message.id}>{message.parts.map((part) => part).join("")}</div>
+						return <div key={message.id}>{message.parts.map((part) => part).join("")}</div>;
 				}
 			})}
 		</div>
-	)
+	);
 }
 
 function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: any; messages?: any }) {
 	// Legacy component - keeping for backwards compatibility
 	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
-	})
-	const { messages: copilotMessages, setMessages } = useCopilotMessagesContext()
-	console.log("messages", messages)
+	});
+	const { messages: copilotMessages, setMessages } = useCopilotMessagesContext();
+	console.log("messages", messages);
 
 	// useEffect(() => {
 	// 	setMessages(messages)
@@ -401,5 +401,5 @@ function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: 
 				</div>
 			)}
 		</div>
-	)
+	);
 }

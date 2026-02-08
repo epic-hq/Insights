@@ -1,10 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~/types";
 
 interface ProjectScopedParams {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId: string;
 }
 
 export const getOrganizations = async ({ supabase, projectId }: ProjectScopedParams) => {
@@ -28,8 +28,8 @@ export const getOrganizations = async ({ supabase, projectId }: ProjectScopedPar
                 `
 		)
 		.eq("project_id", projectId)
-		.order("name", { ascending: true })
-}
+		.order("name", { ascending: true });
+};
 
 export const getOrganizationById = async ({ supabase, projectId, id }: ProjectScopedParams & { id: string }) => {
 	return await supabase
@@ -55,18 +55,18 @@ export const getOrganizationById = async ({ supabase, projectId, id }: ProjectSc
 		)
 		.eq("project_id", projectId)
 		.eq("id", id)
-		.single()
-}
+		.single();
+};
 
 export const createOrganization = async ({
 	supabase,
 	data,
 }: {
-	supabase: SupabaseClient<Database>
-	data: Database["public"]["Tables"]["organizations"]["Insert"]
+	supabase: SupabaseClient<Database>;
+	data: Database["public"]["Tables"]["organizations"]["Insert"];
 }) => {
-	return await supabase.from("organizations").insert(data).select().single()
-}
+	return await supabase.from("organizations").insert(data).select().single();
+};
 
 export const updateOrganization = async ({
 	supabase,
@@ -74,16 +74,16 @@ export const updateOrganization = async ({
 	id,
 	data,
 }: Omit<ProjectScopedParams, "projectId"> & {
-	id: string
-	data: Database["public"]["Tables"]["organizations"]["Update"]
+	id: string;
+	data: Database["public"]["Tables"]["organizations"]["Update"];
 }) => {
 	// Use account_id for filtering since organizations might have null project_id
-	return await supabase.from("organizations").update(data).eq("id", id).eq("account_id", accountId).select().single()
-}
+	return await supabase.from("organizations").update(data).eq("id", id).eq("account_id", accountId).select().single();
+};
 
 export const deleteOrganization = async ({ supabase, id, projectId }: ProjectScopedParams & { id: string }) => {
-	return await supabase.from("organizations").delete().eq("id", id).eq("project_id", projectId)
-}
+	return await supabase.from("organizations").delete().eq("id", id).eq("project_id", projectId);
+};
 
 export const linkPersonToOrganization = async ({
 	supabase,
@@ -96,12 +96,12 @@ export const linkPersonToOrganization = async ({
 	isPrimary = false,
 	notes,
 }: ProjectScopedParams & {
-	personId: string
-	organizationId: string
-	role?: string | null
-	relationshipStatus?: string | null
-	isPrimary?: boolean
-	notes?: string | null
+	personId: string;
+	organizationId: string;
+	role?: string | null;
+	relationshipStatus?: string | null;
+	isPrimary?: boolean;
+	notes?: string | null;
 }) => {
 	return await supabase.from("people_organizations").upsert(
 		{
@@ -115,8 +115,8 @@ export const linkPersonToOrganization = async ({
 			notes: notes ?? null,
 		},
 		{ onConflict: "person_id,organization_id" }
-	)
-}
+	);
+};
 
 export const unlinkPersonFromOrganization = async ({
 	supabase,
@@ -129,13 +129,13 @@ export const unlinkPersonFromOrganization = async ({
 		.delete()
 		.eq("project_id", projectId)
 		.eq("person_id", personId)
-		.eq("organization_id", organizationId)
-}
+		.eq("organization_id", organizationId);
+};
 
 export const getProjectPeopleSummary = async ({ supabase, projectId }: ProjectScopedParams) => {
 	return await supabase
 		.from("people")
 		.select("id, name, image_url, segment, title")
 		.eq("project_id", projectId)
-		.order("name", { ascending: true, nullsFirst: false })
-}
+		.order("name", { ascending: true, nullsFirst: false });
+};

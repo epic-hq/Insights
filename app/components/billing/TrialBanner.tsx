@@ -5,35 +5,35 @@
  * Displays different messages based on days remaining.
  */
 
-import { differenceInDays, formatDistanceToNow } from "date-fns"
-import { Clock, Sparkles, X } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
+import { differenceInDays, formatDistanceToNow } from "date-fns";
+import { Clock, Sparkles, X } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
 
 export interface TrialInfo {
-	isOnTrial: boolean
-	planName: string
-	trialEnd: string | null
-	accountId: string
+	isOnTrial: boolean;
+	planName: string;
+	trialEnd: string | null;
+	accountId: string;
 }
 
 interface TrialBannerProps {
-	trial: TrialInfo
+	trial: TrialInfo;
 }
 
 export function TrialBanner({ trial }: TrialBannerProps) {
-	const [dismissed, setDismissed] = useState(false)
+	const [dismissed, setDismissed] = useState(false);
 
 	if (!trial.isOnTrial || !trial.trialEnd || dismissed) {
-		return null
+		return null;
 	}
 
-	const trialEndDate = new Date(trial.trialEnd)
-	const now = new Date()
-	const daysLeft = differenceInDays(trialEndDate, now)
-	const isExpiringSoon = daysLeft <= 3
-	const isExpired = daysLeft < 0
+	const trialEndDate = new Date(trial.trialEnd);
+	const now = new Date();
+	const daysLeft = differenceInDays(trialEndDate, now);
+	const isExpiringSoon = daysLeft <= 3;
+	const isExpired = daysLeft < 0;
 
 	if (isExpired) {
 		return (
@@ -55,7 +55,7 @@ export function TrialBanner({ trial }: TrialBannerProps) {
 					</div>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	if (isExpiringSoon) {
@@ -87,7 +87,7 @@ export function TrialBanner({ trial }: TrialBannerProps) {
 					</div>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	// Normal trial state - subtle, centered banner
@@ -115,5 +115,5 @@ export function TrialBanner({ trial }: TrialBannerProps) {
 				</button>
 			</div>
 		</div>
-	)
+	);
 }

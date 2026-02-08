@@ -1,40 +1,40 @@
-import consola from "consola"
-import { useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { Streamdown } from "streamdown"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { BackButton } from "~/components/ui/BackButton"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { MediaPlayer } from "~/components/ui/MediaPlayer"
-import { Textarea } from "~/components/ui/textarea"
-import { deleteInterview, getInterviewById, updateInterview } from "~/features/interviews/db"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import { createProjectRoutes } from "~/utils/routes.server"
+import consola from "consola";
+import { useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { Streamdown } from "streamdown";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { BackButton } from "~/components/ui/BackButton";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { MediaPlayer } from "~/components/ui/MediaPlayer";
+import { Textarea } from "~/components/ui/textarea";
+import { deleteInterview, getInterviewById, updateInterview } from "~/features/interviews/db";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import { createProjectRoutes } from "~/utils/routes.server";
 
-export const handle = { hideProjectStatusAgent: true } as const
+export const handle = { hideProjectStatusAgent: true } as const;
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `Edit ${data?.interview?.title || "Interview"} | Insights` },
 		{ name: "description", content: "Edit interview details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const interviewId = params.interviewId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const interviewId = params.interviewId;
 
 	if (!accountId || !projectId || !interviewId) {
-		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 });
 	}
 
 	try {
@@ -43,14 +43,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			accountId,
 			projectId,
 			id: interviewId,
-		})
+		});
 
 		if (error || !interviewData) {
-			throw new Response("Interview not found", { status: 404 })
+			throw new Response("Interview not found", { status: 404 });
 		}
 
 		// Exclude large transcript data from loader response to prevent memory leaks
-		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData
+		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData;
 
 		const interview = {
 			...interviewMetadata,
@@ -58,29 +58,29 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			transcriptLength: transcript?.length || 0,
 			hasTranscript: !!transcript,
 			hasFormattedTranscript: !!transcript_formatted,
-		}
+		};
 
-		return { accountId, projectId, interview }
+		return { accountId, projectId, interview };
 	} catch (_error) {
-		throw new Response("Failed to load interview", { status: 500 })
+		throw new Response("Failed to load interview", { status: 500 });
 	}
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const interviewId = params.interviewId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const interviewId = params.interviewId;
 
 	if (!accountId || !projectId || !interviewId) {
-		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 });
 	}
 
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	if (intent === "delete") {
 		try {
@@ -89,43 +89,43 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				id: interviewId,
 				accountId,
 				projectId,
-			})
+			});
 
 			if (error) {
-				return { error: `Failed to delete interview ${JSON.stringify(error)}` }
+				return { error: `Failed to delete interview ${JSON.stringify(error)}` };
 			}
 
-			const routes = createProjectRoutes(accountId, projectId)
-			return redirect(routes.interviews.index())
+			const routes = createProjectRoutes(accountId, projectId);
+			return redirect(routes.interviews.index());
 		} catch (_error) {
-			return { error: `Failed to delete interview ${JSON.stringify(_error)}` }
+			return { error: `Failed to delete interview ${JSON.stringify(_error)}` };
 		}
 	}
 
 	// Handle update
-	const title = (formData.get("title") as string) || ""
+	const title = (formData.get("title") as string) || "";
 
 	if (!title.trim()) {
-		return { error: "Title is required" }
+		return { error: "Title is required" };
 	}
 
 	// Gather optional fields safely
-	const interview_date_raw = formData.get("interview_date") as string | null
-	const interview_date = interview_date_raw && interview_date_raw !== "" ? interview_date_raw : null
-	const open_questions_and_next_steps = (formData.get("open_questions_and_next_steps") as string) || null
-	const observations_and_notes = (formData.get("observations_and_notes") as string) || null
-	const media_url = (formData.get("media_url") as string) || null
+	const interview_date_raw = formData.get("interview_date") as string | null;
+	const interview_date = interview_date_raw && interview_date_raw !== "" ? interview_date_raw : null;
+	const open_questions_and_next_steps = (formData.get("open_questions_and_next_steps") as string) || null;
+	const observations_and_notes = (formData.get("observations_and_notes") as string) || null;
+	const media_url = (formData.get("media_url") as string) || null;
 
 	// Handle high_impact_themes - can be JSON string or regular string
-	const high_impact_themes_raw = formData.get("high_impact_themes") as string | null
-	let high_impact_themes = null
+	const high_impact_themes_raw = formData.get("high_impact_themes") as string | null;
+	let high_impact_themes = null;
 	if (high_impact_themes_raw) {
 		try {
 			// Try to parse as JSON array first
-			high_impact_themes = JSON.parse(high_impact_themes_raw)
+			high_impact_themes = JSON.parse(high_impact_themes_raw);
 		} catch {
 			// If not JSON, treat as regular string
-			high_impact_themes = high_impact_themes_raw
+			high_impact_themes = high_impact_themes_raw;
 		}
 	}
 
@@ -143,43 +143,43 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				media_url,
 				high_impact_themes,
 			},
-		})
+		});
 
 		if (error) {
-			return { error: `Failed to update interview ${JSON.stringify(error)}` }
+			return { error: `Failed to update interview ${JSON.stringify(error)}` };
 		}
 
-		const routes = createProjectRoutes(accountId, projectId)
-		return redirect(routes.interviews.detail(data.id))
+		const routes = createProjectRoutes(accountId, projectId);
+		return redirect(routes.interviews.detail(data.id));
 	} catch (error) {
-		consola.error("Error updating interview:", error)
-		return { error: "Failed to update interview" }
+		consola.error("Error updating interview:", error);
+		return { error: "Failed to update interview" };
 	}
 }
 
 export default function EditInterview() {
-	const { accountId, projectId, interview } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
-	const routes = useProjectRoutesFromIds(accountId, projectId)
+	const { accountId, projectId, interview } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
+	const routes = useProjectRoutesFromIds(accountId, projectId);
 
 	// Normalize any legacy array/JSON-string values to plaintext for editing, and
 	// keep controlled state so we can render Markdown previews live.
 	const normalize = (v: unknown): string => {
 		try {
-			if (Array.isArray(v)) return v.filter((s) => typeof s === "string" && s.trim()).join("\n")
+			if (Array.isArray(v)) return v.filter((s) => typeof s === "string" && s.trim()).join("\n");
 			if (typeof v === "string") {
-				const parsed = JSON.parse(v)
-				if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === "string" && s.trim()).join("\n")
-				return v
+				const parsed = JSON.parse(v);
+				if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === "string" && s.trim()).join("\n");
+				return v;
 			}
-			return ""
+			return "";
 		} catch {
-			return typeof v === "string" ? v : ""
+			return typeof v === "string" ? v : "";
 		}
-	}
+	};
 
-	const [oqns, setOqns] = useState<string>(normalize(interview.open_questions_and_next_steps))
-	const [notes, setNotes] = useState<string>(normalize(interview.observations_and_notes))
+	const [oqns, setOqns] = useState<string>(normalize(interview.open_questions_and_next_steps));
+	const [notes, setNotes] = useState<string>(normalize(interview.observations_and_notes));
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
@@ -306,7 +306,7 @@ export default function EditInterview() {
 						variant="destructive"
 						onClick={(e) => {
 							if (!confirm("Are you sure you want to delete this interview? This action cannot be undone.")) {
-								e.preventDefault()
+								e.preventDefault();
 							}
 						}}
 					>
@@ -315,5 +315,5 @@ export default function EditInterview() {
 				</Form>
 			</div>
 		</PageContainer>
-	)
+	);
 }

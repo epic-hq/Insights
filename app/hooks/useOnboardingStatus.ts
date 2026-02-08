@@ -5,43 +5,43 @@
  * and provides data for personalizing the AI experience.
  */
 
-import { useRouteLoaderData } from "react-router"
+import { useRouteLoaderData } from "react-router";
 
 export interface OnboardingStatus {
 	/** Whether onboarding data has loaded */
-	isLoading: boolean
+	isLoading: boolean;
 	/** Whether the walkthrough has been completed */
-	completed: boolean
+	completed: boolean;
 	/** User's job function/role */
-	jobFunction: string
+	jobFunction: string;
 	/** Primary use case selected */
-	primaryUseCase: string
+	primaryUseCase: string;
 	/** Company size category (startup, smb, mid-market, enterprise) */
-	companySize: string
+	companySize: string;
 	/** Whether to show the onboarding modal */
-	shouldShowOnboarding: boolean
+	shouldShowOnboarding: boolean;
 }
 
 interface ProtectedLayoutData {
 	user_settings?: {
 		/** Boolean column on user_settings table */
-		onboarding_completed?: boolean
+		onboarding_completed?: boolean;
 		onboarding_steps?: {
 			walkthrough?: {
-				completed?: boolean
-				job_function?: string
-				primary_use_case?: string
-				company_size?: string
-			}
-		}
+				completed?: boolean;
+				job_function?: string;
+				primary_use_case?: string;
+				company_size?: string;
+			};
+		};
 		metadata?: {
 			onboarding?: {
-				job_function?: string
-				primary_use_case?: string
-				company_size?: string
-			}
-		}
-	} | null
+				job_function?: string;
+				primary_use_case?: string;
+				company_size?: string;
+			};
+		};
+	} | null;
 }
 
 /**
@@ -49,20 +49,20 @@ interface ProtectedLayoutData {
  * Avoids extra API calls by using data already loaded in _ProtectedLayout
  */
 export function useOnboardingStatus(): OnboardingStatus {
-	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null;
 
-	const onboardingSteps = protectedData?.user_settings?.onboarding_steps
-	const walkthrough = onboardingSteps?.walkthrough
-	const metadata = protectedData?.user_settings?.metadata?.onboarding
+	const onboardingSteps = protectedData?.user_settings?.onboarding_steps;
+	const walkthrough = onboardingSteps?.walkthrough;
+	const metadata = protectedData?.user_settings?.metadata?.onboarding;
 
 	// Check both the boolean column and the JSONB walkthrough data
-	const completed = protectedData?.user_settings?.onboarding_completed || walkthrough?.completed || false
-	const jobFunction = walkthrough?.job_function || metadata?.job_function || ""
-	const primaryUseCase = walkthrough?.primary_use_case || metadata?.primary_use_case || ""
-	const companySize = walkthrough?.company_size || metadata?.company_size || ""
+	const completed = protectedData?.user_settings?.onboarding_completed || walkthrough?.completed || false;
+	const jobFunction = walkthrough?.job_function || metadata?.job_function || "";
+	const primaryUseCase = walkthrough?.primary_use_case || metadata?.primary_use_case || "";
+	const companySize = walkthrough?.company_size || metadata?.company_size || "";
 
 	// Show onboarding if not completed and we have data loaded
-	const shouldShowOnboarding = protectedData !== null && !completed
+	const shouldShowOnboarding = protectedData !== null && !completed;
 
 	return {
 		isLoading: protectedData === null,
@@ -71,7 +71,7 @@ export function useOnboardingStatus(): OnboardingStatus {
 		primaryUseCase,
 		companySize,
 		shouldShowOnboarding,
-	}
+	};
 }
 
 /**
@@ -80,10 +80,10 @@ export function useOnboardingStatus(): OnboardingStatus {
  */
 export function buildOnboardingContext(status: OnboardingStatus): string {
 	if (!status.completed) {
-		return ""
+		return "";
 	}
 
-	const parts: string[] = []
+	const parts: string[] = [];
 
 	if (status.jobFunction) {
 		// Map to friendly descriptions for AI context
@@ -101,8 +101,8 @@ export function buildOnboardingContext(status: OnboardingStatus): string {
 			data: "data & analytics professional",
 			research: "researcher",
 			executive: "executive/leader",
-		}
-		parts.push(`User Role: ${roleMap[status.jobFunction] || status.jobFunction}`)
+		};
+		parts.push(`User Role: ${roleMap[status.jobFunction] || status.jobFunction}`);
 	}
 
 	if (status.primaryUseCase) {
@@ -113,8 +113,8 @@ export function buildOnboardingContext(status: OnboardingStatus): string {
 			user_research: "user research and synthesis",
 			competitive_intel: "competitive intelligence",
 			customer_success: "customer success and feedback tracking",
-		}
-		parts.push(`Primary Goal: ${useCaseMap[status.primaryUseCase] || status.primaryUseCase}`)
+		};
+		parts.push(`Primary Goal: ${useCaseMap[status.primaryUseCase] || status.primaryUseCase}`);
 	}
 
 	if (status.companySize) {
@@ -123,15 +123,15 @@ export function buildOnboardingContext(status: OnboardingStatus): string {
 			smb: "SMB (51-500 employees)",
 			"mid-market": "mid-market company (501-5,000 employees)",
 			enterprise: "enterprise (5,000+ employees)",
-		}
-		parts.push(`Company Size: ${sizeMap[status.companySize] || status.companySize}`)
+		};
+		parts.push(`Company Size: ${sizeMap[status.companySize] || status.companySize}`);
 	}
 
 	if (parts.length === 0) {
-		return ""
+		return "";
 	}
 
-	return `User Profile:\n${parts.join("\n")}`
+	return `User Profile:\n${parts.join("\n")}`;
 }
 
-export default useOnboardingStatus
+export default useOnboardingStatus;

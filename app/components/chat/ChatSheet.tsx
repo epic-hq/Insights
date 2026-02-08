@@ -5,25 +5,25 @@
  * Uses shadcn Sheet component with custom styling.
  */
 
-import { Sparkles, X } from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
-import { cn } from "~/lib/utils"
-import { ProjectStatusAgentChat } from "./ProjectStatusAgentChat"
+import { Sparkles, X } from "lucide-react";
+import { Button } from "~/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
+import { cn } from "~/lib/utils";
+import { ProjectStatusAgentChat } from "./ProjectStatusAgentChat";
 
 export interface ChatSheetProps {
 	/** Whether the sheet is open */
-	open: boolean
+	open: boolean;
 	/** Callback when sheet should close */
-	onOpenChange: (open: boolean) => void
+	onOpenChange: (open: boolean) => void;
 	/** Account ID for chat context */
-	accountId: string
+	accountId: string;
 	/** Project ID for chat context */
-	projectId: string
+	projectId: string;
 	/** System context for the AI */
-	systemContext: string
+	systemContext: string;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function ChatSheet({ open, onOpenChange, accountId, projectId, systemContext, className }: ChatSheetProps) {
@@ -54,7 +54,7 @@ export function ChatSheet({ open, onOpenChange, accountId, projectId, systemCont
 				</div>
 			</SheetContent>
 		</Sheet>
-	)
+	);
 }
 
 /**
@@ -65,9 +65,9 @@ export function ChatFloatingButton({
 	hasNotification,
 	className,
 }: {
-	onClick: () => void
-	hasNotification?: boolean
-	className?: string
+	onClick: () => void;
+	hasNotification?: boolean;
+	className?: string;
 }) {
 	return (
 		<Button
@@ -86,7 +86,7 @@ export function ChatFloatingButton({
 			)}
 			<span className="sr-only">Open AI Assistant</span>
 		</Button>
-	)
+	);
 }
 
-export default ChatSheet
+export default ChatSheet;

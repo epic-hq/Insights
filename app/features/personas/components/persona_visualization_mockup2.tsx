@@ -1,8 +1,8 @@
-import { motion } from "framer-motion"
-import { AlertTriangle, Bolt, Flag, GitMerge, Quote, Target, UserCheck } from "lucide-react"
-import React from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { useLoaderData } from "react-router"
+import { motion } from "framer-motion";
+import { AlertTriangle, Bolt, Flag, GitMerge, Quote, Target, UserCheck } from "lucide-react";
+import React from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
 import {
 	CartesianGrid,
 	Legend,
@@ -17,24 +17,24 @@ import {
 	Tooltip,
 	XAxis,
 	YAxis,
-} from "recharts"
+} from "recharts";
 import PersonaStrategicPanel, {
 	PersonaStrategicPanelMockData,
-} from "~/features/personas/components/PersonaStrategicPanel"
-import { getServerClient } from "~/lib/supabase/client.server"
-import type { Persona } from "~/types"
-import PersonaCompareBoard from "./PersonaCompareBoard"
-import { defaultMapperFromDifferentiators, RadialSpectrumFromSupabase } from "./persona_visualization_mockup3"
+} from "~/features/personas/components/PersonaStrategicPanel";
+import { getServerClient } from "~/lib/supabase/client.server";
+import type { Persona } from "~/types";
+import PersonaCompareBoard from "./PersonaCompareBoard";
+import { defaultMapperFromDifferentiators, RadialSpectrumFromSupabase } from "./persona_visualization_mockup3";
 
-const MOCKDATA = true
+const MOCKDATA = true;
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const projectId = params.projectId as string | undefined
+	const { client: supabase } = getServerClient(request);
+	const projectId = params.projectId as string | undefined;
 
 	// If we have Supabase configured on server, pull real data.
 	try {
-		if (!projectId) throw new Error("Missing projectId route param")
+		if (!projectId) throw new Error("Missing projectId route param");
 
 		// MOCKDATA
 		if (MOCKDATA) {
@@ -62,21 +62,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 						notes: "Notes",
 					},
 				},
-			}
+			};
 		}
 
 		const { data, error } = await supabase
 			.from("personas")
 			.select("id,name_and_tagline,differentiators,spectrum_positions,kind")
 			.eq("project_id", projectId)
-			.order("created_at", { ascending: false })
+			.order("created_at", { ascending: false });
 
-		if (error) throw error
+		if (error) throw error;
 
 		return {
 			personas: (data || []) as Persona[],
 			hasSupabase: true,
-		}
+		};
 	} catch (_e) {
 		// Safe demo fallback when env/DB is not available in sandbox
 		const demo: Persona[] = [
@@ -100,9 +100,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 				},
 				kind: "provisional",
 			},
-		]
+		];
 
-		return { personas: demo, hasSupabase: false }
+		return { personas: demo, hasSupabase: false };
 	}
 }
 
@@ -129,7 +129,7 @@ const provisional = {
 	confidence: "Low",
 	evidence_count: 1,
 	spectrum_value: 22, // 0=Autonomy, 100=Guidance
-}
+};
 
 const contrast = {
 	name: "The Independent Explorer",
@@ -148,9 +148,9 @@ const contrast = {
 	confidence: "Low",
 	evidence_count: 1,
 	spectrum_value: 82,
-}
+};
 
-const changeLog = [{ version: "v0.1", note: "Added provisional + contrast (single‑interview)." }]
+const changeLog = [{ version: "v0.1", note: "Added provisional + contrast (single‑interview)." }];
 
 // Radar dimensions represent behavioral axes
 const radarDims = [
@@ -160,16 +160,16 @@ const radarDims = [
 	{ key: "Planning", prov: 40, cont: 60 },
 	{ key: "Speed", prov: 80, cont: 55 },
 	{ key: "Depth", prov: 35, cont: 90 },
-]
+];
 
-const confidenceTimeline = [{ v: "v0.1", Provisional: 1, Contrast: 1 }]
+const confidenceTimeline = [{ v: "v0.1", Provisional: 1, Contrast: 1 }];
 
 // -----------------------------
 // UI Helpers
 // -----------------------------
 const Badge: React.FC<{
-	children: React.ReactNode
-	tone?: "neutral" | "success" | "danger" | "warning" | "brand"
+	children: React.ReactNode;
+	tone?: "neutral" | "success" | "danger" | "warning" | "brand";
 }> = ({ children, tone = "neutral" }) => {
 	const map = {
 		neutral: "bg-zinc-800 text-zinc-200",
@@ -177,13 +177,13 @@ const Badge: React.FC<{
 		danger: "bg-rose-600/20 text-rose-300 border border-rose-500/30",
 		warning: "bg-amber-600/20 text-amber-200 border border-amber-500/30",
 		brand: "bg-indigo-600/20 text-indigo-200 border border-indigo-500/30",
-	} as const
-	return <span className={`rounded-full px-2 py-1 text-xs ${map[tone]}`}>{children}</span>
-}
+	} as const;
+	return <span className={`rounded-full px-2 py-1 text-xs ${map[tone]}`}>{children}</span>;
+};
 
 const _Chip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 	<span className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-200">{children}</span>
-)
+);
 
 // -----------------------------
 // Components
@@ -195,16 +195,16 @@ function PersonaCompareMatrix({
 	highlight,
 	onHighlight,
 }: {
-	personas: (typeof provisional)[]
-	highlight: string | null
-	onHighlight: (k: string | null) => void
+	personas: (typeof provisional)[];
+	highlight: string | null;
+	onHighlight: (k: string | null) => void;
 }) {
 	// columns = personas; rows = attributes (Goals, Top Pains, Differentiators)
 	const rows: { title: string; getter: (p: typeof provisional) => string[] }[] = [
 		{ title: "Goals", getter: (p) => p.goals },
 		{ title: "Top Pains", getter: (p) => p.pains.map((x) => x.label) },
 		{ title: "Differentiators", getter: (p) => p.differentiators },
-	]
+	];
 	return (
 		<div className="overflow-hidden rounded-2xl border border-zinc-800">
 			<div className="grid grid-cols-1 sm:grid-cols-[180px_repeat(2,minmax(0,1fr))]">
@@ -228,7 +228,7 @@ function PersonaCompareMatrix({
 										.getter(p)
 										.slice(0, 8)
 										.map((item) => {
-											const active = highlight === item
+											const active = highlight === item;
 											return (
 												<button
 													key={item}
@@ -245,7 +245,7 @@ function PersonaCompareMatrix({
 												>
 													{item}
 												</button>
-											)
+											);
 										})}
 								</div>
 							</div>
@@ -254,7 +254,7 @@ function PersonaCompareMatrix({
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 function PersonaCardEnhanced({
@@ -263,19 +263,19 @@ function PersonaCardEnhanced({
 	highlight,
 	onHighlight,
 }: {
-	p: typeof provisional
-	variant: "provisional" | "contrast"
-	highlight: string | null
-	onHighlight: (k: string | null) => void
+	p: typeof provisional;
+	variant: "provisional" | "contrast";
+	highlight: string | null;
+	onHighlight: (k: string | null) => void;
 }) {
 	const ring =
 		p.confidence === "High"
 			? "ring-emerald-400"
 			: p.confidence === "Medium"
 				? "ring-sky-400"
-				: "ring-zinc-600 ring-dashed"
+				: "ring-zinc-600 ring-dashed";
 
-	const isContrast = variant === "contrast"
+	const isContrast = variant === "contrast";
 
 	return (
 		<motion.div
@@ -350,7 +350,7 @@ function PersonaCardEnhanced({
 				</div>
 			)}
 		</motion.div>
-	)
+	);
 }
 
 function AttrGroup({
@@ -360,11 +360,11 @@ function AttrGroup({
 	highlight,
 	onHighlight,
 }: {
-	icon: React.ReactNode
-	title: string
-	items: string[]
-	highlight: string | null
-	onHighlight: (k: string | null) => void
+	icon: React.ReactNode;
+	title: string;
+	items: string[];
+	highlight: string | null;
+	onHighlight: (k: string | null) => void;
 }) {
 	return (
 		<div>
@@ -373,7 +373,7 @@ function AttrGroup({
 			</div>
 			<div className="mt-2 flex flex-wrap gap-1.5">
 				{items.slice(0, 6).map((g) => {
-					const active = highlight === g
+					const active = highlight === g;
 					return (
 						<button
 							key={g}
@@ -388,11 +388,11 @@ function AttrGroup({
 						>
 							{g}
 						</button>
-					)
+					);
 				})}
 			</div>
 		</div>
-	)
+	);
 }
 
 function SpectrumStrip({
@@ -402,11 +402,11 @@ function SpectrumStrip({
 	provisionalValue,
 	contrastValue,
 }: {
-	axis: string
-	leftLabel: string
-	rightLabel: string
-	provisionalValue: number // 0..100
-	contrastValue: number // 0..100
+	axis: string;
+	leftLabel: string;
+	rightLabel: string;
+	provisionalValue: number; // 0..100
+	contrastValue: number; // 0..100
 }) {
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
@@ -440,7 +440,7 @@ function SpectrumStrip({
 				</span>
 			</div>
 		</div>
-	)
+	);
 }
 
 // Alternate to diagonal labels: dot plot (better on mobile)
@@ -450,18 +450,18 @@ function PainDotPlot({
 	highlight,
 	onHighlight,
 }: {
-	dataLeft: { label: string; count: number }[]
-	dataRight: { label: string; count: number }[]
-	highlight: string | null
-	onHighlight: (k: string | null) => void
+	dataLeft: { label: string; count: number }[];
+	dataRight: { label: string; count: number }[];
+	highlight: string | null;
+	onHighlight: (k: string | null) => void;
 }) {
 	// unify labels
-	const labels = Array.from(new Set([...dataLeft.map((d) => d.label), ...dataRight.map((d) => d.label)]))
+	const labels = Array.from(new Set([...dataLeft.map((d) => d.label), ...dataRight.map((d) => d.label)]));
 	const rows = labels.map((label) => ({
 		label,
 		left: dataLeft.find((d) => d.label === label)?.count ?? 0,
 		right: dataRight.find((d) => d.label === label)?.count ?? 0,
-	}))
+	}));
 
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
@@ -471,7 +471,7 @@ function PainDotPlot({
 			<div className="max-h-72 overflow-auto pr-2">
 				<ul className="divide-y divide-zinc-800">
 					{rows.map((r) => {
-						const active = highlight === r.label
+						const active = highlight === r.label;
 						return (
 							<li key={r.label} className={`flex items-center gap-3 py-2 ${active ? "bg-indigo-500/5" : ""}`}>
 								<button
@@ -504,7 +504,7 @@ function PainDotPlot({
 									{r.left}/{r.right}
 								</div>
 							</li>
-						)
+						);
 					})}
 				</ul>
 			</div>
@@ -517,11 +517,11 @@ function PainDotPlot({
 				</span>
 			</div>
 		</div>
-	)
+	);
 }
 
 function DifferentiatorRadar() {
-	const data = radarDims.map((d) => ({ subject: d.key, Provisional: d.prov, Contrast: d.cont }))
+	const data = radarDims.map((d) => ({ subject: d.key, Provisional: d.prov, Contrast: d.cont }));
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
 			<div className="mb-2 flex items-center gap-2 font-medium text-sm text-zinc-300">
@@ -540,11 +540,11 @@ function DifferentiatorRadar() {
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 function _ConfidenceTimelineChart() {
-	const mapVal = (v: number) => ({ 1: "Low", 2: "Medium", 3: "High" })[v]
+	const mapVal = (v: number) => ({ 1: "Low", 2: "Medium", 3: "High" })[v];
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
 			<div className="mb-2 flex items-center gap-2 font-medium text-sm text-zinc-300">
@@ -567,7 +567,7 @@ function _ConfidenceTimelineChart() {
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 function ChangeLogPanel() {
@@ -585,29 +585,29 @@ function ChangeLogPanel() {
 				))}
 			</ul>
 		</div>
-	)
+	);
 }
 
 // -----------------------------
 // Page
 // -----------------------------
 export default function PersonasShowcase({ params }) {
-	const loaderData = useLoaderData<typeof loader>()
-	const { personas } = loaderData
-	const projectId = params.projectId
+	const loaderData = useLoaderData<typeof loader>();
+	const { personas } = loaderData;
+	const projectId = params.projectId;
 	// Use demo data for display, but we'll use the project context for RadialSpectrumFromSupabase
-	const [left, right] = [provisional, contrast]
-	const [leftPole, rightPole] = ["Autonomy", "Guidance"]
+	const [left, right] = [provisional, contrast];
+	const [leftPole, rightPole] = ["Autonomy", "Guidance"];
 
 	// Extract project ID from the first persona if available
 	// const projectId = dbPersonas.length > 0 ? dbPersonas[0].project_id : null
 
 	// highlight state for cross‑component attribute hover/click
-	const [highlight, setHighlight] = React.useState<string | null>(null)
-	const toggleHighlight = (key: string | null) => setHighlight((prev) => (prev === key ? null : key))
+	const [highlight, setHighlight] = React.useState<string | null>(null);
+	const toggleHighlight = (key: string | null) => setHighlight((prev) => (prev === key ? null : key));
 
 	// view mode: "cards" | "matrix"
-	const [view, setView] = React.useState<"cards" | "matrix">("cards")
+	const [view, setView] = React.useState<"cards" | "matrix">("cards");
 
 	return (
 		<div className="min-h-dvh bg-[#0b0b0c] text-zinc-100">
@@ -697,5 +697,5 @@ export default function PersonasShowcase({ params }) {
 				<PersonaStrategicPanel {...PersonaStrategicPanelMockData} />
 			</div>
 		</div>
-	)
+	);
 }

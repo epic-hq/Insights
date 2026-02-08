@@ -1,35 +1,35 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 /**
  * Parse a full name into firstname and lastname
  * Returns { firstname, lastname } with lastname being null for single-word names
  */
 function parseFullName(fullName: string): {
-	firstname: string
-	lastname: string | null
+	firstname: string;
+	lastname: string | null;
 } {
-	const trimmed = fullName.trim()
-	if (!trimmed) return { firstname: "", lastname: null }
+	const trimmed = fullName.trim();
+	if (!trimmed) return { firstname: "", lastname: null };
 
-	const parts = trimmed.split(/\s+/)
+	const parts = trimmed.split(/\s+/);
 	if (parts.length === 1) {
-		return { firstname: parts[0], lastname: null }
+		return { firstname: parts[0], lastname: null };
 	}
 
 	// firstname is the first part, lastname is everything else joined
 	return {
 		firstname: parts[0],
 		lastname: parts.slice(1).join(" "),
-	}
+	};
 }
 
 function normalizeOrganizationName(value: string | null | undefined): string {
-	return (value ?? "").trim()
+	return (value ?? "").trim();
 }
 
 async function ensureOrganizationByName(
@@ -39,14 +39,14 @@ async function ensureOrganizationByName(
 		projectId,
 		name,
 	}: {
-		accountId: string
-		projectId: string
-		name: string
+		accountId: string;
+		projectId: string;
+		name: string;
 	}
 ): Promise<{ id: string; name: string; created: boolean }> {
-	const trimmed = normalizeOrganizationName(name)
+	const trimmed = normalizeOrganizationName(name);
 	if (!trimmed) {
-		throw new Error("Organization name is required")
+		throw new Error("Organization name is required");
 	}
 
 	const { data: existing, error: existingError } = await supabase
@@ -56,33 +56,33 @@ async function ensureOrganizationByName(
 		.eq("project_id", projectId)
 		.ilike("name", trimmed)
 		.order("updated_at", { ascending: false })
-		.limit(1)
+		.limit(1);
 
 	if (existingError) {
-		throw new Error(`Failed to find organization "${trimmed}": ${existingError.message}`)
+		throw new Error(`Failed to find organization "${trimmed}": ${existingError.message}`);
 	}
 
 	if (existing && existing.length > 0) {
-		return { id: existing[0].id, name: existing[0].name, created: false }
+		return { id: existing[0].id, name: existing[0].name, created: false };
 	}
 
 	const insertPayload: Database["public"]["Tables"]["organizations"]["Insert"] = {
 		account_id: accountId,
 		project_id: projectId,
 		name: trimmed,
-	}
+	};
 
 	const { data: inserted, error: insertError } = await supabase
 		.from("organizations")
 		.insert(insertPayload)
 		.select("id, name")
-		.single()
+		.single();
 
 	if (insertError || !inserted) {
-		throw new Error(`Failed to create organization "${trimmed}": ${insertError?.message ?? "unknown error"}`)
+		throw new Error(`Failed to create organization "${trimmed}": ${insertError?.message ?? "unknown error"}`);
 	}
 
-	return { id: inserted.id, name: inserted.name, created: true }
+	return { id: inserted.id, name: inserted.name, created: true };
 }
 
 async function upsertPersonOrganizationLink(
@@ -95,12 +95,12 @@ async function upsertPersonOrganizationLink(
 		role,
 		isPrimary,
 	}: {
-		accountId: string
-		projectId: string
-		personId: string
-		organizationId: string
-		role?: string | null
-		isPrimary: boolean
+		accountId: string;
+		projectId: string;
+		personId: string;
+		organizationId: string;
+		role?: string | null;
+		isPrimary: boolean;
 	}
 ) {
 	const payload: Database["public"]["Tables"]["people_organizations"]["Insert"] = {
@@ -112,14 +112,14 @@ async function upsertPersonOrganizationLink(
 		is_primary: isPrimary,
 		relationship_status: null,
 		notes: null,
-	}
+	};
 
 	const { error } = await supabase
 		.from("people_organizations")
-		.upsert(payload, { onConflict: "person_id,organization_id" })
+		.upsert(payload, { onConflict: "person_id,organization_id" });
 
 	if (error) {
-		throw new Error(`Failed to link person to organization: ${error.message}`)
+		throw new Error(`Failed to link person to organization: ${error.message}`);
 	}
 }
 
@@ -173,9 +173,9 @@ export const upsertPersonTool = createTool({
 			.nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
 		const {
 			personId,
@@ -198,64 +198,64 @@ export const upsertPersonTool = createTool({
 			lifecycleStage,
 			whereMet,
 			whenMet,
-		} = input || {}
+		} = input || {};
 
-		const projectId = (runtimeProjectId as string) || null
-		const accountId = (runtimeAccountId as string) || null
+		const projectId = (runtimeProjectId as string) || null;
+		const accountId = (runtimeAccountId as string) || null;
 
 		consola.debug("upsert-person: execute start", {
 			personId,
 			projectId,
 			accountId,
 			hasName: !!name,
-		})
+		});
 
 		if (!accountId || !projectId) {
 			return {
 				success: false,
 				message: "Missing accountId or projectId in runtime context",
 				person: null,
-			}
+			};
 		}
 
 		try {
 			// Build the update object with only provided fields
-			const updateData: Record<string, string | null> = {}
+			const updateData: Record<string, string | null> = {};
 
 			if (name !== undefined) {
-				const { firstname, lastname } = parseFullName(name)
-				updateData.firstname = firstname || null
-				updateData.lastname = lastname || null
+				const { firstname, lastname } = parseFullName(name);
+				updateData.firstname = firstname || null;
+				updateData.lastname = lastname || null;
 			}
-			if (title !== undefined) updateData.title = title
-			if (jobFunction !== undefined) updateData.job_function = jobFunction
-			if (seniorityLevel !== undefined) updateData.seniority_level = seniorityLevel
-			if (role !== undefined) updateData.role = role
+			if (title !== undefined) updateData.title = title;
+			if (jobFunction !== undefined) updateData.job_function = jobFunction;
+			if (seniorityLevel !== undefined) updateData.seniority_level = seniorityLevel;
+			if (role !== undefined) updateData.role = role;
 			if (company !== undefined) {
-				const normalized_company = normalizeOrganizationName(company)
-				updateData.company = normalized_company ? normalized_company : null
+				const normalized_company = normalizeOrganizationName(company);
+				updateData.company = normalized_company ? normalized_company : null;
 			}
-			if (description !== undefined) updateData.description = description
-			if (primaryEmail !== undefined) updateData.primary_email = primaryEmail
-			if (primaryPhone !== undefined) updateData.primary_phone = primaryPhone
-			if (location !== undefined) updateData.location = location
-			if (linkedinUrl !== undefined) updateData.linkedin_url = linkedinUrl
-			if (websiteUrl !== undefined) updateData.website_url = websiteUrl
-			if (segment !== undefined) updateData.segment = segment
-			if (industry !== undefined) updateData.industry = industry
-			if (timezone !== undefined) updateData.timezone = timezone
-			if (pronouns !== undefined) updateData.pronouns = pronouns
-			if (lifecycleStage !== undefined) updateData.lifecycle_stage = lifecycleStage
-			if (whereMet !== undefined) updateData.where_met = whereMet
+			if (description !== undefined) updateData.description = description;
+			if (primaryEmail !== undefined) updateData.primary_email = primaryEmail;
+			if (primaryPhone !== undefined) updateData.primary_phone = primaryPhone;
+			if (location !== undefined) updateData.location = location;
+			if (linkedinUrl !== undefined) updateData.linkedin_url = linkedinUrl;
+			if (websiteUrl !== undefined) updateData.website_url = websiteUrl;
+			if (segment !== undefined) updateData.segment = segment;
+			if (industry !== undefined) updateData.industry = industry;
+			if (timezone !== undefined) updateData.timezone = timezone;
+			if (pronouns !== undefined) updateData.pronouns = pronouns;
+			if (lifecycleStage !== undefined) updateData.lifecycle_stage = lifecycleStage;
+			if (whereMet !== undefined) updateData.where_met = whereMet;
 			if (whenMet !== undefined) {
 				// Try to parse the date - accept ISO strings or natural language
 				try {
-					const parsedDate = new Date(whenMet)
+					const parsedDate = new Date(whenMet);
 					if (!Number.isNaN(parsedDate.getTime())) {
-						updateData.when_met = parsedDate.toISOString()
+						updateData.when_met = parsedDate.toISOString();
 					}
 				} catch {
-					consola.warn("upsert-person: failed to parse whenMet date", whenMet)
+					consola.warn("upsert-person: failed to parse whenMet date", whenMet);
 				}
 			}
 
@@ -264,25 +264,25 @@ export const upsertPersonTool = createTool({
 					success: false,
 					message: "No person data provided to create or update",
 					person: null,
-				}
+				};
 			}
 
 			type PersonResultRow = {
-				id: string
-				name: string | null
-				title: string | null
-				company: string | null
-				primary_email: string | null
-				primary_phone: string | null
-			}
+				id: string;
+				name: string | null;
+				title: string | null;
+				company: string | null;
+				primary_email: string | null;
+				primary_phone: string | null;
+			};
 
-			let result: PersonResultRow
+			let result: PersonResultRow;
 			let organization_linked: {
-				id: string
-				name: string
-				created: boolean
-			} | null = null
-			let organization_link_error: string | null = null
+				id: string;
+				name: string;
+				created: boolean;
+			} | null = null;
+			let organization_link_error: string | null = null;
 
 			if (personId) {
 				// Update existing person
@@ -292,14 +292,14 @@ export const upsertPersonTool = createTool({
 					.eq("id", personId)
 					.eq("account_id", accountId)
 					.select("id, name, title, company, primary_email, primary_phone")
-					.single()
+					.single();
 
 				if (error) {
-					consola.error("upsert-person: error updating person", error)
-					throw error
+					consola.error("upsert-person: error updating person", error);
+					throw error;
 				}
 
-				result = data
+				result = data;
 			} else {
 				// Create new person (must have at least a name)
 				if (!name) {
@@ -307,7 +307,7 @@ export const upsertPersonTool = createTool({
 						success: false,
 						message: "Name is required when creating a new person",
 						person: null,
-					}
+					};
 				}
 
 				// Try insert first, handle unique constraint violation by finding and updating existing
@@ -315,54 +315,54 @@ export const upsertPersonTool = createTool({
 					...updateData,
 					account_id: accountId,
 					project_id: projectId,
-				}
+				};
 
 				const { data: insertedData, error: insertError } = await supabase
 					.from("people")
 					.insert(insertPayload)
 					.select("id, name, title, company, primary_email, primary_phone")
-					.single()
+					.single();
 
 				if (insertError) {
 					// Check if it's a unique constraint violation (duplicate person)
 					if (insertError.code === "23505") {
-						consola.debug("upsert-person: duplicate detected, finding existing person")
+						consola.debug("upsert-person: duplicate detected, finding existing person");
 
 						// Find the existing person by name_hash (generated column), company, and email
-						const { firstname, lastname } = parseFullName(name)
-						const nameHash = `${firstname ?? ""} ${lastname ?? ""}`.toLowerCase().trim()
-						const normalizedCompany = normalizeOrganizationName(company)?.toLowerCase() || null
-						const normalizedEmail = primaryEmail?.toLowerCase() || null
+						const { firstname, lastname } = parseFullName(name);
+						const nameHash = `${firstname ?? ""} ${lastname ?? ""}`.toLowerCase().trim();
+						const normalizedCompany = normalizeOrganizationName(company)?.toLowerCase() || null;
+						const normalizedEmail = primaryEmail?.toLowerCase() || null;
 
 						// Build query to find existing person
 						let findQuery = supabase
 							.from("people")
 							.select("id, name, title, company, primary_email, primary_phone")
 							.eq("account_id", accountId)
-							.ilike("name", `${firstname ?? ""}%${lastname ?? ""}%`.trim())
+							.ilike("name", `${firstname ?? ""}%${lastname ?? ""}%`.trim());
 
 						if (normalizedCompany) {
-							findQuery = findQuery.ilike("company", normalizedCompany)
+							findQuery = findQuery.ilike("company", normalizedCompany);
 						} else {
-							findQuery = findQuery.is("company", null)
+							findQuery = findQuery.is("company", null);
 						}
 
 						if (normalizedEmail) {
-							findQuery = findQuery.ilike("primary_email", normalizedEmail)
+							findQuery = findQuery.ilike("primary_email", normalizedEmail);
 						}
 
-						const { data: existingPeople, error: findError } = await findQuery.limit(1)
+						const { data: existingPeople, error: findError } = await findQuery.limit(1);
 
 						if (findError || !existingPeople || existingPeople.length === 0) {
-							consola.error("upsert-person: could not find duplicate person to update", findError)
+							consola.error("upsert-person: could not find duplicate person to update", findError);
 							return {
 								success: false,
 								message: `Person with this name${normalizedCompany ? ` at ${company}` : ""}${normalizedEmail ? ` (${primaryEmail})` : ""} already exists but could not be found for update`,
 								person: null,
-							}
+							};
 						}
 
-						const existingPerson = existingPeople[0]
+						const existingPerson = existingPeople[0];
 
 						// Update the existing person
 						const { data: updatedData, error: updateError } = await supabase
@@ -371,29 +371,29 @@ export const upsertPersonTool = createTool({
 							.eq("id", existingPerson.id)
 							.eq("account_id", accountId)
 							.select("id, name, title, company, primary_email, primary_phone")
-							.single()
+							.single();
 
 						if (updateError) {
-							consola.error("upsert-person: error updating existing person", updateError)
+							consola.error("upsert-person: error updating existing person", updateError);
 							return {
 								success: false,
 								message: `Failed to update existing person: ${updateError.message}`,
 								person: null,
-							}
+							};
 						}
 
-						result = updatedData
+						result = updatedData;
 					} else {
 						// Some other error
-						consola.error("upsert-person: error creating person", insertError)
+						consola.error("upsert-person: error creating person", insertError);
 						return {
 							success: false,
 							message: `Failed to create person: ${insertError.message}`,
 							person: null,
-						}
+						};
 					}
 				} else {
-					result = insertedData
+					result = insertedData;
 				}
 
 				// Link person to project via project_people junction table
@@ -402,16 +402,16 @@ export const upsertPersonTool = createTool({
 					.upsert(
 						{ project_id: projectId, person_id: result.id },
 						{ onConflict: "project_id,person_id", ignoreDuplicates: true }
-					)
+					);
 
 				if (linkError) {
-					consola.warn("upsert-person: error linking person to project", linkError)
+					consola.warn("upsert-person: error linking person to project", linkError);
 					// Don't fail the whole operation if linking fails
 				}
 			}
 
 			if (company !== undefined) {
-				const normalized_company = normalizeOrganizationName(company)
+				const normalized_company = normalizeOrganizationName(company);
 				if (!normalized_company) {
 					try {
 						const { error: clearError } = await supabase
@@ -419,14 +419,14 @@ export const upsertPersonTool = createTool({
 							.update({ default_organization_id: null })
 							.eq("id", result.id)
 							.eq("account_id", accountId)
-							.eq("project_id", projectId)
+							.eq("project_id", projectId);
 
 						if (clearError) {
-							throw clearError
+							throw clearError;
 						}
 					} catch (error) {
-						organization_link_error = error instanceof Error ? error.message : "Failed to clear organization link"
-						consola.warn("upsert-person: failed to clear default organization", error)
+						organization_link_error = error instanceof Error ? error.message : "Failed to clear organization link";
+						consola.warn("upsert-person: failed to clear default organization", error);
 					}
 				} else {
 					try {
@@ -434,7 +434,7 @@ export const upsertPersonTool = createTool({
 							accountId,
 							projectId,
 							name: normalized_company,
-						})
+						});
 
 						await upsertPersonOrganizationLink(supabase, {
 							accountId,
@@ -443,34 +443,34 @@ export const upsertPersonTool = createTool({
 							organizationId: organization_linked.id,
 							role: (role ?? title ?? null) as string | null,
 							isPrimary: true,
-						})
+						});
 
 						const { error: defaultOrgError } = await supabase
 							.from("people")
 							.update({ default_organization_id: organization_linked.id })
 							.eq("id", result.id)
 							.eq("account_id", accountId)
-							.eq("project_id", projectId)
+							.eq("project_id", projectId);
 
 						if (defaultOrgError) {
-							throw defaultOrgError
+							throw defaultOrgError;
 						}
 					} catch (error) {
-						organization_link_error = error instanceof Error ? error.message : "Failed to link organization"
-						consola.warn("upsert-person: failed to ensure/link organization", error)
+						organization_link_error = error instanceof Error ? error.message : "Failed to link organization";
+						consola.warn("upsert-person: failed to ensure/link organization", error);
 					}
 				}
 			}
 
 			const base_message = personId
 				? `Successfully updated ${result.name || "person"}`
-				: `Successfully created ${result.name || "new person"}`
+				: `Successfully created ${result.name || "new person"}`;
 
 			const org_message = organization_linked
 				? ` Linked to organization "${organization_linked.name}"${organization_linked.created ? " (created)" : ""}.`
 				: organization_link_error
 					? ` Note: organization link failed (${organization_link_error}).`
-					: ""
+					: "";
 
 			return {
 				success: true,
@@ -483,14 +483,14 @@ export const upsertPersonTool = createTool({
 					primaryEmail: result.primary_email,
 					primaryPhone: result.primary_phone,
 				},
-			}
+			};
 		} catch (error) {
-			consola.error("upsert-person: unexpected error", error)
+			consola.error("upsert-person: unexpected error", error);
 			return {
 				success: false,
 				message: "Failed to create or update person",
 				person: null,
-			}
+			};
 		}
 	},
-})
+});

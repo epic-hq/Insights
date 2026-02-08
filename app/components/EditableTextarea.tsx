@@ -1,14 +1,14 @@
-import { useState } from "react"
-import { useFetcher } from "react-router-dom"
+import { useState } from "react";
+import { useFetcher } from "react-router-dom";
 
 interface EditableTextareaProps {
-	table: string
-	id: string
-	field: string
-	initialValue: string | string[] | null
-	label: string
-	isArray?: boolean // when true, join/split by newlines
-	className?: string
+	table: string;
+	id: string;
+	field: string;
+	initialValue: string | string[] | null;
+	label: string;
+	isArray?: boolean; // when true, join/split by newlines
+	className?: string;
 }
 
 /**
@@ -24,10 +24,10 @@ export default function EditableTextarea({
 	isArray = false,
 	className = "",
 }: EditableTextareaProps) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 	const [value, setValue] = useState<string>(
 		Array.isArray(initialValue) ? (initialValue as string[]).join("\n") : ((initialValue ?? "") as string)
-	)
+	);
 
 	return (
 		<div className={className}>
@@ -43,16 +43,16 @@ export default function EditableTextarea({
 						id,
 						field,
 						value: isArray ? value.split(/\n+/).filter(Boolean) : value,
-					}
+					};
 					fetcher.submit(JSON.stringify(payload), {
 						method: "post",
 						encType: "application/json",
 						action: "/api/update-field",
-					})
+					});
 				}}
 			/>
 			{fetcher.state === "submitting" && <p className="text-gray-500 text-xs">Saving…</p>}
 			{fetcher.state === "idle" && fetcher.data?.error && <p className="text-red-600 text-xs">{fetcher.data.error}</p>}
 		</div>
-	)
+	);
 }

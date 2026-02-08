@@ -1,6 +1,6 @@
-import { Book, Briefcase, Compass, Layers3, Lightbulb, Package, Users, Zap } from "lucide-react"
-import { Link } from "react-router"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Book, Briefcase, Compass, Layers3, Lightbulb, Package, Users, Zap } from "lucide-react";
+import { Link } from "react-router";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function DocsIndex() {
 	return (
@@ -208,5 +208,5 @@ export default function DocsIndex() {
 				<p>Need help? Contact support or check our community forum for answers.</p>
 			</div>
 		</div>
-	)
+	);
 }

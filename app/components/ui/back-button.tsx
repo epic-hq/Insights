@@ -1,7 +1,7 @@
-import { Button } from "./button"
+import { Button } from "./button";
 
 interface BackButtonProps {
-	className?: string
+	className?: string;
 }
 
 export function BackButton({ className = "" }: BackButtonProps) {
@@ -17,5 +17,5 @@ export function BackButton({ className = "" }: BackButtonProps) {
 			</svg>
 			Back
 		</Button>
-	)
+	);
 }

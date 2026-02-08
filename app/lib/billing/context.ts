@@ -13,13 +13,13 @@
  */
 export interface BillingContext {
 	/** Account to bill (required) */
-	accountId: string
+	accountId: string;
 	/** User who triggered the action (null for system/background tasks) */
-	userId: string | null
+	userId: string | null;
 	/** Project context if applicable */
-	projectId?: string
+	projectId?: string;
 	/** Feature source for categorization (e.g., 'interview_analysis') */
-	featureSource: FeatureSource
+	featureSource: FeatureSource;
 }
 
 /**
@@ -63,19 +63,19 @@ export const FEATURE_SOURCES = [
 	"auto_insights",
 	"voice_chat",
 	"contextual_suggestions",
-] as const
+] as const;
 
-export type FeatureSource = (typeof FEATURE_SOURCES)[number]
+export type FeatureSource = (typeof FEATURE_SOURCES)[number];
 
 /**
  * Validate that a billing context is complete
  */
 export function validateBillingContext(ctx: BillingContext): void {
 	if (!ctx.accountId) {
-		throw new Error("BillingContext.accountId is required")
+		throw new Error("BillingContext.accountId is required");
 	}
 	if (!ctx.featureSource) {
-		throw new Error("BillingContext.featureSource is required")
+		throw new Error("BillingContext.featureSource is required");
 	}
 }
 
@@ -93,7 +93,7 @@ export function systemBillingContext(
 		userId: null,
 		projectId,
 		featureSource,
-	}
+	};
 }
 
 /**
@@ -101,15 +101,15 @@ export function systemBillingContext(
  * Use this in API routes and user-triggered actions.
  */
 export function userBillingContext(params: {
-	accountId: string
-	userId: string
-	featureSource: FeatureSource
-	projectId?: string
+	accountId: string;
+	userId: string;
+	featureSource: FeatureSource;
+	projectId?: string;
 }): BillingContext {
 	return {
 		accountId: params.accountId,
 		userId: params.userId,
 		projectId: params.projectId,
 		featureSource: params.featureSource,
-	}
+	};
 }

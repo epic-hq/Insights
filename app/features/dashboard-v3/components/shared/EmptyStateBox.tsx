@@ -5,26 +5,26 @@
  * Uses dashed border and muted styling to indicate placeholder state.
  */
 
-import type { LucideIcon } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import type { LucideIcon } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 export interface EmptyStateBoxProps {
 	/** Icon to display */
-	icon: LucideIcon
+	icon: LucideIcon;
 	/** Section title */
-	title: string
+	title: string;
 	/** Message explaining what action will populate this section */
-	message: string
+	message: string;
 	/** Optional CTA button text */
-	ctaText?: string
+	ctaText?: string;
 	/** Optional CTA button href */
-	ctaHref?: string
+	ctaHref?: string;
 	/** Visual variant */
-	variant?: "default" | "subtle" | "highlighted"
+	variant?: "default" | "subtle" | "highlighted";
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function EmptyStateBox({
@@ -40,7 +40,7 @@ export function EmptyStateBox({
 		default: "border-2 border-dashed border-muted-foreground/20 bg-muted/30",
 		subtle: "border border-dashed border-muted-foreground/10 bg-muted/20",
 		highlighted: "border-2 border-dashed border-primary/30 bg-primary/5",
-	}
+	};
 
 	return (
 		<div
@@ -64,7 +64,7 @@ export function EmptyStateBox({
 				</Button>
 			)}
 		</div>
-	)
+	);
 }
 
-export default EmptyStateBox
+export default EmptyStateBox;

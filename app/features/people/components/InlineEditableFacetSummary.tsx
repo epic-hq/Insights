@@ -1,14 +1,14 @@
-import { Edit2 } from "lucide-react"
-import { useState } from "react"
-import { useFetcher, useParams } from "react-router-dom"
-import { cn } from "~/lib/utils"
+import { Edit2 } from "lucide-react";
+import { useState } from "react";
+import { useFetcher, useParams } from "react-router-dom";
+import { cn } from "~/lib/utils";
 
 interface InlineEditableFacetSummaryProps {
-	value: string | null
-	personId: string
-	kindSlug: string
-	placeholder?: string
-	className?: string
+	value: string | null;
+	personId: string;
+	kindSlug: string;
+	placeholder?: string;
+	className?: string;
 }
 
 export function InlineEditableFacetSummary({
@@ -18,10 +18,10 @@ export function InlineEditableFacetSummary({
 	placeholder = "Click to edit summary",
 	className,
 }: InlineEditableFacetSummaryProps) {
-	const [isEditing, setIsEditing] = useState(false)
-	const [currentValue, setCurrentValue] = useState(value || "")
-	const fetcher = useFetcher()
-	const params = useParams()
+	const [isEditing, setIsEditing] = useState(false);
+	const [currentValue, setCurrentValue] = useState(value || "");
+	const fetcher = useFetcher();
+	const params = useParams();
 
 	const handleSave = () => {
 		if (currentValue !== value) {
@@ -38,22 +38,22 @@ export function InlineEditableFacetSummary({
 					action: "/api/update-person-facet-summary",
 					encType: "application/json",
 				}
-			)
+			);
 		}
-		setIsEditing(false)
-	}
+		setIsEditing(false);
+	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Escape") {
-			setCurrentValue(value || "")
-			setIsEditing(false)
+			setCurrentValue(value || "");
+			setIsEditing(false);
 		}
 		// Allow Enter with Shift for new lines, but not Enter alone
 		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault()
-			handleSave()
+			e.preventDefault();
+			handleSave();
 		}
-	}
+	};
 
 	if (isEditing) {
 		return (
@@ -69,7 +69,7 @@ export function InlineEditableFacetSummary({
 					className
 				)}
 			/>
-		)
+		);
 	}
 
 	return (
@@ -84,5 +84,5 @@ export function InlineEditableFacetSummary({
 			{currentValue || placeholder}
 			<Edit2 className="absolute top-1 right-1 h-3 w-3 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
 		</div>
-	)
+	);
 }

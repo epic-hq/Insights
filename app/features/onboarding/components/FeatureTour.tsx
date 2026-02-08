@@ -5,20 +5,20 @@
  * Uses touch gestures for navigation on mobile.
  */
 
-import { AnimatePresence, motion } from "framer-motion"
-import { ChevronLeft, ChevronRight, FileAudio, Glasses, Mic, Sparkles } from "lucide-react"
-import { useCallback, useState } from "react"
-import { useNavigate } from "react-router"
-import { Logo } from "~/components/branding"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronLeft, ChevronRight, FileAudio, Glasses, Mic, Sparkles } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useNavigate } from "react-router";
+import { Logo } from "~/components/branding";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 interface TourSlide {
-	id: string
-	icon: React.ReactNode
-	title: string
-	description: string
-	gradient: string
+	id: string;
+	icon: React.ReactNode;
+	title: string;
+	description: string;
+	gradient: string;
 }
 
 const tourSlides: TourSlide[] = [
@@ -59,48 +59,48 @@ const tourSlides: TourSlide[] = [
 		description: "Sales, Research & Product frameworks built in",
 		gradient: "from-green-500/20 to-emerald-500/20",
 	},
-]
+];
 
 interface FeatureTourProps {
 	/** Callback when tour is completed */
-	onComplete: () => void
+	onComplete: () => void;
 	/** Callback when user skips the tour */
-	onSkip?: () => void
+	onSkip?: () => void;
 	/** Whether to show skip button */
-	showSkip?: boolean
+	showSkip?: boolean;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function FeatureTour({ onComplete, onSkip, showSkip = true, className }: FeatureTourProps) {
-	const [currentIndex, setCurrentIndex] = useState(0)
-	const [direction, setDirection] = useState(0)
+	const [currentIndex, setCurrentIndex] = useState(0);
+	const [direction, setDirection] = useState(0);
 
-	const isLastSlide = currentIndex === tourSlides.length - 1
-	const isFirstSlide = currentIndex === 0
+	const isLastSlide = currentIndex === tourSlides.length - 1;
+	const isFirstSlide = currentIndex === 0;
 
 	const goToNext = useCallback(() => {
 		if (isLastSlide) {
-			onComplete()
+			onComplete();
 		} else {
-			setDirection(1)
-			setCurrentIndex((prev) => prev + 1)
+			setDirection(1);
+			setCurrentIndex((prev) => prev + 1);
 		}
-	}, [isLastSlide, onComplete])
+	}, [isLastSlide, onComplete]);
 
 	const goToPrevious = useCallback(() => {
 		if (!isFirstSlide) {
-			setDirection(-1)
-			setCurrentIndex((prev) => prev - 1)
+			setDirection(-1);
+			setCurrentIndex((prev) => prev - 1);
 		}
-	}, [isFirstSlide])
+	}, [isFirstSlide]);
 
 	const handleSkip = useCallback(() => {
-		onSkip?.()
-		onComplete()
-	}, [onSkip, onComplete])
+		onSkip?.();
+		onComplete();
+	}, [onSkip, onComplete]);
 
-	const currentSlide = tourSlides[currentIndex]
+	const currentSlide = tourSlides[currentIndex];
 
 	const slideVariants = {
 		enter: (direction: number) => ({
@@ -115,7 +115,7 @@ export function FeatureTour({ onComplete, onSkip, showSkip = true, className }: 
 			x: direction > 0 ? -300 : 300,
 			opacity: 0,
 		}),
-	}
+	};
 
 	return (
 		<div className={cn("flex min-h-screen flex-col bg-background", className)}>
@@ -163,8 +163,8 @@ export function FeatureTour({ onComplete, onSkip, showSkip = true, className }: 
 							key={slide.id}
 							type="button"
 							onClick={() => {
-								setDirection(index > currentIndex ? 1 : -1)
-								setCurrentIndex(index)
+								setDirection(index > currentIndex ? 1 : -1);
+								setCurrentIndex(index);
 							}}
 							className={cn(
 								"h-2 rounded-full transition-all",
@@ -201,7 +201,7 @@ export function FeatureTour({ onComplete, onSkip, showSkip = true, className }: 
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
 
 /**
@@ -212,11 +212,11 @@ export function SplashScreen({
 	showLogin = true,
 	loginHref = "/login",
 }: {
-	onContinue: () => void
-	showLogin?: boolean
-	loginHref?: string
+	onContinue: () => void;
+	showLogin?: boolean;
+	loginHref?: string;
 }) {
-	const navigate = useNavigate()
+	const navigate = useNavigate();
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 px-6">
@@ -245,7 +245,7 @@ export function SplashScreen({
 				</button>
 			)}
 		</div>
-	)
+	);
 }
 
-export default FeatureTour
+export default FeatureTour;

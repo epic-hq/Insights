@@ -1,6 +1,6 @@
 interface ObservationsNotesProps {
-	notes: string
-	className?: string
+	notes: string;
+	className?: string;
 }
 
 export default function ObservationsNotes({ notes, className }: ObservationsNotesProps) {
@@ -9,5 +9,5 @@ export default function ObservationsNotes({ notes, className }: ObservationsNote
 			<h3 className="mb-2 font-semibold text-lg">Observations & Contextual Notes</h3>
 			<p className="whitespace-pre-line text-sm">{notes}</p>
 		</div>
-	)
+	);
 }

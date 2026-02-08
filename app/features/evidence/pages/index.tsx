@@ -1,32 +1,32 @@
-import consola from "consola"
-import { Grid3X3, List } from "lucide-react"
-import { useEffect, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom"
-import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import type { Evidence } from "~/types"
-import { regenerateEvidenceForProject } from "~/utils/regenerateEvidence.server"
-import EvidenceCard from "../components/EvidenceCard"
+import consola from "consola";
+import { Grid3X3, List } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom";
+import { BackButton } from "~/components/ui/back-button";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import type { Evidence } from "~/types";
+import { regenerateEvidenceForProject } from "~/utils/regenerateEvidence.server";
+import EvidenceCard from "../components/EvidenceCard";
 
 type EvidenceListPerson = {
-	id: string
-	name: string | null
-	role: string | null
-	personas: Array<{ id: string; name: string }>
-}
+	id: string;
+	name: string | null;
+	role: string | null;
+	personas: Array<{ id: string; name: string }>;
+};
 
 type EvidenceFacetSummary = {
-	kind_slug: string
-	label: string
-	facet_account_id: number
-	person: { id: string; name: string | null } | null
-}
+	kind_slug: string;
+	label: string;
+	facet_account_id: number;
+	person: { id: string; name: string | null } | null;
+};
 
 type EvidenceListItem = (Pick<
 	Evidence,
@@ -43,75 +43,75 @@ type EvidenceListItem = (Pick<
 	| "anchors"
 	| "interview_id"
 > & {
-	context_summary?: string | null
+	context_summary?: string | null;
 	interview?: {
-		id: string
-		title: string | null
-		media_url: string | null
-		duration_sec: number | null
-	} | null
+		id: string;
+		title: string | null;
+		media_url: string | null;
+		duration_sec: number | null;
+	} | null;
 }) & {
-	people: EvidenceListPerson[]
-	facets: EvidenceFacetSummary[]
-}
+	people: EvidenceListPerson[];
+	facets: EvidenceFacetSummary[];
+};
 
-type EvidenceRow = Omit<EvidenceListItem, "people" | "facets">
+type EvidenceRow = Omit<EvidenceListItem, "people" | "facets">;
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
 	if (request.method.toUpperCase() !== "POST") {
-		return { ok: false, error: "Unsupported method" }
+		return { ok: false, error: "Unsupported method" };
 	}
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 	if (formData.get("intent") !== "regenerate") {
-		return { ok: false }
+		return { ok: false };
 	}
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 	if (!accountId || !projectId) {
-		throw new Response("Missing account or project context", { status: 400 })
+		throw new Response("Missing account or project context", { status: 400 });
 	}
 
-	const { supabase } = context.get(userContext)
-	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
+	const { supabase } = context.get(userContext);
+	if (!supabase) throw new Response("Supabase client not available", { status: 500 });
 
 	const result = await regenerateEvidenceForProject({
 		supabase,
 		accountId,
 		projectId,
 		userId: undefined,
-	})
+	});
 
-	return { ok: true, ...result }
+	return { ok: true, ...result };
 }
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
-	const { supabase } = context.get(userContext)
-	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
-	const projectId = params.projectId
-	if (!projectId) throw new Response("Missing projectId", { status: 400 })
+	const { supabase } = context.get(userContext);
+	if (!supabase) throw new Response("Supabase client not available", { status: 500 });
+	const projectId = params.projectId;
+	if (!projectId) throw new Response("Missing projectId", { status: 400 });
 
 	// Check for research question filter
-	const url = new URL(request.url)
-	const rqId = url.searchParams.get("rq_id")
-	const themeId = url.searchParams.get("theme_id")
-	const filterInterviewId = url.searchParams.get("interview_id") || undefined
+	const url = new URL(request.url);
+	const rqId = url.searchParams.get("rq_id");
+	const themeId = url.searchParams.get("theme_id");
+	const filterInterviewId = url.searchParams.get("interview_id") || undefined;
 
 	// Sort and filter params
-	const sortBy = url.searchParams.get("sort_by") || "created_at"
-	const sortDir = (url.searchParams.get("sort_dir") || "desc").toLowerCase() === "asc" ? "asc" : "desc"
-	const filterSupport = url.searchParams.get("support")
-	const filterConfidence = url.searchParams.get("confidence")
-	const filterMethod = url.searchParams.get("method")
-	const filterPersonId = url.searchParams.get("person_id") || undefined
-	const filterPersonNameParam = url.searchParams.get("person_name") || undefined
+	const sortBy = url.searchParams.get("sort_by") || "created_at";
+	const sortDir = (url.searchParams.get("sort_dir") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
+	const filterSupport = url.searchParams.get("support");
+	const filterConfidence = url.searchParams.get("confidence");
+	const filterMethod = url.searchParams.get("method");
+	const filterPersonId = url.searchParams.get("person_id") || undefined;
+	const filterPersonNameParam = url.searchParams.get("person_name") || undefined;
 
 	// Check for explicit evidence ID filter (e.g., from pain matrix)
 	// Support both comma-separated (?ids=a,b,c) and array format (?ids[]=a&ids[]=b)
-	const idsParam = url.searchParams.get("ids")
-	const idsArray = url.searchParams.getAll("ids[]")
-	let evidenceIdFilter: string[] | undefined
+	const idsParam = url.searchParams.get("ids");
+	const idsArray = url.searchParams.getAll("ids[]");
+	let evidenceIdFilter: string[] | undefined;
 
 	if (idsParam) {
 		// Split by comma and deduplicate
@@ -122,14 +122,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 					.map((id) => id.trim())
 					.filter(Boolean)
 			),
-		]
-		consola.info(`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs:`, evidenceIdFilter)
+		];
+		consola.info(`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs:`, evidenceIdFilter);
 	} else if (idsArray.length > 0) {
-		evidenceIdFilter = [...new Set(idsArray.filter(Boolean))]
+		evidenceIdFilter = [...new Set(idsArray.filter(Boolean))];
 		consola.info(
 			`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs from array format:`,
 			evidenceIdFilter
-		)
+		);
 	}
 
 	// If filtering by person, get evidence IDs from evidence_people first
@@ -138,17 +138,17 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.from("evidence_people")
 			.select("evidence_id")
 			.eq("project_id", projectId)
-			.eq("person_id", filterPersonId)
+			.eq("person_id", filterPersonId);
 
-		if (peErr) throw new Error(`Failed to load evidence for person: ${peErr.message}`)
-		evidenceIdFilter = personEvidence?.map((pe) => pe.evidence_id) || []
+		if (peErr) throw new Error(`Failed to load evidence for person: ${peErr.message}`);
+		evidenceIdFilter = personEvidence?.map((pe) => pe.evidence_id) || [];
 
 		if (evidenceIdFilter.length === 0) {
 			return {
 				evidence: [],
 				filteredByPerson: filterPersonId,
 				filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: null } : null,
-			}
+			};
 		}
 	}
 
@@ -158,17 +158,17 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.from("project_answer_evidence")
 			.select("evidence_id, project_answers!inner(research_question_id)")
 			.eq("project_answers.research_question_id", rqId)
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
-		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
+		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`);
 
-		const rqEvidenceIds = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || []
+		const rqEvidenceIds = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || [];
 
 		// Intersect with person filter if both are present
 		if (evidenceIdFilter) {
-			evidenceIdFilter = evidenceIdFilter.filter((id) => rqEvidenceIds.includes(id))
+			evidenceIdFilter = evidenceIdFilter.filter((id) => rqEvidenceIds.includes(id));
 		} else {
-			evidenceIdFilter = rqEvidenceIds
+			evidenceIdFilter = rqEvidenceIds;
 		}
 
 		if (evidenceIdFilter.length === 0) {
@@ -177,7 +177,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				filteredByRQ: rqId,
 				filteredByPerson: filterPersonId,
 				filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: null } : null,
-			}
+			};
 		}
 	}
 
@@ -187,17 +187,17 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.from("theme_evidence")
 			.select("evidence_id")
 			.eq("project_id", projectId)
-			.eq("theme_id", themeId)
+			.eq("theme_id", themeId);
 
-		if (themeErr) throw new Error(`Failed to load evidence for theme: ${themeErr.message}`)
+		if (themeErr) throw new Error(`Failed to load evidence for theme: ${themeErr.message}`);
 
-		const themeEvidenceIds = themeEvidence?.map((te) => te.evidence_id).filter((id): id is string => Boolean(id)) || []
+		const themeEvidenceIds = themeEvidence?.map((te) => te.evidence_id).filter((id): id is string => Boolean(id)) || [];
 
 		// Intersect with existing filters if present
 		if (evidenceIdFilter) {
-			evidenceIdFilter = evidenceIdFilter.filter((id) => themeEvidenceIds.includes(id))
+			evidenceIdFilter = evidenceIdFilter.filter((id) => themeEvidenceIds.includes(id));
 		} else {
-			evidenceIdFilter = themeEvidenceIds
+			evidenceIdFilter = themeEvidenceIds;
 		}
 
 		if (evidenceIdFilter.length === 0) {
@@ -207,7 +207,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				filteredByRQ: rqId,
 				filteredByPerson: filterPersonId,
 				filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: null } : null,
-			}
+			};
 		}
 	}
 
@@ -236,39 +236,39 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				)
 			`
 		)
-		.eq("project_id", projectId)
+		.eq("project_id", projectId);
 
 	// Apply evidence ID filter if we have one from person or RQ filtering
 	if (evidenceIdFilter) {
-		query = query.in("id", evidenceIdFilter)
+		query = query.in("id", evidenceIdFilter);
 	}
 
 	// Apply simple filters
-	if (filterSupport) query = query.eq("support", filterSupport)
-	if (filterConfidence) query = query.eq("confidence", filterConfidence)
-	if (filterMethod) query = query.eq("method", filterMethod)
-	if (filterInterviewId) query = query.eq("interview_id", filterInterviewId)
+	if (filterSupport) query = query.eq("support", filterSupport);
+	if (filterConfidence) query = query.eq("confidence", filterConfidence);
+	if (filterMethod) query = query.eq("method", filterMethod);
+	if (filterInterviewId) query = query.eq("interview_id", filterInterviewId);
 
 	// Sorting
-	const sortable = new Set(["created_at", "confidence"]) // extendable
-	const sortField = sortable.has(sortBy) ? sortBy : "created_at"
+	const sortable = new Set(["created_at", "confidence"]); // extendable
+	const sortField = sortable.has(sortBy) ? sortBy : "created_at";
 	const { data, error } = await query.order(sortField, {
 		ascending: sortDir === "asc",
-	})
-	if (error) throw new Error(`Failed to load evidence: ${error.message}`)
-	const rows = (data ?? []) as EvidenceRow[]
+	});
+	if (error) throw new Error(`Failed to load evidence: ${error.message}`);
+	const rows = (data ?? []) as EvidenceRow[];
 
 	if (evidenceIdFilter) {
 		consola.info(
 			`[evidence/index] Query returned ${rows.length} evidence items (filtered from ${evidenceIdFilter.length} IDs)`
-		)
+		);
 	}
 
 	// Join evidence_people -> people to get person names and roles for each evidence
-	const peopleByEvidence = new Map<string, EvidenceListPerson[]>()
-	const facetsByEvidence = new Map<string, EvidenceFacetSummary[]>()
+	const peopleByEvidence = new Map<string, EvidenceListPerson[]>();
+	const facetsByEvidence = new Map<string, EvidenceFacetSummary[]>();
 	if (rows.length) {
-		const evidenceIds = rows.map((e) => e.id)
+		const evidenceIds = rows.map((e) => e.id);
 
 		const { data: facetRows, error: facetErr } = await supabase
 			.from("evidence_facet")
@@ -282,26 +282,26 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			`
 			)
 			.eq("project_id", projectId)
-			.in("evidence_id", evidenceIds)
-		if (facetErr) throw new Error(`Failed to load evidence facets: ${facetErr.message}`)
+			.in("evidence_id", evidenceIds);
+		if (facetErr) throw new Error(`Failed to load evidence facets: ${facetErr.message}`);
 
 		for (const row of (facetRows ?? []) as Array<{
-			evidence_id: string
-			kind_slug: string | null
-			label: string | null
-			facet_account_id: number | null
-			person: { id: string; name: string | null } | null
+			evidence_id: string;
+			kind_slug: string | null;
+			label: string | null;
+			facet_account_id: number | null;
+			person: { id: string; name: string | null } | null;
 		}>) {
-			if (!row.evidence_id || !row.kind_slug || !row.label) continue
-			if (!row.facet_account_id) continue
-			const list = facetsByEvidence.get(row.evidence_id) ?? []
+			if (!row.evidence_id || !row.kind_slug || !row.label) continue;
+			if (!row.facet_account_id) continue;
+			const list = facetsByEvidence.get(row.evidence_id) ?? [];
 			list.push({
 				kind_slug: row.kind_slug,
 				label: row.label,
 				facet_account_id: row.facet_account_id,
 				person: row.person,
-			})
-			facetsByEvidence.set(row.evidence_id, list)
+			});
+			facetsByEvidence.set(row.evidence_id, list);
 		}
 
 		const { data: evp, error: epErr } = await supabase
@@ -317,83 +317,83 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			`
 			)
 			.eq("project_id", projectId)
-			.in("evidence_id", evidenceIds)
-		if (epErr) throw new Error(`Failed to load evidence_people: ${epErr.message}`)
+			.in("evidence_id", evidenceIds);
+		if (epErr) throw new Error(`Failed to load evidence_people: ${epErr.message}`);
 
 		// Get all person IDs to fetch their personas
-		const personIds = new Set<string>()
+		const personIds = new Set<string>();
 		for (const row of (evp ?? []) as Array<{
-			evidence_id: string
-			role: string | null
-			people: { id: string; name: string | null } | null
+			evidence_id: string;
+			role: string | null;
+			people: { id: string; name: string | null } | null;
 		}>) {
-			if (row.people) personIds.add(row.people.id)
+			if (row.people) personIds.add(row.people.id);
 		}
 
 		// Fetch personas for all people
-		const personasByPerson = new Map<string, Array<{ id: string; name: string }>>()
+		const personasByPerson = new Map<string, Array<{ id: string; name: string }>>();
 		if (personIds.size > 0) {
 			const { data: pp, error: ppErr } = await supabase
 				.from("people_personas")
 				.select("person_id, personas:persona_id!inner(id, name)")
 				.eq("project_id", projectId)
-				.in("person_id", Array.from(personIds))
-			if (ppErr) throw new Error(`Failed to load people_personas: ${ppErr.message}`)
+				.in("person_id", Array.from(personIds));
+			if (ppErr) throw new Error(`Failed to load people_personas: ${ppErr.message}`);
 
 			for (const row of (pp ?? []) as Array<{
-				person_id: string
-				personas: { id: string; name: string } | null
+				person_id: string;
+				personas: { id: string; name: string } | null;
 			}>) {
-				if (!row.personas) continue
-				const list = personasByPerson.get(row.person_id) ?? []
-				list.push(row.personas)
-				personasByPerson.set(row.person_id, list)
+				if (!row.personas) continue;
+				const list = personasByPerson.get(row.person_id) ?? [];
+				list.push(row.personas);
+				personasByPerson.set(row.person_id, list);
 			}
 		}
 
 		// Build the final people map with personas
 		for (const row of (evp ?? []) as Array<{
-			evidence_id: string
-			role: string | null
-			people: { id: string; name: string | null } | null
+			evidence_id: string;
+			role: string | null;
+			people: { id: string; name: string | null } | null;
 		}>) {
-			if (!row.people) continue
-			const list = peopleByEvidence.get(row.evidence_id) ?? []
+			if (!row.people) continue;
+			const list = peopleByEvidence.get(row.evidence_id) ?? [];
 			list.push({
 				id: row.people.id,
 				name: row.people.name ?? null,
 				role: row.role ?? null,
 				personas: personasByPerson.get(row.people.id) ?? [],
-			})
-			peopleByEvidence.set(row.evidence_id, list)
+			});
+			peopleByEvidence.set(row.evidence_id, list);
 		}
 	}
 
-	let filteredPersonName = filterPersonNameParam ?? null
+	let filteredPersonName = filterPersonNameParam ?? null;
 	if (filterPersonId && !filteredPersonName) {
 		for (const people of peopleByEvidence.values()) {
-			const match = people.find((person) => person.id === filterPersonId)
+			const match = people.find((person) => person.id === filterPersonId);
 			if (match) {
-				filteredPersonName = match.name ?? null
-				break
+				filteredPersonName = match.name ?? null;
+				break;
 			}
 		}
 	}
 
 	const filteredRows = filterPersonId
 		? rows.filter((row) => {
-				const people = peopleByEvidence.get(row.id) ?? []
-				return people.some((person) => person.id === filterPersonId)
+				const people = peopleByEvidence.get(row.id) ?? [];
+				return people.some((person) => person.id === filterPersonId);
 			})
-		: rows
+		: rows;
 
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
 		...row,
 		people: peopleByEvidence.get(row.id) ?? [],
 		facets: facetsByEvidence.get(row.id) ?? [],
-	}))
+	}));
 
-	const filteredInterviewTitle = filterInterviewId ? (rows[0]?.interview?.title ?? null) : null
+	const filteredInterviewTitle = filterInterviewId ? (rows[0]?.interview?.title ?? null) : null;
 
 	return {
 		evidence: enriched,
@@ -401,42 +401,42 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		filteredByPerson: filterPersonId ? { id: filterPersonId, name: filteredPersonName } : null,
 		filteredByIds: idsParam ? evidenceIdFilter?.length || 0 : null,
 		filteredByInterview: filterInterviewId ? { id: filterInterviewId, title: filteredInterviewTitle } : null,
-	}
+	};
 }
 
 export default function EvidenceIndex() {
 	const { evidence, filteredByRQ, filteredByPerson, filteredByIds, filteredByInterview } =
-		useLoaderData<typeof loader>()
-	const fetcher = useFetcher<typeof action>()
-	const isRegenerating = fetcher.state !== "idle"
-	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini")
-	const [searchParams, setSearchParams] = useSearchParams()
-	const currentProject = useCurrentProject()
-	const _routes = useProjectRoutes(currentProject?.projectPath || "")
-	const listClassName = viewMode === "expanded" ? "space-y-4" : "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+		useLoaderData<typeof loader>();
+	const fetcher = useFetcher<typeof action>();
+	const isRegenerating = fetcher.state !== "idle";
+	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini");
+	const [searchParams, setSearchParams] = useSearchParams();
+	const currentProject = useCurrentProject();
+	const _routes = useProjectRoutes(currentProject?.projectPath || "");
+	const listClassName = viewMode === "expanded" ? "space-y-4" : "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 
 	// Log when loading with ID filter (client-side debugging)
 	useEffect(() => {
 		if (filteredByIds) {
 			console.log(
 				`[Evidence] Client: Showing ${filteredByIds} filtered items, total evidence loaded: ${evidence.length}`
-			)
+			);
 		}
-	}, [filteredByIds, evidence.length])
+	}, [filteredByIds, evidence.length]);
 
 	// Controlled select helpers
-	const sortBy = searchParams.get("sort_by") || "created_at"
-	const sortDir = searchParams.get("sort_dir") || "desc"
-	const support = searchParams.get("support") || ""
-	const confidence = searchParams.get("confidence") || ""
-	const method = searchParams.get("method") || ""
+	const sortBy = searchParams.get("sort_by") || "created_at";
+	const sortDir = searchParams.get("sort_dir") || "desc";
+	const support = searchParams.get("support") || "";
+	const confidence = searchParams.get("confidence") || "";
+	const method = searchParams.get("method") || "";
 
 	const updateParam = (key: string, value: string) => {
-		const next = new URLSearchParams(searchParams)
-		if (value) next.set(key, value)
-		else next.delete(key)
-		setSearchParams(next)
-	}
+		const next = new URLSearchParams(searchParams);
+		if (value) next.set(key, value);
+		else next.delete(key);
+		setSearchParams(next);
+	};
 
 	return (
 		<div className="space-y-4 p-4 sm:p-6">
@@ -593,5 +593,5 @@ export default function EvidenceIndex() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }

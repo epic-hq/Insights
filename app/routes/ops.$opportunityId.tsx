@@ -1,28 +1,28 @@
-import consola from "consola"
-import { type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
-import { z } from "zod"
-import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { db } from "~/lib/supabase/client.server"
-import type { OpportunityView } from "~/types"
+import consola from "consola";
+import { type MetaFunction, useLoaderData } from "react-router";
+import { Link } from "react-router-dom";
+import { z } from "zod";
+import OpportunityDetail from "~/components/opportunities/OpportunityDetail";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { db } from "~/lib/supabase/client.server";
+import type { OpportunityView } from "~/types";
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
 		{ title: `Opportunity ${params.opportunityId || ""} | Insights` },
 		{ name: "description", content: "Opportunity details" },
-	]
-}
+	];
+};
 
 export async function loader({ params }: { params: { opportunityId: string } }) {
-	const opportunityId = params.opportunityId
-	consola.info(`Loading opportunity with ID: ${opportunityId}`)
+	const opportunityId = params.opportunityId;
+	consola.info(`Loading opportunity with ID: ${opportunityId}`);
 
 	// Validate UUID format
 	if (!z.string().uuid().safeParse(opportunityId).success) {
-		consola.error(`Invalid opportunity ID format: ${opportunityId}`)
-		throw new Response("Invalid opportunity ID", { status: 400 })
+		consola.error(`Invalid opportunity ID format: ${opportunityId}`);
+		throw new Response("Invalid opportunity ID", { status: 400 });
 	}
 
 	// Fetch opportunity data from database with linked insights
@@ -37,32 +37,32 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 			)
 		`)
 		.eq("id", opportunityId)
-		.single()
+		.single();
 
 	if (opportunityError) {
-		consola.error(`Error fetching opportunity: ${opportunityError.message}`)
-		throw new Response(`Error fetching opportunity: ${opportunityError.message}`, { status: 500 })
+		consola.error(`Error fetching opportunity: ${opportunityError.message}`);
+		throw new Response(`Error fetching opportunity: ${opportunityError.message}`, { status: 500 });
 	}
 
 	if (!opportunityData) {
-		consola.error(`Opportunity not found: ${opportunityId}`)
-		throw new Response(`Opportunity not found: ${opportunityId}`, { status: 404 })
+		consola.error(`Opportunity not found: ${opportunityId}`);
+		throw new Response(`Opportunity not found: ${opportunityId}`, { status: 404 });
 	}
 
 	// Define a type that extends the base opportunity type with optional fields needed for OpportunityView
 	type ExtendedOpportunity = typeof opportunityData & {
-		description?: string
-		impact?: number
-		effort?: number
-		confidence?: number
-		priority?: string
-		tags?: string[]
-		assignee?: string
-		due_date?: string
-	}
+		description?: string;
+		impact?: number;
+		effort?: number;
+		confidence?: number;
+		priority?: string;
+		tags?: string[];
+		assignee?: string;
+		due_date?: string;
+	};
 
 	// Safely cast to the extended type
-	const extendedOpportunity = opportunityData as ExtendedOpportunity
+	const extendedOpportunity = opportunityData as ExtendedOpportunity;
 
 	// Transform opportunity data to OpportunityView
 	const opportunity: OpportunityView = {
@@ -88,16 +88,16 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 		owner: opportunityData.owner_id || undefined,
 		assignee: extendedOpportunity.assignee || undefined,
 		due_date: extendedOpportunity.due_date || undefined,
-	}
+	};
 
-	consola.success(`Successfully loaded opportunity: ${opportunity.title}`)
-	return { opportunity }
+	consola.success(`Successfully loaded opportunity: ${opportunity.title}`);
+	return { opportunity };
 }
 
 export default function OpportunityDetailPage() {
-	const { opportunity } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { opportunity } = useLoaderData<typeof loader>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4">
@@ -118,5 +118,5 @@ export default function OpportunityDetailPage() {
 
 			<OpportunityDetail opportunity={opportunity} />
 		</div>
-	)
+	);
 }

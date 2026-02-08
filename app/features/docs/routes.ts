@@ -1,4 +1,4 @@
-import { index, prefix, route } from "@react-router/dev/routes"
+import { index, prefix, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("docs", [
@@ -11,4 +11,4 @@ export default [
 		route("crm-opportunities", "./features/docs/pages/crm-opportunities.tsx"),
 		route("crm-quick-reference", "./features/docs/pages/crm-quick-reference.tsx"),
 	]),
-]
+];

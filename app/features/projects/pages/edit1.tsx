@@ -1,66 +1,66 @@
-import consola from "consola"
-import { useId } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { deleteProject, getProjectById, updateProject } from "~/features/projects/db"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import { useId } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { deleteProject, getProjectById, updateProject } from "~/features/projects/db";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `Edit ${data?.project?.name || "Project"} | Insights` },
 		{ name: "description", content: "Edit project details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const { id } = params
+	const accountId = params.accountId;
+	const { id } = params;
 
 	if (!accountId || !id) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
 	try {
 		const { data: project, error } = await getProjectById({
 			supabase,
 			id,
-		})
+		});
 
 		if (error || !project) {
-			throw new Response("Project not found", { status: 404 })
+			throw new Response("Project not found", { status: 404 });
 		}
 
-		return { project }
+		return { project };
 	} catch (error) {
-		consola.error("Error loading project:", error)
-		throw new Response("Failed to load project", { status: 500 })
+		consola.error("Error loading project:", error);
+		throw new Response("Failed to load project", { status: 500 });
 	}
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const { id } = params
+	const accountId = params.accountId;
+	const { id } = params;
 
 	if (!accountId || !id) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	if (intent === "delete") {
 		try {
@@ -68,27 +68,27 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				supabase,
 				id,
 				accountId,
-			})
+			});
 
 			if (error) {
-				consola.error("Error deleting project:", error)
-				return { error: "Failed to delete project" }
+				consola.error("Error deleting project:", error);
+				return { error: "Failed to delete project" };
 			}
 
-			return redirect("/projects")
+			return redirect("/projects");
 		} catch (error) {
-			consola.error("Error deleting project:", error)
-			return { error: "Failed to delete project" }
+			consola.error("Error deleting project:", error);
+			return { error: "Failed to delete project" };
 		}
 	}
 
 	// Handle update
-	const name = formData.get("name") as string
-	const description = formData.get("description") as string
-	const status = formData.get("status") as string
+	const name = formData.get("name") as string;
+	const description = formData.get("description") as string;
+	const status = formData.get("status") as string;
 
 	if (!name?.trim()) {
-		return { error: "Name is required" }
+		return { error: "Name is required" };
 	}
 
 	try {
@@ -101,25 +101,25 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				description: description?.trim() || null,
 				status: status || "planning",
 			},
-		})
+		});
 
 		if (error) {
-			consola.error("Error updating project:", error)
-			return { error: "Failed to update project" }
+			consola.error("Error updating project:", error);
+			return { error: "Failed to update project" };
 		}
 
-		return redirect(`/projects/${data.id}`)
+		return redirect(`/projects/${data.id}`);
 	} catch (error) {
-		consola.error("Error updating project:", error)
-		return { error: "Failed to update project" }
+		consola.error("Error updating project:", error);
+		return { error: "Failed to update project" };
 	}
 }
 
 export default function EditProject() {
-	const { project } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
-	const nameId = useId()
-	const descriptionId = useId()
+	const { project } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
+	const nameId = useId();
+	const descriptionId = useId();
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
@@ -194,7 +194,7 @@ export default function EditProject() {
 						variant="destructive"
 						onClick={(e) => {
 							if (!confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
-								e.preventDefault()
+								e.preventDefault();
 							}
 						}}
 					>
@@ -203,5 +203,5 @@ export default function EditProject() {
 				</Form>
 			</div>
 		</PageContainer>
-	)
+	);
 }

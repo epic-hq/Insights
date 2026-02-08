@@ -1,5 +1,5 @@
-import consola from "consola"
-import { format } from "date-fns"
+import consola from "consola";
+import { format } from "date-fns";
 import {
 	AlertTriangle,
 	Briefcase,
@@ -10,75 +10,75 @@ import {
 	Sparkles,
 	TrendingUp,
 	Users,
-} from "lucide-react"
-import { useEffect, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
-import { toast } from "sonner"
-import { z } from "zod"
-import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { isOpportunityAdvice } from "~/features/annotations/types"
-import { getOpportunityById } from "~/features/opportunities/db"
-import type { OpportunitySalesLensData } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
-import { loadOpportunitySalesLens } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
-import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useFetcher, useLoaderData, useRevalidator } from "react-router-dom";
+import { toast } from "sonner";
+import { z } from "zod";
+import { BackButton } from "~/components/ui/back-button";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { isOpportunityAdvice } from "~/features/annotations/types";
+import { getOpportunityById } from "~/features/opportunities/db";
+import type { OpportunitySalesLensData } from "~/features/opportunities/lib/loadOpportunitySalesLens.server";
+import { loadOpportunitySalesLens } from "~/features/opportunities/lib/loadOpportunitySalesLens.server";
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server";
 import {
 	ensureStageValue,
 	normalizeStageId,
 	type OpportunityStageConfig,
 	stageLabelForValue,
-} from "~/features/opportunities/stage-config"
-import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+} from "~/features/opportunities/stage-config";
+import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
 // Validation schemas
 const amountSchema = z.string().refine(
 	(val) => {
-		if (!val || val.trim() === "") return true // Allow empty
-		const num = Number(val.replace(/,/g, ""))
-		return !Number.isNaN(num) && num >= 0
+		if (!val || val.trim() === "") return true; // Allow empty
+		const num = Number(val.replace(/,/g, ""));
+		return !Number.isNaN(num) && num >= 0;
 	},
 	{ message: "Please enter a valid positive number" }
-)
+);
 
 const dateSchema = z.string().refine(
 	(val) => {
-		if (!val || val.trim() === "") return true // Allow empty
-		const date = new Date(val)
-		return !Number.isNaN(date.getTime())
+		if (!val || val.trim() === "") return true; // Allow empty
+		const date = new Date(val);
+		return !Number.isNaN(date.getTime());
 	},
 	{ message: "Please enter a valid date" }
-)
+);
 
 // Format number with commas
 function formatCurrency(value: number | string | null): string {
-	if (!value) return ""
-	const num = typeof value === "string" ? Number(value) : value
-	if (Number.isNaN(num)) return ""
+	if (!value) return "";
+	const num = typeof value === "string" ? Number(value) : value;
+	if (Number.isNaN(num)) return "";
 	return new Intl.NumberFormat("en-US", {
 		style: "currency",
 		currency: "USD",
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 0,
-	}).format(num)
+	}).format(num);
 }
 
 function formatDateDisplay(dateString: string | null): string {
-	if (!dateString) return ""
+	if (!dateString) return "";
 	try {
-		return format(new Date(dateString), "MMM d, yyyy")
+		return format(new Date(dateString), "MMM d, yyyy");
 	} catch {
-		return ""
+		return "";
 	}
 }
 
@@ -86,20 +86,20 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.opportunity?.title || "Opportunity"} | Insights` },
 		{ name: "description", content: "Opportunity details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const { opportunityId } = params
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const { opportunityId } = params;
 
 	if (!accountId || !projectId || !opportunityId) {
-		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 });
 	}
 
 	try {
@@ -108,10 +108,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			accountId,
 			projectId,
 			id: opportunityId,
-		})
+		});
 
 		if (error || !opportunity) {
-			throw new Response("Opportunity not found", { status: 404 })
+			throw new Response("Opportunity not found", { status: 404 });
 		}
 
 		// Load sales lens data (stakeholders, next steps, etc.)
@@ -120,7 +120,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			opportunityId,
 			accountId,
 			projectId,
-		})
+		});
 
 		// Load AI recommendations from annotations
 		const { data: annotations } = await supabase
@@ -131,14 +131,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			.eq("annotation_type", "ai_suggestion")
 			.eq("status", "active")
 			.order("created_at", { ascending: false })
-			.limit(5)
+			.limit(5);
 
 		const aiRecommendations = (annotations || [])
 			.map((ann) => {
 				// Type guard filters and narrows the type
-				if (!isOpportunityAdvice(ann.content_jsonb)) return null
+				if (!isOpportunityAdvice(ann.content_jsonb)) return null;
 
-				const content = ann.content_jsonb
+				const content = ann.content_jsonb;
 				return {
 					id: ann.id,
 					status_assessment: content.status_assessment,
@@ -146,15 +146,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 					risks: content.risks,
 					confidence: content.confidence,
 					created_at: ann.created_at,
-				}
+				};
 			})
-			.filter((rec): rec is NonNullable<typeof rec> => rec !== null)
+			.filter((rec): rec is NonNullable<typeof rec> => rec !== null);
 
-		const { stages } = await loadOpportunityStages({ supabase, accountId })
+		const { stages } = await loadOpportunityStages({ supabase, accountId });
 
-		return { opportunity, salesLensData, aiRecommendations, stages }
+		return { opportunity, salesLensData, aiRecommendations, stages };
 	} catch (_error) {
-		throw new Response("Failed to load opportunity", { status: 500 })
+		throw new Response("Failed to load opportunity", { status: 500 });
 	}
 }
 
@@ -165,55 +165,55 @@ const STAGE_BADGE_COLORS = [
 	"bg-purple-50 text-purple-700 border-purple-200",
 	"bg-rose-50 text-rose-700 border-rose-200",
 	"bg-slate-100 text-slate-800 border-slate-200",
-]
+];
 
 const getKanbanStatusColor = (kanbanStatus: string | null, stages: OpportunityStageConfig[]) => {
-	const normalized = normalizeStageId(kanbanStatus || "")
-	const stageIndex = stages.findIndex((stage) => stage.id === normalized)
+	const normalized = normalizeStageId(kanbanStatus || "");
+	const stageIndex = stages.findIndex((stage) => stage.id === normalized);
 	if (stageIndex >= 0) {
-		return STAGE_BADGE_COLORS[stageIndex % STAGE_BADGE_COLORS.length]
+		return STAGE_BADGE_COLORS[stageIndex % STAGE_BADGE_COLORS.length];
 	}
 	switch (kanbanStatus) {
 		case "Explore":
-			return "bg-blue-50 text-blue-700 border-blue-200"
+			return "bg-blue-50 text-blue-700 border-blue-200";
 		case "Validate":
-			return "bg-yellow-50 text-yellow-700 border-yellow-200"
+			return "bg-yellow-50 text-yellow-700 border-yellow-200";
 		case "Build":
-			return "bg-green-50 text-green-700 border-green-200"
+			return "bg-green-50 text-green-700 border-green-200";
 		default:
-			return "bg-muted text-muted-foreground border-border"
+			return "bg-muted text-muted-foreground border-border";
 	}
-}
+};
 
 export default function OpportunityDetail() {
-	const { opportunity, salesLensData, aiRecommendations, stages } = useLoaderData<typeof loader>()
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
-	const opportunityFetcher = useFetcher()
-	const stageLabel = stageLabelForValue(opportunity.stage || opportunity.kanban_status, stages)
-	const kanbanLabel = stageLabel || opportunity.kanban_status || "Unknown"
-	const shareProjectPath = currentProjectContext?.projectPath || ""
+	const { opportunity, salesLensData, aiRecommendations, stages } = useLoaderData<typeof loader>();
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
+	const opportunityFetcher = useFetcher();
+	const stageLabel = stageLabelForValue(opportunity.stage || opportunity.kanban_status, stages);
+	const kanbanLabel = stageLabel || opportunity.kanban_status || "Unknown";
+	const shareProjectPath = currentProjectContext?.projectPath || "";
 
 	const handleOpportunityUpdate = (field: string, value: string) => {
-		if (!currentProjectContext?.accountId || !currentProjectContext?.projectId) return
+		if (!currentProjectContext?.accountId || !currentProjectContext?.projectId) return;
 
 		// Validate amount field
 		if (field === "amount") {
-			const result = amountSchema.safeParse(value)
+			const result = amountSchema.safeParse(value);
 			if (!result.success) {
-				toast.error(result.error.errors[0].message)
-				return
+				toast.error(result.error.errors[0].message);
+				return;
 			}
 			// Strip commas before sending to server
-			value = value.replace(/,/g, "")
+			value = value.replace(/,/g, "");
 		}
 
 		// Validate close_date field
 		if (field === "close_date") {
-			const result = dateSchema.safeParse(value)
+			const result = dateSchema.safeParse(value);
 			if (!result.success) {
-				toast.error(result.error.errors[0].message)
-				return
+				toast.error(result.error.errors[0].message);
+				return;
 			}
 		}
 
@@ -226,17 +226,17 @@ export default function OpportunityDetail() {
 				value,
 			},
 			{ method: "post", action: "/api/update-opportunity" }
-		)
-	}
+		);
+	};
 
 	interface OpportunityMetadata {
-		notes?: string
-		product_description?: string
+		notes?: string;
+		product_description?: string;
 	}
 
-	const metadata = (opportunity.metadata as OpportunityMetadata) || {}
-	const notes = metadata.notes || ""
-	const productDescription = metadata.product_description || ""
+	const metadata = (opportunity.metadata as OpportunityMetadata) || {};
+	const notes = metadata.notes || "";
+	const productDescription = metadata.product_description || "";
 
 	return (
 		<div className="container mx-auto max-w-5xl px-4 py-8">
@@ -481,7 +481,7 @@ export default function OpportunityDetail() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }
 
 function StakeholderMatrix({
@@ -490,61 +490,61 @@ function StakeholderMatrix({
 	accountId,
 	projectId,
 }: {
-	salesLensData: OpportunitySalesLensData
-	opportunityId: string
-	accountId: string
-	projectId: string
+	salesLensData: OpportunitySalesLensData;
+	opportunityId: string;
+	accountId: string;
+	projectId: string;
 }) {
-	const { stakeholders, nextSteps } = salesLensData
-	const stakeholderFetcher = useFetcher()
-	const addStakeholderFetcher = useFetcher()
-	const peopleFetcher = useFetcher()
-	const nextStepFetcher = useFetcher()
-	const revalidator = useRevalidator()
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+	const { stakeholders, nextSteps } = salesLensData;
+	const stakeholderFetcher = useFetcher();
+	const addStakeholderFetcher = useFetcher();
+	const peopleFetcher = useFetcher();
+	const nextStepFetcher = useFetcher();
+	const revalidator = useRevalidator();
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
-	const [showAddDialog, setShowAddDialog] = useState(false)
+	const [showAddDialog, setShowAddDialog] = useState(false);
 
 	// Load people when dialog opens
 	useEffect(() => {
 		if (showAddDialog && !peopleFetcher.data) {
-			peopleFetcher.load("/api/people/search?limit=50")
+			peopleFetcher.load("/api/people/search?limit=50");
 		}
-	}, [showAddDialog, peopleFetcher])
+	}, [showAddDialog, peopleFetcher]);
 
 	// Map next steps to stakeholders by owner name
-	const nextStepsByOwner = new Map<string, typeof nextSteps>()
+	const nextStepsByOwner = new Map<string, typeof nextSteps>();
 	for (const step of nextSteps || []) {
 		if (step.ownerName) {
-			const existing = nextStepsByOwner.get(step.ownerName) || []
-			existing.push(step)
-			nextStepsByOwner.set(step.ownerName, existing)
+			const existing = nextStepsByOwner.get(step.ownerName) || [];
+			existing.push(step);
+			nextStepsByOwner.set(step.ownerName, existing);
 		}
 	}
 
 	// Unassigned next steps
-	const unassignedSteps = (nextSteps || []).filter((step) => !step.ownerName)
+	const unassignedSteps = (nextSteps || []).filter((step) => !step.ownerName);
 
 	// Revalidate after stakeholder updates
 	useEffect(() => {
 		if (stakeholderFetcher.state === "idle" && stakeholderFetcher.data) {
-			revalidator.revalidate()
+			revalidator.revalidate();
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [stakeholderFetcher.state, stakeholderFetcher.data, revalidator.revalidate])
+	}, [stakeholderFetcher.state, stakeholderFetcher.data, revalidator.revalidate]);
 
 	// Revalidate after adding stakeholder
 	useEffect(() => {
 		if (addStakeholderFetcher.state === "idle" && addStakeholderFetcher.data) {
-			revalidator.revalidate()
+			revalidator.revalidate();
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [addStakeholderFetcher.state, addStakeholderFetcher.data, revalidator.revalidate])
+	}, [addStakeholderFetcher.state, addStakeholderFetcher.data, revalidator.revalidate]);
 
 	const handleAddStakeholder = () => {
-		setShowAddDialog(true)
-	}
+		setShowAddDialog(true);
+	};
 
 	const handleSelectPerson = (person: { id: string; display_name?: string; name?: string }) => {
 		addStakeholderFetcher.submit(
@@ -557,9 +557,9 @@ function StakeholderMatrix({
 				personId: person.id,
 			},
 			{ method: "post", action: "/api/update-stakeholder" }
-		)
-		setShowAddDialog(false)
-	}
+		);
+		setShowAddDialog(false);
+	};
 
 	const handleStakeholderUpdate = (stakeholderId: string, field: string, value: string) => {
 		stakeholderFetcher.submit(
@@ -569,12 +569,12 @@ function StakeholderMatrix({
 				value,
 			},
 			{ method: "post", action: "/api/update-stakeholder" }
-		)
-	}
+		);
+	};
 
 	const handleNextStepUpdate = (stepId: string, field: string, value: string) => {
 		// Strip "-next" suffix to get actual slot ID
-		const slotId = stepId.replace(/-next$/, "")
+		const slotId = stepId.replace(/-next$/, "");
 		nextStepFetcher.submit(
 			{
 				slotId,
@@ -582,35 +582,35 @@ function StakeholderMatrix({
 				value,
 			},
 			{ method: "post", action: "/api/update-next-step" }
-		)
-	}
+		);
+	};
 
 	const getStakeholderType = (stakeholder: (typeof stakeholders)[0]) => {
 		if (!stakeholder.labels || stakeholder.labels.length === 0) {
-			return "—"
+			return "—";
 		}
 		// Check for exact type labels first (DM, I, B)
-		if (stakeholder.labels.includes("DM")) return "DM"
-		if (stakeholder.labels.includes("I")) return "I"
-		if (stakeholder.labels.includes("B")) return "B"
+		if (stakeholder.labels.includes("DM")) return "DM";
+		if (stakeholder.labels.includes("I")) return "I";
+		if (stakeholder.labels.includes("B")) return "B";
 
 		// Check for decision maker labels (legacy/descriptive)
 		if (stakeholder.labels.some((l) => l.toLowerCase().includes("decision") || l.toLowerCase().includes("buyer"))) {
-			return "DM"
+			return "DM";
 		}
 		// Check for influencer labels (legacy/descriptive)
 		if (
 			stakeholder.labels.some((l) => l.toLowerCase().includes("influencer") || l.toLowerCase().includes("champion"))
 		) {
-			return "I"
+			return "I";
 		}
 		// Check for blocker/objector (legacy/descriptive)
 		if (stakeholder.labels.some((l) => l.toLowerCase().includes("blocker") || l.toLowerCase().includes("objection"))) {
-			return "B"
+			return "B";
 		}
 		// If labels exist but no type is found, return unknown
-		return "—"
-	}
+		return "—";
+	};
 
 	return (
 		<>
@@ -632,8 +632,8 @@ function StakeholderMatrix({
 					</TableHeader>
 					<TableBody>
 						{stakeholders.map((stakeholder) => {
-							const stakeholderSteps = nextStepsByOwner.get(stakeholder.displayName) || []
-							const currentType = getStakeholderType(stakeholder)
+							const stakeholderSteps = nextStepsByOwner.get(stakeholder.displayName) || [];
+							const currentType = getStakeholderType(stakeholder);
 							return (
 								<TableRow key={stakeholder.id}>
 									<TableCell className="font-medium">
@@ -677,9 +677,9 @@ function StakeholderMatrix({
 											value={currentType === "—" ? "unknown" : currentType}
 											onValueChange={(value) => {
 												if (value === "unknown") {
-													handleStakeholderUpdate(stakeholder.id, "stakeholder_type", "")
+													handleStakeholderUpdate(stakeholder.id, "stakeholder_type", "");
 												} else {
-													handleStakeholderUpdate(stakeholder.id, "stakeholder_type", value)
+													handleStakeholderUpdate(stakeholder.id, "stakeholder_type", value);
 												}
 											}}
 										>
@@ -788,7 +788,7 @@ function StakeholderMatrix({
 										)}
 									</TableCell>
 								</TableRow>
-							)
+							);
 						})}
 						{unassignedSteps.length > 0 && (
 							<TableRow className="bg-muted/30">
@@ -859,7 +859,7 @@ function StakeholderMatrix({
 				</DialogContent>
 			</Dialog>
 		</>
-	)
+	);
 }
 
 function AIAdvisorSection({
@@ -868,19 +868,19 @@ function AIAdvisorSection({
 	projectId,
 	recommendations,
 }: {
-	opportunityId: string
-	accountId: string
-	projectId: string
+	opportunityId: string;
+	accountId: string;
+	projectId: string;
 	recommendations: Array<{
-		id: string
-		status_assessment: string
-		recommendations: string[]
-		risks: string[]
-		confidence: string
-		created_at: string | null
-	}>
+		id: string;
+		status_assessment: string;
+		recommendations: string[];
+		risks: string[];
+		confidence: string;
+		created_at: string | null;
+	}>;
 }) {
-	const advisorFetcher = useFetcher<{ ok: boolean; recommendation: any }>()
+	const advisorFetcher = useFetcher<{ ok: boolean; recommendation: any }>();
 
 	const handleGenerateRecommendation = () => {
 		advisorFetcher.submit(
@@ -890,16 +890,16 @@ function AIAdvisorSection({
 				projectId,
 			},
 			{ method: "post", action: "/api/opportunity-advisor" }
-		)
-	}
+		);
+	};
 
-	const isGenerating = advisorFetcher.state === "submitting" || advisorFetcher.state === "loading"
+	const isGenerating = advisorFetcher.state === "submitting" || advisorFetcher.state === "loading";
 
 	// Show newly generated recommendation if available
 	const latestRecommendation =
 		advisorFetcher.data?.ok && advisorFetcher.data.recommendation
 			? advisorFetcher.data.recommendation
-			: recommendations?.[0]
+			: recommendations?.[0];
 
 	// Debug logging
 	consola.log("AI Advisor Debug:", {
@@ -907,10 +907,10 @@ function AIAdvisorSection({
 		fetcherData: advisorFetcher.data,
 		recommendations,
 		latestRecommendation,
-	})
+	});
 
 	// Show error if fetcher failed
-	const hasError = advisorFetcher.data && !advisorFetcher.data.ok
+	const hasError = advisorFetcher.data && !advisorFetcher.data.ok;
 
 	return (
 		<Card className="mb-8 border-2 border-border bg-card">
@@ -1015,5 +1015,5 @@ function AIAdvisorSection({
 				</CardContent>
 			)}
 		</Card>
-	)
+	);
 }

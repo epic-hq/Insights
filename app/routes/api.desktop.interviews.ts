@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server"
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
 
 /**
  * POST /api/desktop/interviews
@@ -8,18 +8,18 @@ import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server"
  */
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
-	const auth = await authenticateDesktopRequest(request)
+	const auth = await authenticateDesktopRequest(request);
 	if (!auth) {
-		return Response.json({ error: "Unauthorized" }, { status: 401 })
+		return Response.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const { supabase, user } = auth
+	const { supabase, user } = auth;
 
 	try {
-		const body = await request.json()
+		const body = await request.json();
 		const {
 			// Required
 			account_id,
@@ -29,10 +29,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			desktop_meeting_id, // Local meeting ID from desktop app for tracking
 			platform, // google-meet, zoom, teams, etc.
 			interview_id, // For upsert - if provided, updates existing record
-		} = body
+		} = body;
 
 		if (!account_id || !project_id) {
-			return Response.json({ error: "account_id and project_id are required" }, { status: 400 })
+			return Response.json({ error: "account_id and project_id are required" }, { status: 400 });
 		}
 
 		// Upsert logic: if interview_id provided, update; otherwise create
@@ -46,11 +46,11 @@ export async function action({ request }: ActionFunctionArgs) {
 				})
 				.eq("id", interview_id)
 				.select("id, title, status")
-				.single()
+				.single();
 
 			if (error) {
-				console.error("Failed to update interview:", error)
-				return Response.json({ error: "Failed to update interview" }, { status: 500 })
+				console.error("Failed to update interview:", error);
+				return Response.json({ error: "Failed to update interview" }, { status: 500 });
 			}
 
 			return Response.json({
@@ -59,7 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				title: updated.title,
 				status: updated.status,
 				action: "updated",
-			})
+			});
 		}
 
 		// Create new interview
@@ -79,20 +79,20 @@ export async function action({ request }: ActionFunctionArgs) {
 				platform,
 				started_at: new Date().toISOString(),
 			},
-		}
+		};
 
 		const { data: interview, error } = await supabase
 			.from("interviews")
 			.insert(interviewData)
 			.select("id, title, status")
-			.single()
+			.single();
 
 		if (error) {
-			console.error("Failed to create interview:", error)
-			return Response.json({ error: "Failed to create interview" }, { status: 500 })
+			console.error("Failed to create interview:", error);
+			return Response.json({ error: "Failed to create interview" }, { status: 500 });
 		}
 
-		console.log(`Created interview ${interview.id} for desktop recording`)
+		console.log(`Created interview ${interview.id} for desktop recording`);
 
 		return Response.json({
 			success: true,
@@ -100,10 +100,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			title: interview.title,
 			status: interview.status,
 			action: "created",
-		})
+		});
 	} catch (error) {
-		console.error("Interview creation error:", error)
-		return Response.json({ error: "Internal server error" }, { status: 500 })
+		console.error("Interview creation error:", error);
+		return Response.json({ error: "Internal server error" }, { status: 500 });
 	}
 }
 
@@ -114,5 +114,5 @@ export async function action({ request }: ActionFunctionArgs) {
  */
 export async function loader({ request }: LoaderFunctionArgs) {
 	// GET not supported - use POST for creation
-	return Response.json({ error: "Use POST to create interviews" }, { status: 405 })
+	return Response.json({ error: "Use POST to create interviews" }, { status: 405 });
 }

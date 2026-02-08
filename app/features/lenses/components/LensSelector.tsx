@@ -5,41 +5,46 @@
  * Uses Trigger.dev realtime with onComplete callback for reliable completion detection.
  */
 
-import { Check, Loader2, PlayCircle, Sparkles } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { useFetcher, useRevalidator } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { cn } from "~/lib/utils"
-import { useLensProgress } from "../hooks/useLensProgress"
-import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server"
+import { Check, Loader2, PlayCircle, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useFetcher, useRevalidator } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { cn } from "~/lib/utils";
+import { useLensProgress } from "../hooks/useLensProgress";
+import type { LensAnalysisWithTemplate, LensTemplate } from "../lib/loadLensAnalyses.server";
 
 interface ActiveRun {
-	taskId: string
-	accessToken: string
-	templateKey: string | null // null means "apply all"
+	taskId: string;
+	accessToken: string;
+	templateKey: string | null; // null means "apply all"
 }
 
 type Props = {
-	interviewId: string
-	templates: LensTemplate[]
-	analyses: Record<string, LensAnalysisWithTemplate>
-	onLensApplied?: (templateKey: string) => void
-	className?: string
-}
+	interviewId: string;
+	templates: LensTemplate[];
+	analyses: Record<string, LensAnalysisWithTemplate>;
+	onLensApplied?: (templateKey: string) => void;
+	className?: string;
+};
 
 /**
  * Get status badge for a lens
  */
 function getStatusInfo(analysis?: LensAnalysisWithTemplate): {
-	label: string
-	color: string
-	icon?: React.ReactNode
+	label: string;
+	color: string;
+	icon?: React.ReactNode;
 } {
 	if (!analysis) {
-		return { label: "Not applied", color: "text-muted-foreground" }
+		return { label: "Not applied", color: "text-muted-foreground" };
 	}
 
 	switch (analysis.status) {
@@ -48,52 +53,52 @@ function getStatusInfo(analysis?: LensAnalysisWithTemplate): {
 				label: "Complete",
 				color: "text-green-600",
 				icon: <Check className="h-3 w-3" />,
-			}
+			};
 		case "processing":
 			return {
 				label: "Processing",
 				color: "text-blue-600",
 				icon: <Loader2 className="h-3 w-3 animate-spin" />,
-			}
+			};
 		case "pending":
 			return {
 				label: "Pending",
 				color: "text-yellow-600",
 				icon: <Loader2 className="h-3 w-3 animate-spin" />,
-			}
+			};
 		case "failed":
 			return {
 				label: "Failed",
 				color: "text-destructive",
-			}
+			};
 		default:
-			return { label: "Unknown", color: "text-muted-foreground" }
+			return { label: "Unknown", color: "text-muted-foreground" };
 	}
 }
 
 export function LensSelector({ interviewId, templates, analyses, onLensApplied, className }: Props) {
-	const [selectedLens, setSelectedLens] = useState<string>("")
-	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null)
-	const fetcher = useFetcher()
-	const revalidator = useRevalidator()
-	const isSubmitting = fetcher.state !== "idle"
+	const [selectedLens, setSelectedLens] = useState<string>("");
+	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
+	const fetcher = useFetcher();
+	const revalidator = useRevalidator();
+	const isSubmitting = fetcher.state !== "idle";
 
 	// Handle Trigger.dev run completion via onComplete callback
 	const handleRunComplete = useCallback(() => {
-		console.log("[LensSelector] Run complete, revalidating...")
-		revalidator.revalidate()
-		const templateKey = activeRun?.templateKey
-		setActiveRun(null)
-		setSelectedLens("")
-		onLensApplied?.(templateKey || "all")
-	}, [revalidator, activeRun?.templateKey, onLensApplied])
+		console.log("[LensSelector] Run complete, revalidating...");
+		revalidator.revalidate();
+		const templateKey = activeRun?.templateKey;
+		setActiveRun(null);
+		setSelectedLens("");
+		onLensApplied?.(templateKey || "all");
+	}, [revalidator, activeRun?.templateKey, onLensApplied]);
 
 	// Subscribe to active run with onComplete callback
 	const { progressInfo, isSubscribed } = useLensProgress({
 		runId: activeRun?.taskId,
 		accessToken: activeRun?.accessToken,
 		onComplete: handleRunComplete,
-	})
+	});
 
 	// When API call succeeds, store the run info for realtime tracking
 	useEffect(() => {
@@ -101,50 +106,52 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 			console.log("[LensSelector] API success, starting realtime tracking:", {
 				taskId: fetcher.data.taskId,
 				templateKey: fetcher.data.templateKey ?? "all",
-			})
+			});
 			setActiveRun({
 				taskId: fetcher.data.taskId,
 				accessToken: fetcher.data.publicAccessToken,
 				templateKey: fetcher.data.templateKey ?? null,
-			})
+			});
 		}
-	}, [fetcher.state, fetcher.data])
+	}, [fetcher.state, fetcher.data]);
 
 	// Track which lens is being applied (during submit)
 	const applyingLensKey =
-		fetcher.state !== "idle" && fetcher.formData ? fetcher.formData.get("template_key")?.toString() : null
+		fetcher.state !== "idle" && fetcher.formData ? fetcher.formData.get("template_key")?.toString() : null;
 
-	const isApplyingAll = fetcher.state !== "idle" && fetcher.formData?.get("apply_all") === "true"
+	const isApplyingAll = fetcher.state !== "idle" && fetcher.formData?.get("apply_all") === "true";
 
 	// Count pending/processing lenses from the database
-	const pendingCount = Object.values(analyses).filter((a) => a.status === "pending" || a.status === "processing").length
+	const pendingCount = Object.values(analyses).filter(
+		(a) => a.status === "pending" || a.status === "processing"
+	).length;
 
 	// Show processing if submitting, subscribed to a run, or have pending in DB
-	const isProcessing = isSubmitting || isSubscribed || pendingCount > 0
+	const isProcessing = isSubmitting || isSubscribed || pendingCount > 0;
 
 	const handleApplyLens = () => {
-		if (!selectedLens) return
+		if (!selectedLens) return;
 
 		fetcher.submit(
 			{ interview_id: interviewId, template_key: selectedLens },
 			{ method: "POST", action: "/api/apply-lens" }
-		)
-	}
+		);
+	};
 
 	const handleApplyAll = () => {
-		fetcher.submit({ interview_id: interviewId, apply_all: "true" }, { method: "POST", action: "/api/apply-lens" })
-	}
+		fetcher.submit({ interview_id: interviewId, apply_all: "true" }, { method: "POST", action: "/api/apply-lens" });
+	};
 
 	// Group templates by category
 	const groupedTemplates = templates.reduce(
 		(acc, t) => {
-			const cat = t.category || "other"
-			if (!acc[cat]) acc[cat] = []
-			acc[cat].push(t)
-			return acc
+			const cat = t.category || "other";
+			if (!acc[cat]) acc[cat] = [];
+			acc[cat].push(t);
+			return acc;
 		},
 		{} as Record<string, LensTemplate[]>
-	)
+	);
 
 	// Category display names
 	const categoryNames: Record<string, string> = {
@@ -152,12 +159,12 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 		sales: "Sales",
 		product: "Product",
 		other: "Other",
-	}
+	};
 
-	const completedCount = Object.values(analyses).filter((a) => a.status === "completed").length
+	const completedCount = Object.values(analyses).filter((a) => a.status === "completed").length;
 
 	// Calculate how many lenses haven't been applied yet
-	const unappliedCount = templates.length - Object.keys(analyses).length
+	const unappliedCount = templates.length - Object.keys(analyses).length;
 
 	return (
 		<div className={cn("flex flex-wrap items-center gap-3", className)}>
@@ -174,9 +181,9 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 									{categoryNames[category] || category}
 								</div>
 								{lenses.map((lens) => {
-									const analysis = analyses[lens.template_key]
-									const status = getStatusInfo(analysis)
-									const isApplyingThis = applyingLensKey === lens.template_key
+									const analysis = analyses[lens.template_key];
+									const status = getStatusInfo(analysis);
+									const isApplyingThis = applyingLensKey === lens.template_key;
 
 									return (
 										<SelectItem
@@ -195,7 +202,7 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 												{isApplyingThis && <Loader2 className="h-3 w-3 animate-spin text-blue-600" />}
 											</div>
 										</SelectItem>
-									)
+									);
 								})}
 							</div>
 						))}
@@ -235,40 +242,40 @@ export function LensSelector({ interviewId, templates, analyses, onLensApplied, 
 				</Badge>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
  * Compact version for use in headers/toolbars
  */
 export function LensSelectorCompact({ interviewId, templates, analyses, onLensApplied }: Props) {
-	const fetcher = useFetcher()
-	const isApplying = fetcher.state !== "idle"
+	const fetcher = useFetcher();
+	const isApplying = fetcher.state !== "idle";
 
 	const handleApplyLens = (templateKey: string) => {
 		fetcher.submit(
 			{ interview_id: interviewId, template_key: templateKey },
 			{ method: "POST", action: "/api/apply-lens" }
-		)
-	}
+		);
+	};
 
 	const handleApplyAll = () => {
-		fetcher.submit({ interview_id: interviewId, apply_all: "true" }, { method: "POST", action: "/api/apply-lens" })
-	}
+		fetcher.submit({ interview_id: interviewId, apply_all: "true" }, { method: "POST", action: "/api/apply-lens" });
+	};
 
 	// Notify parent when lens application completes
 	useEffect(() => {
 		if (fetcher.data?.ok && fetcher.data?.templateKey) {
-			onLensApplied?.(fetcher.data.templateKey)
+			onLensApplied?.(fetcher.data.templateKey);
 		}
-	}, [fetcher.data, onLensApplied])
+	}, [fetcher.data, onLensApplied]);
 
 	const unappliedLenses = templates.filter(
 		(t) => !analyses[t.template_key] || analyses[t.template_key].status === "failed"
-	)
+	);
 
 	if (unappliedLenses.length === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -297,5 +304,5 @@ export function LensSelectorCompact({ interviewId, templates, analyses, onLensAp
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
-	)
+	);
 }

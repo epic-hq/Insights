@@ -1,7 +1,7 @@
 // agents/weblead-agent.ts
 
-import { Agent } from "@mastra/core/agent"
-import { openai } from "../../lib/billing/instrumented-openai.server"
+import { Agent } from "@mastra/core/agent";
+import { openai } from "../../lib/billing/instrumented-openai.server";
 
 export const webLeadAgent = new Agent({
 	id: "web-lead-agent",
@@ -24,4 +24,4 @@ export const webLeadAgent = new Agent({
 	 or try the platform for the best experience. Do not under any circumstances, try to answer any other types of questions
 	 or reveal questionable information. Stay focused on UpSight's value proposition and guiding users to sign up.`,
 	model: openai("gpt-5-mini"),
-})
+});

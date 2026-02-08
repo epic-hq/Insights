@@ -5,28 +5,28 @@
  * Provides clear alternatives for users who have data or are exploring
  */
 
-import { motion } from "framer-motion"
-import { ArrowRight, Loader2, Mic, Search, Upload } from "lucide-react"
-import { useCallback, useId, useRef, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { cn } from "~/lib/utils"
+import { motion } from "framer-motion";
+import { ArrowRight, Loader2, Mic, Search, Upload } from "lucide-react";
+import { useCallback, useId, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { cn } from "~/lib/utils";
 
-export type EntryPath = "chat" | "upload" | "explore"
+export type EntryPath = "chat" | "upload" | "explore";
 
 export interface SetupModeSelectorProps {
 	/** Callback when user starts chat with initial message */
-	onStartChat: (initialMessage: string) => void
+	onStartChat: (initialMessage: string) => void;
 	/** Callback when user wants to upload recordings */
-	onUpload: () => void
+	onUpload: () => void;
 	/** Callback when user wants to explore/see demo */
-	onExplore: () => void
+	onExplore: () => void;
 	/** Whether STT is available */
-	transcribeEnabled?: boolean
+	transcribeEnabled?: boolean;
 	/** Custom className */
-	className?: string
+	className?: string;
 	/** Loading state */
-	isLoading?: boolean
+	isLoading?: boolean;
 }
 
 export function SetupModeSelector({
@@ -37,19 +37,19 @@ export function SetupModeSelector({
 	className,
 	isLoading = false,
 }: SetupModeSelectorProps) {
-	const [inputValue, setInputValue] = useState("")
-	const textareaRef = useRef<HTMLTextAreaElement>(null)
-	const formId = useId()
+	const [inputValue, setInputValue] = useState("");
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const formId = useId();
 
 	// Handle transcription - append to input
 	const handleTranscription = useCallback((text: string) => {
 		setInputValue((prev) => {
-			const trimmed = text.trim()
-			if (!trimmed) return prev
-			return prev ? `${prev} ${trimmed}` : trimmed
-		})
-		textareaRef.current?.focus()
-	}, [])
+			const trimmed = text.trim();
+			if (!trimmed) return prev;
+			return prev ? `${prev} ${trimmed}` : trimmed;
+		});
+		textareaRef.current?.focus();
+	}, []);
 
 	// Use the real speech-to-text hook
 	const {
@@ -58,22 +58,22 @@ export function SetupModeSelector({
 		isTranscribing,
 		error: voiceError,
 		isSupported: isVoiceSupported,
-	} = useSpeechToText({ onTranscription: handleTranscription })
+	} = useSpeechToText({ onTranscription: handleTranscription });
 
 	const handleSubmit = useCallback(() => {
-		const trimmed = inputValue.trim()
+		const trimmed = inputValue.trim();
 		if (trimmed) {
-			onStartChat(trimmed)
+			onStartChat(trimmed);
 		}
-	}, [inputValue, onStartChat])
+	}, [inputValue, onStartChat]);
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		// Cmd/Ctrl + Enter to submit
 		if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-			e.preventDefault()
-			handleSubmit()
+			e.preventDefault();
+			handleSubmit();
 		}
-	}
+	};
 
 	return (
 		<motion.div
@@ -208,5 +208,5 @@ export function SetupModeSelector({
 				</motion.div>
 			</div>
 		</motion.div>
-	)
+	);
 }

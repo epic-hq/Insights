@@ -1,5 +1,5 @@
-import { createTool } from "@mastra/core/tools"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
 
 export const suggestionTool = createTool({
 	id: "suggestNextSteps",
@@ -19,6 +19,6 @@ export const suggestionTool = createTool({
 	}),
 	execute: async () => {
 		// This is a client-facing tool, server execution is a no-op
-		return { success: true }
+		return { success: true };
 	},
-})
+});

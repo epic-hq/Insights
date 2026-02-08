@@ -9,68 +9,68 @@
  * - Expanded state shows full field details in sidebar/bottom sheet
  */
 
-import { AnimatePresence, motion } from "framer-motion"
-import { Building2, Check, ChevronDown, ChevronUp, FolderKanban, Pencil, Plus } from "lucide-react"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import { AnimatePresence, motion } from "framer-motion";
+import { Building2, Check, ChevronDown, ChevronUp, FolderKanban, Pencil, Plus } from "lucide-react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 /**
  * Field definition for captured/uncaptured display
  */
 export interface CapturedField {
-	key: string
-	label: string
-	value: string | string[] | null
-	required?: boolean
+	key: string;
+	label: string;
+	value: string | string[] | null;
+	required?: boolean;
 	/** Which category this field belongs to */
-	category?: "company" | "project"
+	category?: "company" | "project";
 	/** Description shown for uncaptured fields */
-	description?: string
+	description?: string;
 	/** Source text showing where this was captured from */
-	sourceText?: string
+	sourceText?: string;
 }
 
 interface CapturedPaneProps {
-	fields: CapturedField[]
-	className?: string
+	fields: CapturedField[];
+	className?: string;
 	/** Callback when user clicks "Ask about this" for an uncaptured field */
-	onAskAboutField?: (fieldKey: string) => void
+	onAskAboutField?: (fieldKey: string) => void;
 	/** Callback when user wants to edit a captured field */
-	onEditField?: (fieldKey: string) => void
+	onEditField?: (fieldKey: string) => void;
 	/** Whether to show company/project tabs (default: true if both categories present) */
-	showTabs?: boolean
+	showTabs?: boolean;
 	/** Default expanded state */
-	defaultExpanded?: boolean
+	defaultExpanded?: boolean;
 	/** Display variant: "floating" (fixed bottom-right) or "sidebar" (static card, always expanded) */
-	variant?: "floating" | "sidebar"
+	variant?: "floating" | "sidebar";
 }
 
 function hasValue(value: string | string[] | null): boolean {
-	if (value === null || value === undefined) return false
-	if (Array.isArray(value)) return value.length > 0
-	return typeof value === "string" && value.trim().length > 0
+	if (value === null || value === undefined) return false;
+	if (Array.isArray(value)) return value.length > 0;
+	return typeof value === "string" && value.trim().length > 0;
 }
 
 function formatValue(value: string | string[] | null): string {
-	if (!hasValue(value)) return ""
+	if (!hasValue(value)) return "";
 	if (Array.isArray(value)) {
-		if (value.length === 0) return ""
-		if (value.length <= 3) return value.join(", ")
-		return `${value.slice(0, 3).join(", ")} +${value.length - 3} more`
+		if (value.length === 0) return "";
+		if (value.length <= 3) return value.join(", ");
+		return `${value.slice(0, 3).join(", ")} +${value.length - 3} more`;
 	}
 	if (typeof value === "string") {
-		return value.length > 80 ? `${value.slice(0, 80)}...` : value
+		return value.length > 80 ? `${value.slice(0, 80)}...` : value;
 	}
-	return ""
+	return "";
 }
 
 /**
  * Tag display for array values
  */
 function TagList({ values, maxVisible = 3 }: { values: string[]; maxVisible?: number }) {
-	const visible = values.slice(0, maxVisible)
-	const remaining = values.length - maxVisible
+	const visible = values.slice(0, maxVisible);
+	const remaining = values.length - maxVisible;
 
 	return (
 		<div className="flex flex-wrap gap-1.5">
@@ -84,14 +84,14 @@ function TagList({ values, maxVisible = 3 }: { values: string[]; maxVisible?: nu
 			))}
 			{remaining > 0 && <span className="text-muted-foreground text-xs">+{remaining} more</span>}
 		</div>
-	)
+	);
 }
 
 /**
  * Single captured field card
  */
 function CapturedFieldCard({ field, onEdit }: { field: CapturedField; onEdit?: () => void }) {
-	const isArray = Array.isArray(field.value)
+	const isArray = Array.isArray(field.value);
 
 	return (
 		<div className="group rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 transition-colors hover:border-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/30 dark:hover:border-emerald-700">
@@ -127,7 +127,7 @@ function CapturedFieldCard({ field, onEdit }: { field: CapturedField; onEdit?: (
 				)}
 			</div>
 		</div>
-	)
+	);
 }
 
 /**
@@ -157,7 +157,7 @@ function UncapturedFieldCard({ field, onAsk }: { field: CapturedField; onAsk?: (
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
 
 /**
@@ -178,7 +178,7 @@ function ProgressDots({ fields }: { fields: CapturedField[] }) {
 			))}
 			{fields.length > 8 && <span className="ml-1 text-muted-foreground text-xs">+{fields.length - 8}</span>}
 		</div>
-	)
+	);
 }
 
 export function CapturedPane({
@@ -190,33 +190,33 @@ export function CapturedPane({
 	defaultExpanded = false,
 	variant = "floating",
 }: CapturedPaneProps) {
-	const isSidebar = variant === "sidebar"
-	const [expanded, setExpanded] = useState(isSidebar || defaultExpanded)
-	const [activeTab, setActiveTab] = useState<"company" | "project">("company")
+	const isSidebar = variant === "sidebar";
+	const [expanded, setExpanded] = useState(isSidebar || defaultExpanded);
+	const [activeTab, setActiveTab] = useState<"company" | "project">("company");
 
 	// Separate fields by category
-	const companyFields = fields.filter((f) => f.category === "company")
-	const projectFields = fields.filter((f) => f.category === "project")
-	const uncategorizedFields = fields.filter((f) => !f.category)
+	const companyFields = fields.filter((f) => f.category === "company");
+	const projectFields = fields.filter((f) => f.category === "project");
+	const uncategorizedFields = fields.filter((f) => !f.category);
 
 	// Determine if we should show tabs
-	const hasBothCategories = companyFields.length > 0 && projectFields.length > 0
-	const shouldShowTabs = showTabs ?? hasBothCategories
+	const hasBothCategories = companyFields.length > 0 && projectFields.length > 0;
+	const shouldShowTabs = showTabs ?? hasBothCategories;
 
 	// Get fields to display based on active tab
 	const displayFields = shouldShowTabs
 		? activeTab === "company"
 			? companyFields
 			: projectFields
-		: [...companyFields, ...projectFields, ...uncategorizedFields]
+		: [...companyFields, ...projectFields, ...uncategorizedFields];
 
-	const capturedFields = displayFields.filter((f) => hasValue(f.value))
-	const uncapturedFields = displayFields.filter((f) => !hasValue(f.value))
+	const capturedFields = displayFields.filter((f) => hasValue(f.value));
+	const uncapturedFields = displayFields.filter((f) => !hasValue(f.value));
 
 	// Overall counts
-	const totalCaptured = fields.filter((f) => hasValue(f.value)).length
-	const totalFields = fields.length
-	const progressPercent = totalFields > 0 ? Math.round((totalCaptured / totalFields) * 100) : 0
+	const totalCaptured = fields.filter((f) => hasValue(f.value)).length;
+	const totalFields = fields.length;
+	const progressPercent = totalFields > 0 ? Math.round((totalCaptured / totalFields) * 100) : 0;
 
 	// Shared content for both variants
 	const renderContent = () => (
@@ -309,7 +309,7 @@ export function CapturedPane({
 				)}
 			</div>
 		</>
-	)
+	);
 
 	// Sidebar variant: collapsible card with progress bar
 	if (isSidebar) {
@@ -358,7 +358,7 @@ export function CapturedPane({
 					)}
 				</AnimatePresence>
 			</div>
-		)
+		);
 	}
 
 	// Floating variant: original behavior with collapse/expand
@@ -426,5 +426,5 @@ export function CapturedPane({
 				)}
 			</AnimatePresence>
 		</div>
-	)
+	);
 }

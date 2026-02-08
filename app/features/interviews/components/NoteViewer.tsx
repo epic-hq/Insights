@@ -1,10 +1,10 @@
-import consola from "consola"
-import { formatDistance } from "date-fns"
-import { Calendar, Loader2, MoreVertical, RefreshCw, Search, Sparkles, Trash2 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useFetcher, useNavigate, useRevalidator } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { AddLink } from "~/components/links/AddLink"
+import consola from "consola";
+import { formatDistance } from "date-fns";
+import { Calendar, Loader2, MoreVertical, RefreshCw, Search, Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFetcher, useNavigate, useRevalidator } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { AddLink } from "~/components/links/AddLink";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -14,104 +14,109 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "~/components/ui/alert-dialog"
-import { BackButton } from "~/components/ui/back-button"
-import { Button } from "~/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import InlineEdit from "~/components/ui/inline-edit"
-import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
+} from "~/components/ui/alert-dialog";
+import { BackButton } from "~/components/ui/back-button";
+import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import InlineEdit from "~/components/ui/inline-edit";
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
+import type { Database } from "~/types";
 
-type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
+type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"];
 
 interface NoteViewerProps {
-	interview: InterviewRow
-	projectId: string
-	className?: string
+	interview: InterviewRow;
+	projectId: string;
+	className?: string;
 }
 
 interface LinkedItem {
-	id: string
-	linkId: string
-	label: string
-	company?: string | null
-	segment?: string | null
+	id: string;
+	linkId: string;
+	label: string;
+	company?: string | null;
+	segment?: string | null;
 }
 
 interface AvailableItem {
-	id: string
-	label: string
+	id: string;
+	label: string;
 }
 
 export function NoteViewer({ interview, projectId, className }: NoteViewerProps) {
 	const fetcher = useFetcher<{
-		success?: boolean
-		redirectTo?: string
-		error?: string
-	}>()
-	const linkFetcher = useFetcher()
-	const navigate = useNavigate()
-	const revalidator = useRevalidator()
-	const routes = useProjectRoutes(`/a/${interview.account_id}/${projectId}`)
-	const supabase = createClient()
-	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-	const [isIndexing, setIsIndexing] = useState(false)
-	const [isReprocessing, setIsReprocessing] = useState(false)
-	const [isApplyingLenses, setIsApplyingLenses] = useState(false)
+		success?: boolean;
+		redirectTo?: string;
+		error?: string;
+	}>();
+	const linkFetcher = useFetcher();
+	const navigate = useNavigate();
+	const revalidator = useRevalidator();
+	const routes = useProjectRoutes(`/a/${interview.account_id}/${projectId}`);
+	const supabase = createClient();
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [isIndexing, setIsIndexing] = useState(false);
+	const [isReprocessing, setIsReprocessing] = useState(false);
+	const [isApplyingLenses, setIsApplyingLenses] = useState(false);
 
 	// Transcript state - fetched separately for voice memos to avoid bloating main query
-	const [transcript, setTranscript] = useState<string | null>(null)
-	const [isLoadingTranscript, setIsLoadingTranscript] = useState(false)
+	const [transcript, setTranscript] = useState<string | null>(null);
+	const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
 
 	// Link state (people, organizations, opportunities)
-	const [linked_people, set_linked_people] = useState<LinkedItem[]>([])
-	const [available_people, set_available_people] = useState<AvailableItem[]>([])
-	const [linked_organizations, set_linked_organizations] = useState<LinkedItem[]>([])
-	const [available_organizations, set_available_organizations] = useState<AvailableItem[]>([])
-	const [linked_opportunities, set_linked_opportunities] = useState<LinkedItem[]>([])
-	const [available_opportunities, set_available_opportunities] = useState<AvailableItem[]>([])
-	const [is_loading_links, set_is_loading_links] = useState(true)
+	const [linked_people, set_linked_people] = useState<LinkedItem[]>([]);
+	const [available_people, set_available_people] = useState<AvailableItem[]>([]);
+	const [linked_organizations, set_linked_organizations] = useState<LinkedItem[]>([]);
+	const [available_organizations, set_available_organizations] = useState<AvailableItem[]>([]);
+	const [linked_opportunities, set_linked_opportunities] = useState<LinkedItem[]>([]);
+	const [available_opportunities, set_available_opportunities] = useState<AvailableItem[]>([]);
+	const [is_loading_links, set_is_loading_links] = useState(true);
 
 	// Conversation analysis status/metadata
 	const conversationAnalysis = interview.conversation_analysis as {
-		indexed_at?: string
-		evidence_count?: number
-		status?: string
-		status_detail?: string
-	} | null
-	const isIndexed = !!conversationAnalysis?.indexed_at
+		indexed_at?: string;
+		evidence_count?: number;
+		status?: string;
+		status_detail?: string;
+	} | null;
+	const isIndexed = !!conversationAnalysis?.indexed_at;
 
 	const statusBadge = useMemo(() => {
 		const statusDetail =
-			typeof conversationAnalysis?.status_detail === "string" ? conversationAnalysis.status_detail : null
-		const baseStatus = typeof conversationAnalysis?.status === "string" ? conversationAnalysis.status : null
+			typeof conversationAnalysis?.status_detail === "string" ? conversationAnalysis.status_detail : null;
+		const baseStatus = typeof conversationAnalysis?.status === "string" ? conversationAnalysis.status : null;
 
 		if (isReprocessing) {
-			return { text: "Processing...", tone: "amber" as const }
+			return { text: "Processing...", tone: "amber" as const };
 		}
 		if (isIndexing) {
-			return { text: "Indexing...", tone: "blue" as const }
+			return { text: "Indexing...", tone: "blue" as const };
 		}
 		if (isApplyingLenses) {
-			return { text: "Applying lenses...", tone: "violet" as const }
+			return { text: "Applying lenses...", tone: "violet" as const };
 		}
 		if (interview.status === "processing") {
-			return { text: statusDetail || "Processing", tone: "amber" as const }
+			return { text: statusDetail || "Processing", tone: "amber" as const };
 		}
 		if (interview.status === "error" || baseStatus === "error") {
-			return { text: "Failed", tone: "red" as const }
+			return { text: "Failed", tone: "red" as const };
 		}
 		if (isIndexed) {
-			return { text: "Indexed", tone: "emerald" as const }
+			return { text: "Indexed", tone: "emerald" as const };
 		}
-		return { text: "Not indexed", tone: "slate" as const }
-	}, [isApplyingLenses, isIndexed, isIndexing, isReprocessing, interview.conversation_analysis, interview.status])
+		return { text: "Not indexed", tone: "slate" as const };
+	}, [isApplyingLenses, isIndexed, isIndexing, isReprocessing, interview.conversation_analysis, interview.status]);
 
 	const fetch_links = useCallback(async () => {
-		set_is_loading_links(true)
+		set_is_loading_links(true);
 		try {
 			const [{ data: linkedPeopleData, error: linkedPeopleError }, { data: peopleData, error: peopleError }] =
 				await Promise.all([
@@ -120,42 +125,42 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 						.select("id, people(id, name, company, segment)")
 						.eq("interview_id", interview.id),
 					supabase.from("people").select("id, name").eq("project_id", projectId).order("name", { ascending: true }),
-				])
+				]);
 
 			if (linkedPeopleError) {
-				consola.warn("Failed to fetch linked people:", linkedPeopleError)
+				consola.warn("Failed to fetch linked people:", linkedPeopleError);
 			} else {
 				set_linked_people(
 					(linkedPeopleData || [])
 						.map((row) => {
 							const person = row.people as {
-								id: string
-								name: string | null
-								company?: string | null
-								segment?: string | null
-							} | null
-							if (!person?.id) return null
+								id: string;
+								name: string | null;
+								company?: string | null;
+								segment?: string | null;
+							} | null;
+							if (!person?.id) return null;
 							return {
 								id: person.id,
 								linkId: String(row.id),
 								label: person.name || "Unnamed",
 								company: person.company ?? null,
 								segment: person.segment ?? null,
-							} satisfies LinkedItem
+							} satisfies LinkedItem;
 						})
 						.filter(Boolean) as LinkedItem[]
-				)
+				);
 			}
 
 			if (peopleError) {
-				consola.warn("Failed to fetch available people:", peopleError)
+				consola.warn("Failed to fetch available people:", peopleError);
 			} else {
 				set_available_people(
 					(peopleData || []).map((p) => ({
 						id: p.id,
 						label: p.name || "Unnamed",
 					}))
-				)
+				);
 			}
 
 			const [
@@ -168,33 +173,33 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 					.select("id, name")
 					.eq("project_id", projectId)
 					.order("name", { ascending: true }),
-			])
+			]);
 
 			if (linkedOrganizationsError) {
-				consola.warn("Failed to fetch linked organizations:", linkedOrganizationsError)
+				consola.warn("Failed to fetch linked organizations:", linkedOrganizationsError);
 			} else {
 				set_linked_organizations(
 					(linkedOrganizationsData || [])
 						.map((row) => {
 							const org = row.organizations as {
-								id: string
-								name: string
-							} | null
-							if (!org?.id) return null
+								id: string;
+								name: string;
+							} | null;
+							if (!org?.id) return null;
 							return {
 								id: org.id,
 								linkId: String(row.id),
 								label: org.name,
-							} satisfies LinkedItem
+							} satisfies LinkedItem;
 						})
 						.filter(Boolean) as LinkedItem[]
-				)
+				);
 			}
 
 			if (organizationsError) {
-				consola.warn("Failed to fetch available organizations:", organizationsError)
+				consola.warn("Failed to fetch available organizations:", organizationsError);
 			} else {
-				set_available_organizations((organizationsData || []).map((o) => ({ id: o.id, label: o.name })))
+				set_available_organizations((organizationsData || []).map((o) => ({ id: o.id, label: o.name })));
 			}
 
 			const [
@@ -210,83 +215,83 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 					.select("id, title")
 					.eq("project_id", projectId)
 					.order("updated_at", { ascending: false }),
-			])
+			]);
 
 			if (linkedOpportunitiesError) {
-				consola.warn("Failed to fetch linked opportunities:", linkedOpportunitiesError)
+				consola.warn("Failed to fetch linked opportunities:", linkedOpportunitiesError);
 			} else {
 				set_linked_opportunities(
 					(linkedOpportunitiesData || [])
 						.map((row) => {
 							const opp = row.opportunities as {
-								id: string
-								title: string
-							} | null
-							if (!opp?.id) return null
+								id: string;
+								title: string;
+							} | null;
+							if (!opp?.id) return null;
 							return {
 								id: opp.id,
 								linkId: String(row.id),
 								label: opp.title,
-							} satisfies LinkedItem
+							} satisfies LinkedItem;
 						})
 						.filter(Boolean) as LinkedItem[]
-				)
+				);
 			}
 
 			if (opportunitiesError) {
-				consola.warn("Failed to fetch available opportunities:", opportunitiesError)
+				consola.warn("Failed to fetch available opportunities:", opportunitiesError);
 			} else {
-				set_available_opportunities((opportunitiesData || []).map((o) => ({ id: o.id, label: o.title })))
+				set_available_opportunities((opportunitiesData || []).map((o) => ({ id: o.id, label: o.title })));
 			}
 		} finally {
-			set_is_loading_links(false)
+			set_is_loading_links(false);
 		}
-	}, [interview.id, projectId, supabase])
+	}, [interview.id, projectId, supabase]);
 
 	useEffect(() => {
-		fetch_links()
-	}, [fetch_links])
+		fetch_links();
+	}, [fetch_links]);
 
 	// Fetch transcript for voice memos (not included in main query to avoid bloat)
 	useEffect(() => {
 		const fetchTranscript = async () => {
 			// Only fetch if we don't have content from observations_and_notes
-			if (interview.observations_and_notes) return
+			if (interview.observations_and_notes) return;
 
-			setIsLoadingTranscript(true)
+			setIsLoadingTranscript(true);
 			try {
 				const { data, error } = await supabase
 					.from("interviews")
 					.select("transcript, transcript_formatted")
 					.eq("id", interview.id)
-					.single()
+					.single();
 
 				if (error) {
-					consola.warn("Failed to fetch transcript:", error)
-					return
+					consola.warn("Failed to fetch transcript:", error);
+					return;
 				}
 
 				const formatted = data?.transcript_formatted as {
-					full_transcript?: string
-				} | null
-				const transcriptText = data?.transcript || formatted?.full_transcript || null
-				setTranscript(transcriptText)
+					full_transcript?: string;
+				} | null;
+				const transcriptText = data?.transcript || formatted?.full_transcript || null;
+				setTranscript(transcriptText);
 			} catch (e) {
-				consola.error("Error fetching transcript:", e)
+				consola.error("Error fetching transcript:", e);
 			} finally {
-				setIsLoadingTranscript(false)
+				setIsLoadingTranscript(false);
 			}
-		}
+		};
 
-		fetchTranscript()
-	}, [interview.id, interview.observations_and_notes, supabase])
+		fetchTranscript();
+	}, [interview.id, interview.observations_and_notes, supabase]);
 
 	// Refresh people when link fetcher completes
 	useEffect(() => {
 		if (linkFetcher.state === "idle" && linkFetcher.data) {
-			fetch_links()
+			fetch_links();
 		}
-	}, [linkFetcher.state, linkFetcher.data, fetch_links])
+	}, [linkFetcher.state, linkFetcher.data, fetch_links]);
 
 	const handleLinkPerson = (personId: string) => {
 		linkFetcher.submit(
@@ -295,8 +300,8 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				personId,
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleUnlinkPerson = (interviewPersonId: string) => {
 		linkFetcher.submit(
@@ -305,11 +310,11 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				interviewPersonId,
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleCreateAndLinkPerson = (name: string) => {
-		if (!name.trim()) return
+		if (!name.trim()) return;
 		linkFetcher.submit(
 			{
 				intent: "add-participant",
@@ -317,8 +322,8 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				person_name: name.trim(),
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleLinkOrganization = (organizationId: string) => {
 		linkFetcher.submit(
@@ -327,10 +332,10 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				organizationId,
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
-	type UnlinkOrganizationPayload = { interviewOrganizationId: string }
+	type UnlinkOrganizationPayload = { interviewOrganizationId: string };
 	const handleUnlinkOrganization = (payload: UnlinkOrganizationPayload) => {
 		linkFetcher.submit(
 			{
@@ -338,19 +343,19 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				interviewOrganizationId: payload.interviewOrganizationId,
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleCreateAndLinkOrganization = (name: string) => {
-		if (!name.trim()) return
+		if (!name.trim()) return;
 		linkFetcher.submit(
 			{
 				intent: "create-and-link-organization",
 				organization_name: name.trim(),
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleLinkOpportunity = (opportunityId: string) => {
 		linkFetcher.submit(
@@ -359,10 +364,10 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				opportunityId,
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
-	type UnlinkOpportunityPayload = { interviewOpportunityId: string }
+	type UnlinkOpportunityPayload = { interviewOpportunityId: string };
 	const handleUnlinkOpportunity = (payload: UnlinkOpportunityPayload) => {
 		linkFetcher.submit(
 			{
@@ -370,138 +375,138 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				interviewOpportunityId: payload.interviewOpportunityId,
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleCreateAndLinkOpportunity = (title: string) => {
-		if (!title.trim()) return
+		if (!title.trim()) return;
 		linkFetcher.submit(
 			{
 				intent: "create-and-link-opportunity",
 				opportunity_title: title.trim(),
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	// Handle delete response - navigate after successful delete
 	useEffect(() => {
 		if (fetcher.data?.success && fetcher.data?.redirectTo) {
-			navigate(fetcher.data.redirectTo)
+			navigate(fetcher.data.redirectTo);
 		} else if (fetcher.data?.error) {
-			consola.error("Delete failed:", fetcher.data.error)
+			consola.error("Delete failed:", fetcher.data.error);
 		}
-	}, [fetcher.data, navigate])
+	}, [fetcher.data, navigate]);
 
-	const evidenceCount = conversationAnalysis?.evidence_count ?? 0
+	const evidenceCount = conversationAnalysis?.evidence_count ?? 0;
 
 	// Get content from the best available source
 	// For voice memos, transcript is fetched separately via useEffect
-	const displayContent = interview.observations_and_notes || transcript || ""
+	const displayContent = interview.observations_and_notes || transcript || "";
 
 	// Determine if we have audio but no transcript (needs transcription)
-	const hasMedia = !!interview.media_url
-	const hasContent = displayContent.trim().length > 0
-	const needsTranscription = hasMedia && !hasContent && !isLoadingTranscript
+	const hasMedia = !!interview.media_url;
+	const hasContent = displayContent.trim().length > 0;
+	const needsTranscription = hasMedia && !hasContent && !isLoadingTranscript;
 
 	// Poll for completion when status is "processing"
 	useEffect(() => {
 		if (interview.status !== "processing") {
-			setIsReprocessing(false)
-			return
+			setIsReprocessing(false);
+			return;
 		}
 
 		// Start polling when we see "processing" status
-		setIsReprocessing(true)
+		setIsReprocessing(true);
 		const pollInterval = setInterval(() => {
-			consola.debug("Polling for interview completion...")
-			revalidator.revalidate()
-		}, 5000) // Check every 5 seconds
+			consola.debug("Polling for interview completion...");
+			revalidator.revalidate();
+		}, 5000); // Check every 5 seconds
 
 		// Stop after 2 minutes max
 		const timeout = setTimeout(() => {
-			clearInterval(pollInterval)
-			setIsReprocessing(false)
-			consola.warn("Polling timeout reached")
-		}, 120000)
+			clearInterval(pollInterval);
+			setIsReprocessing(false);
+			consola.warn("Polling timeout reached");
+		}, 120000);
 
 		return () => {
-			clearInterval(pollInterval)
-			clearTimeout(timeout)
-		}
-	}, [interview.status, revalidator])
+			clearInterval(pollInterval);
+			clearTimeout(timeout);
+		};
+	}, [interview.status, revalidator]);
 
 	const handleReprocess = async () => {
-		setIsReprocessing(true)
+		setIsReprocessing(true);
 		try {
 			const response = await fetch("/api/reprocess-interview", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ interviewId: interview.id }),
-			})
-			const result = await response.json()
+			});
+			const result = await response.json();
 			if (result.success) {
-				consola.success("Reprocessing started", result.runId)
+				consola.success("Reprocessing started", result.runId);
 				// Revalidate immediately to pick up "processing" status, then polling takes over
-				revalidator.revalidate()
+				revalidator.revalidate();
 			} else {
-				consola.error("Failed to reprocess:", result.error)
-				setIsReprocessing(false)
+				consola.error("Failed to reprocess:", result.error);
+				setIsReprocessing(false);
 			}
 		} catch (e) {
-			consola.error("Reprocess failed", e)
-			setIsReprocessing(false)
+			consola.error("Reprocess failed", e);
+			setIsReprocessing(false);
 		}
-	}
+	};
 
 	const handleIndexNote = async () => {
-		setIsIndexing(true)
+		setIsIndexing(true);
 		try {
 			const response = await fetch("/api/index-note", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ interviewId: interview.id }),
-			})
-			const result = await response.json()
+			});
+			const result = await response.json();
 			if (result.success) {
-				consola.success("Note indexing started", result.runId)
+				consola.success("Note indexing started", result.runId);
 				// Revalidate after a short delay to give the task time to start
-				setTimeout(() => revalidator.revalidate(), 2000)
+				setTimeout(() => revalidator.revalidate(), 2000);
 			} else {
-				consola.error("Failed to index note:", result.error)
+				consola.error("Failed to index note:", result.error);
 			}
 		} catch (e) {
-			consola.error("Index note failed", e)
+			consola.error("Index note failed", e);
 		} finally {
-			setIsIndexing(false)
+			setIsIndexing(false);
 		}
-	}
+	};
 
 	const handleApplyLenses = async () => {
-		setIsApplyingLenses(true)
+		setIsApplyingLenses(true);
 		try {
-			const formData = new FormData()
-			formData.append("interview_id", interview.id)
-			formData.append("apply_all", "true")
+			const formData = new FormData();
+			formData.append("interview_id", interview.id);
+			formData.append("apply_all", "true");
 
 			const response = await fetch("/api/apply-lens", {
 				method: "POST",
 				body: formData,
-			})
-			const result = await response.json()
+			});
+			const result = await response.json();
 			if (result.ok) {
-				consola.success("Lens application started", result.taskId)
+				consola.success("Lens application started", result.taskId);
 				// Revalidate after a delay to show lens results
-				setTimeout(() => revalidator.revalidate(), 3000)
+				setTimeout(() => revalidator.revalidate(), 3000);
 			} else {
-				consola.error("Failed to apply lenses:", result.error)
+				consola.error("Failed to apply lenses:", result.error);
 			}
 		} catch (e) {
-			consola.error("Apply lenses failed", e)
+			consola.error("Apply lenses failed", e);
 		} finally {
-			setIsApplyingLenses(false)
+			setIsApplyingLenses(false);
 		}
-	}
+	};
 
 	const handleSaveContent = (value: string) => {
 		fetcher.submit(
@@ -517,8 +522,8 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				method: "POST",
 				action: "/api/update-field",
 			}
-		)
-	}
+		);
+	};
 
 	const handleSaveTitle = (value: string) => {
 		fetcher.submit(
@@ -534,8 +539,8 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				method: "POST",
 				action: "/api/update-field",
 			}
-		)
-	}
+		);
+	};
 
 	const handleDelete = () => {
 		fetcher.submit(
@@ -547,8 +552,8 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				method: "DELETE",
 				action: "/api/interviews/delete",
 			}
-		)
-	}
+		);
+	};
 
 	return (
 		<PageContainer size="md" className={className}>
@@ -776,5 +781,5 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				</AlertDialogContent>
 			</AlertDialog>
 		</PageContainer>
-	)
+	);
 }

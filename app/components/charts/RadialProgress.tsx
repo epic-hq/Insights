@@ -1,19 +1,19 @@
-import type { CSSProperties } from "react"
-import { Label, PolarRadiusAxis, RadialBar, RadialBarChart, ResponsiveContainer } from "recharts"
+import type { CSSProperties } from "react";
+import { Label, PolarRadiusAxis, RadialBar, RadialBarChart, ResponsiveContainer } from "recharts";
 
 interface RadialProgressProps {
 	/** Current value */
-	current: number
+	current: number;
 	/** Target/maximum value */
-	target: number
+	target: number;
 	/** Label to show in center */
-	label?: string
+	label?: string;
 	/** Size of the chart */
-	size?: number
+	size?: number;
 	/** Custom styling */
-	style?: CSSProperties
+	style?: CSSProperties;
 	/** Color of the progress bar */
-	color?: string
+	color?: string;
 }
 
 export default function RadialProgress({
@@ -31,7 +31,7 @@ export default function RadialProgress({
 			value: current,
 			fill: color,
 		},
-	]
+	];
 
 	return (
 		<div style={{ width: size, height: size / 2 + 40, ...style }}>
@@ -58,14 +58,14 @@ export default function RadialProgress({
 												{label}
 											</tspan>
 										</text>
-									)
+									);
 								}
-								return null
+								return null;
 							}}
 						/>
 					</PolarRadiusAxis>
 				</RadialBarChart>
 			</ResponsiveContainer>
 		</div>
-	)
+	);
 }

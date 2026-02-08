@@ -1,4 +1,4 @@
-import { MeshGradient } from "@paper-design/shaders-react"
+import { MeshGradient } from "@paper-design/shaders-react";
 import {
 	ArrowRight,
 	BarChart2,
@@ -19,15 +19,15 @@ import {
 	Users,
 	Video,
 	Zap,
-} from "lucide-react"
-import { Link, type MetaFunction, useNavigate } from "react-router"
-import MainNav from "~/components/navigation/MainNav"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card } from "~/components/ui/card"
+} from "lucide-react";
+import { Link, type MetaFunction, useNavigate } from "react-router";
+import MainNav from "~/components/navigation/MainNav";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card } from "~/components/ui/card";
 
-import { PATHS } from "~/paths"
-import { HowItWorks, KeyBenefits } from "./benefits-how"
+import { PATHS } from "~/paths";
+import { HowItWorks, KeyBenefits } from "./benefits-how";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -37,11 +37,11 @@ export const meta: MetaFunction = () => {
 			content:
 				"Customer truth, connected. UpSight captures every customer conversation and turns them into evidence your whole team can see, search, and act on. Click any insight, see exactly who said it. Make work work.",
 		},
-	]
-}
+	];
+};
 
 export default function LandingPage() {
-	const navigate = useNavigate()
+	const navigate = useNavigate();
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
 			<MainNav />
@@ -363,5 +363,5 @@ export default function LandingPage() {
 				</nav>
 			</footer>
 		</div>
-	)
+	);
 }

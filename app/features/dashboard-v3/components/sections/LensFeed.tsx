@@ -6,50 +6,50 @@
  * 2. Lens Library - Links to aggregation pages for each lens type
  */
 
-import { Activity, ChevronRight, Clock, Glasses, Sparkles } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
-import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { EmptyStateBox } from "../shared/EmptyStateBox"
-import { SectionHeader } from "../shared/SectionHeader"
+import { Activity, ChevronRight, Clock, Glasses, Sparkles } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent } from "~/components/ui/card";
+import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { EmptyStateBox } from "../shared/EmptyStateBox";
+import { SectionHeader } from "../shared/SectionHeader";
 
 /** Activity feed item representing a recent lens analysis completion */
 export interface LensActivityItem {
-	id: string
-	interviewId: string
-	interviewTitle: string
-	templateKey: string
-	templateName: string
-	category: string
-	keyTakeaway: string | null
-	processedAt: string
+	id: string;
+	interviewId: string;
+	interviewTitle: string;
+	templateKey: string;
+	templateName: string;
+	category: string;
+	keyTakeaway: string | null;
+	processedAt: string;
 }
 
 export interface LensFeedProps {
 	/** Array of lens summaries to display */
-	lenses: LensSummary[]
+	lenses: LensSummary[];
 	/** Recent lens activity items */
-	recentActivity?: LensActivityItem[]
+	recentActivity?: LensActivityItem[];
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Maximum number of lenses to show in library */
-	maxVisibleLenses?: number
+	maxVisibleLenses?: number;
 	/** Maximum number of activity items to show */
-	maxVisibleActivity?: number
+	maxVisibleActivity?: number;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 interface LensLibraryItemProps {
-	lens: LensSummary
+	lens: LensSummary;
 }
 
 interface ActivityFeedItemProps {
-	item: LensActivityItem
-	projectPath: string
+	item: LensActivityItem;
+	projectPath: string;
 }
 
 const categoryColors: Record<string, string> = {
@@ -57,26 +57,26 @@ const categoryColors: Record<string, string> = {
 	research: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
 	product: "text-purple-600 bg-purple-50 dark:bg-purple-900/20",
 	general: "text-slate-600 bg-slate-50 dark:bg-slate-800",
-}
+};
 
 function formatRelativeTime(dateString: string): string {
-	const date = new Date(dateString)
-	const now = new Date()
-	const diffMs = now.getTime() - date.getTime()
-	const diffMins = Math.floor(diffMs / 60000)
-	const diffHours = Math.floor(diffMs / 3600000)
-	const diffDays = Math.floor(diffMs / 86400000)
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMs / 3600000);
+	const diffDays = Math.floor(diffMs / 86400000);
 
-	if (diffMins < 1) return "just now"
-	if (diffMins < 60) return `${diffMins}m ago`
-	if (diffHours < 24) return `${diffHours}h ago`
-	if (diffDays < 7) return `${diffDays}d ago`
-	return date.toLocaleDateString()
+	if (diffMins < 1) return "just now";
+	if (diffMins < 60) return `${diffMins}m ago`;
+	if (diffHours < 24) return `${diffHours}h ago`;
+	if (diffDays < 7) return `${diffDays}d ago`;
+	return date.toLocaleDateString();
 }
 
 function ActivityFeedItem({ item, projectPath }: ActivityFeedItemProps) {
-	const routes = useProjectRoutes(projectPath)
-	const colorClass = categoryColors[item.category] || categoryColors.general
+	const routes = useProjectRoutes(projectPath);
+	const colorClass = categoryColors[item.category] || categoryColors.general;
 
 	return (
 		<Link to={routes.interviews.detail(item.interviewId)} className="group block">
@@ -104,11 +104,11 @@ function ActivityFeedItem({ item, projectPath }: ActivityFeedItemProps) {
 				</CardContent>
 			</Card>
 		</Link>
-	)
+	);
 }
 
 function LensLibraryItem({ lens }: LensLibraryItemProps) {
-	const colorClass = categoryColors[lens.category] || categoryColors.general
+	const colorClass = categoryColors[lens.category] || categoryColors.general;
 
 	return (
 		<Card asChild surface={lens.hasData ? "glass" : "muted"} className={cn("group", !lens.hasData && "opacity-70")}>
@@ -141,7 +141,7 @@ function LensLibraryItem({ lens }: LensLibraryItemProps) {
 				</Link>
 			</div>
 		</Card>
-	)
+	);
 }
 
 export function LensFeed({
@@ -152,16 +152,16 @@ export function LensFeed({
 	maxVisibleActivity = 5,
 	className,
 }: LensFeedProps) {
-	const routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutes(projectPath);
 
 	// Sort lenses: with data first, then by conversation count
 	const sortedLenses = [...lenses].sort((a, b) => {
-		if (a.hasData && !b.hasData) return -1
-		if (!a.hasData && b.hasData) return 1
-		return b.conversationCount - a.conversationCount
-	})
-	const visibleLenses = sortedLenses.slice(0, maxVisibleLenses)
-	const visibleActivity = recentActivity.slice(0, maxVisibleActivity)
+		if (a.hasData && !b.hasData) return -1;
+		if (!a.hasData && b.hasData) return 1;
+		return b.conversationCount - a.conversationCount;
+	});
+	const visibleLenses = sortedLenses.slice(0, maxVisibleLenses);
+	const visibleActivity = recentActivity.slice(0, maxVisibleActivity);
 
 	// Show empty state if no lenses configured
 	if (lenses.length === 0) {
@@ -176,7 +176,7 @@ export function LensFeed({
 					variant="subtle"
 				/>
 			</section>
-		)
+		);
 	}
 
 	return (
@@ -228,7 +228,7 @@ export function LensFeed({
 				</div>
 			</div>
 		</section>
-	)
+	);
 }
 
-export default LensFeed
+export default LensFeed;

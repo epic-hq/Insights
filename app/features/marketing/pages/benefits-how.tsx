@@ -1,4 +1,4 @@
-import { motion } from "framer-motion"
+import { motion } from "framer-motion";
 import {
 	ArrowRight,
 	CheckCircle2,
@@ -10,14 +10,14 @@ import {
 	Sparkles,
 	Target,
 	Users,
-} from "lucide-react"
-import type React from "react"
-import { Link } from "react-router-dom"
-import NavPageLayout from "~/components/layout/NavPageLayout"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { PATHS } from "~/paths"
+} from "lucide-react";
+import type React from "react";
+import { Link } from "react-router-dom";
+import NavPageLayout from "~/components/layout/NavPageLayout";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { PATHS } from "~/paths";
 
 // --- Animation helpers
 const container = {
@@ -26,7 +26,7 @@ const container = {
 		opacity: 1,
 		transition: { staggerChildren: 0.12, delayChildren: 0.1 },
 	},
-}
+};
 
 const item = {
 	hidden: { opacity: 0, y: 18 },
@@ -35,22 +35,22 @@ const item = {
 		y: 0,
 		transition: { duration: 0.45, ease: [0.25, 1, 0.5, 1] },
 	},
-}
+};
 
 // --- Types
 type Benefit = {
-	title: string
-	description: string
-	icon?: React.ElementType
-}
+	title: string;
+	description: string;
+	icon?: React.ElementType;
+};
 
 type Step = {
-	title: string
-	description: string
-	icon?: React.ElementType
-	ctaLabel?: string
-	onClick?: () => void
-}
+	title: string;
+	description: string;
+	icon?: React.ElementType;
+	ctaLabel?: string;
+	onClick?: () => void;
+};
 
 // --- Defaults (edit to fit getupsight.com)
 const defaultBenefits: Benefit[] = [
@@ -76,7 +76,7 @@ const defaultBenefits: Benefit[] = [
 			"AI surveys, guided interviews, or just upload recordings. Choose your workflow. AI assists; you lead.",
 		icon: Lightbulb,
 	},
-]
+];
 
 const defaultSteps: Step[] = [
 	{
@@ -100,7 +100,7 @@ const defaultSteps: Step[] = [
 		description: "Evidence powers decisions, not opinions. Share stories and reels with stakeholders.",
 		icon: Target,
 	},
-]
+];
 
 // --- Components
 export function KeyBenefits({
@@ -108,9 +108,9 @@ export function KeyBenefits({
 	eyebrow = "Why Upsight",
 	benefits = defaultBenefits,
 }: {
-	headline?: string
-	eyebrow?: string
-	benefits?: Benefit[]
+	headline?: string;
+	eyebrow?: string;
+	benefits?: Benefit[];
 }) {
 	return (
 		<section id="benefits" className="space-y-12">
@@ -162,7 +162,7 @@ export function KeyBenefits({
 				))}
 			</motion.ul>
 		</section>
-	)
+	);
 }
 
 export function HowItWorks({
@@ -172,11 +172,11 @@ export function HowItWorks({
 	ctaLabel = "Start your first project",
 	onCtaClick,
 }: {
-	headline?: string
-	eyebrow?: string
-	steps?: Step[]
-	ctaLabel?: string
-	onCtaClick?: () => void
+	headline?: string;
+	eyebrow?: string;
+	steps?: Step[];
+	ctaLabel?: string;
+	onCtaClick?: () => void;
 }) {
 	return (
 		<section className="space-y-12">
@@ -264,7 +264,7 @@ export function HowItWorks({
 				</Button>
 			</motion.div>
 		</section>
-	)
+	);
 }
 
 // --- Default export renders both blocks stacked inside NavPageLayout
@@ -290,5 +290,5 @@ function _UpsightBenefitsAndHowItWorks() {
 				<HowItWorks />
 			</div>
 		</NavPageLayout>
-	)
+	);
 }

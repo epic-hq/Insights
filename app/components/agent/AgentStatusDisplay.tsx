@@ -1,37 +1,37 @@
-import { Lightbulb, MessageSquare, RefreshCw, Target, TrendingUp } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
+import { Lightbulb, MessageSquare, RefreshCw, Target, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
 
 interface ProjectStatus {
-	keyFindings: string[]
-	nextSteps: string[]
-	totalInsights: number
-	totalInterviews: number
-	totalOpportunities: number
-	totalPeople: number
-	totalPersonas: number
-	lastUpdated: string
-	currentProject?: string
-	currentAccount?: string
+	keyFindings: string[];
+	nextSteps: string[];
+	totalInsights: number;
+	totalInterviews: number;
+	totalOpportunities: number;
+	totalPeople: number;
+	totalPersonas: number;
+	lastUpdated: string;
+	currentProject?: string;
+	currentAccount?: string;
 }
 
 interface AgentStatusDisplayProps {
-	agentId?: string
-	className?: string
-	onRefresh?: () => void
+	agentId?: string;
+	className?: string;
+	onRefresh?: () => void;
 }
 
 export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh }: AgentStatusDisplayProps) {
-	const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(null)
-	const [loading, setLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const [projectStatus, setProjectStatus] = useState<ProjectStatus | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	const fetchAgentState = useCallback(async () => {
-		setLoading(true)
-		setError(null)
+		setLoading(true);
+		setError(null);
 
 		try {
 			// Call Mastra agent state API to get current working memory
@@ -40,32 +40,32 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				headers: {
 					"Content-Type": "application/json",
 				},
-			})
+			});
 
 			if (!response.ok) {
-				throw new Error(`Failed to fetch agent state: ${response.statusText}`)
+				throw new Error(`Failed to fetch agent state: ${response.statusText}`);
 			}
 
-			const agentState = await response.json()
+			const agentState = await response.json();
 
 			if (agentState.projectStatus) {
-				setProjectStatus(agentState.projectStatus)
+				setProjectStatus(agentState.projectStatus);
 			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to fetch agent state")
+			setError(err instanceof Error ? err.message : "Failed to fetch agent state");
 		} finally {
-			setLoading(false)
+			setLoading(false);
 		}
-	}, [agentId])
+	}, [agentId]);
 
 	useEffect(() => {
-		fetchAgentState()
-	}, [fetchAgentState])
+		fetchAgentState();
+	}, [fetchAgentState]);
 
 	const handleRefresh = () => {
-		fetchAgentState()
-		onRefresh?.()
-	}
+		fetchAgentState();
+		onRefresh?.();
+	};
 
 	if (loading && !projectStatus) {
 		return (
@@ -77,7 +77,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 					</CardTitle>
 				</CardHeader>
 			</Card>
-		)
+		);
 	}
 
 	if (error && !projectStatus) {
@@ -94,7 +94,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 					</Button>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	if (!projectStatus) {
@@ -111,7 +111,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 					</Button>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	return (
@@ -217,5 +217,5 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }

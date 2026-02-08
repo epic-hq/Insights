@@ -1,19 +1,19 @@
-import { motion } from "framer-motion"
-import { ClipboardList, Clock, FileText, Minus, Play, Plus } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
-import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
-import { cn } from "~/lib/utils"
-import type { Evidence } from "~/types"
-import { generateMediaUrl, getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client"
+import { motion } from "framer-motion";
+import { ClipboardList, Clock, FileText, Minus, Play, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer";
+import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard";
+import { cn } from "~/lib/utils";
+import type { Evidence } from "~/types";
+import { generateMediaUrl, getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client";
 
 type EvidenceFacetChip = {
-	kind_slug: string
-	label: string
-	facet_account_id: number
-}
+	kind_slug: string;
+	label: string;
+	facet_account_id: number;
+};
 
 type EvidenceSnippet = (Pick<
 	Evidence,
@@ -30,32 +30,32 @@ type EvidenceSnippet = (Pick<
 	| "anchors"
 	| "interview_id"
 	| "source_type"
-> & { context_summary?: string | null }) & { facets?: EvidenceFacetChip[] }
+> & { context_summary?: string | null }) & { facets?: EvidenceFacetChip[] };
 
 interface EvidenceCardProps {
-	evidence: EvidenceSnippet
-	variant?: "mini" | "expanded"
-	people?: EvidencePerson[]
-	interview?: EvidenceInterview | null
-	showInterviewLink?: boolean
-	projectPath?: string
-	className?: string
+	evidence: EvidenceSnippet;
+	variant?: "mini" | "expanded";
+	people?: EvidencePerson[];
+	interview?: EvidenceInterview | null;
+	showInterviewLink?: boolean;
+	projectPath?: string;
+	className?: string;
 }
 
 type EvidencePerson = {
-	id: string
-	name: string | null
-	role: string | null
-	personas: Array<{ id: string; name: string }>
-}
+	id: string;
+	name: string | null;
+	role: string | null;
+	personas: Array<{ id: string; name: string }>;
+};
 
 type EvidenceInterview = {
-	id: string
-	title?: string | null
-	media_url?: string | null
-	duration_sec?: number | null
-	thumbnail_url?: string | null
-}
+	id: string;
+	title?: string | null;
+	media_url?: string | null;
+	duration_sec?: number | null;
+	thumbnail_url?: string | null;
+};
 
 // Removed - use MediaAnchor from media-url.client instead
 
@@ -68,59 +68,59 @@ function EvidenceCard({
 	projectPath,
 	className = "",
 }: EvidenceCardProps) {
-	const [isHovered, setIsHovered] = useState(false)
+	const [isHovered, setIsHovered] = useState(false);
 
-	const interviewId = evidence.interview_id ?? interview?.id ?? null
-	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null
+	const interviewId = evidence.interview_id ?? interview?.id ?? null;
+	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null;
 
-	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as MediaAnchor[]) : []
-	const fallbackMediaUrl = interview?.media_url ?? null
+	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as MediaAnchor[]) : [];
+	const fallbackMediaUrl = interview?.media_url ?? null;
 
 	const getStageColor = (stage?: string | null) => {
-		if (!stage) return "#3b82f6"
+		if (!stage) return "#3b82f6";
 		switch (stage.toLowerCase()) {
 			case "awareness":
-				return "#f59e0b"
+				return "#f59e0b";
 			case "consideration":
-				return "#8b5cf6"
+				return "#8b5cf6";
 			case "decision":
-				return "#10b981"
+				return "#10b981";
 			case "onboarding":
-				return "#06b6d4"
+				return "#06b6d4";
 			case "retention":
-				return "#6366f1"
+				return "#6366f1";
 			default:
-				return "#3b82f6"
+				return "#3b82f6";
 		}
-	}
+	};
 
-	const themeColor = getStageColor(evidence.journey_stage)
-	const gist = evidence.gist ?? evidence.verbatim
-	const chunk = evidence.chunk ?? evidence.verbatim
+	const themeColor = getStageColor(evidence.journey_stage);
+	const gist = evidence.gist ?? evidence.verbatim;
+	const chunk = evidence.chunk ?? evidence.verbatim;
 
 	const primarySpeaker = useMemo(() => {
-		if (!people?.length) return null
-		return people.find((p) => p.role?.toLowerCase() === "speaker") ?? people[0]
-	}, [people])
+		if (!people?.length) return null;
+		return people.find((p) => p.role?.toLowerCase() === "speaker") ?? people[0];
+	}, [people]);
 
 	const _speakerLabel = primarySpeaker
 		? `${primarySpeaker.name ?? "Unknown"}${primarySpeaker.role ? ` (${primarySpeaker.role})` : ""}`
-		: null
+		: null;
 
-	const personaBadges = primarySpeaker?.personas ?? []
-	const _supportLevel = getSupportConfidenceLevel(evidence.support)
-	const _supportLabel = formatSupportLabel(evidence.support)
-	const createdLabel = evidence.created_at ? new Date(evidence.created_at).toLocaleDateString() : null
+	const personaBadges = primarySpeaker?.personas ?? [];
+	const _supportLevel = getSupportConfidenceLevel(evidence.support);
+	const _supportLabel = formatSupportLabel(evidence.support);
+	const createdLabel = evidence.created_at ? new Date(evidence.created_at).toLocaleDateString() : null;
 
 	// Filter for media anchors - any anchor with timing or media_key
 	const mediaAnchors = anchors.filter((a) => {
-		if (!a || typeof a !== "object") return false
+		if (!a || typeof a !== "object") return false;
 		// Has timing data (start_ms or start_seconds)
-		const hasTiming = a.start_ms !== undefined || a.start_seconds !== undefined
+		const hasTiming = a.start_ms !== undefined || a.start_seconds !== undefined;
 		// Has media reference
-		const hasMedia = a.media_key !== undefined || (typeof a.target === "string" && a.target.startsWith("http"))
-		return hasTiming || hasMedia
-	})
+		const hasMedia = a.media_key !== undefined || (typeof a.target === "string" && a.target.startsWith("http"));
+		return hasTiming || hasMedia;
+	});
 
 	// If no media anchors but interview has media, create a fallback anchor
 	const effectiveMediaAnchors =
@@ -128,9 +128,9 @@ function EvidenceCard({
 			? mediaAnchors
 			: fallbackMediaUrl
 				? [{ type: "media", start_ms: 0, start_seconds: 0 } as MediaAnchor]
-				: []
+				: [];
 
-	const hasMediaReplay = effectiveMediaAnchors.length > 0
+	const hasMediaReplay = effectiveMediaAnchors.length > 0;
 
 	return (
 		<motion.div
@@ -277,45 +277,45 @@ function EvidenceCard({
 				transition={{ duration: 0.3 }}
 			/>
 		</motion.div>
-	)
+	);
 }
 
-export default EvidenceCard
+export default EvidenceCard;
 
 // ────────────────────────────
 // Helpers
 // ────────────────────────────
 
 function getSupportConfidenceLevel(s?: string | null) {
-	const n = s?.toLowerCase()
-	if (n === "supports") return "high"
-	if (n === "neutral") return "medium"
-	return "low"
+	const n = s?.toLowerCase();
+	if (n === "supports") return "high";
+	if (n === "neutral") return "medium";
+	return "low";
 }
 
 function formatSupportLabel(s?: string | null) {
-	if (!s) return "Unknown"
-	return s.charAt(0).toUpperCase() + s.slice(1)
+	if (!s) return "Unknown";
+	return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function secondsToTimestamp(seconds: number) {
-	const total = Math.max(0, Math.floor(seconds))
-	const h = Math.floor(total / 3600)
-	const m = Math.floor((total % 3600) / 60)
-	const s = total % 60
+	const total = Math.max(0, Math.floor(seconds));
+	const h = Math.floor(total / 3600);
+	const m = Math.floor((total % 3600) / 60);
+	const s = total % 60;
 	return h > 0
 		? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
-		: `${m}:${s.toString().padStart(2, "0")}`
+		: `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 /** Key aspects section - shows first 3, then "more..." toggle */
 function KeyAspectsSection({ facets }: { facets: EvidenceFacetChip[] }) {
-	const [showAll, setShowAll] = useState(false)
+	const [showAll, setShowAll] = useState(false);
 
-	if (facets.length === 0) return null
+	if (facets.length === 0) return null;
 
-	const visibleFacets = showAll ? facets : facets.slice(0, 3)
-	const hiddenCount = facets.length - 3
+	const visibleFacets = showAll ? facets : facets.slice(0, 3);
+	const hiddenCount = facets.length - 3;
 
 	return (
 		<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
@@ -336,7 +336,7 @@ function KeyAspectsSection({ facets }: { facets: EvidenceFacetChip[] }) {
 				</button>
 			)}
 		</div>
-	)
+	);
 }
 
 // Component to handle media anchor playback with fresh signed URLs
@@ -348,38 +348,38 @@ function MediaAnchorPlayer({
 	projectPath,
 	thumbnailUrl,
 }: {
-	anchor: MediaAnchor
-	fallbackMediaUrl?: string | null
-	variant?: "mini" | "expanded"
-	evidenceId?: string
-	projectPath?: string
-	thumbnailUrl?: string | null
+	anchor: MediaAnchor;
+	fallbackMediaUrl?: string | null;
+	variant?: "mini" | "expanded";
+	evidenceId?: string;
+	projectPath?: string;
+	thumbnailUrl?: string | null;
 }) {
-	const [mediaUrl, setMediaUrl] = useState<string | null>(null)
-	const [isLoading, setIsLoading] = useState(true)
+	const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		let cancelled = false
+		let cancelled = false;
 
 		async function loadMediaUrl() {
-			setIsLoading(true)
-			const url = await generateMediaUrl(anchor, fallbackMediaUrl)
+			setIsLoading(true);
+			const url = await generateMediaUrl(anchor, fallbackMediaUrl);
 			if (!cancelled) {
-				setMediaUrl(url)
-				setIsLoading(false)
+				setMediaUrl(url);
+				setIsLoading(false);
 			}
 		}
 
-		loadMediaUrl()
+		loadMediaUrl();
 
 		return () => {
-			cancelled = true
-		}
-	}, [anchor, fallbackMediaUrl])
+			cancelled = true;
+		};
+	}, [anchor, fallbackMediaUrl]);
 
-	const seconds = getAnchorStartSeconds(anchor)
-	const displayTitle = anchor?.chapter_title
-	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
+	const seconds = getAnchorStartSeconds(anchor);
+	const displayTitle = anchor?.chapter_title;
+	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined");
 
 	return (
 		<div className="mt-3 px-4">
@@ -423,5 +423,5 @@ function MediaAnchorPlayer({
 				)}
 			</div>
 		</div>
-	)
+	);
 }

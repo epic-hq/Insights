@@ -3,19 +3,19 @@
  * Migrates mock feature data into the tasks table
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
 
 interface MockFeature {
-	id: string
-	feature: string
-	benefit: string
-	segments: string
-	impact: number
-	stage: "activation" | "onboarding" | "retention"
-	priority: 1 | 2 | 3
-	reason: string
-	cluster: string
+	id: string;
+	feature: string;
+	benefit: string;
+	segments: string;
+	impact: number;
+	stage: "activation" | "onboarding" | "retention";
+	priority: 1 | 2 | 3;
+	reason: string;
+	cluster: string;
 }
 
 const MOCK_FEATURES: MockFeature[] = [
@@ -228,7 +228,7 @@ const MOCK_FEATURES: MockFeature[] = [
 		reason: "Helpful but not core; can use templates for now.",
 		cluster: "Sales",
 	},
-]
+];
 
 /**
  * Seed tasks for a specific project
@@ -239,13 +239,13 @@ export async function seedTasks({
 	projectId,
 	userId,
 }: {
-	supabase: SupabaseClient
-	accountId: string
-	projectId: string
-	userId: string
+	supabase: SupabaseClient;
+	accountId: string;
+	projectId: string;
+	userId: string;
 }): Promise<{ success: boolean; count: number; error?: string }> {
 	try {
-		consola.info("Starting task seeding...", { accountId, projectId })
+		consola.info("Starting task seeding...", { accountId, projectId });
 
 		// Check if tasks already exist for this project AND account
 		const { data: existing, error: checkError } = await supabase
@@ -253,16 +253,16 @@ export async function seedTasks({
 			.select("id")
 			.eq("account_id", accountId)
 			.eq("project_id", projectId)
-			.limit(1)
+			.limit(1);
 
 		if (checkError) {
-			consola.error("Error checking for existing tasks:", checkError)
-			return { success: false, count: 0, error: checkError.message }
+			consola.error("Error checking for existing tasks:", checkError);
+			return { success: false, count: 0, error: checkError.message };
 		}
 
 		if (existing && existing.length > 0) {
-			consola.info("Tasks already exist for this project, skipping seed")
-			return { success: true, count: 0, error: "Tasks already exist" }
+			consola.info("Tasks already exist for this project, skipping seed");
+			return { success: true, count: 0, error: "Tasks already exist" };
 		}
 
 		// Transform mock features into task inserts
@@ -284,21 +284,21 @@ export async function seedTasks({
 			account_id: accountId,
 			project_id: projectId,
 			created_by: userId,
-		}))
+		}));
 
 		// Insert all tasks
-		const { data, error: insertError } = await supabase.from("tasks").insert(tasksToInsert).select()
+		const { data, error: insertError } = await supabase.from("tasks").insert(tasksToInsert).select();
 
 		if (insertError) {
-			consola.error("Error inserting tasks:", insertError)
-			return { success: false, count: 0, error: insertError.message }
+			consola.error("Error inserting tasks:", insertError);
+			return { success: false, count: 0, error: insertError.message };
 		}
 
-		consola.success(`Successfully seeded ${data?.length || 0} tasks`)
-		return { success: true, count: data?.length || 0 }
+		consola.success(`Successfully seeded ${data?.length || 0} tasks`);
+		return { success: true, count: data?.length || 0 };
 	} catch (error) {
-		consola.error("Unexpected error during task seeding:", error)
-		return { success: false, count: 0, error: String(error) }
+		consola.error("Unexpected error during task seeding:", error);
+		return { success: false, count: 0, error: String(error) };
 	}
 }
 
@@ -309,21 +309,21 @@ export async function clearTasks({
 	supabase,
 	projectId,
 }: {
-	supabase: SupabaseClient
-	projectId: string
+	supabase: SupabaseClient;
+	projectId: string;
 }): Promise<{ success: boolean; error?: string }> {
 	try {
-		const { error } = await supabase.from("tasks").delete().eq("project_id", projectId)
+		const { error } = await supabase.from("tasks").delete().eq("project_id", projectId);
 
 		if (error) {
-			consola.error("Error clearing tasks:", error)
-			return { success: false, error: error.message }
+			consola.error("Error clearing tasks:", error);
+			return { success: false, error: error.message };
 		}
 
-		consola.success("Successfully cleared tasks")
-		return { success: true }
+		consola.success("Successfully cleared tasks");
+		return { success: true };
 	} catch (error) {
-		consola.error("Unexpected error clearing tasks:", error)
-		return { success: false, error: String(error) }
+		consola.error("Unexpected error clearing tasks:", error);
+		return { success: false, error: String(error) };
 	}
 }

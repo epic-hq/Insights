@@ -3,14 +3,14 @@
  * Migrates: related_tags -> insight_tags, related_insight_ids -> opportunity_insights
  */
 
-import consola from "consola"
-import { getServerClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 interface MigrationStats {
-	insightTagsMigrated: number
-	opportunityInsightsMigrated: number
-	errors: string[]
-	totalProcessed: number
+	insightTagsMigrated: number;
+	opportunityInsightsMigrated: number;
+	errors: string[];
+	totalProcessed: number;
 }
 
 /**
@@ -20,10 +20,10 @@ async function migrateInsightTags(
 	request: Request,
 	accountId: string
 ): Promise<{ migrated: number; errors: string[] }> {
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
-	const errors: string[] = []
-	let migrated = 0
+	const errors: string[] = [];
+	let migrated = 0;
 
 	try {
 		// Get all insights with related_tags arrays
@@ -31,24 +31,24 @@ async function migrateInsightTags(
 			.from("themes")
 			.select("id, related_tags")
 			.eq("account_id", accountId)
-			.not("related_tags", "is", null)
+			.not("related_tags", "is", null);
 
 		if (error) {
-			errors.push(`Failed to fetch insights: ${error.message}`)
-			return { migrated: 0, errors }
+			errors.push(`Failed to fetch insights: ${error.message}`);
+			return { migrated: 0, errors };
 		}
 
 		if (!insights || insights.length === 0) {
-			consola.info("No insights with related_tags found to migrate")
-			return { migrated: 0, errors }
+			consola.info("No insights with related_tags found to migrate");
+			return { migrated: 0, errors };
 		}
 
-		consola.info(`Found ${insights.length} insights with related_tags to migrate`)
+		consola.info(`Found ${insights.length} insights with related_tags to migrate`);
 
 		// Migrate each insight's tags
 		for (const insight of insights) {
 			if (!insight.related_tags || !Array.isArray(insight.related_tags)) {
-				continue
+				continue;
 			}
 
 			try {
@@ -64,7 +64,7 @@ async function migrateInsightTags(
 						{
 							onConflict: "tag,account_id",
 						}
-					)
+					);
 
 					// Create junction record
 					await supabase.from("insight_tags").upsert(
@@ -76,26 +76,26 @@ async function migrateInsightTags(
 						{
 							onConflict: "insight_id,tag,account_id",
 						}
-					)
+					);
 				}
 
 				// Clear the array field after successful migration
-				await supabase.from("themes").update({ related_tags: null }).eq("id", insight.id).eq("account_id", accountId)
+				await supabase.from("themes").update({ related_tags: null }).eq("id", insight.id).eq("account_id", accountId);
 
-				migrated++
-				consola.success(`Migrated ${insight.related_tags.length} tags for insight ${insight.id}`)
+				migrated++;
+				consola.success(`Migrated ${insight.related_tags.length} tags for insight ${insight.id}`);
 			} catch (err) {
-				const errorMsg = `Failed to migrate tags for insight ${insight.id}: ${err instanceof Error ? err.message : "Unknown error"}`
-				errors.push(errorMsg)
-				consola.error(errorMsg)
+				const errorMsg = `Failed to migrate tags for insight ${insight.id}: ${err instanceof Error ? err.message : "Unknown error"}`;
+				errors.push(errorMsg);
+				consola.error(errorMsg);
 			}
 		}
 
-		return { migrated, errors }
+		return { migrated, errors };
 	} catch (err) {
-		const errorMsg = `Migration failed: ${err instanceof Error ? err.message : "Unknown error"}`
-		errors.push(errorMsg)
-		return { migrated, errors }
+		const errorMsg = `Migration failed: ${err instanceof Error ? err.message : "Unknown error"}`;
+		errors.push(errorMsg);
+		return { migrated, errors };
 	}
 }
 
@@ -106,10 +106,10 @@ async function migrateOpportunityInsights(
 	request: Request,
 	accountId: string
 ): Promise<{ migrated: number; errors: string[] }> {
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
-	const errors: string[] = []
-	let migrated = 0
+	const errors: string[] = [];
+	let migrated = 0;
 
 	try {
 		// Get all opportunities with related_insight_ids arrays
@@ -117,24 +117,24 @@ async function migrateOpportunityInsights(
 			.from("opportunities")
 			.select("id, related_insight_ids")
 			.eq("account_id", accountId)
-			.not("related_insight_ids", "is", null)
+			.not("related_insight_ids", "is", null);
 
 		if (error) {
-			errors.push(`Failed to fetch opportunities: ${error.message}`)
-			return { migrated: 0, errors }
+			errors.push(`Failed to fetch opportunities: ${error.message}`);
+			return { migrated: 0, errors };
 		}
 
 		if (!opportunities || opportunities.length === 0) {
-			consola.info("No opportunities with related_insight_ids found to migrate")
-			return { migrated: 0, errors }
+			consola.info("No opportunities with related_insight_ids found to migrate");
+			return { migrated: 0, errors };
 		}
 
-		consola.info(`Found ${opportunities.length} opportunities with related_insight_ids to migrate`)
+		consola.info(`Found ${opportunities.length} opportunities with related_insight_ids to migrate`);
 
 		// Migrate each opportunity's insights
 		for (const opportunity of opportunities) {
 			if (!opportunity.related_insight_ids || !Array.isArray(opportunity.related_insight_ids)) {
-				continue
+				continue;
 			}
 
 			try {
@@ -150,7 +150,7 @@ async function migrateOpportunityInsights(
 						{
 							onConflict: "opportunity_id,insight_id,account_id",
 						}
-					)
+					);
 				}
 
 				// Clear the array field after successful migration
@@ -158,22 +158,24 @@ async function migrateOpportunityInsights(
 					.from("opportunities")
 					.update({ related_insight_ids: null })
 					.eq("id", opportunity.id)
-					.eq("account_id", accountId)
+					.eq("account_id", accountId);
 
-				migrated++
-				consola.success(`Migrated ${opportunity.related_insight_ids.length} insights for opportunity ${opportunity.id}`)
+				migrated++;
+				consola.success(
+					`Migrated ${opportunity.related_insight_ids.length} insights for opportunity ${opportunity.id}`
+				);
 			} catch (err) {
-				const errorMsg = `Failed to migrate insights for opportunity ${opportunity.id}: ${err instanceof Error ? err.message : "Unknown error"}`
-				errors.push(errorMsg)
-				consola.error(errorMsg)
+				const errorMsg = `Failed to migrate insights for opportunity ${opportunity.id}: ${err instanceof Error ? err.message : "Unknown error"}`;
+				errors.push(errorMsg);
+				consola.error(errorMsg);
 			}
 		}
 
-		return { migrated, errors }
+		return { migrated, errors };
 	} catch (err) {
-		const errorMsg = `Migration failed: ${err instanceof Error ? err.message : "Unknown error"}`
-		errors.push(errorMsg)
-		return { migrated, errors }
+		const errorMsg = `Migration failed: ${err instanceof Error ? err.message : "Unknown error"}`;
+		errors.push(errorMsg);
+		return { migrated, errors };
 	}
 }
 
@@ -181,36 +183,36 @@ async function migrateOpportunityInsights(
  * Run complete array-to-junction migration for an account
  */
 export async function migrateArrayDataToJunctions(request: Request, accountId: string): Promise<MigrationStats> {
-	consola.info(`Starting array-to-junction migration for account ${accountId}`)
+	consola.info(`Starting array-to-junction migration for account ${accountId}`);
 
 	const stats: MigrationStats = {
 		insightTagsMigrated: 0,
 		opportunityInsightsMigrated: 0,
 		errors: [],
 		totalProcessed: 0,
-	}
+	};
 
 	try {
 		// Migrate insight tags
-		const insightTagsResult = await migrateInsightTags(request, accountId)
-		stats.insightTagsMigrated = insightTagsResult.migrated
-		stats.errors.push(...insightTagsResult.errors)
+		const insightTagsResult = await migrateInsightTags(request, accountId);
+		stats.insightTagsMigrated = insightTagsResult.migrated;
+		stats.errors.push(...insightTagsResult.errors);
 
 		// Migrate opportunity insights
-		const opportunityInsightsResult = await migrateOpportunityInsights(request, accountId)
-		stats.opportunityInsightsMigrated = opportunityInsightsResult.migrated
-		stats.errors.push(...opportunityInsightsResult.errors)
+		const opportunityInsightsResult = await migrateOpportunityInsights(request, accountId);
+		stats.opportunityInsightsMigrated = opportunityInsightsResult.migrated;
+		stats.errors.push(...opportunityInsightsResult.errors);
 
-		stats.totalProcessed = stats.insightTagsMigrated + stats.opportunityInsightsMigrated
+		stats.totalProcessed = stats.insightTagsMigrated + stats.opportunityInsightsMigrated;
 
-		consola.info(`Migration completed: ${stats.totalProcessed} items migrated, ${stats.errors.length} errors`)
+		consola.info(`Migration completed: ${stats.totalProcessed} items migrated, ${stats.errors.length} errors`);
 
-		return stats
+		return stats;
 	} catch (err) {
-		const errorMsg = `Migration failed: ${err instanceof Error ? err.message : "Unknown error"}`
-		stats.errors.push(errorMsg)
-		consola.error(errorMsg)
-		return stats
+		const errorMsg = `Migration failed: ${err instanceof Error ? err.message : "Unknown error"}`;
+		stats.errors.push(errorMsg);
+		consola.error(errorMsg);
+		return stats;
 	}
 }
 
@@ -218,7 +220,7 @@ export async function migrateArrayDataToJunctions(request: Request, accountId: s
  * Get migration status - check how much data needs to be migrated
  */
 export async function getMigrationStatus(request: Request, accountId: string) {
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
 	try {
 		// Count insights with related_tags
@@ -226,25 +228,25 @@ export async function getMigrationStatus(request: Request, accountId: string) {
 			.from("themes")
 			.select("*", { count: "exact", head: true })
 			.eq("account_id", accountId)
-			.not("related_tags", "is", null)
+			.not("related_tags", "is", null);
 
 		// Count opportunities with related_insight_ids
 		const { count: opportunitiesWithInsights } = await supabase
 			.from("opportunities")
 			.select("*", { count: "exact", head: true })
 			.eq("account_id", accountId)
-			.not("related_insight_ids", "is", null)
+			.not("related_insight_ids", "is", null);
 
 		// Count existing junction table records
 		const { count: existingInsightTags } = await supabase
 			.from("insight_tags")
 			.select("*", { count: "exact", head: true })
-			.eq("account_id", accountId)
+			.eq("account_id", accountId);
 
 		const { count: existingOpportunityInsights } = await supabase
 			.from("opportunity_insights")
 			.select("*", { count: "exact", head: true })
-			.eq("account_id", accountId)
+			.eq("account_id", accountId);
 
 		return {
 			needsMigration: {
@@ -257,9 +259,9 @@ export async function getMigrationStatus(request: Request, accountId: string) {
 				opportunityInsights: existingOpportunityInsights || 0,
 				total: (existingInsightTags || 0) + (existingOpportunityInsights || 0),
 			},
-		}
+		};
 	} catch (err) {
-		consola.error("Failed to get migration status:", err)
-		throw err
+		consola.error("Failed to get migration status:", err);
+		throw err;
 	}
 }

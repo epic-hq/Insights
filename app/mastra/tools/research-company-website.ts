@@ -3,13 +3,13 @@
  * Researches a company website using Exa.ai and extracts structured data using LLM
  * Shared between API endpoints and Mastra agents
  */
-import { openai } from "@ai-sdk/openai"
-import { createTool } from "@mastra/core/tools"
-import { generateObject } from "ai"
-import consola from "consola"
-import { z } from "zod"
+import { openai } from "@ai-sdk/openai";
+import { createTool } from "@mastra/core/tools";
+import { generateObject } from "ai";
+import consola from "consola";
+import { z } from "zod";
 
-const EXA_API_URL = "https://api.exa.ai"
+const EXA_API_URL = "https://api.exa.ai";
 
 /**
  * Schema for LLM extraction output
@@ -39,29 +39,29 @@ const CompanyExtractionSchema = z.object({
 		.string()
 		.nullish()
 		.describe("The industry or sector (e.g., 'Healthcare Technology', 'B2B SaaS', 'Fintech')"),
-})
+});
 
 interface ExaSearchResult {
-	title: string
-	url: string
-	text?: string
-	highlights?: string[]
+	title: string;
+	url: string;
+	text?: string;
+	highlights?: string[];
 }
 
 interface ExaSearchResponse {
-	results: ExaSearchResult[]
+	results: ExaSearchResult[];
 }
 
 /**
  * Normalizes a URL by adding https:// if no protocol is present
  */
 export function normalizeUrl(input: string): string {
-	const trimmed = input.trim()
-	if (!trimmed) return ""
+	const trimmed = input.trim();
+	if (!trimmed) return "";
 	if (/^https?:\/\//i.test(trimmed)) {
-		return trimmed
+		return trimmed;
 	}
-	return `https://${trimmed}`
+	return `https://${trimmed}`;
 }
 
 /**
@@ -69,10 +69,10 @@ export function normalizeUrl(input: string): string {
  */
 export function extractDomain(url: string): string {
 	try {
-		const parsed = new URL(normalizeUrl(url))
-		return parsed.hostname.replace("www.", "")
+		const parsed = new URL(normalizeUrl(url));
+		return parsed.hostname.replace("www.", "");
 	} catch {
-		return url.replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0]
+		return url.replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0];
 	}
 }
 
@@ -80,17 +80,17 @@ export function extractDomain(url: string): string {
  * Result shape for company research
  */
 export interface CompanyResearchResult {
-	success: boolean
-	error?: string
+	success: boolean;
+	error?: string;
 	data?: {
-		customer_problem?: string
-		offerings?: string[]
-		competitors?: string[]
-		target_orgs?: string[]
-		target_roles?: string[]
-		description?: string
-		industry?: string
-	}
+		customer_problem?: string;
+		offerings?: string[];
+		competitors?: string[];
+		target_orgs?: string[];
+		target_roles?: string[];
+		description?: string;
+		industry?: string;
+	};
 }
 
 /**
@@ -98,21 +98,21 @@ export interface CompanyResearchResult {
  */
 async function fetchWebsiteContent(url: string): Promise<string | null> {
 	try {
-		consola.info("[research-company-website] Fetching website directly:", url)
+		consola.info("[research-company-website] Fetching website directly:", url);
 		const response = await fetch(url, {
 			headers: {
 				"User-Agent": "Mozilla/5.0 (compatible; InsightsBot/1.0)",
 				Accept: "text/html,application/xhtml+xml",
 			},
 			signal: AbortSignal.timeout(10000),
-		})
+		});
 
 		if (!response.ok) {
-			consola.warn("[research-company-website] Direct fetch failed:", response.status)
-			return null
+			consola.warn("[research-company-website] Direct fetch failed:", response.status);
+			return null;
 		}
 
-		const html = await response.text()
+		const html = await response.text();
 
 		// Basic HTML text extraction - strip tags and clean up
 		const textContent = html
@@ -129,12 +129,12 @@ async function fetchWebsiteContent(url: string): Promise<string | null> {
 			.replace(/&quot;/g, '"')
 			// Clean up whitespace
 			.replace(/\s+/g, " ")
-			.trim()
+			.trim();
 
-		return textContent.slice(0, 8000) // Limit content size
+		return textContent.slice(0, 8000); // Limit content size
 	} catch (error) {
-		consola.warn("[research-company-website] Direct fetch error:", error)
-		return null
+		consola.warn("[research-company-website] Direct fetch error:", error);
+		return null;
 	}
 }
 
@@ -142,18 +142,18 @@ async function fetchWebsiteContent(url: string): Promise<string | null> {
  * Check if search results are relevant to the target domain
  */
 function resultsMatchDomain(results: ExaSearchResult[], targetDomain: string): boolean {
-	if (results.length === 0) return false
+	if (results.length === 0) return false;
 
 	// Check if at least one result URL contains the target domain
-	const targetLower = targetDomain.toLowerCase()
+	const targetLower = targetDomain.toLowerCase();
 	return results.some((r) => {
 		try {
-			const resultDomain = new URL(r.url).hostname.toLowerCase()
-			return resultDomain.includes(targetLower) || targetLower.includes(resultDomain.replace("www.", ""))
+			const resultDomain = new URL(r.url).hostname.toLowerCase();
+			return resultDomain.includes(targetLower) || targetLower.includes(resultDomain.replace("www.", ""));
 		} catch {
-			return r.url.toLowerCase().includes(targetLower)
+			return r.url.toLowerCase().includes(targetLower);
 		}
-	})
+	});
 }
 
 /**
@@ -161,15 +161,15 @@ function resultsMatchDomain(results: ExaSearchResult[], targetDomain: string): b
  */
 export async function researchCompanyWebsite(websiteUrl: string): Promise<CompanyResearchResult> {
 	if (!websiteUrl?.trim()) {
-		return { success: false, error: "Website URL is required" }
+		return { success: false, error: "Website URL is required" };
 	}
 
-	const normalizedUrl = normalizeUrl(websiteUrl)
-	const domain = extractDomain(normalizedUrl)
+	const normalizedUrl = normalizeUrl(websiteUrl);
+	const domain = extractDomain(normalizedUrl);
 
-	consola.info("[research-company-website] Researching:", domain)
+	consola.info("[research-company-website] Researching:", domain);
 
-	const apiKey = process.env.EXA_API_KEY
+	const apiKey = process.env.EXA_API_KEY;
 
 	// Try Exa.ai search first if API key is available
 	if (apiKey) {
@@ -192,28 +192,28 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 						highlights: { numSentences: 5 },
 					},
 				}),
-			})
+			});
 
 			if (response.ok) {
-				const data = (await response.json()) as ExaSearchResponse
-				const results = data.results || []
+				const data = (await response.json()) as ExaSearchResponse;
+				const results = data.results || [];
 
 				// Only use results if they match the target domain
 				if (results.length > 0 && resultsMatchDomain(results, domain)) {
 					const combinedText = results
 						.map((r) => `${r.title}\n${r.highlights?.join(" ") || r.text || ""}`)
-						.join("\n\n---\n\n")
+						.join("\n\n---\n\n");
 
-					const extractedData = await extractCompanyInfoWithLLM(combinedText, domain)
+					const extractedData = await extractCompanyInfoWithLLM(combinedText, domain);
 
 					// Check if we got useful data
 					const hasUsefulData =
 						extractedData.description ||
 						extractedData.customer_problem ||
-						(extractedData.offerings && extractedData.offerings.length > 0)
+						(extractedData.offerings && extractedData.offerings.length > 0);
 
 					if (hasUsefulData) {
-						consola.info("[research-company-website] Exa returned valid data for:", domain)
+						consola.info("[research-company-website] Exa returned valid data for:", domain);
 						return {
 							success: true,
 							data: {
@@ -225,47 +225,47 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 								competitors: extractedData.competitors,
 								industry: extractedData.industry,
 							},
-						}
+						};
 					}
 				}
 
-				consola.info("[research-company-website] Exa results not relevant, falling back to direct fetch")
+				consola.info("[research-company-website] Exa results not relevant, falling back to direct fetch");
 			}
 		} catch (error) {
-			consola.warn("[research-company-website] Exa search failed, falling back to direct fetch:", error)
+			consola.warn("[research-company-website] Exa search failed, falling back to direct fetch:", error);
 		}
 	}
 
 	// Fallback: directly fetch the user's URL
-	const directContent = await fetchWebsiteContent(normalizedUrl)
+	const directContent = await fetchWebsiteContent(normalizedUrl);
 
 	if (!directContent || directContent.length < 100) {
 		return {
 			success: false,
 			error: "Could not retrieve information from this website. Please check the URL and try again.",
-		}
+		};
 	}
 
 	// Extract structured data from direct fetch content
-	const extractedData = await extractCompanyInfoWithLLM(directContent, domain)
+	const extractedData = await extractCompanyInfoWithLLM(directContent, domain);
 
 	const hasUsefulData =
 		extractedData.description ||
 		extractedData.customer_problem ||
-		(extractedData.offerings && extractedData.offerings.length > 0)
+		(extractedData.offerings && extractedData.offerings.length > 0);
 
 	if (!hasUsefulData) {
 		return {
 			success: false,
 			error: "Could not extract useful information from this website. Try entering details manually.",
-		}
+		};
 	}
 
 	consola.info("[research-company-website] Extracted data from direct fetch for:", domain, {
 		hasCustomerProblem: !!extractedData.customer_problem,
 		offeringsCount: extractedData.offerings?.length || 0,
 		industry: extractedData.industry,
-	})
+	});
 
 	return {
 		success: true,
@@ -278,7 +278,7 @@ export async function researchCompanyWebsite(websiteUrl: string): Promise<Compan
 			competitors: extractedData.competitors,
 			industry: extractedData.industry,
 		},
-	}
+	};
 }
 
 /**
@@ -308,13 +308,13 @@ INSTRUCTIONS:
 - For competitors: only include if explicitly mentioned on the site
 - If information isn't clearly available, omit that field
 - Keep descriptions to 1-2 sentences max`,
-		})
+		});
 
-		return object
+		return object;
 	} catch (error) {
-		consola.error("[research-company-website] LLM extraction failed:", error)
+		consola.error("[research-company-website] LLM extraction failed:", error);
 		// Return empty object on failure
-		return {}
+		return {};
 	}
 }
 
@@ -346,6 +346,6 @@ export const researchCompanyWebsiteTool = createTool({
 			.optional(),
 	}),
 	execute: async ({ website_url }) => {
-		return researchCompanyWebsite(website_url)
+		return researchCompanyWebsite(website_url);
 	},
-})
+});

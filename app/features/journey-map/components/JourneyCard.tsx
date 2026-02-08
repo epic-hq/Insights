@@ -3,20 +3,20 @@
  * Entire card is clickable. Shows icon, title, and arrow. Completed cards show a checkmark.
  */
 
-import { Check } from "lucide-react"
-import { Link } from "react-router"
-import { cn } from "~/lib/utils"
-import type { JourneyCardConfig } from "../journey-config"
+import { Check } from "lucide-react";
+import { Link } from "react-router";
+import { cn } from "~/lib/utils";
+import type { JourneyCardConfig } from "../journey-config";
 
 interface JourneyCardProps {
-	card: JourneyCardConfig
-	done: boolean
-	href: string
-	locked?: boolean
+	card: JourneyCardConfig;
+	done: boolean;
+	href: string;
+	locked?: boolean;
 }
 
 export function JourneyCard({ card, done, href, locked }: JourneyCardProps) {
-	const Icon = card.icon
+	const Icon = card.icon;
 
 	const content = (
 		<>
@@ -56,7 +56,7 @@ export function JourneyCard({ card, done, href, locked }: JourneyCardProps) {
 				{!done && !locked && <span className="flex-shrink-0 font-semibold text-violet-400 text-xs">&rarr;</span>}
 			</div>
 		</>
-	)
+	);
 
 	const cardClasses = cn(
 		"relative block overflow-hidden rounded-2xl border p-3.5 backdrop-blur-xl transition-all duration-250",
@@ -66,15 +66,15 @@ export function JourneyCard({ card, done, href, locked }: JourneyCardProps) {
 			!locked &&
 			"hover:-translate-y-0.5 hover:border-indigo-500/40 hover:shadow-[0_8px_25px_rgba(0,0,0,0.3),0_0_20px_rgba(99,102,241,0.1)]",
 		locked && "pointer-events-none opacity-50"
-	)
+	);
 
 	if (locked) {
-		return <div className={cardClasses}>{content}</div>
+		return <div className={cardClasses}>{content}</div>;
 	}
 
 	return (
 		<Link to={href} className={cardClasses}>
 			{content}
 		</Link>
-	)
+	);
 }

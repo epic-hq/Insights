@@ -5,26 +5,26 @@
  * Shows upgrade prompt when feature is not available.
  */
 
-import { Lock, Sparkles } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import type { PlanId } from "~/config/plans"
-import { useFeatureGate } from "~/hooks/useFeatureGate"
-import { getFeatureDisplayName } from "~/lib/feature-gate"
-import type { FeatureKey } from "~/lib/feature-gate/types"
+import { Lock, Sparkles } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import type { PlanId } from "~/config/plans";
+import { useFeatureGate } from "~/hooks/useFeatureGate";
+import { getFeatureDisplayName } from "~/lib/feature-gate";
+import type { FeatureKey } from "~/lib/feature-gate/types";
 
 interface FeatureGateProps {
 	/** Feature to check */
-	feature: FeatureKey
+	feature: FeatureKey;
 	/** Current plan ID */
-	planId: PlanId
+	planId: PlanId;
 	/** Content to render if feature is enabled */
-	children: React.ReactNode
+	children: React.ReactNode;
 	/** Custom fallback when feature is disabled */
-	fallback?: React.ReactNode
+	fallback?: React.ReactNode;
 	/** Style of fallback: "inline" for badges, "card" for full prompts */
-	fallbackStyle?: "inline" | "card" | "overlay"
+	fallbackStyle?: "inline" | "card" | "overlay";
 }
 
 /**
@@ -47,30 +47,30 @@ interface FeatureGateProps {
  * </FeatureGate>
  */
 export function FeatureGate({ feature, planId, children, fallback, fallbackStyle = "card" }: FeatureGateProps) {
-	const { isEnabled, upgradeUrl, requiredPlan } = useFeatureGate(feature, planId)
+	const { isEnabled, upgradeUrl, requiredPlan } = useFeatureGate(feature, planId);
 
 	if (isEnabled) {
-		return <>{children}</>
+		return <>{children}</>;
 	}
 
 	// Custom fallback takes priority
 	if (fallback) {
-		return <>{fallback}</>
+		return <>{fallback}</>;
 	}
 
 	// Default fallbacks based on style
 	switch (fallbackStyle) {
 		case "inline":
-			return <InlineFallback feature={feature} upgradeUrl={upgradeUrl} />
+			return <InlineFallback feature={feature} upgradeUrl={upgradeUrl} />;
 		case "overlay":
 			return (
 				<OverlayFallback feature={feature} upgradeUrl={upgradeUrl} requiredPlan={requiredPlan}>
 					{children}
 				</OverlayFallback>
-			)
+			);
 		case "card":
 		default:
-			return <CardFallback feature={feature} upgradeUrl={upgradeUrl} requiredPlan={requiredPlan} />
+			return <CardFallback feature={feature} upgradeUrl={upgradeUrl} requiredPlan={requiredPlan} />;
 	}
 }
 
@@ -83,7 +83,7 @@ function InlineFallback({ feature, upgradeUrl }: { feature: FeatureKey; upgradeU
 				<span className="text-amber-600 dark:text-amber-400">Pro</span>
 			</Button>
 		</Link>
-	)
+	);
 }
 
 function CardFallback({
@@ -91,9 +91,9 @@ function CardFallback({
 	upgradeUrl,
 	requiredPlan,
 }: {
-	feature: FeatureKey
-	upgradeUrl?: string
-	requiredPlan?: PlanId
+	feature: FeatureKey;
+	upgradeUrl?: string;
+	requiredPlan?: PlanId;
 }) {
 	return (
 		<Card className="border-dashed">
@@ -113,7 +113,7 @@ function CardFallback({
 				</Link>
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 function OverlayFallback({
@@ -122,10 +122,10 @@ function OverlayFallback({
 	requiredPlan,
 	children,
 }: {
-	feature: FeatureKey
-	upgradeUrl?: string
-	requiredPlan?: PlanId
-	children: React.ReactNode
+	feature: FeatureKey;
+	upgradeUrl?: string;
+	requiredPlan?: PlanId;
+	children: React.ReactNode;
 }) {
 	return (
 		<div className="relative">
@@ -148,5 +148,5 @@ function OverlayFallback({
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

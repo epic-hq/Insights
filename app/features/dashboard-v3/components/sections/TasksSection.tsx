@@ -7,58 +7,58 @@
  * Status can be changed inline via dropdown.
  */
 
-import { CheckSquare } from "lucide-react"
-import { useMemo } from "react"
-import { Link, useFetcher } from "react-router"
-import { Streamdown } from "streamdown"
-import { Card, CardContent } from "~/components/ui/card"
-import { PriorityBars } from "~/features/tasks/components/PriorityBars"
-import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
-import type { Task, TaskStatus } from "~/features/tasks/types"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { EmptyStateBox } from "../shared/EmptyStateBox"
-import { SectionHeader } from "../shared/SectionHeader"
+import { CheckSquare } from "lucide-react";
+import { useMemo } from "react";
+import { Link, useFetcher } from "react-router";
+import { Streamdown } from "streamdown";
+import { Card, CardContent } from "~/components/ui/card";
+import { PriorityBars } from "~/features/tasks/components/PriorityBars";
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus";
+import type { Task, TaskStatus } from "~/features/tasks/types";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { EmptyStateBox } from "../shared/EmptyStateBox";
+import { SectionHeader } from "../shared/SectionHeader";
 
 export interface TasksSectionProps {
 	/** Array of tasks to display */
-	tasks: Task[]
+	tasks: Task[];
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Maximum number of tasks to show */
-	maxVisible?: number
+	maxVisible?: number;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 interface TaskPreviewCardProps {
-	task: Task
-	detailHref: string
+	task: Task;
+	detailHref: string;
 }
 
 function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	// Get optimistic status while update is in flight
 	const displayStatus = useMemo(() => {
 		if (fetcher.formData) {
-			const status = fetcher.formData.get("status")
-			if (status) return status as TaskStatus
+			const status = fetcher.formData.get("status");
+			if (status) return status as TaskStatus;
 		}
-		return task.status as TaskStatus
-	}, [fetcher.formData, task.status])
+		return task.status as TaskStatus;
+	}, [fetcher.formData, task.status]);
 
 	const handleStatusChange = (_taskId: string, newStatus: TaskStatus) => {
-		if (newStatus === task.status) return
+		if (newStatus === task.status) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-task-status")
-		formData.append("taskId", task.id)
-		formData.append("status", newStatus)
+		const formData = new FormData();
+		formData.append("_action", "update-task-status");
+		formData.append("taskId", task.id);
+		formData.append("status", newStatus);
 
 		// Post to current page's action (no explicit action URL)
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<Link to={detailHref}>
@@ -100,15 +100,15 @@ function TaskPreviewCard({ task, detailHref }: TaskPreviewCardProps) {
 				</CardContent>
 			</Card>
 		</Link>
-	)
+	);
 }
 
 export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: TasksSectionProps) {
-	const routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutes(projectPath);
 
 	// Filter out non-focus tasks (done/archived/backlog). Ordering is handled server-side.
-	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived" && t.status !== "backlog")
-	const topTasks = activeTasks.slice(0, maxVisible)
+	const activeTasks = tasks.filter((t) => t.status !== "done" && t.status !== "archived" && t.status !== "backlog");
+	const topTasks = activeTasks.slice(0, maxVisible);
 
 	// Show empty state if no tasks
 	if (tasks.length === 0) {
@@ -122,7 +122,7 @@ export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: 
 					ctaHref={routes.tasks.new()}
 				/>
 			</section>
-		)
+		);
 	}
 
 	return (
@@ -141,7 +141,7 @@ export function TasksSection({ tasks, projectPath, maxVisible = 3, className }: 
 				))}
 			</div>
 		</section>
-	)
+	);
 }
 
-export default TasksSection
+export default TasksSection;

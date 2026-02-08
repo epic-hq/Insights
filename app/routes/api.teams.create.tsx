@@ -1,11 +1,11 @@
-import { parseWithZod } from "@conform-to/zod"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { data } from "react-router"
-import { z } from "zod"
-import { PLANS, type PlanId } from "~/config/plans"
-import { createTeamAccount } from "~/features/teams/db/accounts"
-import { getAuthenticatedUser, getServerClient, supabaseAdmin } from "~/lib/supabase/client.server"
+import { parseWithZod } from "@conform-to/zod";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { data } from "react-router";
+import { z } from "zod";
+import { PLANS, type PlanId } from "~/config/plans";
+import { createTeamAccount } from "~/features/teams/db/accounts";
+import { getAuthenticatedUser, getServerClient, supabaseAdmin } from "~/lib/supabase/client.server";
 
 const createTeamSchema = z.object({
 	name: z.string().min(1, "Team name is required").max(50, "Team name must be 50 characters or less"),
@@ -14,18 +14,18 @@ const createTeamSchema = z.object({
 		.min(1, "Slug is required")
 		.max(50, "Slug must be 50 characters or less")
 		.regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
-})
+});
 
 export async function action({ request }: ActionFunctionArgs) {
-	const { client } = getServerClient(request)
-	const { user } = await getAuthenticatedUser(request)
+	const { client } = getServerClient(request);
+	const { user } = await getAuthenticatedUser(request);
 
 	if (!user) {
-		return data({ ok: false, error: "Unauthorized" }, { status: 401 })
+		return data({ ok: false, error: "Unauthorized" }, { status: 401 });
 	}
 
 	// Check team creation limit based on user's plan
-	const teamLimitCheck = await checkTeamCreationLimit(user.sub)
+	const teamLimitCheck = await checkTeamCreationLimit(user.sub);
 	if (!teamLimitCheck.allowed) {
 		return data(
 			{
@@ -34,11 +34,11 @@ export async function action({ request }: ActionFunctionArgs) {
 				upgradeRequired: true,
 			},
 			{ status: 403 }
-		)
+		);
 	}
 
-	const formData = await request.formData()
-	const submission = parseWithZod(formData, { schema: createTeamSchema })
+	const formData = await request.formData();
+	const submission = parseWithZod(formData, { schema: createTeamSchema });
 
 	if (submission.status !== "success") {
 		return data(
@@ -48,17 +48,17 @@ export async function action({ request }: ActionFunctionArgs) {
 				fieldErrors: submission.error,
 			},
 			{ status: 400 }
-		)
+		);
 	}
 
-	const { name, slug } = submission.value
+	const { name, slug } = submission.value;
 
 	// Create team account
 	const { data: teamData, error } = await createTeamAccount({
 		supabase: client,
 		name,
 		slug,
-	})
+	});
 
 	if (error) {
 		return data(
@@ -67,12 +67,12 @@ export async function action({ request }: ActionFunctionArgs) {
 				error: error.message || "Failed to create team",
 			},
 			{ status: 500 }
-		)
+		);
 	}
 
 	// Extract account_id from response
-	const responseData = teamData as { account_id?: string; id?: string } | null
-	const accountId = responseData?.account_id || responseData?.id
+	const responseData = teamData as { account_id?: string; id?: string } | null;
+	const accountId = responseData?.account_id || responseData?.id;
 
 	if (!accountId) {
 		return data(
@@ -81,7 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				error: "Team created but couldn't get account ID",
 			},
 			{ status: 500 }
-		)
+		);
 	}
 
 	return data({
@@ -89,7 +89,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		accountId,
 		name,
 		slug,
-	})
+	});
 }
 
 /**
@@ -106,28 +106,28 @@ async function checkTeamCreationLimit(userId: string): Promise<{ allowed: boolea
 			.schema("accounts")
 			.from("accounts")
 			.select("id, personal_account")
-			.eq("primary_owner_user_id", userId)
+			.eq("primary_owner_user_id", userId);
 
 		if (ownedError) {
-			consola.error("[teams.create] Error fetching owned accounts", ownedError)
+			consola.error("[teams.create] Error fetching owned accounts", ownedError);
 			// Allow on error to not block users
-			return { allowed: true }
+			return { allowed: true };
 		}
 
 		// Count only OWNED non-personal accounts (teams)
-		const ownedTeamCount = ownedAccounts?.filter((a) => !a.personal_account).length ?? 0
+		const ownedTeamCount = ownedAccounts?.filter((a) => !a.personal_account).length ?? 0;
 
 		// Get all accounts user is member of (for subscription lookup)
 		const { data: memberAccounts } = await supabaseAdmin
 			.schema("accounts")
 			.from("account_user")
 			.select("account_id")
-			.eq("user_id", userId)
+			.eq("user_id", userId);
 
-		const accountIds = memberAccounts?.map((a) => a.account_id) ?? []
+		const accountIds = memberAccounts?.map((a) => a.account_id) ?? [];
 		if (accountIds.length === 0) {
 			// No accounts - allow creating first team (will be on trial)
-			return { allowed: true }
+			return { allowed: true };
 		}
 
 		const { data: subscriptions } = await supabaseAdmin
@@ -135,50 +135,50 @@ async function checkTeamCreationLimit(userId: string): Promise<{ allowed: boolea
 			.from("billing_subscriptions")
 			.select("account_id, plan_name, status")
 			.in("account_id", accountIds)
-			.in("status", ["active", "trialing"])
+			.in("status", ["active", "trialing"]);
 
 		// Find the best plan the user has access to
-		let bestPlanId: PlanId = "free"
+		let bestPlanId: PlanId = "free";
 		const planPriority: Record<PlanId, number> = {
 			free: 0,
 			starter: 1,
 			pro: 2,
 			team: 3,
-		}
+		};
 
 		for (const sub of subscriptions ?? []) {
-			const planId = sub.plan_name?.toLowerCase() as PlanId
+			const planId = sub.plan_name?.toLowerCase() as PlanId;
 			if (planId && planPriority[planId] > planPriority[bestPlanId]) {
-				bestPlanId = planId
+				bestPlanId = planId;
 			}
 		}
 
-		const plan = PLANS[bestPlanId]
-		const teamLimit = plan.limits.teams
+		const plan = PLANS[bestPlanId];
+		const teamLimit = plan.limits.teams;
 
 		consola.info("[teams.create] Team limit check", {
 			userId,
 			ownedTeamCount,
 			bestPlanId,
 			teamLimit,
-		})
+		});
 
 		// Check limit (Infinity means unlimited)
 		if (teamLimit !== Number.POSITIVE_INFINITY && ownedTeamCount >= teamLimit) {
 			const limitText =
 				teamLimit === 0
 					? "Your plan doesn't include team workspaces"
-					: `You've reached your limit of ${teamLimit} team${teamLimit === 1 ? "" : "s"}`
+					: `You've reached your limit of ${teamLimit} team${teamLimit === 1 ? "" : "s"}`;
 			return {
 				allowed: false,
 				error: `${limitText}. Upgrade to create more teams.`,
-			}
+			};
 		}
 
-		return { allowed: true }
+		return { allowed: true };
 	} catch (error) {
-		consola.error("[teams.create] Error checking team limit", error)
+		consola.error("[teams.create] Error checking team limit", error);
 		// Allow on error to not block users
-		return { allowed: true }
+		return { allowed: true };
 	}
 }

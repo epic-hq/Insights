@@ -1,27 +1,27 @@
-import { ChevronLeft, ChevronRight, MessageCircleQuestionMark, Mic } from "lucide-react"
-import { useState } from "react"
-import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
-import { Button } from "~/components/ui/button"
-import { OnboardingStepper } from "~/components/ui/onboarding-stepper"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { ChevronLeft, ChevronRight, MessageCircleQuestionMark, Mic } from "lucide-react";
+import { useState } from "react";
+import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager";
+import { Button } from "~/components/ui/button";
+import { OnboardingStepper } from "~/components/ui/onboarding-stepper";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 interface QuestionsScreenProps {
-	target_orgs: string[]
-	target_roles: string[]
-	research_goal: string
-	research_goal_details: string
-	decision_questions: string[]
-	assumptions: string[]
-	unknowns: string[]
-	custom_instructions?: string
-	onNext: (questions: string[]) => void
-	onBack: () => void
+	target_orgs: string[];
+	target_roles: string[];
+	research_goal: string;
+	research_goal_details: string;
+	decision_questions: string[];
+	assumptions: string[];
+	unknowns: string[];
+	custom_instructions?: string;
+	onNext: (questions: string[]) => void;
+	onBack: () => void;
 	/** When true (default), shows the onboarding 1-2-3 progress header */
-	showStepper?: boolean
+	showStepper?: boolean;
 	/** Optional projectId to load/save questions context when available */
-	projectId?: string
+	projectId?: string;
 	/** Optional projectPath for routing */
-	projectPath?: string
+	projectPath?: string;
 }
 
 export default function QuestionsScreen({
@@ -39,13 +39,13 @@ export default function QuestionsScreen({
 	projectPath,
 }: QuestionsScreenProps) {
 	// Collect the current selection from the shared manager to pass on Next
-	const [selectedForNext, setSelectedForNext] = useState<{ id: string; text: string }[]>([])
-	const routes = useProjectRoutes(projectPath)
+	const [selectedForNext, setSelectedForNext] = useState<{ id: string; text: string }[]>([]);
+	const routes = useProjectRoutes(projectPath);
 
 	const handleNext = () => {
-		const questionTexts = selectedForNext.map((q) => q.text)
-		onNext(questionTexts)
-	}
+		const questionTexts = selectedForNext.map((q) => q.text);
+		onNext(questionTexts);
+	};
 
 	return (
 		<div className="mx-auto max-w-7xl p-4 sm:p-2">
@@ -79,7 +79,7 @@ export default function QuestionsScreen({
 					<Button
 						onClick={() => {
 							if (routes) {
-								window.location.href = routes.interviews.upload()
+								window.location.href = routes.interviews.upload();
 							}
 						}}
 						variant="default"
@@ -104,5 +104,5 @@ export default function QuestionsScreen({
 				</Button>
 			</div>
 		</div>
-	)
+	);
 }

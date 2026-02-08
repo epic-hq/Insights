@@ -1,5 +1,5 @@
-import { route } from "@react-router/dev/routes"
+import { route } from "@react-router/dev/routes";
 
-const realtimeTranscriptionRoutes = [route("realtime-demo", "./features/realtime-transcription/pages/demo.tsx")]
+const realtimeTranscriptionRoutes = [route("realtime-demo", "./features/realtime-transcription/pages/demo.tsx")];
 
-export default realtimeTranscriptionRoutes
+export default realtimeTranscriptionRoutes;

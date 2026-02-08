@@ -1,26 +1,26 @@
-import { z } from "zod"
+import { z } from "zod";
 
-export const salesFrameworkEnum = z.enum(["BANT_GPCT", "SPICED", "MEDDIC", "MAP"])
+export const salesFrameworkEnum = z.enum(["BANT_GPCT", "SPICED", "MEDDIC", "MAP"]);
 
 const optionalDateString = z
 	.string()
 	.regex(/^\d{4}-\d{2}-\d{2}$/)
 	.optional()
-	.nullable()
+	.nullable();
 
 const evidencePointerSchema = z.object({
 	evidenceId: z.string().uuid(),
 	startMs: z.number().int().nonnegative().optional().nullable(),
 	endMs: z.number().int().nonnegative().optional().nullable(),
 	transcriptSnippet: z.string().optional().nullable(),
-})
+});
 
 const slotHygieneSchema = z.object({
 	code: z.string(),
 	severity: z.enum(["info", "warning", "critical"]),
 	message: z.string().optional().nullable(),
 	slot: z.string().optional().nullable(),
-})
+});
 
 const salesFrameworkSlotSchema = z.object({
 	slot: z.string(),
@@ -37,9 +37,9 @@ const salesFrameworkSlotSchema = z.object({
 	relatedOrganizationIds: z.array(z.string().uuid()).default([]),
 	evidence: z.array(evidencePointerSchema).default([]),
 	hygiene: z.array(slotHygieneSchema).default([]),
-})
+});
 
-const stakeholderLabelEnum = z.enum(["economic_buyer", "influencer", "champion", "blocker", "decision_maker"])
+const stakeholderLabelEnum = z.enum(["economic_buyer", "influencer", "champion", "blocker", "decision_maker"]);
 
 const stakeholderSchema = z
 	.object({
@@ -58,14 +58,14 @@ const stakeholderSchema = z
 	.refine((value) => Boolean(value.personId || value.candidatePersonKey), {
 		message: "Stakeholder must include a personId or candidatePersonKey",
 		path: ["personId"],
-	})
+	});
 
 const objectionSchema = z.object({
 	type: z.enum(["price", "timing", "integration", "security", "authority", "other"]),
 	status: z.enum(["raised", "resolved", "open"]),
 	confidence: z.number().min(0).max(1),
 	evidence: z.array(evidencePointerSchema).default([]),
-})
+});
 
 const nextStepSchema = z.object({
 	description: z.string(),
@@ -74,7 +74,7 @@ const nextStepSchema = z.object({
 	dueDate: optionalDateString,
 	confidence: z.number().min(0).max(1),
 	evidence: z.array(evidencePointerSchema).default([]),
-})
+});
 
 const mapMilestoneSchema = z.object({
 	label: z.string(),
@@ -83,13 +83,13 @@ const mapMilestoneSchema = z.object({
 	dueDate: optionalDateString,
 	status: z.enum(["planned", "in_progress", "done"]).default("planned"),
 	evidence: z.array(evidencePointerSchema).default([]),
-})
+});
 
 const salesFrameworkSchema = z.object({
 	name: salesFrameworkEnum,
 	hygiene: z.array(slotHygieneSchema).default([]),
 	slots: z.array(salesFrameworkSlotSchema).default([]),
-})
+});
 
 export const salesConversationExtractionSchema = z.object({
 	meetingId: z.string().uuid(),
@@ -111,8 +111,8 @@ export const salesConversationExtractionSchema = z.object({
 			milestones: z.array(mapMilestoneSchema).default([]),
 		})
 		.optional(),
-})
+});
 
-export type SalesConversationExtraction = z.infer<typeof salesConversationExtractionSchema>
-export type SalesFrameworkSlot = z.infer<typeof salesFrameworkSlotSchema>
-export type SalesFrameworkPayload = z.infer<typeof salesFrameworkSchema>
+export type SalesConversationExtraction = z.infer<typeof salesConversationExtractionSchema>;
+export type SalesFrameworkSlot = z.infer<typeof salesFrameworkSlotSchema>;
+export type SalesFrameworkPayload = z.infer<typeof salesFrameworkSchema>;

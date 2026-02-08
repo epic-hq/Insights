@@ -19,65 +19,65 @@ import {
 	Sparkles,
 	TrendingUp,
 	Users,
-} from "lucide-react"
-import { Link } from "react-router"
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Progress } from "~/components/ui/progress"
-import type { AnalysisOverview, CrossLensFinding, RecommendedAction } from "../lib/loadAnalysisData.server"
+} from "lucide-react";
+import { Link } from "react-router";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
+import type { AnalysisOverview, CrossLensFinding, RecommendedAction } from "../lib/loadAnalysisData.server";
 
 type OverviewTabProps = {
-	overview: AnalysisOverview
-	isSubmitting: boolean
-	onSynthesize: (force: boolean) => void
-	routes: any
-	projectPath: string
-}
+	overview: AnalysisOverview;
+	isSubmitting: boolean;
+	onSynthesize: (force: boolean) => void;
+	routes: any;
+	projectPath: string;
+};
 
 function getSeverityColor(severity: string) {
 	switch (severity) {
 		case "critical":
-			return "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800"
+			return "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800";
 		case "important":
-			return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800"
+			return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800";
 		case "notable":
-			return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800"
+			return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800";
 		default:
-			return "bg-muted text-muted-foreground"
+			return "bg-muted text-muted-foreground";
 	}
 }
 
 function getSeverityDot(severity: string) {
 	switch (severity) {
 		case "critical":
-			return "bg-red-500"
+			return "bg-red-500";
 		case "important":
-			return "bg-amber-500"
+			return "bg-amber-500";
 		case "notable":
-			return "bg-blue-500"
+			return "bg-blue-500";
 		default:
-			return "bg-muted-foreground"
+			return "bg-muted-foreground";
 	}
 }
 
 function getCategoryIcon(category: string | null) {
 	switch (category) {
 		case "research":
-			return <FlaskConical className="h-4 w-4" />
+			return <FlaskConical className="h-4 w-4" />;
 		case "sales":
-			return <Briefcase className="h-4 w-4" />
+			return <Briefcase className="h-4 w-4" />;
 		case "product":
-			return <Package className="h-4 w-4" />
+			return <Package className="h-4 w-4" />;
 		default:
-			return <Sparkles className="h-4 w-4" />
+			return <Sparkles className="h-4 w-4" />;
 	}
 }
 
 function FindingCard({ finding, totalPeople }: { finding: CrossLensFinding; totalPeople: number }) {
-	const percentage = totalPeople > 0 ? Math.round((finding.peopleCount / totalPeople) * 100) : 0
+	const percentage = totalPeople > 0 ? Math.round((finding.peopleCount / totalPeople) * 100) : 0;
 
 	return (
 		<div className="flex gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/30">
@@ -109,7 +109,7 @@ function FindingCard({ finding, totalPeople }: { finding: CrossLensFinding; tota
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
 
 function ActionCard({ action, index }: { action: RecommendedAction; index: number }) {
@@ -117,7 +117,7 @@ function ActionCard({ action, index }: { action: RecommendedAction; index: numbe
 		high: "border-l-red-500",
 		medium: "border-l-amber-500",
 		low: "border-l-blue-500",
-	}
+	};
 
 	return (
 		<div className={`rounded-lg border border-l-4 p-4 ${priorityColors[action.priority]}`}>
@@ -134,13 +134,13 @@ function ActionCard({ action, index }: { action: RecommendedAction; index: numbe
 				</Badge>
 			</div>
 		</div>
-	)
+	);
 }
 
 export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, routes, projectPath }: OverviewTabProps) {
-	const { crossLensSynthesis, lensStats, interviewCount, peopleCount, surveyResponseCount } = overview
-	const hasData = interviewCount > 0
-	const totalAnalyses = lensStats.reduce((sum, ls) => sum + ls.completedCount, 0)
+	const { crossLensSynthesis, lensStats, interviewCount, peopleCount, surveyResponseCount } = overview;
+	const hasData = interviewCount > 0;
+	const totalAnalyses = lensStats.reduce((sum, ls) => sum + ls.completedCount, 0);
 
 	// Empty state
 	if (!hasData) {
@@ -152,7 +152,7 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 					Record interviews or collect survey responses to see AI-powered analysis across all your conversation lenses.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	// No synthesis yet - prompt to generate
@@ -189,7 +189,7 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 				{/* Coverage bars (always show) */}
 				<CoverageSection lensStats={lensStats} routes={routes} />
 			</div>
-		)
+		);
 	}
 
 	// Processing state
@@ -209,7 +209,7 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 				</Card>
 				<CoverageSection lensStats={lensStats} routes={routes} />
 			</div>
-		)
+		);
 	}
 
 	// Failed state
@@ -228,11 +228,11 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 				</Alert>
 				<CoverageSection lensStats={lensStats} routes={routes} />
 			</div>
-		)
+		);
 	}
 
 	// Completed synthesis
-	const isStale = totalAnalyses > crossLensSynthesis.analysisCount
+	const isStale = totalAnalyses > crossLensSynthesis.analysisCount;
 
 	return (
 		<div className="space-y-8">
@@ -320,11 +320,11 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 									{(() => {
 										const counts = crossLensSynthesis.keyFindings.reduce(
 											(acc, f) => {
-												acc[f.severity] = (acc[f.severity] || 0) + 1
-												return acc
+												acc[f.severity] = (acc[f.severity] || 0) + 1;
+												return acc;
 											},
 											{} as Record<string, number>
-										)
+										);
 										return (
 											<>
 												{counts.critical && (
@@ -346,7 +346,7 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 													</span>
 												)}
 											</>
-										)
+										);
 									})()}
 								</div>
 							</div>
@@ -394,7 +394,7 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 				</p>
 			)}
 		</div>
-	)
+	);
 }
 
 // ============================================================================
@@ -402,7 +402,7 @@ export function AnalysisOverviewTab({ overview, isSubmitting, onSynthesize, rout
 // ============================================================================
 
 function CoverageSection({ lensStats, routes }: { lensStats: AnalysisOverview["lensStats"]; routes: any }) {
-	if (lensStats.length === 0) return null
+	if (lensStats.length === 0) return null;
 
 	return (
 		<Card>
@@ -414,8 +414,8 @@ function CoverageSection({ lensStats, routes }: { lensStats: AnalysisOverview["l
 				<div className="space-y-4">
 					{lensStats.map((stat) => {
 						const percentage =
-							stat.totalInterviews > 0 ? Math.round((stat.completedCount / stat.totalInterviews) * 100) : 0
-						const isComplete = stat.completedCount >= stat.totalInterviews && stat.totalInterviews > 0
+							stat.totalInterviews > 0 ? Math.round((stat.completedCount / stat.totalInterviews) * 100) : 0;
+						const isComplete = stat.completedCount >= stat.totalInterviews && stat.totalInterviews > 0;
 
 						return (
 							<Link key={stat.templateKey} to={routes.lenses.byTemplateKey(stat.templateKey)} className="group block">
@@ -431,10 +431,10 @@ function CoverageSection({ lensStats, routes }: { lensStats: AnalysisOverview["l
 								</div>
 								<Progress value={percentage} className="h-2" />
 							</Link>
-						)
+						);
 					})}
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 }

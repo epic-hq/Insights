@@ -1,31 +1,31 @@
-import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import type { Database } from "~/../supabase/types"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
-import { Badge } from "~/components/ui/badge"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getSupabaseClient } from "~/lib/supabase/client"
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import type { Database } from "~/../supabase/types";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Badge } from "~/components/ui/badge";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { getSupabaseClient } from "~/lib/supabase/client";
 
 type EvidenceWithPeople = Database["public"]["Tables"]["evidence"]["Row"] & {
 	evidence_people: Array<{
-		person_id: string | null
+		person_id: string | null;
 		people: {
-			id: string | null
-			name: string | null
-		} | null
-	}> | null
-}
+			id: string | null;
+			name: string | null;
+		} | null;
+	}> | null;
+};
 
 interface InterviewQuestionsAccordionProps {
-	interviewId: string
-	projectId: string
-	accountId: string
+	interviewId: string;
+	projectId: string;
+	accountId: string;
 }
 
 export function InterviewQuestionsAccordion({ interviewId, projectId, accountId }: InterviewQuestionsAccordionProps) {
-	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
-	const supabase = getSupabaseClient()
-	const [questions, setQuestions] = useState<EvidenceWithPeople[]>([])
+	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`);
+	const supabase = getSupabaseClient();
+	const [questions, setQuestions] = useState<EvidenceWithPeople[]>([]);
 
 	useEffect(() => {
 		const fetchQuestions = async () => {
@@ -43,39 +43,39 @@ export function InterviewQuestionsAccordion({ interviewId, projectId, accountId 
 				`)
 				.eq("interview_id", interviewId)
 				.eq("is_question", true)
-				.order("created_at", { ascending: true })
+				.order("created_at", { ascending: true });
 
 			if (error) {
-				console.warn("Failed to fetch questions:", error.message)
-				setQuestions([])
-				return
+				console.warn("Failed to fetch questions:", error.message);
+				setQuestions([]);
+				return;
 			}
 
-			setQuestions(evidenceData as EvidenceWithPeople[])
-		}
+			setQuestions(evidenceData as EvidenceWithPeople[]);
+		};
 
-		fetchQuestions()
-	}, [interviewId, supabase])
+		fetchQuestions();
+	}, [interviewId, supabase]);
 
 	const questionsBySpeaker = useMemo(() => {
-		const grouped: Record<string, EvidenceWithPeople[]> = {}
+		const grouped: Record<string, EvidenceWithPeople[]> = {};
 
 		questions.forEach((question) => {
 			// Get speaker name from evidence_people junction
-			const speakerName = question.evidence_people?.[0]?.people?.name || "Unknown Speaker"
+			const speakerName = question.evidence_people?.[0]?.people?.name || "Unknown Speaker";
 			if (!grouped[speakerName]) {
-				grouped[speakerName] = []
+				grouped[speakerName] = [];
 			}
-			grouped[speakerName].push(question)
-		})
+			grouped[speakerName].push(question);
+		});
 
-		return grouped
-	}, [questions])
+		return grouped;
+	}, [questions]);
 
-	const speakerNames = Object.keys(questionsBySpeaker).sort()
+	const speakerNames = Object.keys(questionsBySpeaker).sort();
 
 	if (speakerNames.length === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -89,7 +89,7 @@ export function InterviewQuestionsAccordion({ interviewId, projectId, accountId 
 
 			<Accordion type="multiple" className="w-full">
 				{speakerNames.map((speakerName) => {
-					const speakerQuestions = questionsBySpeaker[speakerName] || []
+					const speakerQuestions = questionsBySpeaker[speakerName] || [];
 
 					return (
 						<AccordionItem key={speakerName} value={speakerName}>
@@ -131,9 +131,9 @@ export function InterviewQuestionsAccordion({ interviewId, projectId, accountId 
 								</div>
 							</AccordionContent>
 						</AccordionItem>
-					)
+					);
 				})}
 			</Accordion>
 		</div>
-	)
+	);
 }

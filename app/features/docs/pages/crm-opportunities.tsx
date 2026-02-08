@@ -1,8 +1,8 @@
-import { AlertCircle, ArrowLeft, Briefcase, CheckCircle2, Lightbulb, Link2, TrendingUp, Users } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { AlertCircle, ArrowLeft, Briefcase, CheckCircle2, Lightbulb, Link2, TrendingUp, Users } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function CRMOpportunitiesGuide() {
 	return (
@@ -473,5 +473,5 @@ export default function CRMOpportunitiesGuide() {
 				</Card>
 			</div>
 		</div>
-	)
+	);
 }

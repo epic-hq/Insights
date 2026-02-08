@@ -10,30 +10,30 @@
  * Body: { interviewId: string }
  */
 
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import type { Json } from "~/../supabase/types"
-import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server"
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import type { Json } from "~/../supabase/types";
+import { createSupabaseAdminClient, getAuthenticatedUser } from "~/lib/supabase/client.server";
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
 		// Auth check
-		const { user } = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request);
 		if (!user?.sub) {
-			return Response.json({ error: "Unauthorized" }, { status: 401 })
+			return Response.json({ error: "Unauthorized" }, { status: 401 });
 		}
 
-		const { interviewId } = await request.json()
+		const { interviewId } = await request.json();
 		if (!interviewId) {
-			return Response.json({ error: "interviewId required" }, { status: 400 })
+			return Response.json({ error: "interviewId required" }, { status: 400 });
 		}
 
-		const supabase = createSupabaseAdminClient()
+		const supabase = createSupabaseAdminClient();
 
 		// Get full interview state
 		const { data: interview, error: fetchError } = await supabase
@@ -42,10 +42,10 @@ export async function action({ request }: ActionFunctionArgs) {
 				"id, title, status, media_url, transcript, source_type, account_id, project_id, participant_pseudonym, conversation_analysis"
 			)
 			.eq("id", interviewId)
-			.single()
+			.single();
 
 		if (fetchError || !interview) {
-			return Response.json({ error: "Interview not found" }, { status: 404 })
+			return Response.json({ error: "Interview not found" }, { status: 404 });
 		}
 
 		consola.info("[interview-restart] Current state:", {
@@ -54,9 +54,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			hasMedia: !!interview.media_url,
 			hasTranscript: !!interview.transcript,
 			sourceType: interview.source_type,
-		})
+		});
 
-		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown>) || {}
+		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown>) || {};
 
 		// Case 1: Already completed
 		if (interview.status === "ready" && interview.transcript) {
@@ -65,26 +65,26 @@ export async function action({ request }: ActionFunctionArgs) {
 				action: "none",
 				status: "ready",
 				message: "Interview is already complete",
-			})
+			});
 		}
 
 		// Case 2: Has media, needs transcription
-		const isAudioVideo = interview.source_type === "audio_upload" || interview.source_type === "video_upload"
+		const isAudioVideo = interview.source_type === "audio_upload" || interview.source_type === "video_upload";
 
 		if (interview.media_url && isAudioVideo && !interview.transcript) {
-			consola.info("[interview-restart] Submitting to AssemblyAI...")
+			consola.info("[interview-restart] Submitting to AssemblyAI...");
 
 			// Generate presigned URL for AssemblyAI
-			const { createR2PresignedReadUrl } = await import("~/utils/r2.server")
-			const presignedUrl = createR2PresignedReadUrl(interview.media_url, 3600)
+			const { createR2PresignedReadUrl } = await import("~/utils/r2.server");
+			const presignedUrl = createR2PresignedReadUrl(interview.media_url, 3600);
 
 			if (!presignedUrl) {
-				return Response.json({ error: "Failed to generate presigned URL" }, { status: 500 })
+				return Response.json({ error: "Failed to generate presigned URL" }, { status: 500 });
 			}
 
-			const apiKey = process.env.ASSEMBLYAI_API_KEY
+			const apiKey = process.env.ASSEMBLYAI_API_KEY;
 			if (!apiKey) {
-				return Response.json({ error: "Transcription service not configured" }, { status: 500 })
+				return Response.json({ error: "Transcription service not configured" }, { status: 500 });
 			}
 
 			// Determine webhook URL
@@ -92,8 +92,8 @@ export async function action({ request }: ActionFunctionArgs) {
 				? `https://${process.env.PUBLIC_TUNNEL_URL}`
 				: process.env.FLY_APP_NAME
 					? `https://${process.env.FLY_APP_NAME}.fly.dev`
-					: "https://getupsight.com"
-			const webhookUrl = `${baseUrl}/api/assemblyai-webhook`
+					: "https://getupsight.com";
+			const webhookUrl = `${baseUrl}/api/assemblyai-webhook`;
 
 			// Submit to AssemblyAI
 			const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
@@ -111,16 +111,16 @@ export async function action({ request }: ActionFunctionArgs) {
 					punctuate: true,
 					sentiment_analysis: false,
 				}),
-			})
+			});
 
 			if (!transcriptResponse.ok) {
-				const errorText = await transcriptResponse.text()
-				consola.error("[interview-restart] AssemblyAI failed:", errorText)
-				return Response.json({ error: "Failed to start transcription" }, { status: 500 })
+				const errorText = await transcriptResponse.text();
+				consola.error("[interview-restart] AssemblyAI failed:", errorText);
+				return Response.json({ error: "Failed to start transcription" }, { status: 500 });
 			}
 
-			const assemblyData = await transcriptResponse.json()
-			consola.info("[interview-restart] AssemblyAI job created:", assemblyData.id)
+			const assemblyData = await transcriptResponse.json();
+			consola.info("[interview-restart] AssemblyAI job created:", assemblyData.id);
 
 			// Update interview status
 			await supabase
@@ -138,7 +138,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						status_detail: "Transcribing audio...",
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			return Response.json({
 				success: true,
@@ -146,12 +146,12 @@ export async function action({ request }: ActionFunctionArgs) {
 				status: "processing",
 				statusDetail: "Transcribing audio...",
 				message: "Transcription started",
-			})
+			});
 		}
 
 		// Case 3: Has transcript, needs analysis
 		if (interview.transcript && interview.status !== "ready") {
-			consola.info("[interview-restart] Starting analysis...")
+			consola.info("[interview-restart] Starting analysis...");
 
 			// Update status first
 			await supabase
@@ -165,7 +165,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						completed_steps: ["transcription"],
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			// Trigger orchestrator
 			const handle = await tasks.trigger("interview.v2.orchestrator", {
@@ -187,7 +187,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				userCustomInstructions: "",
 				resumeFrom: "evidence",
 				skipSteps: ["upload"],
-			})
+			});
 
 			// Store trigger run ID
 			await supabase
@@ -201,7 +201,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						completed_steps: ["transcription"],
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			return Response.json({
 				success: true,
@@ -210,12 +210,12 @@ export async function action({ request }: ActionFunctionArgs) {
 				statusDetail: "Analyzing transcript...",
 				runId: handle.id,
 				message: "Analysis started",
-			})
+			});
 		}
 
 		// Case 4: Has media, use orchestrator for full re-processing
 		if (interview.media_url) {
-			consola.info("[interview-restart] Full reprocess via orchestrator...")
+			consola.info("[interview-restart] Full reprocess via orchestrator...");
 
 			await supabase
 				.from("interviews")
@@ -228,7 +228,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						completed_steps: [],
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			const handle = await tasks.trigger("interview.v2.orchestrator", {
 				analysisJobId: interviewId,
@@ -248,7 +248,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				userCustomInstructions: "",
 				resumeFrom: "upload",
 				skipSteps: [],
-			})
+			});
 
 			await supabase
 				.from("interviews")
@@ -260,7 +260,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						status_detail: "Processing started...",
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			return Response.json({
 				success: true,
@@ -269,7 +269,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				statusDetail: "Processing started...",
 				runId: handle.id,
 				message: "Processing restarted",
-			})
+			});
 		}
 
 		// Case 5: Nothing to work with
@@ -278,9 +278,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			action: "none",
 			status: interview.status,
 			message: "No media or transcript available to process",
-		})
+		});
 	} catch (error) {
-		consola.error("[interview-restart] Error:", error)
-		return Response.json({ error: error instanceof Error ? error.message : "Restart failed" }, { status: 500 })
+		consola.error("[interview-restart] Error:", error);
+		return Response.json({ error: error instanceof Error ? error.message : "Restart failed" }, { status: 500 });
 	}
 }

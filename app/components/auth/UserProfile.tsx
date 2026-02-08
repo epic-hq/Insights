@@ -8,11 +8,11 @@ import {
 	Settings,
 	User,
 	Users,
-} from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Button } from "~/components/ui/button"
+} from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -21,15 +21,15 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { SidebarMenu, SidebarMenuItem, useSidebar } from "~/components/ui/sidebar"
-import { ThemeToggle } from "~/components/ui/theme-toggle"
-import { useAuth } from "~/contexts/AuthContext"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useTheme } from "~/contexts/ThemeContext"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { PATHS } from "~/paths"
+} from "~/components/ui/dropdown-menu";
+import { SidebarMenu, SidebarMenuItem, useSidebar } from "~/components/ui/sidebar";
+import { ThemeToggle } from "~/components/ui/theme-toggle";
+import { useAuth } from "~/contexts/AuthContext";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useTheme } from "~/contexts/ThemeContext";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { PATHS } from "~/paths";
 
 function getInitials(source: string) {
 	return source
@@ -38,45 +38,45 @@ function getInitials(source: string) {
 		.map((segment) => segment[0] ?? "")
 		.join("")
 		.slice(0, 2)
-		.toUpperCase()
+		.toUpperCase();
 }
 
 interface UserProfileProps {
-	collapsed?: boolean
-	className?: string
+	collapsed?: boolean;
+	className?: string;
 }
 
 export function UserProfile({ collapsed: collapsedProp, className }: UserProfileProps) {
-	const [open, setOpen] = useState(false)
-	const { user, signOut, user_settings } = useAuth()
-	const { projectPath, accountId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const { state } = useSidebar()
-	const { theme, setTheme } = useTheme()
+	const [open, setOpen] = useState(false);
+	const { user, signOut, user_settings } = useAuth();
+	const { projectPath, accountId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const { state } = useSidebar();
+	const { theme, setTheme } = useTheme();
 
 	// Use prop if provided, otherwise derive from sidebar state
-	const collapsed = collapsedProp ?? state === "collapsed"
+	const collapsed = collapsedProp ?? state === "collapsed";
 
-	if (!user) return null
+	if (!user) return null;
 
-	const displayName = user.user_metadata?.full_name?.trim() || user.email || "User"
-	const email = user.email ?? ""
-	const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || user_settings?.image_url || ""
-	const initials = getInitials(displayName || email || "U")
-	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null
-	const billingPath = accountId ? `/a/${accountId}/billing` : null
+	const displayName = user.user_metadata?.full_name?.trim() || user.email || "User";
+	const email = user.email ?? "";
+	const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || user_settings?.image_url || "";
+	const initials = getInitials(displayName || email || "U");
+	const accountSettingsPath = accountId ? `/a/${accountId}/settings` : null;
+	const billingPath = accountId ? `/a/${accountId}/billing` : null;
 
 	const handleSignOut = async () => {
 		try {
-			await signOut()
+			await signOut();
 		} catch {
 			// Auth context already surfaces errors
 		}
-	}
+	};
 
 	const handleThemeToggle = () => {
-		setTheme(theme === "light" ? "dark" : "light")
-	}
+		setTheme(theme === "light" ? "dark" : "light");
+	};
 
 	return (
 		<SidebarMenu>
@@ -197,5 +197,5 @@ export function UserProfile({ collapsed: collapsedProp, className }: UserProfile
 				</DropdownMenu>
 			</SidebarMenuItem>
 		</SidebarMenu>
-	)
+	);
 }

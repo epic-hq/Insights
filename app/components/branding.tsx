@@ -17,8 +17,8 @@ export const Logo = ({ size = 8 }: { size?: number }) => {
 			<circle cx="12" cy="12" r="1" />
 			<path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0" />
 		</svg>
-	)
-}
+	);
+};
 
 export const LogoBrand = () => {
 	return (
@@ -26,5 +26,5 @@ export const LogoBrand = () => {
 			<Logo />
 			<div className="font-semibold font-stretch-75% text-brand text-xl">UpSight</div>
 		</div>
-	)
-}
+	);
+};

@@ -3,8 +3,8 @@
  * Comprehensive terms covering account usage, acceptable use, IP, liability, and more
  */
 
-import { Link, type MetaFunction } from "react-router"
-import MainNav from "~/components/navigation/MainNav"
+import { Link, type MetaFunction } from "react-router";
+import MainNav from "~/components/navigation/MainNav";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -14,12 +14,12 @@ export const meta: MetaFunction = () => {
 			content:
 				"DeepLight Terms of Service - The agreement governing your use of our conversation intelligence platform.",
 		},
-	]
-}
+	];
+};
 
 export default function TermsOfServicePage() {
-	const lastUpdated = "January 2025"
-	const effectiveDate = "January 2025"
+	const lastUpdated = "January 2025";
+	const effectiveDate = "January 2025";
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
@@ -460,5 +460,5 @@ export default function TermsOfServicePage() {
 				</nav>
 			</footer>
 		</div>
-	)
+	);
 }

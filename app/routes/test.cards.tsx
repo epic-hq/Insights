@@ -1,14 +1,14 @@
-import { Calendar, Clock, MessageCircle, Mic, Sparkles, Tag, Users } from "lucide-react"
-import type React from "react"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
-import { cn } from "~/lib/utils"
+import { Calendar, Clock, MessageCircle, Mic, Sparkles, Tag, Users } from "lucide-react";
+import type React from "react";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
+import { cn } from "~/lib/utils";
 
 const surfaces: Array<{
-	key: React.ComponentProps<typeof Card>["surface"]
-	title: string
-	description: string
+	key: React.ComponentProps<typeof Card>["surface"];
+	title: string;
+	description: string;
 }> = [
 	{ key: "default", title: "Default", description: "Subtle shadow with border for most layouts." },
 	{ key: "elevated", title: "Elevated", description: "Deeper shadow for emphasis in dense grids." },
@@ -18,7 +18,7 @@ const surfaces: Array<{
 	{ key: "glass", title: "Glass", description: "Frosted look; pairs well over imagery." },
 	{ key: "gradient", title: "Gradient", description: "Ambient sheen for hero-style cards." },
 	{ key: "glow", title: "Glow", description: "Halo effect for callouts or selections." },
-]
+];
 
 function InterviewStyleCard({ className }: { className?: string }) {
 	return (
@@ -63,7 +63,7 @@ function InterviewStyleCard({ className }: { className?: string }) {
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 export default function CardSurfacesDemo() {
@@ -113,5 +113,5 @@ export default function CardSurfacesDemo() {
 				<InterviewStyleCard />
 			</section>
 		</div>
-	)
+	);
 }

@@ -1,37 +1,37 @@
-import consola from "consola"
-import { Hash, Plus } from "lucide-react"
-import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useParams, useRouteLoaderData } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { getProjects } from "~/features/projects/db"
-import { userContext } from "~/server/user-context"
-import type { Project, Project_Section } from "~/types"
+import consola from "consola";
+import { Hash, Plus } from "lucide-react";
+import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useParams, useRouteLoaderData } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { getProjects } from "~/features/projects/db";
+import { userContext } from "~/server/user-context";
+import type { Project, Project_Section } from "~/types";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 	if (!ctx) {
-		consola.error("home loader context not found")
+		consola.error("home loader context not found");
 		// If middleware didn't populate context (e.g., session not yet visible), send user to login
-		return redirect("/login")
+		return redirect("/login");
 	}
-	const { supabase } = ctx
-	const user_settings = ctx.user_settings
+	const { supabase } = ctx;
+	const user_settings = ctx.user_settings;
 
 	// CRITICAL: Use accountId from URL params, not from userContext
 	// This ensures we show projects for the account in the URL
-	const accountId = params.accountId
+	const accountId = params.accountId;
 
 	if (!supabase || !accountId) {
-		consola.error("home loader database or accountId not found")
-		return redirect("/login")
+		consola.error("home loader database or accountId not found");
+		return redirect("/login");
 	}
 
-	consola.log("home loader accountId from URL:", accountId)
+	consola.log("home loader accountId from URL:", accountId);
 
-	const _signup_completed = user_settings?.signup_data?.completed ?? false
+	const _signup_completed = user_settings?.signup_data?.completed ?? false;
 	// if (!signup_completed) {
 	// 	consola.log("Signup not completed. Redirecting to signup-chat.")
 	// 	return redirect("/signup-chat")
@@ -48,13 +48,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		return {
 			projects: [],
 			latest_sections: [],
-		}
+		};
 	}
 	// TODO make helper for getProjects from user_id
 	const { data: projects } = await getProjects({
 		supabase,
 		accountId,
-	})
+	});
 
 	// Don't redirect if no projects - let user choose their path
 	// if (!projects || projects.length === 0) {
@@ -68,40 +68,40 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.in("project_id", projects?.map((project) => project.id) || [])
 		.order("position", { ascending: true, nullsFirst: false })
 		.order("created_at", { ascending: false })
-		.limit(10)
+		.limit(10);
 
 	return {
 		projects: projects || [],
 		latest_sections: latest_sections || [],
-	}
+	};
 }
 
 // Utility functions
 function stringToColor(str: string) {
-	let hash = 0
-	for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
-	const c = (hash & 0x00ffffff).toString(16).toUpperCase()
-	return `#${"00000".substring(0, 6 - c.length)}${c}`
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+	const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+	return `#${"00000".substring(0, 6 - c.length)}${c}`;
 }
 
 // Compact Project Card for home page
 interface CompactProjectCardProps {
-	project: Project
-	projectPath: string
-	sections: Project_Section[]
+	project: Project;
+	projectPath: string;
+	sections: Project_Section[];
 }
 
 function CompactProjectCard({ project, projectPath, sections }: CompactProjectCardProps) {
-	const themeColor = stringToColor(project.slug || project.name || "P")
+	const themeColor = stringToColor(project.slug || project.name || "P");
 	const initials = (project.slug || project.name || "P")
 		.split(" ")
 		.map((n) => n[0])
 		.join("")
 		.toUpperCase()
-		.slice(0, 2)
+		.slice(0, 2);
 
-	const researchGoal = sections.find((s) => s.kind === "research_goal")
-	const interviewCount = sections.filter((s) => s.kind === "interview").length
+	const researchGoal = sections.find((s) => s.kind === "research_goal");
+	const interviewCount = sections.filter((s) => s.kind === "interview").length;
 
 	return (
 		<Card className="group cursor-pointer transition-all hover:shadow-md">
@@ -151,20 +151,20 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 				</CardContent>
 			</Link>
 		</Card>
-	)
+	);
 }
 
 export default function Index() {
-	const { projects, latest_sections } = useLoaderData<typeof loader>()
-	const params = useParams()
-	const accountId = params.accountId as string
+	const { projects, latest_sections } = useLoaderData<typeof loader>();
+	const params = useParams();
+	const accountId = params.accountId as string;
 
 	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout") as {
-		accounts?: Array<{ account_id: string; name?: string; slug?: string }>
-	}
+		accounts?: Array<{ account_id: string; name?: string; slug?: string }>;
+	};
 
-	const currentAccount = accounts?.find((acc) => acc.account_id === accountId)
-	const accountBase = `/a/${accountId}`
+	const currentAccount = accounts?.find((acc) => acc.account_id === accountId);
+	const accountBase = `/a/${accountId}`;
 
 	// Call hook once at top level for the first project (we'll use it as a template)
 	// and create routes dynamically as needed
@@ -196,7 +196,7 @@ export default function Index() {
 					{projects.length ? (
 						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 							{projects.slice(0, 4).map((project) => {
-								const projectSections = latest_sections.filter((section) => section.project_id === project.id)
+								const projectSections = latest_sections.filter((section) => section.project_id === project.id);
 								return (
 									<CompactProjectCard
 										key={project.id}
@@ -204,7 +204,7 @@ export default function Index() {
 										projectPath={`${accountBase}/${project.id}/dashboard`}
 										sections={projectSections}
 									/>
-								)
+								);
 							})}
 						</div>
 					) : (
@@ -228,5 +228,5 @@ export default function Index() {
 				</section>
 			</PageContainer>
 		</div>
-	)
+	);
 }

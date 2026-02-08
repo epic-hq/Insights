@@ -8,13 +8,13 @@
  * Evidence is saved with confidence='low' to indicate provisional status.
  */
 
-import { openai } from "@ai-sdk/openai"
-import { generateObject } from "ai"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { z } from "zod"
-import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server"
-import { FacetResolver } from "~/lib/database/facets.server"
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
+import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
+import { FacetResolver } from "~/lib/database/facets.server";
 
 const EvidenceSchema = z.object({
 	evidence: z.array(
@@ -50,47 +50,47 @@ const EvidenceSchema = z.object({
 			person_name: z.string(),
 		})
 	),
-})
+});
 
 interface RealtimeEvidenceRequest {
 	utterances: Array<{
-		speaker: string
-		text: string
-	}>
-	existingEvidence?: string[] // Gists of already-extracted evidence for deduplication
-	sessionId?: string
-	batchIndex?: number
-	interviewId?: string // Database interview ID for persistence
+		speaker: string;
+		text: string;
+	}>;
+	existingEvidence?: string[]; // Gists of already-extracted evidence for deduplication
+	sessionId?: string;
+	batchIndex?: number;
+	interviewId?: string; // Database interview ID for persistence
 }
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
-	const auth = await authenticateDesktopRequest(request)
+	const auth = await authenticateDesktopRequest(request);
 	if (!auth) {
-		return Response.json({ error: "Unauthorized" }, { status: 401 })
+		return Response.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const { supabase } = auth
+	const { supabase } = auth;
 
 	try {
-		const body = (await request.json()) as RealtimeEvidenceRequest
-		const { utterances, existingEvidence, sessionId, batchIndex, interviewId } = body
+		const body = (await request.json()) as RealtimeEvidenceRequest;
+		const { utterances, existingEvidence, sessionId, batchIndex, interviewId } = body;
 
 		if (!utterances?.length) {
-			return Response.json({ error: "No utterances provided" }, { status: 400 })
+			return Response.json({ error: "No utterances provided" }, { status: 400 });
 		}
 
-		const startTime = Date.now()
+		const startTime = Date.now();
 		consola.info(`[desktop-realtime-evidence] Extracting from ${utterances.length} utterances`, {
 			sessionId,
 			batchIndex,
 			interviewId,
-		})
+		});
 
-		const transcript = utterances.map((u) => `${u.speaker}: ${u.text}`).join("\n")
+		const transcript = utterances.map((u) => `${u.speaker}: ${u.text}`).join("\n");
 
 		// Build existing evidence context for deduplication
 		const existingContext = existingEvidence?.length
@@ -103,7 +103,7 @@ For each insight, set action:
 - "skip": exact duplicate of something already extracted
 
 Keep extracting new insights from the transcript — having prior evidence does NOT mean you should stop. New topics, details, or speakers always warrant new evidence.\n`
-			: ""
+			: "";
 
 		const { object: result } = await generateObject({
 			model: openai("gpt-4o-mini"),
@@ -130,23 +130,23 @@ Transcript:
 ${transcript}`,
 			temperature: 0.2,
 			maxTokens: 500,
-		})
+		});
 
-		const elapsed = Date.now() - startTime
-		const taskCount = result.tasks?.length || 0
+		const elapsed = Date.now() - startTime;
+		const taskCount = result.tasks?.length || 0;
 		consola.info(
 			`[desktop-realtime-evidence] Extracted ${result.evidence.length} evidence, ${taskCount} tasks in ${elapsed}ms`,
 			{ sessionId, batchIndex }
-		)
+		);
 
 		// Normalize action field (default to "new" when not provided)
 		const normalizedEvidence = result.evidence.map((e) => ({
 			...e,
 			action: e.action || "new",
-		}))
+		}));
 
 		// Filter out "skip" actions and transform to expected format
-		const actionableEvidence = normalizedEvidence.filter((e) => e.action !== "skip")
+		const actionableEvidence = normalizedEvidence.filter((e) => e.action !== "skip");
 		const evidence = actionableEvidence.map((e) => ({
 			action: e.action,
 			updates_gist: e.updates_gist,
@@ -154,16 +154,16 @@ ${transcript}`,
 			speaker_label: e.speaker_label,
 			verbatim: e.verbatim,
 			facet_mentions: [{ kind_slug: e.category }],
-		}))
+		}));
 
-		const newCount = actionableEvidence.filter((e) => e.action === "new").length
-		const updateCount = actionableEvidence.filter((e) => e.action === "update").length
-		const skipCount = result.evidence.length - actionableEvidence.length
-		consola.info(`[desktop-realtime-evidence] Actions: ${newCount} new, ${updateCount} update, ${skipCount} skip`)
+		const newCount = actionableEvidence.filter((e) => e.action === "new").length;
+		const updateCount = actionableEvidence.filter((e) => e.action === "update").length;
+		const skipCount = result.evidence.length - actionableEvidence.length;
+		consola.info(`[desktop-realtime-evidence] Actions: ${newCount} new, ${updateCount} update, ${skipCount} skip`);
 
 		// === PERSIST EVIDENCE TO DATABASE ===
 		// Only persist if interviewId is provided
-		const savedEvidenceIds: string[] = []
+		const savedEvidenceIds: string[] = [];
 		if (interviewId && actionableEvidence.length > 0) {
 			try {
 				// Get interview details for account_id and project_id
@@ -171,18 +171,18 @@ ${transcript}`,
 					.from("interviews")
 					.select("account_id, project_id")
 					.eq("id", interviewId)
-					.single()
+					.single();
 
 				if (interviewError || !interview) {
-					consola.warn(`[desktop-realtime-evidence] Interview not found: ${interviewId}`)
+					consola.warn(`[desktop-realtime-evidence] Interview not found: ${interviewId}`);
 				} else {
-					const { account_id, project_id } = interview
+					const { account_id, project_id } = interview;
 
 					// Create facet resolver for this account
-					const facetResolver = new FacetResolver(supabase, account_id)
+					const facetResolver = new FacetResolver(supabase, account_id);
 
 					for (const e of actionableEvidence) {
-						const verbatim = e.verbatim || e.gist
+						const verbatim = e.verbatim || e.gist;
 
 						if (e.action === "update" && e.updates_gist) {
 							// Update existing evidence record by matching gist
@@ -194,10 +194,10 @@ ${transcript}`,
 									chunk: verbatim,
 								})
 								.eq("interview_id", interviewId)
-								.eq("gist", e.updates_gist)
+								.eq("gist", e.updates_gist);
 
 							if (updateError) {
-								consola.warn(`[desktop-realtime-evidence] Failed to update evidence: ${updateError.message}`)
+								consola.warn(`[desktop-realtime-evidence] Failed to update evidence: ${updateError.message}`);
 							}
 						} else {
 							// Insert new evidence
@@ -216,20 +216,20 @@ ${transcript}`,
 									modality: "qual",
 								})
 								.select("id")
-								.single()
+								.single();
 
 							if (evidenceError) {
-								consola.warn(`[desktop-realtime-evidence] Failed to save evidence: ${evidenceError.message}`)
-								continue
+								consola.warn(`[desktop-realtime-evidence] Failed to save evidence: ${evidenceError.message}`);
+								continue;
 							}
 
-							savedEvidenceIds.push(savedEvidence.id)
+							savedEvidenceIds.push(savedEvidence.id);
 
 							// Insert evidence_facet for the category
 							const facetAccountId = await facetResolver.ensureFacet({
 								kindSlug: e.category,
 								label: e.category,
-							})
+							});
 
 							if (facetAccountId) {
 								const { error: facetError } = await supabase.from("evidence_facet").insert({
@@ -241,10 +241,10 @@ ${transcript}`,
 									label: e.category,
 									source: "interview",
 									confidence: 0.8,
-								})
+								});
 
 								if (facetError) {
-									consola.warn(`[desktop-realtime-evidence] Failed to save evidence_facet: ${facetError.message}`)
+									consola.warn(`[desktop-realtime-evidence] Failed to save evidence_facet: ${facetError.message}`);
 								}
 							}
 						}
@@ -253,7 +253,7 @@ ${transcript}`,
 					consola.info(
 						`[desktop-realtime-evidence] Saved ${savedEvidenceIds.length} new, updated ${updateCount} in DB`,
 						{ interviewId, batchIndex }
-					)
+					);
 
 					// Update interview processing_metadata to track real-time extraction
 					await supabase
@@ -265,10 +265,10 @@ ${transcript}`,
 								realtime_evidence_count: savedEvidenceIds.length,
 							},
 						})
-						.eq("id", interviewId)
+						.eq("id", interviewId);
 				}
 			} catch (persistError: any) {
-				consola.error("[desktop-realtime-evidence] Persistence error:", persistError.message)
+				consola.error("[desktop-realtime-evidence] Persistence error:", persistError.message);
 				// Don't fail the request - evidence was extracted, just not persisted
 			}
 		}
@@ -279,9 +279,9 @@ ${transcript}`,
 			people: result.people,
 			batchIndex,
 			savedEvidenceIds, // Return IDs so desktop can track what's persisted
-		})
+		});
 	} catch (error: any) {
-		consola.error("[desktop-realtime-evidence] Extraction failed:", error)
-		return Response.json({ error: error?.message || "Evidence extraction failed" }, { status: 500 })
+		consola.error("[desktop-realtime-evidence] Extraction failed:", error);
+		return Response.json({ error: error?.message || "Evidence extraction failed" }, { status: 500 });
 	}
 }

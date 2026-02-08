@@ -1,9 +1,9 @@
 // Plan card component where the plan based on what the agent
 // sets via tool calls.
 
-import { ZoomIn } from "lucide-react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+import { ZoomIn } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 
 export function PlanCard({ goal, plan }: { goal?: string; plan?: Record<string, any>[] }) {
 	// {/* Next Steps Widget */}
@@ -37,5 +37,5 @@ export function PlanCard({ goal, plan }: { goal?: string; plan?: Record<string, 
 				</Button>
 			</div>
 		</div>
-	)
+	);
 }

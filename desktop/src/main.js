@@ -785,6 +785,51 @@ const fileOperationManager = {
 // UpSight API configuration
 const UPSIGHT_API_URL = process.env.UPSIGHT_API_URL || "https://getupsight.com";
 
+const RETRYABLE_AXIOS_CODES = new Set([
+  "ECONNABORTED",
+  "ETIMEDOUT",
+  "ECONNRESET",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+]);
+
+function shouldRetryAxiosError(error) {
+  if (!error) return false;
+  if (RETRYABLE_AXIOS_CODES.has(error.code)) return true;
+  const status = error.response?.status;
+  return status === 408 || status === 429 || (status >= 500 && status <= 599);
+}
+
+async function withAxiosRetry(requestFn, options = {}) {
+  const {
+    attempts = 3,
+    initialDelayMs = 1000,
+    label = "request",
+    shouldRetry = shouldRetryAxiosError,
+  } = options;
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < attempts && shouldRetry(error);
+      if (!canRetry) {
+        throw error;
+      }
+
+      const delayMs = initialDelayMs * attempt;
+      console.warn(
+        `[retry] ${label} failed (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms: ${error.message}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError;
+}
+
 // Get or create user context (account/project selection)
 let userContext = null;
 
@@ -1241,8 +1286,7 @@ function initSDK() {
       let meeting = null;
       if (noteId) {
         try {
-          const fileData = await fs.promises.readFile(meetingsFilePath, "utf8");
-          const meetingsData = JSON.parse(fileData);
+          const meetingsData = await fileOperationManager.readMeetingsData();
           meeting = meetingsData.pastMeetings.find((m) => m.id === noteId);
         } catch (readErr) {
           console.error(
@@ -2608,7 +2652,7 @@ async function finalizeInterview(
     // Get meeting data for Recall participants
     let recallParticipants = [];
     try {
-      const meetingsData = await loadMeetingsData();
+      const meetingsData = await fileOperationManager.readMeetingsData();
       const meeting = meetingsData.pastMeetings.find((m) => m.id === noteId);
       recallParticipants = meeting?.participants || [];
       console.log(
@@ -2632,30 +2676,46 @@ async function finalizeInterview(
     let peopleMap = new Map(); // person_key → person_id
     if (enrichedPeople.length > 0) {
       try {
-        // Get account and project IDs from auth context
-        const user = await auth.getUser();
-        const accountId = user?.app_metadata?.claims?.sub;
-        const projectId =
+        // Get account and project IDs from auth context.
+        // getCurrentUser() may not include account/project metadata for all auth providers,
+        // so we fall back to desktop context endpoint when needed.
+        const user = await auth.getCurrentUser();
+        let accountId = user?.app_metadata?.claims?.sub;
+        let projectId =
           global.selectedProjectId || user?.user_metadata?.default_project_id;
+
+        if (!accountId || !projectId) {
+          const context = await getUserContext();
+          accountId = accountId || context?.default_account_id;
+          projectId = projectId || context?.default_project_id;
+        }
 
         if (!accountId || !projectId) {
           console.warn(
             "[finalize] Missing accountId or projectId, skipping person resolution",
           );
         } else {
-          const resolveResponse = await axios.post(
-            `${UPSIGHT_API_URL}/api/desktop/people/resolve`,
+          const resolveResponse = await withAxiosRetry(
+            () =>
+              axios.post(
+                `${UPSIGHT_API_URL}/api/desktop/people/resolve`,
+                {
+                  accountId: accountId,
+                  projectId: projectId,
+                  people: enrichedPeople,
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                  },
+                  timeout: 30000,
+                },
+              ),
             {
-              accountId: accountId,
-              projectId: projectId,
-              people: enrichedPeople,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-              timeout: 15000,
+              attempts: 3,
+              initialDelayMs: 1000,
+              label: "people-resolve",
             },
           );
 
@@ -2686,26 +2746,34 @@ async function finalizeInterview(
     }
 
     // Step 2: Finalize interview with enriched data
-    const response = await axios.post(
-      `${UPSIGHT_API_URL}/api/desktop/interviews/finalize`,
+    const response = await withAxiosRetry(
+      () =>
+        axios.post(
+          `${UPSIGHT_API_URL}/api/desktop/interviews/finalize`,
+          {
+            interview_id: interviewId,
+            transcript: transcript || [],
+            tasks: state.tasks || [],
+            people: enrichedPeople,
+            people_map: Array.from(peopleMap.entries()).map(([key, id]) => ({
+              person_key: key,
+              person_id: id,
+            })),
+            duration_seconds: durationSeconds,
+            platform: platform,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            timeout: 90000,
+          },
+        ),
       {
-        interview_id: interviewId,
-        transcript: transcript || [],
-        tasks: state.tasks || [],
-        people: enrichedPeople,
-        people_map: Array.from(peopleMap.entries()).map(([key, id]) => ({
-          person_key: key,
-          person_id: id,
-        })),
-        duration_seconds: durationSeconds,
-        platform: platform,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 30000, // 30 second timeout for finalization
+        attempts: 3,
+        initialDelayMs: 1500,
+        label: "interview-finalize",
       },
     );
 
@@ -2762,20 +2830,28 @@ async function uploadRecordingToR2(recordingId, interviewId) {
     console.log(
       `[r2-upload] Requesting presigned URL for interview ${interviewId}`,
     );
-    const presignedResponse = await axios.post(
-      `${UPSIGHT_API_URL}/api/desktop/interviews/upload-media`,
+    const presignedResponse = await withAxiosRetry(
+      () =>
+        axios.post(
+          `${UPSIGHT_API_URL}/api/desktop/interviews/upload-media`,
+          {
+            interview_id: interviewId,
+            file_name: fileName,
+            file_type: "video/mp4",
+            file_size: fileStats.size,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            timeout: 60000,
+          },
+        ),
       {
-        interview_id: interviewId,
-        file_name: fileName,
-        file_type: "video/mp4",
-        file_size: fileStats.size,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 15000,
+        attempts: 3,
+        initialDelayMs: 1000,
+        label: "upload-media-presign",
       },
     );
 

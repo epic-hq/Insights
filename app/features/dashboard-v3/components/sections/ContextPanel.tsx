@@ -5,14 +5,14 @@
  * Uses progressive disclosure with accordion for details.
  */
 
-import { Check, ChevronDown, FileAudio, Glasses, Plus, StickyNote } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
-import { Progress } from "~/components/ui/progress"
-import { cn } from "~/lib/utils"
+import { Check, ChevronDown, FileAudio, Glasses, Plus, StickyNote } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { Progress } from "~/components/ui/progress";
+import { cn } from "~/lib/utils";
 
 /** Setup fields we track for completion - with user-friendly labels */
 const SETUP_FIELDS = [
@@ -21,71 +21,71 @@ const SETUP_FIELDS = [
 	{ key: "target_orgs", label: "Target Organizations", shortLabel: "Orgs" },
 	{ key: "assumptions", label: "Assumptions", shortLabel: "Assumptions" },
 	{ key: "unknowns", label: "Unknowns", shortLabel: "Unknowns" },
-] as const
+] as const;
 
 export interface ProjectContext {
-	research_goal?: string | null
-	target_roles?: string[] | null
-	target_orgs?: string[] | null
-	assumptions?: string[] | null
-	unknowns?: string[] | null
+	research_goal?: string | null;
+	target_roles?: string[] | null;
+	target_orgs?: string[] | null;
+	assumptions?: string[] | null;
+	unknowns?: string[] | null;
 }
 
 export interface ContextPanelProps {
 	/** Project research goal text (legacy prop) */
-	researchGoal?: string
+	researchGoal?: string;
 	/** Full project context for % complete calculation */
-	projectContext?: ProjectContext
+	projectContext?: ProjectContext;
 	/** Total conversation count */
-	conversationCount: number
+	conversationCount: number;
 	/** Number of active lenses */
-	activeLensCount: number
+	activeLensCount: number;
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 /** Calculate setup completion percentage */
 function calculateSetupCompletion(context?: ProjectContext, researchGoal?: string): number {
-	if (!context && !researchGoal) return 0
+	if (!context && !researchGoal) return 0;
 
-	let filled = 0
-	const total = SETUP_FIELDS.length
+	let filled = 0;
+	const total = SETUP_FIELDS.length;
 
 	// Check each field
-	if (context?.research_goal || researchGoal) filled++
-	if (context?.target_roles && context.target_roles.length > 0) filled++
-	if (context?.target_orgs && context.target_orgs.length > 0) filled++
-	if (context?.assumptions && context.assumptions.length > 0) filled++
-	if (context?.unknowns && context.unknowns.length > 0) filled++
+	if (context?.research_goal || researchGoal) filled++;
+	if (context?.target_roles && context.target_roles.length > 0) filled++;
+	if (context?.target_orgs && context.target_orgs.length > 0) filled++;
+	if (context?.assumptions && context.assumptions.length > 0) filled++;
+	if (context?.unknowns && context.unknowns.length > 0) filled++;
 
-	return Math.round((filled / total) * 100)
+	return Math.round((filled / total) * 100);
 }
 
 /** Get field status for each setup field */
 function getFieldStatus(context?: ProjectContext, researchGoal?: string) {
 	return SETUP_FIELDS.map((field) => {
-		let isFilled = false
+		let isFilled = false;
 		switch (field.key) {
 			case "research_goal":
-				isFilled = !!(context?.research_goal || researchGoal)
-				break
+				isFilled = !!(context?.research_goal || researchGoal);
+				break;
 			case "target_roles":
-				isFilled = !!(context?.target_roles && context.target_roles.length > 0)
-				break
+				isFilled = !!(context?.target_roles && context.target_roles.length > 0);
+				break;
 			case "target_orgs":
-				isFilled = !!(context?.target_orgs && context.target_orgs.length > 0)
-				break
+				isFilled = !!(context?.target_orgs && context.target_orgs.length > 0);
+				break;
 			case "assumptions":
-				isFilled = !!(context?.assumptions && context.assumptions.length > 0)
-				break
+				isFilled = !!(context?.assumptions && context.assumptions.length > 0);
+				break;
 			case "unknowns":
-				isFilled = !!(context?.unknowns && context.unknowns.length > 0)
-				break
+				isFilled = !!(context?.unknowns && context.unknowns.length > 0);
+				break;
 		}
-		return { ...field, isFilled }
-	})
+		return { ...field, isFilled };
+	});
 }
 
 export function ContextPanel({
@@ -96,11 +96,11 @@ export function ContextPanel({
 	projectPath,
 	className,
 }: ContextPanelProps) {
-	const [isOpen, setIsOpen] = useState(false)
-	const completionPercent = calculateSetupCompletion(projectContext, researchGoal)
-	const fieldStatus = getFieldStatus(projectContext, researchGoal)
-	const filledCount = fieldStatus.filter((f) => f.isFilled).length
-	const missingCount = fieldStatus.filter((f) => !f.isFilled).length
+	const [isOpen, setIsOpen] = useState(false);
+	const completionPercent = calculateSetupCompletion(projectContext, researchGoal);
+	const fieldStatus = getFieldStatus(projectContext, researchGoal);
+	const filledCount = fieldStatus.filter((f) => f.isFilled).length;
+	const missingCount = fieldStatus.filter((f) => !f.isFilled).length;
 
 	return (
 		<aside className={cn("mx-auto max-w-xs space-y-4", className)}>
@@ -215,7 +215,7 @@ export function ContextPanel({
 				</Collapsible>
 			</Card>
 		</aside>
-	)
+	);
 }
 
-export default ContextPanel
+export default ContextPanel;

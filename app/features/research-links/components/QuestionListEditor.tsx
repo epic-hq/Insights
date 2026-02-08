@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	ArrowDown,
 	ArrowUp,
@@ -13,18 +13,18 @@ import {
 	Upload,
 	Video,
 	X,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Switch } from "~/components/ui/switch"
-import { Textarea } from "~/components/ui/textarea"
-import { cn } from "~/lib/utils"
-import type { ResearchLinkQuestion } from "../schemas"
-import { createEmptyQuestion } from "../schemas"
-import { QuestionBranchingEditor } from "./QuestionBranchingEditor"
-import { QuestionVideoEditor } from "./QuestionVideoEditor"
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Switch } from "~/components/ui/switch";
+import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
+import type { ResearchLinkQuestion } from "../schemas";
+import { createEmptyQuestion } from "../schemas";
+import { QuestionBranchingEditor } from "./QuestionBranchingEditor";
+import { QuestionVideoEditor } from "./QuestionVideoEditor";
 
 /**
  * Options input that manages local state and only parses on blur.
@@ -34,23 +34,23 @@ function OptionsInput({
 	options,
 	onChange,
 }: {
-	options: string[] | null
-	onChange: (options: string[] | null) => void
+	options: string[] | null;
+	onChange: (options: string[] | null) => void;
 }) {
-	const [localValue, setLocalValue] = useState(() => (options ?? []).join(", "))
+	const [localValue, setLocalValue] = useState(() => (options ?? []).join(", "));
 
 	// Sync from parent when options change externally
 	useEffect(() => {
-		setLocalValue((options ?? []).join(", "))
-	}, [options])
+		setLocalValue((options ?? []).join(", "));
+	}, [options]);
 
 	const parseAndSync = () => {
 		const parsed = localValue
 			.split(",")
 			.map((o) => o.trim())
-			.filter(Boolean)
-		onChange(parsed.length > 0 ? parsed : null)
-	}
+			.filter(Boolean);
+		onChange(parsed.length > 0 ? parsed : null);
+	};
 
 	return (
 		<Input
@@ -59,14 +59,14 @@ function OptionsInput({
 			onBlur={parseAndSync}
 			onKeyDown={(e) => {
 				if (e.key === "Enter") {
-					e.preventDefault()
-					parseAndSync()
+					e.preventDefault();
+					parseAndSync();
 				}
 			}}
 			placeholder="Options (comma separated)"
 			className="h-8 text-xs"
 		/>
-	)
+	);
 }
 
 /**
@@ -80,17 +80,17 @@ function QuestionAdvancedSection({
 	listId,
 	updateQuestion,
 }: {
-	question: ResearchLinkQuestion
-	questions: ResearchLinkQuestion[]
-	index: number
-	listId?: string
-	updateQuestion: (id: string, updates: Partial<ResearchLinkQuestion>) => void
+	question: ResearchLinkQuestion;
+	questions: ResearchLinkQuestion[];
+	index: number;
+	listId?: string;
+	updateQuestion: (id: string, updates: Partial<ResearchLinkQuestion>) => void;
 }) {
 	const hasContent =
-		Boolean(question.helperText) || Boolean(question.videoUrl) || Boolean(question.branching?.rules?.length)
-	const [isOpen, setIsOpen] = useState(hasContent)
+		Boolean(question.helperText) || Boolean(question.videoUrl) || Boolean(question.branching?.rules?.length);
+	const [isOpen, setIsOpen] = useState(hasContent);
 
-	const badgeCount = [question.helperText, question.videoUrl, question.branching?.rules?.length].filter(Boolean).length
+	const badgeCount = [question.helperText, question.videoUrl, question.branching?.rules?.length].filter(Boolean).length;
 
 	return (
 		<div className="border-border/30 border-t pt-2">
@@ -164,14 +164,14 @@ function QuestionAdvancedSection({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 interface QuestionListEditorProps {
-	questions: ResearchLinkQuestion[]
-	onChange: (next: ResearchLinkQuestion[]) => void
+	questions: ResearchLinkQuestion[];
+	onChange: (next: ResearchLinkQuestion[]) => void;
 	/** Required for video recording/upload functionality */
-	listId?: string
+	listId?: string;
 }
 
 export function QuestionListEditor({ questions, onChange, listId }: QuestionListEditorProps) {
@@ -186,87 +186,87 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 							}
 						: question
 				)
-			)
+			);
 		},
 		[onChange, questions]
-	)
+	);
 
 	const removeQuestion = useCallback(
 		(id: string) => {
-			onChange(questions.filter((question) => question.id !== id))
+			onChange(questions.filter((question) => question.id !== id));
 		},
 		[onChange, questions]
-	)
+	);
 
 	const moveQuestion = useCallback(
 		(id: string, direction: -1 | 1) => {
-			const index = questions.findIndex((question) => question.id === id)
-			if (index < 0) return
-			const newIndex = index + direction
-			if (newIndex < 0 || newIndex >= questions.length) return
-			const reordered = [...questions]
-			const [item] = reordered.splice(index, 1)
-			reordered.splice(newIndex, 0, item)
-			onChange(reordered)
+			const index = questions.findIndex((question) => question.id === id);
+			if (index < 0) return;
+			const newIndex = index + direction;
+			if (newIndex < 0 || newIndex >= questions.length) return;
+			const reordered = [...questions];
+			const [item] = reordered.splice(index, 1);
+			reordered.splice(newIndex, 0, item);
+			onChange(reordered);
 		},
 		[onChange, questions]
-	)
+	);
 
 	const addQuestion = useCallback(() => {
-		onChange([...questions, createEmptyQuestion()])
-	}, [onChange, questions])
+		onChange([...questions, createEmptyQuestion()]);
+	}, [onChange, questions]);
 
 	// Image upload state: tracks which option is uploading (questionId-optionIndex)
-	const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null)
-	const imageInputRef = useRef<HTMLInputElement>(null)
+	const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null);
+	const imageInputRef = useRef<HTMLInputElement>(null);
 	const pendingUploadRef = useRef<{
-		questionId: string
-		optionIndex: number
-	} | null>(null)
+		questionId: string;
+		optionIndex: number;
+	} | null>(null);
 
 	const handleImageUpload = useCallback(
 		async (file: File, questionId: string, optionIndex: number) => {
 			if (!file.type.startsWith("image/")) {
-				return
+				return;
 			}
 
-			const uploadKey = `${questionId}-${optionIndex}`
-			setUploadingImageKey(uploadKey)
+			const uploadKey = `${questionId}-${optionIndex}`;
+			setUploadingImageKey(uploadKey);
 
 			try {
-				const formData = new FormData()
-				formData.append("file", file)
+				const formData = new FormData();
+				formData.append("file", file);
 
 				const response = await fetch("/api/upload-image?category=survey-images", {
 					method: "POST",
 					body: formData,
-				})
+				});
 
-				const result = await response.json()
+				const result = await response.json();
 
 				if (!response.ok || !result.success) {
-					throw new Error(result.error || "Upload failed")
+					throw new Error(result.error || "Upload failed");
 				}
 
 				// Update the question with the new image URL
-				const question = questions.find((q) => q.id === questionId)
+				const question = questions.find((q) => q.id === questionId);
 				if (question?.imageOptions) {
-					const nextOptions = [...question.imageOptions]
+					const nextOptions = [...question.imageOptions];
 					nextOptions[optionIndex] = {
 						...nextOptions[optionIndex],
 						imageUrl: result.url,
-					}
-					updateQuestion(questionId, { imageOptions: nextOptions })
+					};
+					updateQuestion(questionId, { imageOptions: nextOptions });
 				}
 			} catch (err) {
 				// Silently fail - user can try again
-				console.error("Image upload failed:", err)
+				console.error("Image upload failed:", err);
 			} finally {
-				setUploadingImageKey(null)
+				setUploadingImageKey(null);
 			}
 		},
 		[questions, updateQuestion]
-	)
+	);
 
 	return (
 		<div className="space-y-3">
@@ -332,9 +332,9 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 									onChange={(event) => updateQuestion(question.id, { prompt: event.target.value })}
 									onInput={(event) => {
 										// Auto-expand to fit content
-										const target = event.target as HTMLTextAreaElement
-										target.style.height = "auto"
-										target.style.height = `${target.scrollHeight}px`
+										const target = event.target as HTMLTextAreaElement;
+										target.style.height = "auto";
+										target.style.height = `${target.scrollHeight}px`;
 									}}
 									required
 									rows={1}
@@ -346,32 +346,32 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 										onValueChange={(value: ResearchLinkQuestion["type"]) => {
 											const updates: Partial<ResearchLinkQuestion> = {
 												type: value,
-											}
+											};
 											if (value === "single_select" || value === "multi_select") {
-												updates.options = question.options ?? []
-												updates.likertScale = null
-												updates.likertLabels = null
-												updates.imageOptions = null
+												updates.options = question.options ?? [];
+												updates.likertScale = null;
+												updates.likertLabels = null;
+												updates.imageOptions = null;
 											} else if (value === "likert") {
-												updates.likertScale = question.likertScale ?? 5
+												updates.likertScale = question.likertScale ?? 5;
 												updates.likertLabels = question.likertLabels ?? {
 													low: "Strongly disagree",
 													high: "Strongly agree",
-												}
-												updates.options = null
-												updates.imageOptions = null
+												};
+												updates.options = null;
+												updates.imageOptions = null;
 											} else if (value === "image_select") {
-												updates.imageOptions = question.imageOptions ?? [{ label: "", imageUrl: "" }]
-												updates.options = null
-												updates.likertScale = null
-												updates.likertLabels = null
+												updates.imageOptions = question.imageOptions ?? [{ label: "", imageUrl: "" }];
+												updates.options = null;
+												updates.likertScale = null;
+												updates.likertLabels = null;
 											} else {
-												updates.options = null
-												updates.likertScale = null
-												updates.likertLabels = null
-												updates.imageOptions = null
+												updates.options = null;
+												updates.likertScale = null;
+												updates.likertLabels = null;
+												updates.imageOptions = null;
 											}
-											updateQuestion(question.id, updates)
+											updateQuestion(question.id, updates);
 										}}
 									>
 										<SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
@@ -405,7 +405,7 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 													onCheckedChange={(checked) => {
 														if (checked) {
 															// Convert text options to image options
-															const existingOptions = question.options ?? []
+															const existingOptions = question.options ?? [];
 															updateQuestion(question.id, {
 																imageOptions:
 																	existingOptions.length > 0
@@ -415,17 +415,17 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 																			}))
 																		: [{ label: "", imageUrl: "" }],
 																options: null,
-															})
+															});
 														} else {
 															// Convert image options back to text options
-															const existingImageOptions = question.imageOptions ?? []
+															const existingImageOptions = question.imageOptions ?? [];
 															updateQuestion(question.id, {
 																options:
 																	existingImageOptions.length > 0
 																		? existingImageOptions.map((o) => o.label).filter(Boolean)
 																		: null,
 																imageOptions: null,
-															})
+															});
 														}
 													}}
 													className="scale-75"
@@ -438,8 +438,8 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 											// Image options mode
 											<div className="space-y-2">
 												{question.imageOptions.map((option, optionIndex) => {
-													const uploadKey = `${question.id}-${optionIndex}`
-													const isUploading = uploadingImageKey === uploadKey
+													const uploadKey = `${question.id}-${optionIndex}`;
+													const isUploading = uploadingImageKey === uploadKey;
 													return (
 														<div key={optionIndex} className="flex items-center gap-2">
 															<button
@@ -448,8 +448,8 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 																	pendingUploadRef.current = {
 																		questionId: question.id,
 																		optionIndex,
-																	}
-																	imageInputRef.current?.click()
+																	};
+																	imageInputRef.current?.click();
 																}}
 																disabled={isUploading}
 																className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded border border-border/50 bg-muted/30 transition-colors hover:border-border hover:bg-muted/50"
@@ -470,14 +470,14 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 															<Input
 																value={option.label}
 																onChange={(event) => {
-																	const nextOptions = [...(question.imageOptions ?? [])]
+																	const nextOptions = [...(question.imageOptions ?? [])];
 																	nextOptions[optionIndex] = {
 																		...nextOptions[optionIndex],
 																		label: event.target.value,
-																	}
+																	};
 																	updateQuestion(question.id, {
 																		imageOptions: nextOptions,
-																	})
+																	});
 																}}
 																placeholder="Label"
 																className="h-8 flex-1 text-xs"
@@ -485,14 +485,14 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 															<Input
 																value={option.imageUrl}
 																onChange={(event) => {
-																	const nextOptions = [...(question.imageOptions ?? [])]
+																	const nextOptions = [...(question.imageOptions ?? [])];
 																	nextOptions[optionIndex] = {
 																		...nextOptions[optionIndex],
 																		imageUrl: event.target.value,
-																	}
+																	};
 																	updateQuestion(question.id, {
 																		imageOptions: nextOptions,
-																	})
+																	});
 																}}
 																placeholder="Image URL or click thumbnail to upload"
 																className="h-8 flex-[2] text-xs"
@@ -503,16 +503,16 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 																size="icon"
 																className="h-7 w-7 shrink-0 opacity-60 hover:text-destructive hover:opacity-100"
 																onClick={() => {
-																	const nextOptions = (question.imageOptions ?? []).filter((_, i) => i !== optionIndex)
+																	const nextOptions = (question.imageOptions ?? []).filter((_, i) => i !== optionIndex);
 																	updateQuestion(question.id, {
 																		imageOptions: nextOptions.length > 0 ? nextOptions : [{ label: "", imageUrl: "" }],
-																	})
+																	});
 																}}
 															>
 																<X className="h-3.5 w-3.5" />
 															</Button>
 														</div>
-													)
+													);
 												})}
 												<Button
 													type="button"
@@ -520,10 +520,10 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 													size="sm"
 													className="h-7 text-muted-foreground text-xs hover:text-foreground"
 													onClick={() => {
-														const nextOptions = [...(question.imageOptions ?? []), { label: "", imageUrl: "" }]
+														const nextOptions = [...(question.imageOptions ?? []), { label: "", imageUrl: "" }];
 														updateQuestion(question.id, {
 															imageOptions: nextOptions,
-														})
+														});
 													}}
 												>
 													<Plus className="mr-1 h-3 w-3" /> Add option
@@ -595,8 +595,8 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 									<div className="space-y-2">
 										<div className="text-muted-foreground text-xs">Image options:</div>
 										{(question.imageOptions ?? []).map((option, optionIndex) => {
-											const uploadKey = `${question.id}-${optionIndex}`
-											const isUploading = uploadingImageKey === uploadKey
+											const uploadKey = `${question.id}-${optionIndex}`;
+											const isUploading = uploadingImageKey === uploadKey;
 											return (
 												<div key={optionIndex} className="flex items-center gap-2">
 													<button
@@ -605,8 +605,8 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 															pendingUploadRef.current = {
 																questionId: question.id,
 																optionIndex,
-															}
-															imageInputRef.current?.click()
+															};
+															imageInputRef.current?.click();
 														}}
 														disabled={isUploading}
 														className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded border border-border/50 bg-muted/30 transition-colors hover:border-border hover:bg-muted/50"
@@ -627,14 +627,14 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 													<Input
 														value={option.label}
 														onChange={(event) => {
-															const nextOptions = [...(question.imageOptions ?? [])]
+															const nextOptions = [...(question.imageOptions ?? [])];
 															nextOptions[optionIndex] = {
 																...nextOptions[optionIndex],
 																label: event.target.value,
-															}
+															};
 															updateQuestion(question.id, {
 																imageOptions: nextOptions,
-															})
+															});
 														}}
 														placeholder="Label"
 														className="h-8 flex-1 text-xs"
@@ -642,14 +642,14 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 													<Input
 														value={option.imageUrl}
 														onChange={(event) => {
-															const nextOptions = [...(question.imageOptions ?? [])]
+															const nextOptions = [...(question.imageOptions ?? [])];
 															nextOptions[optionIndex] = {
 																...nextOptions[optionIndex],
 																imageUrl: event.target.value,
-															}
+															};
 															updateQuestion(question.id, {
 																imageOptions: nextOptions,
-															})
+															});
 														}}
 														placeholder="Image URL or click thumbnail to upload"
 														className="h-8 flex-[2] text-xs"
@@ -660,16 +660,16 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 														size="icon"
 														className="h-7 w-7 shrink-0 opacity-60 hover:text-destructive hover:opacity-100"
 														onClick={() => {
-															const nextOptions = (question.imageOptions ?? []).filter((_, i) => i !== optionIndex)
+															const nextOptions = (question.imageOptions ?? []).filter((_, i) => i !== optionIndex);
 															updateQuestion(question.id, {
 																imageOptions: nextOptions.length > 0 ? nextOptions : null,
-															})
+															});
 														}}
 													>
 														<X className="h-3.5 w-3.5" />
 													</Button>
 												</div>
-											)
+											);
 										})}
 										<Button
 											type="button"
@@ -677,10 +677,10 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 											size="sm"
 											className="h-7 text-muted-foreground text-xs hover:text-foreground"
 											onClick={() => {
-												const nextOptions = [...(question.imageOptions ?? []), { label: "", imageUrl: "" }]
+												const nextOptions = [...(question.imageOptions ?? []), { label: "", imageUrl: "" }];
 												updateQuestion(question.id, {
 													imageOptions: nextOptions,
-												})
+												});
 											}}
 										>
 											<Plus className="mr-1 h-3 w-3" /> Add image option
@@ -716,15 +716,15 @@ export function QuestionListEditor({ questions, onChange, listId }: QuestionList
 				accept="image/*"
 				className="hidden"
 				onChange={(event) => {
-					const file = event.target.files?.[0]
-					const pending = pendingUploadRef.current
+					const file = event.target.files?.[0];
+					const pending = pendingUploadRef.current;
 					if (file && pending) {
-						handleImageUpload(file, pending.questionId, pending.optionIndex)
+						handleImageUpload(file, pending.questionId, pending.optionIndex);
 					}
-					event.target.value = ""
-					pendingUploadRef.current = null
+					event.target.value = "";
+					pendingUploadRef.current = null;
 				}}
 			/>
 		</div>
-	)
+	);
 }

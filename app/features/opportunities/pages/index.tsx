@@ -1,70 +1,70 @@
-import { addMonths, format, isSameMonth, startOfMonth } from "date-fns"
-import { Briefcase, CalendarDays, Columns3 } from "lucide-react"
-import { useMemo, useState } from "react"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
-import { BackButton } from "~/components/ui/back-button"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { getOpportunities } from "~/features/opportunities/db"
-import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
-import { ensureStageValue, normalizeStageId } from "~/features/opportunities/stage-config"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+import { addMonths, format, isSameMonth, startOfMonth } from "date-fns";
+import { Briefcase, CalendarDays, Columns3 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router";
+import { Link } from "react-router-dom";
+import { BackButton } from "~/components/ui/back-button";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { getOpportunities } from "~/features/opportunities/db";
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server";
+import { ensureStageValue, normalizeStageId } from "~/features/opportunities/stage-config";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Opportunities" }, { name: "description", content: "Manage business opportunities" }]
-}
+	return [{ title: "Opportunities" }, { name: "description", content: "Manage business opportunities" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
-	const { data: opportunities, error } = await getOpportunities({ supabase, accountId, projectId })
+	const { data: opportunities, error } = await getOpportunities({ supabase, accountId, projectId });
 
 	if (error) {
-		throw new Response("Error loading opportunities", { status: 500 })
+		throw new Response("Error loading opportunities", { status: 500 });
 	}
 
-	const { stages } = await loadOpportunityStages({ supabase, accountId })
+	const { stages } = await loadOpportunityStages({ supabase, accountId });
 
-	return { opportunities: opportunities || [], stages }
+	return { opportunities: opportunities || [], stages };
 }
 
-type OpportunityRecord = Awaited<ReturnType<typeof loader>>["opportunities"][number]
+type OpportunityRecord = Awaited<ReturnType<typeof loader>>["opportunities"][number];
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
 	currency: "USD",
 	maximumFractionDigits: 0,
-})
+});
 
 export default function OpportunitiesIndexPage() {
-	const { opportunities, stages } = useLoaderData<typeof loader>()
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
-	const [viewMode, setViewMode] = useState<"stage" | "month">("stage")
+	const { opportunities, stages } = useLoaderData<typeof loader>();
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
+	const [viewMode, setViewMode] = useState<"stage" | "month">("stage");
 
-	const totalAmount = useMemo(() => sumAmounts(opportunities), [opportunities])
+	const totalAmount = useMemo(() => sumAmounts(opportunities), [opportunities]);
 	const averageDeal = useMemo(() => {
-		const dealsWithAmount = opportunities.filter((o) => o.amount && Number(o.amount) > 0)
-		return dealsWithAmount.length ? currencyFormatter.format(totalAmount / dealsWithAmount.length) : "—"
-	}, [opportunities, totalAmount])
+		const dealsWithAmount = opportunities.filter((o) => o.amount && Number(o.amount) > 0);
+		return dealsWithAmount.length ? currencyFormatter.format(totalAmount / dealsWithAmount.length) : "—";
+	}, [opportunities, totalAmount]);
 
 	const stageColumns = useMemo(() => {
-		const defaultStageId = ensureStageValue(null, stages)
+		const defaultStageId = ensureStageValue(null, stages);
 		const baseColumns = stages.map((stage) => {
 			const deals = opportunities.filter(
 				(opp) => normalizeStageId(opp.kanban_status || opp.stage || defaultStageId) === stage.id
-			)
+			);
 			return {
 				key: stage.id,
 				label: stage.label,
@@ -72,12 +72,12 @@ export default function OpportunitiesIndexPage() {
 				total: sumAmounts(deals),
 				count: deals.length,
 				deals,
-			}
-		})
+			};
+		});
 
 		const uncategorized = opportunities.filter(
 			(opp) => !stages.some((stage) => stage.id === normalizeStageId(opp.kanban_status || opp.stage || ""))
-		)
+		);
 		if (uncategorized.length > 0) {
 			baseColumns.push({
 				key: "Other",
@@ -86,30 +86,30 @@ export default function OpportunitiesIndexPage() {
 				total: sumAmounts(uncategorized),
 				count: uncategorized.length,
 				deals: uncategorized,
-			})
+			});
 		}
 
-		return baseColumns
-	}, [opportunities, stages])
+		return baseColumns;
+	}, [opportunities, stages]);
 
 	const monthColumns = useMemo(() => {
-		const start = startOfMonth(new Date())
+		const start = startOfMonth(new Date());
 		const months = Array.from({ length: 6 }, (_, index) => {
-			const bucketStart = addMonths(start, index)
+			const bucketStart = addMonths(start, index);
 			const deals = opportunities.filter((opp) => {
-				if (!opp.close_date) return false
-				return isSameMonth(new Date(opp.close_date), bucketStart)
-			})
+				if (!opp.close_date) return false;
+				return isSameMonth(new Date(opp.close_date), bucketStart);
+			});
 			return {
 				key: format(bucketStart, "yyyy-MM"),
 				label: format(bucketStart, "MMM yyyy"),
 				total: sumAmounts(deals),
 				count: deals.length,
 				deals,
-			}
-		})
+			};
+		});
 
-		const noDateDeals = opportunities.filter((opp) => !opp.close_date)
+		const noDateDeals = opportunities.filter((opp) => !opp.close_date);
 		if (noDateDeals.length > 0) {
 			months.push({
 				key: "no-date",
@@ -117,11 +117,11 @@ export default function OpportunitiesIndexPage() {
 				total: sumAmounts(noDateDeals),
 				count: noDateDeals.length,
 				deals: noDateDeals,
-			})
+			});
 		}
 
-		return months
-	}, [opportunities])
+		return months;
+	}, [opportunities]);
 
 	return (
 		<div className="container mx-auto max-w-6xl px-4 py-8">
@@ -193,26 +193,26 @@ export default function OpportunitiesIndexPage() {
 				<KanbanGrid columns={monthColumns} routes={routes} emptyLabel="No deals scheduled" />
 			)}
 		</div>
-	)
+	);
 }
 
 type KanbanColumn = {
-	key: string
-	label: string
-	description?: string
-	count: number
-	total: number
-	deals: OpportunityRecord[]
-}
+	key: string;
+	label: string;
+	description?: string;
+	count: number;
+	total: number;
+	deals: OpportunityRecord[];
+};
 
 function KanbanGrid({
 	columns,
 	routes,
 	emptyLabel = "No opportunities",
 }: {
-	columns: KanbanColumn[]
-	routes: ReturnType<typeof useProjectRoutes>
-	emptyLabel?: string
+	columns: KanbanColumn[];
+	routes: ReturnType<typeof useProjectRoutes>;
+	emptyLabel?: string;
 }) {
 	return (
 		<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -245,7 +245,7 @@ function KanbanGrid({
 				</Card>
 			))}
 		</div>
-	)
+	);
 }
 
 function OpportunityCard({ deal, routes }: { deal: OpportunityRecord; routes: ReturnType<typeof useProjectRoutes> }) {
@@ -273,12 +273,12 @@ function OpportunityCard({ deal, routes }: { deal: OpportunityRecord; routes: Re
 				</div>
 			</div>
 		</Link>
-	)
+	);
 }
 
 function sumAmounts(items: OpportunityRecord[]) {
 	return items.reduce((sum, item) => {
-		const value = typeof item.amount === "number" ? item.amount : item.amount ? Number(item.amount) : 0
-		return sum + (Number.isNaN(value) ? 0 : value)
-	}, 0)
+		const value = typeof item.amount === "number" ? item.amount : item.amount ? Number(item.amount) : 0;
+		return sum + (Number.isNaN(value) ? 0 : value);
+	}, 0);
 }

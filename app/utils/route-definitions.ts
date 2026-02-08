@@ -3,215 +3,215 @@
  * Used by both client-side hooks and server-side utilities
  */
 
-import { PATHS } from "~/paths"
+import { PATHS } from "~/paths";
 
 function extractAccountId(projectPath: string): string {
-	const match = projectPath.match(/^\/a\/([^/]+)/)
-	return match ? match[1] : ""
+	const match = projectPath.match(/^\/a\/([^/]+)/);
+	return match ? match[1] : "";
 }
 
 export interface RouteDefinitions {
-	home: () => string
-	login: () => string
-	register: () => string
+	home: () => string;
+	login: () => string;
+	register: () => string;
 
 	// Dashboard
-	dashboard: () => string
-	help: () => string
-	docs: () => string
-	accountHome: () => string
+	dashboard: () => string;
+	help: () => string;
+	docs: () => string;
+	accountHome: () => string;
 
 	// Interviews
 	interviews: {
-		index: () => string
-		upload: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-		realtime: (id: string) => string
-		quick: () => string
-	}
+		index: () => string;
+		upload: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+		realtime: (id: string) => string;
+		quick: () => string;
+	};
 
 	// Evidence
 	evidence: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+	};
 
 	// Themes
 	themes: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+	};
 
 	// Insights
 	insights: {
-		index: () => string
-		quick: () => string
-		table: () => string
-		cards: () => string
-		matrix: () => string
-		map: () => string
-		autoInsights: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-		withSort: (sort: string) => string
-	}
+		index: () => string;
+		quick: () => string;
+		table: () => string;
+		cards: () => string;
+		matrix: () => string;
+		map: () => string;
+		autoInsights: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+		withSort: (sort: string) => string;
+	};
 
 	// People
 	people: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+	};
 
 	// Facets
-	facets: () => string
+	facets: () => string;
 
 	// Lenses
 	lenses: {
-		library: () => string
-		salesBant: () => string
-		customerDiscovery: () => string
-		consultingProject: () => string
+		library: () => string;
+		salesBant: () => string;
+		customerDiscovery: () => string;
+		consultingProject: () => string;
 		/** Generic lens view for any template_key (including custom lenses) */
-		byTemplateKey: (templateKey: string) => string
-	}
+		byTemplateKey: (templateKey: string) => string;
+	};
 	/** @deprecated - use lenses.library() instead */
-	lensLibrary: () => string
+	lensLibrary: () => string;
 	// Product Lens
-	productLens: () => string
+	productLens: () => string;
 	// BANT Lens (legacy)
-	bantLens: () => string
+	bantLens: () => string;
 	personas: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-		interview: (personaId: string, interviewId: string) => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+		interview: (personaId: string, interviewId: string) => string;
+	};
 
 	// Opportunities
 	opportunities: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+	};
 
 	// Journey map
-	journey: () => string
+	journey: () => string;
 
 	// Priorities / roadmap tasks
-	priorities: () => string
+	priorities: () => string;
 	tasks: {
-		index: () => string
-		new: () => string // Opens modal via ?new=true query param
-		detail: (id: string) => string
-	}
+		index: () => string;
+		new: () => string; // Opens modal via ?new=true query param
+		detail: (id: string) => string;
+	};
 
 	// Organizations
 	organizations: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+	};
 
 	// Segments
 	segments: {
-		index: () => string
-		detail: (id: string) => string
-	}
+		index: () => string;
+		detail: (id: string) => string;
+	};
 
 	// Assets (imported files, tables, etc.)
 	assets: {
-		detail: (id: string) => string
-	}
+		detail: (id: string) => string;
+	};
 
 	/** Notes & Files page (separated from interviews) */
 	sources: {
-		index: () => string
-	}
+		index: () => string;
+	};
 
 	/** Survey/chat responses page (separated from interviews) */
 	responses: {
-		index: () => string
-	}
+		index: () => string;
+	};
 
 	/** Shareable prompts for collecting responses from external participants */
 	ask: {
-		index: () => string
-		new: () => string
-		edit: (id: string) => string
-		responses: (id: string) => string
+		index: () => string;
+		new: () => string;
+		edit: (id: string) => string;
+		responses: (id: string) => string;
 		/** Detail page for a specific survey response */
-		responseDetail: (surveyId: string, responseId: string) => string
+		responseDetail: (surveyId: string, responseId: string) => string;
 		/** Public URL for respondents: /ask/<slug> */
-		public: (slug: string) => string
-	}
+		public: (slug: string) => string;
+	};
 
 	// Questions
 	questions: {
-		index: () => string
-		new: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-		researchWorkflow: () => string
-	}
+		index: () => string;
+		new: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+		researchWorkflow: () => string;
+	};
 
 	// Teams
 	team: {
-		members: () => string
-	}
+		members: () => string;
+	};
 
 	// Projects (note: these are at account level, not project level)
 	projects: {
-		index: () => string
-		new: () => string
-		setup: () => string
-		projectChat: () => string
-		detail: (id: string) => string
-		edit: (id: string) => string
-		dashboard: () => string
-	}
+		index: () => string;
+		new: () => string;
+		setup: () => string;
+		projectChat: () => string;
+		detail: (id: string) => string;
+		edit: (id: string) => string;
+		dashboard: () => string;
+	};
 
 	// Sales
-	salesBase: () => string
+	salesBase: () => string;
 
 	// Authentication
 	auth: {
-		login: () => string
-		register: () => string
-		loginSuccess: () => string
-		callback: () => string
-		signout: () => string
-	}
+		login: () => string;
+		register: () => string;
+		loginSuccess: () => string;
+		callback: () => string;
+		signout: () => string;
+	};
 
 	// API routes
 	api: {
-		uploadFile: () => string
-		uploadFromUrl: () => string
-		generatePersonaInsights: () => string
-		interviewStatus: () => string
-		realtimeStart: () => string
-		generatePersonas: () => string
-		insightsUpdateField: () => string
+		uploadFile: () => string;
+		uploadFromUrl: () => string;
+		generatePersonaInsights: () => string;
+		interviewStatus: () => string;
+		realtimeStart: () => string;
+		generatePersonas: () => string;
+		insightsUpdateField: () => string;
 		// Annotations API routes (project-scoped)
-		annotations: () => string
-		votes: () => string
-		entityFlags: () => string
+		annotations: () => string;
+		votes: () => string;
+		entityFlags: () => string;
 		chat: {
-			projectStatus: () => string
-			interview: (interviewId: string) => string
-		}
-	}
+			projectStatus: () => string;
+			interview: (interviewId: string) => string;
+		};
+	};
 }
 
 /**
@@ -219,9 +219,9 @@ export interface RouteDefinitions {
  * @param projectPath - Format: /a/:accountId/:projectId
  */
 export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
-	const base = projectPath
-	const accountId = extractAccountId(projectPath)
-	const accountBase = accountId ? `/a/${accountId}` : ""
+	const base = projectPath;
+	const accountId = extractAccountId(projectPath);
+	const accountBase = accountId ? `/a/${accountId}` : "";
 
 	return {
 		// Marketing
@@ -428,5 +428,5 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			votes: () => `${base}/api/votes`,
 			entityFlags: () => `${base}/api/entity-flags`,
 		},
-	}
+	};
 }

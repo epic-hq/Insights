@@ -9,7 +9,7 @@
  * Modal is scrollable so continue buttons are always reachable.
  */
 
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -30,16 +30,16 @@ import {
 	Target,
 	TrendingUp,
 	Users,
-} from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { useFetcher, useNavigate, useParams } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { Label } from "~/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { JOB_FUNCTIONS as DB_JOB_FUNCTIONS, TARGET_COMPANY_SIZE_CATEGORIES } from "~/lib/constants/options"
-import { cn } from "~/lib/utils"
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useFetcher, useNavigate, useParams } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { JOB_FUNCTIONS as DB_JOB_FUNCTIONS, TARGET_COMPANY_SIZE_CATEGORIES } from "~/lib/constants/options";
+import { cn } from "~/lib/utils";
 
 /** Animation variants for staggered children */
 const containerVariants = {
@@ -51,7 +51,7 @@ const containerVariants = {
 			delayChildren: 0.05,
 		},
 	},
-}
+};
 
 const itemVariants = {
 	hidden: { opacity: 0, y: 6, scale: 0.97 },
@@ -65,20 +65,20 @@ const itemVariants = {
 			damping: 25,
 		},
 	},
-}
+};
 
 export interface OnboardingData {
-	jobFunction: string
-	primaryUseCase: string
-	companySize: string
-	completed: boolean
+	jobFunction: string;
+	primaryUseCase: string;
+	companySize: string;
+	completed: boolean;
 }
 
 interface OnboardingWalkthroughProps {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	onComplete?: (data: OnboardingData) => void
-	initialData?: Partial<OnboardingData>
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onComplete?: (data: OnboardingData) => void;
+	initialData?: Partial<OnboardingData>;
 }
 
 // Icons for job functions
@@ -96,13 +96,13 @@ const JOB_FUNCTION_ICONS: Record<string, React.ComponentType<{ className?: strin
 	data: BarChart3,
 	research: Microscope,
 	executive: Briefcase,
-}
+};
 
 const JOB_FUNCTIONS = DB_JOB_FUNCTIONS.map((job) => ({
 	value: job.value,
 	label: job.label,
 	icon: JOB_FUNCTION_ICONS[job.value] || Briefcase,
-}))
+}));
 
 const USE_CASES = [
 	{
@@ -135,17 +135,17 @@ const USE_CASES = [
 		label: "Competitive Intelligence",
 		icon: Target,
 	},
-]
+];
 
 const COMPANY_SIZES = TARGET_COMPANY_SIZE_CATEGORIES.map((cat) => ({
 	value: cat.value,
 	label: cat.label,
 	description: cat.description,
-}))
+}));
 
 interface StepProps {
-	data: Partial<OnboardingData>
-	onChange: (field: keyof OnboardingData, value: string) => void
+	data: Partial<OnboardingData>;
+	onChange: (field: keyof OnboardingData, value: string) => void;
 }
 
 function JobFunctionStep({ data, onChange }: StepProps) {
@@ -168,8 +168,8 @@ function JobFunctionStep({ data, onChange }: StepProps) {
 			>
 				<motion.div variants={containerVariants} initial="hidden" animate="visible" className="contents">
 					{JOB_FUNCTIONS.map((job) => {
-						const Icon = job.icon
-						const isSelected = data.jobFunction === job.value
+						const Icon = job.icon;
+						const isSelected = data.jobFunction === job.value;
 						return (
 							<motion.div key={job.value} variants={itemVariants}>
 								<Label
@@ -214,27 +214,27 @@ function JobFunctionStep({ data, onChange }: StepProps) {
 									)}
 								</Label>
 							</motion.div>
-						)
+						);
 					})}
 				</motion.div>
 			</RadioGroup>
 		</motion.div>
-	)
+	);
 }
 
 function UseCaseStep({ data, onChange }: StepProps) {
 	// Parse comma-separated string into Set for multi-select
-	const selected = new Set((data.primaryUseCase || "").split(",").filter(Boolean))
+	const selected = new Set((data.primaryUseCase || "").split(",").filter(Boolean));
 
 	const toggleUseCase = (value: string) => {
-		const next = new Set(selected)
+		const next = new Set(selected);
 		if (next.has(value)) {
-			next.delete(value)
+			next.delete(value);
 		} else {
-			next.add(value)
+			next.add(value);
 		}
-		onChange("primaryUseCase", Array.from(next).join(","))
-	}
+		onChange("primaryUseCase", Array.from(next).join(","));
+	};
 
 	return (
 		<motion.div
@@ -251,8 +251,8 @@ function UseCaseStep({ data, onChange }: StepProps) {
 
 			<motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 gap-2">
 				{USE_CASES.map((useCase) => {
-					const isSelected = selected.has(useCase.value)
-					const Icon = useCase.icon
+					const isSelected = selected.has(useCase.value);
+					const Icon = useCase.icon;
 					return (
 						<motion.button
 							key={useCase.value}
@@ -295,11 +295,11 @@ function UseCaseStep({ data, onChange }: StepProps) {
 								</motion.div>
 							)}
 						</motion.button>
-					)
+					);
 				})}
 			</motion.div>
 		</motion.div>
-	)
+	);
 }
 
 function CompanySizeStep({ data, onChange }: StepProps) {
@@ -322,7 +322,7 @@ function CompanySizeStep({ data, onChange }: StepProps) {
 			>
 				<motion.div variants={containerVariants} initial="hidden" animate="visible" className="contents">
 					{COMPANY_SIZES.map((size) => {
-						const isSelected = data.companySize === size.value
+						const isSelected = data.companySize === size.value;
 						return (
 							<motion.div key={size.value} variants={itemVariants}>
 								<Label
@@ -356,22 +356,22 @@ function CompanySizeStep({ data, onChange }: StepProps) {
 									)}
 								</Label>
 							</motion.div>
-						)
+						);
 					})}
 				</motion.div>
 			</RadioGroup>
 		</motion.div>
-	)
+	);
 }
 
 interface ConfettiParticleProps {
-	delay: number
-	x: number
-	color: string
-	size: number
-	isCircle: boolean
-	drift: number
-	rotation: number
+	delay: number;
+	x: number;
+	color: string;
+	size: number;
+	isCircle: boolean;
+	drift: number;
+	rotation: number;
 }
 
 function ConfettiParticle({ delay, x, color, size, isCircle, drift, rotation }: ConfettiParticleProps) {
@@ -398,11 +398,11 @@ function ConfettiParticle({ delay, x, color, size, isCircle, drift, rotation }: 
 				borderRadius: isCircle ? "50%" : "2px",
 			}}
 		/>
-	)
+	);
 }
 
 function ConfettiCelebration() {
-	const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"]
+	const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
 
 	const particles = Array.from({ length: 60 }, (_, i) => ({
 		id: i,
@@ -413,7 +413,7 @@ function ConfettiCelebration() {
 		isCircle: i % 3 !== 0,
 		drift: ((i % 7) - 3) * 25,
 		rotation: ((i % 8) - 4) * 180,
-	}))
+	}));
 
 	return (
 		<div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -423,7 +423,7 @@ function ConfettiCelebration() {
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 function CompletionStep() {
@@ -462,20 +462,20 @@ function CompletionStep() {
 				</p>
 			</motion.div>
 		</motion.div>
-	)
+	);
 }
 
 export function OnboardingWalkthrough({ open, onOpenChange, onComplete, initialData }: OnboardingWalkthroughProps) {
-	const [step, setStep] = useState(0)
-	const [data, setData] = useState<Partial<OnboardingData>>(initialData || {})
-	const [showCompletion, setShowCompletion] = useState(false)
-	const [showConfetti, setShowConfetti] = useState(false)
-	const fetcher = useFetcher()
-	const navigate = useNavigate()
-	const params = useParams()
-	const accountId = params.accountId || ""
-	const projectId = params.projectId || ""
-	const routes = useProjectRoutesFromIds(accountId, projectId)
+	const [step, setStep] = useState(0);
+	const [data, setData] = useState<Partial<OnboardingData>>(initialData || {});
+	const [showCompletion, setShowCompletion] = useState(false);
+	const [showConfetti, setShowConfetti] = useState(false);
+	const fetcher = useFetcher();
+	const navigate = useNavigate();
+	const params = useParams();
+	const accountId = params.accountId || "";
+	const projectId = params.projectId || "";
+	const routes = useProjectRoutesFromIds(accountId, projectId);
 
 	const steps = [
 		{ component: JobFunctionStep, canProceed: Boolean(data.jobFunction) },
@@ -484,58 +484,58 @@ export function OnboardingWalkthrough({ open, onOpenChange, onComplete, initialD
 			canProceed: Boolean(data.primaryUseCase && data.primaryUseCase.length > 0),
 		},
 		{ component: CompanySizeStep, canProceed: Boolean(data.companySize) },
-	]
+	];
 
-	const currentStep = steps[step]
-	const isLastStep = step === steps.length - 1
-	const isFirstStep = step === 0
+	const currentStep = steps[step];
+	const isLastStep = step === steps.length - 1;
+	const isFirstStep = step === 0;
 
 	const handleChange = useCallback((field: keyof OnboardingData, value: string) => {
-		setData((prev) => ({ ...prev, [field]: value }))
-	}, [])
+		setData((prev) => ({ ...prev, [field]: value }));
+	}, []);
 
 	const handleNext = useCallback(() => {
 		if (isLastStep) {
-			setShowCompletion(true)
-			setShowConfetti(true)
+			setShowCompletion(true);
+			setShowConfetti(true);
 
 			const completeData: OnboardingData = {
 				jobFunction: data.jobFunction || "",
 				primaryUseCase: data.primaryUseCase || "",
 				companySize: data.companySize || "",
 				completed: true,
-			}
+			};
 
 			fetcher.submit(
 				{ onboardingData: JSON.stringify(completeData) },
 				{ method: "POST", action: "/api/user-settings/onboarding" }
-			)
+			);
 
-			onComplete?.(completeData)
+			onComplete?.(completeData);
 		} else {
-			setStep((prev) => prev + 1)
+			setStep((prev) => prev + 1);
 		}
-	}, [step, isLastStep, data, fetcher, onComplete])
+	}, [step, isLastStep, data, fetcher, onComplete]);
 
 	const handleBack = useCallback(() => {
-		setStep((prev) => Math.max(0, prev - 1))
-	}, [])
+		setStep((prev) => Math.max(0, prev - 1));
+	}, []);
 
 	const handleContinueToCompany = useCallback(() => {
-		onOpenChange(false)
+		onOpenChange(false);
 		if (accountId && projectId) {
-			navigate(`${routes.projects.setup()}?welcome=1`)
+			navigate(`${routes.projects.setup()}?welcome=1`);
 		}
-	}, [onOpenChange, navigate, routes, accountId, projectId])
+	}, [onOpenChange, navigate, routes, accountId, projectId]);
 
 	useEffect(() => {
 		if (showConfetti) {
-			const timer = setTimeout(() => setShowConfetti(false), 3000)
-			return () => clearTimeout(timer)
+			const timer = setTimeout(() => setShowConfetti(false), 3000);
+			return () => clearTimeout(timer);
 		}
-	}, [showConfetti])
+	}, [showConfetti]);
 
-	const StepComponent = currentStep?.component
+	const StepComponent = currentStep?.component;
 
 	return (
 		<Dialog open={open} onOpenChange={showCompletion ? undefined : onOpenChange}>
@@ -642,7 +642,7 @@ export function OnboardingWalkthrough({ open, onOpenChange, onComplete, initialD
 				</AnimatePresence>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
 
-export default OnboardingWalkthrough
+export default OnboardingWalkthrough;

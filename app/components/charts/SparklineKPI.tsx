@@ -1,22 +1,22 @@
-import type { CSSProperties } from "react"
-import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, YAxis } from "recharts"
+import type { CSSProperties } from "react";
+import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 
 export interface SparklineDatum {
-	label: string // e.g. date label
-	value: number
+	label: string; // e.g. date label
+	value: number;
 }
 
 interface SparklineKPIProps {
-	data: SparklineDatum[]
+	data: SparklineDatum[];
 	/** Latest KPI value (defaults to last datum) */
-	kpiValue?: number | string
+	kpiValue?: number | string;
 	/** Change string, e.g., "+12%" */
-	change?: string
+	change?: string;
 	/** Optional threshold baseline to draw */
-	baseline?: number
-	height?: number
-	style?: CSSProperties
-	stroke?: string
+	baseline?: number;
+	height?: number;
+	style?: CSSProperties;
+	stroke?: string;
 }
 
 // Thin line chart w/out axes, paired with a big KPI figure. Wraps in a flex column
@@ -29,8 +29,8 @@ export default function SparklineKPI({
 	style,
 	stroke = "#0284c7",
 }: SparklineKPIProps) {
-	const latest = kpiValue ?? data[data.length - 1]?.value
-	const isUp = typeof change === "string" && change.startsWith("+")
+	const latest = kpiValue ?? data[data.length - 1]?.value;
+	const isUp = typeof change === "string" && change.startsWith("+");
 
 	return (
 		<div style={style} className="flex flex-col gap-1">
@@ -47,5 +47,5 @@ export default function SparklineKPI({
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }

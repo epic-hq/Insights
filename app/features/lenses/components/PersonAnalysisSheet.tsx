@@ -17,23 +17,23 @@ import {
 	Package,
 	Sparkles,
 	Target,
-} from "lucide-react"
-import { Link } from "react-router"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Separator } from "~/components/ui/separator"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "~/components/ui/sheet"
-import type { PersonAnalysisSummary, PersonLensHighlight } from "../lib/loadAnalysisData.server"
+} from "lucide-react";
+import { Link } from "react-router";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Separator } from "~/components/ui/separator";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "~/components/ui/sheet";
+import type { PersonAnalysisSummary, PersonLensHighlight } from "../lib/loadAnalysisData.server";
 
 type SheetProps = {
-	person: PersonAnalysisSummary | null
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	routes: any
-}
+	person: PersonAnalysisSummary | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	routes: any;
+};
 
 function getInitials(name: string): string {
 	return (
@@ -43,15 +43,15 @@ function getInitials(name: string): string {
 			.join("")
 			.toUpperCase()
 			.slice(0, 2) || "?"
-	)
+	);
 }
 
 function getCategoryIcon(templateKey: string) {
-	if (templateKey.includes("sales") || templateKey.includes("bant")) return <Briefcase className="h-3.5 w-3.5" />
+	if (templateKey.includes("sales") || templateKey.includes("bant")) return <Briefcase className="h-3.5 w-3.5" />;
 	if (templateKey.includes("research") || templateKey.includes("discovery"))
-		return <FlaskConical className="h-3.5 w-3.5" />
-	if (templateKey.includes("product")) return <Package className="h-3.5 w-3.5" />
-	return <Glasses className="h-3.5 w-3.5" />
+		return <FlaskConical className="h-3.5 w-3.5" />;
+	if (templateKey.includes("product")) return <Package className="h-3.5 w-3.5" />;
+	return <Glasses className="h-3.5 w-3.5" />;
 }
 
 function LensHighlightCard({ highlight }: { highlight: PersonLensHighlight }) {
@@ -82,16 +82,16 @@ function LensHighlightCard({ highlight }: { highlight: PersonLensHighlight }) {
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: SheetProps) {
-	if (!person) return null
+	if (!person) return null;
 
-	const hasPains = person.keyPains.length > 0
-	const hasGoals = person.keyGoals.length > 0
-	const hasHighlights = person.lensHighlights.length > 0
-	const hasSurveyHighlights = (person.surveyHighlights?.length || 0) > 0
+	const hasPains = person.keyPains.length > 0;
+	const hasGoals = person.keyGoals.length > 0;
+	const hasHighlights = person.lensHighlights.length > 0;
+	const hasSurveyHighlights = (person.surveyHighlights?.length || 0) > 0;
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -245,5 +245,5 @@ export function PersonAnalysisSheet({ person, open, onOpenChange, routes }: Shee
 				</ScrollArea>
 			</SheetContent>
 		</Sheet>
-	)
+	);
 }

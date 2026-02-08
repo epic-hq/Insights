@@ -5,53 +5,53 @@
  * Focuses on activating the user with calendar connection.
  */
 
-import consola from "consola"
-import { ArrowRight, CheckCircle2 } from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { Link, redirect, useLoaderData, useNavigate } from "react-router"
-import { PicaConnectButton } from "~/components/integrations/PicaConnectButton"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { hasFeature, PLANS, type PlanId } from "~/config/plans"
-import { getCalendarConnection } from "~/lib/integrations/calendar.server"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Link, redirect, useLoaderData, useNavigate } from "react-router";
+import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { hasFeature, PLANS, type PlanId } from "~/config/plans";
+import { getCalendarConnection } from "~/lib/integrations/calendar.server";
+import { userContext } from "~/server/user-context";
 
 type LoaderData = {
-	planName: string
-	accountId: string
-	userId: string
-	hasCalendarFeature: boolean
-	calendarAlreadyConnected: boolean
-}
+	planName: string;
+	accountId: string;
+	userId: string;
+	hasCalendarFeature: boolean;
+	calendarAlreadyConnected: boolean;
+};
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const userId = ctx?.claims?.sub
+	const ctx = context.get(userContext);
+	const userId = ctx?.claims?.sub;
 
 	if (!userId) {
-		return redirect("/login")
+		return redirect("/login");
 	}
 
-	const accountId = params.accountId
+	const accountId = params.accountId;
 	if (!accountId) {
-		return redirect("/home")
+		return redirect("/home");
 	}
 
-	const url = new URL(request.url)
-	const planParam = url.searchParams.get("plan") as PlanId | null
-	const planId: PlanId = planParam && PLANS[planParam] ? planParam : "starter"
-	const plan = PLANS[planId]
+	const url = new URL(request.url);
+	const planParam = url.searchParams.get("plan") as PlanId | null;
+	const planId: PlanId = planParam && PLANS[planParam] ? planParam : "starter";
+	const plan = PLANS[planId];
 
-	let calendarAlreadyConnected = false
+	let calendarAlreadyConnected = false;
 
 	if (ctx?.supabase && hasFeature(planId, "calendar_sync")) {
 		try {
-			const connection = await getCalendarConnection(ctx.supabase, userId, "google")
-			calendarAlreadyConnected = !!connection
+			const connection = await getCalendarConnection(ctx.supabase, userId, "google");
+			calendarAlreadyConnected = !!connection;
 		} catch (err) {
 			// If calendar check fails (e.g., table doesn't exist), just show the CTA
-			consola.warn("[welcome-upgrade] Failed to check calendar connection:", err)
+			consola.warn("[welcome-upgrade] Failed to check calendar connection:", err);
 		}
 	}
 
@@ -61,21 +61,21 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
 		userId,
 		hasCalendarFeature: hasFeature(planId, "calendar_sync"),
 		calendarAlreadyConnected,
-	}
+	};
 }
 
 export default function WelcomeUpgradePage() {
-	const { planName, accountId, userId, hasCalendarFeature, calendarAlreadyConnected } = useLoaderData<typeof loader>()
-	const navigate = useNavigate()
-	const [connected, setConnected] = useState(calendarAlreadyConnected)
+	const { planName, accountId, userId, hasCalendarFeature, calendarAlreadyConnected } = useLoaderData<typeof loader>();
+	const navigate = useNavigate();
+	const [connected, setConnected] = useState(calendarAlreadyConnected);
 
-	const dashboardUrl = accountId ? `/a/${accountId}/home` : "/home"
+	const dashboardUrl = accountId ? `/a/${accountId}/home` : "/home";
 
 	const handleCalendarSuccess = () => {
-		setConnected(true)
+		setConnected(true);
 		// Give time for user to see success, then redirect
-		setTimeout(() => navigate(dashboardUrl), 1500)
-	}
+		setTimeout(() => navigate(dashboardUrl), 1500);
+	};
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-muted/30 px-4">
@@ -137,5 +137,5 @@ export default function WelcomeUpgradePage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

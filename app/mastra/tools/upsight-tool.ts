@@ -1,14 +1,14 @@
-import { createTool } from "@mastra/core/tools"
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getInsights } from "~/features/insights/db"
-import { getInterviews } from "~/features/interviews/db"
-import { getOpportunities } from "~/features/opportunities/db"
-import { getPeople } from "~/features/people/db"
-import { getPersonas } from "~/features/personas/db"
-import { getProjectById, getProjects } from "~/features/projects/db"
-import type { Database, Insight, Interview, Opportunity, Person, Persona } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { getInsights } from "~/features/insights/db";
+import { getInterviews } from "~/features/interviews/db";
+import { getOpportunities } from "~/features/opportunities/db";
+import { getPeople } from "~/features/people/db";
+import { getPersonas } from "~/features/personas/db";
+import { getProjectById, getProjects } from "~/features/projects/db";
+import type { Database, Insight, Interview, Opportunity, Person, Persona } from "~/types";
 
 // Project search and analysis tool for Upsight
 export const upsightTool = createTool({
@@ -97,32 +97,32 @@ export const upsightTool = createTool({
 	}),
 	execute: async (input, context?) => {
 		try {
-			consola.debug("Upsight tool executing with input:", input)
-			consola.debug("Context:", context)
+			consola.debug("Upsight tool executing with input:", input);
+			consola.debug("Context:", context);
 
 			// Get accountId and projectId from runtime context or input
 			const runtimeAccountId =
-				context?.requestContext?.get?.("account_id") || context?.requestContext?.get?.("accountId")
+				context?.requestContext?.get?.("account_id") || context?.requestContext?.get?.("accountId");
 			const runtimeProjectId =
-				context?.requestContext?.get?.("project_id") || context?.requestContext?.get?.("projectId")
-			const runtimeUserId = context?.requestContext?.get?.("user_id") || context?.requestContext?.get?.("userId")
+				context?.requestContext?.get?.("project_id") || context?.requestContext?.get?.("projectId");
+			const runtimeUserId = context?.requestContext?.get?.("user_id") || context?.requestContext?.get?.("userId");
 
 			// Use runtime context values if available, otherwise fall back to input parameters
-			const finalAccountId = runtimeAccountId || input.accountId
-			const finalProjectId = runtimeProjectId || input.projectId
+			const finalAccountId = runtimeAccountId || input.accountId;
+			const finalProjectId = runtimeProjectId || input.projectId;
 
-			consola.debug("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId)
+			consola.debug("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId);
 
 			if (!finalAccountId) {
-				throw new Error("accountId is required - must be provided either in context or runtime headers")
+				throw new Error("accountId is required - must be provided either in context or runtime headers");
 			}
 
 			// Create service role Supabase client (doesn't need cookies/sessions)
-			const supabaseUrl = process.env.SUPABASE_URL
-			const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+			const supabaseUrl = process.env.SUPABASE_URL;
+			const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 			if (!supabaseUrl || !supabaseServiceKey) {
-				throw new Error("Supabase configuration missing - need SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+				throw new Error("Supabase configuration missing - need SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
 			}
 
 			// Create service role client
@@ -131,7 +131,7 @@ export const upsightTool = createTool({
 					autoRefreshToken: false,
 					persistSession: false,
 				},
-			})
+			});
 
 			const {
 				searchQuery,
@@ -141,34 +141,34 @@ export const upsightTool = createTool({
 				includePeople,
 				includePersonas,
 				limit,
-			} = input
+			} = input;
 
 			// Initialize result arrays
-			let projects: any[] = []
-			const insights: Array<Insight> = []
-			const interviews: Array<Interview> = []
-			const opportunities: Array<Opportunity> = []
-			const people: Array<Person> = []
-			const personas: Array<Persona> = []
+			let projects: any[] = [];
+			const insights: Array<Insight> = [];
+			const interviews: Array<Interview> = [];
+			const opportunities: Array<Opportunity> = [];
+			const people: Array<Person> = [];
+			const personas: Array<Persona> = [];
 
 			// Get projects data
 			if (finalProjectId) {
 				// Get specific project
-				const { data: projectData, error: projectError } = await getProjectById({ supabase, id: finalProjectId })
+				const { data: projectData, error: projectError } = await getProjectById({ supabase, id: finalProjectId });
 				if (projectData && !projectError) {
-					projects = [projectData]
+					projects = [projectData];
 				}
 			} else {
 				// Get all projects for account
-				const { data: projectsData, error: projectsError } = await getProjects({ supabase, accountId: finalAccountId })
+				const { data: projectsData, error: projectsError } = await getProjects({ supabase, accountId: finalAccountId });
 				if (projectsData && !projectsError) {
-					projects = projectsData.slice(0, limit)
+					projects = projectsData.slice(0, limit);
 				}
 			}
 
 			// For each project, get detailed data
 			for (const project of projects) {
-				const currentProjectId = project.id
+				const currentProjectId = project.id;
 
 				// Get insights
 				if (includeInsights) {
@@ -177,9 +177,9 @@ export const upsightTool = createTool({
 							supabase,
 							accountId: finalAccountId,
 							projectId: currentProjectId,
-						})
+						});
 						if (insightsData && !insightsError) {
-							let filteredInsights = insightsData
+							let filteredInsights = insightsData;
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -189,13 +189,13 @@ export const upsightTool = createTool({
 										insight.details?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 										insight.pain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 										insight.desired_outcome?.toLowerCase().includes(searchQuery.toLowerCase())
-								)
+								);
 							}
 
-							insights.push(...filteredInsights.slice(0, limit))
+							insights.push(...filteredInsights.slice(0, limit));
 						}
 					} catch (error) {
-						consola.warn("Error fetching insights:", error)
+						consola.warn("Error fetching insights:", error);
 					}
 				}
 
@@ -206,21 +206,21 @@ export const upsightTool = createTool({
 							supabase,
 							accountId: finalAccountId,
 							projectId: currentProjectId,
-						})
+						});
 						if (interviewsData && !interviewsError) {
-							let filteredInterviews = interviewsData
+							let filteredInterviews = interviewsData;
 
 							// Apply search filter if provided
 							if (searchQuery) {
 								filteredInterviews = interviewsData.filter((interview) =>
 									interview.title?.toLowerCase().includes(searchQuery.toLowerCase())
-								)
+								);
 							}
 
-							interviews.push(...filteredInterviews.slice(0, limit))
+							interviews.push(...filteredInterviews.slice(0, limit));
 						}
 					} catch (error) {
-						consola.warn("Error fetching interviews:", error)
+						consola.warn("Error fetching interviews:", error);
 					}
 				}
 
@@ -231,9 +231,9 @@ export const upsightTool = createTool({
 							supabase,
 							accountId: finalAccountId,
 							projectId: currentProjectId,
-						})
+						});
 						if (opportunitiesData && !opportunitiesError) {
-							let filteredOpportunities = opportunitiesData
+							let filteredOpportunities = opportunitiesData;
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -241,13 +241,13 @@ export const upsightTool = createTool({
 									(opportunity) =>
 										opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 										opportunity.description?.toLowerCase().includes(searchQuery.toLowerCase())
-								)
+								);
 							}
 
-							opportunities.push(...filteredOpportunities.slice(0, limit))
+							opportunities.push(...filteredOpportunities.slice(0, limit));
 						}
 					} catch (error) {
-						consola.warn("Error fetching opportunities:", error)
+						consola.warn("Error fetching opportunities:", error);
 					}
 				}
 
@@ -258,9 +258,9 @@ export const upsightTool = createTool({
 							supabase,
 							accountId: finalAccountId,
 							projectId: currentProjectId,
-						})
+						});
 						if (peopleData && !peopleError) {
-							let filteredPeople = peopleData
+							let filteredPeople = peopleData;
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -269,13 +269,13 @@ export const upsightTool = createTool({
 										person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 										person.segment?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 										person.role?.toLowerCase().includes(searchQuery.toLowerCase())
-								)
+								);
 							}
 
-							people.push(...filteredPeople.slice(0, limit))
+							people.push(...filteredPeople.slice(0, limit));
 						}
 					} catch (error) {
-						consola.warn("Error fetching people:", error)
+						consola.warn("Error fetching people:", error);
 					}
 				}
 
@@ -285,9 +285,9 @@ export const upsightTool = createTool({
 						const { data: personasData, error: personasError } = await getPersonas({
 							supabase,
 							accountId: finalAccountId,
-						})
+						});
 						if (personasData && !personasError) {
-							let filteredPersonas = personasData
+							let filteredPersonas = personasData;
 
 							// Apply search filter if provided
 							if (searchQuery) {
@@ -295,20 +295,20 @@ export const upsightTool = createTool({
 									(persona) =>
 										persona.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 										persona.description?.toLowerCase().includes(searchQuery.toLowerCase())
-								)
+								);
 							}
 
-							personas.push(...filteredPersonas.slice(0, limit))
+							personas.push(...filteredPersonas.slice(0, limit));
 						}
 					} catch (error) {
-						consola.warn("Error fetching personas:", error)
+						consola.warn("Error fetching personas:", error);
 					}
 				}
 			}
 
 			// Generate project status and key findings
-			const keyFindings = generateKeyFindings(insights, interviews, opportunities)
-			const nextSteps = generateNextSteps(insights, opportunities, interviews)
+			const keyFindings = generateKeyFindings(insights, interviews, opportunities);
+			const nextSteps = generateNextSteps(insights, opportunities, interviews);
 
 			const projectStatus = {
 				keyFindings,
@@ -319,7 +319,7 @@ export const upsightTool = createTool({
 				totalPeople: people.length,
 				totalPersonas: personas.length,
 				lastUpdated: new Date().toISOString(),
-			}
+			};
 
 			return {
 				projects: projects.map((p) => ({
@@ -365,111 +365,111 @@ export const upsightTool = createTool({
 					percentage: p.percentage,
 				})),
 				projectStatus,
-			}
+			};
 		} catch (error) {
-			consola.error("Error in upsight tool:", error)
-			throw new Error(`Failed to search project data: ${error}`)
+			consola.error("Error in upsight tool:", error);
+			throw new Error(`Failed to search project data: ${error}`);
 		}
 	},
-})
+});
 
 // Helper function to generate key findings from data
 function generateKeyFindings(insights: any[], interviews: any[], opportunities: any[]): string[] {
-	const findings: string[] = []
+	const findings: string[] = [];
 
 	// Analyze insights for patterns
 	if (insights.length > 0) {
-		const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8)
+		const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8);
 		if (highImpactInsights.length > 0) {
-			findings.push(`${highImpactInsights.length} high-impact insights identified (impact score ≥ 8)`)
+			findings.push(`${highImpactInsights.length} high-impact insights identified (impact score ≥ 8)`);
 		}
 
-		const categories = insights.map((i) => i.category).filter(Boolean)
+		const categories = insights.map((i) => i.category).filter(Boolean);
 		const categoryCount = categories.reduce(
 			(acc, cat) => {
-				acc[cat] = (acc[cat] || 0) + 1
-				return acc
+				acc[cat] = (acc[cat] || 0) + 1;
+				return acc;
 			},
 			{} as Record<string, number>
-		)
+		);
 
-		const topCategory = Object.entries(categoryCount).sort(([, a], [, b]) => b - a)[0]
+		const topCategory = Object.entries(categoryCount).sort(([, a], [, b]) => b - a)[0];
 		if (topCategory) {
-			findings.push(`Most common insight category: ${topCategory[0]} (${topCategory[1]} insights)`)
+			findings.push(`Most common insight category: ${topCategory[0]} (${topCategory[1]} insights)`);
 		}
 	}
 
 	// Analyze interview patterns
 	if (interviews.length > 0) {
-		findings.push(`${interviews.length} interviews conducted`)
+		findings.push(`${interviews.length} interviews conducted`);
 
 		const recentInterviews = interviews.filter((i) => {
-			if (!i.interview_date) return false
-			const interviewDate = new Date(i.interview_date)
-			const thirtyDaysAgo = new Date()
-			thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-			return interviewDate > thirtyDaysAgo
-		})
+			if (!i.interview_date) return false;
+			const interviewDate = new Date(i.interview_date);
+			const thirtyDaysAgo = new Date();
+			thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+			return interviewDate > thirtyDaysAgo;
+		});
 
 		if (recentInterviews.length > 0) {
-			findings.push(`${recentInterviews.length} interviews conducted in the last 30 days`)
+			findings.push(`${recentInterviews.length} interviews conducted in the last 30 days`);
 		}
 	}
 
 	// Analyze opportunities
 	if (opportunities.length > 0) {
-		findings.push(`${opportunities.length} opportunities identified`)
+		findings.push(`${opportunities.length} opportunities identified`);
 
-		const highImpactOpportunities = opportunities.filter((o) => o.impact === "high")
+		const highImpactOpportunities = opportunities.filter((o) => o.impact === "high");
 		if (highImpactOpportunities.length > 0) {
-			findings.push(`${highImpactOpportunities.length} high-impact opportunities available`)
+			findings.push(`${highImpactOpportunities.length} high-impact opportunities available`);
 		}
 	}
 
-	return findings
+	return findings;
 }
 
 // Helper function to generate next steps
 function generateNextSteps(insights: any[], opportunities: any[], interviews: any[]): string[] {
-	const steps: string[] = []
+	const steps: string[] = [];
 
 	// Suggest actions based on data patterns
 	if (insights.length === 0 && interviews.length > 0) {
-		steps.push("Process existing interviews to extract insights")
+		steps.push("Process existing interviews to extract insights");
 	}
 
 	if (opportunities.length === 0 && insights.length > 0) {
-		steps.push("Review insights to identify potential opportunities")
+		steps.push("Review insights to identify potential opportunities");
 	}
 
-	const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8)
+	const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8);
 	if (highImpactInsights.length > 0) {
-		steps.push(`Prioritize action on ${highImpactInsights.length} high-impact insights`)
+		steps.push(`Prioritize action on ${highImpactInsights.length} high-impact insights`);
 	}
 
 	const recentInterviews = interviews.filter((i) => {
-		if (!i.interview_date) return false
-		const interviewDate = new Date(i.interview_date)
-		const sevenDaysAgo = new Date()
-		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-		return interviewDate > sevenDaysAgo
-	})
+		if (!i.interview_date) return false;
+		const interviewDate = new Date(i.interview_date);
+		const sevenDaysAgo = new Date();
+		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+		return interviewDate > sevenDaysAgo;
+	});
 
 	if (recentInterviews.length === 0 && interviews.length < 5) {
-		steps.push("Schedule additional user interviews to gather more insights")
+		steps.push("Schedule additional user interviews to gather more insights");
 	}
 
-	const pendingOpportunities = opportunities.filter((o) => o.status === "pending" || o.status === "open")
+	const pendingOpportunities = opportunities.filter((o) => o.status === "pending" || o.status === "open");
 	if (pendingOpportunities.length > 0) {
-		steps.push(`Review and prioritize ${pendingOpportunities.length} pending opportunities`)
+		steps.push(`Review and prioritize ${pendingOpportunities.length} pending opportunities`);
 	}
 
 	// Default steps if no specific patterns found
 	if (steps.length === 0) {
-		steps.push("Continue gathering user feedback through interviews")
-		steps.push("Analyze existing data for actionable insights")
-		steps.push("Identify and prioritize improvement opportunities")
+		steps.push("Continue gathering user feedback through interviews");
+		steps.push("Analyze existing data for actionable insights");
+		steps.push("Identify and prioritize improvement opportunities");
 	}
 
-	return steps
+	return steps;
 }

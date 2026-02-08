@@ -1,39 +1,44 @@
-import consola from "consola"
-import { Archive, Edit, EyeOff, MessageCircle, MoreHorizontal, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { Link, useFetcher } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Textarea } from "~/components/ui/textarea"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { InsightView } from "~/types"
+import consola from "consola";
+import { Archive, Edit, EyeOff, MessageCircle, MoreHorizontal, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useFetcher } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Textarea } from "~/components/ui/textarea";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { InsightView } from "~/types";
 
 type PrefetchedFlags = {
-	hidden: boolean
-	archived: boolean
-	starred: boolean
-	priority: boolean
-}
+	hidden: boolean;
+	archived: boolean;
+	starred: boolean;
+	priority: boolean;
+};
 
 type AnnotationRow = {
-	id: string
-	content: string | null
-	created_at: string
-	created_by_ai: boolean | null
-}
+	id: string;
+	content: string | null;
+	created_at: string;
+	created_by_ai: boolean | null;
+};
 
 interface InsightCardV2Props {
-	insight: InsightView
-	detail_href?: string
-	comment_count?: number
-	prefetched_flags?: PrefetchedFlags
-	onEdit?: () => void
-	onDelete?: () => void
-	className?: string
+	insight: InsightView;
+	detail_href?: string;
+	comment_count?: number;
+	prefetched_flags?: PrefetchedFlags;
+	onEdit?: () => void;
+	onDelete?: () => void;
+	className?: string;
 }
 
 export default function InsightCardV2({
@@ -45,83 +50,83 @@ export default function InsightCardV2({
 	onDelete,
 	className,
 }: InsightCardV2Props) {
-	const [showComments, setShowComments] = useState(false)
-	const [newComment, setNewComment] = useState("")
-	const [isSubmittingComment, setIsSubmittingComment] = useState(false)
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
-	const commentsFetcher = useFetcher()
-	const flagFetcher = useFetcher()
-	const createCommentFetcher = useFetcher()
+	const [showComments, setShowComments] = useState(false);
+	const [newComment, setNewComment] = useState("");
+	const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
+	const commentsFetcher = useFetcher();
+	const flagFetcher = useFetcher();
+	const createCommentFetcher = useFetcher();
 
-	const [comments, setComments] = useState<AnnotationRow[]>([])
-	const [commentsLoaded, setCommentsLoaded] = useState(false)
+	const [comments, setComments] = useState<AnnotationRow[]>([]);
+	const [commentsLoaded, setCommentsLoaded] = useState(false);
 	const [flags, setFlags] = useState<PrefetchedFlags>({
 		hidden: false,
 		archived: false,
 		starred: false,
 		priority: false,
-	})
+	});
 
 	useEffect(() => {
-		if (!prefetched_flags) return
-		setFlags(prefetched_flags)
-	}, [prefetched_flags])
+		if (!prefetched_flags) return;
+		setFlags(prefetched_flags);
+	}, [prefetched_flags]);
 
 	const display_title =
 		(insight.name && insight.name.trim().length > 0 ? insight.name.trim() : null) ||
 		(insight.title && insight.title.trim().length > 0 ? insight.title.trim() : null) ||
-		"Untitled Insight"
+		"Untitled Insight";
 	const display_details =
 		(insight.details && insight.details.trim().length > 0 ? insight.details.trim() : null) ||
 		(insight.content && insight.content.trim().length > 0 ? insight.content.trim() : null) ||
 		(insight.statement && insight.statement.trim().length > 0 ? insight.statement.trim() : null) ||
-		""
+		"";
 	const display_tags = useMemo(() => {
-		if (Array.isArray(insight.tags) && insight.tags.length > 0) return insight.tags.map((t) => t.tag).filter(Boolean)
-		const maybe_insight_tags = (insight as unknown as { insight_tags?: unknown }).insight_tags
+		if (Array.isArray(insight.tags) && insight.tags.length > 0) return insight.tags.map((t) => t.tag).filter(Boolean);
+		const maybe_insight_tags = (insight as unknown as { insight_tags?: unknown }).insight_tags;
 		if (Array.isArray(maybe_insight_tags)) {
 			return maybe_insight_tags
 				.map((t) => {
 					if (t && typeof t === "object") {
-						const rec = t as Record<string, unknown>
-						const direct_tag = rec.tag
-						if (typeof direct_tag === "string") return direct_tag
-						const nested = rec.tags
+						const rec = t as Record<string, unknown>;
+						const direct_tag = rec.tag;
+						if (typeof direct_tag === "string") return direct_tag;
+						const nested = rec.tags;
 						if (nested && typeof nested === "object") {
-							const nested_tag = (nested as Record<string, unknown>).tag
-							if (typeof nested_tag === "string") return nested_tag
+							const nested_tag = (nested as Record<string, unknown>).tag;
+							if (typeof nested_tag === "string") return nested_tag;
 						}
 					}
-					return null
+					return null;
 				})
-				.filter((v: unknown): v is string => typeof v === "string" && v.length > 0)
+				.filter((v: unknown): v is string => typeof v === "string" && v.length > 0);
 		}
-		return []
-	}, [insight])
+		return [];
+	}, [insight]);
 
-	const resolved_comment_count = comment_count ?? comments.length
-	const canNavigate = typeof detail_href === "string" && detail_href.length > 0
+	const resolved_comment_count = comment_count ?? comments.length;
+	const canNavigate = typeof detail_href === "string" && detail_href.length > 0;
 
 	useEffect(() => {
-		if (!showComments) return
-		if (commentsLoaded) return
-		if (!projectPath || !insight.id) return
+		if (!showComments) return;
+		if (commentsLoaded) return;
+		if (!projectPath || !insight.id) return;
 
 		const searchParams = new URLSearchParams({
 			entityType: "insight",
 			entityId: insight.id,
 			annotationType: "comment",
 			includeThreads: "false",
-		})
-		commentsFetcher.load(`${routes.api.annotations()}?${searchParams}`)
-	}, [showComments, commentsLoaded, projectPath, insight.id, commentsFetcher, routes.api, routes.api.annotations])
+		});
+		commentsFetcher.load(`${routes.api.annotations()}?${searchParams}`);
+	}, [showComments, commentsLoaded, projectPath, insight.id, commentsFetcher, routes.api, routes.api.annotations]);
 
 	useEffect(() => {
-		if (commentsFetcher.state !== "idle") return
-		const data = commentsFetcher.data as { annotations?: AnnotationRow[]; error?: { message?: string } } | undefined
-		if (!data) return
-		if (data.error) return
+		if (commentsFetcher.state !== "idle") return;
+		const data = commentsFetcher.data as { annotations?: AnnotationRow[]; error?: { message?: string } } | undefined;
+		if (!data) return;
+		if (data.error) return;
 		if (Array.isArray(data.annotations)) {
 			setComments(
 				data.annotations.map((a) => ({
@@ -130,29 +135,29 @@ export default function InsightCardV2({
 					created_at: a.created_at,
 					created_by_ai: a.created_by_ai,
 				}))
-			)
-			setCommentsLoaded(true)
+			);
+			setCommentsLoaded(true);
 		}
-	}, [commentsFetcher.state, commentsFetcher.data])
+	}, [commentsFetcher.state, commentsFetcher.data]);
 
 	const toggleComments = () => {
 		if (!insight?.id) {
-			consola.error("toggleComments: insight.id is undefined", { insight })
-			return
+			consola.error("toggleComments: insight.id is undefined", { insight });
+			return;
 		}
-		setShowComments((prev) => !prev)
-	}
+		setShowComments((prev) => !prev);
+	};
 
 	const handleAddComment = () => {
 		if (!insight?.id || !newComment.trim()) {
 			consola.error("handleAddComment: missing data", {
 				insightId: insight?.id,
 				newComment,
-			})
-			return
+			});
+			return;
 		}
 
-		setIsSubmittingComment(true)
+		setIsSubmittingComment(true);
 
 		if (projectPath) {
 			createCommentFetcher.submit(
@@ -163,7 +168,7 @@ export default function InsightCardV2({
 					content: newComment,
 				},
 				{ method: "POST", action: routes.api.annotations() }
-			)
+			);
 		}
 
 		setComments((prev) =>
@@ -173,20 +178,20 @@ export default function InsightCardV2({
 				created_at: new Date().toISOString(),
 				created_by_ai: false,
 			})
-		)
+		);
 
-		setNewComment("")
-		setIsSubmittingComment(false)
-	}
+		setNewComment("");
+		setIsSubmittingComment(false);
+	};
 
 	const handleArchive = () => {
 		if (!insight?.id) {
-			consola.error("handleArchive: insight.id is undefined", { insight })
-			return
+			consola.error("handleArchive: insight.id is undefined", { insight });
+			return;
 		}
 
-		const next = !flags.archived
-		setFlags((prev) => ({ ...prev, archived: next }))
+		const next = !flags.archived;
+		setFlags((prev) => ({ ...prev, archived: next }));
 		flagFetcher.submit(
 			{
 				action: "set-flag",
@@ -196,17 +201,17 @@ export default function InsightCardV2({
 				flagValue: String(next),
 			},
 			{ method: "POST", action: routes.api.entityFlags() }
-		)
-	}
+		);
+	};
 
 	const handleHide = () => {
 		if (!insight?.id) {
-			consola.error("handleHide: insight.id is undefined", { insight })
-			return
+			consola.error("handleHide: insight.id is undefined", { insight });
+			return;
 		}
 
-		const next = !flags.hidden
-		setFlags((prev) => ({ ...prev, hidden: next }))
+		const next = !flags.hidden;
+		setFlags((prev) => ({ ...prev, hidden: next }));
 		flagFetcher.submit(
 			{
 				action: "set-flag",
@@ -216,11 +221,11 @@ export default function InsightCardV2({
 				flagValue: String(next),
 			},
 			{ method: "POST", action: routes.api.entityFlags() }
-		)
-	}
+		);
+	};
 
-	const isArchived = flags.archived
-	const isHidden = flags.hidden
+	const isArchived = flags.archived;
+	const isHidden = flags.hidden;
 
 	return (
 		<Card
@@ -365,5 +370,5 @@ export default function InsightCardV2({
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }

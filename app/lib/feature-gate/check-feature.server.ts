@@ -5,9 +5,9 @@
  * Use in API routes before executing feature logic.
  */
 
-import { hasFeature, PLAN_IDS, type PlanId } from "~/config/plans"
-import { FeatureGateError } from "./errors"
-import type { FeatureCheckResult, FeatureGateContext, FeatureKey } from "./types"
+import { hasFeature, PLAN_IDS, type PlanId } from "~/config/plans";
+import { FeatureGateError } from "./errors";
+import type { FeatureCheckResult, FeatureGateContext, FeatureKey } from "./types";
 
 /**
  * Check if account has access to a boolean feature.
@@ -20,19 +20,19 @@ import type { FeatureCheckResult, FeatureGateContext, FeatureKey } from "./types
  * }
  */
 export async function checkFeatureAccess(ctx: FeatureGateContext, feature: FeatureKey): Promise<FeatureCheckResult> {
-	const allowed = hasFeature(ctx.planId, feature)
+	const allowed = hasFeature(ctx.planId, feature);
 
 	if (!allowed) {
-		const requiredPlan = findMinimumPlanForFeature(feature)
+		const requiredPlan = findMinimumPlanForFeature(feature);
 		return {
 			allowed: false,
 			reason: "feature_disabled",
 			requiredPlan,
 			upgradeUrl: `/pricing?highlight=${requiredPlan}&feature=${String(feature)}`,
-		}
+		};
 	}
 
-	return { allowed: true }
+	return { allowed: true };
 }
 
 /**
@@ -51,9 +51,9 @@ export async function checkFeatureAccess(ctx: FeatureGateContext, feature: Featu
  * }
  */
 export async function requireFeatureAccess(ctx: FeatureGateContext, feature: FeatureKey): Promise<void> {
-	const result = await checkFeatureAccess(ctx, feature)
+	const result = await checkFeatureAccess(ctx, feature);
 	if (!result.allowed) {
-		throw new FeatureGateError(feature, result)
+		throw new FeatureGateError(feature, result);
 	}
 }
 
@@ -63,11 +63,11 @@ export async function requireFeatureAccess(ctx: FeatureGateContext, feature: Fea
 function findMinimumPlanForFeature(feature: FeatureKey): PlanId {
 	for (const planId of PLAN_IDS) {
 		if (hasFeature(planId, feature)) {
-			return planId
+			return planId;
 		}
 	}
-	return "team" // Default to highest tier if not found
+	return "team"; // Default to highest tier if not found
 }
 
 // Re-export getFeatureDisplayName for server use
-export { getFeatureDisplayName } from "./display-names"
+export { getFeatureDisplayName } from "./display-names";

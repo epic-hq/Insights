@@ -1,11 +1,11 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
-const matrixDataSchema = z.object({}).passthrough()
+const matrixDataSchema = z.object({}).passthrough();
 
 const freshnessSchema = z.object({
 	isFresh: z.boolean(),
@@ -14,7 +14,7 @@ const freshnessSchema = z.object({
 	currentEvidenceCount: z.number(),
 	threshold: z.number(),
 	evaluatedAt: z.string(),
-})
+});
 
 export const fetchPainMatrixCacheTool = createTool({
 	id: "fetch-pain-matrix-cache",
@@ -55,31 +55,31 @@ export const fetchPainMatrixCacheTool = createTool({
 			.nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const requestedProjectId = input.projectId ?? runtimeProjectId ?? null
-		const computeFreshness = typeof input.computeFreshness === "boolean" ? input.computeFreshness : true
+		const requestedProjectId = input.projectId ?? runtimeProjectId ?? null;
+		const computeFreshness = typeof input.computeFreshness === "boolean" ? input.computeFreshness : true;
 
-		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null
-		const projectId = requestedProjectId ? String(requestedProjectId).trim() : null
+		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : null;
+		const projectId = requestedProjectId ? String(requestedProjectId).trim() : null;
 
 		consola.debug("[fetch-pain-matrix-cache] execute start", {
 			projectId,
 			accountId,
 			computeFreshness,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("[fetch-pain-matrix-cache] missing projectId")
+			consola.warn("[fetch-pain-matrix-cache] missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
 				projectId: null,
 				accountId,
 				cache: null,
-			}
+			};
 		}
 
 		try {
@@ -88,30 +88,30 @@ export const fetchPainMatrixCacheTool = createTool({
 				.select("*")
 				.eq("project_id", projectId)
 				.order("updated_at", { ascending: false })
-				.limit(1)
+				.limit(1);
 
 			if (error) {
-				consola.error("[fetch-pain-matrix-cache] error fetching cache", error)
+				consola.error("[fetch-pain-matrix-cache] error fetching cache", error);
 				return {
 					success: false,
 					message: "Failed to fetch pain matrix cache.",
 					projectId,
 					accountId,
 					cache: null,
-				}
+				};
 			}
 
-			const cached = rows?.[0] ?? null
+			const cached = rows?.[0] ?? null;
 
 			if (!cached) {
-				consola.debug("[fetch-pain-matrix-cache] no cache found", { projectId })
+				consola.debug("[fetch-pain-matrix-cache] no cache found", { projectId });
 				return {
 					success: true,
 					message: "No cached pain matrix found for this project.",
 					projectId,
 					accountId,
 					cache: null,
-				}
+				};
 			}
 
 			if (accountId && cached.account_id !== accountId) {
@@ -119,33 +119,33 @@ export const fetchPainMatrixCacheTool = createTool({
 					projectId,
 					accountId,
 					cacheAccount: cached.account_id,
-				})
+				});
 				return {
 					success: false,
 					message: "Cached matrix belongs to a different account. Verify project and account context.",
 					projectId,
 					accountId,
 					cache: null,
-				}
+				};
 			}
 
-			let freshness: z.infer<typeof freshnessSchema> | null = null
+			let freshness: z.infer<typeof freshnessSchema> | null = null;
 
 			if (computeFreshness) {
 				const { count: currentEvidenceCount, error: evidenceError } = await supabase
 					.from("evidence")
 					.select("*", { count: "exact", head: true })
 					.eq("project_id", projectId)
-					.or("pains.not.is.null,evidence_facet.kind_slug.eq.pain")
+					.or("pains.not.is.null,evidence_facet.kind_slug.eq.pain");
 
 				if (evidenceError) {
-					consola.error("[fetch-pain-matrix-cache] evidence count error", evidenceError)
+					consola.error("[fetch-pain-matrix-cache] evidence count error", evidenceError);
 				} else {
-					const baseline = cached.evidence_count || 0
-					const count = currentEvidenceCount ?? 0
-					const evidenceDelta = count - baseline
-					const deltaPercent = baseline > 0 ? Math.abs(evidenceDelta) / baseline : count > 0 ? 1 : 0
-					const threshold = 0.1
+					const baseline = cached.evidence_count || 0;
+					const count = currentEvidenceCount ?? 0;
+					const evidenceDelta = count - baseline;
+					const deltaPercent = baseline > 0 ? Math.abs(evidenceDelta) / baseline : count > 0 ? 1 : 0;
+					const threshold = 0.1;
 
 					freshness = {
 						isFresh: deltaPercent < threshold,
@@ -154,14 +154,14 @@ export const fetchPainMatrixCacheTool = createTool({
 						currentEvidenceCount: count,
 						threshold,
 						evaluatedAt: new Date().toISOString(),
-					}
+					};
 				}
 			}
 
 			const matrixData =
 				cached.matrix_data && typeof cached.matrix_data === "object" && !Array.isArray(cached.matrix_data)
 					? (cached.matrix_data as Record<string, unknown>)
-					: {}
+					: {};
 
 			const cachePayload = {
 				id: cached.id,
@@ -176,7 +176,7 @@ export const fetchPainMatrixCacheTool = createTool({
 				createdAt: cached.created_at,
 				lastUpdated: cached.updated_at,
 				freshness,
-			}
+			};
 
 			return {
 				success: true,
@@ -184,16 +184,16 @@ export const fetchPainMatrixCacheTool = createTool({
 				projectId,
 				accountId,
 				cache: cachePayload,
-			}
+			};
 		} catch (err) {
-			consola.error("[fetch-pain-matrix-cache] unexpected error", err)
+			consola.error("[fetch-pain-matrix-cache] unexpected error", err);
 			return {
 				success: false,
 				message: "Unexpected error retrieving the pain matrix cache.",
 				projectId,
 				accountId,
 				cache: null,
-			}
+			};
 		}
 	},
-})
+});

@@ -4,32 +4,32 @@
  * The parent <main overflow-auto> handles scrolling only if needed.
  */
 
-import { ChevronsUpDown, User } from "lucide-react"
-import { useMemo } from "react"
-import type { RouteDefinitions } from "~/utils/route-definitions"
-import { getPhaseState, JOURNEY_PHASES } from "../journey-config"
-import { JourneyBackground } from "./JourneyBackground"
-import { JourneySegment } from "./JourneySegment"
+import { ChevronsUpDown, User } from "lucide-react";
+import { useMemo } from "react";
+import type { RouteDefinitions } from "~/utils/route-definitions";
+import { getPhaseState, JOURNEY_PHASES } from "../journey-config";
+import { JourneyBackground } from "./JourneyBackground";
+import { JourneySegment } from "./JourneySegment";
 
 interface JourneyMapViewProps {
-	routes: RouteDefinitions
-	counts: Record<string, number | undefined>
+	routes: RouteDefinitions;
+	counts: Record<string, number | undefined>;
 	journeyProgress: {
-		contextComplete: boolean
-		promptsComplete: boolean
-		hasConversations: boolean
-		hasInsights: boolean
-	}
+		contextComplete: boolean;
+		promptsComplete: boolean;
+		hasConversations: boolean;
+		hasInsights: boolean;
+	};
 }
 
 export function JourneyMapView({ routes, counts, journeyProgress }: JourneyMapViewProps) {
 	const phaseStates = useMemo(
 		() => JOURNEY_PHASES.map((_, i) => getPhaseState(i, counts, journeyProgress)),
 		[counts, journeyProgress]
-	)
+	);
 
 	// Find active phase index for player avatar position
-	const activePhaseIndex = phaseStates.findIndex((state) => state === "active")
+	const activePhaseIndex = phaseStates.findIndex((state) => state === "active");
 
 	return (
 		<div className="relative min-h-full w-full overflow-hidden bg-[#0f1729] text-slate-200">
@@ -85,5 +85,5 @@ export function JourneyMapView({ routes, counts, journeyProgress }: JourneyMapVi
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

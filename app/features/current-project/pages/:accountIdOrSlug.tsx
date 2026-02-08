@@ -1,46 +1,46 @@
-import consola from "consola"
-import { Outlet, redirect, useLoaderData } from "react-router"
-import { z } from "zod"
-import { CurrentProjectProvider } from "~/contexts/current-project-context"
-import { currentProjectContext } from "~/server/current-project-context"
-import { userContext } from "~/server/user-context"
-import type { GetAccount, Project, SupabaseClient } from "~/types"
-import type { Route } from "../+types/root"
+import consola from "consola";
+import { Outlet, redirect, useLoaderData } from "react-router";
+import { z } from "zod";
+import { CurrentProjectProvider } from "~/contexts/current-project-context";
+import { currentProjectContext } from "~/server/current-project-context";
+import { userContext } from "~/server/user-context";
+import type { GetAccount, Project, SupabaseClient } from "~/types";
+import type { Route } from "../+types/root";
 
 function isUUID(str: string) {
-	const uuidSchema = z.string().uuid()
-	const isValid = uuidSchema.safeParse(str).success
-	consola.log("isUUID:", isValid)
-	return isValid
+	const uuidSchema = z.string().uuid();
+	const isValid = uuidSchema.safeParse(str).success;
+	consola.log("isUUID:", isValid);
+	return isValid;
 }
 
 async function parse_account_id_from_params({
 	account_id_or_slug,
 	supabase,
 }: {
-	account_id_or_slug: string
-	supabase: SupabaseClient
+	account_id_or_slug: string;
+	supabase: SupabaseClient;
 }) {
 	if (isUUID(account_id_or_slug || "")) {
 		const getAccountResponse = await supabase.rpc("get_account", {
 			account_id: account_id_or_slug,
-		})
+		});
 		if (getAccountResponse.error) {
-			consola.error("Get account error:", getAccountResponse.error)
-			throw new Response(getAccountResponse.error.message, { status: 500 })
+			consola.error("Get account error:", getAccountResponse.error);
+			throw new Response(getAccountResponse.error.message, { status: 500 });
 		}
-		const data = getAccountResponse.data as GetAccount
-		return data.account_id
+		const data = getAccountResponse.data as GetAccount;
+		return data.account_id;
 	}
 	const getAccountIdResponse = await supabase.rpc("get_account_by_slug", {
 		slug: account_id_or_slug,
-	})
+	});
 	if (getAccountIdResponse.error) {
-		consola.error("Get account id error:", getAccountIdResponse.error)
-		throw new Response(getAccountIdResponse.error.message, { status: 500 })
+		consola.error("Get account id error:", getAccountIdResponse.error);
+		throw new Response(getAccountIdResponse.error.message, { status: 500 });
 	}
-	const data = getAccountIdResponse.data as GetAccount
-	return data.account_id
+	const data = getAccountIdResponse.data as GetAccount;
+	return data.account_id;
 }
 
 async function parse_project_id_from_params({
@@ -48,29 +48,29 @@ async function parse_project_id_from_params({
 	project_id_or_slug,
 	supabase,
 }: {
-	account_id: string
-	project_id_or_slug: string
-	supabase: SupabaseClient
+	account_id: string;
+	project_id_or_slug: string;
+	supabase: SupabaseClient;
 }) {
 	if (isUUID(project_id_or_slug || "")) {
-		const getProject = await supabase.from("projects").select("*").eq("id", project_id_or_slug).single()
+		const getProject = await supabase.from("projects").select("*").eq("id", project_id_or_slug).single();
 		if (getProject.error) {
-			consola.error("Get project error:", getProject.error)
-			return { project: null, error: getProject.error }
+			consola.error("Get project error:", getProject.error);
+			return { project: null, error: getProject.error };
 		}
-		return { project: getProject.data, error: null }
+		return { project: getProject.data, error: null };
 	}
 	const getProjectIdResponse = await supabase
 		.from("projects")
 		.select("*")
 		.eq("account_id", account_id)
 		.eq("slug", project_id_or_slug)
-		.single()
+		.single();
 	if (getProjectIdResponse.error) {
-		consola.error("Get project id error:", getProjectIdResponse.error)
-		return { project: null, error: getProjectIdResponse.error }
+		consola.error("Get project id error:", getProjectIdResponse.error);
+		return { project: null, error: getProjectIdResponse.error };
 	}
-	return { project: getProjectIdResponse.data, error: null }
+	return { project: getProjectIdResponse.data, error: null };
 }
 
 // Server-side Authentication Middleware
@@ -79,28 +79,28 @@ async function parse_project_id_from_params({
 export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 	async ({ request: _request, context, params }) => {
 		try {
-			const supabase = context.get(userContext).supabase
+			const supabase = context.get(userContext).supabase;
 
-			const account_id_or_slug = params?.accountId || ""
-			const project_id_or_slug = params?.projectId || ""
+			const account_id_or_slug = params?.accountId || "";
+			const project_id_or_slug = params?.projectId || "";
 
 			const parsed_account_id = await parse_account_id_from_params({
 				account_id_or_slug,
 				supabase,
-			})
+			});
 
 			if (!project_id_or_slug) {
-				throw new Response("Project id or slug is required", { status: 400 })
+				throw new Response("Project id or slug is required", { status: 400 });
 			}
 
 			const { project, error: projectError } = await parse_project_id_from_params({
 				account_id: parsed_account_id,
 				project_id_or_slug,
 				supabase,
-			})
+			});
 
 			if (projectError) {
-				throw new Response(projectError.message, { status: 500 })
+				throw new Response(projectError.message, { status: 500 });
 			}
 
 			// if (isUUID) {
@@ -116,34 +116,34 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				current_project_id: project.id,
 				account: {} as GetAccount,
 				project: {} as Project,
-			})
+			});
 		} catch (error) {
-			consola.error("Authentication middleware error:", error)
-			throw redirect("/login")
+			consola.error("Authentication middleware error:", error);
+			throw redirect("/login");
 		}
 	},
-]
+];
 
 export async function loader({ context }: Route.LoaderArgs) {
 	try {
-		const currentProject = context.get(currentProjectContext)
+		const currentProject = context.get(currentProjectContext);
 
 		return {
 			...currentProject,
-		}
+		};
 	} catch (error) {
-		consola.error("Protected layout loader error:", error)
-		throw new Response("Internal server error", { status: 500 })
+		consola.error("Protected layout loader error:", error);
+		throw new Response("Internal server error", { status: 500 });
 	}
 }
 
 export default function CurrentProjectLayout() {
-	const currentProject = useLoaderData<typeof loader>()
-	consola.log("Current project:", currentProject)
+	const currentProject = useLoaderData<typeof loader>();
+	consola.log("Current project:", currentProject);
 
 	return (
 		<CurrentProjectProvider>
 			<Outlet />
 		</CurrentProjectProvider>
-	)
+	);
 }

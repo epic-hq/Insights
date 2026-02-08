@@ -1,20 +1,20 @@
 interface InterviewRow {
-	id: string
-	date: string
-	participant: string
-	status: "transcribed" | "processing" | "ready"
+	id: string;
+	date: string;
+	participant: string;
+	status: "transcribed" | "processing" | "ready";
 }
 
 interface RecentInterviewsTableProps {
-	rows: InterviewRow[]
-	className?: string
+	rows: InterviewRow[];
+	className?: string;
 }
 
 const statusColors: Record<string, string> = {
 	transcribed: "bg-amber-100 text-amber-800",
 	processing: "bg-blue-100 text-blue-800",
 	ready: "bg-emerald-100 text-emerald-800",
-}
+};
 
 export default function RecentInterviewsTable({ rows, className }: RecentInterviewsTableProps) {
 	return (
@@ -40,5 +40,5 @@ export default function RecentInterviewsTable({ rows, className }: RecentIntervi
 				</tbody>
 			</table>
 		</div>
-	)
+	);
 }

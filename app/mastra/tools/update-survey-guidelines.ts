@@ -3,9 +3,9 @@
  * Uses BAML ParseSurveyGuidelines function to convert NL to structured rules.
  */
 
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
 
 const BranchRuleSchema = z.object({
 	id: z.string(),
@@ -35,7 +35,7 @@ const BranchRuleSchema = z.object({
 	guidance: z.string().optional(),
 	source: z.enum(["user_ui", "user_voice", "ai_generated"]).optional(),
 	confidence: z.enum(["high", "medium", "low"]).optional(),
-})
+});
 
 export const updateSurveyGuidelinesTool = createTool({
 	id: "update-survey-guidelines",
@@ -81,41 +81,41 @@ If the confidence is low, it will suggest clarifications.`,
 	}),
 	execute: async (input, context?) => {
 		try {
-			const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server")
-			const supabase = createSupabaseAdminClient()
+			const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+			const supabase = createSupabaseAdminClient();
 
 			// Fetch the survey with its questions
 			const { data: survey, error: surveyError } = await supabase
 				.from("research_links")
 				.select("id, name, questions")
 				.eq("id", input.surveyId)
-				.single()
+				.single();
 
 			if (surveyError || !survey) {
 				return {
 					success: false,
 					message: `Survey not found: ${input.surveyId}`,
 					error: { code: "SURVEY_NOT_FOUND", message: "Invalid survey ID" },
-				}
+				};
 			}
 
 			const questions =
 				(survey.questions as Array<{
-					id: string
-					prompt: string
-					type: string
-					options?: string[]
+					id: string;
+					prompt: string;
+					type: string;
+					options?: string[];
 					branching?: {
-						rules: Array<z.infer<typeof BranchRuleSchema>>
-					}
-				}>) ?? []
+						rules: Array<z.infer<typeof BranchRuleSchema>>;
+					};
+				}>) ?? [];
 
 			if (questions.length === 0) {
 				return {
 					success: false,
 					message: "Survey has no questions to apply guidelines to",
 					error: { code: "NO_QUESTIONS", message: "Survey has no questions" },
-				}
+				};
 			}
 
 			// Prepare questions for BAML
@@ -124,15 +124,15 @@ If the confidence is low, it will suggest clarifications.`,
 				prompt: q.prompt,
 				type: q.type,
 				options: q.options ?? [],
-			}))
+			}));
 
 			// Get existing guideline summaries to avoid conflicts
-			const existingGuidelines: string[] = []
+			const existingGuidelines: string[] = [];
 			for (const q of questions) {
 				if (q.branching?.rules) {
 					for (const rule of q.branching.rules) {
 						if (rule.summary) {
-							existingGuidelines.push(rule.summary)
+							existingGuidelines.push(rule.summary);
 						}
 					}
 				}
@@ -143,17 +143,21 @@ If the confidence is low, it will suggest clarifications.`,
 				guidelines: input.guidelines,
 				questionCount: questions.length,
 				existingRuleCount: existingGuidelines.length,
-			})
+			});
 
 			// Call BAML to parse the guidelines (dynamic import for Mastra compatibility)
-			const bamlClient = await import("../../../baml_client")
-			const parseResult = await bamlClient.b.ParseSurveyGuidelines(input.guidelines, questionInputs, existingGuidelines)
+			const bamlClient = await import("../../../baml_client");
+			const parseResult = await bamlClient.b.ParseSurveyGuidelines(
+				input.guidelines,
+				questionInputs,
+				existingGuidelines
+			);
 
 			consola.info("update-survey-guidelines: parse result", {
 				guidelineCount: parseResult.guidelines.length,
 				confidence: parseResult.overallConfidence,
 				unparseable: parseResult.unparseableSegments,
-			})
+			});
 
 			// If low confidence or unparseable, return clarifications
 			if (parseResult.overallConfidence === "LOW" || parseResult.unparseableSegments.length > 0) {
@@ -164,31 +168,31 @@ If the confidence is low, it will suggest clarifications.`,
 						...parseResult.suggestedClarifications,
 						...parseResult.unparseableSegments.map((s) => `Could not understand: "${s}"`),
 					],
-				}
+				};
 			}
 
 			// Transform parsed guidelines to BranchRule format
 			const addedRules: Array<{
-				summary: string
-				triggerQuestion: string
-				action: string
-				confidence: string
-			}> = []
+				summary: string;
+				triggerQuestion: string;
+				action: string;
+				confidence: string;
+			}> = [];
 
 			// Create a map of question ID to index for easy lookup
-			const updatedQuestions = [...questions]
+			const updatedQuestions = [...questions];
 
 			for (const guideline of parseResult.guidelines) {
 				// Find the trigger question
-				const triggerIndex = updatedQuestions.findIndex((q) => q.id === guideline.condition.questionId)
+				const triggerIndex = updatedQuestions.findIndex((q) => q.id === guideline.condition.questionId);
 				if (triggerIndex < 0) {
 					consola.warn("update-survey-guidelines: trigger question not found", {
 						questionId: guideline.condition.questionId,
-					})
-					continue
+					});
+					continue;
 				}
 
-				const triggerQuestion = updatedQuestions[triggerIndex]
+				const triggerQuestion = updatedQuestions[triggerIndex];
 
 				// Create the branch rule
 				const branchRule: z.infer<typeof BranchRuleSchema> = {
@@ -218,13 +222,13 @@ If the confidence is low, it will suggest clarifications.`,
 					guidance: guideline.guidance ?? undefined,
 					source: "ai_generated",
 					confidence: guideline.confidence.toLowerCase() as "high" | "medium" | "low",
-				}
+				};
 
 				// Add the rule to the question's branching config
 				if (!updatedQuestions[triggerIndex].branching) {
-					updatedQuestions[triggerIndex].branching = { rules: [] }
+					updatedQuestions[triggerIndex].branching = { rules: [] };
 				}
-				updatedQuestions[triggerIndex].branching!.rules.push(branchRule)
+				updatedQuestions[triggerIndex].branching!.rules.push(branchRule);
 
 				addedRules.push({
 					summary: guideline.summary,
@@ -234,7 +238,7 @@ If the confidence is low, it will suggest clarifications.`,
 							? `Skip to: ${guideline.targetQuestionPrompt ?? "next relevant question"}`
 							: "End survey",
 					confidence: guideline.confidence,
-				})
+				});
 			}
 
 			if (addedRules.length === 0) {
@@ -242,33 +246,33 @@ If the confidence is low, it will suggest clarifications.`,
 					success: false,
 					message: "No valid rules could be created from the guidelines",
 					clarificationsNeeded: parseResult.suggestedClarifications,
-				}
+				};
 			}
 
 			// Update the survey with the new questions (including branching)
 			const { error: updateError } = await supabase
 				.from("research_links")
 				.update({ questions: updatedQuestions })
-				.eq("id", input.surveyId)
+				.eq("id", input.surveyId);
 
 			if (updateError) {
-				consola.error("update-survey-guidelines: update error", updateError)
+				consola.error("update-survey-guidelines: update error", updateError);
 				return {
 					success: false,
 					message: `Failed to save guidelines: ${updateError.message}`,
 					error: { code: "DB_ERROR", message: updateError.message },
-				}
+				};
 			}
 
 			const summaryText =
 				addedRules.length === 1
 					? `Added guideline: "${addedRules[0].summary}"`
-					: `Added ${addedRules.length} guidelines`
+					: `Added ${addedRules.length} guidelines`;
 
 			consola.info("update-survey-guidelines: success", {
 				surveyId: input.surveyId,
 				rulesAdded: addedRules.length,
-			})
+			});
 
 			return {
 				success: true,
@@ -276,9 +280,9 @@ If the confidence is low, it will suggest clarifications.`,
 				addedRules,
 				clarificationsNeeded:
 					parseResult.suggestedClarifications.length > 0 ? parseResult.suggestedClarifications : undefined,
-			}
+			};
 		} catch (error) {
-			consola.error("update-survey-guidelines: unexpected error", error)
+			consola.error("update-survey-guidelines: unexpected error", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Failed to update guidelines",
@@ -286,7 +290,7 @@ If the confidence is low, it will suggest clarifications.`,
 					code: "UNEXPECTED_ERROR",
 					message: error instanceof Error ? error.message : "Failed to update guidelines",
 				},
-			}
+			};
 		}
 	},
-})
+});

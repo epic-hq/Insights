@@ -1,6 +1,6 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
-const _teamsApiRoutes = [] satisfies RouteConfig
+const _teamsApiRoutes = [] satisfies RouteConfig;
 
 export const teamsAccountRoutes = [
 	// Account-scoped team management under /a/:accountId
@@ -8,6 +8,6 @@ export const teamsAccountRoutes = [
 	// This child path will be appended inside that layout
 	// e.g. /a/:accountId/team/manage
 	route("team/manage", "./features/teams/pages/manage-members.tsx"),
-] satisfies RouteConfig
+] satisfies RouteConfig;
 
-export default [...prefix("/teams", [index("./features/teams/pages/list.tsx")])] satisfies RouteConfig
+export default [...prefix("/teams", [index("./features/teams/pages/list.tsx")])] satisfies RouteConfig;

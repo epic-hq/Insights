@@ -1,53 +1,53 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import type { UserMetadata } from "~/server/user-context"
-import type { Database, UserSettings } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import type { UserMetadata } from "~/server/user-context";
+import type { Database, UserSettings } from "~/types";
 
-const INTERNAL_PERSON_TYPE = "internal"
+const INTERNAL_PERSON_TYPE = "internal";
 
 type PeopleRow = Database["public"]["Tables"]["people"]["Row"] & {
-	person_type?: string | null
-	user_id?: string | null
-}
+	person_type?: string | null;
+	user_id?: string | null;
+};
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"] & {
-	person_type?: string | null
-	user_id?: string | null
-}
+	person_type?: string | null;
+	user_id?: string | null;
+};
 
 type PeopleUpdate = Database["public"]["Tables"]["people"]["Update"] & {
-	person_type?: string | null
-	user_id?: string | null
-}
+	person_type?: string | null;
+	user_id?: string | null;
+};
 
 type AuthUserInfo = {
-	email?: string | null
-	user_metadata?: Record<string, unknown> | null
-}
+	email?: string | null;
+	user_metadata?: Record<string, unknown> | null;
+};
 
 type InternalPersonProfile = {
-	firstName: string | null
-	lastName: string | null
-	fullName: string | null
-	email: string | null
-	imageUrl: string | null
-	title: string | null
-	role: string | null
-	company: string | null
-	industry: string | null
-}
+	firstName: string | null;
+	lastName: string | null;
+	fullName: string | null;
+	email: string | null;
+	imageUrl: string | null;
+	title: string | null;
+	role: string | null;
+	company: string | null;
+	industry: string | null;
+};
 
 function readMetadataString(metadata: Record<string, unknown> | null | undefined, key: string) {
-	const value = metadata?.[key]
-	return typeof value === "string" ? value : null
+	const value = metadata?.[key];
+	return typeof value === "string" ? value : null;
 }
 
 function parseFullName(name: string) {
-	const trimmed = name.trim()
-	if (!trimmed) return { firstName: null, lastName: null }
-	const parts = trimmed.split(/\s+/)
-	if (parts.length === 1) return { firstName: parts[0], lastName: null }
-	return { firstName: parts[0], lastName: parts.slice(1).join(" ") }
+	const trimmed = name.trim();
+	if (!trimmed) return { firstName: null, lastName: null };
+	const parts = trimmed.split(/\s+/);
+	if (parts.length === 1) return { firstName: parts[0], lastName: null };
+	return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
 function buildInternalProfile({
@@ -55,21 +55,21 @@ function buildInternalProfile({
 	userMetadata,
 	authUser,
 }: {
-	userSettings?: UserSettings | null
-	userMetadata?: UserMetadata | null
-	authUser?: AuthUserInfo | null
+	userSettings?: UserSettings | null;
+	userMetadata?: UserMetadata | null;
+	authUser?: AuthUserInfo | null;
 }): InternalPersonProfile {
-	const settingsName = [userSettings?.first_name, userSettings?.last_name].filter(Boolean).join(" ").trim()
-	const metadataName = userMetadata?.name || readMetadataString(authUser?.user_metadata, "full_name")
+	const settingsName = [userSettings?.first_name, userSettings?.last_name].filter(Boolean).join(" ").trim();
+	const metadataName = userMetadata?.name || readMetadataString(authUser?.user_metadata, "full_name");
 	const email =
 		userSettings?.email ||
 		userMetadata?.email ||
 		authUser?.email ||
-		readMetadataString(authUser?.user_metadata, "email")
+		readMetadataString(authUser?.user_metadata, "email");
 
-	const fallbackName = email ? email.split("@")[0] : "Team Member"
-	const fullName = settingsName || metadataName || fallbackName
-	const { firstName, lastName } = parseFullName(fullName)
+	const fallbackName = email ? email.split("@")[0] : "Team Member";
+	const fullName = settingsName || metadataName || fallbackName;
+	const { firstName, lastName } = parseFullName(fullName);
 
 	return {
 		firstName,
@@ -86,7 +86,7 @@ function buildInternalProfile({
 		role: userSettings?.role || null,
 		company: userSettings?.company_name || null,
 		industry: userSettings?.industry || null,
-	}
+	};
 }
 
 function applyProfileUpdates({
@@ -94,39 +94,39 @@ function applyProfileUpdates({
 	current,
 	allowNullUpdates,
 }: {
-	profile: InternalPersonProfile
-	current?: PeopleRow | null
-	allowNullUpdates: boolean
+	profile: InternalPersonProfile;
+	current?: PeopleRow | null;
+	allowNullUpdates: boolean;
 }): PeopleUpdate {
 	const update: PeopleUpdate = {
 		person_type: INTERNAL_PERSON_TYPE,
-	}
+	};
 
 	const setIfChanged = (field: keyof PeopleUpdate, value: string | null) => {
 		if (typeof value === "string") {
-			const trimmed = value.trim()
+			const trimmed = value.trim();
 			if (trimmed.length > 0 && trimmed !== (current as any)?.[field]) {
-				update[field] = trimmed as any
-				return
+				update[field] = trimmed as any;
+				return;
 			}
 			if (allowNullUpdates && trimmed.length === 0) {
-				update[field] = null
+				update[field] = null;
 			}
 		} else if (allowNullUpdates && value === null) {
-			update[field] = null
+			update[field] = null;
 		}
-	}
+	};
 
-	setIfChanged("firstname", profile.firstName)
-	setIfChanged("lastname", profile.lastName)
-	setIfChanged("primary_email", profile.email)
-	setIfChanged("image_url", profile.imageUrl)
-	setIfChanged("title", profile.title)
-	setIfChanged("role", profile.role)
-	setIfChanged("company", profile.company)
-	setIfChanged("industry", profile.industry)
+	setIfChanged("firstname", profile.firstName);
+	setIfChanged("lastname", profile.lastName);
+	setIfChanged("primary_email", profile.email);
+	setIfChanged("image_url", profile.imageUrl);
+	setIfChanged("title", profile.title);
+	setIfChanged("role", profile.role);
+	setIfChanged("company", profile.company);
+	setIfChanged("industry", profile.industry);
 
-	return update
+	return update;
 }
 
 export async function resolveInternalPerson({
@@ -139,32 +139,32 @@ export async function resolveInternalPerson({
 	authUser,
 	allowNullUpdates = false,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId?: string | null
-	userId: string
-	userSettings?: UserSettings | null
-	userMetadata?: UserMetadata | null
-	authUser?: AuthUserInfo | null
-	allowNullUpdates?: boolean
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId?: string | null;
+	userId: string;
+	userSettings?: UserSettings | null;
+	userMetadata?: UserMetadata | null;
+	authUser?: AuthUserInfo | null;
+	allowNullUpdates?: boolean;
 }): Promise<{ id: string; name: string | null } | null> {
-	if (!userId) return null
+	if (!userId) return null;
 
-	let resolvedSettings = userSettings
+	let resolvedSettings = userSettings;
 	if (!resolvedSettings) {
 		const { data, error } = await supabase
 			.from("user_settings")
 			.select("first_name, last_name, title, role, company_name, industry, email, image_url")
 			.eq("user_id", userId)
-			.maybeSingle()
+			.maybeSingle();
 		if (error) {
-			consola.warn("[resolveInternalPerson] Failed to load user_settings", { userId, error: error.message })
+			consola.warn("[resolveInternalPerson] Failed to load user_settings", { userId, error: error.message });
 		} else if (data) {
-			resolvedSettings = data as UserSettings
+			resolvedSettings = data as UserSettings;
 		}
 	}
 
-	const profile = buildInternalProfile({ userSettings: resolvedSettings, userMetadata, authUser })
+	const profile = buildInternalProfile({ userSettings: resolvedSettings, userMetadata, authUser });
 
 	const { data: existingByUser, error: existingByUserError } = await supabase
 		.from("people")
@@ -173,36 +173,36 @@ export async function resolveInternalPerson({
 		)
 		.eq("account_id", accountId)
 		.eq("user_id", userId)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingByUserError) {
 		consola.warn("[resolveInternalPerson] Failed to lookup internal person by user_id", {
 			userId,
 			error: existingByUserError.message,
-		})
+		});
 	}
 
-	const existingRow = (existingByUser as PeopleRow | null) ?? null
+	const existingRow = (existingByUser as PeopleRow | null) ?? null;
 
 	if (existingRow?.id) {
-		const update = applyProfileUpdates({ profile, current: existingRow, allowNullUpdates })
-		update.user_id = userId
+		const update = applyProfileUpdates({ profile, current: existingRow, allowNullUpdates });
+		update.user_id = userId;
 
 		if (Object.keys(update).length > 1) {
-			const { error: updateError } = await supabase.from("people").update(update).eq("id", existingRow.id)
+			const { error: updateError } = await supabase.from("people").update(update).eq("id", existingRow.id);
 			if (updateError) {
 				consola.warn("[resolveInternalPerson] Failed to update internal person", {
 					personId: existingRow.id,
 					error: updateError.message,
-				})
+				});
 			}
 		}
 
-		return { id: existingRow.id, name: existingRow.name ?? profile.fullName }
+		return { id: existingRow.id, name: existingRow.name ?? profile.fullName };
 	}
 
 	const findByEmail = async () => {
-		if (!profile.email) return null
+		if (!profile.email) return null;
 		const { data } = await supabase
 			.from("people")
 			.select(
@@ -210,12 +210,12 @@ export async function resolveInternalPerson({
 			)
 			.eq("account_id", accountId)
 			.eq("primary_email", profile.email)
-			.maybeSingle()
-		return (data as PeopleRow | null) ?? null
-	}
+			.maybeSingle();
+		return (data as PeopleRow | null) ?? null;
+	};
 
 	const findByName = async () => {
-		if (!profile.fullName) return null
+		if (!profile.fullName) return null;
 		const { data } = await supabase
 			.from("people")
 			.select(
@@ -223,32 +223,32 @@ export async function resolveInternalPerson({
 			)
 			.eq("account_id", accountId)
 			.eq("name", profile.fullName)
-			.maybeSingle()
-		return (data as PeopleRow | null) ?? null
-	}
+			.maybeSingle();
+		return (data as PeopleRow | null) ?? null;
+	};
 
 	const attachExisting = async (row: PeopleRow | null) => {
-		if (!row?.id) return null
-		const update = applyProfileUpdates({ profile, current: row, allowNullUpdates })
-		update.user_id = userId
-		const { error: updateError } = await supabase.from("people").update(update).eq("id", row.id)
+		if (!row?.id) return null;
+		const update = applyProfileUpdates({ profile, current: row, allowNullUpdates });
+		update.user_id = userId;
+		const { error: updateError } = await supabase.from("people").update(update).eq("id", row.id);
 		if (updateError) {
 			consola.warn("[resolveInternalPerson] Failed to attach user to person", {
 				personId: row.id,
 				error: updateError.message,
-			})
+			});
 		}
-		return { id: row.id, name: row.name ?? profile.fullName }
-	}
+		return { id: row.id, name: row.name ?? profile.fullName };
+	};
 
-	const existingByEmail = await findByEmail()
+	const existingByEmail = await findByEmail();
 	if (existingByEmail) {
-		return await attachExisting(existingByEmail)
+		return await attachExisting(existingByEmail);
 	}
 
-	const existingByName = await findByName()
+	const existingByName = await findByName();
 	if (existingByName) {
-		return await attachExisting(existingByName)
+		return await attachExisting(existingByName);
 	}
 
 	const insertPayload: PeopleInsert = {
@@ -264,29 +264,29 @@ export async function resolveInternalPerson({
 		role: profile.role,
 		company: profile.company,
 		industry: profile.industry,
-	}
+	};
 
 	const { data: created, error: createError } = await supabase
 		.from("people")
 		.insert(insertPayload)
 		.select("id, name")
-		.single()
+		.single();
 
 	if (createError || !created) {
 		if (createError?.code === "23505") {
-			const fallback = (await findByEmail()) || (await findByName())
-			if (fallback) return await attachExisting(fallback)
+			const fallback = (await findByEmail()) || (await findByName());
+			if (fallback) return await attachExisting(fallback);
 		}
 
 		consola.warn("[resolveInternalPerson] Failed to create internal person", {
 			accountId,
 			userId,
 			error: createError?.message,
-		})
-		return null
+		});
+		return null;
 	}
 
-	return { id: created.id, name: created.name ?? profile.fullName }
+	return { id: created.id, name: created.name ?? profile.fullName };
 }
 
 export async function ensureInterviewInterviewerLink({
@@ -299,14 +299,14 @@ export async function ensureInterviewInterviewerLink({
 	userMetadata,
 	authUser,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId?: string | null
-	interviewId: string
-	userId: string
-	userSettings?: UserSettings | null
-	userMetadata?: UserMetadata | null
-	authUser?: AuthUserInfo | null
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId?: string | null;
+	interviewId: string;
+	userId: string;
+	userSettings?: UserSettings | null;
+	userMetadata?: UserMetadata | null;
+	authUser?: AuthUserInfo | null;
 }): Promise<{ personId: string; personName: string | null } | null> {
 	const internalPerson = await resolveInternalPerson({
 		supabase,
@@ -316,9 +316,9 @@ export async function ensureInterviewInterviewerLink({
 		userSettings,
 		userMetadata,
 		authUser,
-	})
+	});
 
-	if (!internalPerson) return null
+	if (!internalPerson) return null;
 
 	const { error: linkError } = await supabase.from("interview_people").upsert(
 		{
@@ -329,16 +329,16 @@ export async function ensureInterviewInterviewerLink({
 			display_name: internalPerson.name,
 		},
 		{ onConflict: "interview_id,person_id" }
-	)
+	);
 
 	if (linkError) {
 		consola.warn("[ensureInterviewInterviewerLink] Failed to link internal person", {
 			interviewId,
 			personId: internalPerson.id,
 			error: linkError.message,
-		})
-		return null
+		});
+		return null;
 	}
 
-	return { personId: internalPerson.id, personName: internalPerson.name }
+	return { personId: internalPerson.id, personName: internalPerson.name };
 }

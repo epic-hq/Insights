@@ -1,42 +1,42 @@
-import { ChevronDown, ChevronUp, Download, FileText } from "lucide-react"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances"
-import { TranscriptResults } from "./TranscriptResults"
+import { ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { normalizeTranscriptUtterances } from "~/utils/transcript/normalizeUtterances";
+import { TranscriptResults } from "./TranscriptResults";
 
 interface LazyTranscriptResultsProps {
-	interviewId: string
-	hasTranscript: boolean
-	hasFormattedTranscript: boolean
-	durationSec?: number | null
+	interviewId: string;
+	hasTranscript: boolean;
+	hasFormattedTranscript: boolean;
+	durationSec?: number | null;
 	participants?: Array<{
-		id: number
-		role: string | null
-		transcript_key: string | null
-		display_name: string | null
-		people?: { id?: string; name?: string | null; segment?: string | null }
-	}>
-	onSpeakerClick?: (speakerKey: string) => void
+		id: number;
+		role: string | null;
+		transcript_key: string | null;
+		display_name: string | null;
+		people?: { id?: string; name?: string | null; segment?: string | null };
+	}>;
+	onSpeakerClick?: (speakerKey: string) => void;
 }
 
 interface TranscriptApiResponse {
-	transcript: string
+	transcript: string;
 	transcript_formatted: {
-		audio_duration?: number | null
-		speaker_transcripts?: any[]
-		topic_detection?: any
-		sentiment_analysis?: any
-		sentiment_analysis_results?: any
-	}
+		audio_duration?: number | null;
+		speaker_transcripts?: any[];
+		topic_detection?: any;
+		sentiment_analysis?: any;
+		sentiment_analysis_results?: any;
+	};
 }
 
 interface TranscriptData {
-	text: string
-	utterances: any[]
-	iab_categories_result: any
-	sentiment_analysis_results: any
-	audio_duration_sec: number | null
+	text: string;
+	utterances: any[];
+	iab_categories_result: any;
+	sentiment_analysis_results: any;
+	audio_duration_sec: number | null;
 }
 
 export function LazyTranscriptResults({
@@ -47,42 +47,42 @@ export function LazyTranscriptResults({
 	participants = [],
 	onSpeakerClick,
 }: LazyTranscriptResultsProps) {
-	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
-	const [loading, setLoading] = useState(false)
-	const [isLoaded, setIsLoaded] = useState(false)
-	const [isExpanded, setIsExpanded] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const currentProject = useCurrentProject()
-	const projectId = currentProject?.projectId
+	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [isLoaded, setIsLoaded] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const currentProject = useCurrentProject();
+	const projectId = currentProject?.projectId;
 
 	const loadTranscript = async () => {
-		setLoading(true)
-		setError(null)
+		setLoading(true);
+		setError(null);
 
 		try {
 			if (!projectId || !currentProject) {
-				throw new Error("Project context required for transcript access")
+				throw new Error("Project context required for transcript access");
 			}
 
 			const params = new URLSearchParams({
 				interviewId,
-			})
+			});
 
-			const response = await fetch(`/a/${currentProject.accountId}/${projectId}/api/interview-transcript?${params}`)
+			const response = await fetch(`/a/${currentProject.accountId}/${projectId}/api/interview-transcript?${params}`);
 
 			if (!response.ok) {
-				throw new Error(`Failed to load transcript: ${response.statusText}`)
+				throw new Error(`Failed to load transcript: ${response.statusText}`);
 			}
 
-			const data: TranscriptApiResponse = await response.json()
+			const data: TranscriptApiResponse = await response.json();
 
-			const audioDurationRaw = data.transcript_formatted?.audio_duration
+			const audioDurationRaw = data.transcript_formatted?.audio_duration;
 			const audioDurationParsed =
-				typeof audioDurationRaw === "string" ? Number.parseFloat(audioDurationRaw) : audioDurationRaw
+				typeof audioDurationRaw === "string" ? Number.parseFloat(audioDurationRaw) : audioDurationRaw;
 			const audioDurationSec =
 				typeof audioDurationParsed === "number" && Number.isFinite(audioDurationParsed)
 					? audioDurationParsed
-					: (durationSec ?? null)
+					: (durationSec ?? null);
 
 			const processedData: TranscriptData = {
 				text: data.transcript || "",
@@ -92,23 +92,23 @@ export function LazyTranscriptResults({
 				iab_categories_result: data.transcript_formatted?.topic_detection,
 				sentiment_analysis_results: data.transcript_formatted?.sentiment_analysis_results,
 				audio_duration_sec: audioDurationSec,
-			}
-			setTranscriptData(processedData)
-			setIsLoaded(true)
-			setIsExpanded(true)
+			};
+			setTranscriptData(processedData);
+			setIsLoaded(true);
+			setIsExpanded(true);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to load transcript")
+			setError(err instanceof Error ? err.message : "Failed to load transcript");
 		} finally {
-			setLoading(false)
+			setLoading(false);
 		}
-	}
+	};
 
 	if (!hasTranscript && !hasFormattedTranscript) {
 		return (
 			<div className="rounded-lg border bg-muted p-6 text-center">
 				<p className="text-muted-foreground">No transcript available for this conversation.</p>
 			</div>
-		)
+		);
 	}
 
 	if (!isLoaded && !loading) {
@@ -130,7 +130,7 @@ export function LazyTranscriptResults({
 					</Button>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	if (loading) {
@@ -141,7 +141,7 @@ export function LazyTranscriptResults({
 					<span className="text-muted-foreground">Loading transcript...</span>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	if (error) {
@@ -154,11 +154,11 @@ export function LazyTranscriptResults({
 					</Button>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	if (!transcriptData) {
-		return null
+		return null;
 	}
 
 	return (
@@ -213,5 +213,5 @@ export function LazyTranscriptResults({
 				/>
 			)}
 		</div>
-	)
+	);
 }

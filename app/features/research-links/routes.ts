@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("research-links", [
@@ -15,4 +15,4 @@ export default [
 		route("api/parse-branch-rule", "./features/research-links/api/parse-branch-rule.tsx"),
 		route("api/suggest-surveys", "./features/research-links/api/suggest-surveys.tsx"),
 	]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

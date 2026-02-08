@@ -5,38 +5,38 @@
  * Shows completion state with visual feedback.
  */
 
-import { Check, ChevronRight, type LucideIcon } from "lucide-react"
-import { Link } from "react-router"
-import { cn } from "~/lib/utils"
+import { Check, ChevronRight, type LucideIcon } from "lucide-react";
+import { Link } from "react-router";
+import { cn } from "~/lib/utils";
 
 export interface OnboardingTask {
 	/** Unique task identifier */
-	id: string
+	id: string;
 	/** Task title */
-	title: string
+	title: string;
 	/** Task description */
-	description: string
+	description: string;
 	/** Task icon */
-	icon: LucideIcon
+	icon: LucideIcon;
 	/** Navigation href (undefined = disabled) */
-	href?: string
+	href?: string;
 	/** Whether task is complete */
-	isComplete: boolean
+	isComplete: boolean;
 	/** Display order priority (1 = highest) */
-	priority: 1 | 2 | 3 | 4
+	priority: 1 | 2 | 3 | 4;
 }
 
 export interface OnboardingTaskCardProps {
-	task: OnboardingTask
+	task: OnboardingTask;
 	/** Step number to display */
-	stepNumber: number
+	stepNumber: number;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function OnboardingTaskCard({ task, stepNumber, className }: OnboardingTaskCardProps) {
-	const Icon = task.icon
-	const isDisabled = !task.href && !task.isComplete
+	const Icon = task.icon;
+	const isDisabled = !task.href && !task.isComplete;
 
 	const content = (
 		<div className="flex items-start gap-4">
@@ -102,7 +102,7 @@ export function OnboardingTaskCard({ task, stepNumber, className }: OnboardingTa
 				)}
 			/>
 		</div>
-	)
+	);
 
 	// Render as disabled div if no href
 	if (isDisabled) {
@@ -112,7 +112,7 @@ export function OnboardingTaskCard({ task, stepNumber, className }: OnboardingTa
 			>
 				{content}
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -128,7 +128,7 @@ export function OnboardingTaskCard({ task, stepNumber, className }: OnboardingTa
 		>
 			{content}
 		</Link>
-	)
+	);
 }
 
-export default OnboardingTaskCard
+export default OnboardingTaskCard;

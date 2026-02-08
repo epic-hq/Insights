@@ -1,7 +1,7 @@
-import { runs } from "@trigger.dev/sdk"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
+import { runs } from "@trigger.dev/sdk";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
 
 /**
  * Cancel a running analysis job
@@ -12,54 +12,54 @@ import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/clien
  */
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
-	consola.log("Cancel analysis API called")
-	const formData = await request.formData()
-	const interviewId = formData.get("interview_id") as string
+	consola.log("Cancel analysis API called");
+	const formData = await request.formData();
+	const interviewId = formData.get("interview_id") as string;
 
 	if (!interviewId) {
-		return Response.json({ error: "interview_id is required" }, { status: 400 })
+		return Response.json({ error: "interview_id is required" }, { status: 400 });
 	}
 
 	try {
-		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const { user: claims } = await getAuthenticatedUser(request)
+		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server");
+		const { user: claims } = await getAuthenticatedUser(request);
 		if (!claims?.sub) {
-			return Response.json({ error: "Unauthorized" }, { status: 401 })
+			return Response.json({ error: "Unauthorized" }, { status: 401 });
 		}
 
-		const { client: userDb } = getServerClient(request)
-		const admin = createSupabaseAdminClient()
+		const { client: userDb } = getServerClient(request);
+		const admin = createSupabaseAdminClient();
 
 		// Verify user has access to this interview and get conversation_analysis
 		const { data: interview, error: interviewError } = await userDb
 			.from("interviews")
 			.select("id, status, conversation_analysis")
 			.eq("id", interviewId)
-			.single()
+			.single();
 
 		if (interviewError || !interview) {
-			return Response.json({ error: "Unauthorized or interview not found" }, { status: 403 })
+			return Response.json({ error: "Unauthorized or interview not found" }, { status: 403 });
 		}
 
 		// Check if interview is in a cancellable state
 		if (interview.status !== "processing") {
-			return Response.json({ error: "No active analysis to cancel" }, { status: 400 })
+			return Response.json({ error: "No active analysis to cancel" }, { status: 400 });
 		}
 
-		const conversationAnalysis = (interview.conversation_analysis as any) || {}
-		const triggerRunId = conversationAnalysis.trigger_run_id
+		const conversationAnalysis = (interview.conversation_analysis as any) || {};
+		const triggerRunId = conversationAnalysis.trigger_run_id;
 
 		// Cancel the Trigger.dev run if it exists
 		if (triggerRunId) {
 			try {
-				consola.info(`Canceling Trigger.dev run ${triggerRunId}`)
-				await runs.cancel(triggerRunId)
-				consola.info(`Successfully canceled run ${triggerRunId}`)
+				consola.info(`Canceling Trigger.dev run ${triggerRunId}`);
+				await runs.cancel(triggerRunId);
+				consola.info(`Successfully canceled run ${triggerRunId}`);
 			} catch (cancelError) {
-				consola.warn("Failed to cancel Trigger.dev run:", cancelError)
+				consola.warn("Failed to cancel Trigger.dev run:", cancelError);
 				// Continue anyway to mark as canceled
 			}
 		}
@@ -77,21 +77,21 @@ export async function action({ request }: ActionFunctionArgs) {
 				},
 				updated_at: new Date().toISOString(),
 			})
-			.eq("id", interviewId)
+			.eq("id", interviewId);
 
-		consola.info(`Canceled analysis for interview ${interviewId}`)
+		consola.info(`Canceled analysis for interview ${interviewId}`);
 
 		return Response.json({
 			success: true,
 			message: "Analysis canceled successfully",
-		})
+		});
 	} catch (error) {
-		consola.error("Cancel analysis API error:", error)
+		consola.error("Cancel analysis API error:", error);
 		return Response.json(
 			{
 				error: error instanceof Error ? error.message : "Failed to cancel analysis",
 			},
 			{ status: 500 }
-		)
+		);
 	}
 }

@@ -1,45 +1,45 @@
-import consola from "consola"
-import { motion } from "framer-motion"
-import { Users } from "lucide-react"
-import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
-import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { BackButton } from "~/components/ui/back-button"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
-import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
-import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import type { Database, Insight, Interview } from "~/types"
+import consola from "consola";
+import { motion } from "framer-motion";
+import { Users } from "lucide-react";
+import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom";
+import { DetailPageHeader } from "~/components/layout/DetailPageHeader";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { BackButton } from "~/components/ui/back-button";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3";
+import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard";
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import type { Database, Insight, Interview } from "~/types";
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
 		{ title: `Persona ${params.personaId || ""} | Insights` },
 		{ name: "description", content: "Insights related to this persona" },
-	]
-}
+	];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const _accountId = params.accountId
-	const _projectId = params.projectId
-	const personaId = params.personaId
+	const _accountId = params.accountId;
+	const _projectId = params.projectId;
+	const personaId = params.personaId;
 
 	if (!personaId) {
-		throw new Response("Persona ID not found", { status: 404 })
+		throw new Response("Persona ID not found", { status: 404 });
 	}
 
 	// Use Supabase types directly like interviews pattern
 	type PersonaRowExtended = Database["public"]["Tables"]["personas"]["Row"] & {
-		demographics?: any
-		summarized_insights?: any[]
-	}
+		demographics?: any;
+		summarized_insights?: any[];
+	};
 	// type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
 	// type Insight = Database["public"]["Tables"]["insights"]["Row"]
 
@@ -48,61 +48,61 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("personas")
 		.select("*")
 		.eq("id", personaId)
-		.single()
+		.single();
 
 	if (personaError) {
-		throw new Response(`Error fetching persona: ${personaError.message}`, { status: 500 })
+		throw new Response(`Error fetching persona: ${personaError.message}`, { status: 500 });
 	}
 
 	if (!currentPersonaData) {
-		throw new Response("Persona not found", { status: 404 })
+		throw new Response("Persona not found", { status: 404 });
 	}
-	let demographics
-	let summarized_insights
+	let demographics;
+	let summarized_insights;
 	try {
 		if ((currentPersonaData as any)?.demographics) {
 			demographics =
 				typeof (currentPersonaData as any).demographics === "string"
 					? JSON.parse((currentPersonaData as any).demographics)
-					: (currentPersonaData as any).demographics
+					: (currentPersonaData as any).demographics;
 		}
 	} catch (e) {
-		consola.error("Failed to parse demographics field", e)
-		demographics = undefined
+		consola.error("Failed to parse demographics field", e);
+		demographics = undefined;
 	}
 	try {
 		if ((currentPersonaData as any)?.summarized_insights) {
 			summarized_insights =
 				typeof (currentPersonaData as any).summarized_insights === "string"
 					? JSON.parse((currentPersonaData as any).summarized_insights)
-					: (currentPersonaData as any).summarized_insights
+					: (currentPersonaData as any).summarized_insights;
 		}
 	} catch (e) {
-		consola.error("Failed to parse summarized_insights field", e)
-		summarized_insights = undefined
+		consola.error("Failed to parse summarized_insights field", e);
+		summarized_insights = undefined;
 	}
 	const persona: PersonaRowExtended = {
 		...(currentPersonaData as any),
 		demographics,
 		summarized_insights,
-	}
+	};
 
 	// Fetch people linked via junction table
 	const { data: peopleData, error: peopleError } = await supabase
 		.from("people_personas")
 		.select("people!inner(*)")
-		.eq("persona_id", personaId)
+		.eq("persona_id", personaId);
 
 	if (peopleError) {
-		consola.error("Error fetching people:", peopleError)
-		throw new Response(`Error fetching people: ${peopleError.message}`, { status: 500 })
+		consola.error("Error fetching people:", peopleError);
+		throw new Response(`Error fetching people: ${peopleError.message}`, { status: 500 });
 	}
 
 	const people: Array<{ id: string; name: string | null; segment: string | null; description: string | null }> =
-		peopleData?.map((pp: any) => pp.people).filter(Boolean) ?? []
+		peopleData?.map((pp: any) => pp.people).filter(Boolean) ?? [];
 
 	// Fetch interviews where people with this persona participated
-	const peopleIds = people.map((p) => p.id)
+	const peopleIds = people.map((p) => p.id);
 	if (peopleIds.length === 0) {
 		return {
 			persona,
@@ -110,46 +110,46 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			insights: [],
 			relatedPersonas: [],
 			people: [],
-		}
+		};
 	}
 	// Fetch interviews where people with this persona participated
 	// Fetch interview_people rows for these people
 	const { data: interviewPeopleData, error: interviewPeopleError } = await supabase
 		.from("interview_people")
 		.select("interview_id")
-		.in("person_id", peopleIds)
+		.in("person_id", peopleIds);
 
 	if (interviewPeopleError) {
-		consola.error("Error fetching interview_people:", interviewPeopleError)
+		consola.error("Error fetching interview_people:", interviewPeopleError);
 	}
 
-	const interviewIds = interviewPeopleData?.map((ip: any) => ip.interview_id).filter(Boolean) || []
+	const interviewIds = interviewPeopleData?.map((ip: any) => ip.interview_id).filter(Boolean) || [];
 
-	let interviews: Interview[] = []
+	let interviews: Interview[] = [];
 	if (interviewIds.length > 0) {
 		const { data: interviewsData, error: interviewsError } = await supabase
 			.from("interviews")
 			.select("id,created_at,participant_pseudonym,status,updated_at")
-			.in("id", interviewIds)
+			.in("id", interviewIds);
 
 		if (interviewsError) {
-			consola.error("Error fetching interviews:", interviewsError)
+			consola.error("Error fetching interviews:", interviewsError);
 		}
-		interviews = interviewsData || []
+		interviews = interviewsData || [];
 	}
 
 	// Fetch insights related to this persona via junction table
 	const { data: personaInsightRows, error: personaInsightsError } = await supabase
 		.from("persona_insights")
 		.select("insight_id")
-		.eq("persona_id", personaId)
+		.eq("persona_id", personaId);
 
 	if (personaInsightsError) {
-		consola.error("Error fetching persona insights:", personaInsightsError)
+		consola.error("Error fetching persona insights:", personaInsightsError);
 	}
 
-	const personaInsightIds = personaInsightRows?.map((row) => row.insight_id).filter(Boolean) || []
-	let insights: Insight[] = []
+	const personaInsightIds = personaInsightRows?.map((row) => row.insight_id).filter(Boolean) || [];
+	let insights: Insight[] = [];
 	if (personaInsightIds.length > 0) {
 		const [{ data: themeRows, error: themesError }, { data: tagsRows }] = await Promise.all([
 			supabase
@@ -162,24 +162,24 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				.from("insight_tags")
 				.select("insight_id, tags(tag, term, definition)")
 				.in("insight_id", personaInsightIds),
-		])
+		]);
 
 		if (themesError) {
-			consola.error("Error fetching insights:", themesError)
+			consola.error("Error fetching insights:", themesError);
 		}
 
-		const tagsMap = new Map<string, { tag?: string | null; term?: string | null; definition?: string | null }[]>()
+		const tagsMap = new Map<string, { tag?: string | null; term?: string | null; definition?: string | null }[]>();
 		tagsRows?.forEach((row) => {
-			if (!row.insight_id || !row.tags) return
-			if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, [])
-			tagsMap.get(row.insight_id)?.push(row.tags)
-		})
+			if (!row.insight_id || !row.tags) return;
+			if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, []);
+			tagsMap.get(row.insight_id)?.push(row.tags);
+		});
 
 		insights =
 			themeRows?.map((row) => ({
 				...row,
 				insight_tags: (tagsMap.get(row.id) || []).map((tag) => ({ tags: tag })),
-			})) || []
+			})) || [];
 	}
 
 	// Get related personas (same account, different persona)
@@ -196,19 +196,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		insights,
 		relatedPersonas: [],
 		people,
-	}
+	};
 }
 
 export default function PersonaDetailRoute() {
-	const { persona, interviews, insights, people } = useLoaderData<typeof loader>()
-	const params = useParams()
+	const { persona, interviews, insights, people } = useLoaderData<typeof loader>();
+	const params = useParams();
 
 	// Extract accountId and projectId directly from URL params
-	const accountId = params.accountId || ""
-	const projectId = params.projectId || ""
+	const accountId = params.accountId || "";
+	const projectId = params.projectId || "";
 
 	// Single source of truth for all route generation
-	const routes = useProjectRoutesFromIds(accountId, projectId)
+	const routes = useProjectRoutesFromIds(accountId, projectId);
 
 	if (!persona) {
 		return (
@@ -218,12 +218,12 @@ export default function PersonaDetailRoute() {
 					<p className="text-gray-600">The persona you're looking for doesn't exist or has been removed.</p>
 				</div>
 			</div>
-		)
+		);
 	}
 
-	const themeColor = persona.color_hex || "#6b7280"
-	const name = persona.name || "Untitled Persona"
-	const description = persona.description || "No description available"
+	const themeColor = persona.color_hex || "#6b7280";
+	const name = persona.name || "Untitled Persona";
+	const description = persona.description || "No description available";
 
 	// Get initials for avatar
 	const initials =
@@ -232,7 +232,7 @@ export default function PersonaDetailRoute() {
 			.map((word: string) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 
 	const avatar = (
 		<Avatar
@@ -244,7 +244,7 @@ export default function PersonaDetailRoute() {
 				{initials}
 			</AvatarFallback>
 		</Avatar>
-	)
+	);
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -267,21 +267,21 @@ export default function PersonaDetailRoute() {
 							style={{ backgroundColor: themeColor }}
 							className="text-white hover:opacity-90"
 							onClick={async () => {
-								const formData = new FormData()
-								formData.append("personaId", persona.id)
-								formData.append("projectId", projectId)
+								const formData = new FormData();
+								formData.append("personaId", persona.id);
+								formData.append("projectId", projectId);
 								try {
 									const res = await fetch("/api/generate-persona-insights", {
 										method: "POST",
 										body: formData,
-									})
+									});
 									if (res.ok) {
-										window.location.reload()
+										window.location.reload();
 									} else {
-										alert("Failed to generate insights")
+										alert("Failed to generate insights");
 									}
 								} catch (_e) {
-									alert("Error generating insights")
+									alert("Error generating insights");
 								}
 							}}
 						>
@@ -493,5 +493,5 @@ export default function PersonaDetailRoute() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

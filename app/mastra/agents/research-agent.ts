@@ -1,24 +1,24 @@
 /**
  * ResearchAgent: specialist for interviews, surveys, and prompts.
  */
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import consola from "consola"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { createSurveyTool } from "../tools/create-survey"
-import { deleteSurveyTool } from "../tools/delete-survey"
-import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
-import { fetchSurveysTool } from "../tools/fetch-surveys"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import consola from "consola";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { createSurveyTool } from "../tools/create-survey";
+import { deleteSurveyTool } from "../tools/delete-survey";
+import { fetchInterviewContextTool } from "../tools/fetch-interview-context";
+import { fetchSurveysTool } from "../tools/fetch-surveys";
 import {
 	createInterviewPromptTool,
 	deleteInterviewPromptTool,
 	fetchInterviewPromptsTool,
 	updateInterviewPromptTool,
-} from "../tools/manage-interview-prompts"
-import { manageInterviewsTool } from "../tools/manage-interviews"
-import { navigateToPageTool } from "../tools/navigate-to-page"
-import { searchSurveyResponsesTool } from "../tools/search-survey-responses"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+} from "../tools/manage-interview-prompts";
+import { manageInterviewsTool } from "../tools/manage-interviews";
+import { navigateToPageTool } from "../tools/navigate-to-page";
+import { searchSurveyResponsesTool } from "../tools/search-survey-responses";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const researchAgent = new Agent({
 	id: "research-agent",
@@ -26,9 +26,9 @@ export const researchAgent = new Agent({
 	description: "Specialist for research operations: interviews, surveys, and interview prompts.",
 	instructions: async ({ requestContext }) => {
 		try {
-			const projectId = requestContext.get("project_id")
-			const accountId = requestContext.get("account_id")
-			const userId = requestContext.get("user_id")
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
 
 			return `
 You are a Research specialist that EXECUTES actions using tools. You do NOT describe what you would do - you DO it.
@@ -78,10 +78,10 @@ For FEEDBACK:
 - ALWAYS use tools to take action. Never just describe what you would do.
 - After creating anything, use navigateToPage to take the user there.
 - Never fabricate URLs - only use URLs returned by tools.
-`
+`;
 		} catch (error) {
-			consola.error("Error in research agent instructions:", error)
-			return "You are a Research specialist for interviews and surveys."
+			consola.error("Error in research agent instructions:", error);
+			return "You are a Research specialist for interviews and surveys.";
 		}
 	},
 	model: openai("gpt-4o"),
@@ -99,4 +99,4 @@ For FEEDBACK:
 		navigateToPage: navigateToPageTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
-})
+});

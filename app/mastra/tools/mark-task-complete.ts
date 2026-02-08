@@ -1,28 +1,28 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { updateTask } from "~/features/tasks/db"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { updateTask } from "~/features/tasks/db";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { HOST } from "~/paths";
+import type { Database } from "~/types";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 const ensureContext = (context?: { requestContext?: Map<string, unknown> }) => {
-	const accountId = context?.requestContext?.get("account_id") as string | undefined
-	const projectId = context?.requestContext?.get("project_id") as string | undefined
-	const userId = context?.requestContext?.get("user_id") as string | undefined
+	const accountId = context?.requestContext?.get("account_id") as string | undefined;
+	const projectId = context?.requestContext?.get("project_id") as string | undefined;
+	const userId = context?.requestContext?.get("user_id") as string | undefined;
 
 	if (!accountId || !projectId || !userId) {
-		throw new Error("Missing required context: account_id, project_id, or user_id")
+		throw new Error("Missing required context: account_id, project_id, or user_id");
 	}
 
-	return { accountId, projectId, userId }
-}
+	return { accountId, projectId, userId };
+};
 
 const buildProjectPath = (accountId: string, projectId: string) => {
-	return `/a/${accountId}/${projectId}`
-}
+	return `/a/${accountId}/${projectId}`;
+};
 
 const taskOutputSchema = z.object({
 	id: z.string(),
@@ -48,11 +48,11 @@ const taskOutputSchema = z.object({
 	updatedAt: z.string(),
 	projectUrl: z.string(),
 	taskUrl: z.string(),
-})
+});
 
 const mapTask = (task: Database["public"]["Tables"]["tasks"]["Row"], projectPath: string) => {
-	const routes = createRouteDefinitions(projectPath)
-	const priorities = routes.priorities()
+	const routes = createRouteDefinitions(projectPath);
+	const priorities = routes.priorities();
 	return {
 		id: task.id,
 		title: task.title,
@@ -77,8 +77,8 @@ const mapTask = (task: Database["public"]["Tables"]["tasks"]["Row"], projectPath
 		updatedAt: task.updated_at,
 		projectUrl: `${HOST}${priorities}`,
 		taskUrl: `${HOST}${routes.tasks.detail(task.id)}`,
-	}
-}
+	};
+};
 
 export const markTaskCompleteTool = createTool({
 	id: "mark-task-complete",
@@ -94,28 +94,28 @@ export const markTaskCompleteTool = createTool({
 	}),
 	execute: async (input, context?) => {
 		try {
-			const supabase = supabaseAdmin as SupabaseClient<Database>
-			const { accountId, projectId, userId } = ensureContext(context)
-			const projectPath = buildProjectPath(accountId, projectId)
+			const supabase = supabaseAdmin as SupabaseClient<Database>;
+			const { accountId, projectId, userId } = ensureContext(context);
+			const projectPath = buildProjectPath(accountId, projectId);
 
 			const task = await updateTask({
 				supabase,
 				taskId: input.taskId,
 				userId,
 				updates: { status: "done" },
-			})
+			});
 
 			return {
 				success: true,
 				message: `✓ Marked "${task.title}" as complete`,
 				task: mapTask(task, projectPath),
-			}
+			};
 		} catch (error) {
-			consola.error("Error marking task complete:", error)
+			consola.error("Error marking task complete:", error);
 			return {
 				success: false,
 				message: `Failed to mark task complete: ${error instanceof Error ? error.message : String(error)}`,
-			}
+			};
 		}
 	},
-})
+});

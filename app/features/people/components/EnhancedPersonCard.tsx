@@ -1,53 +1,53 @@
-import { formatDistance } from "date-fns"
-import { motion } from "framer-motion"
-import { Building2, User } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Person } from "~/types"
+import { formatDistance } from "date-fns";
+import { motion } from "framer-motion";
+import { Building2, User } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Person } from "~/types";
 
 // Type for person with nested personas from interview participants query
 interface PersonWithPersonas {
-	id: string
-	name: string | null
-	image_url: string | null
+	id: string;
+	name: string | null;
+	image_url: string | null;
 	people_personas?: Array<{
-		persona_id: string
+		persona_id: string;
 		personas: {
-			id: string
-			name: string
-			color_hex: string
-		}
-	}>
+			id: string;
+			name: string;
+			color_hex: string;
+		};
+	}>;
 	people_organizations?: Array<{
 		organization?: {
-			id: string
-			name: string | null
-			website_url: string | null
-		}
-		role?: string | null
-	}>
+			id: string;
+			name: string | null;
+			website_url: string | null;
+		};
+		role?: string | null;
+	}>;
 }
 
 interface EnhancedPersonCardProps {
-	person: Person
-	className?: string
-	facets?: PersonFacetSummary[]
-	conversationCount?: number
-	evidenceCount?: number
+	person: Person;
+	className?: string;
+	facets?: PersonFacetSummary[];
+	conversationCount?: number;
+	evidenceCount?: number;
 }
 
 interface PersonFacetSummary {
-	facet_account_id: number
-	label: string
-	kind_slug: string
-	source: string | null
-	confidence: number | null
+	facet_account_id: number;
+	label: string;
+	kind_slug: string;
+	source: string | null;
+	confidence: number | null;
 }
 
 export default function EnhancedPersonCard({
@@ -57,29 +57,31 @@ export default function EnhancedPersonCard({
 	conversationCount,
 	evidenceCount,
 }: EnhancedPersonCardProps) {
-	const [isHovered, setIsHovered] = useState(false)
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+	const [isHovered, setIsHovered] = useState(false);
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
 	// Persona color or fallback
-	const persona = person.people_personas?.[0]?.personas
-	const themeColor = persona?.color_hex || "#6366f1" // Indigo fallback
+	const persona = person.people_personas?.[0]?.personas;
+	const themeColor = persona?.color_hex || "#6366f1"; // Indigo fallback
 
 	// Name and avatar logic
-	const name = person.name || "Unnamed Person"
+	const name = person.name || "Unnamed Person";
 	const initials =
 		name
 			.split(" ")
 			.map((word) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 
-	const topFacets = facets?.slice(0, 3) ?? []
-	const primaryOrganization = person.people_organizations?.[0]?.organization
-	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined
+	const topFacets = facets?.slice(0, 3) ?? [];
+	const primaryOrganization = person.people_organizations?.[0]?.organization;
+	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined;
 	const primaryRole =
-		person.people_organizations?.find((link) => link.is_primary)?.role ?? person.people_organizations?.[0]?.role ?? null
+		person.people_organizations?.find((link) => link.is_primary)?.role ??
+		person.people_organizations?.[0]?.role ??
+		null;
 
 	return (
 		<Link to={routes.people.detail(person.id)} tabIndex={0} aria-label={`View details for ${name}`}>
@@ -232,24 +234,24 @@ export default function EnhancedPersonCard({
 				/>
 			</motion.div>
 		</Link>
-	)
+	);
 }
 
 // Make a MiniPersonCard that shows the person's name, avatar, persona, & segment
 export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
 
-	const persona = person.people_personas?.[0]?.personas
-	const themeColor = persona?.color_hex || "#6366f1" // Indigo fallback
-	const name = person.name || "Unnamed Person"
+	const persona = person.people_personas?.[0]?.personas;
+	const themeColor = persona?.color_hex || "#6366f1"; // Indigo fallback
+	const name = person.name || "Unnamed Person";
 	const initials =
 		name
 			.split(" ")
 			.map((word) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 	// consola.log("MiniPersonCard person: ", person, persona)
 
 	return (
@@ -273,5 +275,5 @@ export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
 				)}
 			</div>
 		</div>
-	)
+	);
 }

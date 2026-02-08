@@ -1,6 +1,6 @@
-import { motion } from "framer-motion"
-import { AlertTriangle, Bolt, Flag, GitMerge, Quote, Target, UserCheck } from "lucide-react"
-import type React from "react"
+import { motion } from "framer-motion";
+import { AlertTriangle, Bolt, Flag, GitMerge, Quote, Target, UserCheck } from "lucide-react";
+import type React from "react";
 import {
 	Bar,
 	BarChart,
@@ -17,7 +17,7 @@ import {
 	Tooltip,
 	XAxis,
 	YAxis,
-} from "recharts"
+} from "recharts";
 
 // -----------------------------
 // Sample Data (replace from API)
@@ -42,7 +42,7 @@ const provisional = {
 	confidence: "Low",
 	evidence_count: 1,
 	spectrum_value: 22, // 0=Autonomy, 100=Guidance
-}
+};
 
 const contrast = {
 	name: "The Independent Explorer",
@@ -61,9 +61,9 @@ const contrast = {
 	confidence: "Low",
 	evidence_count: 1,
 	spectrum_value: 82,
-}
+};
 
-const changeLog = [{ version: "v0.1", note: "Added provisional + contrast (single‑interview)." }]
+const changeLog = [{ version: "v0.1", note: "Added provisional + contrast (single‑interview)." }];
 
 // Radar dimensions represent behavioral axes
 const radarDims = [
@@ -73,9 +73,9 @@ const radarDims = [
 	{ key: "Planning", prov: 40, cont: 60 },
 	{ key: "Speed", prov: 80, cont: 55 },
 	{ key: "Depth", prov: 35, cont: 90 },
-]
+];
 
-const confidenceTimeline = [{ v: "v0.1", Provisional: 1, Contrast: 1 }]
+const confidenceTimeline = [{ v: "v0.1", Provisional: 1, Contrast: 1 }];
 
 // -----------------------------
 // UI Helpers
@@ -87,13 +87,13 @@ const Badge: React.FC<{ children: React.ReactNode; tone?: string }> = ({ childre
 		danger: "bg-rose-600/20 text-rose-300 border border-rose-500/30",
 		warning: "bg-amber-600/20 text-amber-200 border border-amber-500/30",
 		brand: "bg-indigo-600/20 text-indigo-200 border border-indigo-500/30",
-	}
-	return <span className={`rounded-full px-2 py-1 text-xs ${map[tone]}`}>{children}</span>
-}
+	};
+	return <span className={`rounded-full px-2 py-1 text-xs ${map[tone]}`}>{children}</span>;
+};
 
 const Chip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 	<span className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-200">{children}</span>
-)
+);
 
 // -----------------------------
 // Components
@@ -104,7 +104,7 @@ function PersonaCard({ p }: { p: typeof provisional }) {
 			? "ring-emerald-400"
 			: p.confidence === "Medium"
 				? "ring-sky-400"
-				: "ring-zinc-600 ring-dashed"
+				: "ring-zinc-600 ring-dashed";
 
 	return (
 		<motion.div
@@ -173,7 +173,7 @@ function PersonaCard({ p }: { p: typeof provisional }) {
 				</div>
 			)}
 		</motion.div>
-	)
+	);
 }
 
 function SpectrumStrip({
@@ -183,11 +183,11 @@ function SpectrumStrip({
 	provisionalValue,
 	contrastValue,
 }: {
-	axis: string
-	leftLabel: string
-	rightLabel: string
-	provisionalValue: number // 0..100
-	contrastValue: number // 0..100
+	axis: string;
+	leftLabel: string;
+	rightLabel: string;
+	provisionalValue: number; // 0..100
+	contrastValue: number; // 0..100
 }) {
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
@@ -221,7 +221,7 @@ function SpectrumStrip({
 				</span>
 			</div>
 		</div>
-	)
+	);
 }
 
 function PainBar({ data }: { data: { label: string; count: number }[] }) {
@@ -252,7 +252,7 @@ function PainBar({ data }: { data: { label: string; count: number }[] }) {
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 function DifferentiatorRadar() {
@@ -260,7 +260,7 @@ function DifferentiatorRadar() {
 		subject: d.key,
 		Provisional: d.prov,
 		Contrast: d.cont,
-	}))
+	}));
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
 			<div className="mb-2 flex items-center gap-2 font-medium text-sm text-zinc-300">
@@ -279,11 +279,11 @@ function DifferentiatorRadar() {
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 function ConfidenceTimelineChart() {
-	const mapVal = (v: number) => ({ 1: "Low", 2: "Medium", 3: "High" })[v]
+	const mapVal = (v: number) => ({ 1: "Low", 2: "Medium", 3: "High" })[v];
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
 			<div className="mb-2 flex items-center gap-2 font-medium text-sm text-zinc-300">
@@ -306,7 +306,7 @@ function ConfidenceTimelineChart() {
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 function ChangeLogPanel() {
@@ -324,15 +324,15 @@ function ChangeLogPanel() {
 				))}
 			</ul>
 		</div>
-	)
+	);
 }
 
 // -----------------------------
 // Page
 // -----------------------------
 export default function PersonasShowcase() {
-	const [left, right] = [provisional, contrast]
-	const [leftPole, rightPole] = ["Autonomy", "Guidance"]
+	const [left, right] = [provisional, contrast];
+	const [leftPole, rightPole] = ["Autonomy", "Guidance"];
 
 	return (
 		<div className="min-h-dvh bg-[#0b0b0c] text-zinc-100">
@@ -378,5 +378,5 @@ export default function PersonasShowcase() {
 				<ChangeLogPanel />
 			</div>
 		</div>
-	)
+	);
 }

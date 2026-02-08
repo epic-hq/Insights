@@ -1,17 +1,17 @@
-import consola from "consola"
-import { Loader2 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useInterviewProgress, useRealtimeInterview } from "~/hooks/useInterviewProgress"
-import type { UploadProgress } from "~/utils/r2-upload.client"
+import consola from "consola";
+import { Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useInterviewProgress, useRealtimeInterview } from "~/hooks/useInterviewProgress";
+import type { UploadProgress } from "~/utils/r2-upload.client";
 
 interface ProcessingScreenProps {
-	fileName: string
-	onComplete: () => void
-	interviewId?: string
-	triggerRunId?: string
-	triggerAccessToken?: string
-	uploadProgress?: UploadProgress
-	isUploading?: boolean
+	fileName: string;
+	onComplete: () => void;
+	interviewId?: string;
+	triggerRunId?: string;
+	triggerAccessToken?: string;
+	uploadProgress?: UploadProgress;
+	isUploading?: boolean;
 }
 
 export default function ProcessingScreen({
@@ -23,77 +23,77 @@ export default function ProcessingScreen({
 	uploadProgress,
 	isUploading,
 }: ProcessingScreenProps) {
-	const [pollingAttempted, setPollingAttempted] = useState(false)
-	const stuckTimerRef = useRef<NodeJS.Timeout | null>(null)
-	const lastStatusRef = useRef<string | null>(null)
+	const [pollingAttempted, setPollingAttempted] = useState(false);
+	const stuckTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const lastStatusRef = useRef<string | null>(null);
 
 	// Fetch interview data with realtime subscription (fallback when Trigger.dev unavailable)
-	const interview = useRealtimeInterview(interviewId)
+	const interview = useRealtimeInterview(interviewId);
 
 	// Compute progress from interview data + Trigger.dev realtime
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interview,
 		runId: triggerRunId,
 		accessToken: triggerAccessToken,
-	})
-	const { progress, label: processingStage, isComplete, hasError, status } = progressInfo
-	const showUploadProgress = isUploading && uploadProgress != null
-	const displayProgress = showUploadProgress ? uploadProgress.percent : progress
+	});
+	const { progress, label: processingStage, isComplete, hasError, status } = progressInfo;
+	const showUploadProgress = isUploading && uploadProgress != null;
+	const displayProgress = showUploadProgress ? uploadProgress.percent : progress;
 
 	// Build stage text with part info if multipart upload
 	const displayStage = (() => {
-		if (!showUploadProgress) return processingStage
-		if (uploadProgress.phase === "completing") return "Finalizing upload..."
+		if (!showUploadProgress) return processingStage;
+		if (uploadProgress.phase === "completing") return "Finalizing upload...";
 		if (uploadProgress.part) {
-			return `Uploading part ${uploadProgress.part.index} of ${uploadProgress.part.total}`
+			return `Uploading part ${uploadProgress.part.index} of ${uploadProgress.part.total}`;
 		}
-		return "Uploading..."
-	})()
+		return "Uploading...";
+	})();
 
 	// Format bytes for display
 	const formatBytes = (bytes: number): string => {
-		if (bytes < 1024) return `${bytes} B`
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-		if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-		return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
-	}
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+		return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+	};
 
 	// Polling fallback: if stuck in transcription without Trigger.dev, poll AssemblyAI
 	const checkStuckTranscription = useCallback(async () => {
-		if (!interviewId || pollingAttempted) return
+		if (!interviewId || pollingAttempted) return;
 
-		consola.info("[ProcessingScreen] Checking stuck transcription...")
-		setPollingAttempted(true)
+		consola.info("[ProcessingScreen] Checking stuck transcription...");
+		setPollingAttempted(true);
 
 		try {
 			const response = await fetch("/api/interviews/check-transcription", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ interviewId }),
-			})
+			});
 
-			const result = await response.json()
-			consola.info("[ProcessingScreen] Check result:", result)
+			const result = await response.json();
+			consola.info("[ProcessingScreen] Check result:", result);
 
 			if (result.runId) {
-				consola.success("[ProcessingScreen] Processing resumed via polling fallback")
+				consola.success("[ProcessingScreen] Processing resumed via polling fallback");
 			}
 		} catch (error) {
-			consola.error("[ProcessingScreen] Polling fallback failed:", error)
+			consola.error("[ProcessingScreen] Polling fallback failed:", error);
 		}
-	}, [interviewId, pollingAttempted])
+	}, [interviewId, pollingAttempted]);
 
 	// Detect stuck transcription: no Trigger.dev run and status hasn't changed
 	useEffect(() => {
-		const currentStatus = interview?.status
+		const currentStatus = interview?.status;
 
 		// Clear timer if status changed or we have a Trigger.dev run
 		if (currentStatus !== lastStatusRef.current || isRealtime || isComplete) {
 			if (stuckTimerRef.current) {
-				clearTimeout(stuckTimerRef.current)
-				stuckTimerRef.current = null
+				clearTimeout(stuckTimerRef.current);
+				stuckTimerRef.current = null;
 			}
-			lastStatusRef.current = currentStatus ?? null
+			lastStatusRef.current = currentStatus ?? null;
 		}
 
 		// Start stuck detection if in transcription/processing without Trigger.dev
@@ -101,39 +101,39 @@ export default function ProcessingScreen({
 			!isRealtime &&
 			!isComplete &&
 			!pollingAttempted &&
-			(currentStatus === "processing" || currentStatus === "uploaded")
+			(currentStatus === "processing" || currentStatus === "uploaded");
 
 		if (isStuckCandidate && !stuckTimerRef.current) {
-			consola.info("[ProcessingScreen] Starting stuck detection timer (30s)")
+			consola.info("[ProcessingScreen] Starting stuck detection timer (30s)");
 			stuckTimerRef.current = setTimeout(() => {
-				consola.warn("[ProcessingScreen] Interview appears stuck, triggering polling fallback")
-				checkStuckTranscription()
-			}, 30000)
+				consola.warn("[ProcessingScreen] Interview appears stuck, triggering polling fallback");
+				checkStuckTranscription();
+			}, 30000);
 		}
 
 		return () => {
 			if (stuckTimerRef.current) {
-				clearTimeout(stuckTimerRef.current)
+				clearTimeout(stuckTimerRef.current);
 			}
-		}
-	}, [interview?.status, isRealtime, isComplete, pollingAttempted, checkStuckTranscription])
+		};
+	}, [interview?.status, isRealtime, isComplete, pollingAttempted, checkStuckTranscription]);
 
 	// Auto-complete when processing is done
 	useEffect(() => {
 		if (isComplete) {
-			setTimeout(onComplete, 1000)
+			setTimeout(onComplete, 1000);
 		}
-	}, [isComplete, onComplete])
+	}, [isComplete, onComplete]);
 
 	// Derive display status
 	const getStatusText = () => {
-		if (showUploadProgress) return "Uploading"
-		if (hasError) return "Error"
-		if (isComplete) return "Complete"
-		if (isRealtime) return "Connected"
-		if (triggerRunId) return "Connecting..."
-		return "Queued"
-	}
+		if (showUploadProgress) return "Uploading";
+		if (hasError) return "Error";
+		if (isComplete) return "Complete";
+		if (isRealtime) return "Connected";
+		if (triggerRunId) return "Connecting...";
+		return "Queued";
+	};
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -192,5 +192,5 @@ export default function ProcessingScreen({
 				)}
 			</div>
 		</div>
-	)
+	);
 }

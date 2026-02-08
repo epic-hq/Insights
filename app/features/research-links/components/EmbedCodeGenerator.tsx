@@ -4,44 +4,44 @@
  * Provides UI to configure and copy embed codes for research links.
  * Supports multiple layout options and customization.
  */
-import { Check, Code2, Copy, ExternalLink, Eye } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Switch } from "~/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { cn } from "~/lib/utils"
+import { Check, Code2, Copy, ExternalLink, Eye } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Switch } from "~/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { cn } from "~/lib/utils";
 
-type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact" | "video-first"
-type EmbedTheme = "dark" | "light" | "transparent"
+type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact" | "video-first";
+type EmbedTheme = "dark" | "light" | "transparent";
 
 interface EmbedConfig {
-	layout: EmbedLayout
-	theme: EmbedTheme
-	accentColor: string
-	borderRadius: number
-	showBranding: boolean
-	buttonText: string
-	placeholder: string
-	successMessage: string
-	emailPreviewImageUrl: string
+	layout: EmbedLayout;
+	theme: EmbedTheme;
+	accentColor: string;
+	borderRadius: number;
+	showBranding: boolean;
+	buttonText: string;
+	placeholder: string;
+	successMessage: string;
+	emailPreviewImageUrl: string;
 }
 
 interface EmbedCodeGeneratorProps {
-	slug: string
-	heroTitle?: string | null
-	heroCtaLabel?: string | null
-	walkthroughVideoUrl?: string | null
-	walkthroughThumbnailUrl?: string | null
+	slug: string;
+	heroTitle?: string | null;
+	heroCtaLabel?: string | null;
+	walkthroughVideoUrl?: string | null;
+	walkthroughThumbnailUrl?: string | null;
 }
 
 const LAYOUT_OPTIONS: {
-	value: EmbedLayout
-	label: string
-	description: string
+	value: EmbedLayout;
+	label: string;
+	description: string;
 }[] = [
 	{
 		value: "compact",
@@ -68,7 +68,7 @@ const LAYOUT_OPTIONS: {
 		label: "Full Form",
 		description: "Complete form with video and all content",
 	},
-]
+];
 
 const USE_CASE_PRESETS: { label: string; config: Partial<EmbedConfig> }[] = [
 	{
@@ -115,7 +115,7 @@ const USE_CASE_PRESETS: { label: string; config: Partial<EmbedConfig> }[] = [
 			successMessage: "Thanks for your feedback!",
 		},
 	},
-]
+];
 
 export function EmbedCodeGenerator({
 	slug,
@@ -124,10 +124,10 @@ export function EmbedCodeGenerator({
 	walkthroughVideoUrl,
 	walkthroughThumbnailUrl,
 }: EmbedCodeGeneratorProps) {
-	const [copiedHtml, setCopiedHtml] = useState(false)
-	const [copiedScript, setCopiedScript] = useState(false)
-	const [copiedIframe, setCopiedIframe] = useState(false)
-	const [copiedEmailPreview, setCopiedEmailPreview] = useState(false)
+	const [copiedHtml, setCopiedHtml] = useState(false);
+	const [copiedScript, setCopiedScript] = useState(false);
+	const [copiedIframe, setCopiedIframe] = useState(false);
+	const [copiedEmailPreview, setCopiedEmailPreview] = useState(false);
 
 	// Embed configuration state
 	const [config, setConfig] = useState<EmbedConfig>({
@@ -140,10 +140,10 @@ export function EmbedCodeGenerator({
 		placeholder: "you@company.com",
 		successMessage: "Thanks for signing up!",
 		emailPreviewImageUrl: walkthroughThumbnailUrl ?? "",
-	})
+	});
 
 	useEffect(() => {
-		if (!walkthroughThumbnailUrl) return
+		if (!walkthroughThumbnailUrl) return;
 		setConfig((prev) =>
 			prev.emailPreviewImageUrl
 				? prev
@@ -151,33 +151,33 @@ export function EmbedCodeGenerator({
 						...prev,
 						emailPreviewImageUrl: walkthroughThumbnailUrl,
 					}
-		)
-	}, [walkthroughThumbnailUrl])
+		);
+	}, [walkthroughThumbnailUrl]);
 
 	// Generate the embed URL
 	const embedUrl = useMemo(() => {
-		const base = typeof window !== "undefined" ? window.location.origin : "https://getupsight.com"
-		const url = new URL(`${base}/embed/${slug}`)
-		url.searchParams.set("layout", config.layout)
-		url.searchParams.set("theme", config.theme)
-		url.searchParams.set("accent", config.accentColor)
-		url.searchParams.set("radius", String(config.borderRadius))
-		url.searchParams.set("branding", config.showBranding ? "true" : "false")
-		if (config.buttonText) url.searchParams.set("buttonText", config.buttonText)
-		url.searchParams.set("placeholder", config.placeholder)
-		url.searchParams.set("success", config.successMessage)
-		return url.toString()
-	}, [slug, config])
+		const base = typeof window !== "undefined" ? window.location.origin : "https://getupsight.com";
+		const url = new URL(`${base}/embed/${slug}`);
+		url.searchParams.set("layout", config.layout);
+		url.searchParams.set("theme", config.theme);
+		url.searchParams.set("accent", config.accentColor);
+		url.searchParams.set("radius", String(config.borderRadius));
+		url.searchParams.set("branding", config.showBranding ? "true" : "false");
+		if (config.buttonText) url.searchParams.set("buttonText", config.buttonText);
+		url.searchParams.set("placeholder", config.placeholder);
+		url.searchParams.set("success", config.successMessage);
+		return url.toString();
+	}, [slug, config]);
 
 	const publicUrl = useMemo(() => {
-		const base = typeof window !== "undefined" ? window.location.origin : "https://getupsight.com"
-		return `${base}/ask/${slug}`
-	}, [slug])
+		const base = typeof window !== "undefined" ? window.location.origin : "https://getupsight.com";
+		return `${base}/ask/${slug}`;
+	}, [slug]);
 
-	const emailPreviewHeadline = heroTitle || "Share your feedback"
-	const emailPreviewButtonLabel = heroCtaLabel || config.buttonText || "Open survey"
-	const emailPreviewImageUrl = config.emailPreviewImageUrl.trim()
-	const emailPreviewFallbackVideoUrl = walkthroughVideoUrl || null
+	const emailPreviewHeadline = heroTitle || "Share your feedback";
+	const emailPreviewButtonLabel = heroCtaLabel || config.buttonText || "Open survey";
+	const emailPreviewImageUrl = config.emailPreviewImageUrl.trim();
+	const emailPreviewFallbackVideoUrl = walkthroughVideoUrl || null;
 
 	// Generate HTML embed code
 	const htmlCode = useMemo(() => {
@@ -189,22 +189,22 @@ export function EmbedCodeGenerator({
 			`data-upsight-accent="${config.accentColor}"`,
 			`data-upsight-radius="${config.borderRadius}"`,
 			`data-upsight-branding="${config.showBranding}"`,
-		]
+		];
 		if (config.buttonText) {
-			attrs.push(`data-upsight-button-text="${config.buttonText}"`)
+			attrs.push(`data-upsight-button-text="${config.buttonText}"`);
 		}
-		attrs.push(`data-upsight-placeholder="${config.placeholder}"`)
-		attrs.push(`data-upsight-success="${config.successMessage}"`)
+		attrs.push(`data-upsight-placeholder="${config.placeholder}"`);
+		attrs.push(`data-upsight-success="${config.successMessage}"`);
 
 		return `<!-- UpSight Embed -->
 <div ${attrs.join("\n     ")}></div>
-<script src="https://getupsight.com/embed.js" async></script>`
-	}, [slug, config])
+<script src="https://getupsight.com/embed.js" async></script>`;
+	}, [slug, config]);
 
 	const emailPreviewCode = useMemo(() => {
-		const emailPreviewPlaceholder = "IMAGE_URL_HERE"
-		const hasThumbnail = Boolean(emailPreviewImageUrl)
-		const emailPreviewImageSrc = hasThumbnail ? emailPreviewImageUrl : emailPreviewPlaceholder
+		const emailPreviewPlaceholder = "IMAGE_URL_HERE";
+		const hasThumbnail = Boolean(emailPreviewImageUrl);
+		const emailPreviewImageSrc = hasThumbnail ? emailPreviewImageUrl : emailPreviewPlaceholder;
 		const imageBlock = `<tr>
       <td align="center" style="padding: 0 24px 16px;">
         <a href="${publicUrl}" target="_blank" rel="noreferrer">
@@ -217,7 +217,7 @@ export function EmbedCodeGenerator({
           />
         </a>
       </td>
-    </tr>`
+    </tr>`;
 
 		return `<!-- UpSight Email Preview -->
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -256,8 +256,8 @@ export function EmbedCodeGenerator({
       </table>
     </td>
   </tr>
-</table>`
-	}, [emailPreviewButtonLabel, emailPreviewHeadline, emailPreviewImageUrl, publicUrl])
+</table>`;
+	}, [emailPreviewButtonLabel, emailPreviewHeadline, emailPreviewImageUrl, publicUrl]);
 
 	// Generate iframe code
 	const iframeCode = useMemo(() => {
@@ -270,7 +270,7 @@ export function EmbedCodeGenerator({
 						? "280"
 						: config.layout === "video-first"
 							? "420"
-							: "400"
+							: "400";
 
 		return `<iframe
   src="${embedUrl}"
@@ -282,8 +282,8 @@ export function EmbedCodeGenerator({
   style="border: none; overflow: hidden; background: transparent;"
   allow="camera; microphone"
   title="${heroTitle || "UpSight Form"}"
-></iframe>`
-	}, [embedUrl, config.layout, heroTitle])
+></iframe>`;
+	}, [embedUrl, config.layout, heroTitle]);
 
 	// Generate script-only code for advanced users
 	const scriptCode = useMemo(() => {
@@ -302,30 +302,30 @@ export function EmbedCodeGenerator({
   });
 </script>
 <script src="https://getupsight.com/embed.js" async></script>
-<div id="upsight-container"></div>`
-	}, [slug, config])
+<div id="upsight-container"></div>`;
+	}, [slug, config]);
 
 	const handleCopy = useCallback(async (text: string, setter: (v: boolean) => void) => {
 		try {
-			await navigator.clipboard.writeText(text)
-			setter(true)
-			setTimeout(() => setter(false), 2000)
+			await navigator.clipboard.writeText(text);
+			setter(true);
+			setTimeout(() => setter(false), 2000);
 		} catch {
 			// Fallback
-			const textarea = document.createElement("textarea")
-			textarea.value = text
-			document.body.appendChild(textarea)
-			textarea.select()
-			document.execCommand("copy")
-			document.body.removeChild(textarea)
-			setter(true)
-			setTimeout(() => setter(false), 2000)
+			const textarea = document.createElement("textarea");
+			textarea.value = text;
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand("copy");
+			document.body.removeChild(textarea);
+			setter(true);
+			setTimeout(() => setter(false), 2000);
 		}
-	}, [])
+	}, []);
 
 	const applyPreset = useCallback((preset: (typeof USE_CASE_PRESETS)[0]) => {
-		setConfig((prev) => ({ ...prev, ...preset.config }))
-	}, [])
+		setConfig((prev) => ({ ...prev, ...preset.config }));
+	}, []);
 
 	return (
 		<div className="min-w-0 space-y-4">
@@ -680,5 +680,5 @@ export function EmbedCodeGenerator({
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

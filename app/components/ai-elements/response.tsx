@@ -1,6 +1,6 @@
-import { type ComponentProps, memo } from "react"
-import { Streamdown } from "streamdown"
-import { cn } from "~/lib/utils"
+import { type ComponentProps, memo } from "react";
+import { Streamdown } from "streamdown";
+import { cn } from "~/lib/utils";
 
 // Custom link renderer that adds icons
 const LinkWithIcon = ({ href, children }: { href: string; children: React.ReactNode }) => {
@@ -9,15 +9,15 @@ const LinkWithIcon = ({ href, children }: { href: string; children: React.ReactN
 			{children}
 			<span className="text-xs">🔗</span>
 		</a>
-	)
-}
+	);
+};
 
 // Custom renderer for Streamdown to add icons to links
 const customRenderers = {
 	link: LinkWithIcon,
-}
+};
 
-type ResponseProps = ComponentProps<typeof Streamdown>
+type ResponseProps = ComponentProps<typeof Streamdown>;
 
 export const Response = memo(
 	({ className, ...props }: ResponseProps) => (
@@ -31,6 +31,6 @@ export const Response = memo(
 		/>
 	),
 	(prevProps, nextProps) => prevProps.children === nextProps.children
-)
+);
 
-Response.displayName = "Response"
+Response.displayName = "Response";

@@ -1,36 +1,36 @@
-import { useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { BackButton } from "~/components/ui/back-button"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
+import { useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { BackButton } from "~/components/ui/back-button";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
 
-import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db"
-import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server"
-import { ensureStageValue } from "~/features/opportunities/stage-config"
-import { userContext } from "~/server/user-context"
+import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db";
+import { loadOpportunityStages } from "~/features/opportunities/server/stage-settings.server";
+import { ensureStageValue } from "~/features/opportunities/stage-config";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `Edit ${data?.opportunity?.title || "Opportunity"} | Insights` },
 		{ name: "description", content: "Edit opportunity details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const opportunityId = params.id
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const opportunityId = params.id;
 
 	if (!accountId || !projectId || !opportunityId) {
-		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 });
 	}
 
 	try {
@@ -39,35 +39,35 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			accountId,
 			projectId,
 			id: opportunityId,
-		})
+		});
 
 		if (error || !opportunity) {
-			throw new Response("Opportunity not found", { status: 404 })
+			throw new Response("Opportunity not found", { status: 404 });
 		}
 
-		const { stages } = await loadOpportunityStages({ supabase, accountId })
+		const { stages } = await loadOpportunityStages({ supabase, accountId });
 
-		return { opportunity, stages }
+		return { opportunity, stages };
 	} catch (_error) {
-		throw new Response("Failed to load opportunity", { status: 500 })
+		throw new Response("Failed to load opportunity", { status: 500 });
 	}
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const opportunityId = params.id
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const opportunityId = params.id;
 
 	if (!accountId || !projectId || !opportunityId) {
-		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 });
 	}
 
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	if (intent === "delete") {
 		try {
@@ -76,45 +76,45 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				id: opportunityId,
 				accountId,
 				projectId,
-			})
+			});
 
 			if (error) {
-				return { error: "Failed to delete opportunity" }
+				return { error: "Failed to delete opportunity" };
 			}
 
 			// Redirect to opportunities list with full path context
-			return redirect(`/a/${accountId}/${projectId}/opportunities`)
+			return redirect(`/a/${accountId}/${projectId}/opportunities`);
 		} catch (_error) {
-			return { error: "Failed to delete opportunity" }
+			return { error: "Failed to delete opportunity" };
 		}
 	}
 
 	// Handle update
-	const title = formData.get("title") as string
-	const description = formData.get("description") as string
-	const kanbanStatus = formData.get("kanban_status") as string
-	const stage = formData.get("stage") as string
-	const amount = formData.get("amount") as string
-	const closeDate = formData.get("close_date") as string
+	const title = formData.get("title") as string;
+	const description = formData.get("description") as string;
+	const kanbanStatus = formData.get("kanban_status") as string;
+	const stage = formData.get("stage") as string;
+	const amount = formData.get("amount") as string;
+	const closeDate = formData.get("close_date") as string;
 
 	if (!title?.trim()) {
-		return { error: "Title is required" }
+		return { error: "Title is required" };
 	}
 
 	try {
-		const { stages } = await loadOpportunityStages({ supabase, accountId })
-		const normalizedStage = ensureStageValue(stage || kanbanStatus || null, stages)
+		const { stages } = await loadOpportunityStages({ supabase, accountId });
+		const normalizedStage = ensureStageValue(stage || kanbanStatus || null, stages);
 		const updateData: any = {
 			title: title.trim(),
-		}
+		};
 
-		if (description?.trim()) updateData.description = description.trim()
+		if (description?.trim()) updateData.description = description.trim();
 		if (normalizedStage) {
-			updateData.stage = normalizedStage
-			updateData.kanban_status = normalizedStage
+			updateData.stage = normalizedStage;
+			updateData.kanban_status = normalizedStage;
 		}
-		if (amount) updateData.amount = Number(amount)
-		if (closeDate) updateData.close_date = closeDate
+		if (amount) updateData.amount = Number(amount);
+		if (closeDate) updateData.close_date = closeDate;
 
 		const { data, error } = await updateOpportunity({
 			supabase,
@@ -122,25 +122,25 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			data: updateData,
-		})
+		});
 
 		if (error) {
-			return { error: "Failed to update opportunity" }
+			return { error: "Failed to update opportunity" };
 		}
 
 		// Redirect to opportunity detail with full path context
-		return redirect(`/a/${accountId}/${projectId}/opportunities/${data.id}`)
+		return redirect(`/a/${accountId}/${projectId}/opportunities/${data.id}`);
 	} catch (_error) {
-		return { error: "Failed to update opportunity" }
+		return { error: "Failed to update opportunity" };
 	}
 }
 
 export default function EditOpportunity() {
-	const { opportunity, stages } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
+	const { opportunity, stages } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
 	const [selectedStage, setSelectedStage] = useState(() =>
 		ensureStageValue(opportunity.stage || opportunity.kanban_status, stages)
-	)
+	);
 
 	return (
 		<div className="container mx-auto max-w-3xl px-4 py-8">
@@ -258,7 +258,7 @@ export default function EditOpportunity() {
 						variant="destructive"
 						onClick={(e) => {
 							if (!confirm("Are you sure you want to delete this opportunity? This action cannot be undone.")) {
-								e.preventDefault()
+								e.preventDefault();
 							}
 						}}
 					>
@@ -267,5 +267,5 @@ export default function EditOpportunity() {
 				</Form>
 			</div>
 		</div>
-	)
+	);
 }

@@ -2,31 +2,31 @@
  * Research Analysis Utils - BAML-driven analysis of insights against research goals
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { type BillingContext, runBamlWithBilling, systemBillingContext } from "~/lib/billing"
-import type { Insight, Person, Persona, Project_Section } from "~/types"
-import type { ResearchMode } from "~/types/research"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { type BillingContext, runBamlWithBilling, systemBillingContext } from "~/lib/billing";
+import type { Insight, Person, Persona, Project_Section } from "~/types";
+import type { ResearchMode } from "~/types/research";
 
 interface ResearchGoalData {
-	icp: string
-	role: string
-	goal: string
-	questions: string[]
-	assumptions: string[]
-	unknowns: string[]
+	icp: string;
+	role: string;
+	goal: string;
+	questions: string[];
+	assumptions: string[];
+	unknowns: string[];
 }
 
 /**
  * Extract research goal from project sections (stored during onboarding)
  */
 function extractResearchGoal(sections: Project_Section[]): ResearchGoalData {
-	const goalSection = sections.find((s) => s.kind === "goal")
-	const icpSection = sections.find((s) => s.kind === "target_market")
-	const roleSection = sections.find((s) => s.kind === "role")
-	const questionsSection = sections.find((s) => s.kind === "questions")
-	const assumptionsSection = sections.find((s) => s.kind === "assumptions")
-	const unknownsSection = sections.find((s) => s.kind === "unknowns")
+	const goalSection = sections.find((s) => s.kind === "goal");
+	const icpSection = sections.find((s) => s.kind === "target_market");
+	const roleSection = sections.find((s) => s.kind === "role");
+	const questionsSection = sections.find((s) => s.kind === "questions");
+	const assumptionsSection = sections.find((s) => s.kind === "assumptions");
+	const unknownsSection = sections.find((s) => s.kind === "unknowns");
 
 	return {
 		icp: icpSection?.content_md || "Unknown target customer",
@@ -35,33 +35,33 @@ function extractResearchGoal(sections: Project_Section[]): ResearchGoalData {
 		questions: questionsSection?.content_md ? JSON.parse(questionsSection.content_md) : [],
 		assumptions: assumptionsSection?.content_md ? JSON.parse(assumptionsSection.content_md) : [],
 		unknowns: unknownsSection?.content_md ? JSON.parse(unknownsSection.content_md) : [],
-	}
+	};
 }
 
 /**
  * Canonical: Generate QuestionSet directly from BAML
  */
 export async function generateQuestionSetCanonical(params: {
-	target_orgs: string
-	target_roles: string
-	research_goal: string
-	research_goal_details: string
-	assumptions: string
-	unknowns: string
-	custom_instructions?: string
+	target_orgs: string;
+	target_roles: string;
+	research_goal: string;
+	research_goal_details: string;
+	assumptions: string;
+	unknowns: string;
+	custom_instructions?: string;
 	// Enhanced context fields
-	customer_problem?: string
-	offerings?: string
-	competitors?: string
-	session_id?: string
-	round?: number
-	total_per_round?: number
-	per_category_min?: number
-	per_category_max?: number
-	interview_time_limit?: number
-	research_mode?: ResearchMode
-	billingContext?: BillingContext
-	accountId?: string
+	customer_problem?: string;
+	offerings?: string;
+	competitors?: string;
+	session_id?: string;
+	round?: number;
+	total_per_round?: number;
+	per_category_min?: number;
+	per_category_max?: number;
+	interview_time_limit?: number;
+	research_mode?: ResearchMode;
+	billingContext?: BillingContext;
+	accountId?: string;
 }) {
 	const {
 		target_orgs,
@@ -83,32 +83,32 @@ export async function generateQuestionSetCanonical(params: {
 		research_mode,
 		billingContext,
 		accountId,
-	} = params
+	} = params;
 
 	// Create billing context if not provided
-	const billingCtx = billingContext || systemBillingContext(accountId || "system", "question_generation")
+	const billingCtx = billingContext || systemBillingContext(accountId || "system", "question_generation");
 
-	consola.log("[generateQuestionSetCanonical] Calling BAML GenerateQuestionSet with canonical params")
+	consola.log("[generateQuestionSetCanonical] Calling BAML GenerateQuestionSet with canonical params");
 
 	// Guardrails to force required fields the parser expects.
 	// We append these to any caller-provided instructions so the LLM reliably
 	// includes top-level sessionId, policy, and round with exact values.
-	const enforcedShapeNote = `\n\nSTRUCTURE REQUIREMENTS (non-negotiable):\n- Always return valid JSON matching QuestionSet.\n- You MUST include top-level keys: sessionId, policy, categories, questions, history, round.\n- Set sessionId exactly to: ${session_id || ""}\n- Set round exactly to: ${round ?? 1}\n- policy object MUST be present with EXACT keys and values:\n  {\n    "totalPerRound": ${total_per_round ?? 10},\n    "perCategoryMin": ${per_category_min ?? 1},\n    "perCategoryMax": ${per_category_max ?? 3},\n    "dedupeWindowRounds": 2,\n    "balanceBy": ["category","novelty"]\n  }\nReturn only the JSON object — no prose.`
+	const enforcedShapeNote = `\n\nSTRUCTURE REQUIREMENTS (non-negotiable):\n- Always return valid JSON matching QuestionSet.\n- You MUST include top-level keys: sessionId, policy, categories, questions, history, round.\n- Set sessionId exactly to: ${session_id || ""}\n- Set round exactly to: ${round ?? 1}\n- policy object MUST be present with EXACT keys and values:\n  {\n    "totalPerRound": ${total_per_round ?? 10},\n    "perCategoryMin": ${per_category_min ?? 1},\n    "perCategoryMax": ${per_category_max ?? 3},\n    "dedupeWindowRounds": 2,\n    "balanceBy": ["category","novelty"]\n  }\nReturn only the JSON object — no prose.`;
 
 	const normalizedResearchMode: ResearchMode =
 		research_mode && ["exploratory", "validation", "user_testing"].includes(research_mode)
 			? research_mode
-			: "exploratory"
+			: "exploratory";
 
 	const modeInstructionNote = (() => {
 		if (normalizedResearchMode === "validation") {
-			return "Validation mode: focus on the four evidence gates (Pain Exists, Awareness, Quantified Impact, Acting). Create questions that elicit proof for each gate and use categoryId values pain, awareness, quantified, acting when appropriate."
+			return "Validation mode: focus on the four evidence gates (Pain Exists, Awareness, Quantified Impact, Acting). Create questions that elicit proof for each gate and use categoryId values pain, awareness, quantified, acting when appropriate.";
 		}
 		if (normalizedResearchMode === "user_testing") {
-			return "User testing mode: emphasise usability tasks, comprehension checks, and adoption signals."
+			return "User testing mode: emphasise usability tasks, comprehension checks, and adoption signals.";
 		}
-		return "Exploratory mode: balance discovery across context, goals, pain, workflow, constraints, willingness, and demographics."
-	})()
+		return "Exploratory mode: balance discovery across context, goals, pain, workflow, constraints, willingness, and demographics.";
+	})();
 
 	const bamlInputs = {
 		target_org: target_orgs,
@@ -131,9 +131,9 @@ export async function generateQuestionSetCanonical(params: {
 		per_category_max: per_category_max ?? 3,
 		interview_time_limit: interview_time_limit ?? 30,
 		research_mode: normalizedResearchMode,
-	}
+	};
 
-	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs)
+	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs);
 
 	try {
 		const { result: questionSet } = await runBamlWithBilling(
@@ -145,22 +145,22 @@ export async function generateQuestionSetCanonical(params: {
 				resourceType: "question_set",
 			},
 			`question-set:${accountId || "system"}:${session_id || Date.now()}`
-		)
+		);
 		consola.log("[BAML DEBUG] GenerateQuestionSet result:", {
 			success: true,
 			hasQuestions: Array.isArray(questionSet?.questions),
 			questionCount: questionSet?.questions?.length || 0,
 			result: questionSet,
-		})
-		return questionSet
+		});
+		return questionSet;
 	} catch (error) {
 		consola.error("[BAML ERROR] GenerateQuestionSet failed:", {
 			error,
 			errorMessage: error instanceof Error ? error.message : String(error),
 			errorStack: error instanceof Error ? error.stack : undefined,
 			inputs: bamlInputs,
-		})
-		throw error
+		});
+		throw error;
 	}
 }
 
@@ -176,10 +176,10 @@ export async function generateFollowUpQuestions(
 	accountId?: string
 ) {
 	try {
-		consola.log("Generating follow-up questions for:", originalQuestion)
+		consola.log("Generating follow-up questions for:", originalQuestion);
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "follow_up_questions")
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "follow_up_questions");
 
 		const { result: followUpSet } = await runBamlWithBilling(
 			billingCtx,
@@ -197,13 +197,13 @@ export async function generateFollowUpQuestions(
 				resourceType: "question",
 			},
 			`follow-up:${accountId || "system"}:${originalQuestion.slice(0, 30)}:${Date.now()}`
-		)
+		);
 
-		consola.log("Follow-up questions generated:", followUpSet)
-		return followUpSet
+		consola.log("Follow-up questions generated:", followUpSet);
+		return followUpSet;
 	} catch (error) {
-		consola.error("Failed to generate follow-up questions:", error)
-		throw error
+		consola.error("Failed to generate follow-up questions:", error);
+		throw error;
 	}
 }
 
@@ -220,7 +220,7 @@ async function _analyzeProjectInsights(
 	accountId?: string
 ) {
 	try {
-		const researchGoal = extractResearchGoal(projectSections)
+		const researchGoal = extractResearchGoal(projectSections);
 
 		// Format insights for BAML analysis
 		const insightsData = insights.map((insight) => ({
@@ -232,7 +232,7 @@ async function _analyzeProjectInsights(
 			journey_stage: insight.journey_stage,
 			confidence: insight.confidence,
 			emotional_response: insight.emotional_response,
-		}))
+		}));
 
 		// Convert to BAML format
 		const bamlResearchGoal = {
@@ -243,12 +243,12 @@ async function _analyzeProjectInsights(
 				question: q,
 				priority: "high" as const, // Default to high priority for now
 			})),
-		}
+		};
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "project_analysis")
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "project_analysis");
 
-		consola.log("Analyzing project insights with BAML...")
+		consola.log("Analyzing project insights with BAML...");
 
 		const { result: analysis } = await runBamlWithBilling(
 			billingCtx,
@@ -264,13 +264,13 @@ async function _analyzeProjectInsights(
 				resourceType: "project",
 			},
 			`analyze-project:${accountId || "system"}:${Date.now()}`
-		)
+		);
 
-		consola.log("Project analysis completed successfully")
-		return analysis
+		consola.log("Project analysis completed successfully");
+		return analysis;
 	} catch (error) {
-		consola.error("Failed to analyze project insights:", error)
-		throw error
+		consola.error("Failed to analyze project insights:", error);
+		throw error;
 	}
 }
 
@@ -286,7 +286,7 @@ async function _generateExecutiveSummary(
 	accountId?: string
 ) {
 	try {
-		const researchGoal = extractResearchGoal(projectSections)
+		const researchGoal = extractResearchGoal(projectSections);
 
 		// Format for BAML
 		const bamlResearchGoal = {
@@ -297,19 +297,19 @@ async function _generateExecutiveSummary(
 				question: q,
 				priority: 1,
 			})),
-		}
+		};
 
 		const insightsData = insights.map((insight) => ({
 			name: insight.name,
 			pain: insight.pain,
 			category: insight.category,
 			confidence: insight.confidence,
-		}))
+		}));
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "executive_summary")
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "executive_summary");
 
-		consola.log("Generating executive summary...")
+		consola.log("Generating executive summary...");
 
 		const { result: quickInsights } = await runBamlWithBilling(
 			billingCtx,
@@ -326,12 +326,12 @@ async function _generateExecutiveSummary(
 				resourceType: "project",
 			},
 			`executive-summary:${accountId || "system"}:${Date.now()}`
-		)
+		);
 
-		consola.log("Quick insights generated successfully")
-		return quickInsights
+		consola.log("Quick insights generated successfully");
+		return quickInsights;
 	} catch (error) {
-		consola.error("Failed to generate quick insights:", error)
+		consola.error("Failed to generate quick insights:", error);
 		// Return fallback data instead of throwing
 		return {
 			questions_answered: insights.length > 0 ? Math.min(3, insights.length) : 0,
@@ -346,7 +346,7 @@ async function _generateExecutiveSummary(
 				insights.length > 0
 					? "Review detailed insights and plan next interviews"
 					: "Upload more interviews to generate insights",
-		}
+		};
 	}
 }
 
@@ -362,14 +362,14 @@ async function _getProjectAnalysisData(supabase: SupabaseClient, projectId: stri
 		supabase.from("people").select("*").eq("project_id", projectId),
 
 		supabase.from("personas").select("*").eq("project_id", projectId),
-	])
+	]);
 
 	return {
 		sections: sectionsResult.data || [],
 		insights: insightsResult.data || [],
 		people: peopleResult.data || [],
 		personas: personasResult.data || [],
-	}
+	};
 }
 
 /**
@@ -395,15 +395,15 @@ async function _generateResearchQuestions(
 			assumptions,
 			unknowns,
 			custom_instructions,
-		})
+		});
 
 		// Create billing context if not provided
-		const billingCtx = billingContext || systemBillingContext(accountId || "system", "research_questions")
+		const billingCtx = billingContext || systemBillingContext(accountId || "system", "research_questions");
 
 		const ensure = (v: unknown, fallback = "unspecified") => {
-			const s = typeof v === "string" ? v : String(v ?? "")
-			return s.trim().length > 0 ? s : fallback
-		}
+			const s = typeof v === "string" ? v : String(v ?? "");
+			return s.trim().length > 0 ? s : fallback;
+		};
 		const { result: questionSet } = await runBamlWithBilling(
 			billingCtx,
 			{
@@ -428,7 +428,7 @@ async function _generateResearchQuestions(
 				resourceType: "question_set",
 			},
 			`research-questions:${accountId || "system"}:${Date.now()}`
-		)
+		);
 
 		// Convert new QuestionSet format to legacy format for backward compatibility
 		const suggestions = {
@@ -472,13 +472,13 @@ async function _generateResearchQuestions(
 					interview_type: "user_interview" as const,
 					priority: Math.round(q.scores.importance * 3) || 3,
 				})),
-		}
+		};
 
-		consola.log("Research questions generated successfully:", suggestions)
-		return suggestions
+		consola.log("Research questions generated successfully:", suggestions);
+		return suggestions;
 	} catch (error) {
-		consola.error("Failed to generate research questions:", error)
-		consola.error("Error details:", error instanceof Error ? error.message : String(error))
+		consola.error("Failed to generate research questions:", error);
+		consola.error("Error details:", error instanceof Error ? error.message : String(error));
 
 		// Fallback to basic questions if BAML fails
 		return {
@@ -500,6 +500,6 @@ async function _generateResearchQuestions(
 			pain_point_questions: [],
 			solution_questions: [],
 			context_questions: [],
-		}
+		};
 	}
 }

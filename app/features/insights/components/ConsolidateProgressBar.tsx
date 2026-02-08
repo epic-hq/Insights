@@ -2,27 +2,27 @@
  * Progress bar for theme consolidation with real-time updates
  */
 
-import { CheckCircle, Loader2, XCircle } from "lucide-react"
-import { Progress } from "~/components/ui/progress"
-import type { ConsolidateProgressInfo } from "../hooks/useConsolidateProgress"
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { Progress } from "~/components/ui/progress";
+import type { ConsolidateProgressInfo } from "../hooks/useConsolidateProgress";
 
 interface ConsolidateProgressBarProps {
-	progress: ConsolidateProgressInfo
-	onDismiss?: () => void
+	progress: ConsolidateProgressInfo;
+	onDismiss?: () => void;
 }
 
 export function ConsolidateProgressBar({ progress, onDismiss }: ConsolidateProgressBarProps) {
-	if (progress.status === "idle") return null
+	if (progress.status === "idle") return null;
 
 	const getStepIcon = () => {
 		if (progress.isComplete) {
-			return <CheckCircle className="h-4 w-4 text-green-600" />
+			return <CheckCircle className="h-4 w-4 text-green-600" />;
 		}
 		if (progress.hasError) {
-			return <XCircle className="h-4 w-4 text-red-600" />
+			return <XCircle className="h-4 w-4 text-red-600" />;
 		}
-		return <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-	}
+		return <Loader2 className="h-4 w-4 animate-spin text-blue-600" />;
+	};
 
 	return (
 		<div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -69,5 +69,5 @@ export function ConsolidateProgressBar({ progress, onDismiss }: ConsolidateProgr
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

@@ -1,6 +1,6 @@
 interface ParticipantSnapshotProps {
-	narrative: string
-	className?: string
+	narrative: string;
+	className?: string;
 }
 
 export default function ParticipantSnapshot({ narrative, className }: ParticipantSnapshotProps) {
@@ -9,5 +9,5 @@ export default function ParticipantSnapshot({ narrative, className }: Participan
 			<h3 className="mb-2 font-semibold text-lg">Participant Snapshot</h3>
 			<p className="whitespace-pre-line text-sm">{narrative}</p>
 		</div>
-	)
+	);
 }

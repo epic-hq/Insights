@@ -9,20 +9,20 @@
  * - Minimal chrome, maximum information density
  */
 
-import type { EvidenceTurn } from "baml_client"
-import { ChevronDown, ChevronRight, Clock } from "lucide-react"
-import { useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { cn } from "~/lib/utils"
-import { formatMs } from "../lib/audio"
+import type { EvidenceTurn } from "baml_client";
+import { ChevronDown, ChevronRight, Clock } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { cn } from "~/lib/utils";
+import { formatMs } from "../lib/audio";
 
 interface EvidenceCardProps {
-	evidence: EvidenceTurn
-	index: number
-	isNew?: boolean
-	compact?: boolean
+	evidence: EvidenceTurn;
+	index: number;
+	isNew?: boolean;
+	compact?: boolean;
 	/** Optional map of speaker keys to display names */
-	speakerNames?: Record<string, string>
+	speakerNames?: Record<string, string>;
 }
 
 /**
@@ -34,51 +34,51 @@ function deriveTag(evidence: EvidenceTurn): { label: string; color: string } | n
 		return {
 			label: "pain",
 			color: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
-		}
+		};
 	}
 	// Check for goals/gains
 	if (evidence.gains?.length || evidence.facet_mentions?.some((f) => f.kind_slug === "goal")) {
 		return {
 			label: "goal",
 			color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-		}
+		};
 	}
 	// Check for tool mentions
 	if (evidence.facet_mentions?.some((f) => f.kind_slug === "tool")) {
 		return {
 			label: "tool",
 			color: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
-		}
+		};
 	}
 	// Check for workflow
 	if (evidence.facet_mentions?.some((f) => f.kind_slug === "workflow")) {
 		return {
 			label: "workflow",
 			color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300",
-		}
+		};
 	}
 	// Questions from interviewer
 	if (evidence.isQuestion) {
 		return {
 			label: "probe",
 			color: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-		}
+		};
 	}
-	return null
+	return null;
 }
 
 export function EvidenceCard({ evidence, index, isNew, compact, speakerNames = {} }: EvidenceCardProps) {
-	const [expanded, setExpanded] = useState(!compact)
+	const [expanded, setExpanded] = useState(!compact);
 
 	// Get speaker display name
-	const speakerKey = evidence.person_key || evidence.speaker_label || "Unknown"
-	const speakerDisplay = speakerNames[speakerKey] || evidence.speaker_label || speakerKey
+	const speakerKey = evidence.person_key || evidence.speaker_label || "Unknown";
+	const speakerDisplay = speakerNames[speakerKey] || evidence.speaker_label || speakerKey;
 
 	// Derive a category tag
-	const tag = deriveTag(evidence)
+	const tag = deriveTag(evidence);
 
 	// Check if there's more detail to show
-	const hasVerbatim = Boolean(evidence.verbatim)
+	const hasVerbatim = Boolean(evidence.verbatim);
 
 	// Compact view: single line "SPEAKER: gist"
 	if (compact && !expanded) {
@@ -115,7 +115,7 @@ export function EvidenceCard({ evidence, index, isNew, compact, speakerNames = {
 					{hasVerbatim && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
 				</div>
 			</div>
-		)
+		);
 	}
 
 	// Expanded view: shows verbatim quote
@@ -167,5 +167,5 @@ export function EvidenceCard({ evidence, index, isNew, compact, speakerNames = {
 				</p>
 			)}
 		</div>
-	)
+	);
 }

@@ -1,47 +1,47 @@
-import consola from "consola"
-import { ExternalLink, Globe, HelpCircle, MessageSquare, MessageSquareText } from "lucide-react"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { getProjects } from "~/features/projects/db"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import consola from "consola";
+import { ExternalLink, Globe, HelpCircle, MessageSquare, MessageSquareText } from "lucide-react";
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { getProjects } from "~/features/projects/db";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
-import { userContext } from "~/server/user-context"
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Projects" }, { name: "description", content: "Manage research and product projects" }]
-}
+	return [{ title: "Projects" }, { name: "description", content: "Manage research and product projects" }];
+};
 
 export async function loader({ context, request, params }: LoaderFunctionArgs) {
-	const user = context.get(userContext)
-	const supabase = user.supabase
+	const user = context.get(userContext);
+	const supabase = user.supabase;
 
 	// Use accountId from URL - this is the canonical team account ID
 	// Best practice for multi-tenant SaaS: account context comes from URL
-	const accountId = params.accountId
+	const accountId = params.accountId;
 
-	consola.log("🚀 PROJECTS LOADER FINAL accountId: ", accountId)
+	consola.log("🚀 PROJECTS LOADER FINAL accountId: ", accountId);
 	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const { data: projects, error } = await getProjects({ supabase, accountId })
+	const { data: projects, error } = await getProjects({ supabase, accountId });
 
-	consola.log("🚀 PROJECTS LOADER DB RESPONSE:", { projects, error })
+	consola.log("🚀 PROJECTS LOADER DB RESPONSE:", { projects, error });
 
 	if (error) {
-		consola.error("🚀 PROJECTS LOADER DB ERROR:", error)
+		consola.error("🚀 PROJECTS LOADER DB ERROR:", error);
 		throw new Response(`Error loading projects: ${error.message}`, {
 			status: 500,
-		})
+		});
 	}
 
 	// Fetch additional counts for each project in parallel
-	const projectIds = (projects || []).map((p) => p.id)
+	const projectIds = (projects || []).map((p) => p.id);
 
 	// Get questions count (interview_prompts) and responses count (survey_response + public_chat interviews) per project
 	const [promptsResult, responsesResult] = await Promise.all([
@@ -56,65 +56,65 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 			.select("project_id, source_type")
 			.in("project_id", projectIds)
 			.in("source_type", ["survey_response", "public_chat"]),
-	])
+	]);
 
 	// Build count maps
-	const questionsCountMap = new Map<string, number>()
-	;(promptsResult.data || []).forEach((prompt) => {
-		const count = questionsCountMap.get(prompt.project_id) || 0
-		questionsCountMap.set(prompt.project_id, count + 1)
-	})
+	const questionsCountMap = new Map<string, number>();
+	(promptsResult.data || []).forEach((prompt) => {
+		const count = questionsCountMap.get(prompt.project_id) || 0;
+		questionsCountMap.set(prompt.project_id, count + 1);
+	});
 
-	const responsesCountMap = new Map<string, number>()
-	;(responsesResult.data || []).forEach((interview) => {
-		if (!interview.project_id) return
-		const count = responsesCountMap.get(interview.project_id) || 0
-		responsesCountMap.set(interview.project_id, count + 1)
-	})
+	const responsesCountMap = new Map<string, number>();
+	(responsesResult.data || []).forEach((interview) => {
+		if (!interview.project_id) return;
+		const count = responsesCountMap.get(interview.project_id) || 0;
+		responsesCountMap.set(interview.project_id, count + 1);
+	});
 
 	// Enrich projects with counts
 	const enrichedProjects = (projects || []).map((project) => ({
 		...project,
 		questionsCount: questionsCountMap.get(project.id) || 0,
 		responsesCount: responsesCountMap.get(project.id) || 0,
-	}))
+	}));
 
-	consola.log("🚀 PROJECTS LOADER SUCCESS - returning projects:", enrichedProjects?.length || 0)
-	return { projects: enrichedProjects, accountId }
+	consola.log("🚀 PROJECTS LOADER SUCCESS - returning projects:", enrichedProjects?.length || 0);
+	return { projects: enrichedProjects, accountId };
 }
 
 export default function ProjectsIndexPage() {
-	const { projects, accountId } = useLoaderData<typeof loader>()
+	const { projects, accountId } = useLoaderData<typeof loader>();
 	// Demo code to access current project context
-	const currentProjectContext = useCurrentProject()
-	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout")
-	const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
+	const currentProjectContext = useCurrentProject();
+	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout");
+	const routes = useProjectRoutes(currentProjectContext?.projectPath || "");
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case "planning":
-				return "bg-blue-100 text-blue-800"
+				return "bg-blue-100 text-blue-800";
 			case "active":
-				return "bg-green-100 text-green-800"
+				return "bg-green-100 text-green-800";
 			case "on_hold":
-				return "bg-yellow-100 text-yellow-800"
+				return "bg-yellow-100 text-yellow-800";
 			case "completed":
-				return "bg-gray-100 text-gray-800"
+				return "bg-gray-100 text-gray-800";
 			case "cancelled":
-				return "bg-red-100 text-red-800"
+				return "bg-red-100 text-red-800";
 			default:
-				return "bg-gray-100 text-gray-800"
+				return "bg-gray-100 text-gray-800";
 		}
-	}
+	};
 
 	// Build project-specific route helper
 	const getProjectRoutes = (projectId: string) => {
-		const projectPath = `/a/${accountId}/${projectId}`
+		const projectPath = `/a/${accountId}/${projectId}`;
 		return {
 			interviews: (type?: string) => (type ? `${projectPath}/interviews?type=${type}` : `${projectPath}/interviews`),
 			dashboard: () => `${projectPath}`,
-		}
-	}
+		};
+	};
 
 	return (
 		<TooltipProvider>
@@ -144,8 +144,8 @@ export default function ProjectsIndexPage() {
 				) : (
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{projects.map((project) => {
-							const projectRoutes = getProjectRoutes(project.id)
-							const hasPublicUrl = project.is_public && project.public_slug
+							const projectRoutes = getProjectRoutes(project.id);
+							const hasPublicUrl = project.is_public && project.public_slug;
 
 							return (
 								<Card key={project.id} className="transition-shadow hover:shadow-md">
@@ -234,11 +234,11 @@ export default function ProjectsIndexPage() {
 										</div>
 									</CardContent>
 								</Card>
-							)
+							);
 						})}
 					</div>
 				)}
 			</div>
 		</TooltipProvider>
-	)
+	);
 }

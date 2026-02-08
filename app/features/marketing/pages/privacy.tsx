@@ -3,8 +3,8 @@
  * Comprehensive privacy policy covering data collection, usage, rights, and compliance
  */
 
-import { Link, type MetaFunction } from "react-router"
-import MainNav from "~/components/navigation/MainNav"
+import { Link, type MetaFunction } from "react-router";
+import MainNav from "~/components/navigation/MainNav";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -13,11 +13,11 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "DeepLight Privacy Policy - Learn how we collect, use, and protect your personal information.",
 		},
-	]
-}
+	];
+};
 
 export default function PrivacyPolicyPage() {
-	const lastUpdated = "January 2025"
+	const lastUpdated = "January 2025";
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
@@ -385,5 +385,5 @@ export default function PrivacyPolicyPage() {
 				</nav>
 			</footer>
 		</div>
-	)
+	);
 }

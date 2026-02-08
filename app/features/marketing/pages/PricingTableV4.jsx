@@ -1,6 +1,6 @@
-import React, { useState } from "react"
-import { useSearchParams } from "react-router-dom"
-import { PLANS } from "../../../config/plans"
+import React, { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { PLANS } from "../../../config/plans";
 
 const FEATURE_DISPLAY_NAMES = {
 	smart_personas: "Smart Personas",
@@ -9,7 +9,7 @@ const FEATURE_DISPLAY_NAMES = {
 	ai_crm: "AI CRM",
 	team_workspace: "Team Workspace",
 	sso: "Single Sign-On",
-}
+};
 
 const CheckIcon = ({ muted }) => (
 	<svg
@@ -21,13 +21,13 @@ const CheckIcon = ({ muted }) => (
 	>
 		<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
 	</svg>
-)
+);
 
 const XIcon = () => (
 	<svg className="h-4 w-4 text-stone-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
 		<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
 	</svg>
-)
+);
 
 /**
  * PricingTableV4 - Marketing Pricing Page
@@ -38,16 +38,16 @@ const XIcon = () => (
  * @see app/config/plans.ts for billing-relevant plan data
  */
 const PricingTable = () => {
-	const [searchParams] = useSearchParams()
-	const [billingCycle, setBillingCycle] = useState("monthly")
+	const [searchParams] = useSearchParams();
+	const [billingCycle, setBillingCycle] = useState("monthly");
 
 	// Read URL params for upgrade flow highlighting
-	const highlightPlan = searchParams.get("plan") // e.g., "starter", "pro"
-	const highlightFeature = searchParams.get("feature") // e.g., "smart_personas"
-	const featureDisplayName = highlightFeature ? FEATURE_DISPLAY_NAMES[highlightFeature] || highlightFeature : null
+	const highlightPlan = searchParams.get("plan"); // e.g., "starter", "pro"
+	const highlightFeature = searchParams.get("feature"); // e.g., "smart_personas"
+	const featureDisplayName = highlightFeature ? FEATURE_DISPLAY_NAMES[highlightFeature] || highlightFeature : null;
 
 	// Import prices from single source of truth
-	const { free, starter, pro, team } = PLANS
+	const { free, starter, pro, team } = PLANS;
 
 	const plans = [
 		{
@@ -275,7 +275,7 @@ const PricingTable = () => {
 			],
 			note: `Minimum ${team.minSeats} users · $0.15/min voice overage`,
 		},
-	]
+	];
 
 	return (
 		<div
@@ -372,8 +372,8 @@ const PricingTable = () => {
 				<div className="mb-20 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
 					{plans.map((plan) => {
 						// Check if this plan should be highlighted via URL param
-						const isUrlHighlighted = highlightPlan === plan.id
-						const shouldHighlight = plan.highlight || isUrlHighlighted
+						const isUrlHighlighted = highlightPlan === plan.id;
+						const shouldHighlight = plan.highlight || isUrlHighlighted;
 
 						return (
 							<div
@@ -500,7 +500,7 @@ const PricingTable = () => {
 									)}
 								</div>
 							</div>
-						)
+						);
 					})}
 				</div>
 
@@ -594,7 +594,7 @@ const PricingTable = () => {
 				</div>
 			</div>
 		</div>
-	)
-}
+	);
+};
 
-export default PricingTable
+export default PricingTable;

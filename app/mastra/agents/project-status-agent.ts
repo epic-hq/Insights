@@ -1,81 +1,81 @@
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { Memory } from "@mastra/memory"
-import consola from "consola"
-import { openai } from "../../lib/billing/instrumented-openai.server"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { Memory } from "@mastra/memory";
+import consola from "consola";
+import { openai } from "../../lib/billing/instrumented-openai.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { capabilityLookupTool } from "../tools/capability-lookup"
-import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses"
-import { fetchEvidenceTool } from "../tools/fetch-evidence"
-import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
-import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
-import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
-import { fetchSegmentsTool } from "../tools/fetch-segments"
-import { fetchThemesTool } from "../tools/fetch-themes"
-import { fetchWebContentTool } from "../tools/fetch-web-content"
-import { generateDocumentLinkTool } from "../tools/generate-document-link"
-import { generateProjectRoutesTool } from "../tools/generate-project-routes"
-import { generateResearchRecommendationsTool } from "../tools/generate-research-recommendations"
-import { getCurrentDateTool } from "../tools/get-current-date"
-import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table"
-import { importPeopleFromTableTool } from "../tools/import-people-from-table"
-import { importVideoFromUrlTool } from "../tools/import-video-from-url"
-import { manageDocumentsTool } from "../tools/manage-documents"
-import { parseSpreadsheetTool } from "../tools/parse-spreadsheet"
-import { recommendNextActionsTool } from "../tools/recommend-next-actions"
-import { findSimilarPagesTool, webResearchTool } from "../tools/research-web"
-import { saveTableToAssetsTool } from "../tools/save-table-to-assets"
-import { semanticSearchAssetsTool } from "../tools/semantic-search-assets"
-import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence"
-import { suggestionTool } from "../tools/suggestion-tool"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
-import { updateTableAssetTool } from "../tools/update-table-asset"
-import { chiefOfStaffAgent } from "./chief-of-staff-agent"
-import { opsAgent } from "./ops-agent"
-import { peopleAgent } from "./people-agent"
-import { researchAgent } from "./research-agent"
-import { taskAgent } from "./task-agent"
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { capabilityLookupTool } from "../tools/capability-lookup";
+import { fetchConversationLensesTool } from "../tools/fetch-conversation-lenses";
+import { fetchEvidenceTool } from "../tools/fetch-evidence";
+import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
+import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
+import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
+import { fetchSegmentsTool } from "../tools/fetch-segments";
+import { fetchThemesTool } from "../tools/fetch-themes";
+import { fetchWebContentTool } from "../tools/fetch-web-content";
+import { generateDocumentLinkTool } from "../tools/generate-document-link";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { generateResearchRecommendationsTool } from "../tools/generate-research-recommendations";
+import { getCurrentDateTool } from "../tools/get-current-date";
+import { importOpportunitiesFromTableTool } from "../tools/import-opportunities-from-table";
+import { importPeopleFromTableTool } from "../tools/import-people-from-table";
+import { importVideoFromUrlTool } from "../tools/import-video-from-url";
+import { manageDocumentsTool } from "../tools/manage-documents";
+import { parseSpreadsheetTool } from "../tools/parse-spreadsheet";
+import { recommendNextActionsTool } from "../tools/recommend-next-actions";
+import { findSimilarPagesTool, webResearchTool } from "../tools/research-web";
+import { saveTableToAssetsTool } from "../tools/save-table-to-assets";
+import { semanticSearchAssetsTool } from "../tools/semantic-search-assets";
+import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
+import { suggestionTool } from "../tools/suggestion-tool";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
+import { updateTableAssetTool } from "../tools/update-table-asset";
+import { chiefOfStaffAgent } from "./chief-of-staff-agent";
+import { opsAgent } from "./ops-agent";
+import { peopleAgent } from "./people-agent";
+import { researchAgent } from "./research-agent";
+import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
 	try {
-		const tool_entries = Object.entries(tools)
-		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = []
+		const tool_entries = Object.entries(tools);
+		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
 
 		for (const [tool_name, tool] of tool_entries) {
 			if (!tool || typeof tool !== "object") {
 				issues.push({
 					tool: tool_name,
 					issue: `tool is not an object (${typeof tool})`,
-				})
-				continue
+				});
+				continue;
 			}
 
-			const own_props = Object.getOwnPropertyNames(tool)
-			const has_input_schema = own_props.includes("inputSchema")
-			const has_output_schema = own_props.includes("outputSchema")
+			const own_props = Object.getOwnPropertyNames(tool);
+			const has_input_schema = own_props.includes("inputSchema");
+			const has_output_schema = own_props.includes("outputSchema");
 
-			const input_schema = (tool as any).inputSchema
-			const output_schema = (tool as any).outputSchema
+			const input_schema = (tool as any).inputSchema;
+			const output_schema = (tool as any).outputSchema;
 			const input_is_zod =
-				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function"
+				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
 			const output_is_zod =
-				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function"
+				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
 
 			if (!has_input_schema || !input_is_zod) {
 				issues.push({
 					tool: tool_name,
 					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
 					ownProps: own_props,
-				})
+				});
 			}
 			if (!has_output_schema || !output_is_zod) {
 				issues.push({
 					tool: tool_name,
 					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
 					ownProps: own_props,
-				})
+				});
 			}
 		}
 
@@ -84,15 +84,15 @@ function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
 				agent: agent_name,
 				issueCount: issues.length,
 				issues,
-			})
+			});
 		} else {
 			consola.info("[mastra-schema-audit] all tool schemas look valid", {
 				agent: agent_name,
 				toolCount: tool_entries.length,
-			})
+			});
 		}
 	} catch (error) {
-		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error })
+		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
 	}
 }
 
@@ -126,18 +126,18 @@ const project_status_agent_tools = {
 	"recommend-next-actions": recommendNextActionsTool,
 	generateResearchRecommendations: generateResearchRecommendationsTool,
 	"generate-research-recommendations": generateResearchRecommendationsTool,
-}
+};
 
-auditToolSchemas("projectStatusAgent", project_status_agent_tools)
+auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
 	id: "project-status-agent",
 	name: "projectStatusAgent",
 	instructions: async ({ requestContext }) => {
 		try {
-			const projectId = requestContext.get("project_id")
-			const accountId = requestContext.get("account_id")
-			const userId = requestContext.get("user_id")
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
 			return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
@@ -336,16 +336,16 @@ Do NOT add a "Next steps" section in the text response. Rely on the suggestion w
 
 ## Chief of Staff
 For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
-`
+`;
 		} catch (error) {
-			consola.error("Error in project status agent instructions:", error)
+			consola.error("Error in project status agent instructions:", error);
 			return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
-2. Contacting support if the issue persists`
+2. Contacting support if the issue persists`;
 		}
 	},
 	model: openai("gpt-4.1"),
@@ -363,4 +363,4 @@ Please try:
 	// TokenLimiterProcessor prevents context window overflow
 	// Note: Using number format for Zod v4 compatibility
 	outputProcessors: [new TokenLimiterProcessor(100_000)],
-})
+});

@@ -1,55 +1,55 @@
 // Simple baml v1 analysis, stored in annotations
 
-import { b } from "baml_client"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { getInsights } from "~/features/insights/db"
-import { getInterviews } from "~/features/interviews/db"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
+import { b } from "baml_client";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { getInsights } from "~/features/insights/db";
+import { getInterviews } from "~/features/interviews/db";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 
 interface AnalysisRequest {
-	projectId: string
-	customInstructions?: string
-	analysisVersion?: string
+	projectId: string;
+	customInstructions?: string;
+	analysisVersion?: string;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
 		// Get authenticated user
-		const { user } = await getAuthenticatedUser(request)
+		const { user } = await getAuthenticatedUser(request);
 		if (!user) {
-			return Response.json({ error: "User not authenticated" }, { status: 401 })
+			return Response.json({ error: "User not authenticated" }, { status: 401 });
 		}
 
-		const body: AnalysisRequest = await request.json()
-		const { projectId, customInstructions, analysisVersion = "1.0" } = body
+		const body: AnalysisRequest = await request.json();
+		const { projectId, customInstructions, analysisVersion = "1.0" } = body;
 
 		if (!projectId) {
-			return Response.json({ error: "Missing required field: projectId" }, { status: 400 })
+			return Response.json({ error: "Missing required field: projectId" }, { status: 400 });
 		}
 
 		consola.log("Analyzing project status for:", {
 			projectId,
 			customInstructions,
 			analysisVersion,
-		})
+		});
 
 		// Get supabase client with auth
-		const { client: supabase } = getServerClient(request)
+		const { client: supabase } = getServerClient(request);
 
 		if (!supabase) {
-			return Response.json({ error: "Failed to get Supabase client" }, { status: 500 })
+			return Response.json({ error: "Failed to get Supabase client" }, { status: 500 });
 		}
 		// Get project first to find the account_id (simplified approach)
 		const { data: project, error: projectError } = await supabase
 			.from("projects")
 			.select("*")
 			.eq("id", projectId)
-			.single()
+			.single();
 
 		// consola.log("Project result:", {
 		// 	data: project,
@@ -57,71 +57,71 @@ export async function action({ request }: ActionFunctionArgs) {
 		// })
 
 		if (!project) {
-			return Response.json({ error: "Project not found" }, { status: 404 })
+			return Response.json({ error: "Project not found" }, { status: 404 });
 		}
 
 		// Use the project's account_id for all subsequent operations
-		const accountId = project.account_id
+		const accountId = project.account_id;
 
 		// Fetch interviews and insights using proper database functions
 		const { data: interviews, error: interviewsError } = await getInterviews({
 			supabase,
 			accountId,
 			projectId,
-		})
+		});
 		consola.log("Interviews:", {
 			interviews: interviews?.length,
 			error: interviewsError,
-		})
+		});
 
 		const { data: insights, error: insightsError } = await getInsights({
 			supabase,
 			accountId,
 			projectId,
-		})
+		});
 		consola.log("Insights:", {
 			insights: insights?.length,
 			error: insightsError,
-		})
+		});
 
-		const totalInterviews = interviews?.length || 0
-		const totalInsights = insights?.length || 0
+		const totalInterviews = interviews?.length || 0;
+		const totalInsights = insights?.length || 0;
 
 		// Allow analysis with just insights if we have enough data
 		if (totalInsights === 0) {
 			consola.warn("Insufficient data for analysis:", {
 				totalInterviews,
 				totalInsights,
-			})
+			});
 			return Response.json(
 				{
 					error: "Insufficient data for analysis",
 					details: `Need at least insights (${totalInsights} found)`,
 				},
 				{ status: 400 }
-			)
+			);
 		}
 
 		// Prepare data for BAML analysis
-		const researchGoal = project.research_goal || "Understand user needs"
+		const researchGoal = project.research_goal || "Understand user needs";
 		const interviewContent =
 			interviews
 				?.map((i) => `${i.title || "Interview"}: ${i.observations_and_notes || i.high_impact_themes?.join(", ") || ""}`)
-				.join("\n\n") || ""
-		const insightContent = insights?.map((i) => `${i.name}: ${i.pain || ""} ${i.details || ""}`).join("\n\n") || ""
+				.join("\n\n") || "";
+		const insightContent = insights?.map((i) => `${i.name}: ${i.pain || ""} ${i.details || ""}`).join("\n\n") || "";
 
 		// TODO analyze if this is helpful or separate custom instructions
 		// Enhanced research goal with custom instructions
 		const enhancedGoal = customInstructions
 			? `${researchGoal}. Additional analysis requirements: ${customInstructions}`
-			: researchGoal
+			: researchGoal;
 
 		// consola.log(`analyze-project params goal: ${enhancedGoal}\ninsightContent: ${insightContent}\ninterviewContent: ${interviewContent}\ncustomInstructions: ${customInstructions}`)
 		// Run BAML analysis
 		const [execsum, projectAnalysis] = await Promise.all([
 			b.GenerateExecutiveSummary(enhancedGoal, insightContent, interviewContent, customInstructions || ""),
 			b.AnalyzeProjectInsights(enhancedGoal, insightContent, interviewContent, customInstructions || ""),
-		])
+		]);
 
 		// Prepare analysis results with new structure
 		const analysisResults = {
@@ -146,7 +146,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				executive_summary: execsum,
 				project_analysis: projectAnalysis,
 			},
-		}
+		};
 
 		// Store as annotation
 		const { data: annotation, error: annotationError } = await supabase
@@ -166,28 +166,28 @@ export async function action({ request }: ActionFunctionArgs) {
 				visibility: "team",
 			})
 			.select()
-			.single()
+			.single();
 
 		if (annotationError) {
-			consola.error("Failed to store analysis annotation:", annotationError)
-			return Response.json({ error: "Failed to store analysis results" }, { status: 500 })
+			consola.error("Failed to store analysis annotation:", annotationError);
+			return Response.json({ error: "Failed to store analysis results" }, { status: 500 });
 		}
 
-		consola.log("✅ Project status analysis completed and stored:", annotation.id)
+		consola.log("✅ Project status analysis completed and stored:", annotation.id);
 
 		return Response.json({
 			success: true,
 			analysisId: annotation.id,
 			results: analysisResults,
-		})
+		});
 	} catch (error) {
-		consola.error("Failed to analyze project status:", error)
+		consola.error("Failed to analyze project status:", error);
 		return Response.json(
 			{
 				error: "Failed to analyze project status",
 				details: error instanceof Error ? error.message : "Unknown error",
 			},
 			{ status: 500 }
-		)
+		);
 	}
 }

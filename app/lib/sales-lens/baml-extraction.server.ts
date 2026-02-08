@@ -5,13 +5,13 @@
  * using semantic search + AI extraction for high-quality, traceable insights.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { b } from "../../../baml_client"
-import type { Database } from "../../../supabase/types"
-import type { SalesConversationExtraction } from "./schema"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { b } from "../../../baml_client";
+import type { Database } from "../../../supabase/types";
+import type { SalesConversationExtraction } from "./schema";
 
-type DbClient = SupabaseClient<Database>
+type DbClient = SupabaseClient<Database>;
 
 /**
  * Build a sales lens extraction from interview evidence using BAML + semantic search
@@ -20,37 +20,37 @@ export async function buildSalesLensFromEvidence(
 	db: DbClient,
 	interviewId: string
 ): Promise<SalesConversationExtraction> {
-	consola.info(`[buildSalesLensFromEvidence] Starting extraction for interview ${interviewId}`)
+	consola.info(`[buildSalesLensFromEvidence] Starting extraction for interview ${interviewId}`);
 
 	// 1. Get interview context
 	const { data: interview, error: interviewError } = await db
 		.from("interviews")
 		.select("id, account_id, project_id, title, interview_date, observations_and_notes")
 		.eq("id", interviewId)
-		.single()
+		.single();
 
 	if (interviewError || !interview) {
-		throw new Error(`Failed to load interview ${interviewId}: ${interviewError?.message}`)
+		throw new Error(`Failed to load interview ${interviewId}: ${interviewError?.message}`);
 	}
 
 	// 2. Get ALL evidence from the interview (let BAML figure out what's relevant)
-	consola.info("[buildSalesLensFromEvidence] Loading all evidence from interview")
+	consola.info("[buildSalesLensFromEvidence] Loading all evidence from interview");
 	const { data: evidenceRows, error: evidenceError } = await db
 		.from("evidence")
 		.select("id, verbatim, chunk, gist, anchors, pains, gains, thinks, feels")
 		.eq("interview_id", interviewId)
-		.order("created_at", { ascending: true })
+		.order("created_at", { ascending: true });
 
 	if (evidenceError) {
-		throw new Error(`Failed to load evidence for interview ${interviewId}: ${evidenceError.message}`)
+		throw new Error(`Failed to load evidence for interview ${interviewId}: ${evidenceError.message}`);
 	}
 
 	if (!evidenceRows || evidenceRows.length === 0) {
-		throw new Error(`No evidence found for interview ${interviewId}. Extract evidence first.`)
+		throw new Error(`No evidence found for interview ${interviewId}. Extract evidence first.`);
 	}
 
-	const allEvidence = evidenceRows
-	consola.info(`[buildSalesLensFromEvidence] Loaded ${allEvidence.length} evidence pieces`)
+	const allEvidence = evidenceRows;
+	consola.info(`[buildSalesLensFromEvidence] Loaded ${allEvidence.length} evidence pieces`);
 
 	// 4. Prepare evidence for BAML (as JSON string)
 	const evidenceForBAML = allEvidence.map((e) => ({
@@ -61,20 +61,20 @@ export async function buildSalesLensFromEvidence(
 		gains: e.gains || [],
 		thinks: e.thinks || [],
 		feels: e.feels || [],
-	}))
+	}));
 
-	const evidenceJson = JSON.stringify(evidenceForBAML, null, 2)
+	const evidenceJson = JSON.stringify(evidenceForBAML, null, 2);
 
 	// 5. Prepare interview context
 	const interviewContext = `
 Interview: ${interview.title || "Untitled"}
 Date: ${interview.interview_date || "Unknown"}
 Notes: ${interview.observations_and_notes || "None"}
-`.trim()
+`.trim();
 
 	// 6. Call BAML to extract BANT information
-	consola.info("[buildSalesLensFromEvidence] Calling BAML extraction")
-	const extraction = await b.ExtractSalesLensBant(evidenceJson, interviewContext)
+	consola.info("[buildSalesLensFromEvidence] Calling BAML extraction");
+	const extraction = await b.ExtractSalesLensBant(evidenceJson, interviewContext);
 
 	consola.info("[buildSalesLensFromEvidence] BAML extraction complete", {
 		stakeholders: extraction.stakeholders.length,
@@ -82,13 +82,13 @@ Notes: ${interview.observations_and_notes || "None"}
 		budget_discussed: extraction.budget.has_budget_discussion,
 		decision_maker_identified: extraction.authority.decision_maker_identified,
 		qualification: extraction.deal_qualification.overall_qualification,
-	})
+	});
 
 	// 7. Get interview participants for stakeholder matching
 	const { data: participants } = await db
 		.from("interview_people")
 		.select("person_id, role, display_name")
-		.eq("interview_id", interviewId)
+		.eq("interview_id", interviewId);
 
 	// 8. Convert BAML extraction to SalesConversationExtraction format
 	const salesExtraction: SalesConversationExtraction = {
@@ -122,13 +122,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
 						evidence: extraction.budget.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id)
+							const ev = allEvidence.find((e) => e.id === id);
 							return {
 								evidenceId: id,
 								startMs: ev?.anchors[0]?.start_ms || null,
 								endMs: ev?.anchors[0]?.end_ms || null,
 								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							}
+							};
 						}),
 						hygiene: [],
 					},
@@ -150,13 +150,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
 						evidence: extraction.authority.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id)
+							const ev = allEvidence.find((e) => e.id === id);
 							return {
 								evidenceId: id,
 								startMs: ev?.anchors[0]?.start_ms || null,
 								endMs: ev?.anchors[0]?.end_ms || null,
 								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							}
+							};
 						}),
 						hygiene: extraction.authority.blockers.map((blocker) => ({
 							code: "blocker",
@@ -182,13 +182,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
 						evidence: extraction.need.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id)
+							const ev = allEvidence.find((e) => e.id === id);
 							return {
 								evidenceId: id,
 								startMs: ev?.anchors[0]?.start_ms || null,
 								endMs: ev?.anchors[0]?.end_ms || null,
 								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							}
+							};
 						}),
 						hygiene: [],
 					},
@@ -211,13 +211,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
 						evidence: extraction.timeline.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id)
+							const ev = allEvidence.find((e) => e.id === id);
 							return {
 								evidenceId: id,
 								startMs: ev?.anchors[0]?.start_ms || null,
 								endMs: ev?.anchors[0]?.end_ms || null,
 								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							}
+							};
 						}),
 						hygiene: [],
 					},
@@ -237,13 +237,13 @@ Notes: ${interview.observations_and_notes || "None"}
 						relatedPersonIds: [],
 						relatedOrganizationIds: [],
 						evidence: step.evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id)
+							const ev = allEvidence.find((e) => e.id === id);
 							return {
 								evidenceId: id,
 								startMs: ev?.anchors[0]?.start_ms || null,
 								endMs: ev?.anchors[0]?.end_ms || null,
 								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							}
+							};
 						}),
 						hygiene: [],
 					})),
@@ -257,18 +257,18 @@ Notes: ${interview.observations_and_notes || "None"}
 					(p) =>
 						p.display_name?.toLowerCase().includes(stakeholder.person_name.toLowerCase()) ||
 						stakeholder.person_name.toLowerCase().includes(p.display_name?.toLowerCase() || "")
-				)
+				);
 
 				// Validate role_type matches enum: "economic_buyer" | "influencer" | "champion" | "blocker" | "decision_maker"
-				const validRoles = ["economic_buyer", "influencer", "champion", "blocker", "decision_maker"]
-				const roleType = validRoles.includes(stakeholder.role_type) ? stakeholder.role_type : "influencer"
+				const validRoles = ["economic_buyer", "influencer", "champion", "blocker", "decision_maker"];
+				const roleType = validRoles.includes(stakeholder.role_type) ? stakeholder.role_type : "influencer";
 
 				// Normalize influence_level to lowercase and validate against enum
-				const normalizedInfluence = stakeholder.influence_level.toLowerCase().trim()
-				const validInfluence = ["low", "medium", "high"]
+				const normalizedInfluence = stakeholder.influence_level.toLowerCase().trim();
+				const validInfluence = ["low", "medium", "high"];
 				const influence = validInfluence.includes(normalizedInfluence)
 					? (normalizedInfluence as "low" | "medium" | "high")
-					: "low"
+					: "low";
 
 				return {
 					personId: participant?.person_id || null,
@@ -282,15 +282,15 @@ Notes: ${interview.observations_and_notes || "None"}
 					email: null,
 					confidence: 0.7,
 					evidence: stakeholder.evidence_ids.map((id) => {
-						const ev = allEvidence.find((e) => e.id === id)
+						const ev = allEvidence.find((e) => e.id === id);
 						return {
 							evidenceId: id,
 							startMs: ev?.anchors[0]?.start_ms || null,
 							endMs: ev?.anchors[0]?.end_ms || null,
 							transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-						}
+						};
 					}),
-				}
+				};
 			}),
 		},
 		nextStep:
@@ -304,13 +304,13 @@ Notes: ${interview.observations_and_notes || "None"}
 							: null,
 						confidence: 0.8,
 						evidence: extraction.next_steps[0].evidence_ids.map((id) => {
-							const ev = allEvidence.find((e) => e.id === id)
+							const ev = allEvidence.find((e) => e.id === id);
 							return {
 								evidenceId: id,
 								startMs: ev?.anchors[0]?.start_ms || null,
 								endMs: ev?.anchors[0]?.end_ms || null,
 								transcriptSnippet: ev?.verbatim?.slice(0, 240) || null,
-							}
+							};
 						}),
 					}
 				: {
@@ -334,7 +334,7 @@ Notes: ${interview.observations_and_notes || "None"}
 			evidenceCount: allEvidence.length,
 			qualificationScore: extraction.deal_qualification.overall_qualification,
 		},
-	}
+	};
 
-	return salesExtraction
+	return salesExtraction;
 }

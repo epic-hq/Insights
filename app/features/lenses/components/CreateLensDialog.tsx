@@ -7,12 +7,12 @@
  * 3. User can save or edit description and regenerate
  */
 
-import { Check, Loader2, RefreshCw, Sparkles, Wand2 } from "lucide-react"
-import { useState } from "react"
-import { useFetcher } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Check, Loader2, RefreshCw, Sparkles, Wand2 } from "lucide-react";
+import { useState } from "react";
+import { useFetcher } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -21,57 +21,57 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Label } from "~/components/ui/label"
-import { Switch } from "~/components/ui/switch"
-import { Textarea } from "~/components/ui/textarea"
+} from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import { Switch } from "~/components/ui/switch";
+import { Textarea } from "~/components/ui/textarea";
 
 type GeneratedTemplate = {
-	template_name: string
-	summary: string
-	primary_objective: string
+	template_name: string;
+	summary: string;
+	primary_objective: string;
 	template_definition: {
 		sections: Array<{
-			section_key: string
-			section_name: string
-			description?: string
+			section_key: string;
+			section_name: string;
+			description?: string;
 			fields: Array<{
-				field_key: string
-				field_name: string
-				field_type: string
-				description?: string
-			}>
-		}>
-		entities: string[]
-		recommendations_enabled: boolean
-	}
-}
+				field_key: string;
+				field_name: string;
+				field_type: string;
+				description?: string;
+			}>;
+		}>;
+		entities: string[];
+		recommendations_enabled: boolean;
+	};
+};
 
 type CreateLensDialogProps = {
-	accountId: string
-	onCreated?: () => void
-}
+	accountId: string;
+	onCreated?: () => void;
+};
 
 export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps) {
-	const [open, setOpen] = useState(false)
-	const [description, setDescription] = useState("")
-	const [isPublic, setIsPublic] = useState(true)
-	const [generated, setGenerated] = useState<GeneratedTemplate | null>(null)
-	const [error, setError] = useState<string | null>(null)
+	const [open, setOpen] = useState(false);
+	const [description, setDescription] = useState("");
+	const [isPublic, setIsPublic] = useState(true);
+	const [generated, setGenerated] = useState<GeneratedTemplate | null>(null);
+	const [error, setError] = useState<string | null>(null);
 
-	const generateFetcher = useFetcher()
-	const createFetcher = useFetcher()
+	const generateFetcher = useFetcher();
+	const createFetcher = useFetcher();
 
-	const isGenerating = generateFetcher.state === "submitting"
-	const isCreating = createFetcher.state === "submitting"
+	const isGenerating = generateFetcher.state === "submitting";
+	const isCreating = createFetcher.state === "submitting";
 
 	// Handle generate response
 	if (generateFetcher.data && !generated && !isGenerating) {
 		if (generateFetcher.data.ok && generateFetcher.data.generated) {
-			setGenerated(generateFetcher.data.generated)
-			setError(null)
+			setGenerated(generateFetcher.data.generated);
+			setError(null);
 		} else if (generateFetcher.data.error) {
-			setError(generateFetcher.data.error)
+			setError(generateFetcher.data.error);
 		}
 	}
 
@@ -79,29 +79,29 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 	if (createFetcher.data && !isCreating) {
 		if (createFetcher.data.ok) {
 			// Success - close dialog and notify parent
-			setOpen(false)
-			resetState()
-			onCreated?.()
+			setOpen(false);
+			resetState();
+			onCreated?.();
 		} else if (createFetcher.data.error && !error) {
-			setError(createFetcher.data.error)
+			setError(createFetcher.data.error);
 		}
 	}
 
 	function resetState() {
-		setDescription("")
-		setGenerated(null)
-		setError(null)
-		setIsPublic(true)
+		setDescription("");
+		setGenerated(null);
+		setError(null);
+		setIsPublic(true);
 	}
 
 	function handleGenerate() {
 		if (description.length < 10) {
-			setError("Description must be at least 10 characters")
-			return
+			setError("Description must be at least 10 characters");
+			return;
 		}
 
-		setError(null)
-		setGenerated(null)
+		setError(null);
+		setGenerated(null);
 
 		generateFetcher.submit(
 			{
@@ -112,17 +112,17 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
+		);
 	}
 
 	// Clear preview so user can edit description before regenerating
 	function handleEditDescription() {
-		setGenerated(null)
+		setGenerated(null);
 		// Don't auto-regenerate - let user edit and click Generate
 	}
 
 	function handleSave() {
-		if (!generated) return
+		if (!generated) return;
 
 		createFetcher.submit(
 			{
@@ -139,13 +139,13 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
+		);
 	}
 
 	function handleOpenChange(newOpen: boolean) {
-		setOpen(newOpen)
+		setOpen(newOpen);
 		if (!newOpen) {
-			resetState()
+			resetState();
 		}
 	}
 
@@ -309,5 +309,5 @@ export function CreateLensDialog({ accountId, onCreated }: CreateLensDialogProps
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

@@ -5,52 +5,52 @@
  * the appropriate dashboard variant. Controls sidebar visibility.
  */
 
-import { Pencil } from "lucide-react"
-import { Link } from "react-router-dom"
-import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid"
-import { ProcessingBadge } from "~/features/dashboard/components/ProcessingBadge"
-import type { Task } from "~/features/tasks/types"
-import { cn } from "~/lib/utils"
-import type { Insight } from "~/types"
-import { ActiveDashboard } from "./ActiveDashboard"
-import { OnboardingDashboard } from "./OnboardingDashboard"
-import type { ProjectContext } from "./sections/ContextPanel"
+import { Pencil } from "lucide-react";
+import { Link } from "react-router-dom";
+import type { LensSummary } from "~/features/dashboard/components/LensResultsGrid";
+import { ProcessingBadge } from "~/features/dashboard/components/ProcessingBadge";
+import type { Task } from "~/features/tasks/types";
+import { cn } from "~/lib/utils";
+import type { Insight } from "~/types";
+import { ActiveDashboard } from "./ActiveDashboard";
+import { OnboardingDashboard } from "./OnboardingDashboard";
+import type { ProjectContext } from "./sections/ContextPanel";
 
-export type DashboardState = "empty" | "processing" | "active"
+export type DashboardState = "empty" | "processing" | "active";
 
 export interface DashboardShellProps {
 	/** Project name */
-	projectName: string
+	projectName: string;
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Project ID for navigation and skip functionality */
-	projectId: string
+	projectId: string;
 	/** Total conversation count */
-	conversationCount: number
+	conversationCount: number;
 	/** Number of items currently processing */
-	processingCount: number
+	processingCount: number;
 	/** Number of active lenses */
-	activeLensCount: number
+	activeLensCount: number;
 	/** Whether goals have been set up */
-	hasGoals: boolean
+	hasGoals: boolean;
 	/** Whether lenses have been configured */
-	hasLenses: boolean
+	hasLenses: boolean;
 	/** Whether company context has been set up */
-	hasCompanyContext: boolean
+	hasCompanyContext: boolean;
 	/** Whether interview prompts have been generated */
-	hasPrompts?: boolean
+	hasPrompts?: boolean;
 	/** Project research goal text */
-	researchGoal?: string
+	researchGoal?: string;
 	/** Full project context for setup progress */
-	projectContext?: ProjectContext
+	projectContext?: ProjectContext;
 	/** Array of tasks */
-	tasks: Task[]
+	tasks: Task[];
 	/** Array of insights */
-	insights: Insight[]
+	insights: Insight[];
 	/** Array of lens summaries */
-	lenses: LensSummary[]
+	lenses: LensSummary[];
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 /**
@@ -59,16 +59,16 @@ export interface DashboardShellProps {
 function getDashboardState(conversationCount: number, processingCount: number, _hasGoals: boolean): DashboardState {
 	// Empty: No conversations and no processing
 	if (conversationCount === 0 && processingCount === 0) {
-		return "empty"
+		return "empty";
 	}
 
 	// Processing: Has items being processed
 	if (processingCount > 0) {
-		return "processing"
+		return "processing";
 	}
 
 	// Active: Has data
-	return "active"
+	return "active";
 }
 
 /**
@@ -77,11 +77,11 @@ function getDashboardState(conversationCount: number, processingCount: number, _
 export function shouldShowSidebar(state: DashboardState, hasGoals: boolean): boolean {
 	// Empty state without goals: Hide sidebar for cleaner onboarding
 	if (state === "empty" && !hasGoals) {
-		return false
+		return false;
 	}
 
 	// All other states: Show sidebar
-	return true
+	return true;
 }
 
 export function DashboardShell({
@@ -102,7 +102,7 @@ export function DashboardShell({
 	lenses,
 	className,
 }: DashboardShellProps) {
-	const state = getDashboardState(conversationCount, processingCount, hasGoals)
+	const state = getDashboardState(conversationCount, processingCount, hasGoals);
 
 	return (
 		<div className={cn("py-6", className)}>
@@ -184,7 +184,7 @@ export function DashboardShell({
 				/>
 			)}
 		</div>
-	)
+	);
 }
 
-export default DashboardShell
+export default DashboardShell;

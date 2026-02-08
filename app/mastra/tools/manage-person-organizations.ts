@@ -1,11 +1,11 @@
-import { openai } from "@ai-sdk/openai"
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import { generateObject } from "ai"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { openai } from "@ai-sdk/openai";
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { generateObject } from "ai";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 const relationshipSchema = z.object({
 	organizationName: z.string().min(1, "Organization name is required"),
@@ -14,12 +14,12 @@ const relationshipSchema = z.object({
 	isPrimary: z.boolean().nullish(),
 	notes: z.string().nullish(),
 	location: z.string().nullish(),
-})
+});
 
 const extractionSchema = z.object({
 	summary: z.string().optional(),
 	relationships: z.array(relationshipSchema).default([]),
-})
+});
 
 const toolInputSchema = z
 	.object({
@@ -39,15 +39,15 @@ const toolInputSchema = z
 	})
 	.refine(
 		(value) => {
-			const hasTranscript = typeof value.transcript === "string" && value.transcript.trim().length > 0
-			const hasRelationships = Array.isArray(value.relationships) && value.relationships.length > 0
-			return hasTranscript || hasRelationships
+			const hasTranscript = typeof value.transcript === "string" && value.transcript.trim().length > 0;
+			const hasRelationships = Array.isArray(value.relationships) && value.relationships.length > 0;
+			return hasTranscript || hasRelationships;
 		},
 		{
 			message: "Provide either a transcript or at least one relationship.",
 			path: ["transcript"],
 		}
-	)
+	);
 
 const toolOutputSchema = z.object({
 	success: z.boolean(),
@@ -78,13 +78,13 @@ const toolOutputSchema = z.object({
 		.optional(),
 	warnings: z.array(z.string()).optional(),
 	dryRun: z.boolean().optional(),
-})
+});
 
-type ToolInput = z.infer<typeof toolInputSchema>
-type Relationship = z.infer<typeof relationshipSchema>
+type ToolInput = z.infer<typeof toolInputSchema>;
+type Relationship = z.infer<typeof relationshipSchema>;
 
 function normalizeName(name: string | null | undefined): string {
-	return (name ?? "").trim()
+	return (name ?? "").trim();
 }
 
 async function fetchPerson(
@@ -95,9 +95,9 @@ async function fetchPerson(
 		.from("people")
 		.select("id, name, account_id, project_id")
 		.eq("id", personId)
-		.maybeSingle()
-	if (error) throw new Error(`Failed to load person: ${error.message}`)
-	return data ?? null
+		.maybeSingle();
+	if (error) throw new Error(`Failed to load person: ${error.message}`);
+	return data ?? null;
 }
 
 async function ensureOrganization(
@@ -108,14 +108,14 @@ async function ensureOrganization(
 		name,
 		location,
 	}: {
-		accountId: string
-		projectId: string | null
-		name: string
-		location?: string | null
+		accountId: string;
+		projectId: string | null;
+		name: string;
+		location?: string | null;
 	}
 ) {
-	const trimmed = normalizeName(name)
-	if (!trimmed) return null
+	const trimmed = normalizeName(name);
+	if (!trimmed) return null;
 
 	const { data: existing } = await db
 		.from("organizations")
@@ -123,10 +123,10 @@ async function ensureOrganization(
 		.eq("account_id", accountId)
 		.ilike("name", trimmed)
 		.order("updated_at", { ascending: false })
-		.limit(1)
+		.limit(1);
 
 	if (existing && existing.length > 0) {
-		return { ...existing[0], created: false as const }
+		return { ...existing[0], created: false as const };
 	}
 
 	const insertPayload: Database["public"]["Tables"]["organizations"]["Insert"] = {
@@ -134,11 +134,11 @@ async function ensureOrganization(
 		project_id: projectId,
 		name: trimmed,
 		headquarters_location: location ?? null,
-	}
+	};
 
-	const { data: inserted, error } = await db.from("organizations").insert(insertPayload).select("id, name").single()
-	if (error) throw new Error(`Failed to create organization "${trimmed}": ${error.message}`)
-	return { ...inserted, created: true as const }
+	const { data: inserted, error } = await db.from("organizations").insert(insertPayload).select("id, name").single();
+	if (error) throw new Error(`Failed to create organization "${trimmed}": ${error.message}`);
+	return { ...inserted, created: true as const };
 }
 
 async function upsertPersonOrganizationLink(
@@ -151,12 +151,12 @@ async function upsertPersonOrganizationLink(
 		relationship,
 		defaultIsPrimary = false,
 	}: {
-		accountId: string
-		projectId: string | null
-		personId: string
-		organizationId: string
-		relationship: Relationship
-		defaultIsPrimary?: boolean
+		accountId: string;
+		projectId: string | null;
+		personId: string;
+		organizationId: string;
+		relationship: Relationship;
+		defaultIsPrimary?: boolean;
 	}
 ) {
 	const { data: existing } = await db
@@ -164,7 +164,7 @@ async function upsertPersonOrganizationLink(
 		.select("id")
 		.eq("person_id", personId)
 		.eq("organization_id", organizationId)
-		.maybeSingle()
+		.maybeSingle();
 
 	const payload: Database["public"]["Tables"]["people_organizations"]["Insert"] = {
 		account_id: accountId,
@@ -175,19 +175,19 @@ async function upsertPersonOrganizationLink(
 		relationship_status: relationship.relationshipStatus ?? null,
 		is_primary: relationship.isPrimary ?? defaultIsPrimary ?? false,
 		notes: relationship.notes ?? null,
-	}
+	};
 
 	const { data, error } = await db
 		.from("people_organizations")
 		.upsert(payload, { onConflict: "person_id,organization_id" })
 		.select("id")
-		.single()
+		.single();
 
-	if (error) throw new Error(`Failed to link person to organization: ${error.message}`)
+	if (error) throw new Error(`Failed to link person to organization: ${error.message}`);
 	return {
 		id: data.id,
 		action: existing ? ("updated" as const) : ("inserted" as const),
-	}
+	};
 }
 
 async function extractRelationships(personName: string, transcript: string) {
@@ -202,16 +202,16 @@ Transcript:
 """
 ${transcript}
 """
-`
+`;
 
 	const { object } = await generateObject({
 		model: openai("gpt-4o-mini"),
 		mode: "json",
 		schema: extractionSchema,
 		prompt,
-	})
+	});
 
-	return object
+	return object;
 }
 
 export const managePersonOrganizationsTool = createTool({
@@ -221,7 +221,7 @@ export const managePersonOrganizationsTool = createTool({
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
 
 		const {
 			personId,
@@ -230,13 +230,13 @@ export const managePersonOrganizationsTool = createTool({
 			transcript,
 			relationships,
 			dryRun,
-		} = input as ToolInput
+		} = input as ToolInput;
 
 		const defaultIsPrimary =
-			typeof (input as ToolInput).defaultIsPrimary === "boolean" ? (input as ToolInput).defaultIsPrimary : false
+			typeof (input as ToolInput).defaultIsPrimary === "boolean" ? (input as ToolInput).defaultIsPrimary : false;
 
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
 
 		if (!personId?.trim()) {
 			return {
@@ -245,11 +245,11 @@ export const managePersonOrganizationsTool = createTool({
 				personId: null,
 				accountId: null,
 				projectId: null,
-			}
+			};
 		}
 
 		try {
-			const person = await fetchPerson(supabase, personId)
+			const person = await fetchPerson(supabase, personId);
 			if (!person) {
 				return {
 					success: false,
@@ -257,11 +257,11 @@ export const managePersonOrganizationsTool = createTool({
 					personId,
 					accountId: accountOverride ?? runtimeAccountId ?? null,
 					projectId: projectOverride ?? runtimeProjectId ?? null,
-				}
+				};
 			}
 
-			const resolvedAccountId = accountOverride || runtimeAccountId || person.account_id || ""
-			const resolvedProjectId = projectOverride || runtimeProjectId || person.project_id || null
+			const resolvedAccountId = accountOverride || runtimeAccountId || person.account_id || "";
+			const resolvedProjectId = projectOverride || runtimeProjectId || person.project_id || null;
 
 			if (!resolvedAccountId) {
 				return {
@@ -270,18 +270,18 @@ export const managePersonOrganizationsTool = createTool({
 					personId,
 					accountId: null,
 					projectId: resolvedProjectId,
-				}
+				};
 			}
 
-			let extractedSummary: string | null = null
-			let relationshipSpecs: Relationship[] = []
+			let extractedSummary: string | null = null;
+			let relationshipSpecs: Relationship[] = [];
 
 			if (Array.isArray(relationships) && relationships.length > 0) {
-				relationshipSpecs = relationships
+				relationshipSpecs = relationships;
 			} else if (transcript?.trim()) {
-				const extraction = await extractRelationships(person.name ?? "", transcript.trim())
-				extractedSummary = extraction.summary ?? null
-				relationshipSpecs = extraction.relationships
+				const extraction = await extractRelationships(person.name ?? "", transcript.trim());
+				extractedSummary = extraction.summary ?? null;
+				relationshipSpecs = extraction.relationships;
 			}
 
 			const normalizedRelationships = relationshipSpecs
@@ -293,7 +293,7 @@ export const managePersonOrganizationsTool = createTool({
 					notes: rel.notes?.trim() || undefined,
 					location: normalizeName(rel.location),
 				}))
-				.filter((rel) => rel.organizationName.length > 0)
+				.filter((rel) => rel.organizationName.length > 0);
 
 			if (!normalizedRelationships.length) {
 				return {
@@ -303,20 +303,20 @@ export const managePersonOrganizationsTool = createTool({
 					accountId: resolvedAccountId,
 					projectId: resolvedProjectId,
 					generatedSummary: extractedSummary,
-				}
+				};
 			}
 
-			const createdOrganizations: Array<{ id: string; name: string }> = []
+			const createdOrganizations: Array<{ id: string; name: string }> = [];
 			const linkedOrganizations: Array<{
-				organizationId: string
-				name: string
-				role: string | null
-				relationshipStatus: string | null
-				isPrimary: boolean
-				action: "inserted" | "updated"
-			}> = []
+				organizationId: string;
+				name: string;
+				role: string | null;
+				relationshipStatus: string | null;
+				isPrimary: boolean;
+				action: "inserted" | "updated";
+			}> = [];
 
-			const warnings: string[] = []
+			const warnings: string[] = [];
 
 			for (const rel of normalizedRelationships) {
 				try {
@@ -325,11 +325,11 @@ export const managePersonOrganizationsTool = createTool({
 						projectId: resolvedProjectId,
 						name: rel.organizationName,
 						location: rel.location,
-					})
+					});
 
 					if (!organization) {
-						warnings.push("Skipped empty organization name entry.")
-						continue
+						warnings.push("Skipped empty organization name entry.");
+						continue;
 					}
 
 					if (!dryRun) {
@@ -340,7 +340,7 @@ export const managePersonOrganizationsTool = createTool({
 							organizationId: organization.id,
 							relationship: rel,
 							defaultIsPrimary,
-						})
+						});
 
 						linkedOrganizations.push({
 							organizationId: organization.id,
@@ -349,7 +349,7 @@ export const managePersonOrganizationsTool = createTool({
 							relationshipStatus: rel.relationshipStatus ?? null,
 							isPrimary: rel.isPrimary ?? defaultIsPrimary ?? false,
 							action,
-						})
+						});
 					} else {
 						linkedOrganizations.push({
 							organizationId: organization.id,
@@ -358,26 +358,26 @@ export const managePersonOrganizationsTool = createTool({
 							relationshipStatus: rel.relationshipStatus ?? null,
 							isPrimary: rel.isPrimary ?? defaultIsPrimary ?? false,
 							action: "inserted",
-						})
+						});
 					}
 
 					if (organization.created && !createdOrganizations.find((org) => org.id === organization.id)) {
 						createdOrganizations.push({
 							id: organization.id,
 							name: organization.name,
-						})
+						});
 					}
 				} catch (error) {
 					consola.warn("manage-person-organizations: failed to process relationship", {
 						personId,
 						organizationName: rel.organizationName,
 						error,
-					})
+					});
 					warnings.push(
 						`Failed to process organization "${rel.organizationName}": ${
 							error instanceof Error ? error.message : "Unknown error"
 						}`
-					)
+					);
 				}
 			}
 
@@ -394,16 +394,16 @@ export const managePersonOrganizationsTool = createTool({
 				linkedOrganizations,
 				warnings,
 				dryRun: Boolean(dryRun),
-			}
+			};
 		} catch (error) {
-			consola.error("manage-person-organizations: unexpected failure", error)
+			consola.error("manage-person-organizations: unexpected failure", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Failed to update person organizations.",
 				personId,
 				accountId: accountOverride ?? runtimeAccountId ?? null,
 				projectId: projectOverride ?? runtimeProjectId ?? null,
-			}
+			};
 		}
 	},
-})
+});

@@ -1,123 +1,123 @@
-import consola from "consola"
-import { CheckCircle2, Loader2, XCircle } from "lucide-react"
-import { useState } from "react"
-import { type LoaderFunctionArgs, redirect } from "react-router"
-import { Link, useLoaderData, useNavigate } from "react-router-dom"
-import { Logo } from "~/components/branding"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
-import { acceptInvitation, lookupInvitation } from "~/features/teams/db"
-import { provisionSeatOnInviteAccept } from "~/lib/billing/polar.server"
-import { getServerClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { useState } from "react";
+import { type LoaderFunctionArgs, redirect } from "react-router";
+import { Link, useLoaderData, useNavigate } from "react-router-dom";
+import { Logo } from "~/components/branding";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card";
+import { acceptInvitation, lookupInvitation } from "~/features/teams/db";
+import { provisionSeatOnInviteAccept } from "~/lib/billing/polar.server";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 type LoaderData =
 	| {
-			status: "success"
-			accountId: string
-			accountName: string
-			accountSlug: string | null
-			accountRole: string
-			projectDestination: string | null
-			projectName: string | null
+			status: "success";
+			accountId: string;
+			accountName: string;
+			accountSlug: string | null;
+			accountRole: string;
+			projectDestination: string | null;
+			projectName: string | null;
 	  }
 	| {
-			status: "error"
-			error: string
+			status: "error";
+			error: string;
 	  }
 	| {
-			status: "already_member"
-			accountId: string
-			accountName: string
-			accountSlug: string | null
-			projectDestination: string | null
-			projectName: string | null
-	  }
+			status: "already_member";
+			accountId: string;
+			accountName: string;
+			accountSlug: string | null;
+			projectDestination: string | null;
+			projectName: string | null;
+	  };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const url = new URL(request.url)
-	const token = url.searchParams.get("invite_token") || url.searchParams.get("token") || null
-	const redirectTo = url.searchParams.get("redirect") || null
+	const url = new URL(request.url);
+	const token = url.searchParams.get("invite_token") || url.searchParams.get("token") || null;
+	const redirectTo = url.searchParams.get("redirect") || null;
 
-	consola.log("[ACCEPT INVITE] Received request with token:", token ? "present" : "missing", "redirect:", redirectTo)
+	consola.log("[ACCEPT INVITE] Received request with token:", token ? "present" : "missing", "redirect:", redirectTo);
 
-	const { client: supabase, headers: supabaseHeaders } = getServerClient(request)
+	const { client: supabase, headers: supabaseHeaders } = getServerClient(request);
 
 	// Check auth
 	const {
 		data: { user },
-	} = await supabase.auth.getUser()
+	} = await supabase.auth.getUser();
 
 	// If no user, redirect to login
 	if (!user) {
-		let next = "/accept-invite"
+		let next = "/accept-invite";
 		if (token) {
-			next = `/accept-invite?invite_token=${encodeURIComponent(token)}`
+			next = `/accept-invite?invite_token=${encodeURIComponent(token)}`;
 			if (redirectTo) {
-				next += `&redirect=${encodeURIComponent(redirectTo)}`
+				next += `&redirect=${encodeURIComponent(redirectTo)}`;
 			}
 		}
-		consola.log("[ACCEPT INVITE] User not authenticated, redirecting to login with next:", next)
+		consola.log("[ACCEPT INVITE] User not authenticated, redirecting to login with next:", next);
 		return redirect(`/login?next=${encodeURIComponent(next)}`, {
 			headers: supabaseHeaders,
-		})
+		});
 	}
 
-	consola.log("[ACCEPT INVITE] User authenticated:", user.email, "proceeding with token:", token)
+	consola.log("[ACCEPT INVITE] User authenticated:", user.email, "proceeding with token:", token);
 
 	if (!token) {
-		consola.warn("[ACCEPT INVITE] No invitation token found")
+		consola.warn("[ACCEPT INVITE] No invitation token found");
 		return {
 			status: "error",
 			error: "No invitation token provided",
-		} satisfies LoaderData
+		} satisfies LoaderData;
 	}
 
 	// Lookup invitation first to get account details
 	const { data: lookup, error: lookupError } = await lookupInvitation({
 		supabase,
 		lookup_invitation_token: token,
-	})
+	});
 
 	if (lookupError) {
-		consola.error("[ACCEPT INVITE] lookup_invitation error:", lookupError)
+		consola.error("[ACCEPT INVITE] lookup_invitation error:", lookupError);
 		return {
 			status: "error",
 			error: "Failed to lookup invitation",
-		} satisfies LoaderData
+		} satisfies LoaderData;
 	}
 
 	const lookupData = lookup as {
-		active?: boolean
-		account_name?: string
-		account_id?: string
-		account_role?: string
-	} | null
+		active?: boolean;
+		account_name?: string;
+		account_id?: string;
+		account_role?: string;
+	} | null;
 
 	if (!lookupData?.active) {
-		consola.warn("[ACCEPT INVITE] Invitation inactive or expired")
+		consola.warn("[ACCEPT INVITE] Invitation inactive or expired");
 		return {
 			status: "error",
 			error: "This invitation has expired or is no longer valid",
-		} satisfies LoaderData
+		} satisfies LoaderData;
 	}
 
 	// Accept the invitation
 	const { data: accepted, error: acceptError } = await acceptInvitation({
 		supabase,
 		lookup_invitation_token: token,
-	})
+	});
 
 	const acceptedData = accepted as {
-		account_id?: string
-		account_role?: string
-		slug?: string
-	} | null
+		account_id?: string;
+		account_role?: string;
+		slug?: string;
+	} | null;
 
-	const accountId = acceptedData?.account_id ?? lookupData?.account_id ?? ""
+	const accountId = acceptedData?.account_id ?? lookupData?.account_id ?? "";
 
 	// Fetch a project from the invited account to navigate to
-	let projectDestination: string | null = null
-	let projectName: string | null = null
+	let projectDestination: string | null = null;
+	let projectName: string | null = null;
 
 	if (accountId) {
 		const { data: projects } = await supabase
@@ -125,21 +125,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			.select("id, name")
 			.eq("account_id", accountId)
 			.order("updated_at", { ascending: false })
-			.limit(1)
+			.limit(1);
 
 		if (projects && projects.length > 0) {
-			const project = projects[0]
-			projectDestination = `/a/${accountId}/${project.id}`
-			projectName = project.name
+			const project = projects[0];
+			projectDestination = `/a/${accountId}/${project.id}`;
+			projectName = project.name;
 		} else {
 			// No projects yet, go to account home
-			projectDestination = `/a/${accountId}/home`
+			projectDestination = `/a/${accountId}/home`;
 		}
 	}
 
 	if (acceptError) {
-		const msg = acceptError.message || ""
-		consola.warn("[ACCEPT INVITE] accept_invitation error:", msg)
+		const msg = acceptError.message || "";
+		consola.warn("[ACCEPT INVITE] accept_invitation error:", msg);
 
 		// If already a member, show that state
 		if (msg.includes("already a member")) {
@@ -150,24 +150,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				accountSlug: acceptedData?.slug ?? null,
 				projectDestination,
 				projectName,
-			} satisfies LoaderData
+			} satisfies LoaderData;
 		}
 
 		return {
 			status: "error",
 			error: msg || "Failed to accept invitation",
-		} satisfies LoaderData
+		} satisfies LoaderData;
 	}
 
 	// Auto-provision seat for Team plan subscriptions
 	// This runs after the invite is accepted (user added to account_user)
 	if (accountId) {
 		try {
-			const seatProvisioned = await provisionSeatOnInviteAccept({ accountId })
+			const seatProvisioned = await provisionSeatOnInviteAccept({ accountId });
 			if (seatProvisioned) {
 				consola.info("[ACCEPT INVITE] Seat provisioned for Team plan", {
 					accountId,
-				})
+				});
 			}
 		} catch (seatError) {
 			// Don't fail the invite acceptance if seat provisioning fails
@@ -175,7 +175,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			consola.warn("[ACCEPT INVITE] Seat provisioning failed (non-blocking)", {
 				accountId,
 				error: seatError,
-			})
+			});
 		}
 	}
 
@@ -187,33 +187,33 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		accountRole: acceptedData?.account_role ?? "member",
 		projectDestination,
 		projectName,
-	} satisfies LoaderData
+	} satisfies LoaderData;
 }
 
 export default function AcceptInvite() {
-	const data = useLoaderData<LoaderData>()
-	const navigate = useNavigate()
-	const [isNavigating, setIsNavigating] = useState(false)
+	const data = useLoaderData<LoaderData>();
+	const navigate = useNavigate();
+	const [isNavigating, setIsNavigating] = useState(false);
 
 	const handleGoToTeam = () => {
 		if (data.status === "success" || data.status === "already_member") {
-			setIsNavigating(true)
+			setIsNavigating(true);
 			if (data.projectDestination) {
-				navigate(data.projectDestination)
+				navigate(data.projectDestination);
 			} else {
-				navigate("/home")
+				navigate("/home");
 			}
 		}
-	}
+	};
 
 	const handleStayHere = () => {
 		// Go back to where they were, or home if no history
 		if (window.history.length > 1) {
-			navigate(-1)
+			navigate(-1);
 		} else {
-			navigate("/home")
+			navigate("/home");
 		}
-	}
+	};
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
@@ -301,5 +301,5 @@ export default function AcceptInvite() {
 				</CardFooter>
 			</Card>
 		</div>
-	)
+	);
 }

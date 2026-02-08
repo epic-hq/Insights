@@ -2,11 +2,11 @@
  * Test both embed functions to compare behavior
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY!
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY!;
 
 async function testEmbedFacet() {
-	console.log("\n=== Testing embed-facet (working) ===")
+	console.log("\n=== Testing embed-facet (working) ===");
 	const response = await fetch(`${SUPABASE_URL}/functions/v1/embed-facet`, {
 		method: "POST",
 		headers: {
@@ -18,14 +18,14 @@ async function testEmbedFacet() {
 			label: "test label",
 			kind_slug: "test",
 		}),
-	})
+	});
 
-	console.log("Status:", response.status)
-	console.log("Response:", await response.text())
+	console.log("Status:", response.status);
+	console.log("Response:", await response.text());
 }
 
 async function testEmbedPersonFacet() {
-	console.log("\n=== Testing embed-person-facet (broken) ===")
+	console.log("\n=== Testing embed-person-facet (broken) ===");
 	const response = await fetch(`${SUPABASE_URL}/functions/v1/embed-person-facet`, {
 		method: "POST",
 		headers: {
@@ -38,11 +38,11 @@ async function testEmbedPersonFacet() {
 			label: "test label",
 			kind_slug: "test",
 		}),
-	})
+	});
 
-	console.log("Status:", response.status)
-	console.log("Response:", await response.text())
+	console.log("Status:", response.status);
+	console.log("Response:", await response.text());
 }
 
-await testEmbedFacet()
-await testEmbedPersonFacet()
+await testEmbedFacet();
+await testEmbedPersonFacet();

@@ -1,6 +1,6 @@
-import { Agent } from "@mastra/core/agent"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { dailyBriefWorkflow } from "../workflows/daily-brief"
+import { Agent } from "@mastra/core/agent";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { dailyBriefWorkflow } from "../workflows/daily-brief";
 
 /**
  * Agent that can generate insights and run daily brief workflows
@@ -20,4 +20,4 @@ When a user asks for a daily brief, use the dailyBriefWorkflow to get the latest
 	workflows: {
 		dailyBriefWorkflow,
 	},
-})
+});

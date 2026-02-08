@@ -1,7 +1,7 @@
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 /**
  * Column mapping schema - maps spreadsheet columns to opportunity fields
@@ -39,22 +39,22 @@ const columnMappingSchema = z.object({
 	next_step: z.string().nullish().describe("Column name containing next step"),
 	source: z.string().nullish().describe("Column name containing lead source"),
 	crm_id: z.string().nullish().describe("Column name containing external CRM ID"),
-})
+});
 
-type ColumnMapping = z.infer<typeof columnMappingSchema>
+type ColumnMapping = z.infer<typeof columnMappingSchema>;
 
 interface TableRow {
-	[key: string]: unknown
+	[key: string]: unknown;
 }
 
 interface ImportResult {
-	opportunityId: string
-	title: string
-	amount?: number
-	stage?: string
-	organizationId?: string
-	organizationName?: string
-	rowIndex: number
+	opportunityId: string;
+	title: string;
+	amount?: number;
+	stage?: string;
+	organizationId?: string;
+	organizationName?: string;
+	rowIndex: number;
 }
 
 /**
@@ -64,15 +64,15 @@ function normalizeColumnName(name: string): string {
 	return name
 		.toLowerCase()
 		.trim()
-		.replace(/[^a-z0-9]/g, "")
+		.replace(/[^a-z0-9]/g, "");
 }
 
 /**
  * Auto-detect column mappings from headers
  */
 function autoDetectMappings(headers: string[]): ColumnMapping {
-	const mapping: ColumnMapping = {}
-	const normalizedHeaders = headers.map((h) => ({ original: h, normalized: normalizeColumnName(h) }))
+	const mapping: ColumnMapping = {};
+	const normalizedHeaders = headers.map((h) => ({ original: h, normalized: normalizeColumnName(h) }));
 
 	const patterns: Record<keyof ColumnMapping, string[]> = {
 		name: ["dealname", "opportunityname", "deal", "opportunity"],
@@ -94,52 +94,52 @@ function autoDetectMappings(headers: string[]): ColumnMapping {
 		next_step: ["nextstep", "nextsteps", "nextaction", "action"],
 		source: ["source", "leadsource", "origin", "channel"],
 		crm_id: ["crmid", "externalid", "salesforceid", "hubspotid", "dealid", "id"],
-	}
+	};
 
 	for (const [field, fieldPatterns] of Object.entries(patterns)) {
 		for (const header of normalizedHeaders) {
 			if (fieldPatterns.some((p) => header.normalized.includes(p))) {
-				mapping[field as keyof ColumnMapping] = header.original
-				break
+				mapping[field as keyof ColumnMapping] = header.original;
+				break;
 			}
 		}
 	}
 
-	return mapping
+	return mapping;
 }
 
 /**
  * Extract value from row using column mapping
  */
 function getValue(row: TableRow, columnName: string | undefined): string | null {
-	if (!columnName) return null
-	const value = row[columnName]
-	if (value === null || value === undefined || value === "") return null
-	return String(value).trim()
+	if (!columnName) return null;
+	const value = row[columnName];
+	if (value === null || value === undefined || value === "") return null;
+	return String(value).trim();
 }
 
 /**
  * Parse amount string to number
  */
 function parseAmount(value: string | null): number | null {
-	if (!value) return null
+	if (!value) return null;
 	// Remove currency symbols, commas, spaces
-	const cleaned = value.replace(/[$€£¥,\s]/g, "")
-	const num = Number.parseFloat(cleaned)
-	return Number.isNaN(num) ? null : num
+	const cleaned = value.replace(/[$€£¥,\s]/g, "");
+	const num = Number.parseFloat(cleaned);
+	return Number.isNaN(num) ? null : num;
 }
 
 /**
  * Parse date string to ISO date
  */
 function parseDate(value: string | null): string | null {
-	if (!value) return null
+	if (!value) return null;
 	try {
-		const date = new Date(value)
-		if (Number.isNaN(date.getTime())) return null
-		return date.toISOString().split("T")[0] // Return YYYY-MM-DD
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toISOString().split("T")[0]; // Return YYYY-MM-DD
 	} catch {
-		return null
+		return null;
 	}
 }
 
@@ -147,13 +147,13 @@ function parseDate(value: string | null): string | null {
  * Parse probability/confidence to decimal (0-1)
  */
 function parseProbability(value: string | null): number | null {
-	if (!value) return null
+	if (!value) return null;
 	// Remove % sign if present
-	const cleaned = value.replace(/%/g, "").trim()
-	const num = Number.parseFloat(cleaned)
-	if (Number.isNaN(num)) return null
+	const cleaned = value.replace(/%/g, "").trim();
+	const num = Number.parseFloat(cleaned);
+	if (Number.isNaN(num)) return null;
 	// If > 1, assume it's a percentage and convert to decimal
-	return num > 1 ? num / 100 : num
+	return num > 1 ? num / 100 : num;
 }
 
 export const importOpportunitiesFromTableTool = createTool({
@@ -210,18 +210,18 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 		errors: z.array(z.string()).nullish().describe("Any errors encountered"),
 	}),
 	execute: async (input, context?) => {
-		const errors: string[] = []
-		const results: ImportResult[] = []
-		let skipped = 0
-		let organizationsCreated = 0
+		const errors: string[] = [];
+		const results: ImportResult[] = [];
+		let skipped = 0;
+		let organizationsCreated = 0;
 
 		try {
-			const writer = context?.writer
-			const { assetId, columnMapping, createOrganizations, skipDuplicates, defaultStage, defaultCurrency } = input
+			const writer = context?.writer;
+			const { assetId, columnMapping, createOrganizations, skipDuplicates, defaultStage, defaultCurrency } = input;
 
 			// Get accountId and projectId from runtime context
-			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
-			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined;
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined;
 
 			if (!accountId || !projectId) {
 				return {
@@ -231,17 +231,17 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					skipped: 0,
 					organizationsCreated: 0,
 					errors: ["Missing accountId or projectId in runtime context"],
-				}
+				};
 			}
 
-			const supabaseAdmin = createSupabaseAdminClient()
+			const supabaseAdmin = createSupabaseAdminClient();
 
 			// Fetch the asset with table data
 			const { data: asset, error: assetError } = await supabaseAdmin
 				.from("project_assets" as any)
 				.select("id, title, table_data")
 				.eq("id" as any, assetId)
-				.single()
+				.single();
 
 			if (assetError || !asset) {
 				return {
@@ -251,10 +251,10 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					skipped: 0,
 					organizationsCreated: 0,
 					errors: [assetError?.message || "Asset not found"],
-				}
+				};
 			}
 
-			const tableData = (asset as any).table_data as { headers: string[]; rows: TableRow[] } | null
+			const tableData = (asset as any).table_data as { headers: string[]; rows: TableRow[] } | null;
 			if (!tableData || !tableData.headers || !tableData.rows) {
 				return {
 					success: false,
@@ -263,11 +263,11 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					skipped: 0,
 					organizationsCreated: 0,
 					errors: ["No table_data found in asset"],
-				}
+				};
 			}
 
-			const { headers, rows } = tableData
-			consola.info(`[import-opportunities] Processing ${rows.length} rows from asset ${assetId}`)
+			const { headers, rows } = tableData;
+			consola.info(`[import-opportunities] Processing ${rows.length} rows from asset ${assetId}`);
 
 			// Stream progress - starting
 			await writer?.custom?.({
@@ -278,14 +278,14 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					message: `Importing ${rows.length} opportunities...`,
 					progress: 10,
 				},
-			})
+			});
 
 			// Auto-detect or use provided mappings
-			const mapping = columnMapping || autoDetectMappings(headers)
-			consola.debug("[import-opportunities] Column mapping:", mapping)
+			const mapping = columnMapping || autoDetectMappings(headers);
+			consola.debug("[import-opportunities] Column mapping:", mapping);
 
 			// Get title column - try name first, then title
-			const titleColumn = mapping.name || mapping.title
+			const titleColumn = mapping.name || mapping.title;
 			if (!titleColumn) {
 				return {
 					success: false,
@@ -294,37 +294,37 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					skipped: 0,
 					organizationsCreated: 0,
 					errors: ["No name or title column detected"],
-				}
+				};
 			}
 
 			// Fetch existing opportunities by CRM ID for duplicate detection
-			const existingCrmIds = new Set<string>()
+			const existingCrmIds = new Set<string>();
 			if (skipDuplicates && mapping.crm_id) {
 				const { data: existingOpps } = await supabaseAdmin
 					.from("opportunities")
 					.select("crm_external_id")
 					.eq("project_id", projectId)
-					.not("crm_external_id", "is", null)
+					.not("crm_external_id", "is", null);
 
 				if (existingOpps) {
 					for (const opp of existingOpps) {
 						if (opp.crm_external_id) {
-							existingCrmIds.add(opp.crm_external_id)
+							existingCrmIds.add(opp.crm_external_id);
 						}
 					}
 				}
 			}
 
 			// Cache for organizations to avoid duplicate lookups/creates
-			const orgCache = new Map<string, string>() // name -> id
+			const orgCache = new Map<string, string>(); // name -> id
 
 			// Process each row
 			for (let i = 0; i < rows.length; i++) {
-				const row = rows[i]
+				const row = rows[i];
 
 				// Stream progress every 10 rows or on first/last row
 				if (i === 0 || i === rows.length - 1 || i % 10 === 0) {
-					const progress = Math.round(10 + (i / rows.length) * 70) // 10-80%
+					const progress = Math.round(10 + (i / rows.length) * 70); // 10-80%
 					await writer?.custom?.({
 						type: "data-tool-progress",
 						data: {
@@ -333,44 +333,44 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 							message: `Processing opportunity ${i + 1} of ${rows.length}...`,
 							progress,
 						},
-					})
+					});
 				}
 
 				try {
-					const title = getValue(row, titleColumn)
+					const title = getValue(row, titleColumn);
 					if (!title) {
-						skipped++
-						continue
+						skipped++;
+						continue;
 					}
 
 					// Check for duplicate by CRM ID
-					const crmId = getValue(row, mapping.crm_id)
+					const crmId = getValue(row, mapping.crm_id);
 					if (skipDuplicates && crmId && existingCrmIds.has(crmId)) {
-						consola.debug(`[import-opportunities] Skipping duplicate CRM ID: ${crmId}`)
-						skipped++
-						continue
+						consola.debug(`[import-opportunities] Skipping duplicate CRM ID: ${crmId}`);
+						skipped++;
+						continue;
 					}
 
 					// Parse values
-					const amount = parseAmount(getValue(row, mapping.amount))
-					const stage = getValue(row, mapping.stage) || defaultStage || null
-					const closeDate = parseDate(getValue(row, mapping.close_date))
-					const confidence = parseProbability(getValue(row, mapping.probability) || getValue(row, mapping.confidence))
-					const description = getValue(row, mapping.description)
-					const nextStep = getValue(row, mapping.next_step)
-					const source = getValue(row, mapping.source)
-					const currency = getValue(row, mapping.currency) || defaultCurrency
+					const amount = parseAmount(getValue(row, mapping.amount));
+					const stage = getValue(row, mapping.stage) || defaultStage || null;
+					const closeDate = parseDate(getValue(row, mapping.close_date));
+					const confidence = parseProbability(getValue(row, mapping.probability) || getValue(row, mapping.confidence));
+					const description = getValue(row, mapping.description);
+					const nextStep = getValue(row, mapping.next_step);
+					const source = getValue(row, mapping.source);
+					const currency = getValue(row, mapping.currency) || defaultCurrency;
 
 					// Handle organization
-					let organizationId: string | null = null
-					let organizationName: string | null = null
-					const accountName = getValue(row, mapping.account)
+					let organizationId: string | null = null;
+					let organizationName: string | null = null;
+					const accountName = getValue(row, mapping.account);
 
 					if (accountName && createOrganizations) {
 						// Check cache first
 						if (orgCache.has(accountName)) {
-							organizationId = orgCache.get(accountName)!
-							organizationName = accountName
+							organizationId = orgCache.get(accountName)!;
+							organizationName = accountName;
 						} else {
 							// Look up or create organization
 							const { data: existingOrg } = await supabaseAdmin
@@ -379,12 +379,12 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 								.eq("project_id" as any, projectId)
 								.ilike("name" as any, accountName)
 								.limit(1)
-								.single()
+								.single();
 
 							if (existingOrg) {
-								organizationId = (existingOrg as any).id
-								organizationName = accountName
-								orgCache.set(accountName, organizationId)
+								organizationId = (existingOrg as any).id;
+								organizationName = accountName;
+								orgCache.set(accountName, organizationId);
 							} else {
 								// Create new organization
 								const { data: newOrg, error: orgError } = await supabaseAdmin
@@ -394,14 +394,14 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 										name: accountName,
 									})
 									.select("id")
-									.single()
+									.single();
 
 								if (newOrg && !orgError) {
-									organizationId = (newOrg as any).id
-									organizationName = accountName
-									orgCache.set(accountName, organizationId)
-									organizationsCreated++
-									consola.debug(`[import-opportunities] Created organization: ${accountName}`)
+									organizationId = (newOrg as any).id;
+									organizationName = accountName;
+									orgCache.set(accountName, organizationId);
+									organizationsCreated++;
+									consola.debug(`[import-opportunities] Created organization: ${accountName}`);
 								}
 							}
 						}
@@ -427,12 +427,12 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 							metadata: {},
 						})
 						.select("id")
-						.single()
+						.single();
 
 					if (oppError) {
-						errors.push(`Row ${i + 1}: ${oppError.message}`)
-						skipped++
-						continue
+						errors.push(`Row ${i + 1}: ${oppError.message}`);
+						skipped++;
+						continue;
 					}
 
 					if (opportunity) {
@@ -444,23 +444,23 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 							organizationId: organizationId || undefined,
 							organizationName: organizationName || undefined,
 							rowIndex: i,
-						})
+						});
 
 						// Add to existing set to prevent duplicates within same import
 						if (crmId) {
-							existingCrmIds.add(crmId)
+							existingCrmIds.add(crmId);
 						}
 					}
 				} catch (rowError) {
-					errors.push(`Row ${i + 1}: ${rowError instanceof Error ? rowError.message : "Unknown error"}`)
-					skipped++
+					errors.push(`Row ${i + 1}: ${rowError instanceof Error ? rowError.message : "Unknown error"}`);
+					skipped++;
 				}
 			}
 
-			const imported = results.length
+			const imported = results.length;
 			consola.info(
 				`[import-opportunities] Imported ${imported} opportunities, skipped ${skipped}, created ${organizationsCreated} organizations`
-			)
+			);
 
 			// Stream progress - complete
 			await writer?.custom?.({
@@ -471,7 +471,7 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 					message: `Imported ${imported} opportunities${organizationsCreated > 0 ? `, created ${organizationsCreated} organizations` : ""}`,
 					progress: 100,
 				},
-			})
+			});
 
 			return {
 				success: true,
@@ -481,9 +481,9 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 				organizationsCreated,
 				results: results.length > 0 ? results : undefined,
 				errors: errors.length > 0 ? errors : undefined,
-			}
+			};
 		} catch (error) {
-			consola.error("[import-opportunities] Error:", error)
+			consola.error("[import-opportunities] Error:", error);
 			return {
 				success: false,
 				message: "Failed to import opportunities",
@@ -491,7 +491,7 @@ Requires the assetId from a previous parseSpreadsheet call.`,
 				skipped,
 				organizationsCreated,
 				errors: [error instanceof Error ? error.message : "Unknown error"],
-			}
+			};
 		}
 	},
-})
+});

@@ -1,69 +1,69 @@
-import { Building2, LayoutGrid, LinkIcon, Table as TableIcon, Users } from "lucide-react"
-import { useMemo, useState } from "react"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { useCurrentProject } from "~/contexts/current-project-context"
+import { Building2, LayoutGrid, LinkIcon, Table as TableIcon, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router";
+import { Link } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { useCurrentProject } from "~/contexts/current-project-context";
 import {
 	OrganizationsDataTable,
 	type OrganizationTableRow,
-} from "~/features/organizations/components/OrganizationsDataTable"
-import { getOrganizations } from "~/features/organizations/db"
-import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/client.server"
-import type { Organization } from "~/types"
+} from "~/features/organizations/components/OrganizationsDataTable";
+import { getOrganizations } from "~/features/organizations/db";
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { getServerClient } from "~/lib/supabase/client.server";
+import type { Organization } from "~/types";
 
 export const meta: MetaFunction = () => {
 	return [
 		{ title: "Organizations" },
 		{ name: "description", content: "Manage companies linked to your research participants" },
-	]
-}
+	];
+};
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const { client: supabase } = getServerClient(request);
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
-	const { data, error } = await getOrganizations({ supabase, accountId, projectId })
+	const { data, error } = await getOrganizations({ supabase, accountId, projectId });
 
 	if (error) {
-		throw new Response("Error loading organizations", { status: 500 })
+		throw new Response("Error loading organizations", { status: 500 });
 	}
 
-	return { organizations: data ?? [] }
+	return { organizations: data ?? [] };
 }
 
 type OrganizationWithContacts = Organization & {
 	people_organizations: Array<{
-		id: string
-		role: string | null
-		relationship_status: string | null
-		is_primary: boolean | null
+		id: string;
+		role: string | null;
+		relationship_status: string | null;
+		is_primary: boolean | null;
 		person: {
-			id: string
-			name: string | null
-			image_url: string | null
-			segment: string | null
-		} | null
-	}>
-}
+			id: string;
+			name: string | null;
+			image_url: string | null;
+			segment: string | null;
+		} | null;
+	}>;
+};
 
 export default function OrganizationsIndexPage() {
-	const { organizations } = useLoaderData<typeof loader>() as { organizations: OrganizationWithContacts[] }
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { organizations } = useLoaderData<typeof loader>() as { organizations: OrganizationWithContacts[] };
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
-	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
 	const tableRows = useMemo<OrganizationTableRow[]>(() => {
 		return organizations.map((organization) => {
@@ -72,12 +72,12 @@ export default function OrganizationsIndexPage() {
 					id: link.person?.id ?? `${organization.id}-${link.id}`,
 					name: link.person?.name ?? null,
 					segment: link.person?.segment ?? undefined,
-				})) ?? []
+				})) ?? [];
 
-			const signals = new Set<string>()
+			const signals = new Set<string>();
 			for (const link of organization.people_organizations ?? []) {
-				if (link.role) signals.add(link.role)
-				if (link.relationship_status) signals.add(link.relationship_status)
+				if (link.role) signals.add(link.role);
+				if (link.relationship_status) signals.add(link.relationship_status);
 			}
 
 			return {
@@ -89,9 +89,9 @@ export default function OrganizationsIndexPage() {
 				contacts,
 				relationshipSignals: Array.from(signals).slice(0, 4),
 				updatedAt: organization.updated_at ?? null,
-			}
-		})
-	}, [organizations])
+			};
+		});
+	}, [organizations]);
 
 	return (
 		<>
@@ -148,8 +148,8 @@ export default function OrganizationsIndexPage() {
 				) : (
 					<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
 						{organizations.map((organization) => {
-							const linkedPeople = organization.people_organizations || []
-							const primaryDomain = organization.domain || organization.website_url
+							const linkedPeople = organization.people_organizations || [];
+							const primaryDomain = organization.domain || organization.website_url;
 							return (
 								<Card
 									key={organization.id}
@@ -204,11 +204,11 @@ export default function OrganizationsIndexPage() {
 										</Link>
 									</CardFooter>
 								</Card>
-							)
+							);
 						})}
 					</div>
 				)}
 			</PageContainer>
 		</>
-	)
+	);
 }

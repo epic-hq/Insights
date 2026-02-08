@@ -1,59 +1,59 @@
-import { useState } from "react"
-import { Link } from "react-router-dom"
-import type { ColumnData, OpportunityItem } from "~/types"
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import type { ColumnData, OpportunityItem } from "~/types";
 
 interface OpportunityKanbanProps {
-	columns: ColumnData[]
+	columns: ColumnData[];
 }
 
 export default function OpportunityKanban({ columns }: OpportunityKanbanProps) {
-	const [draggedItem, setDraggedItem] = useState<OpportunityItem | null>(null)
-	const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
-	const [dragOverItem, setDragOverItem] = useState<string | null>(null)
+	const [draggedItem, setDraggedItem] = useState<OpportunityItem | null>(null);
+	const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+	const [dragOverItem, setDragOverItem] = useState<string | null>(null);
 
 	// Handle drag start
 	const handleDragStart = (item: OpportunityItem) => {
-		setDraggedItem(item)
-	}
+		setDraggedItem(item);
+	};
 
 	// Handle drag over column
 	const handleDragOverColumn = (columnTitle: string, e: React.DragEvent) => {
-		e.preventDefault()
+		e.preventDefault();
 		if (draggedItem && dragOverColumn !== columnTitle) {
-			setDragOverColumn(columnTitle)
+			setDragOverColumn(columnTitle);
 		}
-	}
+	};
 
 	// Handle drag over item
 	const handleDragOverItem = (itemId: string, e: React.DragEvent) => {
-		e.preventDefault()
+		e.preventDefault();
 		if (draggedItem && dragOverItem !== itemId && draggedItem.id !== itemId) {
-			setDragOverItem(itemId)
+			setDragOverItem(itemId);
 		}
-	}
+	};
 
 	// Handle drag end
 	const handleDragEnd = () => {
 		// In a real app, this would update the state/backend
 		// For now, we just reset the visual indicators
-		setDraggedItem(null)
-		setDragOverColumn(null)
-		setDragOverItem(null)
-	}
+		setDraggedItem(null);
+		setDragOverColumn(null);
+		setDragOverItem(null);
+	};
 
 	// Get priority color
 	const getPriorityColor = (priority?: "high" | "medium" | "low") => {
 		switch (priority) {
 			case "high":
-				return "border-l-4 border-l-red-500"
+				return "border-l-4 border-l-red-500";
 			case "medium":
-				return "border-l-4 border-l-yellow-500"
+				return "border-l-4 border-l-yellow-500";
 			case "low":
-				return "border-l-4 border-l-green-500"
+				return "border-l-4 border-l-green-500";
 			default:
-				return ""
+				return "";
 		}
-	}
+	};
 
 	return (
 		<div className="space-y-6">
@@ -111,5 +111,5 @@ export default function OpportunityKanban({ columns }: OpportunityKanbanProps) {
 				</div>
 			))}
 		</div>
-	)
+	);
 }

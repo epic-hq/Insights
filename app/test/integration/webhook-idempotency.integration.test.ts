@@ -3,24 +3,24 @@
  * Tests actual database calls without mocking
  */
 
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
 
 // Only mock external APIs, not our database or core logic
-vi.mock("consola", () => ({ default: { log: vi.fn(), error: vi.fn() } }))
+vi.mock("consola", () => ({ default: { log: vi.fn(), error: vi.fn() } }));
 
 // Use real admin client for actual DB operations
-const adminClient = createSupabaseAdminClient()
+const adminClient = createSupabaseAdminClient();
 
 describe("Webhook Idempotency Integration Tests", () => {
 	beforeEach(async () => {
-		await seedTestData()
-	})
+		await seedTestData();
+	});
 
 	afterAll(async () => {
-		await testDb.removeAllChannels()
-	})
+		await testDb.removeAllChannels();
+	});
 
 	describe("Idempotency Check", () => {
 		it("should prevent duplicate processing when upload_job status is 'done'", async () => {
@@ -36,10 +36,10 @@ describe("Webhook Idempotency Integration Tests", () => {
 					transcript: "Original transcript content",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(interviewError).toBeNull()
-			expect(interview).toBeDefined()
+			expect(interviewError).toBeNull();
+			expect(interview).toBeDefined();
 
 			const { data: uploadJob, error: uploadJobError } = await adminClient
 				.from("upload_jobs")
@@ -52,20 +52,20 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status_detail: "Previously completed",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(uploadJobError).toBeNull()
-			expect(uploadJob?.status).toBe("done")
+			expect(uploadJobError).toBeNull();
+			expect(uploadJob?.status).toBe("done");
 
 			// Test the actual idempotency logic from webhook
 			const { data: foundUploadJob, error: findError } = await adminClient
 				.from("upload_jobs")
 				.select("*")
 				.eq("assemblyai_id", "transcript-idempotent-test")
-				.single()
+				.single();
 
-			expect(findError).toBeNull()
-			expect(foundUploadJob?.status).toBe("done")
+			expect(findError).toBeNull();
+			expect(foundUploadJob?.status).toBe("done");
 
 			// Simulate the idempotency check
 			if (foundUploadJob?.status === "done") {
@@ -74,28 +74,28 @@ describe("Webhook Idempotency Integration Tests", () => {
 					.from("interviews")
 					.select("*")
 					.eq("id", interview?.id)
-					.single()
+					.single();
 
 				const { data: afterInterview } = await adminClient
 					.from("interviews")
 					.select("*")
 					.eq("id", interview?.id)
-					.single()
+					.single();
 
 				// Verify nothing changed
-				expect(afterInterview?.transcript).toBe("Original transcript content")
-				expect(afterInterview?.status).toBe("transcribed")
-				expect(beforeInterview?.updated_at).toBe(afterInterview?.updated_at)
+				expect(afterInterview?.transcript).toBe("Original transcript content");
+				expect(afterInterview?.status).toBe("transcribed");
+				expect(beforeInterview?.updated_at).toBe(afterInterview?.updated_at);
 			}
 
 			// Verify no duplicate analysis jobs would be created
 			const { data: analysisJobs } = await adminClient
 				.from("analysis_jobs")
 				.select("*")
-				.eq("interview_id", interview?.id)
+				.eq("interview_id", interview?.id);
 
-			expect(analysisJobs).toHaveLength(0)
-		})
+			expect(analysisJobs).toHaveLength(0);
+		});
 
 		it("should process normally when upload_job status is 'pending'", async () => {
 			// Create real interview and pending upload job
@@ -109,9 +109,9 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "uploaded",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(interviewError).toBeNull()
+			expect(interviewError).toBeNull();
 
 			const { data: uploadJob, error: uploadJobError } = await adminClient
 				.from("upload_jobs")
@@ -123,10 +123,10 @@ describe("Webhook Idempotency Integration Tests", () => {
 					custom_instructions: "Test instructions",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(uploadJobError).toBeNull()
-			expect(uploadJob?.status).toBe("pending")
+			expect(uploadJobError).toBeNull();
+			expect(uploadJob?.status).toBe("pending");
 
 			// Test processing would proceed - update interview status
 			const { error: updateError } = await adminClient
@@ -140,9 +140,9 @@ describe("Webhook Idempotency Integration Tests", () => {
 						audio_duration: 120,
 					},
 				})
-				.eq("id", interview?.id)
+				.eq("id", interview?.id);
 
-			expect(updateError).toBeNull()
+			expect(updateError).toBeNull();
 
 			// Mark upload job as done
 			const { error: uploadUpdateError } = await adminClient
@@ -151,9 +151,9 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "done",
 					status_detail: "Transcription completed",
 				})
-				.eq("id", uploadJob?.id)
+				.eq("id", uploadJob?.id);
 
-			expect(uploadUpdateError).toBeNull()
+			expect(uploadUpdateError).toBeNull();
 
 			// Create analysis job
 			const { data: analysisJob, error: analysisError } = await adminClient
@@ -169,26 +169,30 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status_detail: "Processing with AI",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(analysisError).toBeNull()
-			expect(analysisJob).toBeDefined()
+			expect(analysisError).toBeNull();
+			expect(analysisJob).toBeDefined();
 
 			// Verify final states
-			const { data: finalInterview } = await adminClient.from("interviews").select("*").eq("id", interview?.id).single()
+			const { data: finalInterview } = await adminClient
+				.from("interviews")
+				.select("*")
+				.eq("id", interview?.id)
+				.single();
 
-			expect(finalInterview?.status).toBe("transcribed")
-			expect(finalInterview?.transcript).toBe("New transcript from webhook")
+			expect(finalInterview?.status).toBe("transcribed");
+			expect(finalInterview?.transcript).toBe("New transcript from webhook");
 
 			const { data: finalUploadJob } = await adminClient
 				.from("upload_jobs")
 				.select("*")
 				.eq("id", uploadJob?.id)
-				.single()
+				.single();
 
-			expect(finalUploadJob?.status).toBe("done")
-		})
-	})
+			expect(finalUploadJob?.status).toBe("done");
+		});
+	});
 
 	describe("Status Progression", () => {
 		it("should progress through uploaded -> transcribed -> processing -> ready", async () => {
@@ -203,9 +207,9 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "uploaded", // 20%
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(interviewError).toBeNull()
+			expect(interviewError).toBeNull();
 
 			// Step 1: uploaded -> transcribed (50%)
 			const { error: transcribedError } = await adminClient
@@ -214,54 +218,54 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "transcribed",
 					transcript: "Transcription completed",
 				})
-				.eq("id", interview?.id)
+				.eq("id", interview?.id);
 
-			expect(transcribedError).toBeNull()
+			expect(transcribedError).toBeNull();
 
 			// Verify transcribed status
 			const { data: transcribedInterview } = await adminClient
 				.from("interviews")
 				.select("status")
 				.eq("id", interview?.id)
-				.single()
+				.single();
 
-			expect(transcribedInterview?.status).toBe("transcribed")
+			expect(transcribedInterview?.status).toBe("transcribed");
 
 			// Step 2: transcribed -> processing (85%)
 			const { error: processingError } = await adminClient
 				.from("interviews")
 				.update({ status: "processing" })
-				.eq("id", interview?.id)
+				.eq("id", interview?.id);
 
-			expect(processingError).toBeNull()
+			expect(processingError).toBeNull();
 
 			// Verify processing status
 			const { data: processingInterview } = await adminClient
 				.from("interviews")
 				.select("status")
 				.eq("id", interview?.id)
-				.single()
+				.single();
 
-			expect(processingInterview?.status).toBe("processing")
+			expect(processingInterview?.status).toBe("processing");
 
 			// Step 3: processing -> ready (100%)
 			const { error: readyError } = await adminClient
 				.from("interviews")
 				.update({ status: "ready" })
-				.eq("id", interview?.id)
+				.eq("id", interview?.id);
 
-			expect(readyError).toBeNull()
+			expect(readyError).toBeNull();
 
 			// Verify final ready status
 			const { data: finalInterview } = await adminClient
 				.from("interviews")
 				.select("status")
 				.eq("id", interview?.id)
-				.single()
+				.single();
 
-			expect(finalInterview?.status).toBe("ready")
-		})
-	})
+			expect(finalInterview?.status).toBe("ready");
+		});
+	});
 
 	describe("Admin Client RLS Bypass", () => {
 		it("should bypass RLS when using admin client", async () => {
@@ -276,20 +280,20 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "uploaded",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(adminError).toBeNull()
-			expect(adminInterview).toBeDefined()
+			expect(adminError).toBeNull();
+			expect(adminInterview).toBeDefined();
 
 			// Test that admin client can read data without user context
 			const { data: readInterview, error: readError } = await adminClient
 				.from("interviews")
 				.select("*")
 				.eq("id", "test-admin-rls-bypass")
-				.single()
+				.single();
 
-			expect(readError).toBeNull()
-			expect(readInterview?.title).toBe("Admin RLS Test")
+			expect(readError).toBeNull();
+			expect(readInterview?.title).toBe("Admin RLS Test");
 
 			// Test that admin client can update without user context
 			const { error: updateError } = await adminClient
@@ -298,20 +302,20 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "ready",
 					transcript: "Updated by admin client",
 				})
-				.eq("id", "test-admin-rls-bypass")
+				.eq("id", "test-admin-rls-bypass");
 
-			expect(updateError).toBeNull()
+			expect(updateError).toBeNull();
 
 			// Verify update succeeded
 			const { data: updatedInterview } = await adminClient
 				.from("interviews")
 				.select("*")
 				.eq("id", "test-admin-rls-bypass")
-				.single()
+				.single();
 
-			expect(updatedInterview?.status).toBe("ready")
-			expect(updatedInterview?.transcript).toBe("Updated by admin client")
-		})
+			expect(updatedInterview?.status).toBe("ready");
+			expect(updatedInterview?.transcript).toBe("Updated by admin client");
+		});
 
 		it("should handle nullable audit fields with admin client", async () => {
 			// Test creating insights with nullable created_by/updated_by
@@ -325,7 +329,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "ready",
 				})
 				.select()
-				.single()
+				.single();
 
 			// Create insight without created_by (null)
 			const { data: insight, error: insightError } = await adminClient
@@ -348,11 +352,11 @@ describe("Webhook Idempotency Integration Tests", () => {
 					// created_by and updated_by are null (not provided)
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(insightError).toBeNull()
-			expect(insight).toBeDefined()
-			expect(insight?.name).toBe("Test Insight")
+			expect(insightError).toBeNull();
+			expect(insight).toBeDefined();
+			expect(insight?.name).toBe("Test Insight");
 
 			// Create insight with created_by set
 			const { data: insightWithAudit, error: auditError } = await adminClient
@@ -376,13 +380,13 @@ describe("Webhook Idempotency Integration Tests", () => {
 					updated_by: TEST_ACCOUNT_ID,
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(auditError).toBeNull()
-			expect(insightWithAudit).toBeDefined()
-			expect(insightWithAudit?.created_by).toBe(TEST_ACCOUNT_ID)
-		})
-	})
+			expect(auditError).toBeNull();
+			expect(insightWithAudit).toBeDefined();
+			expect(insightWithAudit?.created_by).toBe(TEST_ACCOUNT_ID);
+		});
+	});
 
 	describe("Database Constraints", () => {
 		it("should handle foreign key relationships correctly", async () => {
@@ -397,7 +401,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "ready",
 				})
 				.select()
-				.single()
+				.single();
 
 			const { data: uploadJob } = await adminClient
 				.from("upload_jobs")
@@ -407,7 +411,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "done",
 				})
 				.select()
-				.single()
+				.single();
 
 			const { data: analysisJob } = await adminClient
 				.from("analysis_jobs")
@@ -417,29 +421,29 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "done",
 				})
 				.select()
-				.single()
+				.single();
 
-			expect(uploadJob?.interview_id).toBe(interview?.id)
-			expect(analysisJob?.interview_id).toBe(interview?.id)
+			expect(uploadJob?.interview_id).toBe(interview?.id);
+			expect(analysisJob?.interview_id).toBe(interview?.id);
 
 			// Test cascade delete
-			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview?.id)
+			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview?.id);
 
-			expect(deleteError).toBeNull()
+			expect(deleteError).toBeNull();
 
 			// Verify child records were cascade deleted
 			const { data: orphanedUpload } = await adminClient
 				.from("upload_jobs")
 				.select("*")
-				.eq("interview_id", interview?.id)
+				.eq("interview_id", interview?.id);
 
 			const { data: orphanedAnalysis } = await adminClient
 				.from("analysis_jobs")
 				.select("*")
-				.eq("interview_id", interview?.id)
+				.eq("interview_id", interview?.id);
 
-			expect(orphanedUpload).toHaveLength(0)
-			expect(orphanedAnalysis).toHaveLength(0)
-		})
-	})
-})
+			expect(orphanedUpload).toHaveLength(0);
+			expect(orphanedAnalysis).toHaveLength(0);
+		});
+	});
+});

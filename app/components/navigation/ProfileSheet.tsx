@@ -4,29 +4,29 @@
  * Shows account switcher and user profile options in a bottom sheet.
  */
 
-import { LogOut, Settings, User } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
-import { useAuth } from "~/contexts/AuthContext"
-import { TeamSwitcher } from "./TeamSwitcher"
+import { LogOut, Settings, User } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
+import { useAuth } from "~/contexts/AuthContext";
+import { TeamSwitcher } from "./TeamSwitcher";
 
 export interface ProfileSheetProps {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	accountSettingsHref: string
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	accountSettingsHref: string;
 }
 
 export function ProfileSheet({ open, onOpenChange, accountSettingsHref }: ProfileSheetProps) {
-	const { user, signOut } = useAuth()
+	const { user, signOut } = useAuth();
 
 	function handleSignOut() {
-		onOpenChange(false)
-		signOut()
+		onOpenChange(false);
+		signOut();
 	}
 
-	const userEmail = user?.email || "Unknown"
-	const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail
+	const userEmail = user?.email || "Unknown";
+	const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail;
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -83,7 +83,7 @@ export function ProfileSheet({ open, onOpenChange, accountSettingsHref }: Profil
 				</div>
 			</SheetContent>
 		</Sheet>
-	)
+	);
 }
 
-export default ProfileSheet
+export default ProfileSheet;

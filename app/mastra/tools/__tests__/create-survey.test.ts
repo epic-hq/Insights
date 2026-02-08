@@ -5,8 +5,8 @@
  * including null values for optional fields.
  */
 
-import { describe, expect, it } from "vitest"
-import { z } from "zod"
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 // Recreate the schema from create-survey.ts to test it in isolation
 // (Importing the actual tool would trigger Supabase client initialization)
@@ -23,7 +23,7 @@ const QuestionInputSchema = z.object({
 			high: z.string().nullish(),
 		})
 		.nullish(),
-})
+});
 
 const createSurveyInputSchema = z.object({
 	projectId: z.string(),
@@ -34,7 +34,7 @@ const createSurveyInputSchema = z.object({
 	isLive: z.boolean().nullish(),
 	allowChat: z.boolean().nullish(),
 	defaultResponseMode: z.enum(["form", "chat", "voice"]).nullish(),
-})
+});
 
 describe("create-survey schema validation", () => {
 	describe("minimal valid input (what LLMs typically send)", () => {
@@ -43,25 +43,25 @@ describe("create-survey schema validation", () => {
 				projectId: "proj-123",
 				name: "Customer Feedback Survey",
 				questions: [{ prompt: "How satisfied are you?" }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
+			const result = createSurveyInputSchema.safeParse(input);
 
-			expect(result.success).toBe(true)
+			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.projectId).toBe("proj-123")
-				expect(result.data.name).toBe("Customer Feedback Survey")
-				expect(result.data.questions).toHaveLength(1)
-				expect(result.data.questions[0].prompt).toBe("How satisfied are you?")
+				expect(result.data.projectId).toBe("proj-123");
+				expect(result.data.name).toBe("Customer Feedback Survey");
+				expect(result.data.questions).toHaveLength(1);
+				expect(result.data.questions[0].prompt).toBe("How satisfied are you?");
 				// Optional fields are undefined when omitted (defaults applied in execute())
-				expect(result.data.questions[0].type).toBeUndefined()
-				expect(result.data.questions[0].required).toBeUndefined()
-				expect(result.data.isLive).toBeUndefined()
-				expect(result.data.allowChat).toBeUndefined()
-				expect(result.data.defaultResponseMode).toBeUndefined()
+				expect(result.data.questions[0].type).toBeUndefined();
+				expect(result.data.questions[0].required).toBeUndefined();
+				expect(result.data.isLive).toBeUndefined();
+				expect(result.data.allowChat).toBeUndefined();
+				expect(result.data.defaultResponseMode).toBeUndefined();
 			}
-		})
-	})
+		});
+	});
 
 	describe("null values for optional fields (LLMs send null)", () => {
 		it("should accept null for all optional fields", () => {
@@ -85,24 +85,24 @@ describe("create-survey schema validation", () => {
 				isLive: null,
 				allowChat: null,
 				defaultResponseMode: null,
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
+			const result = createSurveyInputSchema.safeParse(input);
 
-			expect(result.success).toBe(true)
+			expect(result.success).toBe(true);
 			if (result.success) {
 				// Explicit nulls pass through validation (defaults applied in execute())
-				expect(result.data.surveyId).toBeNull()
-				expect(result.data.description).toBeNull()
-				expect(result.data.questions[0].type).toBeNull()
-				expect(result.data.questions[0].required).toBeNull()
-				expect(result.data.questions[0].options).toBeNull()
-				expect(result.data.isLive).toBeNull()
-				expect(result.data.allowChat).toBeNull()
-				expect(result.data.defaultResponseMode).toBeNull()
+				expect(result.data.surveyId).toBeNull();
+				expect(result.data.description).toBeNull();
+				expect(result.data.questions[0].type).toBeNull();
+				expect(result.data.questions[0].required).toBeNull();
+				expect(result.data.questions[0].options).toBeNull();
+				expect(result.data.isLive).toBeNull();
+				expect(result.data.allowChat).toBeNull();
+				expect(result.data.defaultResponseMode).toBeNull();
 			}
-		})
-	})
+		});
+	});
 
 	describe("explicit values", () => {
 		it("should accept all explicit values", () => {
@@ -129,81 +129,81 @@ describe("create-survey schema validation", () => {
 				isLive: false,
 				allowChat: false,
 				defaultResponseMode: "voice",
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
+			const result = createSurveyInputSchema.safeParse(input);
 
-			expect(result.success).toBe(true)
+			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.surveyId).toBe("survey-789")
-				expect(result.data.description).toBe("Help us improve our product")
-				expect(result.data.questions).toHaveLength(2)
-				expect(result.data.questions[0].type).toBe("likert")
-				expect(result.data.questions[0].required).toBe(true)
-				expect(result.data.questions[0].likertScale).toBe(5)
-				expect(result.data.questions[0].likertLabels?.low).toBe("Poor")
-				expect(result.data.questions[1].type).toBe("multi_select")
-				expect(result.data.questions[1].options).toEqual(["Feature A", "Feature B", "Feature C"])
-				expect(result.data.isLive).toBe(false)
-				expect(result.data.allowChat).toBe(false)
-				expect(result.data.defaultResponseMode).toBe("voice")
+				expect(result.data.surveyId).toBe("survey-789");
+				expect(result.data.description).toBe("Help us improve our product");
+				expect(result.data.questions).toHaveLength(2);
+				expect(result.data.questions[0].type).toBe("likert");
+				expect(result.data.questions[0].required).toBe(true);
+				expect(result.data.questions[0].likertScale).toBe(5);
+				expect(result.data.questions[0].likertLabels?.low).toBe("Poor");
+				expect(result.data.questions[1].type).toBe("multi_select");
+				expect(result.data.questions[1].options).toEqual(["Feature A", "Feature B", "Feature C"]);
+				expect(result.data.isLive).toBe(false);
+				expect(result.data.allowChat).toBe(false);
+				expect(result.data.defaultResponseMode).toBe("voice");
 			}
-		})
-	})
+		});
+	});
 
 	describe("validation errors", () => {
 		it("should reject missing required projectId", () => {
 			const input = {
 				name: "Test Survey",
 				questions: [{ prompt: "Question?" }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
 
 		it("should reject missing required name", () => {
 			const input = {
 				projectId: "proj-123",
 				questions: [{ prompt: "Question?" }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
 
 		it("should reject empty questions array", () => {
 			const input = {
 				projectId: "proj-123",
 				name: "Empty Survey",
 				questions: [],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
 
 		it("should reject question without prompt", () => {
 			const input = {
 				projectId: "proj-123",
 				name: "Bad Survey",
 				questions: [{ type: "short_text" }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
 
 		it("should reject invalid question type", () => {
 			const input = {
 				projectId: "proj-123",
 				name: "Test Survey",
 				questions: [{ prompt: "Question?", type: "invalid_type" }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
 
 		it("should reject invalid response mode", () => {
 			const input = {
@@ -211,23 +211,23 @@ describe("create-survey schema validation", () => {
 				name: "Test Survey",
 				questions: [{ prompt: "Question?" }],
 				defaultResponseMode: "invalid_mode",
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
 
 		it("should reject likertScale out of range", () => {
 			const input = {
 				projectId: "proj-123",
 				name: "Test Survey",
 				questions: [{ prompt: "Rate this", type: "likert", likertScale: 15 }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(false)
-		})
-	})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(false);
+		});
+	});
 
 	describe("real-world LLM input patterns", () => {
 		it("should accept typical GPT-4 output format", () => {
@@ -260,11 +260,11 @@ describe("create-survey schema validation", () => {
 				isLive: true,
 				allowChat: true,
 				defaultResponseMode: "form",
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(true)
-		})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(true);
+		});
 
 		it("should accept minimal Claude output format", () => {
 			// Claude often omits optional fields entirely
@@ -272,10 +272,10 @@ describe("create-survey schema validation", () => {
 				projectId: "146e8fbe-99ab-4bce-a3ee-d7249c0decda",
 				name: "Quick Poll",
 				questions: [{ prompt: "Do you like our new feature?" }, { prompt: "Any suggestions for improvement?" }],
-			}
+			};
 
-			const result = createSurveyInputSchema.safeParse(input)
-			expect(result.success).toBe(true)
-		})
-	})
-})
+			const result = createSurveyInputSchema.safeParse(input);
+			expect(result.success).toBe(true);
+		});
+	});
+});

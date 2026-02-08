@@ -1,24 +1,24 @@
-import { useEffect } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData, useSearchParams } from "react-router"
-import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
-import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
-import { userContext } from "~/server/user-context"
+import { useEffect } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData, useSearchParams } from "react-router";
+import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot";
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server";
+import { userContext } from "~/server/user-context";
 
-export const handle = { hideProjectStatusAgent: true } as const
+export const handle = { hideProjectStatusAgent: true } as const;
 
-export const meta: MetaFunction = () => [{ title: "Interview Realtime | Insights" }]
+export const meta: MetaFunction = () => [{ title: "Interview Realtime | Insights" }];
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const interviewId = params.interviewId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const interviewId = params.interviewId;
 
 	if (!accountId || !projectId || !interviewId) {
-		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 });
 	}
 
 	// Optional: verify interview exists and belongs to project
@@ -27,28 +27,28 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.select("id, project_id")
 		.eq("id", interviewId)
 		.eq("project_id", projectId)
-		.single()
+		.single();
 
 	if (error || !interview) {
-		throw new Response("Interview not found", { status: 404 })
+		throw new Response("Interview not found", { status: 404 });
 	}
 
-	await createPlannedAnswersForInterview(supabase, { projectId, interviewId })
+	await createPlannedAnswersForInterview(supabase, { projectId, interviewId });
 
-	return { accountId, projectId, interviewId }
+	return { accountId, projectId, interviewId };
 }
 
 export default function InterviewRealtimePage() {
-	const { projectId, interviewId } = useLoaderData<typeof loader>()
-	const [searchParams] = useSearchParams()
-	const autostart = searchParams.get("autostart") === "true"
-	const mode = (searchParams.get("mode") as "notes" | "interview") || "interview"
-	const attachType = searchParams.get("attachType")
+	const { projectId, interviewId } = useLoaderData<typeof loader>();
+	const [searchParams] = useSearchParams();
+	const autostart = searchParams.get("autostart") === "true";
+	const mode = (searchParams.get("mode") as "notes" | "interview") || "interview";
+	const attachType = searchParams.get("attachType");
 
 	// Support multiple person IDs via comma-separated personIds param or single personId
-	const personIdsParam = searchParams.get("personIds")
-	const personIdParam = searchParams.get("personId")
-	const entityIdParam = searchParams.get("entityId")
+	const personIdsParam = searchParams.get("personIds");
+	const personIdParam = searchParams.get("personId");
+	const entityIdParam = searchParams.get("entityId");
 
 	// Parse personIds: prefer personIds (multiple), fallback to personId or entityId (single)
 	const personIds: string[] = personIdsParam
@@ -57,24 +57,24 @@ export default function InterviewRealtimePage() {
 			? [personIdParam]
 			: entityIdParam
 				? [entityIdParam]
-				: []
+				: [];
 
-	const finalAttachType = attachType || (personIds.length > 0 ? "existing" : undefined)
+	const finalAttachType = attachType || (personIds.length > 0 ? "existing" : undefined);
 
 	useEffect(() => {
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
 			// Show confirmation dialog when user tries to leave the page
-			e.preventDefault()
+			e.preventDefault();
 			// Note: Modern browsers ignore custom messages and show their own standard message
-			return "Are you sure you want to leave? Any unsaved recording may be lost."
-		}
+			return "Are you sure you want to leave? Any unsaved recording may be lost.";
+		};
 
-		window.addEventListener("beforeunload", handleBeforeUnload)
+		window.addEventListener("beforeunload", handleBeforeUnload);
 
 		return () => {
-			window.removeEventListener("beforeunload", handleBeforeUnload)
-		}
-	}, [])
+			window.removeEventListener("beforeunload", handleBeforeUnload);
+		};
+	}, []);
 
 	return (
 		// Fill available outlet height from AppLayout, avoid double 100vh under header
@@ -88,5 +88,5 @@ export default function InterviewRealtimePage() {
 				personIds={personIds}
 			/>
 		</div>
-	)
+	);
 }

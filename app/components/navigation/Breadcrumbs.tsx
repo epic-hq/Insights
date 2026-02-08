@@ -1,18 +1,18 @@
-import type React from "react"
-import { Link, useLocation } from "react-router-dom"
-import { z } from "zod"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import type React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { z } from "zod";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 interface BreadcrumbsProps {
-	className?: string
+	className?: string;
 }
 
 const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
-	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
-	const location = useLocation()
-	const pathnames = location.pathname.split("/").filter((x) => x)
+	const currentProjectContext = useCurrentProject();
+	const routes = useProjectRoutes(currentProjectContext?.projectPath);
+	const location = useLocation();
+	const pathnames = location.pathname.split("/").filter((x) => x);
 
 	// Map of route segments to display names
 	const routeLabels: Record<string, string> = {
@@ -28,25 +28,25 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
 		edit: "Edit",
 		table: "Table",
 		"auto-insights": "Auto Insights",
-	}
+	};
 
 	// Filter out unwanted segments (UUIDs, account paths, etc.)
 	const filteredPathnames = pathnames.filter((segment) => {
 		// Skip if it's a UUID
 		if (z.string().uuid().safeParse(segment).success) {
-			return false
+			return false;
 		}
 		// Skip account path segments (single letter followed by nothing meaningful)
 		if (segment === "a" || segment === "p") {
-			return false
+			return false;
 		}
 		// Skip empty or very short meaningless segments
 		if (segment.length <= 1) {
-			return false
+			return false;
 		}
 		// Only include known route segments or meaningful paths
-		return routeLabels[segment] || segment.length > 2
-	})
+		return routeLabels[segment] || segment.length > 2;
+	});
 
 	return (
 		<nav className={`flex ${className}`} aria-label="Breadcrumb">
@@ -65,14 +65,14 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
 				{filteredPathnames
 					.map((name, index) => {
 						// Build the route using filtered segments up to current index
-						const originalIndex = pathnames.indexOf(name)
-						const routeTo = `/${pathnames.slice(0, originalIndex + 1).join("/")}`
-						const isLast = index === filteredPathnames.length - 1
-						const displayName = routeLabels[name] || name
+						const originalIndex = pathnames.indexOf(name);
+						const routeTo = `/${pathnames.slice(0, originalIndex + 1).join("/")}`;
+						const isLast = index === filteredPathnames.length - 1;
+						const displayName = routeLabels[name] || name;
 
 						// Skip rendering if no display name
 						if (!displayName) {
-							return null
+							return null;
 						}
 
 						return (
@@ -104,12 +104,12 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
 									)}
 								</div>
 							</li>
-						)
+						);
 					})
 					.filter(Boolean)}
 			</ol>
 		</nav>
-	)
-}
+	);
+};
 
-export default Breadcrumbs
+export default Breadcrumbs;

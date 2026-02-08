@@ -15,66 +15,66 @@ import {
 	Lightbulb,
 	Package,
 	Sparkles,
-} from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Progress } from "~/components/ui/progress"
-import type { KeyTakeaway, LensStat } from "../lib/loadAnalysisData.server"
+} from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Progress } from "~/components/ui/progress";
+import type { KeyTakeaway, LensStat } from "../lib/loadAnalysisData.server";
 
 type ByLensTabProps = {
-	lensStats: LensStat[]
-	routes: any
-	projectPath: string
-}
+	lensStats: LensStat[];
+	routes: any;
+	projectPath: string;
+};
 
 function getCategoryIcon(category: string | null) {
 	switch (category) {
 		case "research":
-			return <FlaskConical className="h-5 w-5" />
+			return <FlaskConical className="h-5 w-5" />;
 		case "sales":
-			return <Briefcase className="h-5 w-5" />
+			return <Briefcase className="h-5 w-5" />;
 		case "product":
-			return <Package className="h-5 w-5" />
+			return <Package className="h-5 w-5" />;
 		default:
-			return <Sparkles className="h-5 w-5" />
+			return <Sparkles className="h-5 w-5" />;
 	}
 }
 
 function getCategoryColor(category: string | null) {
 	switch (category) {
 		case "research":
-			return "text-purple-600 bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300"
+			return "text-purple-600 bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300";
 		case "sales":
-			return "text-blue-600 bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300"
+			return "text-blue-600 bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300";
 		case "product":
-			return "text-green-600 bg-green-100 dark:bg-green-950/30 dark:text-green-300"
+			return "text-green-600 bg-green-100 dark:bg-green-950/30 dark:text-green-300";
 		default:
-			return "text-muted-foreground bg-muted"
+			return "text-muted-foreground bg-muted";
 	}
 }
 
 function getCategoryBadgeVariant(category: KeyTakeaway["category"]) {
 	switch (category) {
 		case "consensus":
-			return "default" as const
+			return "default" as const;
 		case "pattern":
-			return "secondary" as const
+			return "secondary" as const;
 		case "discrepancy":
-			return "destructive" as const
+			return "destructive" as const;
 		case "recommendation":
-			return "outline" as const
+			return "outline" as const;
 		default:
-			return "secondary" as const
+			return "secondary" as const;
 	}
 }
 
 function LensStatCard({ stat, routes }: { stat: LensStat; routes: any }) {
-	const percentage = stat.totalInterviews > 0 ? Math.round((stat.completedCount / stat.totalInterviews) * 100) : 0
-	const hasSynthesis = stat.synthesis?.status === "completed"
-	const summary = stat.synthesis?.executiveSummary
-	const takeaways = stat.synthesis?.keyTakeaways || []
-	const recommendations = stat.synthesis?.recommendations || []
+	const percentage = stat.totalInterviews > 0 ? Math.round((stat.completedCount / stat.totalInterviews) * 100) : 0;
+	const hasSynthesis = stat.synthesis?.status === "completed";
+	const summary = stat.synthesis?.executiveSummary;
+	const takeaways = stat.synthesis?.keyTakeaways || [];
+	const recommendations = stat.synthesis?.recommendations || [];
 
 	return (
 		<Link to={routes.lenses.byTemplateKey(stat.templateKey)} className="group block">
@@ -168,7 +168,7 @@ function LensStatCard({ stat, routes }: { stat: LensStat; routes: any }) {
 				</CardContent>
 			</Card>
 		</Link>
-	)
+	);
 }
 
 export function AnalysisByLensTab({ lensStats, routes, projectPath }: ByLensTabProps) {
@@ -182,12 +182,12 @@ export function AnalysisByLensTab({ lensStats, routes, projectPath }: ByLensTabP
 					Lenses" button above to get started.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	// Split into lenses with data and without
-	const withData = lensStats.filter((s) => s.completedCount > 0)
-	const withoutData = lensStats.filter((s) => s.completedCount === 0)
+	const withData = lensStats.filter((s) => s.completedCount > 0);
+	const withoutData = lensStats.filter((s) => s.completedCount === 0);
 
 	return (
 		<div className="space-y-6">
@@ -216,5 +216,5 @@ export function AnalysisByLensTab({ lensStats, routes, projectPath }: ByLensTabP
 				</div>
 			)}
 		</div>
-	)
+	);
 }

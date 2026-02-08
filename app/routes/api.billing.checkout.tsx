@@ -15,15 +15,15 @@
  * The account_id is automatically extracted from the authenticated user's session.
  */
 
-import { Polar } from "@polar-sh/sdk"
-import consola from "consola"
-import type { LoaderFunctionArgs } from "react-router"
-import { redirect } from "react-router"
-import type { PlanId } from "~/config/plans"
-import { PLANS } from "~/config/plans"
-import { getServerEnv } from "~/env.server"
-import { getPostHogServerClient } from "~/lib/posthog.server"
-import { getAuthenticatedUser, supabaseAdmin } from "~/lib/supabase/client.server"
+import { Polar } from "@polar-sh/sdk";
+import consola from "consola";
+import type { LoaderFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import type { PlanId } from "~/config/plans";
+import { PLANS } from "~/config/plans";
+import { getServerEnv } from "~/env.server";
+import { getPostHogServerClient } from "~/lib/posthog.server";
+import { getAuthenticatedUser, supabaseAdmin } from "~/lib/supabase/client.server";
 
 /**
  * Get Polar product ID for a plan and interval.
@@ -43,21 +43,21 @@ function getPolarProductId(env: ReturnType<typeof getServerEnv>, plan: PlanId, i
 			monthly: env.POLAR_PRODUCT_TEAM_MONTHLY,
 			annual: env.POLAR_PRODUCT_TEAM_ANNUAL,
 		},
-	}
+	};
 
-	const config = products[plan]
-	return interval === "year" ? config?.annual : config?.monthly
+	const config = products[plan];
+	return interval === "year" ? config?.annual : config?.monthly;
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const env = getServerEnv()
-	const { user } = await getAuthenticatedUser(request)
+	const env = getServerEnv();
+	const { user } = await getAuthenticatedUser(request);
 
 	// Require authentication - preserve full checkout URL for redirect after login
 	if (!user) {
-		consola.warn("[checkout] Unauthenticated checkout attempt")
-		const returnUrl = new URL(request.url).pathname + new URL(request.url).search
-		return redirect(`/login?redirect=${encodeURIComponent(returnUrl)}`)
+		consola.warn("[checkout] Unauthenticated checkout attempt");
+		const returnUrl = new URL(request.url).pathname + new URL(request.url).search;
+		return redirect(`/login?redirect=${encodeURIComponent(returnUrl)}`);
 	}
 
 	// Get team account_id where user is an owner (not personal account) for billing
@@ -70,50 +70,50 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		.eq("account_role", "owner")
 		.eq("accounts.personal_account", false)
 		.limit(1)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (membershipError) {
 		consola.warn("[checkout] Error fetching team account", {
 			userId: user.sub,
 			error: membershipError.message,
-		})
+		});
 	}
 
-	const accountId = membership?.account_id
+	const accountId = membership?.account_id;
 	if (!accountId) {
-		consola.warn("[checkout] No owned team account for user", { userId: user.sub })
+		consola.warn("[checkout] No owned team account for user", { userId: user.sub });
 		// User isn't an owner on any team account
-		return redirect("/pricing?error=owner_required")
+		return redirect("/pricing?error=owner_required");
 	}
 
-	const url = new URL(request.url)
-	const plan = url.searchParams.get("plan") as PlanId | null
-	const interval = url.searchParams.get("interval") || "month"
+	const url = new URL(request.url);
+	const plan = url.searchParams.get("plan") as PlanId | null;
+	const interval = url.searchParams.get("interval") || "month";
 
 	// Validate plan
 	if (!plan || !PLANS[plan]) {
-		consola.warn("[checkout] Invalid plan", { plan })
-		return redirect("/pricing?error=invalid_plan")
+		consola.warn("[checkout] Invalid plan", { plan });
+		return redirect("/pricing?error=invalid_plan");
 	}
 
 	// Free plan doesn't need checkout
 	if (plan === "free") {
-		return redirect("/pricing?error=free_plan")
+		return redirect("/pricing?error=free_plan");
 	}
 
 	// Get product ID for this plan
-	const productId = getPolarProductId(env, plan, interval)
+	const productId = getPolarProductId(env, plan, interval);
 
 	if (!productId) {
-		consola.error("[checkout] Missing Polar product ID", { plan, interval })
-		return redirect("/pricing?error=product_not_configured")
+		consola.error("[checkout] Missing Polar product ID", { plan, interval });
+		return redirect("/pricing?error=product_not_configured");
 	}
 
 	// Check for access token
-	const accessToken = env.POLAR_ACCESS_TOKEN
+	const accessToken = env.POLAR_ACCESS_TOKEN;
 	if (!accessToken) {
-		consola.error("[checkout] POLAR_ACCESS_TOKEN not configured")
-		return redirect("/pricing?error=billing_not_configured")
+		consola.error("[checkout] POLAR_ACCESS_TOKEN not configured");
+		return redirect("/pricing?error=billing_not_configured");
 	}
 
 	// Build metadata to pass to Polar
@@ -121,14 +121,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		account_id: accountId,
 		user_id: user.sub,
 		plan_id: plan,
-	}
+	};
 
 	// Determine server environment
-	const server = env.APP_ENV === "production" ? "production" : ("sandbox" as const)
+	const server = env.APP_ENV === "production" ? "production" : ("sandbox" as const);
 
 	// Build success URL - redirect to welcome-upgrade page with plan param
-	const origin = url.origin
-	const successUrl = `${origin}/a/${accountId}/welcome-upgrade?plan=${plan}`
+	const origin = url.origin;
+	const successUrl = `${origin}/a/${accountId}/welcome-upgrade?plan=${plan}`;
 
 	consola.info("[checkout] Creating Polar checkout session", {
 		plan,
@@ -136,19 +136,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		productId,
 		accountId,
 		server,
-	})
+	});
 
 	// Initialize Polar SDK with appropriate server
 	const polar = new Polar({
 		accessToken,
 		server: server === "sandbox" ? "sandbox" : "production",
-	})
+	});
 
 	// Get minimum seats for per-user plans (Team plan starts at 2 seats)
 	// Only send seats if product supports seat-based pricing (production)
-	const planConfig = PLANS[plan]
-	const minSeats = server === "production" && planConfig.perUser ? (planConfig.minSeats ?? 1) : undefined
-	const billingErrorUrl = `/a/${accountId}/billing?error=subscription_update_failed`
+	const planConfig = PLANS[plan];
+	const minSeats = server === "production" && planConfig.perUser ? (planConfig.minSeats ?? 1) : undefined;
+	const billingErrorUrl = `/a/${accountId}/billing?error=subscription_update_failed`;
 
 	try {
 		// If the account already has an active/trialing Polar subscription, update it instead of creating a new checkout.
@@ -161,7 +161,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			.in("status", ["active", "trialing"])
 			.order("created_at", { ascending: false })
 			.limit(1)
-			.maybeSingle()
+			.maybeSingle();
 
 		if (existingSubscription) {
 			consola.info("[checkout] Updating existing Polar subscription", {
@@ -169,7 +169,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				subscriptionId: existingSubscription.id,
 				fromPlan: existingSubscription.plan_name,
 				toPlan: plan,
-			})
+			});
 
 			try {
 				await polar.subscriptions.update({
@@ -177,71 +177,72 @@ export async function loader({ request }: LoaderFunctionArgs) {
 					subscriptionUpdate: {
 						productId,
 					},
-				})
+				});
 
-				let seatCount: number | undefined
+				let seatCount: number | undefined;
 				if (server === "production" && planConfig.perUser) {
 					const { count: memberCount, error: memberCountError } = await supabaseAdmin
 						.schema("accounts")
 						.from("account_user")
 						.select("*", { count: "exact", head: true })
-						.eq("account_id", accountId)
+						.eq("account_id", accountId);
 
 					if (memberCountError) {
 						consola.warn("[checkout] Failed to count team members for seat update", {
 							accountId,
 							error: memberCountError.message,
-						})
+						});
 					}
 
-					const requestedSeats = memberCount ?? 1
-					const minimumSeats = planConfig.minSeats ?? 1
-					seatCount = Math.max(requestedSeats, minimumSeats)
+					const requestedSeats = memberCount ?? 1;
+					const minimumSeats = planConfig.minSeats ?? 1;
+					seatCount = Math.max(requestedSeats, minimumSeats);
 
 					await polar.subscriptions.update({
 						id: existingSubscription.id,
 						subscriptionUpdate: {
 							seats: seatCount,
 						},
-					})
+					});
 				}
 
 				// Update local subscription record immediately for UI consistency (webhook will also sync)
 				const updatePayload: {
-					plan_name: string
-					price_id: string
-					quantity?: number
+					plan_name: string;
+					price_id: string;
+					quantity?: number;
 				} = {
 					plan_name: planConfig.name,
 					price_id: productId,
-				}
+				};
 
 				if (typeof seatCount === "number") {
-					updatePayload.quantity = seatCount
+					updatePayload.quantity = seatCount;
 				}
 
 				const { error: updateError } = await supabaseAdmin
 					.schema("accounts")
 					.from("billing_subscriptions")
 					.update(updatePayload)
-					.eq("id", existingSubscription.id)
+					.eq("id", existingSubscription.id);
 
 				if (updateError) {
 					consola.warn("[checkout] Failed to update local subscription after product switch", {
 						accountId,
 						error: updateError.message,
-					})
+					});
 				}
 
-				return redirect(successUrl)
+				return redirect(successUrl);
 			} catch (error) {
 				const errorBody = (error as { body?: string | Record<string, unknown>; rawValue?: Record<string, unknown> })
-					?.body
-				const rawValue = (error as { rawValue?: Record<string, unknown> })?.rawValue
+					?.body;
+				const rawValue = (error as { rawValue?: Record<string, unknown> })?.rawValue;
 				const errorDescription =
-					(typeof errorBody === "string" ? errorBody : undefined) ?? (rawValue?.error_description as string | undefined)
-				const errorCode = rawValue?.error as string | undefined
-				const requiresScopes = errorCode === "insufficient_scope"
+					(typeof errorBody === "string" ? errorBody : undefined) ??
+					(rawValue?.error_description as string | undefined);
+				const errorCode = rawValue?.error as string | undefined;
+				const requiresScopes = errorCode === "insufficient_scope";
 
 				consola.error("[checkout] Failed to update subscription", {
 					accountId,
@@ -249,13 +250,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 					error,
 					errorCode,
 					errorDescription,
-				})
+				});
 
 				if (requiresScopes) {
-					return redirect(`/a/${accountId}/billing?error=subscription_update_insufficient_scope`)
+					return redirect(`/a/${accountId}/billing?error=subscription_update_insufficient_scope`);
 				}
 
-				return redirect(billingErrorUrl)
+				return redirect(billingErrorUrl);
 			}
 		}
 
@@ -268,16 +269,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			metadata,
 			// For per-user plans (Team), set minimum seats (production only)
 			...(minSeats && { seats: minSeats }),
-		})
+		});
 
 		consola.info("[checkout] Checkout session created", {
 			checkoutId: checkout.id,
 			url: checkout.url,
-		})
+		});
 
 		// Track checkout_started event for PLG instrumentation
 		try {
-			const posthogServer = getPostHogServerClient()
+			const posthogServer = getPostHogServerClient();
 			if (posthogServer) {
 				posthogServer.capture({
 					distinctId: user.sub,
@@ -289,15 +290,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 						checkout_id: checkout.id,
 						$groups: { account: accountId },
 					},
-				})
+				});
 			}
 		} catch (trackingError) {
-			consola.warn("[CHECKOUT] PostHog tracking failed:", trackingError)
+			consola.warn("[CHECKOUT] PostHog tracking failed:", trackingError);
 		}
 
-		return redirect(checkout.url)
+		return redirect(checkout.url);
 	} catch (error) {
-		consola.error("[checkout] Failed to create checkout session", { error })
-		return redirect("/pricing?error=checkout_failed")
+		consola.error("[checkout] Failed to create checkout session", { error });
+		return redirect("/pricing?error=checkout_failed");
 	}
 }

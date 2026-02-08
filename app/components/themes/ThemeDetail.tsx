@@ -1,115 +1,115 @@
-import { useId, useMemo, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import type { TreeNode } from "~/components/charts/TreeMap"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useId, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import type { TreeNode } from "~/components/charts/TreeMap";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 // Import centralized types
-import type { InsightView, Interview } from "~/types"
+import type { InsightView, Interview } from "~/types";
 
 interface ThemeDetailProps {
-	insights: InsightView[]
-	interviews: Interview[]
-	themeTree: TreeNode[]
+	insights: InsightView[];
+	interviews: Interview[];
+	themeTree: TreeNode[];
 }
 
 export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDetailProps) {
-	const { themeId } = useParams<{ themeId: string }>()
-	const [groupBy, setGroupBy] = useState<"none" | "persona" | "user">("none")
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const groupById = useId()
+	const { themeId } = useParams<{ themeId: string }>();
+	const [groupBy, setGroupBy] = useState<"none" | "persona" | "user">("none");
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const groupById = useId();
 
 	// Find the theme in the theme tree
 	const theme = useMemo<{ name: string; fill: string } | null>(() => {
-		let foundTheme: { name: string; fill: string } | null = null
+		let foundTheme: { name: string; fill: string } | null = null;
 
 		themeTree.forEach((category) => {
 			if (category.children) {
 				category.children.forEach((t) => {
 					// Ensure we have name and fill properties with defaults
-					const themeName = t.name || ""
-					const themeFill = t.fill || "#cccccc"
-					const slug = themeName.toLowerCase().replace(/\s+/g, "-")
+					const themeName = t.name || "";
+					const themeFill = t.fill || "#cccccc";
+					const slug = themeName.toLowerCase().replace(/\s+/g, "-");
 
 					if (slug === themeId) {
-						foundTheme = { name: themeName, fill: themeFill }
+						foundTheme = { name: themeName, fill: themeFill };
 					}
-				})
+				});
 			}
-		})
+		});
 
-		return foundTheme
-	}, [themeId, themeTree])
+		return foundTheme;
+	}, [themeId, themeTree]);
 
 	// Find participants whose interviews evidence this theme
 	const relatedParticipants = useMemo(() => {
-		if (!themeId || !theme?.name) return []
+		if (!themeId || !theme?.name) return [];
 
 		// Get unique interview IDs from insights related to this theme
-		const interviewIds = new Set<string>()
+		const interviewIds = new Set<string>();
 
 		// Find insights related to this theme
 		insights.forEach((insight) => {
 			if (insight.category === theme.name) {
 				// If the insight has an interview_id, add it to the set
 				if (insight.interview_id) {
-					interviewIds.add(insight.interview_id)
+					interviewIds.add(insight.interview_id);
 				}
 			}
-		})
+		});
 
 		// Get full participant interview data
-		return interviews.filter((interview) => interviewIds.has(interview.id))
-	}, [insights, interviews, themeId, theme])
+		return interviews.filter((interview) => interviewIds.has(interview.id));
+	}, [insights, interviews, themeId, theme]);
 
 	// Filter insights related to this theme
 	const relatedInsights = useMemo(() => {
-		if (!theme) return []
+		if (!theme) return [];
 
 		return insights.filter((insight) => {
-			if (!theme?.name) return false
-			return insight.category === theme.name
-		})
-	}, [insights, theme])
+			if (!theme?.name) return false;
+			return insight.category === theme.name;
+		});
+	}, [insights, theme]);
 
 	// Group insights based on selected grouping
 	const groupedInsights = useMemo(() => {
 		if (groupBy === "none") {
-			return { "All Insights": relatedInsights }
+			return { "All Insights": relatedInsights };
 		}
 
-		const groups: Record<string, InsightView[]> = {}
+		const groups: Record<string, InsightView[]> = {};
 
 		relatedInsights.forEach((insight) => {
-			let groupKey = ""
+			let groupKey = "";
 
 			if (groupBy === "persona") {
 				// Find the interview for this insight to get the persona
 				if (insight.interview_id) {
-					const interview = interviews.find((i) => i.id === insight.interview_id)
-					groupKey = interview?.segment || "Unknown Persona"
+					const interview = interviews.find((i) => i.id === insight.interview_id);
+					groupKey = interview?.segment || "Unknown Persona";
 				} else {
-					groupKey = "Unknown Persona"
+					groupKey = "Unknown Persona";
 				}
 			} else if (groupBy === "user") {
 				// Find the interview for this insight to get the user
 				if (insight.interview_id) {
-					const interview = interviews.find((i) => i.id === insight.interview_id)
-					groupKey = interview?.participant_pseudonym || "Unknown User"
+					const interview = interviews.find((i) => i.id === insight.interview_id);
+					groupKey = interview?.participant_pseudonym || "Unknown User";
 				} else {
-					groupKey = "Unknown User"
+					groupKey = "Unknown User";
 				}
 			}
 
 			if (!groups[groupKey]) {
-				groups[groupKey] = []
+				groups[groupKey] = [];
 			}
 
-			groups[groupKey].push(insight)
-		})
+			groups[groupKey].push(insight);
+		});
 
-		return groups
-	}, [relatedInsights, interviews, groupBy])
+		return groups;
+	}, [relatedInsights, interviews, groupBy]);
 
 	if (!theme?.name) {
 		return (
@@ -119,7 +119,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 					<p>The requested theme could not be found.</p>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -195,7 +195,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 					<div className="space-y-4">
 						{insights.map((insight) => {
 							// Find the interview for this insight to get user and persona info
-							const interview = insight.interview_id ? interviews.find((i) => i.id === insight.interview_id) : null
+							const interview = insight.interview_id ? interviews.find((i) => i.id === insight.interview_id) : null;
 
 							return (
 								<div key={insight.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-900">
@@ -233,7 +233,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 										)}
 									</div>
 								</div>
-							)
+							);
 						})}
 
 						{insights.length === 0 && (
@@ -251,5 +251,5 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 				</div>
 			)}
 		</div>
-	)
+	);
 }

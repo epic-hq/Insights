@@ -3,26 +3,26 @@
  * Renders the segment node (circle), label, and expandable card deck.
  */
 
-import { Check, Lock } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { cn } from "~/lib/utils"
-import type { RouteDefinitions } from "~/utils/route-definitions"
-import { isCardComplete, type JourneyPhaseConfig, type PhaseState } from "../journey-config"
-import { JourneyCard } from "./JourneyCard"
+import { Check, Lock } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { cn } from "~/lib/utils";
+import type { RouteDefinitions } from "~/utils/route-definitions";
+import { isCardComplete, type JourneyPhaseConfig, type PhaseState } from "../journey-config";
+import { JourneyCard } from "./JourneyCard";
 
 interface JourneySegmentProps {
-	phase: JourneyPhaseConfig
-	state: PhaseState
-	routes: RouteDefinitions
-	counts: Record<string, number | undefined>
+	phase: JourneyPhaseConfig;
+	state: PhaseState;
+	routes: RouteDefinitions;
+	counts: Record<string, number | undefined>;
 	journeyProgress: {
-		contextComplete: boolean
-		promptsComplete: boolean
-		hasConversations: boolean
-		hasInsights: boolean
-	}
-	defaultExpanded?: boolean
-	index: number
+		contextComplete: boolean;
+		promptsComplete: boolean;
+		hasConversations: boolean;
+		hasInsights: boolean;
+	};
+	defaultExpanded?: boolean;
+	index: number;
 }
 
 export function JourneySegment({
@@ -34,19 +34,19 @@ export function JourneySegment({
 	defaultExpanded = false,
 	index,
 }: JourneySegmentProps) {
-	const [expanded, setExpanded] = useState(defaultExpanded)
-	const Icon = phase.icon
+	const [expanded, setExpanded] = useState(defaultExpanded);
+	const Icon = phase.icon;
 
 	// Sync expanded state when defaultExpanded changes (e.g. async counts loaded)
 	useEffect(() => {
-		if (defaultExpanded) setExpanded(true)
-	}, [defaultExpanded])
+		if (defaultExpanded) setExpanded(true);
+	}, [defaultExpanded]);
 
-	const completedCards = phase.cards.filter((card) => isCardComplete(card, counts, journeyProgress)).length
+	const completedCards = phase.cards.filter((card) => isCardComplete(card, counts, journeyProgress)).length;
 
 	const toggleExpand = useCallback(() => {
-		setExpanded((prev) => !prev)
-	}, [])
+		setExpanded((prev) => !prev);
+	}, []);
 
 	return (
 		<div className={cn("relative z-10 w-full cursor-pointer", state === "locked" && "opacity-60")}>
@@ -58,8 +58,8 @@ export function JourneySegment({
 				tabIndex={0}
 				onKeyDown={(e) => {
 					if (e.key === "Enter" || e.key === " ") {
-						e.preventDefault()
-						toggleExpand()
+						e.preventDefault();
+						toggleExpand();
 					}
 				}}
 			>
@@ -122,7 +122,7 @@ export function JourneySegment({
 					)}
 				>
 					{phase.cards.map((card) => {
-						const done = isCardComplete(card, counts, journeyProgress)
+						const done = isCardComplete(card, counts, journeyProgress);
 						return (
 							<JourneyCard
 								key={card.id}
@@ -131,10 +131,10 @@ export function JourneySegment({
 								href={card.getRoute(routes)}
 								locked={state === "locked"}
 							/>
-						)
+						);
 					})}
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

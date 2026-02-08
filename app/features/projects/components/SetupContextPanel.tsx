@@ -6,7 +6,7 @@
  * Per spec: docs/features/onboarding/onboarding-spec.md
  */
 
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	Building2,
 	Check,
@@ -18,85 +18,85 @@ import {
 	type LucideIcon,
 	Target,
 	Zap,
-} from "lucide-react"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+} from "lucide-react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 export interface CompanyData {
-	website_url?: string | null
-	company_description?: string | null
-	customer_problem?: string | null
-	target_orgs?: string[] | null
-	target_roles?: string[] | null
+	website_url?: string | null;
+	company_description?: string | null;
+	customer_problem?: string | null;
+	target_orgs?: string[] | null;
+	target_roles?: string[] | null;
 }
 
 export interface ResearchData {
-	research_goal?: string
-	research_goal_details?: string
-	assumptions?: string[]
-	unknowns?: string[]
+	research_goal?: string;
+	research_goal_details?: string;
+	assumptions?: string[];
+	unknowns?: string[];
 }
 
 export interface QuestionsData {
-	decision_questions?: string[]
-	interview_questions?: string[]
+	decision_questions?: string[];
+	interview_questions?: string[];
 }
 
 interface SetupContextPanelProps {
-	company?: CompanyData
-	research?: ResearchData
-	questions?: QuestionsData
-	onEditCompany?: () => void
-	onEditResearch?: () => void
-	onViewQuestions?: () => void
-	onEditQuestions?: () => void
-	className?: string
-	collapsed?: boolean
-	onToggleCollapsed?: () => void
+	company?: CompanyData;
+	research?: ResearchData;
+	questions?: QuestionsData;
+	onEditCompany?: () => void;
+	onEditResearch?: () => void;
+	onViewQuestions?: () => void;
+	onEditQuestions?: () => void;
+	className?: string;
+	collapsed?: boolean;
+	onToggleCollapsed?: () => void;
 }
 
-type SectionStatus = "empty" | "partial" | "complete" | "generated"
+type SectionStatus = "empty" | "partial" | "complete" | "generated";
 
 function getSectionStatus(
 	section: "company" | "research" | "questions",
 	data: {
-		company?: CompanyData
-		research?: ResearchData
-		questions?: QuestionsData
+		company?: CompanyData;
+		research?: ResearchData;
+		questions?: QuestionsData;
 	}
 ): SectionStatus {
 	if (section === "company") {
-		const c = data.company
-		if (!c) return "empty"
-		const hasDescription = Boolean(c.company_description)
-		const hasProblem = Boolean(c.customer_problem)
-		const hasOrgs = Array.isArray(c.target_orgs) && c.target_orgs.length > 0
-		const filled = [hasDescription, hasProblem, hasOrgs].filter(Boolean).length
-		if (filled === 0) return "empty"
-		if (filled >= 2) return "complete"
-		return "partial"
+		const c = data.company;
+		if (!c) return "empty";
+		const hasDescription = Boolean(c.company_description);
+		const hasProblem = Boolean(c.customer_problem);
+		const hasOrgs = Array.isArray(c.target_orgs) && c.target_orgs.length > 0;
+		const filled = [hasDescription, hasProblem, hasOrgs].filter(Boolean).length;
+		if (filled === 0) return "empty";
+		if (filled >= 2) return "complete";
+		return "partial";
 	}
 
 	if (section === "research") {
-		const r = data.research
-		if (!r) return "empty"
-		const hasGoal = Boolean(r.research_goal)
-		const hasUnknowns = Array.isArray(r.unknowns) && r.unknowns.length > 0
-		if (!hasGoal && !hasUnknowns) return "empty"
-		if (hasGoal && hasUnknowns) return "complete"
-		return "partial"
+		const r = data.research;
+		if (!r) return "empty";
+		const hasGoal = Boolean(r.research_goal);
+		const hasUnknowns = Array.isArray(r.unknowns) && r.unknowns.length > 0;
+		if (!hasGoal && !hasUnknowns) return "empty";
+		if (hasGoal && hasUnknowns) return "complete";
+		return "partial";
 	}
 
 	if (section === "questions") {
-		const q = data.questions
-		if (!q) return "empty"
-		const count = (q.decision_questions?.length || 0) + (q.interview_questions?.length || 0)
-		if (count === 0) return "empty"
-		return "generated"
+		const q = data.questions;
+		if (!q) return "empty";
+		const count = (q.decision_questions?.length || 0) + (q.interview_questions?.length || 0);
+		if (count === 0) return "empty";
+		return "generated";
 	}
 
-	return "empty"
+	return "empty";
 }
 
 function StatusBadge({ status }: { status: SectionStatus }) {
@@ -106,7 +106,7 @@ function StatusBadge({ status }: { status: SectionStatus }) {
 				<Check className="h-3 w-3" />
 				Complete
 			</span>
-		)
+		);
 	}
 	if (status === "generated") {
 		return (
@@ -114,12 +114,12 @@ function StatusBadge({ status }: { status: SectionStatus }) {
 				<Zap className="h-3 w-3" />
 				Generated
 			</span>
-		)
+		);
 	}
 	if (status === "partial") {
-		return <span className="text-amber-600 text-xs dark:text-amber-400">In progress</span>
+		return <span className="text-amber-600 text-xs dark:text-amber-400">In progress</span>;
 	}
-	return <span className="text-muted-foreground text-xs">Not started</span>
+	return <span className="text-muted-foreground text-xs">Not started</span>;
 }
 
 function SectionCard({
@@ -130,15 +130,15 @@ function SectionCard({
 	onEdit,
 	collapsed = false,
 }: {
-	title: string
-	icon: LucideIcon
-	status: SectionStatus
-	children: React.ReactNode
-	onEdit?: () => void
+	title: string;
+	icon: LucideIcon;
+	status: SectionStatus;
+	children: React.ReactNode;
+	onEdit?: () => void;
 	/** Show collapsed checkbox-only view */
-	collapsed?: boolean
+	collapsed?: boolean;
 }) {
-	const [hovered, setHovered] = useState(false)
+	const [hovered, setHovered] = useState(false);
 
 	// Collapsed checkbox-style view
 	if (collapsed) {
@@ -169,7 +169,7 @@ function SectionCard({
 				</div>
 				{hovered && status !== "empty" && <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />}
 			</button>
-		)
+		);
 	}
 
 	return (
@@ -198,7 +198,7 @@ function SectionCard({
 				{children}
 			</div>
 		</div>
-	)
+	);
 }
 
 export function SetupContextPanel({
@@ -213,23 +213,24 @@ export function SetupContextPanel({
 	collapsed = false,
 	onToggleCollapsed,
 }: SetupContextPanelProps) {
-	const companyStatus = getSectionStatus("company", { company })
-	const researchStatus = getSectionStatus("research", { research })
-	const questionsStatus = getSectionStatus("questions", { questions })
+	const companyStatus = getSectionStatus("company", { company });
+	const researchStatus = getSectionStatus("research", { research });
+	const questionsStatus = getSectionStatus("questions", { questions });
 
 	// Calculate overall progress
-	const statusValues = { empty: 0, partial: 0.5, complete: 1, generated: 1 }
-	const totalProgress = (statusValues[companyStatus] + statusValues[researchStatus] + statusValues[questionsStatus]) / 3
-	const progressPercent = Math.round(totalProgress * 100)
+	const statusValues = { empty: 0, partial: 0.5, complete: 1, generated: 1 };
+	const totalProgress =
+		(statusValues[companyStatus] + statusValues[researchStatus] + statusValues[questionsStatus]) / 3;
+	const progressPercent = Math.round(totalProgress * 100);
 
 	// Get question count - decision_questions from setup, interview_questions if available later
 	// Generated research structure creates decision_questions + research_questions + interview_prompts
-	const interviewCount = questions?.interview_questions?.length ?? 0
-	const decisionCount = questions?.decision_questions?.length ?? 0
-	const questionCount = interviewCount > 0 ? interviewCount : decisionCount
+	const interviewCount = questions?.interview_questions?.length ?? 0;
+	const decisionCount = questions?.decision_questions?.length ?? 0;
+	const questionCount = interviewCount > 0 ? interviewCount : decisionCount;
 
 	// Use checkbox-style collapsed view by default for company and research
-	const useCheckboxStyle = true
+	const useCheckboxStyle = true;
 
 	return (
 		<motion.div
@@ -369,5 +370,5 @@ export function SetupContextPanel({
 				)}
 			</AnimatePresence>
 		</motion.div>
-	)
+	);
 }

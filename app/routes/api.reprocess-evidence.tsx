@@ -1,8 +1,8 @@
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
-import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 /**
  * Reprocess evidence extraction from existing transcript
@@ -10,35 +10,35 @@ import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTransc
  */
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
-	consola.log("Reprocess evidence API called")
-	const formData = await request.formData()
-	const interviewId = formData.get("interview_id") as string
+	consola.log("Reprocess evidence API called");
+	const formData = await request.formData();
+	const interviewId = formData.get("interview_id") as string;
 
 	try {
-		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
-		const { user: claims } = await getAuthenticatedUser(request)
+		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server");
+		const { user: claims } = await getAuthenticatedUser(request);
 		if (!claims?.sub) {
-			return Response.json({ error: "Unauthorized" }, { status: 401 })
+			return Response.json({ error: "Unauthorized" }, { status: 401 });
 		}
-		const userId = claims.sub
+		const userId = claims.sub;
 
-		const { client: userDb } = getServerClient(request)
+		const { client: userDb } = getServerClient(request);
 
 		if (!interviewId) {
-			return Response.json({ error: "interview_id is required" }, { status: 400 })
+			return Response.json({ error: "interview_id is required" }, { status: 400 });
 		}
 
 		const { data: interview, error: interviewErr } = await userDb
 			.from("interviews")
 			.select("*")
 			.eq("id", interviewId)
-			.single()
+			.single();
 
 		if (interviewErr || !interview) {
-			return Response.json({ error: "Interview not found" }, { status: 404 })
+			return Response.json({ error: "Interview not found" }, { status: 404 });
 		}
 
 		if (!interview.transcript_formatted) {
@@ -47,15 +47,15 @@ export async function action({ request }: ActionFunctionArgs) {
 					error: "No transcript available. Please upload or transcribe first.",
 				},
 				{ status: 400 }
-			)
+			);
 		}
 
-		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted)
-		const admin = createSupabaseAdminClient()
+		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted);
+		const admin = createSupabaseAdminClient();
 
 		try {
 			// Get current conversation_analysis
-			const conversationAnalysis = (interview.conversation_analysis as unknown as Record<string, unknown> | null) || {}
+			const conversationAnalysis = (interview.conversation_analysis as unknown as Record<string, unknown> | null) || {};
 
 			// Update conversation_analysis for reprocessing
 			await admin
@@ -69,9 +69,9 @@ export async function action({ request }: ActionFunctionArgs) {
 						current_step: "evidence",
 					},
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
-			consola.log("Interview updated for evidence reprocessing:", interviewId)
+			consola.log("Interview updated for evidence reprocessing:", interviewId);
 
 			const metadata = {
 				accountId: interview.account_id,
@@ -81,36 +81,36 @@ export async function action({ request }: ActionFunctionArgs) {
 				interviewDate: interview.interview_date || undefined,
 				participantName: interview.participant_pseudonym || undefined,
 				duration_sec: interview.duration_sec || undefined,
-			}
+			};
 
 			const { data: linkedOrgs } = await admin
 				.from("interview_organizations")
 				.select("organizations(name)")
 				.eq("interview_id", interviewId)
-				.limit(1)
+				.limit(1);
 			const participant_organization =
 				(linkedOrgs as Array<{ organizations: { name: string | null } | null }> | null)?.[0]?.organizations?.name ??
-				undefined
+				undefined;
 
-			consola.info("Triggering evidence extraction directly (skipping transcription)")
+			consola.info("Triggering evidence extraction directly (skipping transcription)");
 
 			// Always use v2 orchestrator with resumeFrom: "evidence"
-			let handle: { id: string }
+			let handle: { id: string };
 
 			{
-				consola.info("Using v2 orchestrator with resumeFrom: 'evidence'")
+				consola.info("Using v2 orchestrator with resumeFrom: 'evidence'");
 
 				// Generate fresh presigned URL from R2 key if needed
-				let mediaUrlForTask = interview.media_url || ""
+				let mediaUrlForTask = interview.media_url || "";
 				if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
-					const { createR2PresignedUrl } = await import("~/utils/r2.server")
+					const { createR2PresignedUrl } = await import("~/utils/r2.server");
 					const presigned = createR2PresignedUrl({
 						key: mediaUrlForTask,
 						expiresInSeconds: 24 * 60 * 60, // 24 hours
-					})
+					});
 					if (presigned) {
-						mediaUrlForTask = presigned.url
-						consola.log(`Generated presigned URL for evidence reprocessing: ${interviewId}`)
+						mediaUrlForTask = presigned.url;
+						consola.log(`Generated presigned URL for evidence reprocessing: ${interviewId}`);
 					}
 				}
 
@@ -124,7 +124,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					mediaUrl: mediaUrlForTask,
 					existingInterviewId: interviewId,
 					resumeFrom: "evidence", // Skip upload/transcription, start from evidence extraction
-				})
+				});
 			}
 
 			// Store trigger_run_id in conversation_analysis
@@ -137,19 +137,19 @@ export async function action({ request }: ActionFunctionArgs) {
 						status_detail: "Extracting evidence from transcript",
 					},
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
-			consola.info(`Evidence reprocessing triggered: ${handle.id} (using v2 workflow)`)
+			consola.info(`Evidence reprocessing triggered: ${handle.id} (using v2 workflow)`);
 
-			return Response.json({ success: true, runId: handle.id })
+			return Response.json({ success: true, runId: handle.id });
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e)
-			consola.error("Evidence reprocessing failed:", msg)
-			await admin.from("interviews").update({ status: "error" }).eq("id", interviewId)
-			return Response.json({ error: msg }, { status: 500 })
+			const msg = e instanceof Error ? e.message : String(e);
+			consola.error("Evidence reprocessing failed:", msg);
+			await admin.from("interviews").update({ status: "error" }).eq("id", interviewId);
+			return Response.json({ error: msg }, { status: 500 });
 		}
 	} catch (error) {
-		consola.error("Reprocess evidence API error:", error)
-		return Response.json({ error: error instanceof Error ? error.message : "Internal error" }, { status: 500 })
+		consola.error("Reprocess evidence API error:", error);
+		return Response.json({ error: error instanceof Error ? error.message : "Internal error" }, { status: 500 });
 	}
 }

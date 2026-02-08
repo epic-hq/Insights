@@ -17,42 +17,42 @@ import {
 	Settings,
 	ThumbsUp,
 	Upload,
-} from "lucide-react"
-import { useEffect, useState } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { useLoaderData } from "react-router"
-import type { z } from "zod"
-import type { AgentState as AgentStateSchema } from "@/mastra/agents"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Textarea } from "~/components/ui/textarea"
-import { getInsights } from "~/features/insights/db"
-import { getProjects } from "~/features/projects/db"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
-import type { Insight, Project } from "~/types"
-import { PlanCard } from "../components/PlanCard"
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
+import type { z } from "zod";
+import type { AgentState as AgentStateSchema } from "@/mastra/agents";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Textarea } from "~/components/ui/textarea";
+import { getInsights } from "~/features/insights/db";
+import { getProjects } from "~/features/projects/db";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
+import type { Insight, Project } from "~/types";
+import { PlanCard } from "../components/PlanCard";
 
 type PainPoint = {
-	id: string
-	name: string
-	emotion: string
-	emotionEmoji: string
-	emotionColor: string
-	desiredOutcome: string
-	evidence: string
-	category: string
-	upvotes: number
-	isHidden: boolean
-	annotations: string[]
-	originalInsight: Insight
-}
+	id: string;
+	name: string;
+	emotion: string;
+	emotionEmoji: string;
+	emotionColor: string;
+	desiredOutcome: string;
+	evidence: string;
+	category: string;
+	upvotes: number;
+	isHidden: boolean;
+	annotations: string[];
+	originalInsight: Insight;
+};
 
-type AgentState = z.infer<typeof AgentStateSchema>
+type AgentState = z.infer<typeof AgentStateSchema>;
 
 // Transform insights data into pain points format
 function transformInsightsToPainPoints(insights: Insight[]) {
@@ -64,11 +64,11 @@ function transformInsightsToPainPoints(insights: Insight[]) {
 		disappointed: { emoji: "😞", color: "bg-blue-100 text-blue-800" },
 		confused: { emoji: "😕", color: "bg-yellow-100 text-yellow-800" },
 		neutral: { emoji: "😐", color: "bg-gray-100 text-gray-800" },
-	}
+	};
 
 	return insights.map((insight) => {
-		const emotion = insight.emotional_response || "neutral"
-		const emotionData = emotionMap[emotion] || emotionMap.neutral
+		const emotion = insight.emotional_response || "neutral";
+		const emotionData = emotionMap[emotion] || emotionMap.neutral;
 
 		return {
 			id: insight.id,
@@ -83,15 +83,15 @@ function transformInsightsToPainPoints(insights: Insight[]) {
 			isHidden: false,
 			annotations: insight.pain ? [insight.pain] : [],
 			originalInsight: insight,
-		}
-	})
+		};
+	});
 }
 
 // Transform project sections into AI suggestions
 function transformProjectSectionsToSuggestions(
 	projectSections: Array<{ title?: string; content?: string; id: string }>
 ) {
-	const typeMap = ["insight", "question", "opportunity"]
+	const typeMap = ["insight", "question", "opportunity"];
 
 	return projectSections.slice(0, 5).map((section, index) => ({
 		id: index + 1,
@@ -100,47 +100,47 @@ function transformProjectSectionsToSuggestions(
 		description: section.content || "AI-generated recommendation based on your data.",
 		relatedPainIds: [Math.floor(Math.random() * 4) + 1], // Random for now
 		originalSection: section,
-	}))
+	}));
 }
 
 // Loader function to fetch real data
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { user } = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request);
 
 	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const { client: supabase } = getServerClient(request)
-	const accountId = user.sub
-	const projectId = params.projectId || "default-project"
+	const { client: supabase } = getServerClient(request);
+	const accountId = user.sub;
+	const projectId = params.projectId || "default-project";
 
 	try {
 		// Fetch insights and projects data
 		const [insightsResult, projectsResult] = await Promise.all([
 			getInsights({ supabase, accountId, projectId }),
 			getProjects({ supabase, accountId }),
-		])
+		]);
 
 		// Fetch project sections (simplified for now)
 		const { data: projectSections } = await supabase
 			.from("project_sections")
 			.select("id, title, content, kind")
 			.eq("project_id", projectId)
-			.limit(10)
+			.limit(10);
 
 		return {
 			insights: insightsResult.data || [],
 			projects: projectsResult.data || [],
 			projectSections: projectSections || [],
-		}
+		};
 	} catch (_error) {
 		// Log error for debugging
 		return {
 			insights: [],
 			projects: [],
 			projectSections: [],
-		}
+		};
 	}
 }
 
@@ -165,34 +165,34 @@ const chatMessages = [
 			"The top 3 mobile issues are: 1) Search functionality (40% abandon rate), 2) App crashes during peak hours, 3) Complex checkout flow. I recommend prioritizing search improvements first.",
 		timestamp: "30s ago",
 	},
-]
+];
 
 export function MobileInsightsApp() {
 	const loaderData = useLoaderData<{
-		insights: Insight[]
-		projects: Project[]
+		insights: Insight[];
+		projects: Project[];
 		projectSections: Array<{
-			title?: string
-			content?: string
-			id: string
-			kind?: string
-		}>
-	}>()
-	const [selectedPain, setSelectedPain] = useState<PainPoint | null>(null)
-	const [showCapture, setShowCapture] = useState(false)
-	const [showSettings, setShowSettings] = useState(false)
-	const [captureStep, setCaptureStep] = useState(1)
-	const [_captureMode, setCaptureMode] = useState("")
-	const [searchQuery, setSearchQuery] = useState("")
-	const [newMessage, setNewMessage] = useState("")
-	const [showSuggestions, setShowSuggestions] = useState(true)
-	const [activeFilter, setActiveFilter] = useState("all") // "all", "upvoted", "hidden"
+			title?: string;
+			content?: string;
+			id: string;
+			kind?: string;
+		}>;
+	}>();
+	const [selectedPain, setSelectedPain] = useState<PainPoint | null>(null);
+	const [showCapture, setShowCapture] = useState(false);
+	const [showSettings, setShowSettings] = useState(false);
+	const [captureStep, setCaptureStep] = useState(1);
+	const [_captureMode, setCaptureMode] = useState("");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [newMessage, setNewMessage] = useState("");
+	const [showSuggestions, setShowSuggestions] = useState(true);
+	const [activeFilter, setActiveFilter] = useState("all"); // "all", "upvoted", "hidden"
 
 	// Transform real data into UI format
 	const [painPoints, setPainPoints] = useState<PainPoint[]>(() =>
 		transformInsightsToPainPoints(loaderData?.insights || [])
-	)
-	const [aiSuggestions] = useState(() => transformProjectSectionsToSuggestions(loaderData?.projectSections || []))
+	);
+	const [aiSuggestions] = useState(() => transformProjectSectionsToSuggestions(loaderData?.projectSections || []));
 
 	// 🪁 Shared State: https://docs.copilotkit.ai/coagents/shared-state
 	const { state, setState } = useCoAgent<AgentState>({
@@ -206,7 +206,7 @@ export function MobileInsightsApp() {
 				"What's the most interesting thing you've learned about someone recently?",
 			],
 		},
-	})
+	});
 
 	//🪁 Generative UI: https://docs.copilotkit.ai/coagents/generative-ui
 	useCopilotAction({
@@ -218,16 +218,16 @@ export function MobileInsightsApp() {
 			{ name: "goal", type: "string", required: true },
 		],
 		render: ({ args }) => {
-			return <PlanCard plan={args.plan} goal={args.goal} />
+			return <PlanCard plan={args.plan} goal={args.goal} />;
 		},
-	})
+	});
 
 	// Update pain points when insights data changes
 	useEffect(() => {
 		if (loaderData?.insights) {
-			setPainPoints(transformInsightsToPainPoints(loaderData.insights))
+			setPainPoints(transformInsightsToPainPoints(loaderData.insights));
 		}
-	}, [loaderData?.insights])
+	}, [loaderData?.insights]);
 
 	// Research configuration
 	const [researchConfig, setResearchConfig] = useState({
@@ -238,11 +238,11 @@ export function MobileInsightsApp() {
 			"What would make the process feel more trustworthy?",
 		],
 		backgroundKnowledge: "E-commerce platform with 2M monthly users, 65% mobile traffic, current conversion rate 2.3%",
-	})
+	});
 
-	const [painPointsState, setPainPointsState] = useState<PainPoint[]>(painPoints)
-	const [_draggedCard, _setDraggedCardd] = useState<PainPoint | null>(null)
-	const [_dragOffset, _setDragOffsett] = useState(0)
+	const [painPointsState, setPainPointsState] = useState<PainPoint[]>(painPoints);
+	const [_draggedCard, _setDraggedCardd] = useState<PainPoint | null>(null);
+	const [_dragOffset, _setDragOffsett] = useState(0);
 
 	const [_captureData, setCaptureData] = useState({
 		struggle: "",
@@ -250,7 +250,7 @@ export function MobileInsightsApp() {
 		outcome: "",
 		blocking: "",
 		firstStep: "",
-	})
+	});
 
 	const _captureQuestions = [
 		{
@@ -271,7 +271,7 @@ export function MobileInsightsApp() {
 			key: "firstStep",
 			question: "If a guide appeared, what first step would you want from them?",
 		},
-	]
+	];
 
 	const _emotions = [
 		{ name: "frustrated", emoji: "😤", color: "bg-red-100 text-red-800" },
@@ -286,68 +286,68 @@ export function MobileInsightsApp() {
 		},
 		{ name: "betrayed", emoji: "😠", color: "bg-orange-100 text-orange-800" },
 		{ name: "hopeful", emoji: "🤞", color: "bg-green-100 text-green-800" },
-	]
+	];
 
 	const filteredPainPoints = painPointsState.filter((pain) => {
 		// Apply search filter
 		const matchesSearch =
 			pain.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			pain.category.toLowerCase().includes(searchQuery.toLowerCase())
+			pain.category.toLowerCase().includes(searchQuery.toLowerCase());
 
 		// Apply status filter
-		let matchesFilter = true
+		let matchesFilter = true;
 		if (activeFilter === "upvoted") {
-			matchesFilter = pain.upvotes > 0
+			matchesFilter = pain.upvotes > 0;
 		} else if (activeFilter === "hidden") {
-			matchesFilter = pain.isHidden
+			matchesFilter = pain.isHidden;
 		} else if (activeFilter === "all") {
-			matchesFilter = !pain.isHidden
+			matchesFilter = !pain.isHidden;
 		}
 
-		return matchesSearch && matchesFilter
-	})
+		return matchesSearch && matchesFilter;
+	});
 
 	const handleSwipe = (painId: string, direction: "left" | "right") => {
 		setPainPointsState((prev) =>
 			prev.map((pain) => {
 				if (pain.id === painId) {
 					if (direction === "right") {
-						return { ...pain, upvotes: pain.upvotes + 1 }
+						return { ...pain, upvotes: pain.upvotes + 1 };
 					}
 					if (direction === "left") {
-						return { ...pain, isHidden: true }
+						return { ...pain, isHidden: true };
 					}
 				}
-				return pain
+				return pain;
 			})
-		)
-	}
+		);
+	};
 
 	const handleCardClick = (pain: PainPoint) => {
-		setSelectedPain(pain)
-	}
+		setSelectedPain(pain);
+	};
 
 	const sendMessage = () => {
 		// Add message logic here if needed
-		setNewMessage("")
-	}
+		setNewMessage("");
+	};
 
 	const _handleCaptureNext = () => {
 		if (captureStep < 5) {
-			setCaptureStep(captureStep + 1)
+			setCaptureStep(captureStep + 1);
 		} else {
-			setShowCapture(false)
-			setCaptureStep(1)
-			setCaptureMode("")
+			setShowCapture(false);
+			setCaptureStep(1);
+			setCaptureMode("");
 			setCaptureData({
 				struggle: "",
 				emotion: "",
 				outcome: "",
 				blocking: "",
 				firstStep: "",
-			})
+			});
 		}
-	}
+	};
 
 	return (
 		<CopilotSidebar>
@@ -701,9 +701,9 @@ export function MobileInsightsApp() {
 				</Dialog>
 			</div>
 		</CopilotSidebar>
-	)
+	);
 }
 
 export default function Index() {
-	return <MobileInsightsApp />
+	return <MobileInsightsApp />;
 }

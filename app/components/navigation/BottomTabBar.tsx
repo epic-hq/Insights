@@ -6,33 +6,33 @@
  * Includes safe area padding for notched devices.
  */
 
-import { Compass, Lightbulb, Plus, Sparkles, Upload, Users } from "lucide-react"
-import { NavLink, useLocation } from "react-router"
-import { cn } from "~/lib/utils"
+import { Compass, Lightbulb, Plus, Sparkles, Upload, Users } from "lucide-react";
+import { NavLink, useLocation } from "react-router";
+import { cn } from "~/lib/utils";
 
 export interface BottomTabBarProps {
 	/** Route helpers for navigation */
 	routes: {
-		plan: string
-		sources: string
-		chat: string
-		insights: string
-		crm: string
-		upload: string
-	}
+		plan: string;
+		sources: string;
+		chat: string;
+		insights: string;
+		crm: string;
+		upload: string;
+	};
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 interface TabItemProps {
-	to?: string
-	icon: React.ReactNode
-	label: string
-	isActive?: boolean
-	onClick?: () => void
-	isCenter?: boolean
-	hasNotification?: boolean
-	isDisabled?: boolean
+	to?: string;
+	icon: React.ReactNode;
+	label: string;
+	isActive?: boolean;
+	onClick?: () => void;
+	isCenter?: boolean;
+	hasNotification?: boolean;
+	isDisabled?: boolean;
 }
 
 function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification, isDisabled }: TabItemProps) {
@@ -42,7 +42,7 @@ function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification
 		isActive && "text-primary",
 		!isCenter && "hover:text-foreground",
 		isDisabled && "cursor-not-allowed opacity-50"
-	)
+	);
 
 	const content = (
 		<>
@@ -65,14 +65,14 @@ function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification
 			)}
 			<span className={cn("font-medium text-[10px]", isCenter && "mt-1")}>{label}</span>
 		</>
-	)
+	);
 
 	if (onClick) {
 		return (
 			<button type="button" className={baseClasses} onClick={onClick}>
 				{content}
 			</button>
-		)
+		);
 	}
 
 	if (to) {
@@ -80,32 +80,32 @@ function TabItem({ to, icon, label, isActive, onClick, isCenter, hasNotification
 			<NavLink to={to} className={({ isActive: navActive }) => cn(baseClasses, navActive && "text-primary")}>
 				{content}
 			</NavLink>
-		)
+		);
 	}
 
-	return <div className={baseClasses}>{content}</div>
+	return <div className={baseClasses}>{content}</div>;
 }
 
 export function BottomTabBar({ routes, className }: BottomTabBarProps) {
-	const location = useLocation()
+	const location = useLocation();
 
 	// Check active states
 	const isPlanActive =
 		location.pathname.includes("/setup") ||
 		location.pathname.includes("/questions") ||
-		location.pathname.includes("/journey")
+		location.pathname.includes("/journey");
 	const isSourcesActive =
 		location.pathname.includes("/interviews") ||
 		location.pathname.includes("/sources") ||
-		location.pathname.includes("/responses")
-	const isChatActive = location.pathname.includes("/project-chat") || location.pathname.includes("/assistant")
-	const isInsightsActive = location.pathname.includes("/insights") || location.pathname.includes("/lenses")
+		location.pathname.includes("/responses");
+	const isChatActive = location.pathname.includes("/project-chat") || location.pathname.includes("/assistant");
+	const isInsightsActive = location.pathname.includes("/insights") || location.pathname.includes("/lenses");
 	const isCrmActive =
 		location.pathname.includes("/people") ||
 		location.pathname.includes("/organizations") ||
 		location.pathname.includes("/opportunities") ||
-		location.pathname.includes("/priorities")
-	const isUploadActive = location.pathname.includes("/interviews/upload")
+		location.pathname.includes("/priorities");
+	const isUploadActive = location.pathname.includes("/interviews/upload");
 
 	return (
 		<>
@@ -168,7 +168,7 @@ export function BottomTabBar({ routes, className }: BottomTabBarProps) {
 				</div>
 			</nav>
 		</>
-	)
+	);
 }
 
-export default BottomTabBar
+export default BottomTabBar;

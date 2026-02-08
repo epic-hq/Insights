@@ -2,82 +2,82 @@
  * Start endpoint for Research Links (Ask links)
  * Handles different identity modes: anonymous, email-identified, phone-identified
  */
-import type { ActionFunctionArgs } from "react-router"
+import type { ActionFunctionArgs } from "react-router";
 import {
 	ResearchLinkAnonymousStartSchema,
 	ResearchLinkCreatePersonSchema,
 	ResearchLinkPhoneStartSchema,
 	ResearchLinkResponseStartSchema,
-} from "~/features/research-links/schemas"
-import { checkLimitAccess, getAccountPlan } from "~/lib/feature-gate/check-limit.server"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+} from "~/features/research-links/schemas";
+import { checkLimitAccess, getAccountPlan } from "~/lib/feature-gate/check-limit.server";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
-export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 })
+export const loader = () => Response.json({ message: "Method not allowed" }, { status: 405 });
 
-type IdentityMode = "anonymous" | "identified"
-type IdentityField = "email" | "phone"
+type IdentityMode = "anonymous" | "identified";
+type IdentityField = "email" | "phone";
 
 interface ResearchLink {
-	id: string
-	is_live: boolean
-	allow_chat: boolean
-	default_response_mode: string | null
-	account_id: string
-	project_id: string | null
-	identity_mode: IdentityMode
-	identity_field: IdentityField
+	id: string;
+	is_live: boolean;
+	allow_chat: boolean;
+	default_response_mode: string | null;
+	account_id: string;
+	project_id: string | null;
+	identity_mode: IdentityMode;
+	identity_field: IdentityField;
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ message: "Method not allowed" }, { status: 405 })
+		return Response.json({ message: "Method not allowed" }, { status: 405 });
 	}
 
-	const slug = params.slug
+	const slug = params.slug;
 	if (!slug) {
-		return Response.json({ message: "Missing slug" }, { status: 400 })
+		return Response.json({ message: "Missing slug" }, { status: 400 });
 	}
 
-	let payload: unknown
+	let payload: unknown;
 	try {
-		payload = await request.json()
+		payload = await request.json();
 	} catch {
-		return Response.json({ message: "Invalid JSON payload" }, { status: 400 })
+		return Response.json({ message: "Invalid JSON payload" }, { status: 400 });
 	}
 
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 
 	// Fetch the research link with identity settings
 	const { data: list, error: listError } = await supabase
 		.from("research_links")
 		.select("id, is_live, allow_chat, default_response_mode, account_id, project_id, identity_mode, identity_field")
 		.eq("slug", slug)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (listError) {
-		return Response.json({ message: listError.message }, { status: 500 })
+		return Response.json({ message: listError.message }, { status: 500 });
 	}
 
 	if (!list || !list.is_live) {
-		return Response.json({ message: "Research link not found" }, { status: 404 })
+		return Response.json({ message: "Research link not found" }, { status: 404 });
 	}
 
 	// Default identity_mode to 'identified' and identity_field to 'email' for backwards compatibility
-	const identityMode: IdentityMode = (list.identity_mode as IdentityMode) || "identified"
-	const identityField: IdentityField = (list.identity_field as IdentityField) || "email"
+	const identityMode: IdentityMode = (list.identity_mode as IdentityMode) || "identified";
+	const identityField: IdentityField = (list.identity_field as IdentityField) || "email";
 
 	const researchLink: ResearchLink = {
 		...list,
 		identity_mode: identityMode,
 		identity_field: identityField,
-	}
+	};
 
 	// Check survey responses limit (for new responses only - check upfront)
-	const planId = await getAccountPlan(list.account_id)
+	const planId = await getAccountPlan(list.account_id);
 	const limitCheck = await checkLimitAccess(
 		{ accountId: list.account_id, userId: "anonymous", planId },
 		"survey_responses"
-	)
+	);
 	if (!limitCheck.allowed) {
 		return Response.json(
 			{
@@ -85,28 +85,28 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				message: "This survey has reached its response limit. Please contact the survey owner.",
 			},
 			{ status: 403 }
-		)
+		);
 	}
 
 	// Check if this is a "create person" request (has firstName) - only for identified modes
 	if (identityMode === "identified") {
-		const createPersonParsed = ResearchLinkCreatePersonSchema.safeParse(payload)
+		const createPersonParsed = ResearchLinkCreatePersonSchema.safeParse(payload);
 		if (createPersonParsed.success) {
-			return handleCreatePersonAndContinue(supabase, researchLink, createPersonParsed.data)
+			return handleCreatePersonAndContinue(supabase, researchLink, createPersonParsed.data);
 		}
 	}
 
 	// Route based on identity mode
 	if (identityMode === "anonymous") {
-		return handleAnonymousStart(supabase, researchLink, payload)
+		return handleAnonymousStart(supabase, researchLink, payload);
 	}
 
 	if (identityField === "phone") {
-		return handlePhoneStart(supabase, researchLink, payload)
+		return handlePhoneStart(supabase, researchLink, payload);
 	}
 
 	// Default: email-identified
-	return handleEmailStart(supabase, researchLink, payload)
+	return handleEmailStart(supabase, researchLink, payload);
 }
 
 /**
@@ -117,15 +117,15 @@ async function handleAnonymousStart(
 	list: ResearchLink,
 	payload: unknown
 ) {
-	const parsed = ResearchLinkAnonymousStartSchema.safeParse(payload)
+	const parsed = ResearchLinkAnonymousStartSchema.safeParse(payload);
 	if (!parsed.success) {
-		return Response.json({ message: "Invalid request" }, { status: 400 })
+		return Response.json({ message: "Invalid request" }, { status: 400 });
 	}
 
-	const existingResponseId = parsed.data.responseId
+	const existingResponseId = parsed.data.responseId;
 	const responseMode =
-		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form")
-	const utmParams = parsed.data.utmParams ?? null
+		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form");
+	const utmParams = parsed.data.utmParams ?? null;
 
 	// If we have an existing response ID, try to resume it
 	if (existingResponseId) {
@@ -134,16 +134,16 @@ async function handleAnonymousStart(
 			.select("id, responses, completed, person_id")
 			.eq("id", existingResponseId)
 			.eq("research_link_id", list.id)
-			.maybeSingle()
+			.maybeSingle();
 		if (existingById) {
-			await supabase.from("research_link_responses").update({ response_mode: responseMode }).eq("id", existingById.id)
+			await supabase.from("research_link_responses").update({ response_mode: responseMode }).eq("id", existingById.id);
 			return Response.json({
 				responseId: existingById.id,
 				responses: existingById.responses ?? {},
 				completed: existingById.completed ?? false,
 				personId: existingById.person_id,
 				identityMode: "anonymous",
-			})
+			});
 		}
 	}
 
@@ -160,10 +160,10 @@ async function handleAnonymousStart(
 			...(utmParams ? { utm_params: utmParams } : {}),
 		})
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (insertError || !inserted) {
-		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 })
+		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 	}
 
 	return Response.json({
@@ -172,7 +172,7 @@ async function handleAnonymousStart(
 		completed: false,
 		personId: null,
 		identityMode: "anonymous",
-	})
+	});
 }
 
 /**
@@ -183,21 +183,21 @@ async function handlePhoneStart(
 	list: ResearchLink,
 	payload: unknown
 ) {
-	const parsed = ResearchLinkPhoneStartSchema.safeParse(payload)
+	const parsed = ResearchLinkPhoneStartSchema.safeParse(payload);
 	if (!parsed.success) {
 		return Response.json(
 			{
 				message: parsed.error.flatten().fieldErrors.phone?.[0] ?? "Invalid request",
 			},
 			{ status: 400 }
-		)
+		);
 	}
 
-	const normalizedPhone = parsed.data.phone.trim().replace(/\s+/g, "")
-	const existingResponseId = parsed.data.responseId
+	const normalizedPhone = parsed.data.phone.trim().replace(/\s+/g, "");
+	const existingResponseId = parsed.data.responseId;
 	const responseMode =
-		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form")
-	const utmParams = parsed.data.utmParams ?? null
+		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form");
+	const utmParams = parsed.data.utmParams ?? null;
 
 	// If we have an existing response ID, try to resume it
 	if (existingResponseId) {
@@ -206,7 +206,7 @@ async function handlePhoneStart(
 			.select("id, responses, completed, person_id")
 			.eq("id", existingResponseId)
 			.eq("research_link_id", list.id)
-			.maybeSingle()
+			.maybeSingle();
 		if (existingById) {
 			await supabase
 				.from("research_link_responses")
@@ -214,7 +214,7 @@ async function handlePhoneStart(
 					phone: normalizedPhone,
 					response_mode: responseMode,
 				})
-				.eq("id", existingById.id)
+				.eq("id", existingById.id);
 			return Response.json({
 				responseId: existingById.id,
 				responses: existingById.responses ?? {},
@@ -222,7 +222,7 @@ async function handlePhoneStart(
 				personId: existingById.person_id,
 				identityMode: "identified",
 				identityField: "phone",
-			})
+			});
 		}
 	}
 
@@ -232,10 +232,10 @@ async function handlePhoneStart(
 		.select("id, responses, completed, person_id")
 		.eq("research_link_id", list.id)
 		.eq("phone", normalizedPhone)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingError) {
-		return Response.json({ message: existingError.message }, { status: 500 })
+		return Response.json({ message: existingError.message }, { status: 500 });
 	}
 
 	if (existing) {
@@ -245,7 +245,7 @@ async function handlePhoneStart(
 				updated_at: new Date().toISOString(),
 				response_mode: responseMode,
 			})
-			.eq("id", existing.id)
+			.eq("id", existing.id);
 		return Response.json({
 			responseId: existing.id,
 			responses: existing.responses ?? {},
@@ -253,7 +253,7 @@ async function handlePhoneStart(
 			personId: existing.person_id,
 			identityMode: "identified",
 			identityField: "phone",
-		})
+		});
 	}
 
 	// Create new phone-identified response
@@ -268,10 +268,10 @@ async function handlePhoneStart(
 			...(utmParams ? { utm_params: utmParams } : {}),
 		})
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (insertError || !inserted) {
-		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 })
+		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 	}
 
 	return Response.json({
@@ -281,7 +281,7 @@ async function handlePhoneStart(
 		personId: null,
 		identityMode: "identified",
 		identityField: "phone",
-	})
+	});
 }
 
 /**
@@ -292,21 +292,21 @@ async function handleEmailStart(
 	list: ResearchLink,
 	payload: unknown
 ) {
-	const parsed = ResearchLinkResponseStartSchema.safeParse(payload)
+	const parsed = ResearchLinkResponseStartSchema.safeParse(payload);
 	if (!parsed.success) {
 		return Response.json(
 			{
 				message: parsed.error.flatten().fieldErrors.email?.[0] ?? "Invalid request",
 			},
 			{ status: 400 }
-		)
+		);
 	}
 
-	const normalizedEmail = parsed.data.email.trim().toLowerCase()
-	const existingResponseId = parsed.data.responseId
+	const normalizedEmail = parsed.data.email.trim().toLowerCase();
+	const existingResponseId = parsed.data.responseId;
 	const responseMode =
-		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form")
-	const utmParams = parsed.data.utmParams ?? null
+		list.allow_chat && parsed.data.responseMode ? parsed.data.responseMode : (list.default_response_mode ?? "form");
+	const utmParams = parsed.data.utmParams ?? null;
 
 	// If we have an existing response ID, try to resume it
 	if (existingResponseId) {
@@ -315,7 +315,7 @@ async function handleEmailStart(
 			.select("id, responses, completed, person_id")
 			.eq("id", existingResponseId)
 			.eq("research_link_id", list.id)
-			.maybeSingle()
+			.maybeSingle();
 		if (existingById) {
 			await supabase
 				.from("research_link_responses")
@@ -323,7 +323,7 @@ async function handleEmailStart(
 					email: normalizedEmail,
 					response_mode: responseMode,
 				})
-				.eq("id", existingById.id)
+				.eq("id", existingById.id);
 			return Response.json({
 				responseId: existingById.id,
 				responses: existingById.responses ?? {},
@@ -331,7 +331,7 @@ async function handleEmailStart(
 				personId: existingById.person_id,
 				identityMode: "identified",
 				identityField: "email",
-			})
+			});
 		}
 	}
 
@@ -341,14 +341,14 @@ async function handleEmailStart(
 		.select("id, responses, completed, person_id")
 		.eq("research_link_id", list.id)
 		.eq("email", normalizedEmail)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingError) {
-		return Response.json({ message: existingError.message }, { status: 500 })
+		return Response.json({ message: existingError.message }, { status: 500 });
 	}
 
 	if (existing) {
-		let personId = existing.person_id
+		let personId = existing.person_id;
 
 		// Backfill: if response exists but person_id is null, re-check people table
 		if (!personId) {
@@ -357,11 +357,11 @@ async function handleEmailStart(
 				.select("id")
 				.eq("account_id", list.account_id)
 				.eq("primary_email", normalizedEmail)
-				.limit(1)
-			const backfillPerson = backfillPeople?.[0]
+				.limit(1);
+			const backfillPerson = backfillPeople?.[0];
 			if (backfillPerson) {
-				personId = backfillPerson.id
-				await supabase.from("research_link_responses").update({ person_id: backfillPerson.id }).eq("id", existing.id)
+				personId = backfillPerson.id;
+				await supabase.from("research_link_responses").update({ person_id: backfillPerson.id }).eq("id", existing.id);
 			}
 		}
 
@@ -371,7 +371,7 @@ async function handleEmailStart(
 				updated_at: new Date().toISOString(),
 				response_mode: responseMode,
 			})
-			.eq("id", existing.id)
+			.eq("id", existing.id);
 		return Response.json({
 			responseId: existing.id,
 			responses: existing.responses ?? {},
@@ -379,7 +379,7 @@ async function handleEmailStart(
 			personId,
 			identityMode: "identified",
 			identityField: "email",
-		})
+		});
 	}
 
 	// Look up person by email in the people table for this account
@@ -389,8 +389,8 @@ async function handleEmailStart(
 		.select("id, name, firstname, lastname")
 		.eq("account_id", list.account_id)
 		.eq("primary_email", normalizedEmail)
-		.limit(1)
-	const existingPerson = existingPeople?.[0] ?? null
+		.limit(1);
+	const existingPerson = existingPeople?.[0] ?? null;
 
 	if (existingPerson) {
 		// Person exists - create response linked to them
@@ -406,10 +406,10 @@ async function handleEmailStart(
 				...(utmParams ? { utm_params: utmParams } : {}),
 			})
 			.select("id")
-			.maybeSingle()
+			.maybeSingle();
 
 		if (insertError || !inserted) {
-			return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 })
+			return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 		}
 
 		return Response.json({
@@ -419,7 +419,7 @@ async function handleEmailStart(
 			personId: existingPerson.id,
 			identityMode: "identified",
 			identityField: "email",
-		})
+		});
 	}
 
 	// No person found - create response without person_id and signal frontend needs name
@@ -434,10 +434,10 @@ async function handleEmailStart(
 			...(utmParams ? { utm_params: utmParams } : {}),
 		})
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (insertError || !inserted) {
-		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 })
+		return Response.json({ message: insertError?.message ?? "Unable to start response" }, { status: 500 });
 	}
 
 	return Response.json({
@@ -447,7 +447,7 @@ async function handleEmailStart(
 		personId: null,
 		identityMode: "identified",
 		identityField: "email",
-	})
+	});
 }
 
 /**
@@ -457,17 +457,18 @@ async function handleCreatePersonAndContinue(
 	supabase: ReturnType<typeof createSupabaseAdminClient>,
 	list: ResearchLink,
 	data: {
-		email: string
-		firstName: string
-		lastName?: string | null
-		responseId: string
-		responseMode?: "form" | "chat"
+		email: string;
+		firstName: string;
+		lastName?: string | null;
+		responseId: string;
+		responseMode?: "form" | "chat";
 	}
 ) {
-	const normalizedEmail = data.email.trim().toLowerCase()
-	const firstName = data.firstName.trim()
-	const lastName = data.lastName?.trim() || null
-	const responseMode = list.allow_chat && data.responseMode ? data.responseMode : (list.default_response_mode ?? "form")
+	const normalizedEmail = data.email.trim().toLowerCase();
+	const firstName = data.firstName.trim();
+	const lastName = data.lastName?.trim() || null;
+	const responseMode =
+		list.allow_chat && data.responseMode ? data.responseMode : (list.default_response_mode ?? "form");
 
 	// Check if person already exists by email (race condition check)
 	const { data: existingPerson } = await supabase
@@ -475,9 +476,9 @@ async function handleCreatePersonAndContinue(
 		.select("id")
 		.eq("account_id", list.account_id)
 		.eq("primary_email", normalizedEmail)
-		.maybeSingle()
+		.maybeSingle();
 
-	let personId = existingPerson?.id
+	let personId = existingPerson?.id;
 
 	if (!personId) {
 		// Create the person record (name is auto-generated from firstname/lastname)
@@ -493,13 +494,13 @@ async function handleCreatePersonAndContinue(
 				person_type: "external",
 			})
 			.select("id")
-			.single()
+			.single();
 
 		if (personError || !newPerson) {
-			return Response.json({ message: personError?.message ?? "Unable to create person" }, { status: 500 })
+			return Response.json({ message: personError?.message ?? "Unable to create person" }, { status: 500 });
 		}
 
-		personId = newPerson.id
+		personId = newPerson.id;
 	}
 
 	// Update the response with the person_id
@@ -511,10 +512,10 @@ async function handleCreatePersonAndContinue(
 		})
 		.eq("id", data.responseId)
 		.select("id, responses, completed")
-		.single()
+		.single();
 
 	if (updateError || !response) {
-		return Response.json({ message: updateError?.message ?? "Unable to link person to response" }, { status: 500 })
+		return Response.json({ message: updateError?.message ?? "Unable to link person to response" }, { status: 500 });
 	}
 
 	return Response.json({
@@ -524,5 +525,5 @@ async function handleCreatePersonAndContinue(
 		personId,
 		identityMode: "identified",
 		identityField: "email",
-	})
+	});
 }

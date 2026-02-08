@@ -3,15 +3,15 @@
  * GET /api/evidence/:evidenceId
  */
 
-import type { LoaderFunctionArgs } from "react-router"
-import { userContext } from "~/server/user-context"
+import type { LoaderFunctionArgs } from "react-router";
+import { userContext } from "~/server/user-context";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const { supabase } = context.get(userContext)
-	const { evidenceId } = params
+	const { supabase } = context.get(userContext);
+	const { evidenceId } = params;
 
 	if (!evidenceId) {
-		return Response.json({ error: "Missing evidenceId" }, { status: 400 })
+		return Response.json({ error: "Missing evidenceId" }, { status: 400 });
 	}
 
 	// Fetch evidence with interview data
@@ -39,10 +39,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		`
 		)
 		.eq("id", evidenceId)
-		.single()
+		.single();
 
 	if (error || !evidence) {
-		return Response.json({ error: "Evidence not found" }, { status: 404 })
+		return Response.json({ error: "Evidence not found" }, { status: 404 });
 	}
 
 	// Fetch people separately
@@ -57,7 +57,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			)
 		`
 		)
-		.eq("evidence_id", evidenceId)
+		.eq("evidence_id", evidenceId);
 
 	// Fetch facets with their owners via person_id
 	const { data: facetData } = await supabase
@@ -69,21 +69,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			person:person_id(id, name)
 		`
 		)
-		.eq("evidence_id", evidenceId)
+		.eq("evidence_id", evidenceId);
 
 	// Transform people data (participants with roles)
 	const people = (peopleData ?? []).map((row: any) => ({
 		id: row.people?.id,
 		name: row.people?.name,
 		role: row.role,
-	}))
+	}));
 
 	// Transform facets (with owner info)
 	const facets = (facetData ?? []).map((row: any) => ({
 		kind_slug: row.kind_slug,
 		label: row.label,
 		person: row.person ? { id: row.person.id, name: row.person.name } : null,
-	}))
+	}));
 
 	return Response.json({
 		evidence: {
@@ -91,5 +91,5 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			people,
 			facets,
 		},
-	})
+	});
 }

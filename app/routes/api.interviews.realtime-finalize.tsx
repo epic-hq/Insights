@@ -1,30 +1,30 @@
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
-import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
-import { userContext } from "~/server/user-context"
-import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
+import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
+import { userContext } from "~/server/user-context";
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
-	const { client: supabase } = getServerClient(request)
-	const admin = createSupabaseAdminClient()
-	const body = await request.json().catch(() => ({}) as any)
+	const { client: supabase } = getServerClient(request);
+	const admin = createSupabaseAdminClient();
+	const body = await request.json().catch(() => ({}) as any);
 
-	const interviewId = body.interviewId as string | null
-	const transcript = (body.transcript as string | null) ?? ""
-	const transcriptFormatted = body.transcriptFormatted as Record<string, unknown> | null
-	const mediaUrl = (body.mediaUrl as string | null) ?? ""
-	const audioDuration = body.audioDuration as number | null
-	const attachType = (body.attachType as string | null) ?? "existing"
-	const personIds = (body.personIds as string[] | null) ?? []
+	const interviewId = body.interviewId as string | null;
+	const transcript = (body.transcript as string | null) ?? "";
+	const transcriptFormatted = body.transcriptFormatted as Record<string, unknown> | null;
+	const mediaUrl = (body.mediaUrl as string | null) ?? "";
+	const audioDuration = body.audioDuration as number | null;
+	const attachType = (body.attachType as string | null) ?? "existing";
+	const personIds = (body.personIds as string[] | null) ?? [];
 
 	if (!interviewId) {
-		return Response.json({ error: "interviewId required" }, { status: 400 })
+		return Response.json({ error: "interviewId required" }, { status: 400 });
 	}
 
 	// Fetch interview to get account/project
@@ -32,15 +32,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		.from("interviews")
 		.select("id, account_id, project_id, created_by, participant_pseudonym, segment, title, original_filename")
 		.eq("id", interviewId)
-		.single()
+		.single();
 
 	if (interviewErr || !interview) {
-		return Response.json({ error: "Interview not found" }, { status: 404 })
+		return Response.json({ error: "Interview not found" }, { status: 404 });
 	}
 
 	// Link current user as interviewer if available
-	const ctx = context.get?.(userContext)
-	const userId = ctx?.claims?.sub ?? null
+	const ctx = context.get?.(userContext);
+	const userId = ctx?.claims?.sub ?? null;
 	if (userId) {
 		await ensureInterviewInterviewerLink({
 			supabase,
@@ -50,7 +50,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			userId,
 			userSettings: ctx?.user_settings || null,
 			userMetadata: ctx?.user_metadata || null,
-		})
+		});
 	}
 
 	// Link provided personIds to interview_people
@@ -59,8 +59,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			interview_id: interviewId,
 			person_id: pid,
 			project_id: interview.project_id,
-		}))
-		await admin.from("interview_people").upsert(rows, { onConflict: "interview_id,person_id" })
+		}));
+		await admin.from("interview_people").upsert(rows, { onConflict: "interview_id,person_id" });
 	}
 
 	// Sanitize transcript data
@@ -80,7 +80,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 						},
 					],
 		}
-	)
+	);
 
 	// Update interview with transcript + media
 	await admin
@@ -92,7 +92,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			duration_sec: audioDuration ?? null,
 			status: "transcribed",
 		})
-		.eq("id", interviewId)
+		.eq("id", interviewId);
 
 	// Trigger v2 orchestrator starting from evidence
 	const handle = await tasks.trigger("interview.v2.orchestrator", {
@@ -112,9 +112,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		userCustomInstructions: "",
 		resumeFrom: "evidence",
 		skipSteps: ["upload"],
-	})
+	});
 
-	consola.info("[realtime-finalize] Triggered v2 orchestrator", { interviewId, runId: handle.id })
+	consola.info("[realtime-finalize] Triggered v2 orchestrator", { interviewId, runId: handle.id });
 
-	return Response.json({ success: true, interviewId, runId: handle.id })
+	return Response.json({ success: true, interviewId, runId: handle.id });
 }

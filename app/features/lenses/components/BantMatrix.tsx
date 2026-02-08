@@ -1,8 +1,8 @@
-import type { BantMatrix, BantMatrixCell } from "../services/generateBantMatrix.server"
+import type { BantMatrix, BantMatrixCell } from "../services/generateBantMatrix.server";
 
 export interface BantMatrixProps {
-	matrix: BantMatrix
-	onCellClick?: (cell: BantMatrixCell) => void
+	matrix: BantMatrix;
+	onCellClick?: (cell: BantMatrixCell) => void;
 }
 
 /**
@@ -11,18 +11,18 @@ export interface BantMatrixProps {
 export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 	// Get heat map color based on opportunity count
 	const getHeatColor = (count: number): string => {
-		if (count === 0) return "bg-muted/30 text-muted-foreground"
-		if (count < 3) return "bg-blue-50 hover:bg-blue-100 text-blue-900 cursor-pointer"
-		if (count < 5) return "bg-blue-100 hover:bg-blue-200 text-blue-900 cursor-pointer"
-		if (count < 10) return "bg-blue-200 hover:bg-blue-300 text-blue-900 cursor-pointer"
-		return "bg-blue-300 hover:bg-blue-400 text-blue-900 cursor-pointer font-semibold"
-	}
+		if (count === 0) return "bg-muted/30 text-muted-foreground";
+		if (count < 3) return "bg-blue-50 hover:bg-blue-100 text-blue-900 cursor-pointer";
+		if (count < 5) return "bg-blue-100 hover:bg-blue-200 text-blue-900 cursor-pointer";
+		if (count < 10) return "bg-blue-200 hover:bg-blue-300 text-blue-900 cursor-pointer";
+		return "bg-blue-300 hover:bg-blue-400 text-blue-900 cursor-pointer font-semibold";
+	};
 
 	const formatCurrency = (amount: number): string => {
-		if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`
-		if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`
-		return `$${amount.toFixed(0)}`
-	}
+		if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+		if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
+		return `$${amount.toFixed(0)}`;
+	};
 
 	return (
 		<div className="space-y-6">
@@ -69,10 +69,12 @@ export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 								<tr key={budget}>
 									<td className="border-b p-3 font-medium text-sm">{budget}</td>
 									{matrix.authority_levels.map((authority) => {
-										const cell = matrix.cells.find((c) => c.budget_bucket === budget && c.authority_level === authority)
-										if (!cell) return <td key={authority} className="border-b border-l p-3" />
+										const cell = matrix.cells.find(
+											(c) => c.budget_bucket === budget && c.authority_level === authority
+										);
+										if (!cell) return <td key={authority} className="border-b border-l p-3" />;
 
-										const hasData = cell.metrics.opportunity_count > 0
+										const hasData = cell.metrics.opportunity_count > 0;
 
 										return (
 											<td
@@ -92,7 +94,7 @@ export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 													<div className="text-center text-sm">—</div>
 												)}
 											</td>
-										)
+										);
 									})}
 								</tr>
 							))}
@@ -120,5 +122,5 @@ export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 				</ul>
 			</div>
 		</div>
-	)
+	);
 }

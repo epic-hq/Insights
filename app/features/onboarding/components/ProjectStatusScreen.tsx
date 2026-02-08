@@ -1,5 +1,5 @@
-import consola from "consola"
-import { motion } from "framer-motion"
+import consola from "consola";
+import { motion } from "framer-motion";
 import {
 	ArrowRight,
 	BookOpen,
@@ -12,54 +12,54 @@ import {
 	Target,
 	Users,
 	Zap,
-} from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRevalidator } from "react-router"
-import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
-import { Button } from "~/components/ui/button"
-import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useValidationView } from "~/contexts/ValidationViewContext"
-import type { DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
-import { AnalyzeStageValidation } from "~/features/projects/pages/validationStatus"
-import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers"
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRevalidator } from "react-router";
+import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
+import { Button } from "~/components/ui/button";
+import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useValidationView } from "~/contexts/ValidationViewContext";
+import type { DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard";
+import { AnalyzeStageValidation } from "~/features/projects/pages/validationStatus";
+import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers";
 import {
 	calculateResearchMetrics,
 	getAnsweredQuestions,
 	getOpenQuestions,
-} from "~/features/research/utils/research-data-mappers"
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
-import type { Project_Section } from "~/types"
+} from "~/features/research/utils/research-data-mappers";
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
+import type { Project_Section } from "~/types";
 
-const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
-const _OPEN_STATUSES = new Set(["planned", "asked"])
+const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"]);
+const _OPEN_STATUSES = new Set(["planned", "asked"]);
 
-import type { ProjectStatusData } from "~/utils/project-status.server"
+import type { ProjectStatusData } from "~/utils/project-status.server";
 
 function _ConfidenceBadge({ value }: { value?: number }) {
-	if (value === undefined || value === null) return null
-	const pct = Math.round((value || 0) * 100)
-	let color = "bg-gray-200 text-gray-800"
-	if (pct >= 80) color = "bg-green-100 text-green-800"
-	else if (pct >= 60) color = "bg-yellow-100 text-yellow-800"
-	else color = "bg-orange-100 text-orange-800"
-	return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{pct}%</span>
+	if (value === undefined || value === null) return null;
+	const pct = Math.round((value || 0) * 100);
+	let color = "bg-gray-200 text-gray-800";
+	if (pct >= 80) color = "bg-green-100 text-green-800";
+	else if (pct >= 60) color = "bg-yellow-100 text-yellow-800";
+	else color = "bg-orange-100 text-orange-800";
+	return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{pct}%</span>;
 }
 
 interface ProjectStatusScreenProps {
-	projectName: string
-	projectId?: string
-	accountId?: string
-	statusData?: ProjectStatusData | null
-	personas?: any[]
-	insights?: any[]
-	projectSections?: Project_Section[]
+	projectName: string;
+	projectId?: string;
+	accountId?: string;
+	statusData?: ProjectStatusData | null;
+	personas?: any[];
+	insights?: any[];
+	projectSections?: Project_Section[];
 }
 
 export default function ProjectStatusScreen({
@@ -71,190 +71,190 @@ export default function ProjectStatusScreen({
 	insights = [],
 	projectSections: initialSections,
 }: ProjectStatusScreenProps) {
-	const [isAnalyzing, setIsAnalyzing] = useState(false)
-	const [customInstructions, setCustomInstructions] = useState("")
-	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false)
-	const [projectSections, setProjectSections] = useState<Project_Section[]>(initialSections || [])
-	const [loading, setLoading] = useState(!initialSections)
-	const [showFlowView, _setShowFlowView] = useState(false)
+	const [isAnalyzing, setIsAnalyzing] = useState(false);
+	const [customInstructions, setCustomInstructions] = useState("");
+	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false);
+	const [projectSections, setProjectSections] = useState<Project_Section[]>(initialSections || []);
+	const [loading, setLoading] = useState(!initialSections);
+	const [showFlowView, _setShowFlowView] = useState(false);
 	const [researchMetrics, setResearchMetrics] = useState<{ answered: number; open: number; total: number }>({
 		answered: 0,
 		open: 0,
 		total: 0,
-	})
-	const [researchRollup, setResearchRollup] = useState<ResearchAnswersData | null>(null)
-	const [analysisError, setAnalysisError] = useState<string | null>(null)
-	const [targetConversations, setTargetConversations] = useState<number>(10)
-	const revalidator = useRevalidator()
-	const currentProjectContext = useCurrentProject()
-	const { showValidationView } = useValidationView()
+	});
+	const [researchRollup, setResearchRollup] = useState<ResearchAnswersData | null>(null);
+	const [analysisError, setAnalysisError] = useState<string | null>(null);
+	const [targetConversations, setTargetConversations] = useState<number>(10);
+	const revalidator = useRevalidator();
+	const currentProjectContext = useCurrentProject();
+	const { showValidationView } = useValidationView();
 	const _projectPath =
-		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
-	const routes = useProjectRoutesFromIds(accountId, projectId)
-	const supabase = createClient()
-	const effectiveAccountId = accountId || ""
-	const effectiveProjectId = projectId || ""
+		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "");
+	const routes = useProjectRoutesFromIds(accountId, projectId);
+	const supabase = createClient();
+	const effectiveAccountId = accountId || "";
+	const effectiveProjectId = projectId || "";
 
 	// Build comprehensive system context for the project status agent
 	const projectSystemContext = useMemo(() => {
-		const sections: string[] = []
-		sections.push(`Project: ${projectName}`)
+		const sections: string[] = [];
+		sections.push(`Project: ${projectName}`);
 
 		if (statusData?.totalInterviews) {
-			sections.push(`Interviews conducted: ${statusData.totalInterviews}`)
+			sections.push(`Interviews conducted: ${statusData.totalInterviews}`);
 		}
 		if (statusData?.totalEvidence) {
-			sections.push(`Evidence collected: ${statusData.totalEvidence}`)
+			sections.push(`Evidence collected: ${statusData.totalEvidence}`);
 		}
 		if (statusData?.totalInsights) {
-			sections.push(`Insights generated: ${statusData.totalInsights}`)
+			sections.push(`Insights generated: ${statusData.totalInsights}`);
 		}
 		if (statusData?.totalPersonas) {
-			sections.push(`Personas identified: ${statusData.totalPersonas}`)
+			sections.push(`Personas identified: ${statusData.totalPersonas}`);
 		}
 
 		if (researchRollup?.decision_questions?.length) {
-			sections.push(`Decision questions: ${researchRollup.decision_questions.length}`)
+			sections.push(`Decision questions: ${researchRollup.decision_questions.length}`);
 		}
 		if (researchRollup?.research_questions_without_decision?.length) {
-			sections.push(`Research questions: ${researchRollup.research_questions_without_decision.length}`)
+			sections.push(`Research questions: ${researchRollup.research_questions_without_decision.length}`);
 		}
 
 		if (statusData?.nextSteps?.length) {
-			sections.push(`Current next steps: ${statusData.nextSteps.slice(0, 3).join(", ")}`)
+			sections.push(`Current next steps: ${statusData.nextSteps.slice(0, 3).join(", ")}`);
 		}
 
-		const combined = sections.filter(Boolean).join("\n\n")
+		const combined = sections.filter(Boolean).join("\n\n");
 		if (combined.length > 2000) {
-			return `${combined.slice(0, 2000)}…`
+			return `${combined.slice(0, 2000)}…`;
 		}
 
-		return combined
-	}, [projectName, statusData, researchRollup])
+		return combined;
+	}, [projectName, statusData, researchRollup]);
 
 	const handleResearchMetrics = useCallback((metrics: { answered: number; open: number; total: number }) => {
-		setResearchMetrics(metrics)
-	}, [])
+		setResearchMetrics(metrics);
+	}, []);
 
 	const handleResearchData = useCallback((data: any) => {
 		// Handle research data if needed
-		console.log("Research data received:", data)
-	}, [])
+		console.log("Research data received:", data);
+	}, []);
 
 	const handleResearchRollup = useCallback((data: ResearchAnswersData | null) => {
-		setResearchRollup(data)
-	}, [])
+		setResearchRollup(data);
+	}, []);
 
 	// Feature flag for chat setup button
-	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat")
+	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat");
 	// Feature flag for validation status view
-	const { isEnabled: isValidationEnabled } = usePostHogFeatureFlag("ffValidation")
+	const { isEnabled: isValidationEnabled } = usePostHogFeatureFlag("ffValidation");
 
 	// Fetch project sections client-side only if not provided by loader
 	useEffect(() => {
 		if (initialSections && initialSections.length >= 0) {
-			setLoading(false)
+			setLoading(false);
 			// Extract target_conversations from settings section
-			const settingsSection = initialSections.find((section) => section.kind === "settings")
+			const settingsSection = initialSections.find((section) => section.kind === "settings");
 			if (settingsSection?.meta) {
-				const meta = settingsSection.meta as any
-				setTargetConversations(meta.target_conversations || 10)
+				const meta = settingsSection.meta as any;
+				setTargetConversations(meta.target_conversations || 10);
 			}
-			return
+			return;
 		}
 		const fetchProjectSections = async () => {
-			if (!projectId) return
+			if (!projectId) return;
 			try {
 				const { data } = await supabase
 					.from("project_sections")
 					.select("*")
 					.eq("project_id", projectId)
 					.order("position", { ascending: true, nullsFirst: false })
-					.order("created_at", { ascending: false })
+					.order("created_at", { ascending: false });
 				if (data) {
-					setProjectSections(data)
+					setProjectSections(data);
 					// Extract target_conversations from settings section
-					const settingsSection = data.find((section) => section.kind === "settings")
+					const settingsSection = data.find((section) => section.kind === "settings");
 					if (settingsSection?.meta) {
-						const meta = settingsSection.meta as any
-						setTargetConversations(meta.target_conversations || 10)
+						const meta = settingsSection.meta as any;
+						setTargetConversations(meta.target_conversations || 10);
 					}
 				}
 			} finally {
-				setLoading(false)
+				setLoading(false);
 			}
-		}
-		fetchProjectSections()
-	}, [projectId, supabase, initialSections])
+		};
+		fetchProjectSections();
+	}, [projectId, supabase, initialSections]);
 
 	// Helper functions to organize project sections and match with analysis
 	const getGoalSections = () =>
-		projectSections.filter((section) => section.kind === "goal" || section.kind === "research_goal")
-	const _getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market")
-	const _getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
-	const _getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
-	const _getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
+		projectSections.filter((section) => section.kind === "goal" || section.kind === "research_goal");
+	const _getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market");
+	const _getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions");
+	const _getRiskSections = () => projectSections.filter((section) => section.kind === "risks");
+	const _getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions");
 
 	// Removed client-side goal/question matching. Rely on backend analysis (statusData.questionAnswers).
 
 	const runCustomAnalysis = async () => {
-		if (!projectId) return
-		setIsAnalyzing(true)
-		setAnalysisError(null)
+		if (!projectId) return;
+		setIsAnalyzing(true);
+		setAnalysisError(null);
 		try {
 			// Build FormData because the analysis endpoint expects formData
-			const form = new FormData()
-			form.append("projectId", projectId)
-			if (customInstructions) form.append("customInstructions", customInstructions)
+			const form = new FormData();
+			form.append("projectId", projectId);
+			if (customInstructions) form.append("customInstructions", customInstructions);
 			// You can make minConfidence configurable; use default 0.6 for now
-			form.append("minConfidence", String(0.6))
+			form.append("minConfidence", String(0.6));
 
 			const response = await fetch("/api/analyze-research-evidence", {
 				method: "POST",
 				body: form,
-			})
+			});
 
-			const body = await response.json().catch(() => ({}))
+			const body = await response.json().catch(() => ({}));
 			if (!response.ok) {
-				const msg = body?.error || body?.details || "Analysis failed"
-				setAnalysisError(msg)
-				consola.error("[research-analysis] analysis failed", msg, body)
-				return
+				const msg = body?.error || body?.details || "Analysis failed";
+				setAnalysisError(msg);
+				consola.error("[research-analysis] analysis failed", msg, body);
+				return;
 			}
 
 			// Clear the instructions input and close modal
-			setCustomInstructions("")
-			setShowCustomAnalysis(false)
+			setCustomInstructions("");
+			setShowCustomAnalysis(false);
 			// Revalidate any loader data (if applicable)
-			revalidator.revalidate()
+			revalidator.revalidate();
 
 			// Fetch fresh research rollup so KeyDecisionsCard and ResearchAnswers show updated data
 			try {
-				const rrResp = await fetch(`/api.research-answers?projectId=${encodeURIComponent(projectId)}`)
+				const rrResp = await fetch(`/api.research-answers?projectId=${encodeURIComponent(projectId)}`);
 				if (rrResp.ok) {
-					const rrBody = await rrResp.json().catch(() => ({}))
+					const rrBody = await rrResp.json().catch(() => ({}));
 					// rrBody expected shape: { data: ResearchAnswersData }
-					const newRollup = rrBody?.data ?? null
-					setResearchRollup(newRollup)
-					handleResearchRollup(newRollup)
+					const newRollup = rrBody?.data ?? null;
+					setResearchRollup(newRollup);
+					handleResearchRollup(newRollup);
 					// update metrics derived from rollup
-					const metrics = calculateResearchMetrics(newRollup)
-					handleResearchMetrics(metrics)
+					const metrics = calculateResearchMetrics(newRollup);
+					handleResearchMetrics(metrics);
 				} else {
 					// Non-fatal: log but continue
-					const rb = await rrResp.json().catch(() => ({}))
-					consola.warn("[research-analysis] failed to refresh research rollup", rb)
+					const rb = await rrResp.json().catch(() => ({}));
+					consola.warn("[research-analysis] failed to refresh research rollup", rb);
 				}
 			} catch (err) {
-				consola.warn("[research-analysis] error fetching research rollup", err)
+				consola.warn("[research-analysis] error fetching research rollup", err);
 			}
 		} catch (error) {
-			consola.error("[research-analysis] analysis failed", error)
-			setAnalysisError(error instanceof Error ? error.message : "Analysis request failed")
+			consola.error("[research-analysis] analysis failed", error);
+			setAnalysisError(error instanceof Error ? error.message : "Analysis request failed");
 		} finally {
-			setIsAnalyzing(false)
+			setIsAnalyzing(false);
 		}
-	}
+	};
 
 	// Use external data if available, otherwise fallback to props
 	const displayData = statusData || {
@@ -283,18 +283,18 @@ export default function ProjectStatusScreen({
 		unanticipatedDiscoveries: [],
 		criticalUnknowns: [],
 		questionAnswers: [],
-	}
-	const _hasProjectId = Boolean(projectId)
+	};
+	const _hasProjectId = Boolean(projectId);
 
-	const _decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup])
+	const _decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup]);
 
 	const standaloneResearchQuestions = useMemo<DecoratedResearchQuestion[]>(() => {
-		if (!researchRollup) return []
+		if (!researchRollup) return [];
 		return researchRollup.research_questions_without_decision.map((rq) => ({
 			...rq,
 			decisionText: null,
-		}))
-	}, [researchRollup])
+		}));
+	}, [researchRollup]);
 
 	const _topResearchQuestions = useMemo(() => {
 		return standaloneResearchQuestions
@@ -304,98 +304,98 @@ export default function ProjectStatusScreen({
 					(b.metrics.answered_answer_count ?? 0) - (a.metrics.answered_answer_count ?? 0) ||
 					(b.metrics.open_answer_count ?? 0) - (a.metrics.open_answer_count ?? 0)
 			)
-			.slice(0, 3)
-	}, [standaloneResearchQuestions])
+			.slice(0, 3);
+	}, [standaloneResearchQuestions]);
 
 	// Use helper functions to extract data from research rollup
-	const _answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
-	const _openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
-	const _researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup])
+	const _answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup]);
+	const _openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup]);
+	const _researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup]);
 
 	const recommendedNextSteps = useMemo(() => {
-		const steps = new Set<string>()
+		const steps = new Set<string>();
 		const addStep = (value?: string | null) => {
-			if (!value) return
-			const cleaned = value.replace(/^\s*(?:[\u2022*-]|\d+\.?|\(\d+\))\s*/, "").trim()
-			if (cleaned) steps.add(cleaned)
-		}
+			if (!value) return;
+			const cleaned = value.replace(/^\s*(?:[\u2022*-]|\d+\.?|\(\d+\))\s*/, "").trim();
+			if (cleaned) steps.add(cleaned);
+		};
 		const addList = (items?: string[] | null) => {
-			if (!items) return
-			for (const item of items) addStep(item)
-		}
+			if (!items) return;
+			for (const item of items) addStep(item);
+		};
 
-		addList(displayData.nextSteps)
-		addList(statusData?.followUpRecommendations)
-		addList(researchRollup?.latest_analysis_run?.recommended_actions)
+		addList(displayData.nextSteps);
+		addList(statusData?.followUpRecommendations);
+		addList(researchRollup?.latest_analysis_run?.recommended_actions);
 		researchRollup?.analysis_results?.forEach((result) => {
-			if (result?.next_steps) addStep(result.next_steps)
-		})
+			if (result?.next_steps) addStep(result.next_steps);
+		});
 
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
 					(researchRollup?.research_questions_without_decision?.length || 0) > 0
-			)
+			);
 			if (!hasStructure) {
-				addStep("Generate your research plan to create decision and research questions.")
+				addStep("Generate your research plan to create decision and research questions.");
 			}
 			if ((displayData.totalInterviews || 0) === 0) {
-				addStep("Schedule and run your first interviews to start collecting evidence.")
+				addStep("Schedule and run your first interviews to start collecting evidence.");
 			} else if ((displayData.totalEvidence || 0) === 0) {
-				addStep("Upload transcripts or tag interview evidence so the AI can analyze it.")
+				addStep("Upload transcripts or tag interview evidence so the AI can analyze it.");
 			}
 			if (steps.size === 0) {
-				addStep("Run the AI evidence analysis to synthesize findings and surface next steps.")
+				addStep("Run the AI evidence analysis to synthesize findings and surface next steps.");
 			}
 		}
 
-		return Array.from(steps)
+		return Array.from(steps);
 	}, [
 		displayData.nextSteps,
 		displayData.totalEvidence,
 		displayData.totalInterviews,
 		researchRollup,
 		statusData?.followUpRecommendations,
-	])
+	]);
 
-	const nextStepsToShow = useMemo(() => recommendedNextSteps.slice(0, 3), [recommendedNextSteps])
+	const nextStepsToShow = useMemo(() => recommendedNextSteps.slice(0, 3), [recommendedNextSteps]);
 
 	// Derive a single-line research goal for display
 	const _researchGoalText = (() => {
-		const gs = getGoalSections()
-		if (gs.length === 0) return ""
-		const section = gs[0]
-		const meta = (section.meta || {}) as any
-		return meta.research_goal || meta.customGoal || section.content_md || ""
-	})()
+		const gs = getGoalSections();
+		if (gs.length === 0) return "";
+		const section = gs[0];
+		const meta = (section.meta || {}) as any;
+		return meta.research_goal || meta.customGoal || section.content_md || "";
+	})();
 
 	const goalConfidence = (() => {
-		const gs = getGoalSections()
-		if (gs.length === 0) return "low"
-		const section = gs[0]
-		const meta = (section.meta || {}) as any
-		return meta.confidence || "low"
-	})()
+		const gs = getGoalSections();
+		if (gs.length === 0) return "low";
+		const section = gs[0];
+		const meta = (section.meta || {}) as any;
+		return meta.confidence || "low";
+	})();
 
 	const _getConfidenceColor = (confidence: string) => {
 		switch (confidence) {
 			case "high":
-				return "text-success"
+				return "text-success";
 			case "medium":
-				return "text-warning"
+				return "text-warning";
 			case "low":
-				return "text-destructive"
+				return "text-destructive";
 			default:
-				return "text-muted-foreground"
+				return "text-muted-foreground";
 		}
-	}
+	};
 
 	if (loading) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<Loader2 className="h-8 w-8 animate-spin text-foreground" />
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -414,7 +414,7 @@ export default function ProjectStatusScreen({
 						<button
 							onClick={() => {
 								if (routes && projectId) {
-									window.location.href = routes.projects.edit(projectId)
+									window.location.href = routes.projects.edit(projectId);
 								}
 							}}
 							className="-right-6 -translate-y-1/2 absolute top-1/2 rounded p-1 opacity-0 transition-opacity duration-200 hover:bg-muted group-hover:opacity-100"
@@ -445,7 +445,7 @@ export default function ProjectStatusScreen({
 								whileHover={{ scale: 1.02 }}
 								onClick={() => {
 									if (routes) {
-										window.location.href = routes.projects.setup()
+										window.location.href = routes.projects.setup();
 									}
 								}}
 							>
@@ -464,7 +464,7 @@ export default function ProjectStatusScreen({
 								whileHover={{ scale: 1.02 }}
 								onClick={() => {
 									if (routes) {
-										window.location.href = routes.interviews.index()
+										window.location.href = routes.interviews.index();
 									}
 								}}
 							>
@@ -481,7 +481,7 @@ export default function ProjectStatusScreen({
 								whileHover={{ scale: 1.02 }}
 								onClick={() => {
 									if (routes) {
-										window.location.href = routes.evidence.index()
+										window.location.href = routes.evidence.index();
 									}
 								}}
 							>
@@ -498,7 +498,7 @@ export default function ProjectStatusScreen({
 								whileHover={{ scale: 1.02 }}
 								onClick={() => {
 									if (routes) {
-										window.location.href = routes.personas.index()
+										window.location.href = routes.personas.index();
 									}
 								}}
 							>
@@ -517,7 +517,7 @@ export default function ProjectStatusScreen({
 								whileHover={{ scale: 1.02 }}
 								onClick={() => {
 									if (routes) {
-										window.location.href = routes.insights.index()
+										window.location.href = routes.insights.index();
 									}
 								}}
 							>
@@ -665,7 +665,7 @@ export default function ProjectStatusScreen({
 										<button
 											onClick={() => {
 												if (routes) {
-													window.location.href = routes.projects.setup()
+													window.location.href = routes.projects.setup();
 												}
 											}}
 											className="rounded p-1 opacity-0 transition-opacity duration-200 hover:bg-muted group-hover:opacity-100"
@@ -683,7 +683,7 @@ export default function ProjectStatusScreen({
 											size="sm"
 											onClick={() => {
 												if (routes) {
-													window.location.href = routes.questions.researchWorkflow()
+													window.location.href = routes.questions.researchWorkflow();
 												}
 											}}
 										>
@@ -742,7 +742,7 @@ export default function ProjectStatusScreen({
 														size="sm"
 														onClick={() => {
 															if (routes) {
-																window.location.href = (routes as any).projects.projectChat()
+																window.location.href = (routes as any).projects.projectChat();
 															}
 														}}
 														className="border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
@@ -874,5 +874,5 @@ export default function ProjectStatusScreen({
 				</div>
 			)}
 		</div>
-	)
+	);
 }

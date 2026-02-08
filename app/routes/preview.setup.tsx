@@ -1,26 +1,26 @@
 // Preview route for redesigned setup page
-import type { LoaderFunctionArgs } from "react-router"
-import { useLoaderData } from "react-router-dom"
-import ProjectGoalsScreen from "~/features/onboarding/components/ProjectGoalsScreen"
-import { getProjectById } from "~/features/projects/db"
-import { userContext } from "~/server/user-context"
+import type { LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router-dom";
+import ProjectGoalsScreen from "~/features/onboarding/components/ProjectGoalsScreen";
+import { getProjectById } from "~/features/projects/db";
+import { userContext } from "~/server/user-context";
 
 type TemplatePrefill = {
-	template_key: string
-	target_orgs: string[]
-	target_roles: string[]
-	research_goal: string
-	research_goal_details: string
-	decision_questions: string[]
-	assumptions: string[]
-	unknowns: string[]
-	custom_instructions: string
-}
+	template_key: string;
+	target_orgs: string[];
+	target_roles: string[];
+	research_goal: string;
+	research_goal_details: string;
+	decision_questions: string[];
+	assumptions: string[];
+	unknowns: string[];
+	custom_instructions: string;
+};
 
 function fallbackPrefill(templateKey: string, projectName: string, signup: Record<string, unknown>): TemplatePrefill {
-	const goalFromSignup = (signup?.goal || "").toString().trim()
-	const challenges = (signup?.challenges || "").toString().trim()
-	const _inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`
+	const goalFromSignup = (signup?.goal || "").toString().trim();
+	const challenges = (signup?.challenges || "").toString().trim();
+	const _inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`;
 
 	const pre: TemplatePrefill = {
 		template_key: templateKey,
@@ -32,35 +32,35 @@ function fallbackPrefill(templateKey: string, projectName: string, signup: Recor
 		assumptions: [],
 		unknowns: [],
 		custom_instructions: "",
-	}
+	};
 
-	return pre
+	return pre;
 }
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
-	const projectId = params.projectId
+	const ctx = context.get(userContext);
+	const accountId = ctx.account_id;
+	const projectId = params.projectId;
 
 	if (!projectId) {
-		throw new Response("Project ID required", { status: 400 })
+		throw new Response("Project ID required", { status: 400 });
 	}
 
 	// Get the actual project for context
 	const projectResult = await getProjectById({
 		supabase: ctx.supabase,
 		id: projectId,
-	})
+	});
 
 	if (!projectResult.data) {
-		throw new Response("Project not found", { status: 404 })
+		throw new Response("Project not found", { status: 404 });
 	}
 
 	// Default template: Understand Customer Needs
-	const template_key = "understand_customer_needs"
-	const signup = { ...(ctx.user_settings?.signup_data || {}) }
+	const template_key = "understand_customer_needs";
+	const signup = { ...(ctx.user_settings?.signup_data || {}) };
 
-	const prefill: TemplatePrefill = fallbackPrefill(template_key, projectResult.data.name || "Project", signup)
+	const prefill: TemplatePrefill = fallbackPrefill(template_key, projectResult.data.name || "Project", signup);
 
 	return {
 		project: projectResult.data,
@@ -69,16 +69,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		template_key,
 		prefill,
 		isPreview: true,
-	}
+	};
 }
 
 export default function PreviewSetupPage() {
-	const { project, projectId, accountId, template_key, prefill } = useLoaderData<typeof loader>()
+	const { project, projectId, accountId, template_key, prefill } = useLoaderData<typeof loader>();
 
 	const handleNext = () => {
 		// For preview, just show an alert
-		alert("Preview mode - this would normally navigate to the questions step")
-	}
+		alert("Preview mode - this would normally navigate to the questions step");
+	};
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -99,5 +99,5 @@ export default function PreviewSetupPage() {
 				/>
 			</div>
 		</div>
-	)
+	);
 }

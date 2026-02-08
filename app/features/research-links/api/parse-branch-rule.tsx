@@ -10,10 +10,10 @@
  * - "End the survey if they choose 'Not interested'"
  */
 
-import { anthropic } from "@ai-sdk/anthropic"
-import { generateObject } from "ai"
-import type { ActionFunctionArgs } from "react-router"
-import { z } from "zod"
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateObject } from "ai";
+import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
 
 const RequestSchema = z.object({
 	input: z.string().min(1, "Describe the skip logic in plain English"),
@@ -30,7 +30,7 @@ const RequestSchema = z.object({
 			})
 		)
 		.default([]),
-})
+});
 
 const ParsedRuleSchema = z.object({
 	triggerValue: z.string().describe("What response triggers this rule — exact option for select, keyword for text"),
@@ -45,28 +45,28 @@ const ParsedRuleSchema = z.object({
 		.optional()
 		.describe("AI hint for chat mode probing, e.g. 'Probe on ROI expectations and approval process'"),
 	confidence: z.enum(["high", "medium", "low"]).describe("How confident the interpretation is"),
-})
+});
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
-		const body = await request.json()
-		const parsed = RequestSchema.safeParse(body)
+		const body = await request.json();
+		const parsed = RequestSchema.safeParse(body);
 		if (!parsed.success) {
-			return Response.json({ error: "Invalid request", details: parsed.error.issues }, { status: 400 })
+			return Response.json({ error: "Invalid request", details: parsed.error.issues }, { status: 400 });
 		}
 
-		const { input, questionId, questionPrompt, questionType, questionOptions, laterQuestions } = parsed.data
+		const { input, questionId, questionPrompt, questionType, questionOptions, laterQuestions } = parsed.data;
 
-		const isSelect = questionType === "single_select" || questionType === "multi_select"
-		const optionsList = questionOptions.length > 0 ? `\nAvailable options: ${questionOptions.join(", ")}` : ""
+		const isSelect = questionType === "single_select" || questionType === "multi_select";
+		const optionsList = questionOptions.length > 0 ? `\nAvailable options: ${questionOptions.join(", ")}` : "";
 		const laterQList =
 			laterQuestions.length > 0
 				? `\nQuestions that come after this one:\n${laterQuestions.map((q) => `  [${q.index}] "${q.prompt}"`).join("\n")}`
-				: ""
+				: "";
 
 		const result = await generateObject({
 			model: anthropic("claude-sonnet-4-20250514"),
@@ -112,11 +112,11 @@ CONFIDENCE:
 - HIGH: Clear condition and action
 - MEDIUM: Some ambiguity in what to match or where to skip
 - LOW: Multiple interpretations possible`,
-		})
+		});
 
 		// Build the BranchRule
-		const r = result.object
-		const targetQuestion = r.targetQuestionIndex !== undefined ? laterQuestions[r.targetQuestionIndex] : null
+		const r = result.object;
+		const targetQuestion = r.targetQuestionIndex !== undefined ? laterQuestions[r.targetQuestionIndex] : null;
 
 		const rule = {
 			id: `nl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -137,11 +137,11 @@ CONFIDENCE:
 			guidance: r.guidance,
 			source: "ai_generated" as const,
 			confidence: r.confidence,
-		}
+		};
 
-		return Response.json({ rule, parsed: r })
+		return Response.json({ rule, parsed: r });
 	} catch (error) {
-		console.error("Failed to parse branch rule:", error)
-		return Response.json({ error: "Failed to parse rule. Please try again." }, { status: 500 })
+		console.error("Failed to parse branch rule:", error);
+		return Response.json({ error: "Failed to parse rule. Please try again." }, { status: 500 });
 	}
 }

@@ -2,21 +2,21 @@
  * Tests for the realtime evidence extraction API route.
  * Validates input handling, BAML integration, and error cases.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { b } from "~/../baml_client"
-import { action } from "./api.realtime-evidence"
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { b } from "~/../baml_client";
+import { action } from "./api.realtime-evidence";
 
-vi.mock("~/../baml_client")
-vi.mock("consola")
+vi.mock("~/../baml_client");
+vi.mock("consola");
 
-const mockBAML = vi.mocked(b)
+const mockBAML = vi.mocked(b);
 
 function createRequest(body: unknown, method = "POST"): Request {
 	return new Request("http://localhost/api/realtime-evidence", {
 		method,
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(body),
-	})
+	});
 }
 
 const MOCK_EXTRACTION_RESULT = {
@@ -62,135 +62,135 @@ const MOCK_EXTRACTION_RESULT = {
 	context_confidence: 0.9,
 	context_reasoning: "Interview-style questions about workflow and tools",
 	facet_mentions: [],
-}
+};
 
 describe("Realtime Evidence API", () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
-	})
+		vi.clearAllMocks();
+	});
 
 	describe("input validation", () => {
 		it("should reject non-POST requests", async () => {
 			const request = new Request("http://localhost/api/realtime-evidence", {
 				method: "GET",
-			})
+			});
 
-			const response = await action({ request, params: {}, context: {} })
-			expect(response.status).toBe(405)
+			const response = await action({ request, params: {}, context: {} });
+			expect(response.status).toBe(405);
 
-			const data = await response.json()
-			expect(data.error).toBe("Method not allowed")
-		})
+			const data = await response.json();
+			expect(data.error).toBe("Method not allowed");
+		});
 
 		it("should reject empty utterances", async () => {
-			const request = createRequest({ utterances: [], language: "en" })
-			const response = await action({ request, params: {}, context: {} })
-			expect(response.status).toBe(400)
+			const request = createRequest({ utterances: [], language: "en" });
+			const response = await action({ request, params: {}, context: {} });
+			expect(response.status).toBe(400);
 
-			const data = await response.json()
-			expect(data.error).toBe("No utterances provided")
-		})
+			const data = await response.json();
+			expect(data.error).toBe("No utterances provided");
+		});
 
 		it("should reject missing utterances field", async () => {
-			const request = createRequest({ language: "en" })
-			const response = await action({ request, params: {}, context: {} })
-			expect(response.status).toBe(400)
-		})
-	})
+			const request = createRequest({ language: "en" });
+			const response = await action({ request, params: {}, context: {} });
+			expect(response.status).toBe(400);
+		});
+	});
 
 	describe("evidence extraction", () => {
 		it("should call BAML with correct parameters", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any)
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
 
 			const utterances = [
 				{ speaker: "SPEAKER A", text: "What tools do you use?", start: 0, end: 3000 },
 				{ speaker: "SPEAKER B", text: "We use Jira and Notion.", start: 3000, end: 6000 },
-			]
-			const request = createRequest({ utterances, language: "en" })
+			];
+			const request = createRequest({ utterances, language: "en" });
 
-			await action({ request, params: {}, context: {} })
+			await action({ request, params: {}, context: {} });
 
-			expect(mockBAML.ExtractEvidenceFromTranscriptV2).toHaveBeenCalledTimes(1)
-			const [speakerUtterances, chapters, language, catalog] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0]
+			expect(mockBAML.ExtractEvidenceFromTranscriptV2).toHaveBeenCalledTimes(1);
+			const [speakerUtterances, chapters, language, catalog] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
 
 			// Verify utterance mapping
-			expect(speakerUtterances).toHaveLength(2)
+			expect(speakerUtterances).toHaveLength(2);
 			expect(speakerUtterances[0]).toEqual({
 				speaker: "SPEAKER A",
 				text: "What tools do you use?",
 				start: 0,
 				end: 3000,
-			})
+			});
 
 			// Verify empty chapters for realtime
-			expect(chapters).toEqual([])
+			expect(chapters).toEqual([]);
 
 			// Verify language passthrough
-			expect(language).toBe("en")
+			expect(language).toBe("en");
 
 			// Verify facet catalog structure
-			expect(catalog.kinds.length).toBeGreaterThan(0)
-			expect(catalog.facets).toEqual([])
-			expect(catalog.version).toBe("realtime-proto")
-		})
+			expect(catalog.kinds.length).toBeGreaterThan(0);
+			expect(catalog.facets).toEqual([]);
+			expect(catalog.version).toBe("realtime-proto");
+		});
 
 		it("should handle null start/end timestamps", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any)
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
 
-			const utterances = [{ speaker: "A", text: "Hello" }]
-			const request = createRequest({ utterances })
+			const utterances = [{ speaker: "A", text: "Hello" }];
+			const request = createRequest({ utterances });
 
-			await action({ request, params: {}, context: {} })
+			await action({ request, params: {}, context: {} });
 
-			const [speakerUtterances] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0]
-			expect(speakerUtterances[0].start).toBeNull()
-			expect(speakerUtterances[0].end).toBeNull()
-		})
+			const [speakerUtterances] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
+			expect(speakerUtterances[0].start).toBeNull();
+			expect(speakerUtterances[0].end).toBeNull();
+		});
 
 		it("should default language to 'en' when not provided", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any)
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
 
-			const request = createRequest({ utterances: [{ speaker: "A", text: "test" }] })
-			await action({ request, params: {}, context: {} })
+			const request = createRequest({ utterances: [{ speaker: "A", text: "test" }] });
+			await action({ request, params: {}, context: {} });
 
-			const [, , language] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0]
-			expect(language).toBe("en")
-		})
+			const [, , language] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
+			expect(language).toBe("en");
+		});
 
 		it("should return evidence, people, scenes, and context", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any)
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
 
-			const utterances = [{ speaker: "A", text: "test", start: 0, end: 1000 }]
-			const request = createRequest({ utterances, language: "en" })
+			const utterances = [{ speaker: "A", text: "test", start: 0, end: 1000 }];
+			const request = createRequest({ utterances, language: "en" });
 
-			const response = await action({ request, params: {}, context: {} })
-			expect(response.status).toBe(200)
+			const response = await action({ request, params: {}, context: {} });
+			expect(response.status).toBe(200);
 
-			const data = await response.json()
-			expect(data.evidence).toHaveLength(1)
-			expect(data.evidence[0].gist).toBe("Tool fragmentation causes sync overhead")
-			expect(data.evidence[0].facet_mentions).toHaveLength(2)
-			expect(data.people).toHaveLength(1)
-			expect(data.people[0].role).toBe("Product Manager")
-			expect(data.scenes).toHaveLength(1)
-			expect(data.interactionContext).toBe("Research")
-			expect(data.contextConfidence).toBe(0.9)
-		})
-	})
+			const data = await response.json();
+			expect(data.evidence).toHaveLength(1);
+			expect(data.evidence[0].gist).toBe("Tool fragmentation causes sync overhead");
+			expect(data.evidence[0].facet_mentions).toHaveLength(2);
+			expect(data.people).toHaveLength(1);
+			expect(data.people[0].role).toBe("Product Manager");
+			expect(data.scenes).toHaveLength(1);
+			expect(data.interactionContext).toBe("Research");
+			expect(data.contextConfidence).toBe(0.9);
+		});
+	});
 
 	describe("error handling", () => {
 		it("should return 500 when BAML throws", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockRejectedValue(new Error("LLM rate limited"))
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockRejectedValue(new Error("LLM rate limited"));
 
-			const utterances = [{ speaker: "A", text: "test" }]
-			const request = createRequest({ utterances })
+			const utterances = [{ speaker: "A", text: "test" }];
+			const request = createRequest({ utterances });
 
-			const response = await action({ request, params: {}, context: {} })
-			expect(response.status).toBe(500)
+			const response = await action({ request, params: {}, context: {} });
+			expect(response.status).toBe(500);
 
-			const data = await response.json()
-			expect(data.error).toBe("LLM rate limited")
-		})
+			const data = await response.json();
+			expect(data.error).toBe("LLM rate limited");
+		});
 
 		it("should handle BAML returning empty arrays", async () => {
 			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue({
@@ -201,37 +201,37 @@ describe("Realtime Evidence API", () => {
 				interaction_context: "Research",
 				context_confidence: 0.5,
 				context_reasoning: "Insufficient data",
-			} as any)
+			} as any);
 
-			const utterances = [{ speaker: "A", text: "hi" }]
-			const request = createRequest({ utterances })
+			const utterances = [{ speaker: "A", text: "hi" }];
+			const request = createRequest({ utterances });
 
-			const response = await action({ request, params: {}, context: {} })
-			expect(response.status).toBe(200)
+			const response = await action({ request, params: {}, context: {} });
+			expect(response.status).toBe(200);
 
-			const data = await response.json()
-			expect(data.evidence).toEqual([])
-			expect(data.people).toEqual([])
-		})
-	})
+			const data = await response.json();
+			expect(data.evidence).toEqual([]);
+			expect(data.people).toEqual([]);
+		});
+	});
 
 	describe("facet catalog", () => {
 		it("should include all standard facet kinds", async () => {
-			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any)
+			mockBAML.ExtractEvidenceFromTranscriptV2.mockResolvedValue(MOCK_EXTRACTION_RESULT as any);
 
-			const request = createRequest({ utterances: [{ speaker: "A", text: "test" }] })
-			await action({ request, params: {}, context: {} })
+			const request = createRequest({ utterances: [{ speaker: "A", text: "test" }] });
+			await action({ request, params: {}, context: {} });
 
-			const [, , , catalog] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0]
-			const slugs = catalog.kinds.map((k: any) => k.slug)
+			const [, , , catalog] = mockBAML.ExtractEvidenceFromTranscriptV2.mock.calls[0];
+			const slugs = catalog.kinds.map((k: any) => k.slug);
 
-			expect(slugs).toContain("goal")
-			expect(slugs).toContain("pain")
-			expect(slugs).toContain("behavior")
-			expect(slugs).toContain("tool")
-			expect(slugs).toContain("workflow")
-			expect(slugs).toContain("emotion")
-			expect(slugs).toContain("feature")
-		})
-	})
-})
+			expect(slugs).toContain("goal");
+			expect(slugs).toContain("pain");
+			expect(slugs).toContain("behavior");
+			expect(slugs).toContain("tool");
+			expect(slugs).toContain("workflow");
+			expect(slugs).toContain("emotion");
+			expect(slugs).toContain("feature");
+		});
+	});
+});

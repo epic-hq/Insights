@@ -1,16 +1,16 @@
-import { Cell, Label, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import { Cell, Label, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-type SegmentDatum = { name: string; value: number }
+type SegmentDatum = { name: string; value: number };
 
 type PrettySegmentPieProps = {
-	data: SegmentDatum[]
-	height?: number
-	colors?: string[]
-	outerRadius?: number
-	innerRadius?: number
-	minPercentToLabel?: number // e.g., 0.03 -> 3%
-	percentDigits?: number
-}
+	data: SegmentDatum[];
+	height?: number;
+	colors?: string[];
+	outerRadius?: number;
+	innerRadius?: number;
+	minPercentToLabel?: number; // e.g., 0.03 -> 3%
+	percentDigits?: number;
+};
 
 const DEFAULT_COLORS = [
 	"#2563eb",
@@ -23,7 +23,7 @@ const DEFAULT_COLORS = [
 	"#3b82f6",
 	"#f97316",
 	"#dc2626",
-]
+];
 
 export function PrettySegmentPie({
 	data,
@@ -34,7 +34,7 @@ export function PrettySegmentPie({
 	minPercentToLabel = 0.03,
 	percentDigits = 0,
 }: PrettySegmentPieProps) {
-	const total = data.reduce((s, d) => s + (d.value ?? 0), 0)
+	const total = data.reduce((s, d) => s + (d.value ?? 0), 0);
 
 	return (
 		<ResponsiveContainer width="100%" height={height}>
@@ -50,10 +50,10 @@ export function PrettySegmentPie({
 					outerRadius={outerRadius}
 					labelLine={false}
 					label={(props) => {
-						const { name, percent } = props as { name?: string; percent?: number }
-						if (!percent || percent < minPercentToLabel) return null
-						const pct = (percent * 100).toFixed(percentDigits)
-						return `${name} · ${pct}%`
+						const { name, percent } = props as { name?: string; percent?: number };
+						if (!percent || percent < minPercentToLabel) return null;
+						const pct = (percent * 100).toFixed(percentDigits);
+						return `${name} · ${pct}%`;
 					}}
 				>
 					{data.map((d, i) => (
@@ -65,5 +65,5 @@ export function PrettySegmentPie({
 				</Pie>
 			</PieChart>
 		</ResponsiveContainer>
-	)
+	);
 }

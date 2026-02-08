@@ -1,14 +1,14 @@
-import { CheckCircle, MessageCircleQuestionIcon } from "lucide-react"
-import type { ResearchAnswerNode } from "~/features/research/components/ResearchAnswers"
+import { CheckCircle, MessageCircleQuestionIcon } from "lucide-react";
+import type { ResearchAnswerNode } from "~/features/research/components/ResearchAnswers";
 
 interface InterviewAnalysisCardProps {
-	answeredAnswers: ResearchAnswerNode[]
-	openAnswers: ResearchAnswerNode[]
+	answeredAnswers: ResearchAnswerNode[];
+	openAnswers: ResearchAnswerNode[];
 }
 
 export function InterviewAnalysisCard({ answeredAnswers, openAnswers }: InterviewAnalysisCardProps) {
 	if (answeredAnswers.length === 0 && openAnswers.length === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -72,5 +72,5 @@ export function InterviewAnalysisCard({ answeredAnswers, openAnswers }: Intervie
 				)}
 			</div>
 		</div>
-	)
+	);
 }

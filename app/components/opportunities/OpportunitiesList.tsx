@@ -1,11 +1,11 @@
 // Component for displaying a list of opportunities
 
-import type { OpportunityView as Opportunity } from "~/types"
-import PageHeader from "../navigation/PageHeader"
+import type { OpportunityView as Opportunity } from "~/types";
+import PageHeader from "../navigation/PageHeader";
 
 interface OpportunitiesListProps {
-	opportunities: Opportunity[]
-	title?: string
+	opportunities: Opportunity[];
+	title?: string;
 }
 
 export default function OpportunitiesList({ opportunities, title = "Opportunities" }: OpportunitiesListProps) {
@@ -95,5 +95,5 @@ export default function OpportunitiesList({ opportunities, title = "Opportunitie
 				</table>
 			</div>
 		</div>
-	)
+	);
 }

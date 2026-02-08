@@ -1,9 +1,9 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 export const createTaskTool = createTool({
 	id: "create-task",
@@ -51,31 +51,31 @@ export const createTaskTool = createTool({
 			.nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
-		const runtimeUserId = context?.requestContext?.get?.("user_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
+		const runtimeUserId = context?.requestContext?.get?.("user_id");
 
 		const { title, description, cluster, status, priority, dueDate, estimatedEffort, tags, relatedPersonIds } =
-			input || {}
+			input || {};
 
-		const projectId = (runtimeProjectId as string) || null
-		const accountId = (runtimeAccountId as string) || null
-		const userId = (runtimeUserId as string) || null
+		const projectId = (runtimeProjectId as string) || null;
+		const accountId = (runtimeAccountId as string) || null;
+		const userId = (runtimeUserId as string) || null;
 
 		consola.debug("create-task: execute start", {
 			title,
 			projectId,
 			accountId,
 			userId,
-		})
+		});
 
 		if (!accountId || !projectId || !userId) {
 			return {
 				success: false,
 				message: "Missing accountId, projectId, or userId in runtime context",
 				task: null,
-			}
+			};
 		}
 
 		if (!title) {
@@ -83,20 +83,20 @@ export const createTaskTool = createTool({
 				success: false,
 				message: "Task title is required",
 				task: null,
-			}
+			};
 		}
 
 		try {
 			// Parse due date if provided
-			let parsedDueDate: string | null = null
+			let parsedDueDate: string | null = null;
 			if (dueDate) {
 				try {
-					const date = new Date(dueDate)
+					const date = new Date(dueDate);
 					if (!Number.isNaN(date.getTime())) {
-						parsedDueDate = date.toISOString()
+						parsedDueDate = date.toISOString();
 					}
 				} catch {
-					consola.warn("create-task: failed to parse dueDate", dueDate)
+					consola.warn("create-task: failed to parse dueDate", dueDate);
 				}
 			}
 
@@ -113,18 +113,18 @@ export const createTaskTool = createTool({
 				due_date: parsedDueDate,
 				estimated_effort: estimatedEffort || null,
 				tags: tags || [],
-			}
+			};
 
 			// Insert the task
 			const { data: task, error: taskError } = await supabase
 				.from("tasks")
 				.insert(taskData)
 				.select("id, title, status, priority")
-				.single()
+				.single();
 
 			if (taskError || !task) {
-				consola.error("create-task: error creating task", taskError)
-				throw taskError || new Error("Failed to create task")
+				consola.error("create-task: error creating task", taskError);
+				throw taskError || new Error("Failed to create task");
 			}
 
 			// If relatedPersonIds provided, create task activity entries to link people
@@ -135,12 +135,12 @@ export const createTaskTool = createTool({
 					content: `Related to person: ${personId}`,
 					user_id: userId,
 					source: "assistant",
-				}))
+				}));
 
-				const { error: activityError } = await supabase.from("task_activity").insert(activities)
+				const { error: activityError } = await supabase.from("task_activity").insert(activities);
 
 				if (activityError) {
-					consola.warn("create-task: failed to link people to task", activityError)
+					consola.warn("create-task: failed to link people to task", activityError);
 					// Don't fail the whole operation
 				}
 			}
@@ -154,14 +154,14 @@ export const createTaskTool = createTool({
 					status: task.status,
 					priority: task.priority,
 				},
-			}
+			};
 		} catch (error) {
-			consola.error("create-task: unexpected error", error)
+			consola.error("create-task: unexpected error", error);
 			return {
 				success: false,
 				message: `Failed to create task: ${error instanceof Error ? error.message : "unknown error"}`,
 				task: null,
-			}
+			};
 		}
 	},
-})
+});

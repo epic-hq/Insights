@@ -1,44 +1,44 @@
-import consola from "consola"
-import { ArrowRight, Check, ChevronRight, Edit3, HelpCircle, Sparkles, X } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router"
-import { toast } from "sonner"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import consola from "consola";
+import { ArrowRight, Check, ChevronRight, Edit3, HelpCircle, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 // Types for the research structure
 interface DecisionQuestion {
-	id: string
-	text: string
-	rationale?: string
+	id: string;
+	text: string;
+	rationale?: string;
 }
 
 interface ResearchQuestion {
-	id: string
-	text: string
-	rationale?: string
-	decision_question_id: string
+	id: string;
+	text: string;
+	rationale?: string;
+	decision_question_id: string;
 }
 
 interface ResearchStructure {
-	decision_questions: DecisionQuestion[]
-	research_questions: ResearchQuestion[]
+	decision_questions: DecisionQuestion[];
+	research_questions: ResearchQuestion[];
 }
 
 interface ResearchStructureManagerProps {
-	projectId: string
-	projectPath: string
-	research_goal?: string
-	target_roles?: string
-	target_orgs?: string
-	assumptions?: string
-	unknowns?: string
-	onStructureValidated?: (structure: ResearchStructure) => void
+	projectId: string;
+	projectPath: string;
+	research_goal?: string;
+	target_roles?: string;
+	target_orgs?: string;
+	assumptions?: string;
+	unknowns?: string;
+	onStructureValidated?: (structure: ResearchStructure) => void;
 }
 
 export function ResearchStructureManager({
@@ -51,136 +51,136 @@ export function ResearchStructureManager({
 	unknowns,
 	onStructureValidated,
 }: ResearchStructureManagerProps) {
-	const pc = useCurrentProject()
+	const pc = useCurrentProject();
 	// TODO fix bug
-	consola.log("[ResearchStructureManager] projectPath2: ", JSON.stringify(pc), projectPath)
-	const routes = useProjectRoutes(pc.projectPath)
+	consola.log("[ResearchStructureManager] projectPath2: ", JSON.stringify(pc), projectPath);
+	const routes = useProjectRoutes(pc.projectPath);
 	const [structure, setStructure] = useState<ResearchStructure>({
 		decision_questions: [],
 		research_questions: [],
-	})
-	const [loading, setLoading] = useState(false)
-	const [generating, setGenerating] = useState(false)
-	const [editingDQ, setEditingDQ] = useState<string | null>(null)
-	const [editingRQ, setEditingRQ] = useState<string | null>(null)
-	const [editText, setEditText] = useState("")
-	const [editRationale, setEditRationale] = useState("")
-	const navigate = useNavigate()
+	});
+	const [loading, setLoading] = useState(false);
+	const [generating, setGenerating] = useState(false);
+	const [editingDQ, setEditingDQ] = useState<string | null>(null);
+	const [editingRQ, setEditingRQ] = useState<string | null>(null);
+	const [editText, setEditText] = useState("");
+	const [editRationale, setEditRationale] = useState("");
+	const navigate = useNavigate();
 
 	// Generate initial structure
 	const generateStructure = useCallback(async () => {
 		if (!research_goal?.trim()) {
-			toast.error("Research goal is required to generate structure")
-			return
+			toast.error("Research goal is required to generate structure");
+			return;
 		}
 
-		setGenerating(true)
+		setGenerating(true);
 		try {
-			const formData = new FormData()
-			formData.append("project_id", projectId)
-			formData.append("research_goal", research_goal)
-			if (target_roles) formData.append("target_roles", target_roles)
-			if (target_orgs) formData.append("target_orgs", target_orgs)
-			if (assumptions) formData.append("assumptions", assumptions)
-			if (unknowns) formData.append("unknowns", unknowns)
+			const formData = new FormData();
+			formData.append("project_id", projectId);
+			formData.append("research_goal", research_goal);
+			if (target_roles) formData.append("target_roles", target_roles);
+			if (target_orgs) formData.append("target_orgs", target_orgs);
+			if (assumptions) formData.append("assumptions", assumptions);
+			if (unknowns) formData.append("unknowns", unknowns);
 
 			const response = await fetch("/api/generate-research-structure", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const result = await response.json()
+			const result = await response.json();
 
 			if (!response.ok) {
-				throw new Error(result.details || result.error || "Failed to generate structure")
+				throw new Error(result.details || result.error || "Failed to generate structure");
 			}
 
 			setStructure({
 				decision_questions: result.structure.decision_questions,
 				research_questions: result.structure.research_questions,
-			})
+			});
 
-			toast.success(result.message)
+			toast.success(result.message);
 		} catch (error) {
-			console.error("Structure generation failed:", error)
-			toast.error(error instanceof Error ? error.message : "Failed to generate research structure")
+			console.error("Structure generation failed:", error);
+			toast.error(error instanceof Error ? error.message : "Failed to generate research structure");
 		} finally {
-			setGenerating(false)
+			setGenerating(false);
 		}
-	}, [projectId, research_goal, target_roles, target_orgs, assumptions, unknowns])
+	}, [projectId, research_goal, target_roles, target_orgs, assumptions, unknowns]);
 
 	// Load existing structure from database
 	const loadExistingStructure = useCallback(async () => {
-		setLoading(true)
+		setLoading(true);
 		try {
-			const response = await fetch(`/api/check-research-structure?project_id=${projectId}`)
-			const result = await response.json()
+			const response = await fetch(`/api/check-research-structure?project_id=${projectId}`);
+			const result = await response.json();
 
 			if (!response.ok) {
-				throw new Error(result.error || "Failed to load structure")
+				throw new Error(result.error || "Failed to load structure");
 			}
 
 			if (result.summary.has_decision_questions && result.summary.has_research_questions) {
 				setStructure({
 					decision_questions: result.decision_questions,
 					research_questions: result.research_questions,
-				})
-				toast.success("Loaded existing research structure")
+				});
+				toast.success("Loaded existing research structure");
 			} else {
-				toast.info("No existing research structure found")
+				toast.info("No existing research structure found");
 			}
 		} catch (error) {
-			console.error("Load structure failed:", error)
-			toast.error("Failed to load existing structure")
+			console.error("Load structure failed:", error);
+			toast.error("Failed to load existing structure");
 		} finally {
-			setLoading(false)
+			setLoading(false);
 		}
-	}, [projectId])
+	}, [projectId]);
 
 	// Migrate from project sections
 	const migrateFromProjectData = useCallback(async () => {
 		if (!research_goal?.trim()) {
-			toast.error("Research goal is required for migration")
-			return
+			toast.error("Research goal is required for migration");
+			return;
 		}
 
-		setGenerating(true)
+		setGenerating(true);
 		try {
-			const formData = new FormData()
-			formData.append("project_id", projectId)
-			formData.append("force", "true")
+			const formData = new FormData();
+			formData.append("project_id", projectId);
+			formData.append("force", "true");
 
 			const response = await fetch("/api/migrate-research-structure", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const result = await response.json()
+			const result = await response.json();
 
 			if (!response.ok) {
-				throw new Error(result.details || result.error || "Migration failed")
+				throw new Error(result.details || result.error || "Migration failed");
 			}
 
 			// Reload the structure after migration
-			await loadExistingStructure()
-			toast.success(result.message)
+			await loadExistingStructure();
+			toast.success(result.message);
 		} catch (error) {
-			console.error("Migration failed:", error)
-			toast.error(error instanceof Error ? error.message : "Migration failed")
+			console.error("Migration failed:", error);
+			toast.error(error instanceof Error ? error.message : "Migration failed");
 		} finally {
-			setGenerating(false)
+			setGenerating(false);
 		}
-	}, [projectId, research_goal, loadExistingStructure])
+	}, [projectId, research_goal, loadExistingStructure]);
 
 	// Edit decision question
 	const startEditingDQ = (dq: DecisionQuestion) => {
-		setEditingDQ(dq.id)
-		setEditText(dq.text)
-		setEditRationale(dq.rationale || "")
-	}
+		setEditingDQ(dq.id);
+		setEditText(dq.text);
+		setEditRationale(dq.rationale || "");
+	};
 
 	const saveEditDQ = async () => {
-		if (!editingDQ) return
+		if (!editingDQ) return;
 
 		try {
 			// Update local state
@@ -189,7 +189,7 @@ export function ResearchStructureManager({
 				decision_questions: prev.decision_questions.map((dq) =>
 					dq.id === editingDQ ? { ...dq, text: editText, rationale: editRationale } : dq
 				),
-			}))
+			}));
 
 			// Save to database
 			const response = await fetch(`/api/questions/${editingDQ}`, {
@@ -200,32 +200,32 @@ export function ResearchStructureManager({
 					rationale: editRationale,
 					table: "decision_questions",
 				}),
-			})
+			});
 
 			if (!response.ok) {
-				throw new Error("Failed to save changes")
+				throw new Error("Failed to save changes");
 			}
 
-			toast.success("Decision question updated")
+			toast.success("Decision question updated");
 		} catch (error) {
-			toast.error("Failed to save changes")
-			console.error("Save error:", error)
+			toast.error("Failed to save changes");
+			console.error("Save error:", error);
 		}
 
-		setEditingDQ(null)
-		setEditText("")
-		setEditRationale("")
-	}
+		setEditingDQ(null);
+		setEditText("");
+		setEditRationale("");
+	};
 
 	// Edit research question
 	const startEditingRQ = (rq: ResearchQuestion) => {
-		setEditingRQ(rq.id)
-		setEditText(rq.text)
-		setEditRationale(rq.rationale || "")
-	}
+		setEditingRQ(rq.id);
+		setEditText(rq.text);
+		setEditRationale(rq.rationale || "");
+	};
 
 	const saveEditRQ = async () => {
-		if (!editingRQ) return
+		if (!editingRQ) return;
 
 		try {
 			// Update local state
@@ -234,7 +234,7 @@ export function ResearchStructureManager({
 				research_questions: prev.research_questions.map((rq) =>
 					rq.id === editingRQ ? { ...rq, text: editText, rationale: editRationale } : rq
 				),
-			}))
+			}));
 
 			// Save to database
 			const response = await fetch(`/api/questions/${editingRQ}`, {
@@ -245,61 +245,61 @@ export function ResearchStructureManager({
 					rationale: editRationale,
 					table: "research_questions",
 				}),
-			})
+			});
 
 			if (!response.ok) {
-				throw new Error("Failed to save changes")
+				throw new Error("Failed to save changes");
 			}
 
-			toast.success("Research question updated")
+			toast.success("Research question updated");
 		} catch (error) {
-			toast.error("Failed to save changes")
-			console.error("Save error:", error)
+			toast.error("Failed to save changes");
+			console.error("Save error:", error);
 		}
 
-		setEditingRQ(null)
-		setEditText("")
-		setEditRationale("")
-	}
+		setEditingRQ(null);
+		setEditText("");
+		setEditRationale("");
+	};
 
 	// Delete items
 	const deleteDQ = (id: string) => {
 		setStructure((prev) => ({
 			decision_questions: prev.decision_questions.filter((dq) => dq.id !== id),
 			research_questions: prev.research_questions.filter((rq) => rq.decision_question_id !== id),
-		}))
-	}
+		}));
+	};
 
 	const deleteRQ = (id: string) => {
 		setStructure((prev) => ({
 			...prev,
 			research_questions: prev.research_questions.filter((rq) => rq.id !== id),
-		}))
-	}
+		}));
+	};
 
 	// Validate and proceed
 	const validateStructure = () => {
 		if (structure.decision_questions.length === 0) {
-			toast.error("At least one decision question is required")
-			return
+			toast.error("At least one decision question is required");
+			return;
 		}
 
 		if (structure.research_questions.length === 0) {
-			toast.error("At least one research question is required")
-			return
+			toast.error("At least one research question is required");
+			return;
 		}
 
-		onStructureValidated?.(structure)
-		toast.success("Research structure validated! Ready to generate interview questions.")
-		navigate(routes.questions.index())
-	}
+		onStructureValidated?.(structure);
+		toast.success("Research structure validated! Ready to generate interview questions.");
+		navigate(routes.questions.index());
+	};
 
 	// Load existing structure on mount
 	useEffect(() => {
-		loadExistingStructure()
-	}, [loadExistingStructure])
+		loadExistingStructure();
+	}, [loadExistingStructure]);
 
-	const hasStructure = structure.decision_questions.length > 0
+	const hasStructure = structure.decision_questions.length > 0;
 
 	return (
 		<div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
@@ -564,5 +564,5 @@ export function ResearchStructureManager({
 				</Card>
 			)}
 		</div>
-	)
+	);
 }

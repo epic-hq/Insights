@@ -1,9 +1,9 @@
-import consola from "consola"
-import { formatDistance } from "date-fns"
-import { motion } from "framer-motion"
-import { Calendar, Clock, FileText, Loader2, MoreVertical, RefreshCw, Trash2, Users } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Link, useFetcher, useNavigate } from "react-router"
+import consola from "consola";
+import { formatDistance } from "date-fns";
+import { motion } from "framer-motion";
+import { Calendar, Clock, FileText, Loader2, MoreVertical, RefreshCw, Trash2, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useFetcher, useNavigate } from "react-router";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -13,124 +13,135 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "~/components/ui/alert-dialog"
-import { Badge } from "~/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import MediaTypeIcon from "~/components/ui/MediaTypeIcon"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
+} from "~/components/ui/alert-dialog";
+import { Badge } from "~/components/ui/badge";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import MediaTypeIcon from "~/components/ui/MediaTypeIcon";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Database } from "~/types";
 
-type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
+type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"];
 
 interface InterviewCardProps {
 	interview: InterviewRow & {
-		participant: string
-		role: string
-		persona: string
-		created_at: string
-		duration: string
-		insightCount: number
-		evidenceCount?: number
+		participant: string;
+		role: string;
+		persona: string;
+		created_at: string;
+		duration: string;
+		insightCount: number;
+		evidenceCount?: number;
 		topThemes?: Array<{
-			id: string
-			name: string
-			color?: string
-		}>
+			id: string;
+			name: string;
+			color?: string;
+		}>;
 		interview_people?: Array<{
 			people?: {
-				name?: string
-				segment?: string
-			}
-			role?: string
-		}>
-	}
-	className?: string
+				name?: string;
+				segment?: string;
+			};
+			role?: string;
+		}>;
+	};
+	className?: string;
 }
 
 export default function InterviewCard({ interview, className }: InterviewCardProps) {
-	const [isHovered, setIsHovered] = useState(false)
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-	const { projectPath, projectId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const navigate = useNavigate()
+	const [isHovered, setIsHovered] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const { projectPath, projectId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const navigate = useNavigate();
 	const deleteFetcher = useFetcher<{
-		success?: boolean
-		redirectTo?: string
-		error?: string
-	}>()
-	const reprocessFetcher = useFetcher()
+		success?: boolean;
+		redirectTo?: string;
+		error?: string;
+	}>();
+	const reprocessFetcher = useFetcher();
 
-	const isDeleting = deleteFetcher.state !== "idle"
-	const isReprocessing = reprocessFetcher.state !== "idle"
+	const isDeleting = deleteFetcher.state !== "idle";
+	const isReprocessing = reprocessFetcher.state !== "idle";
 
 	// Navigate after successful delete
 	useEffect(() => {
 		if (deleteFetcher.data?.success && deleteFetcher.data?.redirectTo) {
-			navigate(deleteFetcher.data.redirectTo)
+			navigate(deleteFetcher.data.redirectTo);
 		}
-	}, [deleteFetcher.data, navigate])
+	}, [deleteFetcher.data, navigate]);
 
 	const handleReprocess = (e: React.MouseEvent) => {
-		e.preventDefault()
-		e.stopPropagation()
-		reprocessFetcher.submit({ interviewId: interview.id }, { method: "post", action: "/api/reprocess-interview" })
-	}
+		e.preventDefault();
+		e.stopPropagation();
+		reprocessFetcher.submit({ interviewId: interview.id }, { method: "post", action: "/api/reprocess-interview" });
+	};
 
 	const handleDelete = () => {
-		deleteFetcher.submit({ interviewId: interview.id, projectId }, { method: "post", action: "/api/interviews/delete" })
-	}
+		deleteFetcher.submit(
+			{ interviewId: interview.id, projectId },
+			{ method: "post", action: "/api/interviews/delete" }
+		);
+	};
 
 	// Get all participants, sorted to put "participant" role first
-	const allParticipants = interview.interview_people || []
+	const allParticipants = interview.interview_people || [];
 	const sortedParticipants = [...allParticipants].sort((a, b) => {
-		if (a.role === "participant") return -1
-		if (b.role === "participant") return 1
-		return 0
-	})
-	const primaryParticipant = sortedParticipants[0]
-	const participant = primaryParticipant?.people
-	const participantName = participant?.name || "Unknown Participant"
+		if (a.role === "participant") return -1;
+		if (b.role === "participant") return 1;
+		return 0;
+	});
+	const primaryParticipant = sortedParticipants[0];
+	const participant = primaryParticipant?.people;
+	const participantName = participant?.name || "Unknown Participant";
 
 	const participant_names = Array.from(
 		new Set(sortedParticipants.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
-	)
-	const display_participant_names = participant_names.length > 0 ? participant_names : [participantName]
-	const displayed_participant_names = display_participant_names.slice(0, 3)
-	const remaining_participant_count = Math.max(0, display_participant_names.length - displayed_participant_names.length)
+	);
+	const display_participant_names = participant_names.length > 0 ? participant_names : [participantName];
+	const displayed_participant_names = display_participant_names.slice(0, 3);
+	const remaining_participant_count = Math.max(
+		0,
+		display_participant_names.length - displayed_participant_names.length
+	);
 	const participants_label =
 		remaining_participant_count > 0
 			? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
-			: displayed_participant_names.join(", ")
+			: displayed_participant_names.join(", ");
 
 	// Interview title (prefer actual title over participant name)
-	const interviewTitle = interview.title || `Interview with ${participantName}`
+	const interviewTitle = interview.title || `Interview with ${participantName}`;
 
-	const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"]
-	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"]
+	const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"];
+	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
 
-	const file_extension = interview.file_extension?.toLowerCase() || ""
+	const file_extension = interview.file_extension?.toLowerCase() || "";
 	const is_audio_only =
 		interview.media_type === "voice_memo" ||
 		interview.source_type?.includes("audio") ||
-		audio_extensions.includes(file_extension)
+		audio_extensions.includes(file_extension);
 
-	const is_image = image_extensions.includes(file_extension)
-	const media_preview_url = interview.thumbnail_url || (is_image ? interview.media_url : null)
-	const [signed_media_preview_url, setSignedMediaPreviewUrl] = useState<string | null>(null)
+	const is_image = image_extensions.includes(file_extension);
+	const media_preview_url = interview.thumbnail_url || (is_image ? interview.media_url : null);
+	const [signed_media_preview_url, setSignedMediaPreviewUrl] = useState<string | null>(null);
 
 	useEffect(() => {
-		let cancelled = false
-		setSignedMediaPreviewUrl(null)
+		let cancelled = false;
+		setSignedMediaPreviewUrl(null);
 
-		if (!media_preview_url) return
+		if (!media_preview_url) return;
 
-		const url = media_preview_url
-		const is_http_url = url.startsWith("http://") || url.startsWith("https://")
+		const url = media_preview_url;
+		const is_http_url = url.startsWith("http://") || url.startsWith("https://");
 		if (is_http_url) {
-			setSignedMediaPreviewUrl(url)
-			return
+			setSignedMediaPreviewUrl(url);
+			return;
 		}
 
 		const fetchSignedPreviewUrl = async () => {
@@ -140,43 +151,43 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ mediaUrl: url, intent: "playback" }),
-				})
+				});
 
 				if (!response.ok) {
-					const error_text = await response.text().catch(() => "")
-					consola.warn("Thumbnail signed URL request failed:", response.status, error_text)
-					return
+					const error_text = await response.text().catch(() => "");
+					consola.warn("Thumbnail signed URL request failed:", response.status, error_text);
+					return;
 				}
 
-				const data = (await response.json()) as { signedUrl?: string }
+				const data = (await response.json()) as { signedUrl?: string };
 				if (!cancelled && data.signedUrl) {
-					setSignedMediaPreviewUrl(data.signedUrl)
+					setSignedMediaPreviewUrl(data.signedUrl);
 				}
 			} catch (err) {
-				consola.warn("Failed to fetch signed thumbnail URL:", err)
+				consola.warn("Failed to fetch signed thumbnail URL:", err);
 			}
-		}
+		};
 
-		void fetchSignedPreviewUrl()
+		void fetchSignedPreviewUrl();
 
 		return () => {
-			cancelled = true
-		}
-	}, [media_preview_url])
+			cancelled = true;
+		};
+	}, [media_preview_url]);
 
 	// Status color mapping
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case "ready":
-				return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+				return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
 			case "transcribed":
-				return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+				return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
 			case "processing":
-				return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+				return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
 			default:
-				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+				return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
 		}
-	}
+	};
 
 	return (
 		<>
@@ -203,8 +214,8 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 						<DropdownMenu>
 							<DropdownMenuTrigger
 								onClick={(e) => {
-									e.preventDefault()
-									e.stopPropagation()
+									e.preventDefault();
+									e.stopPropagation();
 								}}
 								className="rounded-md bg-white/80 p-1.5 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-800"
 							>
@@ -217,9 +228,9 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 								</DropdownMenuItem>
 								<DropdownMenuItem
 									onClick={(e) => {
-										e.preventDefault()
-										e.stopPropagation()
-										setDeleteDialogOpen(true)
+										e.preventDefault();
+										e.stopPropagation();
+										setDeleteDialogOpen(true);
 									}}
 									disabled={isDeleting}
 									className="text-destructive focus:text-destructive"
@@ -341,5 +352,5 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 				</AlertDialogContent>
 			</AlertDialog>
 		</>
-	)
+	);
 }

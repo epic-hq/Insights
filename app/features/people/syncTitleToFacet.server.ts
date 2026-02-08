@@ -1,6 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import type { Database } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import type { Database } from "~/types";
 
 /**
  * Sync person title to job_function facet
@@ -12,10 +12,10 @@ export async function syncTitleToJobFunctionFacet({
 	accountId,
 	title,
 }: {
-	supabase: SupabaseClient<Database>
-	personId: string
-	accountId: string
-	title: string
+	supabase: SupabaseClient<Database>;
+	personId: string;
+	accountId: string;
+	title: string;
 }) {
 	try {
 		// Get the person's project_id
@@ -23,40 +23,40 @@ export async function syncTitleToJobFunctionFacet({
 			.from("people")
 			.select("project_id")
 			.eq("id", personId)
-			.single()
+			.single();
 
 		if (personError || !person) {
-			consola.warn("Could not fetch person for title sync:", personError)
-			return
+			consola.warn("Could not fetch person for title sync:", personError);
+			return;
 		}
 
-		const projectId = person.project_id
+		const projectId = person.project_id;
 
 		// If title is empty, remove job_function facet
 		if (!title || title.trim() === "") {
 			// Get job_function kind_id
-			const { data: kind } = await supabase.from("facet_kind_global").select("id").eq("slug", "job_function").single()
+			const { data: kind } = await supabase.from("facet_kind_global").select("id").eq("slug", "job_function").single();
 
-			if (!kind) return
+			if (!kind) return;
 
 			// Delete all job_function facets for this person
 			const { data: allJobFunctionFacets } = await supabase
 				.from("facet_account")
 				.select("id")
 				.eq("kind_id", kind.id)
-				.eq("account_id", accountId)
+				.eq("account_id", accountId);
 
 			if (allJobFunctionFacets && allJobFunctionFacets.length > 0) {
-				const jobFunctionFacetIds = allJobFunctionFacets.map((f) => f.id)
+				const jobFunctionFacetIds = allJobFunctionFacets.map((f) => f.id);
 				await supabase
 					.from("person_facet")
 					.delete()
 					.eq("person_id", personId)
-					.in("facet_account_id", jobFunctionFacetIds)
+					.in("facet_account_id", jobFunctionFacetIds);
 			}
 
-			consola.info("Removed job_function facet for person", { personId })
-			return
+			consola.info("Removed job_function facet for person", { personId });
+			return;
 		}
 
 		// Get or create facet_kind_global for job_function
@@ -64,24 +64,24 @@ export async function syncTitleToJobFunctionFacet({
 			.from("facet_kind_global")
 			.select("id")
 			.eq("slug", "job_function")
-			.single()
+			.single();
 
 		if (kindError || !kind) {
-			consola.warn("job_function facet kind not found:", kindError)
-			return
+			consola.warn("job_function facet kind not found:", kindError);
+			return;
 		}
 
-		const kindId = kind.id
+		const kindId = kind.id;
 
 		// Create slug from title (lowercase, replace spaces with hyphens)
 		const slug = title
 			.toLowerCase()
 			.trim()
 			.replace(/\s+/g, "-")
-			.replace(/[^a-z0-9-]/g, "")
+			.replace(/[^a-z0-9-]/g, "");
 
 		// Get or create facet_account for this title
-		let facetAccountId: number | null = null
+		let facetAccountId: number | null = null;
 
 		const { data: existingFacet } = await supabase
 			.from("facet_account")
@@ -89,10 +89,10 @@ export async function syncTitleToJobFunctionFacet({
 			.eq("account_id", accountId)
 			.eq("kind_id", kindId)
 			.eq("slug", slug)
-			.single()
+			.single();
 
 		if (existingFacet) {
-			facetAccountId = existingFacet.id
+			facetAccountId = existingFacet.id;
 		} else {
 			// Create new facet_account
 			const { data: newFacet, error: createError } = await supabase
@@ -105,35 +105,35 @@ export async function syncTitleToJobFunctionFacet({
 					is_active: true,
 				})
 				.select("id")
-				.single()
+				.single();
 
 			if (createError) {
-				consola.error("Failed to create facet_account:", createError)
-				return
+				consola.error("Failed to create facet_account:", createError);
+				return;
 			}
 
-			facetAccountId = newFacet.id
-			consola.info("Created new facet_account for title:", { slug, label: title })
+			facetAccountId = newFacet.id;
+			consola.info("Created new facet_account for title:", { slug, label: title });
 		}
 
-		if (!facetAccountId) return
+		if (!facetAccountId) return;
 
 		// Delete any existing job_function facets for this person (except the one we're about to upsert)
 		const { data: allJobFunctionFacets } = await supabase
 			.from("facet_account")
 			.select("id")
 			.eq("kind_id", kindId)
-			.eq("account_id", accountId)
+			.eq("account_id", accountId);
 
 		if (allJobFunctionFacets && allJobFunctionFacets.length > 0) {
-			const jobFunctionFacetIds = allJobFunctionFacets.map((f) => f.id).filter((id) => id !== facetAccountId)
+			const jobFunctionFacetIds = allJobFunctionFacets.map((f) => f.id).filter((id) => id !== facetAccountId);
 
 			if (jobFunctionFacetIds.length > 0) {
 				await supabase
 					.from("person_facet")
 					.delete()
 					.eq("person_id", personId)
-					.in("facet_account_id", jobFunctionFacetIds)
+					.in("facet_account_id", jobFunctionFacetIds);
 			}
 		}
 
@@ -151,15 +151,15 @@ export async function syncTitleToJobFunctionFacet({
 			{
 				onConflict: "person_id,facet_account_id",
 			}
-		)
+		);
 
 		if (linkError) {
-			consola.error("Failed to link person to job_function facet:", linkError)
-			return
+			consola.error("Failed to link person to job_function facet:", linkError);
+			return;
 		}
 
-		consola.info("Synced title to job_function facet:", { personId, title, facetAccountId })
+		consola.info("Synced title to job_function facet:", { personId, title, facetAccountId });
 	} catch (error) {
-		consola.error("Error in syncTitleToJobFunctionFacet:", error)
+		consola.error("Error in syncTitleToJobFunctionFacet:", error);
 	}
 }

@@ -1,8 +1,8 @@
-import consola from "consola"
-import { motion } from "framer-motion"
-import { Save, Settings2, Trash2 } from "lucide-react"
-import { useState } from "react"
-import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
+import consola from "consola";
+import { motion } from "framer-motion";
+import { Save, Settings2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -13,24 +13,24 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-} from "~/components/ui/alert-dialog"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Slider } from "~/components/ui/slider"
-import { Textarea } from "~/components/ui/textarea"
-import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db"
-import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
-import { createProjectRoutes } from "~/utils/routes.server"
+} from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Slider } from "~/components/ui/slider";
+import { Textarea } from "~/components/ui/textarea";
+import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db";
+import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
+import { createProjectRoutes } from "~/utils/routes.server";
 
 // Types from Supabase
-export type Project = Database["public"]["Tables"]["projects"]["Row"]
-type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"]
-type SectionRow = Database["public"]["Tables"]["project_sections"]["Row"]
-type SectionUpdate = Database["public"]["Tables"]["project_sections"]["Update"]
-type SectionInsert = Database["public"]["Tables"]["project_sections"]["Insert"]
+export type Project = Database["public"]["Tables"]["projects"]["Row"];
+type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
+type SectionRow = Database["public"]["Tables"]["project_sections"]["Row"];
+type SectionUpdate = Database["public"]["Tables"]["project_sections"]["Update"];
+type SectionInsert = Database["public"]["Tables"]["project_sections"]["Insert"];
 
 // Simple server-side slugify fallback if slug is blank
 function slugify(input: string) {
@@ -40,92 +40,92 @@ function slugify(input: string) {
 		.replace(/[^\w\s-]/g, "")
 		.trim()
 		.replace(/[\s_-]+/g, "-")
-		.replace(/^-+|-+$/g, "")
+		.replace(/^-+|-+$/g, "");
 }
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
 		{ title: `Edit Project ${params.projectId || ""} | Insights` },
 		{ name: "description", content: "Edit project & sections" },
-	]
-}
+	];
+};
 
 export async function loader({
 	request,
 	params,
 }: {
-	request: Request
-	params: { accountId: string; projectId: string }
+	request: Request;
+	params: { accountId: string; projectId: string };
 }) {
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const _routes = createProjectRoutes(accountId, projectId)
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const _routes = createProjectRoutes(accountId, projectId);
 
-	if (!accountId) throw new Response("Unauthorized", { status: 401 })
+	if (!accountId) throw new Response("Unauthorized", { status: 401 });
 
-	const { data: project, error } = await supabase.from("projects").select("*").eq("id", projectId).single()
+	const { data: project, error } = await supabase.from("projects").select("*").eq("id", projectId).single();
 
 	if (error) {
-		consola.error("Error fetching project:", error)
-		if ((error as any).code === "PGRST116") throw new Response("Project not found", { status: 404 })
+		consola.error("Error fetching project:", error);
+		if ((error as any).code === "PGRST116") throw new Response("Project not found", { status: 404 });
 		throw new Response(`Error fetching project: ${error.message}`, {
 			status: 500,
-		})
+		});
 	}
-	if (!project) throw new Response("Project not found", { status: 404 })
+	if (!project) throw new Response("Project not found", { status: 404 });
 
 	// Fetch sections using db function
 	const { data: sections, error: sErr } = await getProjectSections({
 		supabase,
 		projectId,
-	})
+	});
 	if (sErr)
 		throw new Response(`Error fetching sections: ${sErr.message}`, {
 			status: 500,
-		})
+		});
 
 	// Fetch available kinds using db function
 	const { data: kindsRows, error: kErr } = await getProjectSectionKinds({
 		supabase,
-	})
+	});
 	if (kErr)
 		throw new Response(`Error fetching section kinds: ${kErr.message}`, {
 			status: 500,
-		})
+		});
 
-	const kinds = (kindsRows ?? []).map((k) => k.id)
+	const kinds = (kindsRows ?? []).map((k) => k.id);
 
 	// Extract structured data from project_sections for rich components
 	const extractProjectData = (sections: any[]) => {
-		let target_orgs: string[] = []
-		let target_roles: string[] = []
-		let research_goal = ""
-		let research_goal_details = ""
-		let assumptions: string[] = []
-		let unknowns: string[] = []
-		let custom_instructions = ""
-		let questions: string[] = []
+		let target_orgs: string[] = [];
+		let target_roles: string[] = [];
+		let research_goal = "";
+		let research_goal_details = "";
+		let assumptions: string[] = [];
+		let unknowns: string[] = [];
+		let custom_instructions = "";
+		let questions: string[] = [];
 
 		sections.forEach((section) => {
-			const meta = section.meta || {}
+			const meta = section.meta || {};
 			if (section.kind === "target_market") {
-				target_orgs = meta.target_orgs || meta.icp ? [meta.icp] : []
-				target_roles = meta.target_roles || meta.role ? [meta.role] : []
+				target_orgs = meta.target_orgs || meta.icp ? [meta.icp] : [];
+				target_roles = meta.target_roles || meta.role ? [meta.role] : [];
 			} else if (section.kind === "goal") {
-				research_goal = meta.goalType || meta.research_goal || section.content_md || ""
-				research_goal_details = meta.customGoal || meta.research_goal_details || ""
+				research_goal = meta.goalType || meta.research_goal || section.content_md || "";
+				research_goal_details = meta.customGoal || meta.research_goal_details || "";
 			} else if (section.kind === "assumptions") {
-				assumptions = meta.assumptions || []
+				assumptions = meta.assumptions || [];
 			} else if (section.kind === "unknowns") {
-				unknowns = meta.unknowns || []
+				unknowns = meta.unknowns || [];
 			} else if (section.kind === "custom_instructions") {
-				custom_instructions = section.content_md || ""
+				custom_instructions = section.content_md || "";
 			} else if (section.kind === "questions") {
-				questions = meta.questions || []
+				questions = meta.questions || [];
 			}
-		})
+		});
 
 		return {
 			target_orgs,
@@ -136,56 +136,56 @@ export async function loader({
 			unknowns,
 			custom_instructions,
 			questions,
-		}
-	}
+		};
+	};
 
-	const projectData = extractProjectData(sections ?? [])
+	const projectData = extractProjectData(sections ?? []);
 
-	return { project, sections: sections ?? [], kinds, projectData }
+	return { project, sections: sections ?? [], kinds, projectData };
 }
 
 export async function action({
 	request,
 	params,
 }: {
-	request: Request
-	params: { accountId: string; projectId: string }
+	request: Request;
+	params: { accountId: string; projectId: string };
 }) {
-	const formData = await request.formData()
-	const intent = (formData.get("intent") as string) || ""
+	const formData = await request.formData();
+	const intent = (formData.get("intent") as string) || "";
 
-	const { client: supabase } = getServerClient(request)
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const routes = createProjectRoutes(accountId, projectId)
+	const { client: supabase } = getServerClient(request);
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const routes = createProjectRoutes(accountId, projectId);
 
-	if (!accountId) throw new Response("Unauthorized", { status: 401 })
+	if (!accountId) throw new Response("Unauthorized", { status: 401 });
 
 	// Delete entire project
 	if (intent === "delete_project") {
 		// Use admin client to bypass RLS for cascade deletes
 		// The FK constraints have CASCADE but Supabase JS client does pre-flight checks
 		// that can fail due to RLS restrictions on dependent tables
-		const adminClient = createSupabaseAdminClient()
+		const adminClient = createSupabaseAdminClient();
 
 		// Delete the project directly - admin client bypasses RLS and CASCADE handles children
-		const { error } = await adminClient.from("projects").delete().eq("id", projectId)
+		const { error } = await adminClient.from("projects").delete().eq("id", projectId);
 
 		if (error) {
-			consola.error("Failed to delete project:", error)
-			return { error: `Failed to delete project: ${error.message}` }
+			consola.error("Failed to delete project:", error);
+			return { error: `Failed to delete project: ${error.message}` };
 		}
-		return redirect(routes.projects.index())
+		return redirect(routes.projects.index());
 	}
 
 	// Update core project fields
 	if (intent === "update_project") {
-		const name = (formData.get("name") as string)?.trim()
-		if (!name) return { error: "Name is required" }
-		const description = ((formData.get("description") as string) || "").trim() || null
-		const status = ((formData.get("status") as string) || "").trim() || null
-		const providedSlug = ((formData.get("slug") as string) || "").trim()
-		const slug = providedSlug || slugify(name)
+		const name = (formData.get("name") as string)?.trim();
+		if (!name) return { error: "Name is required" };
+		const description = ((formData.get("description") as string) || "").trim() || null;
+		const status = ((formData.get("status") as string) || "").trim() || null;
+		const providedSlug = ((formData.get("slug") as string) || "").trim();
+		const slug = providedSlug || slugify(name);
 
 		const projectData: ProjectUpdate = {
 			name,
@@ -193,80 +193,80 @@ export async function action({
 			status,
 			slug,
 			updated_at: new Date().toISOString(),
-		}
+		};
 		const { data: proj, error } = await supabase
 			.from("projects")
 			.update(projectData)
 			.eq("id", projectId)
 			.select()
-			.single()
-		if (error) return { error: `Failed to update project: ${error.message}` }
-		return redirect(`${routes.projects.detail(proj.id)}`)
+			.single();
+		if (error) return { error: `Failed to update project: ${error.message}` };
+		return redirect(`${routes.projects.detail(proj.id)}`);
 	}
 
 	// Add a new section
 	if (intent === "add_section") {
-		const kind = ((formData.get("new_kind") as string) || "").trim()
-		const content_md = ((formData.get("new_content_md") as string) || "").trim()
-		const posStr = ((formData.get("new_position") as string) || "").trim()
-		const position = posStr ? Number(posStr) : null
-		if (!kind || !content_md) return { error: "Kind and content are required" }
+		const kind = ((formData.get("new_kind") as string) || "").trim();
+		const content_md = ((formData.get("new_content_md") as string) || "").trim();
+		const posStr = ((formData.get("new_position") as string) || "").trim();
+		const position = posStr ? Number(posStr) : null;
+		if (!kind || !content_md) return { error: "Kind and content are required" };
 
 		const insert: SectionInsert = {
 			project_id: projectId,
 			kind,
 			content_md,
 			position,
-		}
-		const { error } = await supabase.from("project_sections").insert(insert)
-		if (error) return { error: `Failed to add section: ${error.message}` }
-		return redirect(`${routes.dashboard()}`)
+		};
+		const { error } = await supabase.from("project_sections").insert(insert);
+		if (error) return { error: `Failed to add section: ${error.message}` };
+		return redirect(`${routes.dashboard()}`);
 	}
 
 	// Update multiple sections
 	if (intent === "save_sections") {
-		const ids = formData.getAll("section_id[]") as string[]
-		const kinds = formData.getAll("section_kind[]") as string[]
-		const contents = formData.getAll("section_content_md[]") as string[]
-		const positions = formData.getAll("section_position[]") as string[]
+		const ids = formData.getAll("section_id[]") as string[];
+		const kinds = formData.getAll("section_kind[]") as string[];
+		const contents = formData.getAll("section_content_md[]") as string[];
+		const positions = formData.getAll("section_position[]") as string[];
 
 		for (let i = 0; i < ids.length; i++) {
-			const id = (ids[i] || "").trim()
-			if (!id) continue
+			const id = (ids[i] || "").trim();
+			if (!id) continue;
 			const patch: SectionUpdate = {
 				kind: (kinds[i] || "").trim() || undefined,
 				content_md: (contents[i] || "").trim(),
 				position: positions[i] ? Number(positions[i]) : null,
 				updated_at: new Date().toISOString(),
-			}
-			const { error } = await supabase.from("project_sections").update(patch).eq("id", id)
-			if (error) return { error: `Failed to update a section: ${error.message}` }
+			};
+			const { error } = await supabase.from("project_sections").update(patch).eq("id", id);
+			if (error) return { error: `Failed to update a section: ${error.message}` };
 		}
-		return redirect(`${routes.dashboard()}`)
+		return redirect(`${routes.dashboard()}`);
 	}
 
 	// Delete a section
 	if (intent === "delete_section") {
-		const sectionId = (formData.get("section_id") as string) || ""
-		if (!sectionId) return { error: "Missing section_id" }
-		const { error } = await supabase.from("project_sections").delete().eq("id", sectionId)
-		if (error) return { error: `Failed to delete section: ${error.message}` }
-		return redirect(`${routes.dashboard()}`)
+		const sectionId = (formData.get("section_id") as string) || "";
+		if (!sectionId) return { error: "Missing section_id" };
+		const { error } = await supabase.from("project_sections").delete().eq("id", sectionId);
+		if (error) return { error: `Failed to delete section: ${error.message}` };
+		return redirect(`${routes.dashboard()}`);
 	}
 
 	// Update analysis settings (thresholds stored in project_settings JSONB)
 	if (intent === "update_analysis_settings") {
-		const themeDedup = Number.parseFloat((formData.get("theme_dedup_threshold") as string) || "0.8")
-		const evidenceLink = Number.parseFloat((formData.get("evidence_link_threshold") as string) || "0.4")
+		const themeDedup = Number.parseFloat((formData.get("theme_dedup_threshold") as string) || "0.8");
+		const evidenceLink = Number.parseFloat((formData.get("evidence_link_threshold") as string) || "0.4");
 
 		// Get current project_settings to merge
 		const { data: currentProject } = await supabase
 			.from("projects")
 			.select("project_settings")
 			.eq("id", projectId)
-			.single()
+			.single();
 
-		const currentSettings = (currentProject?.project_settings as Record<string, unknown>) || {}
+		const currentSettings = (currentProject?.project_settings as Record<string, unknown>) || {};
 
 		const updatedSettings = {
 			...currentSettings,
@@ -275,7 +275,7 @@ export async function action({
 				theme_dedup_threshold: themeDedup,
 				evidence_link_threshold: evidenceLink,
 			},
-		}
+		};
 
 		const { error } = await supabase
 			.from("projects")
@@ -283,31 +283,31 @@ export async function action({
 				project_settings: updatedSettings,
 				updated_at: new Date().toISOString(),
 			})
-			.eq("id", projectId)
+			.eq("id", projectId);
 
-		if (error) return { error: `Failed to update analysis settings: ${error.message}` }
-		return { success: "Analysis settings saved" }
+		if (error) return { error: `Failed to update analysis settings: ${error.message}` };
+		return { success: "Analysis settings saved" };
 	}
 
-	return { error: "Unknown action" }
+	return { error: "Unknown action" };
 }
 
 // Default thresholds matching SIMILARITY_THRESHOLDS in openai.server.ts
-const DEFAULT_THEME_DEDUP = 0.8
-const DEFAULT_EVIDENCE_LINK = 0.4
+const DEFAULT_THEME_DEDUP = 0.8;
+const DEFAULT_EVIDENCE_LINK = 0.4;
 
 export default function EditProject() {
-	const { project } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
+	const { project } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
 
 	// Extract current analysis settings from project_settings JSONB
-	const analysisSettings = (project.project_settings as { analysis?: Record<string, number> } | null)?.analysis
-	const initialThemeDedup = analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP
-	const initialEvidenceLink = analysisSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK
+	const analysisSettings = (project.project_settings as { analysis?: Record<string, number> } | null)?.analysis;
+	const initialThemeDedup = analysisSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP;
+	const initialEvidenceLink = analysisSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK;
 
 	// Local state for slider values
-	const [themeDedupThreshold, setThemeDedupThreshold] = useState(initialThemeDedup)
-	const [evidenceLinkThreshold, setEvidenceLinkThreshold] = useState(initialEvidenceLink)
+	const [themeDedupThreshold, setThemeDedupThreshold] = useState(initialThemeDedup);
+	const [evidenceLinkThreshold, setEvidenceLinkThreshold] = useState(initialEvidenceLink);
 
 	return (
 		<div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
@@ -462,5 +462,5 @@ export default function EditProject() {
 				</Card>
 			</motion.div>
 		</div>
-	)
+	);
 }

@@ -7,25 +7,25 @@
  * - Branching guidelines (parsed from natural language)
  */
 
-import { anthropic } from "@ai-sdk/anthropic"
-import { generateObject } from "ai"
-import type { ActionFunctionArgs } from "react-router"
-import { z } from "zod"
-import { createEmptyQuestion } from "../schemas"
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateObject } from "ai";
+import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
+import { createEmptyQuestion } from "../schemas";
 
 const RequestSchema = z.object({
 	transcript: z.string().min(1),
 	projectContext: z.string().optional().default(""),
-})
+});
 
-const QuestionTypeSchema = z.enum(["short_text", "long_text", "single_select", "multi_select", "likert"])
+const QuestionTypeSchema = z.enum(["short_text", "long_text", "single_select", "multi_select", "likert"]);
 
 const GeneratedQuestionSchema = z.object({
 	prompt: z.string(),
 	type: QuestionTypeSchema,
 	options: z.array(z.string()).optional(),
 	required: z.boolean().default(true),
-})
+});
 
 const GuidelineSchema = z.object({
 	summary: z.string().describe("Human-readable summary like 'For sponsors, focus on budget questions'"),
@@ -36,7 +36,7 @@ const GuidelineSchema = z.object({
 	guidance: z.string().optional().describe("AI hint for chat mode, e.g., 'Probe on ROI expectations'"),
 	confidence: z.enum(["high", "medium", "low"]).describe("How confident you are in this interpretation"),
 	clarificationNeeded: z.string().optional().describe("If medium/low confidence, what clarification would help"),
-})
+});
 
 const SurveyGenerationSchema = z.object({
 	name: z.string().describe("Concise survey title, 3-6 words"),
@@ -49,26 +49,26 @@ const SurveyGenerationSchema = z.object({
 	questions: z.array(GeneratedQuestionSchema).min(3).max(10),
 	guidelines: z.array(GuidelineSchema).optional().default([]),
 	insights: z.string().optional().describe("Any insights about the user's research goals"),
-})
+});
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
-		const formData = await request.formData()
+		const formData = await request.formData();
 		const rawPayload = {
 			transcript: formData.get("transcript") ?? "",
 			projectContext: formData.get("projectContext") ?? "",
-		}
+		};
 
-		const parsed = RequestSchema.safeParse(rawPayload)
+		const parsed = RequestSchema.safeParse(rawPayload);
 		if (!parsed.success) {
-			return Response.json({ error: "Invalid request" }, { status: 400 })
+			return Response.json({ error: "Invalid request" }, { status: 400 });
 		}
 
-		const { transcript, projectContext } = parsed.data
+		const { transcript, projectContext } = parsed.data;
 
 		const result = await generateObject({
 			model: anthropic("claude-sonnet-4-20250514"),
@@ -115,7 +115,7 @@ CONFIDENCE GUIDANCE:
 - LOW: Multiple interpretations possible, needs user input
 
 Generate a survey that will help the user gather the insights they described.`,
-		})
+		});
 
 		// Transform generated questions to match ResearchLinkQuestion format
 		const questions = result.object.questions.map((q, index) => ({
@@ -124,12 +124,12 @@ Generate a survey that will help the user gather the insights they described.`,
 			type: q.type,
 			options: q.options ?? [],
 			required: q.required,
-		}))
+		}));
 
 		// Transform guidelines to match BranchRule format
 		const guidelines = (result.object.guidelines ?? []).map((g, index) => {
-			const triggerQuestion = questions[g.triggerQuestionIndex]
-			const targetQuestion = g.targetQuestionIndex !== undefined ? questions[g.targetQuestionIndex] : null
+			const triggerQuestion = questions[g.triggerQuestionIndex];
+			const targetQuestion = g.targetQuestionIndex !== undefined ? questions[g.targetQuestionIndex] : null;
 
 			return {
 				id: `gl-${Date.now()}-${index}`,
@@ -144,8 +144,8 @@ Generate a survey that will help the user gather the insights they described.`,
 				confidence: g.confidence ?? ("high" as const),
 				source: "ai_generated" as const,
 				clarificationNeeded: g.clarificationNeeded,
-			}
-		})
+			};
+		});
 
 		// Collect clarifications from guidelines that need them
 		const clarifications = guidelines
@@ -155,10 +155,10 @@ Generate a survey that will help the user gather the insights they described.`,
 				summary: g.summary,
 				confidence: g.confidence,
 				question: g.clarificationNeeded!,
-			}))
+			}));
 
 		// Determine if any clarifications are needed
-		const needsClarification = clarifications.length > 0
+		const needsClarification = clarifications.length > 0;
 
 		return Response.json({
 			name: result.object.name,
@@ -169,9 +169,9 @@ Generate a survey that will help the user gather the insights they described.`,
 			insights: result.object.insights,
 			needsClarification,
 			clarifications,
-		})
+		});
 	} catch (error) {
-		console.error("Failed to generate survey from voice:", error)
-		return Response.json({ error: "Failed to generate survey. Please try again." }, { status: 500 })
+		console.error("Failed to generate survey from voice:", error);
+		return Response.json({ error: "Failed to generate survey. Please try again." }, { status: 500 });
 	}
 }

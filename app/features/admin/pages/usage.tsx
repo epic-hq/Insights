@@ -5,105 +5,105 @@
  * Shows per-account usage, daily trends, and feature breakdowns.
  */
 
-import { Building2, Calendar, Clock, DollarSign, TrendingUp, User, Users, Zap } from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { redirect, useLoaderData } from "react-router"
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Separator } from "~/components/ui/separator"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
+import { Building2, Calendar, Clock, DollarSign, TrendingUp, User, Users, Zap } from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { redirect, useLoaderData } from "react-router";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Separator } from "~/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server";
 
 type AccountUsage = {
-	account_id: string
-	account_name: string
-	event_count: number
-	total_tokens: number
-	total_cost_usd: number
-	total_credits: number
-}
+	account_id: string;
+	account_name: string;
+	event_count: number;
+	total_tokens: number;
+	total_cost_usd: number;
+	total_credits: number;
+};
 
 type DailyUsage = {
-	usage_date: string
-	event_count: number
-	total_tokens: number
-	total_cost_usd: number
-	total_credits: number
-	unique_accounts: number
-}
+	usage_date: string;
+	event_count: number;
+	total_tokens: number;
+	total_cost_usd: number;
+	total_credits: number;
+	unique_accounts: number;
+};
 
 type FeatureUsage = {
-	feature_source: string
-	event_count: number
-	total_tokens: number
-	total_cost_usd: number
-	total_credits: number
-}
+	feature_source: string;
+	event_count: number;
+	total_tokens: number;
+	total_cost_usd: number;
+	total_credits: number;
+};
 
 type UserUsage = {
-	user_id: string
-	user_email: string
-	user_name: string
-	event_count: number
-	total_tokens: number
-	total_cost_usd: number
-	total_credits: number
-}
+	user_id: string;
+	user_email: string;
+	user_name: string;
+	event_count: number;
+	total_tokens: number;
+	total_cost_usd: number;
+	total_credits: number;
+};
 
 type DailyUsageByFeature = {
-	usage_date: string
-	feature_source: string
-	event_count: number
-	total_tokens: number
-	total_cost_usd: number
-	total_credits: number
-}
+	usage_date: string;
+	feature_source: string;
+	event_count: number;
+	total_tokens: number;
+	total_cost_usd: number;
+	total_credits: number;
+};
 
 type RecentFeature = {
-	feature: string
-	model: string
-	tokens: number
-	credits: number
-	created_at: string
-}
+	feature: string;
+	model: string;
+	tokens: number;
+	credits: number;
+	created_at: string;
+};
 
 type RecentLoginActivity = {
-	user_id: string
-	user_email: string
-	user_name: string
-	last_sign_in_at: string
-	recent_features: RecentFeature[]
-}
+	user_id: string;
+	user_email: string;
+	user_name: string;
+	last_sign_in_at: string;
+	recent_features: RecentFeature[];
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const { user } = await getAuthenticatedUser(request)
+	const { user } = await getAuthenticatedUser(request);
 	if (!user) {
-		throw redirect("/login")
+		throw redirect("/login");
 	}
 
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
 	// Check if user is platform admin
 	const { data: userSettings } = await supabase
 		.from("user_settings")
 		.select("is_platform_admin")
 		.eq("user_id", user.sub)
-		.single()
+		.single();
 
 	if (!userSettings?.is_platform_admin) {
 		throw new Response("Access denied: Platform admin required", {
 			status: 403,
-		})
+		});
 	}
 
 	// Get date range from query params
-	const url = new URL(request.url)
-	const range = url.searchParams.get("range") || "30"
-	const startDate = new Date()
-	startDate.setDate(startDate.getDate() - Number.parseInt(range))
+	const url = new URL(request.url);
+	const range = url.searchParams.get("range") || "30";
+	const startDate = new Date();
+	startDate.setDate(startDate.getDate() - Number.parseInt(range));
 
 	// Fetch admin usage data via public wrapper functions
 	const [
@@ -138,14 +138,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			p_user_limit: 5,
 			p_feature_limit: 10,
 		}),
-	])
+	]);
 
-	const accountUsage = (accountUsageResult.data as AccountUsage[]) || []
-	const dailyUsage = (dailyUsageResult.data as DailyUsage[]) || []
-	const featureUsage = (featureUsageResult.data as FeatureUsage[]) || []
-	const userUsage = (userUsageResult.data as UserUsage[]) || []
-	const dailyByFeature = (dailyByFeatureResult.data as DailyUsageByFeature[]) || []
-	const recentLoginActivity = (recentLoginResult.data as RecentLoginActivity[]) || []
+	const accountUsage = (accountUsageResult.data as AccountUsage[]) || [];
+	const dailyUsage = (dailyUsageResult.data as DailyUsage[]) || [];
+	const featureUsage = (featureUsageResult.data as FeatureUsage[]) || [];
+	const userUsage = (userUsageResult.data as UserUsage[]) || [];
+	const dailyByFeature = (dailyByFeatureResult.data as DailyUsageByFeature[]) || [];
+	const recentLoginActivity = (recentLoginResult.data as RecentLoginActivity[]) || [];
 
 	// Calculate totals
 	const totals = {
@@ -154,13 +154,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		cost: accountUsage.reduce((sum, a) => sum + (a.total_cost_usd ?? 0), 0),
 		credits: accountUsage.reduce((sum, a) => sum + (a.total_credits ?? 0), 0),
 		accounts: accountUsage.length,
-	}
+	};
 
 	// Calculate cost metrics
-	const daysInRange = Number.parseInt(range)
-	const weeksInRange = daysInRange / 7
-	const monthsInRange = daysInRange / 30
-	const uniqueUsers = userUsage.length
+	const daysInRange = Number.parseInt(range);
+	const weeksInRange = daysInRange / 7;
+	const monthsInRange = daysInRange / 30;
+	const uniqueUsers = userUsage.length;
 
 	const costMetrics = {
 		perDay: totals.cost / daysInRange,
@@ -168,7 +168,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		perMonth: totals.cost / monthsInRange,
 		perUser: uniqueUsers > 0 ? totals.cost / uniqueUsers : 0,
 		perUserPerDay: uniqueUsers > 0 ? totals.cost / uniqueUsers / daysInRange : 0,
-	}
+	};
 
 	return {
 		accountUsage,
@@ -180,7 +180,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		totals,
 		costMetrics,
 		range,
-	}
+	};
 }
 
 function formatFeatureSource(source: string): string {
@@ -192,8 +192,8 @@ function formatFeatureSource(source: string): string {
 		lens_analysis: "Lens Analysis",
 		chat_completion: "Chat Messages",
 		transcription: "Audio Transcription",
-	}
-	return labels[source] ?? source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+	};
+	return labels[source] ?? source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // Feature colors for stacked chart - ensure distinct colors for all features
@@ -209,7 +209,7 @@ const FEATURE_COLORS: Record<string, string> = {
 	chat_completion: "hsl(175, 70%, 45%)", // teal
 	transcription: "hsl(350, 80%, 55%)", // red
 	persona_synthesis: "hsl(45, 90%, 50%)", // gold
-}
+};
 
 export default function AdminUsagePage() {
 	const {
@@ -222,56 +222,56 @@ export default function AdminUsagePage() {
 		totals,
 		costMetrics,
 		range,
-	} = useLoaderData<typeof loader>()
-	const [selectedRange, setSelectedRange] = useState(range)
+	} = useLoaderData<typeof loader>();
+	const [selectedRange, setSelectedRange] = useState(range);
 
 	const handleRangeChange = (value: string) => {
-		setSelectedRange(value)
-		window.location.href = `/admin/usage?range=${value}`
-	}
+		setSelectedRange(value);
+		window.location.href = `/admin/usage?range=${value}`;
+	};
 
 	// Get unique feature sources for stacked bars
-	const featureSources = [...new Set(dailyByFeature.map((d) => d.feature_source))]
+	const featureSources = [...new Set(dailyByFeature.map((d) => d.feature_source))];
 
 	// Transform daily by feature data into stacked chart format
 	// Group by date, with each feature as a separate key
 	const stackedChartData = (() => {
-		const byDate = new Map<string, Record<string, number | string>>()
+		const byDate = new Map<string, Record<string, number | string>>();
 
 		for (const d of dailyByFeature) {
-			const [year, month, day] = d.usage_date.split("-").map(Number)
-			const localDate = new Date(year, month - 1, day)
+			const [year, month, day] = d.usage_date.split("-").map(Number);
+			const localDate = new Date(year, month - 1, day);
 			const dateKey = localDate.toLocaleDateString("en-US", {
 				month: "short",
 				day: "numeric",
-			})
+			});
 
 			if (!byDate.has(dateKey)) {
-				byDate.set(dateKey, { date: dateKey })
+				byDate.set(dateKey, { date: dateKey });
 			}
 
-			const entry = byDate.get(dateKey)!
-			entry[d.feature_source] = d.total_credits ?? 0
+			const entry = byDate.get(dateKey)!;
+			entry[d.feature_source] = d.total_credits ?? 0;
 		}
 
-		return Array.from(byDate.values())
-	})()
+		return Array.from(byDate.values());
+	})();
 
 	// Fallback to simple chart if no stacked data
 	const chartData =
 		stackedChartData.length > 0
 			? stackedChartData
 			: dailyUsage.map((d) => {
-					const [year, month, day] = d.usage_date.split("-").map(Number)
-					const localDate = new Date(year, month - 1, day)
+					const [year, month, day] = d.usage_date.split("-").map(Number);
+					const localDate = new Date(year, month - 1, day);
 					return {
 						date: localDate.toLocaleDateString("en-US", {
 							month: "short",
 							day: "numeric",
 						}),
 						credits: d.total_credits ?? 0,
-					}
-				})
+					};
+				});
 
 	return (
 		<div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
@@ -602,5 +602,5 @@ export default function AdminUsagePage() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

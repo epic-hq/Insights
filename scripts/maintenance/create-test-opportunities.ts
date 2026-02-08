@@ -1,45 +1,45 @@
-import { createClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { buildInitialSalesLensExtraction } from "~/utils/salesLens.server"
+import { createClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { buildInitialSalesLensExtraction } from "~/utils/salesLens.server";
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-	throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+	throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function createTestOpportunities() {
-	consola.info("Creating test opportunities for BANT matrix...")
+	consola.info("Creating test opportunities for BANT matrix...");
 
 	// Get first project
-	const { data: projects } = await supabase.from("projects").select("id, account_id").limit(1).single()
+	const { data: projects } = await supabase.from("projects").select("id, account_id").limit(1).single();
 
 	if (!projects) {
-		consola.error("No projects found")
-		return
+		consola.error("No projects found");
+		return;
 	}
 
-	const projectId = projects.id
-	const accountId = projects.account_id
+	const projectId = projects.id;
+	const accountId = projects.account_id;
 
-	consola.info(`Using project: ${projectId}`)
+	consola.info(`Using project: ${projectId}`);
 
 	// Get some interviews to link
 	const { data: interviews } = await supabase
 		.from("interviews")
 		.select("id, title")
 		.eq("project_id", projectId)
-		.limit(5)
+		.limit(5);
 
 	if (!interviews || interviews.length === 0) {
-		consola.error("No interviews found in project")
-		return
+		consola.error("No interviews found in project");
+		return;
 	}
 
-	consola.info(`Found ${interviews.length} interviews`)
+	consola.info(`Found ${interviews.length} interviews`);
 
 	// Create diverse test opportunities
 	const testOpportunities = [
@@ -78,12 +78,12 @@ async function createTestOpportunities() {
 			close_date: "2026-03-31",
 			interview_id: interviews[4]?.id,
 		},
-	]
+	];
 
-	const createdOpportunities = []
+	const createdOpportunities = [];
 
 	for (const opp of testOpportunities) {
-		consola.start(`Creating opportunity: ${opp.title}`)
+		consola.start(`Creating opportunity: ${opp.title}`);
 
 		const { data: opportunity, error } = await supabase
 			.from("opportunities")
@@ -97,27 +97,27 @@ async function createTestOpportunities() {
 				source: "manual",
 			})
 			.select()
-			.single()
+			.single();
 
 		if (error) {
-			consola.error(`Failed to create ${opp.title}:`, error)
-			continue
+			consola.error(`Failed to create ${opp.title}:`, error);
+			continue;
 		}
 
-		consola.success(`Created opportunity: ${opp.title} ($${opp.amount / 1000}K)`)
-		createdOpportunities.push({ ...opportunity, interview_id: opp.interview_id })
+		consola.success(`Created opportunity: ${opp.title} ($${opp.amount / 1000}K)`);
+		createdOpportunities.push({ ...opportunity, interview_id: opp.interview_id });
 
 		// Generate BANT sales lens for the linked interview
 		if (opp.interview_id) {
 			try {
-				consola.start(`Generating sales lens for interview ${opp.interview_id}`)
+				consola.start(`Generating sales lens for interview ${opp.interview_id}`);
 
-				const extraction = await buildInitialSalesLensExtraction(supabase, opp.interview_id)
-				const bantFramework = extraction.frameworks.find((f) => f.name === "BANT_GPCT")
+				const extraction = await buildInitialSalesLensExtraction(supabase, opp.interview_id);
+				const bantFramework = extraction.frameworks.find((f) => f.name === "BANT_GPCT");
 
 				if (!bantFramework) {
-					consola.warn("No BANT framework found")
-					continue
+					consola.warn("No BANT framework found");
+					continue;
 				}
 
 				// Create sales_lens_summary
@@ -136,14 +136,14 @@ async function createTestOpportunities() {
 						attendee_unlinked: [],
 					})
 					.select()
-					.single()
+					.single();
 
 				if (summaryError) {
-					consola.error("Failed to create summary:", summaryError)
-					continue
+					consola.error("Failed to create summary:", summaryError);
+					continue;
 				}
 
-				consola.success(`Created sales lens summary for ${opp.title}`)
+				consola.success(`Created sales lens summary for ${opp.title}`);
 
 				// Create slots
 				for (const slot of bantFramework.slots) {
@@ -164,10 +164,10 @@ async function createTestOpportunities() {
 						related_organization_ids: slot.relatedOrganizationIds,
 						evidence_refs: slot.evidence,
 						hygiene: slot.hygiene,
-					})
+					});
 				}
 
-				consola.success(`Created ${bantFramework.slots.length} BANT slots`)
+				consola.success(`Created ${bantFramework.slots.length} BANT slots`);
 
 				// Create stakeholders
 				for (const stakeholder of extraction.entities.stakeholders) {
@@ -186,12 +186,12 @@ async function createTestOpportunities() {
 						email: stakeholder.email,
 						confidence: stakeholder.confidence,
 						evidence_refs: stakeholder.evidence,
-					})
+					});
 				}
 
-				consola.success(`Created ${extraction.entities.stakeholders.length} stakeholders`)
+				consola.success(`Created ${extraction.entities.stakeholders.length} stakeholders`);
 			} catch (err) {
-				consola.error("Failed to generate sales lens:", err)
+				consola.error("Failed to generate sales lens:", err);
 			}
 		}
 	}
@@ -205,7 +205,7 @@ Visit your BANT Lens at:
 The matrix should now show opportunities distributed across:
 - Budget ranges (from $8K to $1.2M)
 - Authority levels (based on stakeholder influence)
-	`)
+	`);
 }
 
-createTestOpportunities()
+createTestOpportunities();

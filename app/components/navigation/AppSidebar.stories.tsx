@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import { DollarSign, Sparkles } from "lucide-react"
-import { Badge } from "~/components/ui/badge"
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { DollarSign, Sparkles } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
 // Create a simplified version of AppSidebar for Storybook
 import {
 	Sidebar,
@@ -15,9 +15,9 @@ import {
 	SidebarMenuItem,
 	SidebarProvider,
 	SidebarTrigger,
-} from "~/components/ui/sidebar"
+} from "~/components/ui/sidebar";
 // Import the real config!
-import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
+import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config";
 
 // Mock counts for each item key
 const mockCounts: Record<string, number | undefined> = {
@@ -28,7 +28,7 @@ const mockCounts: Record<string, number | undefined> = {
 	people: 156,
 	organizations: 45,
 	opportunities: 8,
-}
+};
 
 // Transform the real sections to add counts
 const mockSections = APP_SIDEBAR_SECTIONS.map((section) => ({
@@ -40,22 +40,22 @@ const mockSections = APP_SIDEBAR_SECTIONS.map((section) => ({
 		icon: item.icon,
 		count: mockCounts[item.key],
 	})),
-}))
+}));
 
 const mockUtilityLinks = APP_SIDEBAR_UTILITY_LINKS.map((item) => ({
 	key: item.key,
 	title: item.title,
 	icon: item.icon,
-}))
+}));
 
 interface AppSidebarPreviewProps {
-	sections?: typeof mockSections
-	utilityLinks?: typeof mockUtilityLinks
-	showAnalysis?: boolean
-	showSalesSection?: boolean
-	countsLoading?: boolean
-	activeItemKey?: string
-	backgroundColor?: string
+	sections?: typeof mockSections;
+	utilityLinks?: typeof mockUtilityLinks;
+	showAnalysis?: boolean;
+	showSalesSection?: boolean;
+	countsLoading?: boolean;
+	activeItemKey?: string;
+	backgroundColor?: string;
 }
 
 function AppSidebarPreview({
@@ -68,9 +68,9 @@ function AppSidebarPreview({
 	backgroundColor = "#ffffff",
 }: AppSidebarPreviewProps) {
 	const filteredSections = sections.filter((section) => {
-		if (section.key === "analyze" && !showAnalysis) return false
-		return true
-	})
+		if (section.key === "analyze" && !showAnalysis) return false;
+		return true;
+	});
 
 	const renderRightBadge = (count: number | undefined, isActive: boolean) => {
 		if (typeof count === "number") {
@@ -81,17 +81,17 @@ function AppSidebarPreview({
 				>
 					{count}
 				</Badge>
-			)
+			);
 		}
 
 		if (countsLoading && count !== undefined) {
 			return (
 				<span className="ml-2 h-4 w-6 animate-pulse rounded-full bg-muted-foreground/20 group-data-[collapsible=icon]:hidden" />
-			)
+			);
 		}
 
-		return null
-	}
+		return null;
+	};
 
 	return (
 		<Sidebar collapsible="icon" variant="sidebar" style={backgroundColor ? { backgroundColor } : undefined}>
@@ -131,7 +131,7 @@ function AppSidebarPreview({
 						<SidebarGroupContent>
 							<SidebarMenu>
 								{section.items.map((item) => {
-									const isActive = activeItemKey === item.key
+									const isActive = activeItemKey === item.key;
 
 									return (
 										<SidebarMenuItem key={item.key}>
@@ -143,7 +143,7 @@ function AppSidebarPreview({
 												</a>
 											</SidebarMenuButton>
 										</SidebarMenuItem>
-									)
+									);
 								})}
 							</SidebarMenu>
 						</SidebarGroupContent>
@@ -207,7 +207,7 @@ function AppSidebarPreview({
 				</div>
 			</SidebarFooter>
 		</Sidebar>
-	)
+	);
 }
 
 const meta = {
@@ -267,10 +267,10 @@ const meta = {
 			</SidebarProvider>
 		),
 	],
-} satisfies Meta<typeof AppSidebarPreview>
+} satisfies Meta<typeof AppSidebarPreview>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
 	args: {
@@ -279,7 +279,7 @@ export const Default: Story = {
 		countsLoading: false,
 		activeItemKey: "overview",
 	},
-}
+};
 
 export const InitiallyCollapsed: Story = {
 	args: {
@@ -307,4 +307,4 @@ export const InitiallyCollapsed: Story = {
 			</SidebarProvider>
 		),
 	],
-}
+};

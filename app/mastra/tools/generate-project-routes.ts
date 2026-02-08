@@ -1,16 +1,16 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { HOST } from "~/paths";
+import type { Database } from "~/types";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 function extractProjectIdFromResourceId(resourceId?: string | null): string | null {
-	if (!resourceId) return null
-	const match = resourceId.match(/[0-9a-fA-F-]{36}$/)
-	return match ? match[0] : null
+	if (!resourceId) return null;
+	const match = resourceId.match(/[0-9a-fA-F-]{36}$/);
+	return match ? match[0] : null;
 }
 
 /**
@@ -53,8 +53,8 @@ export const generateProjectRoutesTool = createTool({
 		error: z.string().optional(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const { entityType, entityId, action = "detail" } = input || {}
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const { entityType, entityId, action = "detail" } = input || {};
 
 		// Validate required parameters
 		if (!entityType || !entityId) {
@@ -62,37 +62,37 @@ export const generateProjectRoutesTool = createTool({
 				entityType,
 				entityId,
 				action,
-			})
+			});
 			return {
 				success: false,
 				error: "Missing required parameters: entityType and entityId are required",
 				route: null,
 				absoluteRoute: null,
-			}
+			};
 		}
 
-		const contextAccountId = context?.requestContext?.get?.("account_id") as string | undefined
-		const contextProjectId = context?.requestContext?.get?.("project_id") as string | undefined
-		const resourceProjectId = extractProjectIdFromResourceId(context?.agent?.resourceId)
-		const inputProjectId = typeof input.projectId === "string" ? input.projectId : undefined
-		const inputAccountId = typeof input.accountId === "string" ? input.accountId : undefined
+		const contextAccountId = context?.requestContext?.get?.("account_id") as string | undefined;
+		const contextProjectId = context?.requestContext?.get?.("project_id") as string | undefined;
+		const resourceProjectId = extractProjectIdFromResourceId(context?.agent?.resourceId);
+		const inputProjectId = typeof input.projectId === "string" ? input.projectId : undefined;
+		const inputAccountId = typeof input.accountId === "string" ? input.accountId : undefined;
 
-		const projectId = (contextProjectId || inputProjectId || resourceProjectId || "").trim()
-		let accountId = (contextAccountId || inputAccountId || "").trim()
+		const projectId = (contextProjectId || inputProjectId || resourceProjectId || "").trim();
+		let accountId = (contextAccountId || inputAccountId || "").trim();
 
 		if (!accountId && projectId) {
 			const { data: projectRow, error } = await supabase
 				.from("projects")
 				.select("account_id")
 				.eq("id", projectId)
-				.maybeSingle()
+				.maybeSingle();
 
 			if (error) {
-				consola.error("generate-project-routes: failed to resolve accountId from project", error)
+				consola.error("generate-project-routes: failed to resolve accountId from project", error);
 			}
 
 			if (projectRow?.account_id) {
-				accountId = projectRow.account_id
+				accountId = projectRow.account_id;
 			}
 		}
 
@@ -100,65 +100,65 @@ export const generateProjectRoutesTool = createTool({
 			consola.warn("generate-project-routes: Missing runtime context", {
 				accountId,
 				projectId,
-			})
+			});
 			return {
 				success: false,
 				error: "Missing accountId or projectId in runtime context",
 				route: null,
 				absoluteRoute: null,
-			}
+			};
 		}
 
 		try {
 			// Use existing route definitions from shared codebase
-			const projectPath = `/a/${accountId}/${projectId}`
-			const routes = createRouteDefinitions(projectPath)
+			const projectPath = `/a/${accountId}/${projectId}`;
+			const routes = createRouteDefinitions(projectPath);
 
-			let route: string
+			let route: string;
 
 			switch (entityType) {
 				case "persona":
-					route = action === "edit" ? routes.personas.edit(entityId) : routes.personas.detail(entityId)
-					break
+					route = action === "edit" ? routes.personas.edit(entityId) : routes.personas.detail(entityId);
+					break;
 				case "person":
-					route = action === "edit" ? routes.people.edit(entityId) : routes.people.detail(entityId)
-					break
+					route = action === "edit" ? routes.people.edit(entityId) : routes.people.detail(entityId);
+					break;
 				case "opportunity":
-					route = action === "edit" ? routes.opportunities.edit(entityId) : routes.opportunities.detail(entityId)
-					break
+					route = action === "edit" ? routes.opportunities.edit(entityId) : routes.opportunities.detail(entityId);
+					break;
 				case "organization":
-					route = action === "edit" ? routes.organizations.edit(entityId) : routes.organizations.detail(entityId)
-					break
+					route = action === "edit" ? routes.organizations.edit(entityId) : routes.organizations.detail(entityId);
+					break;
 				case "theme":
-					route = action === "edit" ? routes.themes.edit(entityId) : routes.themes.detail(entityId)
-					break
+					route = action === "edit" ? routes.themes.edit(entityId) : routes.themes.detail(entityId);
+					break;
 				case "evidence":
-					route = action === "edit" ? routes.evidence.edit(entityId) : routes.evidence.detail(entityId)
-					break
+					route = action === "edit" ? routes.evidence.edit(entityId) : routes.evidence.detail(entityId);
+					break;
 				case "insight":
-					route = action === "edit" ? routes.insights.edit(entityId) : routes.insights.detail(entityId)
-					break
+					route = action === "edit" ? routes.insights.edit(entityId) : routes.insights.detail(entityId);
+					break;
 				case "interview":
-					route = action === "edit" ? routes.interviews.edit(entityId) : routes.interviews.detail(entityId)
-					break
+					route = action === "edit" ? routes.interviews.edit(entityId) : routes.interviews.detail(entityId);
+					break;
 				case "segment":
-					route = routes.segments.detail(entityId) // segments don't have edit
-					break
+					route = routes.segments.detail(entityId); // segments don't have edit
+					break;
 				case "survey":
-					route = action === "edit" ? routes.ask.edit(entityId) : routes.ask.responses(entityId)
-					break
+					route = action === "edit" ? routes.ask.edit(entityId) : routes.ask.responses(entityId);
+					break;
 				case "survey_response": {
-					const parentId = typeof input.parentEntityId === "string" ? input.parentEntityId : null
+					const parentId = typeof input.parentEntityId === "string" ? input.parentEntityId : null;
 					if (!parentId) {
 						return {
 							success: false,
 							error: "survey_response requires parentEntityId (surveyId) to be provided",
 							route: null,
 							absoluteRoute: null,
-						}
+						};
 					}
-					route = routes.ask.responseDetail(parentId, entityId)
-					break
+					route = routes.ask.responseDetail(parentId, entityId);
+					break;
 				}
 				default:
 					return {
@@ -166,10 +166,10 @@ export const generateProjectRoutesTool = createTool({
 						error: `Unknown entity type: ${entityType}`,
 						route: null,
 						absoluteRoute: null,
-					}
+					};
 			}
 
-			const absoluteRoute = `${HOST}${route}`
+			const absoluteRoute = `${HOST}${route}`;
 
 			return {
 				success: true,
@@ -178,15 +178,15 @@ export const generateProjectRoutesTool = createTool({
 				entityType,
 				entityId,
 				action,
-			}
+			};
 		} catch (error) {
-			consola.error("generate-project-routes: Unexpected error", error)
+			consola.error("generate-project-routes: Unexpected error", error);
 			return {
 				success: false,
 				error: "Unexpected error generating route",
 				route: null,
 				absoluteRoute: null,
-			}
+			};
 		}
 	},
-})
+});

@@ -1,6 +1,6 @@
-import { ArrowRight, Calendar, Globe, GripVertical, Loader2, Sparkles, Trash2, X } from "lucide-react"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
+import { ArrowRight, Calendar, Globe, GripVertical, Loader2, Sparkles, Trash2, X } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
 	redirect,
 	useActionData,
@@ -9,61 +9,61 @@ import {
 	useLocation,
 	useNavigate,
 	useSearchParams,
-} from "react-router"
-import { toast } from "sonner"
-import { PicaConnectButton } from "~/components/integrations/PicaConnectButton"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Separator } from "~/components/ui/separator"
-import { Textarea } from "~/components/ui/textarea"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { hasFeature, PLANS, type PlanId } from "~/config/plans"
-import { loadAccountMetadata, updateAccountMetadata } from "~/features/accounts/server/account-settings.server"
+} from "react-router";
+import { toast } from "sonner";
+import { PicaConnectButton } from "~/components/integrations/PicaConnectButton";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Separator } from "~/components/ui/separator";
+import { Textarea } from "~/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { hasFeature, PLANS, type PlanId } from "~/config/plans";
+import { loadAccountMetadata, updateAccountMetadata } from "~/features/accounts/server/account-settings.server";
 import {
 	type AccountSettingsMetadata,
 	DEFAULT_OPPORTUNITY_STAGES,
 	normalizeStageId,
 	type OpportunityStageConfig,
-} from "~/features/opportunities/stage-config"
-import { type CalendarConnection, getCalendarConnection } from "~/lib/integrations/calendar.server"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { researchCompanyWebsite } from "~/mastra/tools/research-company-website"
-import { userContext } from "~/server/user-context"
+} from "~/features/opportunities/stage-config";
+import { type CalendarConnection, getCalendarConnection } from "~/lib/integrations/calendar.server";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { researchCompanyWebsite } from "~/mastra/tools/research-company-website";
+import { userContext } from "~/server/user-context";
 
 /**
  * Company context stored on accounts.accounts table
  * Used by AI for question generation, analysis, and lens application
  */
 interface CompanyContext {
-	website_url: string | null
-	company_description: string | null
-	customer_problem: string | null
-	offerings: string[] | null
-	target_orgs: string[] | null
-	target_company_sizes: string[] | null
-	target_roles: string[] | null
-	competitors: string[] | null
-	industry: string | null
+	website_url: string | null;
+	company_description: string | null;
+	customer_problem: string | null;
+	offerings: string[] | null;
+	target_orgs: string[] | null;
+	target_company_sizes: string[] | null;
+	target_roles: string[] | null;
+	competitors: string[] | null;
+	industry: string | null;
 }
 
 type LoaderData = {
-	accountId: string
-	userId: string
-	accountName: string | null
-	metadata: AccountSettingsMetadata
-	companyContext: CompanyContext
-	isOnboarding: boolean
-	defaultProjectId: string | null
+	accountId: string;
+	userId: string;
+	accountName: string | null;
+	metadata: AccountSettingsMetadata;
+	companyContext: CompanyContext;
+	isOnboarding: boolean;
+	defaultProjectId: string | null;
 	calendarConnection: {
-		connected: boolean
-		email: string | null
-		lastSyncedAt: string | null
-	} | null
-	hasCalendarFeature: boolean
-}
+		connected: boolean;
+		email: string | null;
+		lastSyncedAt: string | null;
+	} | null;
+	hasCalendarFeature: boolean;
+};
 
 const DEFAULT_JOURNEY_STAGES: OpportunityStageConfig[] = [
 	{
@@ -108,7 +108,7 @@ const DEFAULT_JOURNEY_STAGES: OpportunityStageConfig[] = [
 		description: "Usage broadens across people, use cases, or spend.",
 		discovery_focus: "Secondary jobs, adjacent value, scale limits",
 	},
-]
+];
 
 const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
 	{
@@ -165,22 +165,22 @@ const DEFAULT_PRIORITY_CLUSTERS: OpportunityStageConfig[] = [
 		label: "Other",
 		description: "Catch-all for items that don't fit the current categories.",
 	},
-]
+];
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const userId = ctx.claims?.sub
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const userId = ctx.claims?.sub;
 
-	if (!accountId) throw new Response("Account ID is required", { status: 400 })
-	if (!supabase) throw new Response("Database connection unavailable", { status: 500 })
+	if (!accountId) throw new Response("Account ID is required", { status: 400 });
+	if (!supabase) throw new Response("Database connection unavailable", { status: 500 });
 
 	// Check if this is onboarding mode
-	const url = new URL(request.url)
-	const isOnboarding = url.searchParams.get("onboarding") === "1"
+	const url = new URL(request.url);
+	const isOnboarding = url.searchParams.get("onboarding") === "1";
 
-	const metadata = await loadAccountMetadata({ supabase, accountId })
+	const metadata = await loadAccountMetadata({ supabase, accountId });
 
 	// Load account name and company context from accounts.accounts table
 	const { data: account } = await supabase
@@ -190,10 +190,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			"name, website_url, company_description, customer_problem, offerings, target_orgs, target_company_sizes, target_roles, competitors, industry"
 		)
 		.eq("id", accountId)
-		.single()
+		.single();
 
 	// Get plan from billing_subscriptions (single source of truth)
-	let planId: PlanId = "free"
+	let planId: PlanId = "free";
 	const { data: subscription } = await supabaseAdmin
 		.schema("accounts")
 		.from("billing_subscriptions")
@@ -202,27 +202,27 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		.in("status", ["active", "trialing"])
 		.order("created_at", { ascending: false })
 		.limit(1)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (subscription?.plan_name) {
-		const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId
+		const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId;
 		if (normalizedPlan in PLANS) {
-			planId = normalizedPlan
+			planId = normalizedPlan;
 		}
 	}
 
-	const hasCalendarFeature = hasFeature(planId, "calendar_sync")
+	const hasCalendarFeature = hasFeature(planId, "calendar_sync");
 
 	// Load calendar connection status if user is logged in
-	let calendarConnection: LoaderData["calendarConnection"] = null
+	let calendarConnection: LoaderData["calendarConnection"] = null;
 	if (userId && hasCalendarFeature) {
-		const connection = await getCalendarConnection(supabase, userId, "google")
+		const connection = await getCalendarConnection(supabase, userId, "google");
 		if (connection) {
 			calendarConnection = {
 				connected: true,
 				email: connection.provider_email,
 				lastSyncedAt: connection.last_synced_at,
-			}
+			};
 		}
 	}
 
@@ -236,21 +236,21 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		target_roles: account?.target_roles ?? null,
 		competitors: account?.competitors ?? null,
 		industry: account?.industry ?? null,
-	}
+	};
 
 	// Redirect onboarding mode to the project setup chat flow
-	let defaultProjectId: string | null = null
+	let defaultProjectId: string | null = null;
 	if (isOnboarding && userId) {
 		const { data: userSettings } = await supabase
 			.from("user_settings")
 			.select("last_used_project_id")
 			.eq("user_id", userId)
-			.single()
-		defaultProjectId = userSettings?.last_used_project_id ?? null
+			.single();
+		defaultProjectId = userSettings?.last_used_project_id ?? null;
 		if (defaultProjectId) {
-			return redirect(`/a/${accountId}/${defaultProjectId}/setup?onboarding=1`)
+			return redirect(`/a/${accountId}/${defaultProjectId}/setup?onboarding=1`);
 		}
-		return redirect(`/a/${accountId}/home`)
+		return redirect(`/a/${accountId}/home`);
 	}
 
 	return {
@@ -263,40 +263,40 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		defaultProjectId,
 		calendarConnection,
 		hasCalendarFeature,
-	}
+	};
 }
 
 export async function action({ context, request, params }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
 
-	if (!accountId) throw new Response("Account ID is required", { status: 400 })
-	if (!supabase) throw new Response("Database connection unavailable", { status: 500 })
+	if (!accountId) throw new Response("Account ID is required", { status: 400 });
+	if (!supabase) throw new Response("Database connection unavailable", { status: 500 });
 
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	// Handle account name update
 	if (intent === "update_account_name") {
-		const name = formData.get("name") as string
+		const name = formData.get("name") as string;
 		const { error } = await supabase
 			.schema("accounts")
 			.from("accounts")
 			.update({ name: name || null })
-			.eq("id", accountId)
+			.eq("id", accountId);
 
 		if (error) {
-			return Response.json({ error: error.message }, { status: 500 })
+			return Response.json({ error: error.message }, { status: 500 });
 		}
-		return Response.json({ success: true })
+		return Response.json({ success: true });
 	}
 
 	// Handle company context update
 	if (intent === "update_company_context") {
-		const payload = formData.get("payload") as string
+		const payload = formData.get("payload") as string;
 		try {
-			const data = JSON.parse(payload) as Partial<CompanyContext>
+			const data = JSON.parse(payload) as Partial<CompanyContext>;
 
 			const { error } = await supabase
 				.schema("accounts")
@@ -312,70 +312,70 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 					competitors: data.competitors,
 					industry: data.industry,
 				})
-				.eq("id", accountId)
+				.eq("id", accountId);
 
 			if (error) {
-				return Response.json({ error: error.message }, { status: 500 })
+				return Response.json({ error: error.message }, { status: 500 });
 			}
-			return Response.json({ success: true })
+			return Response.json({ success: true });
 		} catch (e) {
-			return Response.json({ error: e instanceof Error ? e.message : "Invalid payload" }, { status: 400 })
+			return Response.json({ error: e instanceof Error ? e.message : "Invalid payload" }, { status: 400 });
 		}
 	}
 
 	// Handle website research
 	if (intent === "research_website") {
-		const websiteUrl = formData.get("website_url") as string
+		const websiteUrl = formData.get("website_url") as string;
 		if (!websiteUrl) {
-			return Response.json({ error: "Website URL is required" }, { status: 400 })
+			return Response.json({ error: "Website URL is required" }, { status: 400 });
 		}
 		try {
-			const result = await researchCompanyWebsite(websiteUrl)
-			return Response.json(result)
+			const result = await researchCompanyWebsite(websiteUrl);
+			return Response.json(result);
 		} catch (e) {
-			return Response.json({ error: e instanceof Error ? e.message : "Research failed" }, { status: 500 })
+			return Response.json({ error: e instanceof Error ? e.message : "Research failed" }, { status: 500 });
 		}
 	}
 
 	// Handle account metadata update (existing)
-	const payload = (formData.get("payload") as string) || "{}"
+	const payload = (formData.get("payload") as string) || "{}";
 
 	let parsed: {
-		opportunityStages?: OpportunityStageConfig[]
-		journeyStages?: OpportunityStageConfig[]
-		priorityClusters?: OpportunityStageConfig[]
-	} = {}
+		opportunityStages?: OpportunityStageConfig[];
+		journeyStages?: OpportunityStageConfig[];
+		priorityClusters?: OpportunityStageConfig[];
+	} = {};
 
 	try {
-		parsed = JSON.parse(payload)
+		parsed = JSON.parse(payload);
 	} catch {
-		return Response.json({ error: "Invalid payload" }, { status: 400 })
+		return Response.json({ error: "Invalid payload" }, { status: 400 });
 	}
 
 	const normalizeList = (items: OpportunityStageConfig[] | undefined, fallback: OpportunityStageConfig[]) => {
-		const safeItems = Array.isArray(items) ? items : fallback
+		const safeItems = Array.isArray(items) ? items : fallback;
 		return safeItems
 			.map((item, idx) => {
-				const label = (item.label || item.id || `Item ${idx + 1}`).toString().trim()
-				const id = normalizeStageId(item.id || label)
-				if (!id) return null
+				const label = (item.label || item.id || `Item ${idx + 1}`).toString().trim();
+				const id = normalizeStageId(item.id || label);
+				if (!id) return null;
 				const discovery_focus =
 					typeof item.discovery_focus === "string" && item.discovery_focus.trim().length > 0
 						? item.discovery_focus.trim()
-						: undefined
+						: undefined;
 				return {
 					id,
 					label: label || id,
 					description: item.description?.trim() || undefined,
 					discovery_focus,
-				}
+				};
 			})
-			.filter(Boolean) as OpportunityStageConfig[]
-	}
+			.filter(Boolean) as OpportunityStageConfig[];
+	};
 
-	const opportunityStages = normalizeList(parsed.opportunityStages, DEFAULT_OPPORTUNITY_STAGES)
-	const journeyStages = normalizeList(parsed.journeyStages, DEFAULT_JOURNEY_STAGES)
-	const priorityClusters = normalizeList(parsed.priorityClusters, DEFAULT_PRIORITY_CLUSTERS)
+	const opportunityStages = normalizeList(parsed.opportunityStages, DEFAULT_OPPORTUNITY_STAGES);
+	const journeyStages = normalizeList(parsed.journeyStages, DEFAULT_JOURNEY_STAGES);
+	const priorityClusters = normalizeList(parsed.priorityClusters, DEFAULT_PRIORITY_CLUSTERS);
 
 	try {
 		await updateAccountMetadata({
@@ -386,15 +386,15 @@ export async function action({ context, request, params }: ActionFunctionArgs) {
 				journey_stages: journeyStages,
 				priority_clusters: priorityClusters,
 			},
-		})
-		return Response.json({ success: true })
+		});
+		return Response.json({ success: true });
 	} catch (error) {
 		return Response.json(
 			{
 				error: error instanceof Error ? error.message : "Failed to save settings",
 			},
 			{ status: 500 }
-		)
+		);
 	}
 }
 
@@ -406,28 +406,28 @@ function TagInput({
 	onChange,
 	placeholder,
 }: {
-	value: string[]
-	onChange: (value: string[]) => void
-	placeholder?: string
+	value: string[];
+	onChange: (value: string[]) => void;
+	placeholder?: string;
 }) {
-	const [input, setInput] = useState("")
+	const [input, setInput] = useState("");
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter" || e.key === ",") {
-			e.preventDefault()
-			const trimmed = input.trim()
+			e.preventDefault();
+			const trimmed = input.trim();
 			if (trimmed && !value.includes(trimmed)) {
-				onChange([...value, trimmed])
-				setInput("")
+				onChange([...value, trimmed]);
+				setInput("");
 			}
 		} else if (e.key === "Backspace" && !input && value.length > 0) {
-			onChange(value.slice(0, -1))
+			onChange(value.slice(0, -1));
 		}
-	}
+	};
 
 	const removeTag = (tag: string) => {
-		onChange(value.filter((t) => t !== tag))
-	}
+		onChange(value.filter((t) => t !== tag));
+	};
 
 	return (
 		<div className="flex flex-wrap gap-2 rounded-md border bg-background p-2">
@@ -452,7 +452,7 @@ function TagInput({
 				className="min-w-[120px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
 			/>
 		</div>
-	)
+	);
 }
 
 /**
@@ -464,35 +464,35 @@ function CompanyContextSection({
 	onResearch,
 	isResearching,
 }: {
-	context: CompanyContext
-	onSave: (data: CompanyContext) => void
-	onResearch: (url: string) => void
-	isResearching: boolean
+	context: CompanyContext;
+	onSave: (data: CompanyContext) => void;
+	onResearch: (url: string) => void;
+	isResearching: boolean;
 }) {
-	const [data, setData] = useState<CompanyContext>(context)
-	const [hasChanges, setHasChanges] = useState(false)
+	const [data, setData] = useState<CompanyContext>(context);
+	const [hasChanges, setHasChanges] = useState(false);
 
 	// Generate stable IDs for form elements
-	const id = useId()
-	const websiteUrlId = `${id}-website-url`
-	const companyDescriptionId = `${id}-company-description`
-	const customerProblemId = `${id}-customer-problem`
-	const industryId = `${id}-industry`
+	const id = useId();
+	const websiteUrlId = `${id}-website-url`;
+	const companyDescriptionId = `${id}-company-description`;
+	const customerProblemId = `${id}-customer-problem`;
+	const industryId = `${id}-industry`;
 
 	const updateField = <K extends keyof CompanyContext>(key: K, value: CompanyContext[K]) => {
-		setData((prev) => ({ ...prev, [key]: value }))
-		setHasChanges(true)
-	}
+		setData((prev) => ({ ...prev, [key]: value }));
+		setHasChanges(true);
+	};
 
 	const handleSave = () => {
-		onSave(data)
-		setHasChanges(false)
-	}
+		onSave(data);
+		setHasChanges(false);
+	};
 
 	// Update local state when context changes (e.g., after research)
 	useEffect(() => {
-		setData(context)
-	}, [context])
+		setData(context);
+	}, [context]);
 
 	return (
 		<div>
@@ -639,7 +639,7 @@ function CompanyContextSection({
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }
 
 /**
@@ -651,39 +651,39 @@ function CalendarIntegrationSection({
 	connection,
 	hasFeature,
 }: {
-	accountId: string
-	userId: string
-	connection: LoaderData["calendarConnection"]
-	hasFeature: boolean
+	accountId: string;
+	userId: string;
+	connection: LoaderData["calendarConnection"];
+	hasFeature: boolean;
 }) {
-	const disconnectFetcher = useFetcher()
-	const isDisconnecting = disconnectFetcher.state === "submitting"
+	const disconnectFetcher = useFetcher();
+	const isDisconnecting = disconnectFetcher.state === "submitting";
 
 	// Handle disconnect response
 	useEffect(() => {
 		if (disconnectFetcher.state === "idle" && disconnectFetcher.data) {
 			const result = disconnectFetcher.data as {
-				success?: boolean
-				error?: string
-			}
+				success?: boolean;
+				error?: string;
+			};
 			if (result.success) {
-				toast.success("Calendar disconnected")
+				toast.success("Calendar disconnected");
 				// Reload page to update state
-				window.location.reload()
+				window.location.reload();
 			} else if (result.error) {
-				toast.error(result.error)
+				toast.error(result.error);
 			}
 		}
-	}, [disconnectFetcher.state, disconnectFetcher.data])
+	}, [disconnectFetcher.state, disconnectFetcher.data]);
 
 	const handleDisconnect = () => {
-		const formData = new FormData()
-		formData.append("provider", "google")
+		const formData = new FormData();
+		formData.append("provider", "google");
 		disconnectFetcher.submit(formData, {
 			method: "POST",
 			action: "/api/calendar/disconnect",
-		})
-	}
+		});
+	};
 
 	return (
 		<div>
@@ -749,8 +749,8 @@ function CalendarIntegrationSection({
 								accountId={accountId}
 								platform="google-calendar"
 								onSuccess={() => {
-									toast.success("Google Calendar connected")
-									window.location.reload()
+									toast.success("Google Calendar connected");
+									window.location.reload();
 								}}
 								onError={(err) => toast.error(err)}
 								size="sm"
@@ -762,21 +762,21 @@ function CalendarIntegrationSection({
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }
 
 type EditableListProps = {
-	title: string
-	description: string
-	items: OpportunityStageConfig[]
-	defaultItems: OpportunityStageConfig[]
-	onChange: (items: OpportunityStageConfig[]) => void
-	onSave?: (items: OpportunityStageConfig[]) => void
-}
+	title: string;
+	description: string;
+	items: OpportunityStageConfig[];
+	defaultItems: OpportunityStageConfig[];
+	onChange: (items: OpportunityStageConfig[]) => void;
+	onSave?: (items: OpportunityStageConfig[]) => void;
+};
 
 function EditableList({ title, description, items, defaultItems, onChange, onSave }: EditableListProps) {
-	const [isEditing, setIsEditing] = useState(false)
-	const [dragIndex, setDragIndex] = useState<number | null>(null)
+	const [isEditing, setIsEditing] = useState(false);
+	const [dragIndex, setDragIndex] = useState<number | null>(null);
 	const computed = useMemo(
 		() =>
 			items.map((item, idx) => ({
@@ -785,11 +785,11 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 				label: item.label || item.id || `Item ${idx + 1}`,
 			})),
 		[items]
-	)
+	);
 
 	const updateItem = (index: number, label: string) => {
-		onChange(computed.map((item, idx) => (idx === index ? { ...item, label, id: normalizeStageId(label) } : item)))
-	}
+		onChange(computed.map((item, idx) => (idx === index ? { ...item, label, id: normalizeStageId(label) } : item)));
+	};
 
 	const addItem = () => {
 		onChange([
@@ -798,68 +798,68 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 				id: normalizeStageId(`item-${computed.length + 1}`),
 				label: `Item ${computed.length + 1}`,
 			},
-		])
-	}
+		]);
+	};
 
 	const removeItem = (index: number) => {
-		onChange(computed.filter((_, idx) => idx !== index))
-	}
+		onChange(computed.filter((_, idx) => idx !== index));
+	};
 
 	const moveItem = (from: number, to: number) => {
-		if (to < 0 || to >= computed.length) return
-		const clone = [...computed]
-		const [removed] = clone.splice(from, 1)
-		clone.splice(to, 0, removed)
-		onChange(clone)
-	}
+		if (to < 0 || to >= computed.length) return;
+		const clone = [...computed];
+		const [removed] = clone.splice(from, 1);
+		clone.splice(to, 0, removed);
+		onChange(clone);
+	};
 
-	const reset = () => onChange(defaultItems)
+	const reset = () => onChange(defaultItems);
 
 	const renderTooltipContent = (item: OpportunityStageConfig) => {
-		const description = item.description?.trim()
-		const discoveryFocus = item.discovery_focus?.trim()
+		const description = item.description?.trim();
+		const discoveryFocus = item.discovery_focus?.trim();
 
-		if (!description && !discoveryFocus) return null
+		if (!description && !discoveryFocus) return null;
 
 		return (
 			<div className="max-w-xs space-y-1 text-xs">
 				{description && <p>{description}</p>}
 				{discoveryFocus && <p className="text-muted-foreground">Discovery focus: {discoveryFocus}</p>}
 			</div>
-		)
-	}
+		);
+	};
 
 	const renderLabelChip = (item: OpportunityStageConfig) => {
-		const tooltipContent = renderTooltipContent(item)
+		const tooltipContent = renderTooltipContent(item);
 		const label = (
 			<span className="rounded-md bg-background px-3 py-1 text-foreground shadow-sm ring-1 ring-border/60">
 				{item.label}
 			</span>
-		)
+		);
 
-		if (!tooltipContent) return label
+		if (!tooltipContent) return label;
 
 		return (
 			<Tooltip delayDuration={300}>
 				<TooltipTrigger asChild>{label}</TooltipTrigger>
 				<TooltipContent>{tooltipContent}</TooltipContent>
 			</Tooltip>
-		)
-	}
+		);
+	};
 
 	const renderEditableLabel = (item: OpportunityStageConfig, onLabelChange: (value: string) => void) => {
-		const tooltipContent = renderTooltipContent(item)
-		const input = <Input value={item.label} onChange={(e) => onLabelChange(e.target.value)} />
+		const tooltipContent = renderTooltipContent(item);
+		const input = <Input value={item.label} onChange={(e) => onLabelChange(e.target.value)} />;
 
-		if (!tooltipContent) return input
+		if (!tooltipContent) return input;
 
 		return (
 			<Tooltip delayDuration={300}>
 				<TooltipTrigger asChild>{input}</TooltipTrigger>
 				<TooltipContent>{tooltipContent}</TooltipContent>
 			</Tooltip>
-		)
-	}
+		);
+	};
 
 	return (
 		<Card className="border-border/60">
@@ -902,8 +902,8 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 								onDragStart={() => setDragIndex(idx)}
 								onDragOver={(e) => e.preventDefault()}
 								onDrop={() => {
-									if (dragIndex !== null && dragIndex !== idx) moveItem(dragIndex, idx)
-									setDragIndex(null)
+									if (dragIndex !== null && dragIndex !== idx) moveItem(dragIndex, idx);
+									setDragIndex(null);
 								}}
 								onDragEnd={() => setDragIndex(null)}
 							>
@@ -956,7 +956,7 @@ function EditableList({ title, description, items, defaultItems, onChange, onSav
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 export default function AccountSettingsPage() {
@@ -970,95 +970,95 @@ export default function AccountSettingsPage() {
 		defaultProjectId,
 		calendarConnection,
 		hasCalendarFeature,
-	} = useLoaderData<typeof loader>()
-	const [searchParams, setSearchParams] = useSearchParams()
-	const actionData = useActionData<typeof action>() as { success?: boolean; error?: string } | undefined
-	const _location = useLocation()
-	const navigate = useNavigate()
-	const fetcher = useFetcher()
-	const researchFetcher = useFetcher()
-	const companyFetcher = useFetcher()
-	const accountNameFetcher = useFetcher()
-	const [hasSavedInOnboarding, setHasSavedInOnboarding] = useState(false)
+	} = useLoaderData<typeof loader>();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const actionData = useActionData<typeof action>() as { success?: boolean; error?: string } | undefined;
+	const _location = useLocation();
+	const navigate = useNavigate();
+	const fetcher = useFetcher();
+	const researchFetcher = useFetcher();
+	const companyFetcher = useFetcher();
+	const accountNameFetcher = useFetcher();
+	const [hasSavedInOnboarding, setHasSavedInOnboarding] = useState(false);
 
 	// Account name state
-	const [localAccountName, setLocalAccountName] = useState(accountName || "")
-	const [accountNameHasChanges, setAccountNameHasChanges] = useState(false)
-	const accountNameInputId = useId()
+	const [localAccountName, setLocalAccountName] = useState(accountName || "");
+	const [accountNameHasChanges, setAccountNameHasChanges] = useState(false);
+	const accountNameInputId = useId();
 
 	// Handle account name save
 	const handleSaveAccountName = () => {
-		const formData = new FormData()
-		formData.append("intent", "update_account_name")
-		formData.append("name", localAccountName)
-		accountNameFetcher.submit(formData, { method: "POST" })
-		setAccountNameHasChanges(false)
-	}
+		const formData = new FormData();
+		formData.append("intent", "update_account_name");
+		formData.append("name", localAccountName);
+		accountNameFetcher.submit(formData, { method: "POST" });
+		setAccountNameHasChanges(false);
+	};
 
 	// Handle account name fetcher response
 	useEffect(() => {
 		if (accountNameFetcher.state === "idle" && accountNameFetcher.data) {
 			const result = accountNameFetcher.data as {
-				success?: boolean
-				error?: string
-			}
+				success?: boolean;
+				error?: string;
+			};
 			if (result.success) {
-				toast.success("Account name saved")
+				toast.success("Account name saved");
 			} else if (result.error) {
-				toast.error(result.error)
+				toast.error(result.error);
 			}
 		}
-	}, [accountNameFetcher.state, accountNameFetcher.data])
+	}, [accountNameFetcher.state, accountNameFetcher.data]);
 
 	// Handle calendar OAuth callback URL params
 	useEffect(() => {
-		const calendarConnected = searchParams.get("calendar_connected")
-		const calendarError = searchParams.get("calendar_error")
+		const calendarConnected = searchParams.get("calendar_connected");
+		const calendarError = searchParams.get("calendar_error");
 
 		if (calendarConnected === "1") {
-			toast.success("Google Calendar connected successfully")
+			toast.success("Google Calendar connected successfully");
 			// Clean up URL params
-			searchParams.delete("calendar_connected")
-			setSearchParams(searchParams, { replace: true })
+			searchParams.delete("calendar_connected");
+			setSearchParams(searchParams, { replace: true });
 		} else if (calendarError) {
 			const errorMessages: Record<string, string> = {
 				oauth_denied: "Calendar access was denied",
 				invalid_callback: "Invalid OAuth callback",
 				invalid_state: "Invalid authentication state",
 				token_exchange: "Failed to connect calendar. Please try again.",
-			}
-			toast.error(errorMessages[calendarError] || "Failed to connect calendar")
+			};
+			toast.error(errorMessages[calendarError] || "Failed to connect calendar");
 			// Clean up URL params
-			searchParams.delete("calendar_error")
-			setSearchParams(searchParams, { replace: true })
+			searchParams.delete("calendar_error");
+			setSearchParams(searchParams, { replace: true });
 		}
-	}, [searchParams, setSearchParams])
+	}, [searchParams, setSearchParams]);
 
 	// Track local company context state for UI updates
-	const [localCompanyContext, setLocalCompanyContext] = useState<CompanyContext>(companyContext)
-	const [isResearching, setIsResearching] = useState(false)
-	const researchedUrlRef = useRef<string | null>(null)
+	const [localCompanyContext, setLocalCompanyContext] = useState<CompanyContext>(companyContext);
+	const [isResearching, setIsResearching] = useState(false);
+	const researchedUrlRef = useRef<string | null>(null);
 
 	// Handle research results - auto-save after populating
 	useEffect(() => {
 		if (researchFetcher.state === "idle" && researchFetcher.data) {
-			setIsResearching(false)
+			setIsResearching(false);
 			const result = researchFetcher.data as {
-				success?: boolean
-				error?: string
+				success?: boolean;
+				error?: string;
 				data?: {
-					description?: string
-					customer_problem?: string
-					offerings?: string[]
-					target_orgs?: string[]
-					target_roles?: string[]
-					competitors?: string[]
-					industry?: string
-				}
-			}
+					description?: string;
+					customer_problem?: string;
+					offerings?: string[];
+					target_orgs?: string[];
+					target_roles?: string[];
+					competitors?: string[];
+					industry?: string;
+				};
+			};
 			if (result.success && result.data) {
 				// Merge research results with existing context, preserving the researched URL
-				const researchedUrl = researchedUrlRef.current
+				const researchedUrl = researchedUrlRef.current;
 				const updatedContext: CompanyContext = {
 					...localCompanyContext,
 					website_url: researchedUrl || localCompanyContext.website_url,
@@ -1070,177 +1070,177 @@ export default function AccountSettingsPage() {
 					competitors: result.data?.competitors || localCompanyContext.competitors,
 					industry: result.data?.industry || localCompanyContext.industry,
 					target_company_sizes: localCompanyContext.target_company_sizes,
-				}
-				setLocalCompanyContext(updatedContext)
-				researchedUrlRef.current = null
+				};
+				setLocalCompanyContext(updatedContext);
+				researchedUrlRef.current = null;
 
 				// Auto-save the researched data so user doesn't lose it
-				const formData = new FormData()
-				formData.append("intent", "update_company_context")
-				formData.append("payload", JSON.stringify(updatedContext))
-				companyFetcher.submit(formData, { method: "POST" })
+				const formData = new FormData();
+				formData.append("intent", "update_company_context");
+				formData.append("payload", JSON.stringify(updatedContext));
+				companyFetcher.submit(formData, { method: "POST" });
 
-				toast.success("Company info auto-filled and saved")
+				toast.success("Company info auto-filled and saved");
 			} else if (result.error) {
-				toast.error(result.error)
+				toast.error(result.error);
 			}
 		}
-	}, [researchFetcher.state, researchFetcher.data])
+	}, [researchFetcher.state, researchFetcher.data]);
 
 	// Handle company context save results
 	useEffect(() => {
 		if (companyFetcher.state === "idle" && companyFetcher.data) {
 			const result = companyFetcher.data as {
-				success?: boolean
-				error?: string
-			}
+				success?: boolean;
+				error?: string;
+			};
 			if (result.success) {
-				toast.success("Company context saved")
+				toast.success("Company context saved");
 				if (isOnboarding) {
-					setHasSavedInOnboarding(true)
+					setHasSavedInOnboarding(true);
 				}
 			} else if (result.error) {
-				toast.error(result.error)
+				toast.error(result.error);
 			}
 		}
-	}, [companyFetcher.state, companyFetcher.data, isOnboarding])
+	}, [companyFetcher.state, companyFetcher.data, isOnboarding]);
 
 	const handleResearchWebsite = (url: string) => {
-		setIsResearching(true)
-		researchedUrlRef.current = url // Track URL for when results come back
-		const formData = new FormData()
-		formData.append("intent", "research_website")
-		formData.append("website_url", url)
-		researchFetcher.submit(formData, { method: "POST" })
-	}
+		setIsResearching(true);
+		researchedUrlRef.current = url; // Track URL for when results come back
+		const formData = new FormData();
+		formData.append("intent", "research_website");
+		formData.append("website_url", url);
+		researchFetcher.submit(formData, { method: "POST" });
+	};
 
 	const handleSaveCompanyContext = (data: CompanyContext) => {
-		setLocalCompanyContext(data)
-		const formData = new FormData()
-		formData.append("intent", "update_company_context")
-		formData.append("payload", JSON.stringify(data))
-		companyFetcher.submit(formData, { method: "POST" })
-	}
+		setLocalCompanyContext(data);
+		const formData = new FormData();
+		formData.append("intent", "update_company_context");
+		formData.append("payload", JSON.stringify(data));
+		companyFetcher.submit(formData, { method: "POST" });
+	};
 
 	const [opportunityStages, setOpportunityStages] = useState<OpportunityStageConfig[]>(
 		metadata.opportunity_stages && metadata.opportunity_stages.length > 0
 			? (metadata.opportunity_stages as OpportunityStageConfig[])
 			: DEFAULT_OPPORTUNITY_STAGES
-	)
+	);
 	const [journeyStages, setJourneyStages] = useState<OpportunityStageConfig[]>(
 		metadata.journey_stages && metadata.journey_stages.length > 0
 			? (metadata.journey_stages as OpportunityStageConfig[])
 			: DEFAULT_JOURNEY_STAGES
-	)
+	);
 	const [priorityClusters, setPriorityClusters] = useState<OpportunityStageConfig[]>(
 		metadata.priority_clusters && metadata.priority_clusters.length > 0
 			? (metadata.priority_clusters as OpportunityStageConfig[])
 			: DEFAULT_PRIORITY_CLUSTERS
-	)
+	);
 
-	const [savingSection, setSavingSection] = useState<string | null>(null)
-	const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
-	const mountedRef = useRef(true)
+	const [savingSection, setSavingSection] = useState<string | null>(null);
+	const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+	const mountedRef = useRef(true);
 
 	useEffect(() => {
 		return () => {
-			mountedRef.current = false
+			mountedRef.current = false;
 			Object.values(saveTimers.current).forEach((timer) => {
-				if (timer) clearTimeout(timer)
-			})
-		}
-	}, [])
+				if (timer) clearTimeout(timer);
+			});
+		};
+	}, []);
 
 	const buildPayload = (overrides?: {
-		opportunityStages?: OpportunityStageConfig[]
-		journeyStages?: OpportunityStageConfig[]
-		priorityClusters?: OpportunityStageConfig[]
+		opportunityStages?: OpportunityStageConfig[];
+		journeyStages?: OpportunityStageConfig[];
+		priorityClusters?: OpportunityStageConfig[];
 	}) => ({
 		opportunityStages: overrides?.opportunityStages ?? opportunityStages,
 		journeyStages: overrides?.journeyStages ?? journeyStages,
 		priorityClusters: overrides?.priorityClusters ?? priorityClusters,
-	})
+	});
 
 	const scheduleSave = async (
 		sectionKey: string,
 		overrides?: {
-			opportunityStages?: OpportunityStageConfig[]
-			journeyStages?: OpportunityStageConfig[]
-			priorityClusters?: OpportunityStageConfig[]
+			opportunityStages?: OpportunityStageConfig[];
+			journeyStages?: OpportunityStageConfig[];
+			priorityClusters?: OpportunityStageConfig[];
 		},
 		options?: { debounce?: boolean; toastOnSuccess?: boolean }
 	) => {
-		const payload = buildPayload(overrides)
-		const debounce = options?.debounce ?? true
+		const payload = buildPayload(overrides);
+		const debounce = options?.debounce ?? true;
 
 		const run = () => {
-			if (!mountedRef.current) return
-			setSavingSection(sectionKey)
+			if (!mountedRef.current) return;
+			setSavingSection(sectionKey);
 
-			const formData = new FormData()
-			formData.append("payload", JSON.stringify(payload))
+			const formData = new FormData();
+			formData.append("payload", JSON.stringify(payload));
 
 			fetcher.submit(formData, {
 				method: "POST",
-			})
+			});
 
 			if (options?.toastOnSuccess) {
-				toast.success("Saving...")
+				toast.success("Saving...");
 			}
 
 			// Reset saving state after a delay
 			setTimeout(() => {
 				if (mountedRef.current) {
-					setSavingSection((current) => (current === sectionKey ? null : current))
+					setSavingSection((current) => (current === sectionKey ? null : current));
 				}
-			}, 1000)
-		}
+			}, 1000);
+		};
 
 		if (debounce) {
 			if (saveTimers.current[sectionKey]) {
-				clearTimeout(saveTimers.current[sectionKey] as NodeJS.Timeout)
+				clearTimeout(saveTimers.current[sectionKey] as NodeJS.Timeout);
 			}
-			saveTimers.current[sectionKey] = setTimeout(run, 800)
+			saveTimers.current[sectionKey] = setTimeout(run, 800);
 		} else {
-			run()
+			run();
 		}
-	}
+	};
 
 	// Handle fetcher response
 	useEffect(() => {
 		if (fetcher.state === "idle" && fetcher.data) {
 			if ((fetcher.data as any)?.error) {
-				toast.error((fetcher.data as any).error)
+				toast.error((fetcher.data as any).error);
 			} else if ((fetcher.data as any)?.success) {
 				// Success handled in scheduleSave
 			}
-			setSavingSection(null)
+			setSavingSection(null);
 		}
-	}, [fetcher.state, fetcher.data])
+	}, [fetcher.state, fetcher.data]);
 
 	const handleOpportunityChange = (items: OpportunityStageConfig[]) => {
-		setOpportunityStages(items)
-		void scheduleSave("opportunity", { opportunityStages: items }, { debounce: true })
-	}
+		setOpportunityStages(items);
+		void scheduleSave("opportunity", { opportunityStages: items }, { debounce: true });
+	};
 
 	const handleJourneyChange = (items: OpportunityStageConfig[]) => {
-		setJourneyStages(items)
-		void scheduleSave("journey", { journeyStages: items }, { debounce: true })
-	}
+		setJourneyStages(items);
+		void scheduleSave("journey", { journeyStages: items }, { debounce: true });
+	};
 
 	const handlePriorityChange = (items: OpportunityStageConfig[]) => {
-		setPriorityClusters(items)
-		void scheduleSave("priority", { priorityClusters: items }, { debounce: true })
-	}
+		setPriorityClusters(items);
+		void scheduleSave("priority", { priorityClusters: items }, { debounce: true });
+	};
 
 	const handleContinueToProjectSetup = () => {
 		if (defaultProjectId) {
-			navigate(`/a/${accountId}/${defaultProjectId}/setup`)
+			navigate(`/a/${accountId}/${defaultProjectId}/setup`);
 		} else {
 			// Fallback to dashboard if no project ID
-			navigate(`/a/${accountId}`)
+			navigate(`/a/${accountId}`);
 		}
-	}
+	};
 
 	// Onboarding mode: Focused UI for company context only
 	if (isOnboarding) {
@@ -1295,7 +1295,7 @@ export default function AccountSettingsPage() {
 					You can always update these settings later from Account Settings.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -1331,8 +1331,8 @@ export default function AccountSettingsPage() {
 									id={accountNameInputId}
 									value={localAccountName}
 									onChange={(e) => {
-										setLocalAccountName(e.target.value)
-										setAccountNameHasChanges(true)
+										setLocalAccountName(e.target.value);
+										setAccountNameHasChanges(true);
 									}}
 									placeholder="My Company"
 								/>
@@ -1417,5 +1417,5 @@ export default function AccountSettingsPage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

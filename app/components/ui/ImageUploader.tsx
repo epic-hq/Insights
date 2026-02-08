@@ -5,49 +5,49 @@
  * Returns the R2 key via a hidden input for form submission.
  */
 
-import { Camera, Loader2, Trash2, Upload, User } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
+import { Camera, Loader2, Trash2, Upload, User } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 interface ImageUploaderProps {
 	/** Name for the hidden input field */
-	name: string
+	name: string;
 	/** Current image URL or R2 key */
-	defaultValue?: string | null
+	defaultValue?: string | null;
 	/** Category for R2 storage path */
-	category?: string
+	category?: string;
 	/** Entity ID for R2 storage path */
-	entityId?: string
+	entityId?: string;
 	/** Placeholder icon when no image */
-	placeholder?: "user" | "camera" | "upload"
+	placeholder?: "user" | "camera" | "upload";
 	/** Size of the preview */
-	size?: "sm" | "md" | "lg"
+	size?: "sm" | "md" | "lg";
 	/** Whether the upload is circular (for avatars) */
-	circular?: boolean
+	circular?: boolean;
 	/** Label text */
-	label?: string
+	label?: string;
 	/** Hint text below the uploader */
-	hint?: string
+	hint?: string;
 	/** Additional class names */
-	className?: string
+	className?: string;
 	/** Callback when image is uploaded */
-	onUpload?: (imageKey: string, url: string) => void
+	onUpload?: (imageKey: string, url: string) => void;
 	/** Callback when image is removed */
-	onRemove?: () => void
+	onRemove?: () => void;
 }
 
 const sizeClasses = {
 	sm: "h-16 w-16",
 	md: "h-24 w-24",
 	lg: "h-32 w-32",
-}
+};
 
 const iconSizeClasses = {
 	sm: "h-6 w-6",
 	md: "h-8 w-8",
 	lg: "h-10 w-10",
-}
+};
 
 export function ImageUploader({
 	name,
@@ -63,110 +63,110 @@ export function ImageUploader({
 	onUpload,
 	onRemove,
 }: ImageUploaderProps) {
-	const [imageKey, setImageKey] = useState<string | null>(defaultValue || null)
-	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-	const [isUploading, setIsUploading] = useState(false)
-	const [isLoadingUrl, setIsLoadingUrl] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const inputRef = useRef<HTMLInputElement>(null)
+	const [imageKey, setImageKey] = useState<string | null>(defaultValue || null);
+	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+	const [isUploading, setIsUploading] = useState(false);
+	const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	// If we have a default value that looks like an R2 key, fetch its presigned URL
 	useEffect(() => {
 		if (defaultValue?.startsWith("images/") && !previewUrl) {
-			setIsLoadingUrl(true)
+			setIsLoadingUrl(true);
 			fetch(`/api/upload-image?key=${encodeURIComponent(defaultValue)}`)
 				.then((res) => res.json())
 				.then((data) => {
 					if (data.success && data.url) {
-						setPreviewUrl(data.url)
+						setPreviewUrl(data.url);
 					}
 				})
 				.catch(() => {
 					// Silently fail - will show placeholder
 				})
 				.finally(() => {
-					setIsLoadingUrl(false)
-				})
+					setIsLoadingUrl(false);
+				});
 		}
-	}, [defaultValue, previewUrl])
+	}, [defaultValue, previewUrl]);
 
 	// Display URL: use fetched/uploaded preview, or direct URL if not an R2 key
-	const displayUrl = previewUrl || (defaultValue?.startsWith("images/") ? null : defaultValue)
+	const displayUrl = previewUrl || (defaultValue?.startsWith("images/") ? null : defaultValue);
 
 	const handleFileSelect = useCallback(
 		async (event: React.ChangeEvent<HTMLInputElement>) => {
-			const file = event.target.files?.[0]
-			if (!file) return
+			const file = event.target.files?.[0];
+			if (!file) return;
 
 			// Validate file type
 			if (!file.type.startsWith("image/")) {
-				setError("Please select an image file")
-				return
+				setError("Please select an image file");
+				return;
 			}
 
 			// Validate file size (10MB)
 			if (file.size > 10 * 1024 * 1024) {
-				setError("Image must be less than 10MB")
-				return
+				setError("Image must be less than 10MB");
+				return;
 			}
 
-			setError(null)
-			setIsUploading(true)
+			setError(null);
+			setIsUploading(true);
 
 			// Create local preview
-			const localPreview = URL.createObjectURL(file)
-			setPreviewUrl(localPreview)
+			const localPreview = URL.createObjectURL(file);
+			setPreviewUrl(localPreview);
 
 			try {
 				// Build upload URL
 				const params = new URLSearchParams({
 					category,
 					...(entityId && { entityId }),
-				})
+				});
 
-				const formData = new FormData()
-				formData.append("file", file)
+				const formData = new FormData();
+				formData.append("file", file);
 
 				const response = await fetch(`/api/upload-image?${params}`, {
 					method: "POST",
 					body: formData,
-				})
+				});
 
-				const result = await response.json()
+				const result = await response.json();
 
 				if (!response.ok || !result.success) {
-					throw new Error(result.error || "Upload failed")
+					throw new Error(result.error || "Upload failed");
 				}
 
-				setImageKey(result.imageKey)
-				setPreviewUrl(result.url)
-				onUpload?.(result.imageKey, result.url)
+				setImageKey(result.imageKey);
+				setPreviewUrl(result.url);
+				onUpload?.(result.imageKey, result.url);
 			} catch (err) {
-				setError(err instanceof Error ? err.message : "Upload failed")
-				setPreviewUrl(null)
-				URL.revokeObjectURL(localPreview)
+				setError(err instanceof Error ? err.message : "Upload failed");
+				setPreviewUrl(null);
+				URL.revokeObjectURL(localPreview);
 			} finally {
-				setIsUploading(false)
+				setIsUploading(false);
 			}
 		},
 		[category, entityId, onUpload]
-	)
+	);
 
 	const handleRemove = useCallback(() => {
-		setImageKey(null)
-		setPreviewUrl(null)
-		setError(null)
+		setImageKey(null);
+		setPreviewUrl(null);
+		setError(null);
 		if (inputRef.current) {
-			inputRef.current.value = ""
+			inputRef.current.value = "";
 		}
-		onRemove?.()
-	}, [onRemove])
+		onRemove?.();
+	}, [onRemove]);
 
 	const handleClick = useCallback(() => {
-		inputRef.current?.click()
-	}, [])
+		inputRef.current?.click();
+	}, []);
 
-	const PlaceholderIcon = placeholder === "camera" ? Camera : placeholder === "upload" ? Upload : User
+	const PlaceholderIcon = placeholder === "camera" ? Camera : placeholder === "upload" ? Upload : User;
 
 	return (
 		<div className={cn("space-y-2", className)}>
@@ -249,7 +249,7 @@ export function ImageUploader({
 			{/* Hint text */}
 			{hint && !error && <p className="text-muted-foreground text-xs">{hint}</p>}
 		</div>
-	)
+	);
 }
 
-export default ImageUploader
+export default ImageUploader;

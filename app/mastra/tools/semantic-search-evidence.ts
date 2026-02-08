@@ -1,12 +1,12 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
-const DEFAULT_MATCH_COUNT = 10
-const DEFAULT_MATCH_THRESHOLD = 0.5 // Lowered from 0.7 - semantic similarity scores are typically lower than exact matches
+const DEFAULT_MATCH_COUNT = 10;
+const DEFAULT_MATCH_THRESHOLD = 0.5; // Lowered from 0.7 - semantic similarity scores are typically lower than exact matches
 
 export const semanticSearchEvidenceTool = createTool({
 	id: "semantic-search-evidence",
@@ -67,15 +67,15 @@ export const semanticSearchEvidenceTool = createTool({
 		threshold: z.number(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
 
-		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined
-		const projectId = input.projectId ?? runtimeProjectIdStr ?? null
-		const query = input.query?.trim()
-		const interviewId = input.interviewId?.trim() || null
-		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
-		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT
+		const runtimeProjectIdStr = runtimeProjectId ? String(runtimeProjectId).trim() : undefined;
+		const projectId = input.projectId ?? runtimeProjectIdStr ?? null;
+		const query = input.query?.trim();
+		const interviewId = input.interviewId?.trim() || null;
+		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD;
+		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT;
 
 		consola.info("semantic-search-evidence: execute start", {
 			projectId,
@@ -83,10 +83,10 @@ export const semanticSearchEvidenceTool = createTool({
 			interviewId,
 			matchThreshold,
 			matchCount,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("semantic-search-evidence: missing projectId")
+			consola.warn("semantic-search-evidence: missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
@@ -94,11 +94,11 @@ export const semanticSearchEvidenceTool = createTool({
 				evidence: [],
 				totalCount: 0,
 				threshold: matchThreshold,
-			}
+			};
 		}
 
 		if (!query) {
-			consola.warn("semantic-search-evidence: missing query")
+			consola.warn("semantic-search-evidence: missing query");
 			return {
 				success: false,
 				message: "Missing search query. Provide a natural language query to search for.",
@@ -106,17 +106,17 @@ export const semanticSearchEvidenceTool = createTool({
 				evidence: [],
 				totalCount: 0,
 				threshold: matchThreshold,
-			}
+			};
 		}
 
 		try {
 			// 1. Generate embedding for the query using OpenAI
-			const openaiApiKey = process.env.OPENAI_API_KEY
+			const openaiApiKey = process.env.OPENAI_API_KEY;
 			if (!openaiApiKey) {
-				throw new Error("OPENAI_API_KEY environment variable is not set")
+				throw new Error("OPENAI_API_KEY environment variable is not set");
 			}
 
-			consola.info("semantic-search-evidence: generating query embedding")
+			consola.info("semantic-search-evidence: generating query embedding");
 			const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
 				method: "POST",
 				headers: {
@@ -127,20 +127,20 @@ export const semanticSearchEvidenceTool = createTool({
 					model: "text-embedding-3-small",
 					input: query,
 				}),
-			})
+			});
 
 			if (!embeddingResponse.ok) {
-				const errorText = await embeddingResponse.text()
-				throw new Error(`OpenAI API error: ${embeddingResponse.status} ${errorText}`)
+				const errorText = await embeddingResponse.text();
+				throw new Error(`OpenAI API error: ${embeddingResponse.status} ${errorText}`);
 			}
 
-			const embeddingData = await embeddingResponse.json()
-			const queryEmbedding = embeddingData.data[0].embedding as number[]
+			const embeddingData = await embeddingResponse.json();
+			const queryEmbedding = embeddingData.data[0].embedding as number[];
 
 			// 2. Search for similar evidence using pgvector
 			consola.info("semantic-search-evidence: searching for similar evidence", {
 				embeddingLength: queryEmbedding.length,
-			})
+			});
 
 			// If interview-specific, use that function
 			if (interviewId) {
@@ -149,20 +149,20 @@ export const semanticSearchEvidenceTool = createTool({
 					interview_id_param: interviewId,
 					match_threshold: matchThreshold,
 					match_count: matchCount,
-				})
+				});
 
 				if (evidenceError) {
-					consola.error("semantic-search-evidence: database error", evidenceError)
-					throw evidenceError
+					consola.error("semantic-search-evidence: database error", evidenceError);
+					throw evidenceError;
 				}
 
 				// Fetch interview titles for the results
-				const interviewIds = [...new Set(evidenceData?.map((_e) => interviewId).filter(Boolean) || [])]
+				const interviewIds = [...new Set(evidenceData?.map((_e) => interviewId).filter(Boolean) || [])];
 				const { data: interviewData } = interviewIds.length
 					? await supabase.from("interviews").select("id, title").in("id", interviewIds)
-					: { data: [] }
+					: { data: [] };
 
-				const interviewTitles = new Map(interviewData?.map((i) => [i.id, i.title]) || [])
+				const interviewTitles = new Map(interviewData?.map((i) => [i.id, i.title]) || []);
 
 				const evidence = (evidenceData || []).map((row) => ({
 					id: row.id,
@@ -176,7 +176,7 @@ export const semanticSearchEvidenceTool = createTool({
 					thinks: row.thinks || null,
 					feels: row.feels || null,
 					anchors: row.anchors || null,
-				}))
+				}));
 
 				return {
 					success: true,
@@ -185,7 +185,7 @@ export const semanticSearchEvidenceTool = createTool({
 					evidence,
 					totalCount: evidence.length,
 					threshold: matchThreshold,
-				}
+				};
 			}
 
 			// Project-wide search - search both evidence and evidence_facets in parallel
@@ -193,7 +193,7 @@ export const semanticSearchEvidenceTool = createTool({
 				projectId,
 				matchThreshold,
 				matchCount,
-			})
+			});
 
 			// Search evidence verbatim
 			const evidencePromise = supabase.rpc("find_similar_evidence", {
@@ -201,7 +201,7 @@ export const semanticSearchEvidenceTool = createTool({
 				project_id_param: projectId as string,
 				match_threshold: matchThreshold,
 				match_count: matchCount,
-			})
+			});
 
 			// Search evidence facets (pains, gains, thinks, feels, etc.)
 			const facetsPromise = supabase.rpc("find_similar_evidence_facets", {
@@ -210,33 +210,33 @@ export const semanticSearchEvidenceTool = createTool({
 				match_threshold: matchThreshold,
 				match_count: matchCount,
 				kind_slug_filter: undefined, // Search all facet types
-			})
+			});
 
 			const [{ data: evidenceData, error: evidenceError }, { data: facetsData, error: facetsError }] =
-				await Promise.all([evidencePromise, facetsPromise])
+				await Promise.all([evidencePromise, facetsPromise]);
 
 			type EvidenceMatchRow = {
-				id: string
-				similarity: number
-				verbatim: string | null
-				gist: string | null
-				pains: string[] | null
-				gains: string[] | null
-				thinks: string[] | null
-				feels: string[] | null
-				anchors: unknown | null
-			}
+				id: string;
+				similarity: number;
+				verbatim: string | null;
+				gist: string | null;
+				pains: string[] | null;
+				gains: string[] | null;
+				thinks: string[] | null;
+				feels: string[] | null;
+				anchors: unknown | null;
+			};
 
 			type FacetMatchRow = {
-				id: string
-				evidence_id: string | null
-				kind_slug: string | null
-				label: string | null
-				similarity: number
-			}
+				id: string;
+				evidence_id: string | null;
+				kind_slug: string | null;
+				label: string | null;
+				similarity: number;
+			};
 
-			const evidenceMatchRows = (evidenceData as EvidenceMatchRow[] | null) ?? []
-			const facetMatchRows = (facetsData as FacetMatchRow[] | null) ?? []
+			const evidenceMatchRows = (evidenceData as EvidenceMatchRow[] | null) ?? [];
+			const facetMatchRows = (facetsData as FacetMatchRow[] | null) ?? [];
 
 			consola.info("semantic-search-evidence: RPC responses", {
 				evidence: {
@@ -260,46 +260,46 @@ export const semanticSearchEvidenceTool = createTool({
 						similarity: f.similarity,
 					})),
 				},
-			})
+			});
 
 			if (evidenceError) {
-				consola.error("semantic-search-evidence: evidence query error", evidenceError)
-				throw evidenceError
+				consola.error("semantic-search-evidence: evidence query error", evidenceError);
+				throw evidenceError;
 			}
 
 			if (facetsError) {
-				consola.error("semantic-search-evidence: facets query error", facetsError)
-				throw facetsError
+				consola.error("semantic-search-evidence: facets query error", facetsError);
+				throw facetsError;
 			}
 
 			// Combine results from both searches
 			// Get unique evidence IDs from both sources
-			const evidenceIds = new Set<string>()
-			const facetEvidenceIds = new Set<string>()
+			const evidenceIds = new Set<string>();
+			const facetEvidenceIds = new Set<string>();
 
 			evidenceMatchRows.forEach((e) => {
-				evidenceIds.add(e.id)
-			})
+				evidenceIds.add(e.id);
+			});
 			facetMatchRows.forEach((f) => {
 				if (f.evidence_id) {
-					facetEvidenceIds.add(f.evidence_id)
-					evidenceIds.add(f.evidence_id)
+					facetEvidenceIds.add(f.evidence_id);
+					evidenceIds.add(f.evidence_id);
 				}
-			})
+			});
 
 			consola.debug("semantic-search-evidence: combined results", {
 				uniqueEvidenceIds: evidenceIds.size,
 				fromVerbatim: evidenceData?.length || 0,
 				fromFacets: facetEvidenceIds.size,
-			})
+			});
 
 			if (evidenceIds.size === 0) {
 				// Nothing from embeddings; try a lightweight keyword/name fallback so users still get hits while embeddings are missing.
-				const normalizeQuery = (raw: string) => raw.replace(/[^\w\s]/g, " ").trim()
-				const normalizedQuery = normalizeQuery(query)
-				const tokens = normalizedQuery.toLowerCase().split(/\s+/).filter(Boolean)
-				const likePattern = `%${normalizedQuery}%`
-				const namePattern = tokens.length > 0 ? `%${tokens[0]}%` : likePattern
+				const normalizeQuery = (raw: string) => raw.replace(/[^\w\s]/g, " ").trim();
+				const normalizedQuery = normalizeQuery(query);
+				const tokens = normalizedQuery.toLowerCase().split(/\s+/).filter(Boolean);
+				const likePattern = `%${normalizedQuery}%`;
+				const namePattern = tokens.length > 0 ? `%${tokens[0]}%` : likePattern;
 
 				consola.info("semantic-search-evidence: running keyword fallback (no embedding hits)", {
 					query,
@@ -307,7 +307,7 @@ export const semanticSearchEvidenceTool = createTool({
 					matchCount,
 					likePattern,
 					namePattern,
-				})
+				});
 
 				// Text search across verbatim/gist/chunk/context
 				const { data: textMatches, error: textError } = await supabase
@@ -322,10 +322,10 @@ export const semanticSearchEvidenceTool = createTool({
 							`context_summary.ilike.${likePattern}`,
 						].join(",")
 					)
-					.limit(matchCount * 4)
+					.limit(matchCount * 4);
 
 				if (textError) {
-					consola.error("semantic-search-evidence: keyword fallback text query error", textError)
+					consola.error("semantic-search-evidence: keyword fallback text query error", textError);
 				}
 
 				// Name-based search via evidence_people -> people
@@ -333,68 +333,68 @@ export const semanticSearchEvidenceTool = createTool({
 					.from("evidence_people")
 					.select("evidence_id, people:people!inner(name)")
 					.eq("project_id", projectId as string)
-					.ilike("people.name", namePattern)
+					.ilike("people.name", namePattern);
 
 				if (peopleError) {
-					consola.error("semantic-search-evidence: keyword fallback people query error", peopleError)
+					consola.error("semantic-search-evidence: keyword fallback people query error", peopleError);
 				}
 
 				type PeopleMatchRow = {
-					evidence_id: string | null
-					people: { name: string | null } | null
-				}
+					evidence_id: string | null;
+					people: { name: string | null } | null;
+				};
 
-				const peopleMatchRows = (peopleMatches as PeopleMatchRow[] | null) ?? []
+				const peopleMatchRows = (peopleMatches as PeopleMatchRow[] | null) ?? [];
 
-				const peopleNamesByEvidence = new Map<string, string[]>()
+				const peopleNamesByEvidence = new Map<string, string[]>();
 				peopleMatchRows.forEach((row) => {
-					if (!row.evidence_id || !row.people?.name) return
-					const existing = peopleNamesByEvidence.get(row.evidence_id) || []
-					existing.push(row.people.name)
-					peopleNamesByEvidence.set(row.evidence_id, existing)
-				})
+					if (!row.evidence_id || !row.people?.name) return;
+					const existing = peopleNamesByEvidence.get(row.evidence_id) || [];
+					existing.push(row.people.name);
+					peopleNamesByEvidence.set(row.evidence_id, existing);
+				});
 
-				const fallbackEvidenceIds = new Set<string>()
+				const fallbackEvidenceIds = new Set<string>();
 				for (const t of textMatches || []) {
-					if (t.id) fallbackEvidenceIds.add(t.id)
+					if (t.id) fallbackEvidenceIds.add(t.id);
 				}
 				for (const p of peopleMatchRows) {
-					if (p.evidence_id) fallbackEvidenceIds.add(p.evidence_id)
+					if (p.evidence_id) fallbackEvidenceIds.add(p.evidence_id);
 				}
 
 				consola.debug("semantic-search-evidence: keyword fallback candidates", {
 					textMatches: textMatches?.length || 0,
 					peopleMatches: peopleMatches?.length || 0,
 					fallbackEvidenceIds: fallbackEvidenceIds.size,
-				})
+				});
 
 				if (fallbackEvidenceIds.size > 0) {
-					const fallbackIdsArray = Array.from(fallbackEvidenceIds)
+					const fallbackIdsArray = Array.from(fallbackEvidenceIds);
 					const { data: fallbackEvidence } = await supabase
 						.from("evidence")
 						.select("id, verbatim, gist, chunk, interview_id, pains, gains, thinks, feels, anchors")
-						.in("id", fallbackIdsArray)
+						.in("id", fallbackIdsArray);
 
 					// Get interview titles for fallback results
 					const fallbackInterviewIds = [
 						...new Set(fallbackEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []),
-					]
+					];
 					const { data: fallbackInterviewData } = fallbackInterviewIds.length
 						? await supabase.from("interviews").select("id, title").in("id", fallbackInterviewIds)
-						: { data: [] }
+						: { data: [] };
 
-					const fallbackInterviewTitles = new Map(fallbackInterviewData?.map((i) => [i.id, i.title]) || [])
+					const fallbackInterviewTitles = new Map(fallbackInterviewData?.map((i) => [i.id, i.title]) || []);
 
 					const scoreText = (text: string) =>
-						tokens.reduce((score, token) => (text.includes(token) ? score + 1 : score), 0)
+						tokens.reduce((score, token) => (text.includes(token) ? score + 1 : score), 0);
 
 					const fallbackRanked =
 						fallbackEvidence
 							?.map((row) => {
-								const textBlob = [row.verbatim, row.gist, row.chunk].filter(Boolean).join(" ").toLowerCase()
-								const tokenMatches = tokens.length > 0 ? scoreText(textBlob) / tokens.length : 0
-								const nameMatches = peopleNamesByEvidence.has(row.id) ? 0.4 : 0
-								const similarity = Math.min(1, tokenMatches + nameMatches)
+								const textBlob = [row.verbatim, row.gist, row.chunk].filter(Boolean).join(" ").toLowerCase();
+								const tokenMatches = tokens.length > 0 ? scoreText(textBlob) / tokens.length : 0;
+								const nameMatches = peopleNamesByEvidence.has(row.id) ? 0.4 : 0;
+								const similarity = Math.min(1, tokenMatches + nameMatches);
 
 								return {
 									id: row.id,
@@ -408,17 +408,17 @@ export const semanticSearchEvidenceTool = createTool({
 									thinks: row.thinks || null,
 									feels: row.feels || null,
 									anchors: row.anchors || null,
-								}
+								};
 							})
 							.filter((e): e is NonNullable<typeof e> => e !== null)
 							.sort((a, b) => b.similarity - a.similarity)
-							.slice(0, matchCount) || []
+							.slice(0, matchCount) || [];
 
 					if (fallbackRanked.length > 0) {
 						consola.info("semantic-search-evidence: returning keyword fallback results", {
 							count: fallbackRanked.length,
 							firstResult: fallbackRanked[0]?.verbatim?.substring(0, 120),
-						})
+						});
 
 						return {
 							success: true,
@@ -427,7 +427,7 @@ export const semanticSearchEvidenceTool = createTool({
 							evidence: fallbackRanked,
 							totalCount: fallbackRanked.length,
 							threshold: matchThreshold,
-						}
+						};
 					}
 				}
 
@@ -435,13 +435,13 @@ export const semanticSearchEvidenceTool = createTool({
 				const { count: totalEvidenceCount } = await supabase
 					.from("evidence")
 					.select("*", { count: "exact", head: true })
-					.eq("project_id", projectId as string)
+					.eq("project_id", projectId as string);
 
 				const { count: evidenceWithEmbeddings } = await supabase
 					.from("evidence")
 					.select("*", { count: "exact", head: true })
 					.eq("project_id", projectId as string)
-					.not("embedding", "is", null)
+					.not("embedding", "is", null);
 
 				// Check what the top similarity scores actually are (without threshold filter)
 				const { data: topMatches } = await supabase.rpc("find_similar_evidence", {
@@ -449,7 +449,7 @@ export const semanticSearchEvidenceTool = createTool({
 					project_id_param: projectId as string,
 					match_threshold: 0.0, // No threshold to see actual scores
 					match_count: 5,
-				})
+				});
 
 				consola.warn("semantic-search-evidence: no results found", {
 					query,
@@ -474,9 +474,9 @@ export const semanticSearchEvidenceTool = createTool({
 						highestSimilarity: topMatches?.[0]?.similarity || 0,
 						thresholdTooHigh: (topMatches?.[0]?.similarity || 0) < matchThreshold,
 					},
-				})
+				});
 
-				const highestScore = topMatches?.[0]?.similarity || 0
+				const highestScore = topMatches?.[0]?.similarity || 0;
 				const diagnosticMessage =
 					(totalEvidenceCount || 0) === 0
 						? "No evidence exists in this project yet. Upload interviews to create evidence."
@@ -484,7 +484,7 @@ export const semanticSearchEvidenceTool = createTool({
 							? `Found ${totalEvidenceCount} evidence pieces, but none have embeddings generated yet. Embeddings are being processed in the background.`
 							: highestScore > 0 && highestScore < matchThreshold
 								? `Found evidence with similarity scores up to ${highestScore.toFixed(2)}, but your threshold is ${matchThreshold}. The highest matching evidence is: "${topMatches?.[0]?.verbatim?.substring(0, 150)}...". Try lowering the threshold to 0.5 or 0.6 to see more results.`
-								: `No evidence found matching "${query}". Try lowering the similarity threshold (current: ${matchThreshold}) or using different search terms.`
+								: `No evidence found matching "${query}". Try lowering the similarity threshold (current: ${matchThreshold}) or using different search terms.`;
 
 				return {
 					success: true,
@@ -493,54 +493,54 @@ export const semanticSearchEvidenceTool = createTool({
 					evidence: [],
 					totalCount: 0,
 					threshold: matchThreshold,
-				}
+				};
 			}
 
 			// Fetch full evidence data for all matched IDs
-			const evidenceIdsArray = Array.from(evidenceIds)
+			const evidenceIdsArray = Array.from(evidenceIds);
 			consola.debug("semantic-search-evidence: fetching full evidence data", {
 				count: evidenceIdsArray.length,
-			})
+			});
 
 			const { data: fullEvidence } = await supabase
 				.from("evidence")
 				.select("id, verbatim, gist, interview_id, pains, gains, thinks, feels, anchors")
-				.in("id", evidenceIdsArray)
+				.in("id", evidenceIdsArray);
 
 			consola.debug("semantic-search-evidence: full evidence fetched", {
 				fullEvidenceCount: fullEvidence?.length || 0,
-			})
+			});
 
-			const evidenceMap = new Map(fullEvidence?.map((e) => [e.id, e]) || [])
+			const evidenceMap = new Map(fullEvidence?.map((e) => [e.id, e]) || []);
 
 			// Get interview titles
 			const interviewIds = [
 				...new Set(fullEvidence?.map((e) => e.interview_id).filter((id): id is string => !!id) || []),
-			]
+			];
 			const { data: interviewData } = interviewIds.length
 				? await supabase.from("interviews").select("id, title").in("id", interviewIds)
-				: { data: [] }
+				: { data: [] };
 
-			const interviewTitles = new Map(interviewData?.map((i) => [i.id, i.title]) || [])
+			const interviewTitles = new Map(interviewData?.map((i) => [i.id, i.title]) || []);
 
 			// Create similarity map from both sources (use highest similarity for each evidence)
-			const similarityMap = new Map<string, number>()
+			const similarityMap = new Map<string, number>();
 			evidenceMatchRows.forEach((e) => {
-				similarityMap.set(e.id, e.similarity)
-			})
+				similarityMap.set(e.id, e.similarity);
+			});
 			facetMatchRows.forEach((f) => {
 				if (f.evidence_id) {
-					const existing = similarityMap.get(f.evidence_id) || 0
+					const existing = similarityMap.get(f.evidence_id) || 0;
 					// Use the higher similarity score
-					similarityMap.set(f.evidence_id, Math.max(existing, f.similarity))
+					similarityMap.set(f.evidence_id, Math.max(existing, f.similarity));
 				}
-			})
+			});
 
 			// Map full evidence with similarity scores, sorted by similarity
 			const evidence = evidenceIdsArray
 				.map((id) => {
-					const fullData = evidenceMap.get(id)
-					if (!fullData) return null
+					const fullData = evidenceMap.get(id);
+					if (!fullData) return null;
 
 					return {
 						id,
@@ -554,20 +554,20 @@ export const semanticSearchEvidenceTool = createTool({
 						thinks: fullData.thinks || null,
 						feels: fullData.feels || null,
 						anchors: fullData.anchors || null,
-					}
+					};
 				})
 				.filter((e): e is NonNullable<typeof e> => e !== null)
 				.sort((a, b) => b.similarity - a.similarity)
-				.slice(0, matchCount) // Limit to requested count
+				.slice(0, matchCount); // Limit to requested count
 
-			const facetMatchCount = facetEvidenceIds.size
-			const verbatimMatchCount = evidenceMatchRows.length
+			const facetMatchCount = facetEvidenceIds.size;
+			const verbatimMatchCount = evidenceMatchRows.length;
 			const message =
 				facetMatchCount > 0 && verbatimMatchCount > 0
 					? `Found ${evidence.length} evidence pieces matching "${query}" (${verbatimMatchCount} from verbatim, ${facetMatchCount} from facets like pains/gains).`
 					: facetMatchCount > 0
 						? `Found ${evidence.length} evidence pieces matching "${query}" from structured facets (pains, gains, thinks, feels).`
-						: `Found ${evidence.length} evidence pieces matching "${query}" from verbatim quotes.`
+						: `Found ${evidence.length} evidence pieces matching "${query}" from verbatim quotes.`;
 
 			consola.info("semantic-search-evidence: FINAL RESULT", {
 				success: true,
@@ -582,7 +582,7 @@ export const semanticSearchEvidenceTool = createTool({
 					pains: e.pains,
 					gains: e.gains,
 				})),
-			})
+			});
 
 			return {
 				success: true,
@@ -591,10 +591,10 @@ export const semanticSearchEvidenceTool = createTool({
 				evidence,
 				totalCount: evidence.length,
 				threshold: matchThreshold,
-			}
+			};
 		} catch (error) {
-			consola.error("semantic-search-evidence: unexpected error", error)
-			const errorMessage = error instanceof Error ? error.message : "Unexpected error during semantic search."
+			consola.error("semantic-search-evidence: unexpected error", error);
+			const errorMessage = error instanceof Error ? error.message : "Unexpected error during semantic search.";
 			return {
 				success: false,
 				message: errorMessage,
@@ -602,7 +602,7 @@ export const semanticSearchEvidenceTool = createTool({
 				evidence: [],
 				totalCount: 0,
 				threshold: matchThreshold,
-			}
+			};
 		}
 	},
-})
+});

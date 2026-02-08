@@ -1,21 +1,21 @@
-import consola from "consola"
-import type { LoaderFunctionArgs } from "react-router"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import type { LoaderFunctionArgs } from "react-router";
+import { userContext } from "~/server/user-context";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase) {
-		throw new Response("Supabase client unavailable", { status: 500 })
+		throw new Response("Supabase client unavailable", { status: 500 });
 	}
 
-	const url = new URL(request.url)
-	const accountId = url.searchParams.get("accountId")
-	const projectId = url.searchParams.get("projectId")
+	const url = new URL(request.url);
+	const accountId = url.searchParams.get("accountId");
+	const projectId = url.searchParams.get("projectId");
 
 	if (!accountId) {
-		throw new Response("Account ID required", { status: 400 })
+		throw new Response("Account ID required", { status: 400 });
 	}
 
 	try {
@@ -25,22 +25,22 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 			.select("id, title, contact_name, contact_email, contact_title, contact_company")
 			.eq("account_id", accountId)
 			.eq("project_id", projectId)
-			.not("contact_name", "is", null)
+			.not("contact_name", "is", null);
 
 		// Deduplicate by contact_name
 		const peopleMap = new Map<
 			string,
 			{ id: string; display_name?: string; email?: string; title?: string; company?: string }
-		>()
+		>();
 		interviews?.forEach(
 			(interview: {
-				contact_name?: string
-				contact_email?: string
-				contact_title?: string
-				contact_company?: string
+				contact_name?: string;
+				contact_email?: string;
+				contact_title?: string;
+				contact_company?: string;
 			}) => {
 				if (interview.contact_name) {
-					const key = `${interview.contact_name}-${interview.contact_email || ""}`
+					const key = `${interview.contact_name}-${interview.contact_email || ""}`;
 					if (!peopleMap.has(key)) {
 						peopleMap.set(key, {
 							id: key,
@@ -48,17 +48,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 							email: interview.contact_email,
 							title: interview.contact_title,
 							company: interview.contact_company,
-						})
+						});
 					}
 				}
 			}
-		)
+		);
 
-		const people = Array.from(peopleMap.values())
+		const people = Array.from(peopleMap.values());
 
-		return { people }
+		return { people };
 	} catch (error) {
-		consola.error("Error fetching people:", error)
-		throw new Response("Internal server error", { status: 500 })
+		consola.error("Error fetching people:", error);
+		throw new Response("Internal server error", { status: 500 });
 	}
 }

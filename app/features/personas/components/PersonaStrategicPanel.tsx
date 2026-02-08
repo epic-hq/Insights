@@ -1,50 +1,50 @@
-import clsx from "clsx"
-import { BadgeInfo, Brain, MessageSquare, Quote, Sparkles, Target, TriangleAlert } from "lucide-react"
-import type * as React from "react"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
-import { Button } from "~/components/ui/button"
+import clsx from "clsx";
+import { BadgeInfo, Brain, MessageSquare, Quote, Sparkles, Target, TriangleAlert } from "lucide-react";
+import type * as React from "react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Button } from "~/components/ui/button";
 
 type Strength = {
-	name: string // e.g., "Strategic", "Learner"
-	description?: string
-	triggers?: string[] // what energizes movement
-	antiTriggers?: string[] // what stalls progress
-}
+	name: string; // e.g., "Strategic", "Learner"
+	description?: string;
+	triggers?: string[]; // what energizes movement
+	antiTriggers?: string[]; // what stalls progress
+};
 
-type Evidence = { quote: string; source?: string; context?: string }
+type Evidence = { quote: string; source?: string; context?: string };
 
 export type PersonaStrategicProps = {
 	// Identity
-	name: string
-	kind: "core" | "provisional" | "contrast"
-	role?: string
-	tags?: string[]
+	name: string;
+	kind: "core" | "provisional" | "contrast";
+	role?: string;
+	tags?: string[];
 	// Styles
-	strengths?: Strength[] // StrengthsFinder-style
-	mbti?: string // e.g., "INTJ-A"
-	enneagram?: string // e.g., "5w4"
-	temperament?: string // e.g., "Analytical / Relational"
+	strengths?: Strength[]; // StrengthsFinder-style
+	mbti?: string; // e.g., "INTJ-A"
+	enneagram?: string; // e.g., "5w4"
+	temperament?: string; // e.g., "Analytical / Relational"
 	// Behaviors & emotions
-	behaviors?: string[] // observable patterns
-	emotional_profile?: string[] // e.g., ["Curious", "Skeptical", "Status-aware"]
+	behaviors?: string[]; // observable patterns
+	emotional_profile?: string[]; // e.g., ["Curious", "Skeptical", "Status-aware"]
 	// Sales / strategy intelligence
-	effective_strategies?: string[] // approaches that worked
-	recommended_questions?: string[] // to move them forward
-	common_pitfalls?: string[] // what to avoid
-	coaching_prompts?: string[] // for rep enablement / practice
+	effective_strategies?: string[]; // approaches that worked
+	recommended_questions?: string[]; // to move them forward
+	common_pitfalls?: string[]; // what to avoid
+	coaching_prompts?: string[]; // for rep enablement / practice
 	// Evidence & learning loop
-	evidence?: Evidence[]
-	learning_loop?: { last_tactics?: string[]; notes?: string }
+	evidence?: Evidence[];
+	learning_loop?: { last_tactics?: string[]; notes?: string };
 	// UI
-	className?: string
-	onAskAI?: (topic: string) => void
-}
+	className?: string;
+	onAskAI?: (topic: string) => void;
+};
 
 const KIND_TONE: Record<PersonaStrategicProps["kind"], string> = {
 	core: "text-sky-500 border-sky-700/40",
 	provisional: "text-indigo-400 border-indigo-700/40",
 	contrast: "text-emerald-400 border-emerald-700/40",
-}
+};
 
 export const PersonaStrategicPanelMockData: PersonaStrategicProps = {
 	name: "John Doe",
@@ -96,7 +96,7 @@ export const PersonaStrategicPanelMockData: PersonaStrategicProps = {
 		last_tactics: ["tactic1", "tactic2"],
 		notes: "Notes",
 	},
-}
+};
 
 export default function PersonaStrategicPanel(props: PersonaStrategicProps) {
 	const {
@@ -118,9 +118,9 @@ export default function PersonaStrategicPanel(props: PersonaStrategicProps) {
 		learning_loop,
 		className,
 		onAskAI,
-	} = props
+	} = props;
 
-	const ask = (topic: string) => onAskAI?.(topic)
+	const ask = (topic: string) => onAskAI?.(topic);
 
 	return (
 		<div className={clsx("rounded-2xl border border-zinc-800 bg-zinc-950 p-4", className)}>
@@ -276,7 +276,7 @@ export default function PersonaStrategicPanel(props: PersonaStrategicProps) {
 				</AccordionItem>
 			</Accordion>
 		</div>
-	)
+	);
 }
 
 function InfoCard({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
@@ -287,7 +287,7 @@ function InfoCard({ title, icon, children }: { title: string; icon?: React.React
 			</div>
 			{children}
 		</div>
-	)
+	);
 }
 
 function BulletCard({
@@ -296,12 +296,12 @@ function BulletCard({
 	tone,
 	icon,
 }: {
-	title: string
-	items?: string[]
-	tone?: "danger"
-	icon?: React.ReactNode
+	title: string;
+	items?: string[];
+	tone?: "danger";
+	icon?: React.ReactNode;
 }) {
-	const toneCls = tone === "danger" ? "text-rose-400" : "text-zinc-200"
+	const toneCls = tone === "danger" ? "text-rose-400" : "text-zinc-200";
 	return (
 		<InfoCard
 			title={title}
@@ -319,7 +319,7 @@ function BulletCard({
 				<Empty>Add a few bullet points here.</Empty>
 			)}
 		</InfoCard>
-	)
+	);
 }
 
 function KV({ label, value }: { label: string; value?: React.ReactNode }) {
@@ -328,9 +328,9 @@ function KV({ label, value }: { label: string; value?: React.ReactNode }) {
 			<span className="text-zinc-400">{label}: </span>
 			<span className="text-zinc-200">{value || "—"}</span>
 		</div>
-	)
+	);
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-	return <div className="text-xs text-zinc-500">{children}</div>
+	return <div className="text-xs text-zinc-500">{children}</div>;
 }

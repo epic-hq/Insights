@@ -1,32 +1,32 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { deleteInsight, getInsightById, updateInsight } from "~/features/insights/db"
-import { userContext } from "~/server/user-context"
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { deleteInsight, getInsightById, updateInsight } from "~/features/insights/db";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `Edit ${data?.insight?.name || "Insight"} | Insights` },
 		{ name: "description", content: "Edit insight details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const { id } = params
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const { id } = params;
 
 	if (!accountId || !projectId || !id) {
-		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 });
 	}
 
 	try {
@@ -35,10 +35,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			accountId,
 			projectId,
 			id,
-		})
+		});
 
 		if (!data) {
-			throw new Response("Insight not found", { status: 404 })
+			throw new Response("Insight not found", { status: 404 });
 		}
 
 		// Transform to include snake_case fields and process tags
@@ -47,51 +47,51 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			tags:
 				data.insight_tags?.map((it: { tags: { id: string; tag: string } }) => ({ id: it.tags.id, tag: it.tags.tag })) ??
 				[],
-		}
+		};
 
-		return { insight }
+		return { insight };
 	} catch {
-		throw new Response("Failed to load insight", { status: 500 })
+		throw new Response("Failed to load insight", { status: 500 });
 	}
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const { id } = params
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const { id } = params;
 
 	if (!accountId || !projectId || !id) {
-		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 });
 	}
 
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	if (intent === "delete") {
 		try {
-			await deleteInsight({ supabase, accountId, projectId, id })
-			return redirect(`/a/${accountId}/${projectId}/insights`)
+			await deleteInsight({ supabase, accountId, projectId, id });
+			return redirect(`/a/${accountId}/${projectId}/insights`);
 		} catch {
-			return { error: "Failed to delete insight" }
+			return { error: "Failed to delete insight" };
 		}
 	}
 
 	// Handle update - using snake_case fields that match database schema
-	const name = formData.get("name") as string
-	const details = formData.get("details") as string
-	const category = formData.get("category") as string
-	const impactScore = formData.get("impact_score") as string
+	const name = formData.get("name") as string;
+	const details = formData.get("details") as string;
+	const category = formData.get("category") as string;
+	const impactScore = formData.get("impact_score") as string;
 
 	if (!name?.trim()) {
-		return { error: "Name is required" }
+		return { error: "Name is required" };
 	}
 
 	if (!details?.trim()) {
-		return { error: "Details are required" }
+		return { error: "Details are required" };
 	}
 
 	try {
@@ -106,21 +106,21 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				category: category || "general",
 				impact: impactScore ? Number.parseInt(impactScore, 10) : null,
 			},
-		})
+		});
 
 		if (!data) {
-			return { error: "Failed to update insight" }
+			return { error: "Failed to update insight" };
 		}
 
-		return redirect(`/a/${accountId}/${projectId}/insights/${data.id}`)
+		return redirect(`/a/${accountId}/${projectId}/insights/${data.id}`);
 	} catch {
-		return { error: "Failed to update insight" }
+		return { error: "Failed to update insight" };
 	}
 }
 
 export default function EditInsight() {
-	const { insight } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
+	const { insight } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
@@ -211,7 +211,7 @@ export default function EditInsight() {
 						variant="destructive"
 						onClick={(e) => {
 							if (!confirm("Are you sure you want to delete this insight? This action cannot be undone.")) {
-								e.preventDefault()
+								e.preventDefault();
 							}
 						}}
 					>
@@ -220,5 +220,5 @@ export default function EditInsight() {
 				</Form>
 			</div>
 		</PageContainer>
-	)
+	);
 }

@@ -1,9 +1,9 @@
-import { createTool } from "@mastra/core/tools"
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
-import type { indexAssetTask } from "src/trigger/asset/indexAsset"
-import { z } from "zod"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { createTool } from "@mastra/core/tools";
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
+import type { indexAssetTask } from "src/trigger/asset/indexAsset";
+import { z } from "zod";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 /**
  * Save agent-generated tabular data to project_assets.
@@ -15,33 +15,33 @@ import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
  */
 
 function generateMarkdownTable(headers: string[], rows: Record<string, string>[], maxRows?: number): string {
-	if (headers.length === 0) return "*No data to display*"
+	if (headers.length === 0) return "*No data to display*";
 
-	const displayRows = maxRows ? rows.slice(0, maxRows) : rows
-	const lines: string[] = []
+	const displayRows = maxRows ? rows.slice(0, maxRows) : rows;
+	const lines: string[] = [];
 
 	// Header row
-	lines.push(`| ${headers.join(" | ")} |`)
+	lines.push(`| ${headers.join(" | ")} |`);
 
 	// Separator row
-	lines.push(`| ${headers.map(() => "---").join(" | ")} |`)
+	lines.push(`| ${headers.map(() => "---").join(" | ")} |`);
 
 	// Data rows
 	for (const row of displayRows) {
 		const values = headers.map((h) => {
-			const val = row[h] || ""
+			const val = row[h] || "";
 			// Escape pipe characters in cell values
-			return val.replace(/\|/g, "\\|")
-		})
-		lines.push(`| ${values.join(" | ")} |`)
+			return val.replace(/\|/g, "\\|");
+		});
+		lines.push(`| ${values.join(" | ")} |`);
 	}
 
 	if (maxRows && rows.length > maxRows) {
-		lines.push("")
-		lines.push(`*...and ${rows.length - maxRows} more rows*`)
+		lines.push("");
+		lines.push(`*...and ${rows.length - maxRows} more rows*`);
 	}
 
-	return lines.join("\n")
+	return lines.join("\n");
 }
 
 export const saveTableToAssetsTool = createTool({
@@ -95,18 +95,18 @@ WRONG (missing rows - WILL FAIL):
 	}),
 	execute: async (input, context?) => {
 		try {
-			const { title, description, headers, rows, kind } = input
+			const { title, description, headers, rows, kind } = input;
 
 			// Get accountId and projectId from runtime context
-			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
-			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined;
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined;
 
 			if (!accountId || !projectId) {
 				return {
 					success: false,
 					message: "Missing account or project context. Cannot save table.",
 					error: "account_id and project_id required",
-				}
+				};
 			}
 
 			if (headers.length === 0) {
@@ -114,23 +114,23 @@ WRONG (missing rows - WILL FAIL):
 					success: false,
 					message: "No headers provided. Tables must have at least one column.",
 					error: "Empty headers",
-				}
+				};
 			}
 
-			consola.info(`[save-table-to-assets] Saving table "${title}" with ${rows.length} rows`)
+			consola.info(`[save-table-to-assets] Saving table "${title}" with ${rows.length} rows`);
 
 			// Generate markdown preview
-			const markdownTable = generateMarkdownTable(headers, rows, 20)
+			const markdownTable = generateMarkdownTable(headers, rows, 20);
 
 			// Generate description if not provided
 			const assetDescription =
 				description ||
-				`${kind ? `${kind}: ` : ""}Table with ${rows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 5).join(", ")}${headers.length > 5 ? "..." : ""}`
+				`${kind ? `${kind}: ` : ""}Table with ${rows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 5).join(", ")}${headers.length > 5 ? "..." : ""}`;
 
-			const supabaseAdmin = createSupabaseAdminClient()
+			const supabaseAdmin = createSupabaseAdminClient();
 
 			// Store up to 1000 rows
-			const storageRows = rows.slice(0, 1000)
+			const storageRows = rows.slice(0, 1000);
 
 			const { data: asset, error: insertError } = await supabaseAdmin
 				.from("project_assets")
@@ -148,28 +148,28 @@ WRONG (missing rows - WILL FAIL):
 					status: "ready",
 				})
 				.select("id")
-				.single()
+				.single();
 
 			if (insertError) {
-				consola.error("[save-table-to-assets] Insert failed:", insertError)
+				consola.error("[save-table-to-assets] Insert failed:", insertError);
 				return {
 					success: false,
 					message: `Failed to save table: ${insertError.message}`,
 					error: insertError.message,
-				}
+				};
 			}
 
-			const assetUrl = `/a/${accountId}/${projectId}/assets/${asset.id}`
+			const assetUrl = `/a/${accountId}/${projectId}/assets/${asset.id}`;
 
-			consola.info(`[save-table-to-assets] Saved to project_assets: ${asset.id}`)
+			consola.info(`[save-table-to-assets] Saved to project_assets: ${asset.id}`);
 
 			// Trigger embedding generation in background
 			try {
-				await tasks.trigger<typeof indexAssetTask>("asset.index", { assetId: asset.id })
-				consola.info(`[save-table-to-assets] Triggered embedding generation for ${asset.id}`)
+				await tasks.trigger<typeof indexAssetTask>("asset.index", { assetId: asset.id });
+				consola.info(`[save-table-to-assets] Triggered embedding generation for ${asset.id}`);
 			} catch (triggerError) {
 				// Don't fail the save if trigger fails
-				consola.warn("[save-table-to-assets] Failed to trigger indexing:", triggerError)
+				consola.warn("[save-table-to-assets] Failed to trigger indexing:", triggerError);
 			}
 
 			return {
@@ -178,14 +178,14 @@ WRONG (missing rows - WILL FAIL):
 				assetId: asset.id,
 				assetUrl,
 				markdownTable,
-			}
+			};
 		} catch (error) {
-			consola.error("[save-table-to-assets] Error:", error)
+			consola.error("[save-table-to-assets] Error:", error);
 			return {
 				success: false,
 				message: "Failed to save table",
 				error: error instanceof Error ? error.message : "Unknown error",
-			}
+			};
 		}
 	},
-})
+});

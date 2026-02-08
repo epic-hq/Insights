@@ -1,8 +1,8 @@
-import { AlertTriangle, ArrowLeft, Cpu, Headset, Layers3, Sparkle } from "lucide-react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { AlertTriangle, ArrowLeft, Cpu, Headset, Layers3, Sparkle } from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function ConversationLensesGuide() {
 	return (
@@ -201,5 +201,5 @@ export default function ConversationLensesGuide() {
 				</Card>
 			</div>
 		</div>
-	)
+	);
 }

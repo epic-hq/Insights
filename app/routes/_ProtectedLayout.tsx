@@ -1,20 +1,20 @@
-import consola from "consola"
-import { Mail } from "lucide-react"
-import posthog from "posthog-js"
-import { useEffect } from "react"
-import { Link, redirect, useLoaderData, useLocation, useNavigation, useParams, useRouteLoaderData } from "react-router"
-import { TrialBanner, type TrialInfo } from "~/components/billing/TrialBanner"
-import { AppLayout } from "~/components/layout/AppLayout"
-import { OnboardingProvider } from "~/components/onboarding"
-import { PLANS, type PlanId } from "~/config/plans"
-import { AuthProvider } from "~/contexts/AuthContext"
-import { CurrentProjectProvider } from "~/contexts/current-project-context"
-import { getProjects } from "~/features/projects/db"
-import { useDeviceDetection } from "~/hooks/useDeviceDetection"
-import { provisionTrial } from "~/lib/billing/polar.server"
-import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server"
-import { userContext } from "~/server/user-context"
-import type { Route } from "../+types/root"
+import consola from "consola";
+import { Mail } from "lucide-react";
+import posthog from "posthog-js";
+import { useEffect } from "react";
+import { Link, redirect, useLoaderData, useLocation, useNavigation, useParams, useRouteLoaderData } from "react-router";
+import { TrialBanner, type TrialInfo } from "~/components/billing/TrialBanner";
+import { AppLayout } from "~/components/layout/AppLayout";
+import { OnboardingProvider } from "~/components/onboarding";
+import { PLANS, type PlanId } from "~/config/plans";
+import { AuthProvider } from "~/contexts/AuthContext";
+import { CurrentProjectProvider } from "~/contexts/current-project-context";
+import { getProjects } from "~/features/projects/db";
+import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import { provisionTrial } from "~/lib/billing/polar.server";
+import { getAuthenticatedUser, getRlsClient, supabaseAdmin } from "~/lib/supabase/client.server";
+import { userContext } from "~/server/user-context";
+import type { Route } from "../+types/root";
 
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
@@ -22,37 +22,37 @@ import type { Route } from "../+types/root"
 export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
-			const { user, headers: authHeaders } = await getAuthenticatedUser(request)
+			const { user, headers: authHeaders } = await getAuthenticatedUser(request);
 			// consola.log("middleware user", user?.aud, ": ", user?.sub, ": ", user?.email)
 			if (!user) {
 				// Preserve the original URL for deep linking after login
-				const url = new URL(request.url)
-				const redirectParam = encodeURIComponent(url.pathname + url.search)
+				const url = new URL(request.url);
+				const redirectParam = encodeURIComponent(url.pathname + url.search);
 				throw redirect(`/login?redirect=${redirectParam}`, {
 					headers: authHeaders,
-				})
+				});
 			}
 
 			// Extract JWT from user claims (assumes JWT is available as user?.jwt or similar)
-			const jwt = user?.jwt || user?.access_token || null
+			const jwt = user?.jwt || user?.access_token || null;
 
 			// Use RLS client if JWT is present, otherwise fallback to anon client
 			const supabase = jwt
 				? getRlsClient(jwt)
-				: (await import("~/lib/supabase/client.server")).getServerClient(request).client
+				: (await import("~/lib/supabase/client.server")).getServerClient(request).client;
 
 			// Get user's settings and accounts in parallel
 			const [userSettingsResult, userAccountsResult] = await Promise.all([
 				supabase.from("user_settings").select("*").eq("user_id", user.sub).single(),
 				supabase.rpc("get_user_accounts"),
-			])
+			]);
 
-			const { data: user_settings } = userSettingsResult
-			const { data: accounts, error: accountsError } = userAccountsResult
+			const { data: user_settings } = userSettingsResult;
+			const { data: accounts, error: accountsError } = userAccountsResult;
 
 			if (accountsError) {
-				consola.error("Get user accounts error in middleware:", accountsError)
-				throw redirect("/login")
+				consola.error("Get user accounts error in middleware:", accountsError);
+				throw redirect("/login");
 			}
 
 			// DEBUG: Log all accounts this user belongs to (use debug level to reduce noise)
@@ -66,33 +66,33 @@ export const middleware: Route.MiddlewareFunction[] = [
 					personal: acc.personal_account,
 					role: acc.account_role,
 				})),
-			})
+			});
 
 			// Determine current account with priority:
 			// 1. URL accountId param (if user has access)
 			// 2. last_used_account_id from user_settings
 			// 3. First non-personal account, or first account
-			let currentAccount = null
+			let currentAccount = null;
 
 			// First priority: URL accountId param
-			const urlAccountId = params.accountId
+			const urlAccountId = params.accountId;
 			if (urlAccountId && Array.isArray(accounts)) {
-				currentAccount = accounts.find((acc: any) => acc.account_id === urlAccountId)
+				currentAccount = accounts.find((acc: any) => acc.account_id === urlAccountId);
 			}
 
 			// Second priority: last_used_account_id from user_settings
 			if (!currentAccount && user_settings?.last_used_account_id && Array.isArray(accounts)) {
-				currentAccount = accounts.find((acc: any) => acc.account_id === user_settings.last_used_account_id)
+				currentAccount = accounts.find((acc: any) => acc.account_id === user_settings.last_used_account_id);
 			}
 
 			// Fallback: first non-personal account, or first account if only personal
 			if (!currentAccount && Array.isArray(accounts)) {
-				currentAccount = accounts.find((acc: any) => !acc.personal_account) || accounts[0]
+				currentAccount = accounts.find((acc: any) => !acc.personal_account) || accounts[0];
 			}
 
 			if (!currentAccount) {
-				consola.error("No accounts found for user")
-				throw redirect("/login")
+				consola.error("No accounts found for user");
+				throw redirect("/login");
 			}
 
 			// Set user context for all child loaders/actions to access
@@ -106,7 +106,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 				user_settings: user_settings || {},
 				accounts: accounts || [],
 				currentAccount,
-			})
+			});
 			// consola.log(
 			// 	"_ProtectedLayout Authentication middleware success, {",
 			// 	{
@@ -118,29 +118,29 @@ export const middleware: Route.MiddlewareFunction[] = [
 			// )
 
 			// Check if signup process is completed
-			const signupCompleted = user_settings?.signup_data?.completed === true
-			const signupChatRequired = process.env.SIGNUP_CHAT_REQUIRED === "true"
+			const signupCompleted = user_settings?.signup_data?.completed === true;
+			const signupChatRequired = process.env.SIGNUP_CHAT_REQUIRED === "true";
 			if (signupChatRequired && !signupCompleted) {
 				consola.log("Signup not completed. Redirecting to signup-chat.", {
 					signupCompleted,
 					signupChatRequired,
-				})
-				throw redirect("/signup-chat")
+				});
+				throw redirect("/signup-chat");
 			}
 
 			// Check if user has any projects, if not redirect to onboarding
 			const projectsResult = await getProjects({
 				supabase,
 				accountId: currentAccount.account_id,
-			})
+			});
 
-			const userProjects = projectsResult.data || []
+			const userProjects = projectsResult.data || [];
 			if (userProjects.length === 0) {
 				// Check current path to avoid redirect loops
-				const url = new URL(request.url)
-				const pathname = url.pathname
-				const hasInviteToken = url.searchParams.has("invite_token")
-				const isTeamManagePage = pathname.includes("/team/manage")
+				const url = new URL(request.url);
+				const pathname = url.pathname;
+				const hasInviteToken = url.searchParams.has("invite_token");
+				const isTeamManagePage = pathname.includes("/team/manage");
 
 				// Don't redirect if:
 				// - Already in onboarding or project creation
@@ -151,8 +151,8 @@ export const middleware: Route.MiddlewareFunction[] = [
 					!pathname.includes("/home") &&
 					!(hasInviteToken && isTeamManagePage)
 				) {
-					consola.log("No projects found. Redirecting to account home.")
-					throw redirect(`/a/${currentAccount.account_id}/home`)
+					consola.log("No projects found. Redirecting to account home.");
+					throw redirect(`/a/${currentAccount.account_id}/home`);
 				}
 			}
 
@@ -161,45 +161,45 @@ export const middleware: Route.MiddlewareFunction[] = [
 		} catch (error) {
 			// Preserve intended redirects thrown above (e.g., to /signup-chat)
 			if (error instanceof Response) {
-				throw error
+				throw error;
 			}
-			consola.error("_ProtectedLayout Authentication middleware error:", error)
-			throw redirect("/login")
+			consola.error("_ProtectedLayout Authentication middleware error:", error);
+			throw redirect("/login");
 		}
 	},
-]
+];
 
 type PendingInvite = {
-	account_id: string
-	account_name: string | null
-	account_role: string
-	token: string
-}
+	account_id: string;
+	account_name: string | null;
+	account_role: string;
+	token: string;
+};
 
 export async function loader({ context }: Route.LoaderArgs) {
 	try {
 		// const loadContextInstance = context.get(loadContext)
 		// const { lang } = loadContextInstance
-		const user = context.get(userContext)
+		const user = context.get(userContext);
 
 		// Use the current account from middleware context (respects last_used_account_id priority)
-		const currentAccountId = user.currentAccount?.account_id || user.account_id
+		const currentAccountId = user.currentAccount?.account_id || user.account_id;
 
 		// Check for pending invitations for this user's email
-		let pendingInvites: PendingInvite[] = []
+		let pendingInvites: PendingInvite[] = [];
 		if (user.supabase) {
 			try {
-				const { data: rawInvites } = await user.supabase.rpc("list_invitations_for_current_user")
+				const { data: rawInvites } = await user.supabase.rpc("list_invitations_for_current_user");
 				if (Array.isArray(rawInvites)) {
-					pendingInvites = rawInvites as PendingInvite[]
+					pendingInvites = rawInvites as PendingInvite[];
 				} else if (rawInvites) {
-					const parsed = JSON.parse(String(rawInvites))
+					const parsed = JSON.parse(String(rawInvites));
 					if (Array.isArray(parsed)) {
-						pendingInvites = parsed as PendingInvite[]
+						pendingInvites = parsed as PendingInvite[];
 					}
 				}
 			} catch (inviteError) {
-				consola.debug("[PROTECTED_LAYOUT] Failed to fetch pending invites:", inviteError)
+				consola.debug("[PROTECTED_LAYOUT] Failed to fetch pending invites:", inviteError);
 			}
 		}
 
@@ -209,7 +209,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 			planName: "",
 			trialEnd: null,
 			accountId: currentAccountId,
-		}
+		};
 		try {
 			// First check if current account has ANY subscription
 			const { data: subscription, error: subError } = await supabaseAdmin
@@ -219,35 +219,35 @@ export async function loader({ context }: Route.LoaderArgs) {
 				.eq("account_id", currentAccountId)
 				.order("created_at", { ascending: false })
 				.limit(1)
-				.maybeSingle()
+				.maybeSingle();
 
 			if (subError) {
-				consola.error("[PROTECTED_LAYOUT] Error fetching subscription", subError)
+				consola.error("[PROTECTED_LAYOUT] Error fetching subscription", subError);
 			}
 
 			if (subscription) {
 				// Account has subscription - check if it's trialing
 				if (subscription.status === "trialing") {
-					const planKey = subscription.plan_name?.toLowerCase() as PlanId
+					const planKey = subscription.plan_name?.toLowerCase() as PlanId;
 					trialInfo = {
 						isOnTrial: true,
 						planName: PLANS[planKey]?.name ?? subscription.plan_name ?? "Pro",
 						trialEnd: subscription.trial_end,
 						accountId: currentAccountId,
-					}
+					};
 				}
 				// If active/canceled/etc, trialInfo stays as default (not on trial)
 			} else {
 				// No subscription for current account - check if we should provision trial
 				// Only provision ONCE per user (check user_settings flag)
-				const trialProvisioned = user.user_settings?.legacy_trial_provisioned_at
+				const trialProvisioned = user.user_settings?.legacy_trial_provisioned_at;
 
 				if (!trialProvisioned) {
 					// IMPORTANT: Provision trial to user's OWNED team account, not current account
 					// This ensures trials go to the team the user owns, not to invited teams
 					const ownedTeamAccount = (user.accounts || []).find(
 						(acc: any) => !acc.personal_account && acc.is_primary_owner
-					)
+					);
 
 					if (ownedTeamAccount) {
 						// Check if owned team already has subscription
@@ -256,7 +256,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 							.from("billing_subscriptions")
 							.select("id")
 							.eq("account_id", ownedTeamAccount.account_id)
-							.maybeSingle()
+							.maybeSingle();
 
 						if (!existingSub) {
 							consola.info("[PROTECTED_LAYOUT] No subscription on owned team, provisioning trial", {
@@ -264,13 +264,13 @@ export async function loader({ context }: Route.LoaderArgs) {
 								ownedTeamName: ownedTeamAccount.name,
 								currentAccountId,
 								userEmail: user.claims?.email,
-							})
+							});
 
 							const trial = await provisionTrial({
 								accountId: ownedTeamAccount.account_id,
 								email: user.claims?.email,
 								planId: "pro", // Give new users Pro trial
-							})
+							});
 
 							if (trial) {
 								// Mark user as having received trial
@@ -279,7 +279,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 									.update({
 										legacy_trial_provisioned_at: new Date().toISOString(),
 									})
-									.eq("user_id", user.claims.sub)
+									.eq("user_id", user.claims.sub);
 
 								// Only show trial info if the owned team is the current account
 								if (ownedTeamAccount.account_id === currentAccountId) {
@@ -288,39 +288,39 @@ export async function loader({ context }: Route.LoaderArgs) {
 										planName: trial.planName,
 										trialEnd: trial.trialEnd,
 										accountId: ownedTeamAccount.account_id,
-									}
+									};
 								}
 
 								consola.info("[PROTECTED_LAYOUT] Trial provisioned", {
 									accountId: ownedTeamAccount.account_id,
 									trialEnd: trial.trialEnd,
-								})
+								});
 							}
 						} else {
 							consola.debug("[PROTECTED_LAYOUT] Owned team already has subscription, marking trial as provisioned", {
 								ownedTeamAccountId: ownedTeamAccount.account_id,
-							})
+							});
 							// Mark as provisioned so we don't keep checking
 							await supabaseAdmin
 								.from("user_settings")
 								.update({
 									legacy_trial_provisioned_at: new Date().toISOString(),
 								})
-								.eq("user_id", user.claims.sub)
+								.eq("user_id", user.claims.sub);
 						}
 					} else {
 						consola.debug("[PROTECTED_LAYOUT] User has no owned team account, skipping trial provisioning", {
 							userId: user.claims.sub,
-						})
+						});
 					}
 				} else {
 					consola.debug("[PROTECTED_LAYOUT] Trial already provisioned, skipping", {
 						provisionedAt: trialProvisioned,
-					})
+					});
 				}
 			}
 		} catch (trialError) {
-			consola.error("[PROTECTED_LAYOUT] Failed to check/provision trial:", trialError)
+			consola.error("[PROTECTED_LAYOUT] Failed to check/provision trial:", trialError);
 		}
 
 		const responseData = {
@@ -333,50 +333,50 @@ export async function loader({ context }: Route.LoaderArgs) {
 			user_settings: user.user_settings || {},
 			pendingInvites,
 			trialInfo,
-		}
+		};
 
 		// Include auth headers (for token refresh) in the response if present
 		if (user.authHeaders) {
-			return Response.json(responseData, { headers: user.authHeaders })
+			return Response.json(responseData, { headers: user.authHeaders });
 		}
 
-		return responseData
+		return responseData;
 	} catch (error) {
-		consola.error("Protected layout loader error:", error)
-		throw redirect("/login")
+		consola.error("Protected layout loader error:", error);
+		throw redirect("/login");
 	}
 }
 
 export default function ProtectedLayout() {
-	const { auth, accounts, user_settings, pendingInvites, trialInfo } = useLoaderData<typeof loader>()
-	const { clientEnv } = useRouteLoaderData("root")
-	const _params = useParams()
-	const navigation = useNavigation()
-	const location = useLocation()
-	const { isMobile } = useDeviceDetection()
+	const { auth, accounts, user_settings, pendingInvites, trialInfo } = useLoaderData<typeof loader>();
+	const { clientEnv } = useRouteLoaderData("root");
+	const _params = useParams();
+	const navigation = useNavigation();
+	const location = useLocation();
+	const { isMobile } = useDeviceDetection();
 
 	// Don't show invite banner on accept-invite page
-	const isAcceptInvitePage = location.pathname.includes("/accept-invite")
-	const showInviteBanner = pendingInvites.length > 0 && !isAcceptInvitePage
+	const isAcceptInvitePage = location.pathname.includes("/accept-invite");
+	const showInviteBanner = pendingInvites.length > 0 && !isAcceptInvitePage;
 
-	const isLoading = navigation.state === "loading"
+	const isLoading = navigation.state === "loading";
 
 	// Don't show JourneyNav on home route, project creation, and realtime routes
-	const isHomePage = location.pathname === "/home" || location.pathname.match(/^\/a\/[^/]+\/home$/)
-	const isProjectNew = location.pathname.includes("/projects/new")
-	const isRealtimePage = location.pathname.includes("/realtime")
-	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage
+	const isHomePage = location.pathname === "/home" || location.pathname.match(/^\/a\/[^/]+\/home$/);
+	const isProjectNew = location.pathname.includes("/projects/new");
+	const isRealtimePage = location.pathname.includes("/realtime");
+	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage;
 
 	// Disable PostHog surveys/feedback widget on mobile
 	useEffect(() => {
 		if (isMobile) {
 			// Disable surveys on mobile devices
-			posthog.config.disable_surveys = true
+			posthog.config.disable_surveys = true;
 		} else {
 			// Re-enable surveys on desktop
-			posthog.config.disable_surveys = false
+			posthog.config.disable_surveys = false;
 		}
-	}, [isMobile])
+	}, [isMobile]);
 
 	useEffect(() => {
 		// Identify user with person properties
@@ -384,27 +384,27 @@ export default function ProtectedLayout() {
 		const identifyProps: Record<string, unknown> = {
 			email: auth.user.email,
 			full_name: auth.user.user_metadata?.full_name,
-		}
+		};
 
 		// Only add role and company if they exist in user_settings
 		if (user_settings?.role) {
-			identifyProps.role = user_settings.role
+			identifyProps.role = user_settings.role;
 		}
 		if (user_settings?.company_name) {
-			identifyProps.company_name = user_settings.company_name
+			identifyProps.company_name = user_settings.company_name;
 		}
 
-		posthog.identify(auth.user.sub, identifyProps)
+		posthog.identify(auth.user.sub, identifyProps);
 
 		// Set group analytics for account-level tracking
 		if (auth.accountId) {
 			posthog.group("account", auth.accountId, {
 				plan: "free", // TODO: Get actual plan from account settings
 				seats: accounts?.length || 1,
-			})
+			});
 		}
 		// consola.log("[protectedLayout] Identify user: ", auth.user)
-	}, [auth.user, auth.accountId, user_settings, accounts])
+	}, [auth.user, auth.accountId, user_settings, accounts]);
 
 	return (
 		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
@@ -455,5 +455,5 @@ export default function ProtectedLayout() {
 				</OnboardingProvider>
 			</CurrentProjectProvider>
 		</AuthProvider>
-	)
+	);
 }

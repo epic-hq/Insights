@@ -7,13 +7,13 @@
  * account while their session is set to a different account.
  */
 
-import consola from "consola"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 export interface ResolvedContext {
-	accountId: string
-	projectId: string
-	userId: string | null
+	accountId: string;
+	projectId: string;
+	userId: string | null;
 }
 
 /**
@@ -43,54 +43,54 @@ export async function resolveProjectContext(
 		hasRequestContext: !!context?.requestContext,
 		requestContextType: typeof context?.requestContext,
 		requestContextHasGet: typeof context?.requestContext?.get === "function",
-	})
+	});
 
-	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
-	const userId = (context?.requestContext?.get?.("user_id") as string | undefined) || null
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined;
+	const userId = (context?.requestContext?.get?.("user_id") as string | undefined) || null;
 
 	consola.debug(`[${toolName}] extracted from context:`, {
 		projectId: projectId || "(empty)",
 		userId: userId || "(empty)",
-	})
+	});
 
 	if (!projectId) {
-		consola.error(`[${toolName}] Missing required project_id in context`)
-		throw new Error("Missing project_id in runtime context")
+		consola.error(`[${toolName}] Missing required project_id in context`);
+		throw new Error("Missing project_id in runtime context");
 	}
 
 	// IMPORTANT: Always get account_id from the project record, NOT from session context
 	// The session context account_id can differ from the project's actual account
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 
-	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
+	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single();
 
 	if (error || !project?.account_id) {
 		consola.error(`[${toolName}] Failed to fetch project account_id`, {
 			projectId,
 			error,
-		})
-		throw new Error(`Failed to resolve account_id for project ${projectId}`)
+		});
+		throw new Error(`Failed to resolve account_id for project ${projectId}`);
 	}
 
-	const accountId = project.account_id
+	const accountId = project.account_id;
 
 	// Log if session account differs from project account (helps debug issues)
-	const sessionAccountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const sessionAccountId = context?.requestContext?.get?.("account_id") as string | undefined;
 	if (sessionAccountId && sessionAccountId !== accountId) {
 		consola.warn(`[${toolName}] Session account differs from project account`, {
 			sessionAccountId,
 			projectAccountId: accountId,
 			projectId,
-		})
+		});
 	}
 
 	consola.debug(`[${toolName}] Resolved context`, {
 		accountId,
 		projectId,
 		userId: userId || "(empty)",
-	})
+	});
 
-	return { accountId, projectId, userId }
+	return { accountId, projectId, userId };
 }
 
 /**
@@ -109,25 +109,25 @@ export async function resolveAccountIdFromProject(
 ): Promise<string> {
 	if (!projectId) {
 		if (fallbackAccountId) {
-			consola.warn(`[${routeName}] No projectId provided, using fallback accountId`)
-			return fallbackAccountId
+			consola.warn(`[${routeName}] No projectId provided, using fallback accountId`);
+			return fallbackAccountId;
 		}
-		throw new Error(`[${routeName}] Missing projectId`)
+		throw new Error(`[${routeName}] Missing projectId`);
 	}
 
-	const supabase = createSupabaseAdminClient()
-	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
+	const supabase = createSupabaseAdminClient();
+	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single();
 
 	if (error || !project?.account_id) {
 		consola.error(`[${routeName}] Failed to fetch project account_id`, {
 			projectId,
 			error,
-		})
+		});
 		if (fallbackAccountId) {
-			consola.warn(`[${routeName}] Using fallback accountId due to project lookup failure`)
-			return fallbackAccountId
+			consola.warn(`[${routeName}] Using fallback accountId due to project lookup failure`);
+			return fallbackAccountId;
 		}
-		throw new Error(`[${routeName}] Failed to resolve account_id for project ${projectId}`)
+		throw new Error(`[${routeName}] Failed to resolve account_id for project ${projectId}`);
 	}
 
 	// Log if fallback differs from project account (helps identify mismatches)
@@ -136,10 +136,10 @@ export async function resolveAccountIdFromProject(
 			urlOrSessionAccountId: fallbackAccountId,
 			projectAccountId: project.account_id,
 			projectId,
-		})
+		});
 	}
 
-	return project.account_id
+	return project.account_id;
 }
 
 /**
@@ -154,25 +154,25 @@ export async function resolveAccountIdFromProject(
  * @throws Error if no account_id can be resolved
  */
 export async function resolveAccountId(context: Map<string, unknown> | any, toolName: string): Promise<string> {
-	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined;
 
 	// If we have a project_id, resolve account from project
 	if (projectId) {
-		const { accountId } = await resolveProjectContext(context, toolName)
-		return accountId
+		const { accountId } = await resolveProjectContext(context, toolName);
+		return accountId;
 	}
 
 	// Fallback to session account_id for non-project operations
-	const sessionAccountId = context?.requestContext?.get?.("account_id") as string | undefined
+	const sessionAccountId = context?.requestContext?.get?.("account_id") as string | undefined;
 
 	if (!sessionAccountId) {
-		consola.error(`[${toolName}] No account_id available (no project_id or session account)`)
-		throw new Error("Missing account_id in runtime context")
+		consola.error(`[${toolName}] No account_id available (no project_id or session account)`);
+		throw new Error("Missing account_id in runtime context");
 	}
 
 	consola.debug(`[${toolName}] Using session account_id (no project context)`, {
 		accountId: sessionAccountId,
-	})
+	});
 
-	return sessionAccountId
+	return sessionAccountId;
 }

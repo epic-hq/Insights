@@ -1,6 +1,6 @@
-import { createTool } from "@mastra/core/tools"
-import { z } from "zod"
-import { HOST } from "~/paths"
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
+import { HOST } from "~/paths";
 
 /**
  * Generate a shareable link for project documents stored in project_sections.
@@ -21,20 +21,20 @@ export const generateDocumentLinkTool = createTool({
 		error: z.string().nullable(),
 	}),
 	execute: async (input, context?) => {
-		const accountId = context?.requestContext?.get?.("account_id") as string
-		const projectId = context?.requestContext?.get?.("project_id") as string
-		const { sectionId, kind } = input || {}
+		const accountId = context?.requestContext?.get?.("account_id") as string;
+		const projectId = context?.requestContext?.get?.("project_id") as string;
+		const { sectionId, kind } = input || {};
 
 		if (!accountId || !projectId) {
-			return { success: false, route: null, absoluteRoute: null, error: "Missing accountId or projectId in context" }
+			return { success: false, route: null, absoluteRoute: null, error: "Missing accountId or projectId in context" };
 		}
 		if (!sectionId || !kind) {
-			return { success: false, route: null, absoluteRoute: null, error: "Missing sectionId or kind" }
+			return { success: false, route: null, absoluteRoute: null, error: "Missing sectionId or kind" };
 		}
 
 		// Route to the project edit page with query params to locate the document
-		const route = `/a/${accountId}/${projectId}/edit?document=${encodeURIComponent(kind)}&sectionId=${encodeURIComponent(sectionId)}`
-		const absoluteRoute = `${HOST}${route}`
-		return { success: true, route, absoluteRoute, error: null }
+		const route = `/a/${accountId}/${projectId}/edit?document=${encodeURIComponent(kind)}&sectionId=${encodeURIComponent(sectionId)}`;
+		const absoluteRoute = `${HOST}${route}`;
+		return { success: true, route, absoluteRoute, error: null };
 	},
-})
+});

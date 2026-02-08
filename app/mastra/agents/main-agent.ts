@@ -1,12 +1,12 @@
-import { Agent } from "@mastra/core/agent"
-import { LibSQLStore } from "@mastra/libsql"
-import { Memory } from "@mastra/memory"
-import z from "zod"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { manageOrganizationsTool } from "../tools/manage-organizations"
-import { managePeopleTool } from "../tools/manage-people"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
-import { upsightTool } from "../tools/upsight-tool"
+import { Agent } from "@mastra/core/agent";
+import { LibSQLStore } from "@mastra/libsql";
+import { Memory } from "@mastra/memory";
+import z from "zod";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { manageOrganizationsTool } from "../tools/manage-organizations";
+import { managePeopleTool } from "../tools/manage-people";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
+import { upsightTool } from "../tools/upsight-tool";
 
 export const AgentState = z.object({
 	plan: z.array(z.string()).default([]),
@@ -28,7 +28,7 @@ export const AgentState = z.object({
 			must_do: z.string().optional(),
 		})
 		.optional(),
-})
+});
 
 export const mainAgent = new Agent({
 	id: "main-agent",
@@ -89,4 +89,4 @@ export const mainAgent = new Agent({
 			},
 		},
 	}),
-})
+});

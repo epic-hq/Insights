@@ -1,6 +1,6 @@
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
 
 const CAPABILITIES = [
 	{
@@ -32,14 +32,14 @@ const CAPABILITIES = [
 			"Fetch content from URLs or run targeted web research when internal data is empty or user requests it explicitly.",
 		examples: ["fetchWebContent", "webResearch", "importVideoFromUrl"],
 	},
-]
+];
 
 const GUARDRAILS = [
 	"Do not claim a document is saved unless manage-documents returns success and the follow-up read confirms it exists.",
 	"Prefer internal evidence search before web research; only use web research if requested or nothing is found internally.",
 	"Keep responses concise and in plain language; avoid filler and overpromising.",
 	"Cite sources (people/interviews/evidence) when making claims.",
-]
+];
 
 export const capabilityLookupTool = createTool({
 	id: "capability-lookup",
@@ -59,16 +59,16 @@ export const capabilityLookupTool = createTool({
 		guardrails: z.array(z.string()),
 	}),
 	execute: async (input) => {
-		const { query } = input
-		const normalized = query?.toLowerCase().trim()
+		const { query } = input;
+		const normalized = query?.toLowerCase().trim();
 		const capabilities = CAPABILITIES.filter((cap) =>
 			!normalized
 				? true
 				: cap.name.toLowerCase().includes(normalized) || cap.description.toLowerCase().includes(normalized)
-		)
+		);
 
-		consola.debug("capability-lookup", { query, resultCount: capabilities.length })
+		consola.debug("capability-lookup", { query, resultCount: capabilities.length });
 
-		return { capabilities, guardrails: GUARDRAILS }
+		return { capabilities, guardrails: GUARDRAILS };
 	},
-})
+});

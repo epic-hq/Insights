@@ -1,14 +1,14 @@
 /**
  * OpsAgent: specialist for sales pipeline and organization ops.
  */
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import consola from "consola"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { manageAnnotationsTool } from "../tools/manage-annotations"
-import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
-import { researchOrganizationTool } from "../tools/research-organization"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import consola from "consola";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { manageAnnotationsTool } from "../tools/manage-annotations";
+import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities";
+import { researchOrganizationTool } from "../tools/research-organization";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const opsAgent = new Agent({
 	id: "ops-agent",
@@ -17,9 +17,9 @@ export const opsAgent = new Agent({
 		"Specialist for sales pipeline ops: opportunities, organization research/enrichment, and related annotations.",
 	instructions: async ({ requestContext }) => {
 		try {
-			const projectId = requestContext.get("project_id")
-			const accountId = requestContext.get("account_id")
-			const userId = requestContext.get("user_id")
+			const projectId = requestContext.get("project_id");
+			const accountId = requestContext.get("account_id");
+			const userId = requestContext.get("user_id");
 
 			return `
 You are a focused Ops specialist for project ${projectId}.
@@ -44,10 +44,10 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 - Account: ${accountId}
 - Project: ${projectId}
 - User: ${userId}
-`
+`;
 		} catch (error) {
-			consola.error("Error in ops agent instructions:", error)
-			return "You are an Ops specialist for opportunities and organizations."
+			consola.error("Error in ops agent instructions:", error);
+			return "You are an Ops specialist for opportunities and organizations.";
 		}
 	},
 	model: openai("gpt-4o-mini"),
@@ -59,4 +59,4 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 		manageAnnotations: manageAnnotationsTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
-})
+});

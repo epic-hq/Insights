@@ -11,19 +11,19 @@
  * - speaking: Different color when AI is talking
  */
 
-import { useEffect, useRef } from "react"
-import { cn } from "~/lib/utils"
+import { useEffect, useRef } from "react";
+import { cn } from "~/lib/utils";
 
-export type VoiceOrbState = "idle" | "listening" | "processing" | "speaking"
+export type VoiceOrbState = "idle" | "listening" | "processing" | "speaking";
 
 export interface VoiceOrbProps {
-	state?: VoiceOrbState
+	state?: VoiceOrbState;
 	/** Audio level from 0-1, drives pulse intensity when listening */
-	audioLevel?: number
+	audioLevel?: number;
 	/** Size preset */
-	size?: "sm" | "md" | "lg" | "xl"
+	size?: "sm" | "md" | "lg" | "xl";
 	/** Optional className for container */
-	className?: string
+	className?: string;
 }
 
 const SIZE_CLASSES = {
@@ -31,26 +31,26 @@ const SIZE_CLASSES = {
 	md: "h-32 w-32",
 	lg: "h-48 w-48",
 	xl: "h-64 w-64",
-}
+};
 
 const ORB_SIZES = {
 	sm: 96,
 	md: 128,
 	lg: 192,
 	xl: 256,
-}
+};
 
 export function VoiceOrb({ state = "idle", audioLevel = 0, size = "lg", className }: VoiceOrbProps) {
-	const orbRef = useRef<HTMLDivElement>(null)
-	const glowIntensity = state === "listening" ? 0.5 + audioLevel * 0.5 : 0.5
+	const orbRef = useRef<HTMLDivElement>(null);
+	const glowIntensity = state === "listening" ? 0.5 + audioLevel * 0.5 : 0.5;
 
 	// Update CSS custom property for audio-reactive glow
 	useEffect(() => {
 		if (orbRef.current) {
-			orbRef.current.style.setProperty("--glow-intensity", String(glowIntensity))
-			orbRef.current.style.setProperty("--audio-scale", String(1 + audioLevel * 0.15))
+			orbRef.current.style.setProperty("--glow-intensity", String(glowIntensity));
+			orbRef.current.style.setProperty("--audio-scale", String(1 + audioLevel * 0.15));
 		}
-	}, [glowIntensity, audioLevel])
+	}, [glowIntensity, audioLevel]);
 
 	return (
 		<div className={cn("relative flex items-center justify-center", SIZE_CLASSES[size], className)}>
@@ -161,7 +161,7 @@ export function VoiceOrb({ state = "idle", audioLevel = 0, size = "lg", classNam
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 // Add custom animations to tailwind.config or use inline styles

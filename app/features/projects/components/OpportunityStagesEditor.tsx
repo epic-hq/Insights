@@ -1,55 +1,55 @@
-import { GripVertical, Plus, RotateCcw, Trash2 } from "lucide-react"
-import { useMemo, useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Textarea } from "~/components/ui/textarea"
+import { GripVertical, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 import {
 	DEFAULT_OPPORTUNITY_STAGES,
 	normalizeStageId,
 	type OpportunityStageConfig,
-} from "~/features/opportunities/stage-config"
+} from "~/features/opportunities/stage-config";
 
 type OpportunityStagesEditorProps = {
-	initialStages: OpportunityStageConfig[]
-}
+	initialStages: OpportunityStageConfig[];
+};
 
 export function OpportunityStagesEditor({ initialStages }: OpportunityStagesEditorProps) {
-	const [stages, setStages] = useState<OpportunityStageConfig[]>(() => initialStages)
+	const [stages, setStages] = useState<OpportunityStageConfig[]>(() => initialStages);
 
-	const serializedStages = useMemo(() => JSON.stringify(stages), [stages])
+	const serializedStages = useMemo(() => JSON.stringify(stages), [stages]);
 
 	const updateStage = (index: number, patch: Partial<OpportunityStageConfig>) => {
 		setStages((prev) => {
-			const next = [...prev]
-			const current = next[index]
-			const label = (patch.label ?? current.label)?.toString() || `Stage ${index + 1}`
-			const id = normalizeStageId(patch.id || current.id || label)
+			const next = [...prev];
+			const current = next[index];
+			const label = (patch.label ?? current.label)?.toString() || `Stage ${index + 1}`;
+			const id = normalizeStageId(patch.id || current.id || label);
 			next[index] = {
 				...current,
 				...patch,
 				id,
 				label,
-			}
-			return next
-		})
-	}
+			};
+			return next;
+		});
+	};
 
 	const moveStage = (index: number, direction: -1 | 1) => {
 		setStages((prev) => {
-			const targetIndex = index + direction
-			if (targetIndex < 0 || targetIndex >= prev.length) return prev
-			const next = [...prev]
-			const [removed] = next.splice(index, 1)
-			next.splice(targetIndex, 0, removed)
-			return next
-		})
-	}
+			const targetIndex = index + direction;
+			if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+			const next = [...prev];
+			const [removed] = next.splice(index, 1);
+			next.splice(targetIndex, 0, removed);
+			return next;
+		});
+	};
 
 	const addStage = () => {
 		setStages((prev) => {
-			const nextId = `custom-${prev.length + 1}`
+			const nextId = `custom-${prev.length + 1}`;
 			return [
 				...prev,
 				{
@@ -57,18 +57,18 @@ export function OpportunityStagesEditor({ initialStages }: OpportunityStagesEdit
 					label: `Custom Stage ${prev.length + 1}`,
 					description: "",
 				},
-			]
-		})
-	}
+			];
+		});
+	};
 
 	const removeStage = (index: number) => {
 		setStages((prev) => {
-			if (prev.length <= 1) return prev
-			return prev.filter((_, i) => i !== index)
-		})
-	}
+			if (prev.length <= 1) return prev;
+			return prev.filter((_, i) => i !== index);
+		});
+	};
 
-	const resetStages = () => setStages(DEFAULT_OPPORTUNITY_STAGES)
+	const resetStages = () => setStages(DEFAULT_OPPORTUNITY_STAGES);
 
 	return (
 		<Card>
@@ -174,5 +174,5 @@ export function OpportunityStagesEditor({ initialStages }: OpportunityStagesEdit
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 }

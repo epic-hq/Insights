@@ -1,28 +1,28 @@
-import slugify from "@sindresorhus/slugify"
-import consola from "consola"
-import { motion } from "framer-motion"
-import { useEffect, useMemo, useState } from "react"
-import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Switch } from "~/components/ui/switch"
-import { Textarea } from "~/components/ui/textarea"
-import { getPostHogServerClient } from "~/lib/posthog.server"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { createRouteDefinitions } from "~/utils/route-definitions"
-import { QuestionListEditor } from "../components/QuestionListEditor"
-import { ResearchLinkPreview } from "../components/ResearchLinkPreview"
+import slugify from "@sindresorhus/slugify";
+import consola from "consola";
+import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Switch } from "~/components/ui/switch";
+import { Textarea } from "~/components/ui/textarea";
+import { getPostHogServerClient } from "~/lib/posthog.server";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+import { QuestionListEditor } from "../components/QuestionListEditor";
+import { ResearchLinkPreview } from "../components/ResearchLinkPreview";
 import {
 	createEmptyQuestion,
 	ResearchLinkPayloadSchema,
 	type ResearchLinkQuestion,
 	ResearchLinkQuestionSchema,
-} from "../schemas"
+} from "../schemas";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -31,43 +31,43 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "Craft a research link that collects high-intent responses.",
 		},
-	]
-}
+	];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	const accountId = params.accountId
+	const accountId = params.accountId;
 	if (!accountId) {
-		throw new Response("Account id required", { status: 400 })
+		throw new Response("Account id required", { status: 400 });
 	}
-	return { accountId }
+	return { accountId };
 }
 
 interface ActionError {
-	errors: Record<string, string>
+	errors: Record<string, string>;
 	values?: {
-		name?: string
-		slug?: string
-		description?: string | null
-		heroTitle?: string | null
-		heroSubtitle?: string | null
-		heroCtaLabel?: string | null
-		heroCtaHelper?: string | null
-		calendarUrl?: string | null
-		redirectUrl?: string | null
-		allowChat?: boolean
-		defaultResponseMode?: "form" | "chat"
-		isLive?: boolean
-		questions?: ResearchLinkQuestion[]
-	}
+		name?: string;
+		slug?: string;
+		description?: string | null;
+		heroTitle?: string | null;
+		heroSubtitle?: string | null;
+		heroCtaLabel?: string | null;
+		heroCtaHelper?: string | null;
+		calendarUrl?: string | null;
+		redirectUrl?: string | null;
+		allowChat?: boolean;
+		defaultResponseMode?: "form" | "chat";
+		isLive?: boolean;
+		questions?: ResearchLinkQuestion[];
+	};
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-	const accountId = params.accountId
+	const accountId = params.accountId;
 	if (!accountId) {
-		throw new Response("Account id required", { status: 400 })
+		throw new Response("Account id required", { status: 400 });
 	}
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 	const rawPayload = {
 		name: formData.get("name") ?? "",
 		slug: formData.get("slug") ?? "",
@@ -82,29 +82,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		defaultResponseMode: formData.get("default_response_mode"),
 		isLive: formData.get("is_live"),
 		questions: formData.get("questions") ?? "[]",
-	}
+	};
 
-	let fallbackQuestions: ResearchLinkQuestion[] = []
+	let fallbackQuestions: ResearchLinkQuestion[] = [];
 	try {
-		const candidate = JSON.parse(String(rawPayload.questions ?? "[]"))
-		const validated = ResearchLinkQuestionSchema.array().safeParse(candidate)
+		const candidate = JSON.parse(String(rawPayload.questions ?? "[]"));
+		const validated = ResearchLinkQuestionSchema.array().safeParse(candidate);
 		if (validated.success) {
-			fallbackQuestions = validated.data
+			fallbackQuestions = validated.data;
 		}
 	} catch {
-		fallbackQuestions = []
+		fallbackQuestions = [];
 	}
 
-	const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload)
+	const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload);
 	if (!parsed.success) {
 		const issues = parsed.error.issues.reduce<Record<string, string>>((acc, issue) => {
 			if (issue.path.length > 0) {
-				acc[issue.path[0] as string] = issue.message
+				acc[issue.path[0] as string] = issue.message;
 			} else {
-				acc._form = issue.message
+				acc._form = issue.message;
 			}
-			return acc
-		}, {})
+			return acc;
+		}, {});
 		return Response.json<ActionError>(
 			{
 				errors: issues,
@@ -125,12 +125,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				},
 			},
 			{ status: 400 }
-		)
+		);
 	}
 
-	const payload = parsed.data
-	const { client: supabase } = getServerClient(request)
-	const routes = createRouteDefinitions(`/a/${accountId}`)
+	const payload = parsed.data;
+	const { client: supabase } = getServerClient(request);
+	const routes = createRouteDefinitions(`/a/${accountId}`);
 
 	const insertPayload = {
 		account_id: accountId,
@@ -147,9 +147,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		allow_chat: payload.allowChat,
 		default_response_mode: payload.defaultResponseMode,
 		is_live: payload.isLive,
-	}
+	};
 
-	const { data, error } = await supabase.from("research_links").insert(insertPayload).select("id").maybeSingle()
+	const { data, error } = await supabase.from("research_links").insert(insertPayload).select("id").maybeSingle();
 
 	if (error) {
 		if (error.code === "23505") {
@@ -159,7 +159,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					values: { ...payload, questions: payload.questions },
 				},
 				{ status: 400 }
-			)
+			);
 		}
 		return Response.json<ActionError>(
 			{
@@ -167,7 +167,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				values: { ...payload, questions: payload.questions },
 			},
 			{ status: 500 }
-		)
+		);
 	}
 
 	if (!data) {
@@ -177,16 +177,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				values: { ...payload, questions: payload.questions },
 			},
 			{ status: 500 }
-		)
+		);
 	}
 
 	// Track survey_created event for PLG instrumentation
 	try {
-		const posthogServer = getPostHogServerClient()
+		const posthogServer = getPostHogServerClient();
 		if (posthogServer) {
 			const {
 				data: { user },
-			} = await supabase.auth.getUser()
+			} = await supabase.auth.getUser();
 			if (user) {
 				posthogServer.capture({
 					distinctId: user.id,
@@ -199,64 +199,64 @@ export async function action({ request, params }: ActionFunctionArgs) {
 						allow_chat: payload.allowChat,
 						$groups: { account: accountId },
 					},
-				})
+				});
 			}
 		}
 	} catch (trackingError) {
-		consola.warn("[SURVEY_CREATED] PostHog tracking failed:", trackingError)
+		consola.warn("[SURVEY_CREATED] PostHog tracking failed:", trackingError);
 	}
 
-	return redirect(routes.ask.edit(data.id))
+	return redirect(routes.ask.edit(data.id));
 }
 
 export default function NewResearchLinkPage() {
-	const { accountId } = useLoaderData<typeof loader>()
-	const actionData = useActionData<ActionError>()
-	const routes = createRouteDefinitions(`/a/${accountId}`)
-	const navigation = useNavigation()
-	const isSubmitting = navigation.state === "submitting"
+	const { accountId } = useLoaderData<typeof loader>();
+	const actionData = useActionData<ActionError>();
+	const routes = createRouteDefinitions(`/a/${accountId}`);
+	const navigation = useNavigation();
+	const isSubmitting = navigation.state === "submitting";
 
-	const [name, setName] = useState(actionData?.values?.name ?? "")
-	const [slug, setSlug] = useState(actionData?.values?.slug ?? "")
-	const [slugEdited, setSlugEdited] = useState(Boolean(actionData?.values?.slug))
-	const [heroTitle, setHeroTitle] = useState(actionData?.values?.heroTitle ?? "")
-	const [heroSubtitle, setHeroSubtitle] = useState(actionData?.values?.heroSubtitle ?? "")
-	const [heroCtaLabel, setHeroCtaLabel] = useState(actionData?.values?.heroCtaLabel ?? "Continue")
-	const [heroCtaHelper, setHeroCtaHelper] = useState(actionData?.values?.heroCtaHelper ?? "Let's get started")
-	const [calendarUrl, setCalendarUrl] = useState(actionData?.values?.calendarUrl ?? "")
-	const [redirectUrl, setRedirectUrl] = useState(actionData?.values?.redirectUrl ?? "")
-	const [allowChat, setAllowChat] = useState(actionData?.values?.allowChat ?? false)
+	const [name, setName] = useState(actionData?.values?.name ?? "");
+	const [slug, setSlug] = useState(actionData?.values?.slug ?? "");
+	const [slugEdited, setSlugEdited] = useState(Boolean(actionData?.values?.slug));
+	const [heroTitle, setHeroTitle] = useState(actionData?.values?.heroTitle ?? "");
+	const [heroSubtitle, setHeroSubtitle] = useState(actionData?.values?.heroSubtitle ?? "");
+	const [heroCtaLabel, setHeroCtaLabel] = useState(actionData?.values?.heroCtaLabel ?? "Continue");
+	const [heroCtaHelper, setHeroCtaHelper] = useState(actionData?.values?.heroCtaHelper ?? "Let's get started");
+	const [calendarUrl, setCalendarUrl] = useState(actionData?.values?.calendarUrl ?? "");
+	const [redirectUrl, setRedirectUrl] = useState(actionData?.values?.redirectUrl ?? "");
+	const [allowChat, setAllowChat] = useState(actionData?.values?.allowChat ?? false);
 	const [defaultResponseMode, setDefaultResponseMode] = useState<"form" | "chat">(
 		actionData?.values?.defaultResponseMode ?? "form"
-	)
-	const [isLive, setIsLive] = useState(actionData?.values?.isLive ?? false)
+	);
+	const [isLive, setIsLive] = useState(actionData?.values?.isLive ?? false);
 	const [questions, setQuestions] = useState<ResearchLinkQuestion[]>(() => {
 		if (actionData?.values?.questions && actionData.values.questions.length > 0) {
-			return actionData.values.questions
+			return actionData.values.questions;
 		}
-		return [createEmptyQuestion()]
-	})
+		return [createEmptyQuestion()];
+	});
 
 	useEffect(() => {
 		if (!slugEdited) {
-			const nextSlug = slugify(name || "research-link", { lowercase: true })
-			setSlug(nextSlug)
+			const nextSlug = slugify(name || "research-link", { lowercase: true });
+			setSlug(nextSlug);
 		}
-	}, [name, slugEdited])
+	}, [name, slugEdited]);
 
 	useEffect(() => {
 		if (!allowChat && defaultResponseMode === "chat") {
-			setDefaultResponseMode("form")
+			setDefaultResponseMode("form");
 		}
-	}, [allowChat, defaultResponseMode])
+	}, [allowChat, defaultResponseMode]);
 
 	useEffect(() => {
 		if (actionData?.values?.questions) {
-			setQuestions(actionData.values.questions.length ? actionData.values.questions : [createEmptyQuestion()])
+			setQuestions(actionData.values.questions.length ? actionData.values.questions : [createEmptyQuestion()]);
 		}
-	}, [actionData?.values?.questions])
+	}, [actionData?.values?.questions]);
 
-	const questionsJson = useMemo(() => JSON.stringify(questions), [questions])
+	const questionsJson = useMemo(() => JSON.stringify(questions), [questions]);
 
 	return (
 		<PageContainer className="space-y-6">
@@ -292,8 +292,8 @@ export default function NewResearchLinkPage() {
 									name="slug"
 									value={slug}
 									onChange={(event) => {
-										setSlug(event.target.value)
-										setSlugEdited(true)
+										setSlug(event.target.value);
+										setSlugEdited(true);
 									}}
 									placeholder="pricing-discovery"
 									required
@@ -487,5 +487,5 @@ export default function NewResearchLinkPage() {
 				</motion.div>
 			</Form>
 		</PageContainer>
-	)
+	);
 }

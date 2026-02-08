@@ -1,21 +1,21 @@
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import type { processInterviewOrchestratorV2 } from "~/trigger/interview/v2/orchestrator"
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import type { processInterviewOrchestratorV2 } from "~/trigger/interview/v2/orchestrator";
 
-type SupabaseAdmin = ReturnType<typeof createSupabaseAdminClient>
+type SupabaseAdmin = ReturnType<typeof createSupabaseAdminClient>;
 
 type CreateAndProcessParams = {
-	interviewId: string
-	transcriptData?: Record<string, unknown>
-	customInstructions?: string
-	adminClient?: SupabaseAdmin
-	mediaUrl?: string | null
-	initiatingUserId?: string | null
-	participantName?: string | null
-	participantOrganization?: string | null
-	segment?: string | null
-}
+	interviewId: string;
+	transcriptData?: Record<string, unknown>;
+	customInstructions?: string;
+	adminClient?: SupabaseAdmin;
+	mediaUrl?: string | null;
+	initiatingUserId?: string | null;
+	participantName?: string | null;
+	participantOrganization?: string | null;
+	segment?: string | null;
+};
 
 /**
  * Thin compatibility wrapper for legacy callers.
@@ -32,17 +32,17 @@ export async function createAndProcessAnalysisJob(params: CreateAndProcessParams
 		participantName,
 		participantOrganization,
 		segment,
-	} = params
-	const db = adminClient ?? createSupabaseAdminClient()
+	} = params;
+	const db = adminClient ?? createSupabaseAdminClient();
 
 	const { data: interview, error } = await db
 		.from("interviews")
 		.select("id, account_id, project_id, title, original_filename, media_url")
 		.eq("id", interviewId)
-		.single()
+		.single();
 
 	if (error || !interview) {
-		throw new Error(`Interview ${interviewId} not found: ${error?.message}`)
+		throw new Error(`Interview ${interviewId} not found: ${error?.message}`);
 	}
 
 	const metadata = {
@@ -54,7 +54,7 @@ export async function createAndProcessAnalysisJob(params: CreateAndProcessParams
 		participantName: participantName ?? undefined,
 		participantOrganization: participantOrganization ?? undefined,
 		segment: segment ?? undefined,
-	}
+	};
 
 	const handle = await tasks.trigger<typeof processInterviewOrchestratorV2>("interview.v2.orchestrator", {
 		metadata,
@@ -63,15 +63,15 @@ export async function createAndProcessAnalysisJob(params: CreateAndProcessParams
 		existingInterviewId: interviewId,
 		analysisJobId: interviewId,
 		userCustomInstructions: customInstructions,
-	})
+	});
 
 	consola.info("[createAndProcessAnalysisJob] Triggered v2 orchestrator", {
 		interviewId,
 		runId: handle.id,
-	})
+	});
 
 	return {
 		runId: handle.id,
 		publicToken: null,
-	}
+	};
 }

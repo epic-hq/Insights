@@ -1,37 +1,37 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { b } from "~/../baml_client"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { aggregateAutoInsightsData, formatDataForLLM } from "~/utils/autoInsightsData.server"
-import { action } from "./api.auto-insights"
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { b } from "~/../baml_client";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { aggregateAutoInsightsData, formatDataForLLM } from "~/utils/autoInsightsData.server";
+import { action } from "./api.auto-insights";
 
 // Mock dependencies
-vi.mock("~/lib/supabase/client.server")
-vi.mock("~/../baml_client")
-vi.mock("~/utils/autoInsightsData.server")
-vi.mock("consola")
+vi.mock("~/lib/supabase/client.server");
+vi.mock("~/../baml_client");
+vi.mock("~/utils/autoInsightsData.server");
+vi.mock("consola");
 
 const mockSupabase = {
 	auth: {
 		getUser: vi.fn(),
 		getSession: vi.fn(),
 	},
-}
+};
 
-const mockGetServerClient = vi.mocked(getServerClient)
-const mockBAML = vi.mocked(b)
-const mockAggregateData = vi.mocked(aggregateAutoInsightsData)
-const mockFormatData = vi.mocked(formatDataForLLM)
+const mockGetServerClient = vi.mocked(getServerClient);
+const mockBAML = vi.mocked(b);
+const mockAggregateData = vi.mocked(aggregateAutoInsightsData);
+const mockFormatData = vi.mocked(formatDataForLLM);
 
 describe("Auto-Insights API", () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
+		vi.clearAllMocks();
 
 		// Setup default mocks
-		mockGetServerClient.mockReturnValue(mockSupabase as any)
+		mockGetServerClient.mockReturnValue(mockSupabase as any);
 		mockSupabase.auth.getUser.mockResolvedValue({
 			data: { user: { id: "user-123" } },
 			error: null,
-		})
+		});
 		mockSupabase.auth.getSession.mockResolvedValue({
 			data: {
 				session: {
@@ -43,40 +43,40 @@ describe("Auto-Insights API", () => {
 				},
 			},
 			error: null,
-		})
-	})
+		});
+	});
 
 	describe("Authentication", () => {
 		it("should return 401 when user is not authenticated", async () => {
 			mockSupabase.auth.getUser.mockResolvedValue({
 				data: { user: null },
 				error: null,
-			})
+			});
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: new FormData(),
-			})
+			});
 
-			const response = await action({ request })
-			expect(response.status).toBe(401)
-		})
+			const response = await action({ request });
+			expect(response.status).toBe(401);
+		});
 
 		it("should return 400 when account ID is not found", async () => {
 			mockSupabase.auth.getSession.mockResolvedValue({
 				data: { session: null },
 				error: null,
-			})
+			});
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: new FormData(),
-			})
+			});
 
-			const response = await action({ request })
-			expect(response.status).toBe(400)
-		})
-	})
+			const response = await action({ request });
+			expect(response.status).toBe(400);
+		});
+	});
 
 	describe("Generate Action", () => {
 		const mockAggregatedData = {
@@ -120,7 +120,7 @@ describe("Auto-Insights API", () => {
 			opportunities: [],
 			tags: [],
 			interviews: [],
-		}
+		};
 
 		const mockBAMLResponse = {
 			executive_summary: "Key finding: Users struggle with time management and need automated planning solutions.",
@@ -184,82 +184,82 @@ describe("Auto-Insights API", () => {
 				},
 			],
 			strategic_recommendations: ["Focus on AI-powered planning as core differentiator"],
-		}
+		};
 
 		beforeEach(() => {
-			mockAggregateData.mockResolvedValue(mockAggregatedData)
-			mockFormatData.mockReturnValue("Formatted data for LLM")
-			mockBAML.GenerateAutoInsights.mockResolvedValue(mockBAMLResponse)
-		})
+			mockAggregateData.mockResolvedValue(mockAggregatedData);
+			mockFormatData.mockReturnValue("Formatted data for LLM");
+			mockBAML.GenerateAutoInsights.mockResolvedValue(mockBAMLResponse);
+		});
 
 		it("should successfully generate auto-insights with valid data", async () => {
-			const formData = new FormData()
-			formData.append("action", "generate")
-			formData.append("competitive_context", "Competing with Notion and Todoist")
-			formData.append("business_goals", "Achieve $1M ARR within 18 months")
+			const formData = new FormData();
+			formData.append("action", "generate");
+			formData.append("competitive_context", "Competing with Notion and Todoist");
+			formData.append("business_goals", "Achieve $1M ARR within 18 months");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			const result = await response.json()
+			const response = await action({ request });
+			const result = await response.json();
 
-			expect(response.status).toBe(200)
-			expect(result.success).toBe(true)
-			expect(result.data).toEqual(mockBAMLResponse)
-			expect(result.metadata.account_id).toBe("account-123")
-			expect(result.metadata.data_summary).toEqual(mockAggregatedData.summary)
-		})
+			expect(response.status).toBe(200);
+			expect(result.success).toBe(true);
+			expect(result.data).toEqual(mockBAMLResponse);
+			expect(result.metadata.account_id).toBe("account-123");
+			expect(result.metadata.data_summary).toEqual(mockAggregatedData.summary);
+		});
 
 		it("should use default parameters when not provided", async () => {
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			await action({ request })
+			await action({ request });
 
 			expect(mockBAML.GenerateAutoInsights).toHaveBeenCalledWith(
 				"Formatted data for LLM",
 				"Analyze competitive landscape based on available data and industry context.",
 				"Maximize user value, improve product-market fit, and identify revenue opportunities."
-			)
-		})
+			);
+		});
 
 		it("should handle data aggregation errors gracefully", async () => {
-			mockAggregateData.mockRejectedValue(new Error("Database connection failed"))
+			mockAggregateData.mockRejectedValue(new Error("Database connection failed"));
 
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			expect(response.status).toBe(500)
-		})
+			const response = await action({ request });
+			expect(response.status).toBe(500);
+		});
 
 		it("should handle BAML generation errors gracefully", async () => {
-			mockBAML.GenerateAutoInsights.mockRejectedValue(new Error("BAML generation failed"))
+			mockBAML.GenerateAutoInsights.mockRejectedValue(new Error("BAML generation failed"));
 
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			expect(response.status).toBe(500)
-		})
+			const response = await action({ request });
+			expect(response.status).toBe(500);
+		});
 
 		it("should validate data quality requirements", async () => {
 			// Test with insufficient data
@@ -270,126 +270,126 @@ describe("Auto-Insights API", () => {
 					total_insights: 2, // Below minimum threshold
 					total_interviews: 1, // Below minimum threshold
 				},
-			}
-			mockAggregateData.mockResolvedValue(insufficientData)
+			};
+			mockAggregateData.mockResolvedValue(insufficientData);
 
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			const _result = await response.json()
+			const response = await action({ request });
+			const _result = await response.json();
 
 			// Should still process but with appropriate warnings/context
-			expect(response.status).toBe(200)
-			expect(mockBAML.GenerateAutoInsights).toHaveBeenCalled()
-		})
+			expect(response.status).toBe(200);
+			expect(mockBAML.GenerateAutoInsights).toHaveBeenCalled();
+		});
 
 		it("should include comprehensive metadata in response", async () => {
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			const result = await response.json()
+			const response = await action({ request });
+			const result = await response.json();
 
 			expect(result.metadata).toMatchObject({
 				account_id: "account-123",
 				data_summary: mockAggregatedData.summary,
-			})
-			expect(result.metadata.generated_at).toBeDefined()
-			expect(new Date(result.metadata.generated_at)).toBeInstanceOf(Date)
-		})
-	})
+			});
+			expect(result.metadata.generated_at).toBeDefined();
+			expect(new Date(result.metadata.generated_at)).toBeInstanceOf(Date);
+		});
+	});
 
 	describe("Execute Action", () => {
 		it("should handle execute_action requests", async () => {
-			const formData = new FormData()
-			formData.append("action", "execute_action")
-			formData.append("action_type", "create_opportunity")
-			formData.append("parameters", '{"title": "Test Opportunity", "description": "Test description"}')
+			const formData = new FormData();
+			formData.append("action", "execute_action");
+			formData.append("action_type", "create_opportunity");
+			formData.append("parameters", '{"title": "Test Opportunity", "description": "Test description"}');
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			const result = await response.json()
+			const response = await action({ request });
+			const result = await response.json();
 
-			expect(response.status).toBe(200)
-			expect(result.success).toBe(true)
-			expect(result.type).toBe("create_opportunity")
+			expect(response.status).toBe(200);
+			expect(result.success).toBe(true);
+			expect(result.type).toBe("create_opportunity");
 			expect(result.data).toEqual({
 				title: "Test Opportunity",
 				description: "Test description",
-			})
-		})
+			});
+		});
 
 		it("should handle malformed JSON parameters", async () => {
-			const formData = new FormData()
-			formData.append("action", "execute_action")
-			formData.append("action_type", "create_opportunity")
-			formData.append("parameters", "invalid json")
+			const formData = new FormData();
+			formData.append("action", "execute_action");
+			formData.append("action_type", "create_opportunity");
+			formData.append("parameters", "invalid json");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			const result = await response.json()
+			const response = await action({ request });
+			const result = await response.json();
 
-			expect(response.status).toBe(200)
-			expect(result.data).toEqual({}) // Should default to empty object
-		})
-	})
+			expect(response.status).toBe(200);
+			expect(result.data).toEqual({}); // Should default to empty object
+		});
+	});
 
 	describe("Invalid Actions", () => {
 		it("should return 400 for invalid action types", async () => {
-			const formData = new FormData()
-			formData.append("action", "invalid_action")
+			const formData = new FormData();
+			formData.append("action", "invalid_action");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			expect(response.status).toBe(400)
-		})
-	})
+			const response = await action({ request });
+			expect(response.status).toBe(400);
+		});
+	});
 
 	describe("Data Quality Validation", () => {
 		it("should validate BAML response structure", async () => {
 			const incompleteBAMLResponse = {
 				executive_summary: "Summary only",
 				// Missing required fields
-			}
-			mockBAML.GenerateAutoInsights.mockResolvedValue(incompleteBAMLResponse as any)
+			};
+			mockBAML.GenerateAutoInsights.mockResolvedValue(incompleteBAMLResponse as any);
 
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			const result = await response.json()
+			const response = await action({ request });
+			const result = await response.json();
 
-			expect(response.status).toBe(200)
-			expect(result.data).toEqual(incompleteBAMLResponse)
-		})
+			expect(response.status).toBe(200);
+			expect(result.data).toEqual(incompleteBAMLResponse);
+		});
 
 		it("should handle empty aggregated data gracefully", async () => {
 			const emptyData = {
@@ -406,20 +406,20 @@ describe("Auto-Insights API", () => {
 				opportunities: [],
 				tags: [],
 				interviews: [],
-			}
-			mockAggregateData.mockResolvedValue(emptyData)
+			};
+			mockAggregateData.mockResolvedValue(emptyData);
 
-			const formData = new FormData()
-			formData.append("action", "generate")
+			const formData = new FormData();
+			formData.append("action", "generate");
 
 			const request = new Request("http://localhost/api/auto-insights", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const response = await action({ request })
-			expect(response.status).toBe(200)
-			expect(mockBAML.GenerateAutoInsights).toHaveBeenCalled()
-		})
-	})
-})
+			const response = await action({ request });
+			expect(response.status).toBe(200);
+			expect(mockBAML.GenerateAutoInsights).toHaveBeenCalled();
+		});
+	});
+});

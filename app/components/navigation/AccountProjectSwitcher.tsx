@@ -1,75 +1,75 @@
-import { Check, ChevronsUpDown, FolderOpen } from "lucide-react"
-import { useMemo, useState } from "react"
-import { useNavigate, useRouteLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { cn } from "~/lib/utils"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { Check, ChevronsUpDown, FolderOpen } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate, useRouteLoaderData } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { cn } from "~/lib/utils";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 interface ProjectRecord {
-	id: string
-	account_id: string
-	name?: string | null
-	slug?: string | null
+	id: string;
+	account_id: string;
+	name?: string | null;
+	slug?: string | null;
 }
 
 interface AccountRecord {
-	account_id: string
-	name?: string | null
-	personal_account?: boolean | null
-	projects?: ProjectRecord[] | null
+	account_id: string;
+	name?: string | null;
+	personal_account?: boolean | null;
+	projects?: ProjectRecord[] | null;
 }
 
 interface ProtectedLayoutData {
-	accounts?: AccountRecord[] | string | null
+	accounts?: AccountRecord[] | string | null;
 }
 
 interface AccountProjectSwitcherProps {
-	collapsed?: boolean
+	collapsed?: boolean;
 }
 
 export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwitcherProps) {
-	const [open, setOpen] = useState(false)
-	const navigate = useNavigate()
-	const { accountId, projectId, lastProjectPath, setLastProjectPath } = useCurrentProject()
-	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
+	const [open, setOpen] = useState(false);
+	const navigate = useNavigate();
+	const { accountId, projectId, lastProjectPath, setLastProjectPath } = useCurrentProject();
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null;
 
 	const accounts = useMemo<AccountRecord[]>(() => {
-		if (!protectedData?.accounts) return []
+		if (!protectedData?.accounts) return [];
 		if (typeof protectedData.accounts === "string") {
 			try {
-				const parsed = JSON.parse(protectedData.accounts)
-				return Array.isArray(parsed) ? parsed : []
+				const parsed = JSON.parse(protectedData.accounts);
+				return Array.isArray(parsed) ? parsed : [];
 			} catch (error) {
-				console.error("Failed to parse accounts from protected loader data", error)
-				return []
+				console.error("Failed to parse accounts from protected loader data", error);
+				return [];
 			}
 		}
 		if (Array.isArray(protectedData.accounts)) {
-			return protectedData.accounts
+			return protectedData.accounts;
 		}
-		return []
-	}, [protectedData?.accounts])
+		return [];
+	}, [protectedData?.accounts]);
 
-	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
+	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0];
 	const currentProject =
-		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
+		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0];
 
-	const currentProjectLabel = currentProject?.name || "Select a project"
-	const currentAccountLabel = currentAccount?.name || "Select an account"
+	const currentProjectLabel = currentProject?.name || "Select a project";
+	const currentAccountLabel = currentAccount?.name || "Select an account";
 
 	const handleSelectProject = (acctId: string, projId: string) => {
-		setLastProjectPath({ accountId: acctId, projectId: projId })
-		const basePath = `/a/${acctId}/${projId}`
-		const routes = createRouteDefinitions(basePath)
-		navigate(routes.dashboard())
-		setOpen(false)
-	}
+		setLastProjectPath({ accountId: acctId, projectId: projId });
+		const basePath = `/a/${acctId}/${projId}`;
+		const routes = createRouteDefinitions(basePath);
+		navigate(routes.dashboard());
+		setOpen(false);
+	};
 
 	if (accounts.length === 0) {
-		return null
+		return null;
 	}
 
 	if (collapsed) {
@@ -89,7 +89,7 @@ export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwit
 					/>
 				</PopoverContent>
 			</Popover>
-		)
+		);
 	}
 
 	return (
@@ -117,14 +117,14 @@ export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwit
 				/>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 interface AccountProjectCommandListProps {
-	accounts: AccountRecord[]
-	activeAccountId?: string
-	activeProjectId?: string
-	onSelectProject: (accountId: string, projectId: string) => void
+	accounts: AccountRecord[];
+	activeAccountId?: string;
+	activeProjectId?: string;
+	onSelectProject: (accountId: string, projectId: string) => void;
 }
 
 function AccountProjectCommandList({
@@ -141,7 +141,7 @@ function AccountProjectCommandList({
 				{accounts.map((account) => (
 					<CommandGroup key={account.account_id} heading={account.name || "Untitled account"}>
 						{(account.projects ?? []).map((project) => {
-							const isActive = account.account_id === activeAccountId && project.id === activeProjectId
+							const isActive = account.account_id === activeAccountId && project.id === activeProjectId;
 							return (
 								<CommandItem
 									key={`${account.account_id}:${project.id}`}
@@ -151,7 +151,7 @@ function AccountProjectCommandList({
 									<Check className={cn("h-4 w-4", isActive ? "opacity-100" : "opacity-0")} />
 									<span className="truncate">{project.name || "Untitled project"}</span>
 								</CommandItem>
-							)
+							);
 						})}
 						{/* <CommandSeparator />
 						<CommandItem onSelect={() => onViewProjects(account.account_id)}>
@@ -166,5 +166,5 @@ function AccountProjectCommandList({
 				))}
 			</CommandList>
 		</Command>
-	)
+	);
 }

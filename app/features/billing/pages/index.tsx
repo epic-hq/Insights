@@ -5,30 +5,30 @@
  * Uses PLANS config as single source of truth for plan data.
  */
 
-import consola from "consola"
-import { Calendar, Check, CheckCircle, CreditCard, Users, X } from "lucide-react"
-import { useEffect } from "react"
-import type { LoaderFunctionArgs } from "react-router"
-import { Link, useLoaderData, useSearchParams } from "react-router"
-import { toast } from "sonner"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
-import { PLANS, type PlanId } from "~/config/plans"
-import { getPostHogServerClient } from "~/lib/posthog.server"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import { Calendar, Check, CheckCircle, CreditCard, Users, X } from "lucide-react";
+import { useEffect } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Link, useLoaderData, useSearchParams } from "react-router";
+import { toast } from "sonner";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
+import { PLANS, type PlanId } from "~/config/plans";
+import { getPostHogServerClient } from "~/lib/posthog.server";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { userContext } from "~/server/user-context";
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
 
 	if (!supabase) {
-		throw new Response("Database connection unavailable", { status: 500 })
+		throw new Response("Database connection unavailable", { status: 500 });
 	}
 	if (!accountId) {
-		throw new Response("Account ID is required", { status: 400 })
+		throw new Response("Account ID is required", { status: 400 });
 	}
 
 	// Get account info
@@ -36,10 +36,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("account_members")
 		.select("account_id, role, accounts(name)")
 		.eq("account_id", accountId)
-		.single()
+		.single();
 
 	// Get current plan from billing_subscriptions (single source of truth)
-	let currentPlan: PlanId = "free"
+	let currentPlan: PlanId = "free";
 	const { data: subscription, error: subError } = await supabaseAdmin
 		.schema("accounts")
 		.from("billing_subscriptions")
@@ -48,18 +48,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.in("status", ["active", "trialing"])
 		.order("created_at", { ascending: false })
 		.limit(1)
-		.maybeSingle()
+		.maybeSingle();
 
 	consola.info("[billing] Subscription query", {
 		accountId,
 		subscription,
 		error: subError?.message,
-	})
+	});
 
 	if (subscription?.plan_name) {
-		const planKey = subscription.plan_name.toLowerCase() as PlanId
+		const planKey = subscription.plan_name.toLowerCase() as PlanId;
 		if (planKey in PLANS) {
-			currentPlan = planKey
+			currentPlan = planKey;
 		}
 	}
 
@@ -70,23 +70,23 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.select("id")
 		.eq("account_id", accountId)
 		.eq("provider", "polar")
-		.maybeSingle()
+		.maybeSingle();
 
 	// Format renewal date if available
-	let renewalDate: string | null = null
+	let renewalDate: string | null = null;
 	if (subscription?.current_period_end) {
 		renewalDate = new Date(subscription.current_period_end).toLocaleDateString("en-US", {
 			month: "long",
 			day: "numeric",
 			year: "numeric",
-		})
+		});
 	}
 
 	// Track billing_page_viewed event for PLG instrumentation
 	try {
-		const posthogServer = getPostHogServerClient()
+		const posthogServer = getPostHogServerClient();
 		if (posthogServer) {
-			const userId = ctx.claims.sub
+			const userId = ctx.claims.sub;
 			posthogServer.capture({
 				distinctId: userId,
 				event: "billing_page_viewed",
@@ -97,10 +97,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					subscription_status: subscription?.status || null,
 					$groups: { account: accountId },
 				},
-			})
+			});
 		}
 	} catch (trackingError) {
-		consola.warn("[BILLING_PAGE] PostHog tracking failed:", trackingError)
+		consola.warn("[BILLING_PAGE] PostHog tracking failed:", trackingError);
 	}
 
 	return {
@@ -109,7 +109,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		accountName: (account?.accounts as { name?: string })?.name ?? "Your Account",
 		renewalDate,
 		hasBillingCustomer: !!billingCustomer,
-	}
+	};
 }
 
 // Feature display names for the comparison table
@@ -125,35 +125,35 @@ const FEATURE_LABELS: Record<string, string> = {
 	team_workspace: "Team Workspace",
 	sso: "SSO / SAML",
 	white_label: "White Label",
-}
+};
 
 export default function BillingPage() {
 	const { currentPlan, subscriptionStatus, accountName, renewalDate, hasBillingCustomer } =
-		useLoaderData<typeof loader>()
-	const [searchParams, setSearchParams] = useSearchParams()
-	const plan = PLANS[currentPlan]
-	const isTrialing = subscriptionStatus === "trialing"
+		useLoaderData<typeof loader>();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const plan = PLANS[currentPlan];
+	const isTrialing = subscriptionStatus === "trialing";
 
 	// Show success toast after checkout
 	useEffect(() => {
 		if (searchParams.get("checkout") === "success") {
-			const planName = searchParams.get("plan")
+			const planName = searchParams.get("plan");
 			toast.success("Welcome to UpSight!", {
 				description: planName
 					? `You're now on the ${planName.charAt(0).toUpperCase() + planName.slice(1)} plan.`
 					: "Your subscription is now active.",
 				icon: <CheckCircle className="h-4 w-4 text-green-500" />,
-			})
-			searchParams.delete("checkout")
-			searchParams.delete("plan")
-			setSearchParams(searchParams, { replace: true })
+			});
+			searchParams.delete("checkout");
+			searchParams.delete("plan");
+			setSearchParams(searchParams, { replace: true });
 		}
-	}, [searchParams, setSearchParams])
+	}, [searchParams, setSearchParams]);
 
 	// Show error toast for billing errors
 	useEffect(() => {
-		const error = searchParams.get("error")
-		if (!error) return
+		const error = searchParams.get("error");
+		if (!error) return;
 
 		const errorMessages: Record<string, { title: string; description: string }> = {
 			billing_not_configured: {
@@ -180,24 +180,24 @@ export default function BillingPage() {
 				title: "Plan switch needs admin setup",
 				description: "Billing token is missing privileges. Please contact support or use the billing portal.",
 			},
-		}
+		};
 
 		const msg = errorMessages[error] || {
 			title: "Something went wrong",
 			description: "Please try again or contact support.",
-		}
+		};
 
-		toast.error(msg.title, { description: msg.description })
-		searchParams.delete("error")
-		setSearchParams(searchParams, { replace: true })
-	}, [searchParams, setSearchParams])
+		toast.error(msg.title, { description: msg.description });
+		searchParams.delete("error");
+		setSearchParams(searchParams, { replace: true });
+	}, [searchParams, setSearchParams]);
 
 	// Format limit value for display
 	const formatLimit = (value: number, suffix?: string): string => {
-		if (value === Number.POSITIVE_INFINITY) return "Unlimited"
-		if (value === 0) return "—"
-		return suffix ? `${value.toLocaleString()} ${suffix}` : value.toLocaleString()
-	}
+		if (value === Number.POSITIVE_INFINITY) return "Unlimited";
+		if (value === 0) return "—";
+		return suffix ? `${value.toLocaleString()} ${suffix}` : value.toLocaleString();
+	};
 
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
@@ -257,9 +257,9 @@ export default function BillingPage() {
 				<h2 className="font-semibold text-xl">Compare Plans</h2>
 				<div className="grid gap-4 md:grid-cols-4">
 					{(Object.entries(PLANS) as [PlanId, (typeof PLANS)[PlanId]][]).map(([key, p]) => {
-						const isCurrent = key === currentPlan
-						const isTrialPlan = isCurrent && isTrialing
-						const isHighlighted = p.badge === "Most Popular"
+						const isCurrent = key === currentPlan;
+						const isTrialPlan = isCurrent && isTrialing;
+						const isHighlighted = p.badge === "Most Popular";
 
 						return (
 							<Card
@@ -364,7 +364,7 @@ export default function BillingPage() {
 									)}
 								</CardFooter>
 							</Card>
-						)
+						);
 					})}
 				</div>
 			</div>
@@ -391,5 +391,5 @@ export default function BillingPage() {
 				</Button>
 			</div>
 		</div>
-	)
+	);
 }

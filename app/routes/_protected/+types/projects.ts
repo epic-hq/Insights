@@ -1,1 +1,1 @@
-export type { Route } from "../../../../.react-router/types/app/routes/_protected/+types/projects"
+export type { Route } from "../../../../.react-router/types/app/routes/_protected/+types/projects";

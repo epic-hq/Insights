@@ -1,23 +1,23 @@
-import { formatDistanceToNow } from "date-fns"
-import { motion } from "framer-motion"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { cn } from "~/lib/utils"
-import type { GetAccount } from "~/types"
+import { formatDistanceToNow } from "date-fns";
+import { motion } from "framer-motion";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { cn } from "~/lib/utils";
+import type { GetAccount } from "~/types";
 
 interface AccountDetailProps {
-	account: GetAccount
-	className?: string
+	account: GetAccount;
+	className?: string;
 }
 
 export default function AccountDetailCard({ account, className }: AccountDetailProps) {
 	// Generate color from slug or fallback
-	const themeColor = stringToColor(account.slug || account.name || "A")
+	const themeColor = stringToColor(account.slug || account.name || "A");
 	const initials = (account.name || "A")
 		.split(" ")
 		.map((n) => n[0])
 		.join("")
 		.toUpperCase()
-		.slice(0, 2)
+		.slice(0, 2);
 
 	return (
 		<motion.div
@@ -62,15 +62,15 @@ export default function AccountDetailCard({ account, className }: AccountDetailP
 				)}
 			</div>
 		</motion.div>
-	)
+	);
 }
 
 // Utility: hash string to color
 function stringToColor(str: string) {
-	let hash = 0
+	let hash = 0;
 	for (let i = 0; i < str.length; i++) {
-		hash = str.charCodeAt(i) + ((hash << 5) - hash)
+		hash = str.charCodeAt(i) + ((hash << 5) - hash);
 	}
-	const c = (hash & 0x00ffffff).toString(16).toUpperCase()
-	return `#${"00000".substring(0, 6 - c.length)}${c}`
+	const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+	return `#${"00000".substring(0, 6 - c.length)}${c}`;
 }

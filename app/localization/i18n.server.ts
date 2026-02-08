@@ -1,6 +1,6 @@
-import { RemixI18Next } from "remix-i18next/server"
-import i18n from "~/localization/i18n" // your i18n configuration file
-import { resources } from "./resource"
+import { RemixI18Next } from "remix-i18next/server";
+import i18n from "~/localization/i18n"; // your i18n configuration file
+import { resources } from "./resource";
 
 const i18next = new RemixI18Next({
 	detection: {
@@ -17,6 +17,6 @@ const i18next = new RemixI18Next({
 		...i18n,
 		resources,
 	},
-})
+});
 
-export default i18next
+export default i18next;

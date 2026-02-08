@@ -1,4 +1,4 @@
-import { z } from "zod/v4"
+import { z } from "zod/v4";
 
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -67,10 +67,10 @@ const envSchema = z.object({
 
 	// Sales/Demo scheduling
 	SALES_SCHEDULER_URL: z.string().default("https://cal.com/rickmoy"),
-})
+});
 
-export type ServerEnv = z.infer<typeof envSchema>
-let env: ServerEnv
+export type ServerEnv = z.infer<typeof envSchema>;
+let env: ServerEnv;
 
 /**
  * Initializes and parses given environment variables using zod
@@ -85,7 +85,7 @@ function initEnv() {
 			SUPABASE_URL: "https://mock.supabase.co",
 			SUPABASE_ANON_KEY: "mock-anon-key",
 			PAYLOAD_CMS_URL: "https://upsight-cms.vercel.app",
-		} as ServerEnv
+		} as ServerEnv;
 	}
 
 	// This should be the only place to use process.env directly
@@ -97,26 +97,26 @@ function initEnv() {
 		DEFAULT_FROM_EMAIL_NAME: process.env.DEFAULT_FROM_EMAIL_NAME ?? process.env.DEFAULT_EMAIL_FROM_NAME,
 		// Backward-compatibility: allow legacy RECALLAI_API_KEY
 		RECALL_API_KEY: process.env.RECALL_API_KEY ?? process.env.RECALLAI_API_KEY,
-	}
+	};
 
-	const envData = envSchema.safeParse(rawEnv)
+	const envData = envSchema.safeParse(rawEnv);
 
 	if (!envData.success) {
-		throw new Error("Invalid environment variables")
+		throw new Error("Invalid environment variables");
 	}
 
-	env = envData.data
-	Object.freeze(env)
+	env = envData.data;
+	Object.freeze(env);
 
 	// Do not log the message when running tests
 	if (env.NODE_ENV !== "test") {
 	}
-	return env
+	return env;
 }
 
 export function getServerEnv() {
-	if (env) return env
-	return initEnv()
+	if (env) return env;
+	return initEnv();
 }
 
 /**
@@ -127,7 +127,7 @@ export function getServerEnv() {
  * @returns Subset of the whole process.env to be passed to the client and used there
  */
 export function getClientEnv() {
-	const serverEnv = getServerEnv()
+	const serverEnv = getServerEnv();
 	return {
 		NODE_ENV: serverEnv.NODE_ENV,
 		HELLO: serverEnv.HELLO,
@@ -140,13 +140,13 @@ export function getClientEnv() {
 		SIGNUP_CHAT_REQUIRED: serverEnv.SIGNUP_CHAT_REQUIRED,
 		// Sales/Demo scheduling
 		SALES_SCHEDULER_URL: serverEnv.SALES_SCHEDULER_URL,
-	}
+	};
 }
 
-export type ClientEnvVars = ReturnType<typeof getClientEnv>
+export type ClientEnvVars = ReturnType<typeof getClientEnv>;
 
 declare global {
 	interface Window {
-		env: ClientEnvVars
+		env: ClientEnvVars;
 	}
 }

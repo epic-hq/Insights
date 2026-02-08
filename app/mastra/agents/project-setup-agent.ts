@@ -1,53 +1,53 @@
-import { Agent } from "@mastra/core/agent"
-import { TokenLimiterProcessor } from "@mastra/core/processors"
-import { createTool } from "@mastra/core/tools"
-import { Memory } from "@mastra/memory"
-import { z } from "zod"
-import { PROJECT_SECTIONS } from "../../features/projects/section-config"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { supabaseAdmin } from "../../lib/supabase/client.server"
+import { Agent } from "@mastra/core/agent";
+import { TokenLimiterProcessor } from "@mastra/core/processors";
+import { createTool } from "@mastra/core/tools";
+import { Memory } from "@mastra/memory";
+import { z } from "zod";
+import { PROJECT_SECTIONS } from "../../features/projects/section-config";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { supabaseAdmin } from "../../lib/supabase/client.server";
 // ToolCallPairProcessor is deprecated in v1 - tool call pairing is handled internally now
 // import { ToolCallPairProcessor } from "../processors/tool-call-pair-processor"
-import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { displayUserQuestionsTool } from "../tools/display-user-questions"
-import { generateResearchStructureTool } from "../tools/generate-research-structure"
-import { manageAnnotationsTool } from "../tools/manage-annotations"
-import { manageDocumentsTool } from "../tools/manage-documents"
+import { getSharedPostgresStore } from "../storage/postgres-singleton";
+import { displayUserQuestionsTool } from "../tools/display-user-questions";
+import { generateResearchStructureTool } from "../tools/generate-research-structure";
+import { manageAnnotationsTool } from "../tools/manage-annotations";
+import { manageDocumentsTool } from "../tools/manage-documents";
 import {
 	deleteProjectSectionMetaKeyTool,
 	fetchProjectSectionTool,
 	updateProjectSectionMetaTool,
-} from "../tools/manage-project-sections"
-import { researchCompanyWebsiteTool } from "../tools/research-company-website"
-import { webResearchTool } from "../tools/research-web"
-import { saveAccountCompanyContextTool } from "../tools/save-account-company-context"
-import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
-import { suggestionTool } from "../tools/suggestion-tool"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
+} from "../tools/manage-project-sections";
+import { researchCompanyWebsiteTool } from "../tools/research-company-website";
+import { webResearchTool } from "../tools/research-web";
+import { saveAccountCompanyContextTool } from "../tools/save-account-company-context";
+import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data";
+import { suggestionTool } from "../tools/suggestion-tool";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 // Dynamically build ProjectSetupState from section config
 const buildProjectSetupStateSchema = () => {
-	const stateFields: Record<string, z.ZodTypeAny> = {}
+	const stateFields: Record<string, z.ZodTypeAny> = {};
 
 	for (const section of PROJECT_SECTIONS) {
 		if (section.kind === "research_goal") {
-			stateFields.research_goal = z.string().optional()
-			stateFields.research_goal_details = z.string().optional()
+			stateFields.research_goal = z.string().optional();
+			stateFields.research_goal_details = z.string().optional();
 		} else if (section.type === "string[]") {
-			stateFields[section.kind] = z.array(z.string()).optional()
+			stateFields[section.kind] = z.array(z.string()).optional();
 		} else if (section.type === "string") {
-			stateFields[section.kind] = z.string().optional()
+			stateFields[section.kind] = z.string().optional();
 		}
 	}
 
-	stateFields.completed = z.boolean().optional()
+	stateFields.completed = z.boolean().optional();
 
 	return z.object({
 		projectSetup: z.object(stateFields).optional(),
-	})
-}
+	});
+};
 
-const ProjectSetupState = buildProjectSetupStateSchema()
+const ProjectSetupState = buildProjectSetupStateSchema();
 
 const navigateToPageTool = createTool({
 	id: "navigate-to-page",
@@ -56,33 +56,33 @@ const navigateToPageTool = createTool({
 	inputSchema: z.object({
 		path: z.string().describe("Relative path to navigate to"),
 	}),
-})
+});
 
 export const projectSetupAgent = new Agent({
 	id: "project-setup-agent",
 	name: "projectSetupAgent",
 	instructions: async ({ requestContext }) => {
-		const projectId = requestContext.get("project_id")
+		const projectId = requestContext.get("project_id");
 
 		// Fetch existing project sections
 		const { data: existing } = await supabaseAdmin
 			.from("project_sections")
 			.select("project_id, kind, meta, content_md")
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 
 		// Fetch project to get account_id
-		const { data: project } = await supabaseAdmin.from("projects").select("account_id").eq("id", projectId).single()
+		const { data: project } = await supabaseAdmin.from("projects").select("account_id").eq("id", projectId).single();
 
 		// Fetch account context (company info)
-		let accountContext: Record<string, unknown> | null = null
+		let accountContext: Record<string, unknown> | null = null;
 		if (project?.account_id) {
 			const { data: account } = await supabaseAdmin
 				.from("accounts")
 				.select("company_description, customer_problem, offerings, target_orgs, target_roles, competitors, website_url")
 				.eq("id", project.account_id)
-				.maybeSingle()
+				.maybeSingle();
 
-			accountContext = account
+			accountContext = account;
 		}
 
 		// Check if account has company context filled in
@@ -90,7 +90,7 @@ export const projectSetupAgent = new Agent({
 			accountContext &&
 			(accountContext.company_description ||
 				accountContext.customer_problem ||
-				(Array.isArray(accountContext.offerings) && accountContext.offerings.length > 0))
+				(Array.isArray(accountContext.offerings) && accountContext.offerings.length > 0));
 
 		return `
 You are a fast, efficient project setup assistant. Be BRIEF - 1-2 sentences max per response.
@@ -152,7 +152,7 @@ Document requests: Use manageDocuments tool.
 
 Existing project sections (skip if answered):
 ${JSON.stringify(existing)}
-`
+`;
 	},
 	model: openai("gpt-5.1"),
 	tools: wrapToolsWithStatusEvents({
@@ -179,4 +179,4 @@ ${JSON.stringify(existing)}
 	}),
 	// Note: Using number format for Zod v4 compatibility
 	outputProcessors: [new TokenLimiterProcessor(100_000)],
-})
+});

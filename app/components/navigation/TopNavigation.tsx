@@ -8,11 +8,11 @@
  * - Responsive: collapses to hamburger on mobile
  */
 
-import { Menu, X } from "lucide-react"
-import { useCallback, useMemo, useRef, useState } from "react"
-import { Link, NavLink, useLocation } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+import { Menu, X } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,48 +20,48 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { useSidebarCounts } from "~/hooks/useSidebarCounts"
-import { cn } from "~/lib/utils"
-import { UserProfile } from "../auth/UserProfile"
-import { Logo, LogoBrand } from "../branding"
-import { TeamSwitcher } from "./TeamSwitcher"
-import { TOP_NAV_CATEGORIES, type TopNavCategory, type TopNavItem } from "./top-nav.config"
+} from "~/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "~/components/ui/sheet";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { useSidebarCounts } from "~/hooks/useSidebarCounts";
+import { cn } from "~/lib/utils";
+import { UserProfile } from "../auth/UserProfile";
+import { Logo, LogoBrand } from "../branding";
+import { TeamSwitcher } from "./TeamSwitcher";
+import { TOP_NAV_CATEGORIES, type TopNavCategory, type TopNavItem } from "./top-nav.config";
 
 interface TopNavigationProps {
 	/** Accounts for team switcher */
 	accounts?: Array<{
-		account_id: string
-		name?: string | null
-		personal_account?: boolean | null
-	}>
+		account_id: string;
+		name?: string | null;
+		personal_account?: boolean | null;
+	}>;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 interface NavDropdownProps {
-	category: TopNavCategory
-	routes: ReturnType<typeof useProjectRoutes>
-	counts: Record<string, number | undefined>
-	isActive: boolean
+	category: TopNavCategory;
+	routes: ReturnType<typeof useProjectRoutes>;
+	counts: Record<string, number | undefined>;
+	isActive: boolean;
 }
 
 function NavDropdown({ category, routes, counts, isActive }: NavDropdownProps) {
-	const [open, setOpen] = useState(false)
-	const closeTimeout = useRef<ReturnType<typeof setTimeout>>()
+	const [open, setOpen] = useState(false);
+	const closeTimeout = useRef<ReturnType<typeof setTimeout>>();
 
 	const handleMouseEnter = useCallback(() => {
-		clearTimeout(closeTimeout.current)
-		setOpen(true)
-	}, [])
+		clearTimeout(closeTimeout.current);
+		setOpen(true);
+	}, []);
 
 	const handleMouseLeave = useCallback(() => {
-		closeTimeout.current = setTimeout(() => setOpen(false), 150)
-	}, [])
+		closeTimeout.current = setTimeout(() => setOpen(false), 150);
+	}, []);
 
 	return (
 		<DropdownMenu open={open} onOpenChange={setOpen}>
@@ -98,8 +98,8 @@ function NavDropdown({ category, routes, counts, isActive }: NavDropdownProps) {
 				<DropdownMenuLabel className="text-muted-foreground text-xs">{category.description}</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				{category.items.map((item) => {
-					const href = item.to(routes)
-					const countValue = item.countKey ? counts[item.countKey] : undefined
+					const href = item.to(routes);
+					const countValue = item.countKey ? counts[item.countKey] : undefined;
 
 					return (
 						<DropdownMenuItem key={item.key} asChild>
@@ -116,11 +116,11 @@ function NavDropdown({ category, routes, counts, isActive }: NavDropdownProps) {
 								)}
 							</NavLink>
 						</DropdownMenuItem>
-					)
+					);
 				})}
 			</DropdownMenuContent>
 		</DropdownMenu>
-	)
+	);
 }
 
 function MobileNavItem({
@@ -128,11 +128,11 @@ function MobileNavItem({
 	routes,
 	onClose,
 }: {
-	item: TopNavItem
-	routes: ReturnType<typeof useProjectRoutes>
-	onClose: () => void
+	item: TopNavItem;
+	routes: ReturnType<typeof useProjectRoutes>;
+	onClose: () => void;
 }) {
-	const href = item.to(routes)
+	const href = item.to(routes);
 	return (
 		<NavLink
 			to={href}
@@ -147,51 +147,51 @@ function MobileNavItem({
 			<item.icon className="h-5 w-5" />
 			<span>{item.title}</span>
 		</NavLink>
-	)
+	);
 }
 
 export function TopNavigation({ accounts = [], className }: TopNavigationProps) {
-	const { accountId, projectId } = useCurrentProject()
-	const routes = useProjectRoutesFromIds(accountId, projectId)
-	const location = useLocation()
-	const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+	const { accountId, projectId } = useCurrentProject();
+	const routes = useProjectRoutesFromIds(accountId, projectId);
+	const location = useLocation();
+	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-	const { counts } = useSidebarCounts(accountId, projectId)
+	const { counts } = useSidebarCounts(accountId, projectId);
 
 	// Feature flags for gated nav items
-	const { isEnabled: journeyEnabled } = usePostHogFeatureFlag("ffYourJourney")
+	const { isEnabled: journeyEnabled } = usePostHogFeatureFlag("ffYourJourney");
 
 	// Filter out items gated behind disabled feature flags
 	const filteredCategories = useMemo(() => {
 		const flagMap: Record<string, boolean> = {
 			ffYourJourney: journeyEnabled,
-		}
+		};
 		return TOP_NAV_CATEGORIES.map((category) => ({
 			...category,
 			items: category.items.filter((item) => {
-				if (item.featureFlag) return flagMap[item.featureFlag] ?? false
-				return true
+				if (item.featureFlag) return flagMap[item.featureFlag] ?? false;
+				return true;
 			}),
-		})).filter((category) => category.items.length > 0)
-	}, [journeyEnabled])
+		})).filter((category) => category.items.length > 0);
+	}, [journeyEnabled]);
 
 	// Determine which category is active based on current path
 	const getActiveCategory = () => {
-		const path = location.pathname
-		if (path.includes("/setup") || path.includes("/questions") || path.includes("/ask")) return "plan"
-		if (path.includes("/interviews") || path.includes("/sources") || path.includes("/responses")) return "sources"
-		if (path.includes("/insights") || path.includes("/lenses")) return "insights"
+		const path = location.pathname;
+		if (path.includes("/setup") || path.includes("/questions") || path.includes("/ask")) return "plan";
+		if (path.includes("/interviews") || path.includes("/sources") || path.includes("/responses")) return "sources";
+		if (path.includes("/insights") || path.includes("/lenses")) return "insights";
 		if (
 			path.includes("/people") ||
 			path.includes("/organizations") ||
 			path.includes("/opportunities") ||
 			path.includes("/priorities")
 		)
-			return "crm"
-		return null
-	}
+			return "crm";
+		return null;
+	};
 
-	const activeCategory = getActiveCategory()
+	const activeCategory = getActiveCategory();
 
 	return (
 		<>
@@ -287,7 +287,7 @@ export function TopNavigation({ accounts = [], className }: TopNavigationProps) 
 				</SheetContent>
 			</Sheet>
 		</>
-	)
+	);
 }
 
-export default TopNavigation
+export default TopNavigation;

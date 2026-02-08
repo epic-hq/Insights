@@ -1,36 +1,36 @@
-import { type ActionFunctionArgs, redirect, useFetcher } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { createClient } from "~/lib/supabase/client.server"
+import { type ActionFunctionArgs, redirect, useFetcher } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { createClient } from "~/lib/supabase/client.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-	const { supabase, headers } = createClient(request)
-	const formData = await request.formData()
-	const password = formData.get("password") as string
+	const { supabase, headers } = createClient(request);
+	const formData = await request.formData();
+	const password = formData.get("password") as string;
 
 	if (!password) {
-		return { error: "Password is required" }
+		return { error: "Password is required" };
 	}
 
-	const { error } = await supabase.auth.updateUser({ password: password })
+	const { error } = await supabase.auth.updateUser({ password: password });
 
 	if (error) {
 		return {
 			error: error instanceof Error ? error.message : "An error occurred",
-		}
+		};
 	}
 
 	// Redirect to sign-in page after successful password update
-	return redirect("/protected", { headers })
-}
+	return redirect("/protected", { headers });
+};
 
 export default function Page() {
-	const fetcher = useFetcher<typeof action>()
+	const fetcher = useFetcher<typeof action>();
 
-	const error = fetcher.data?.error
-	const loading = fetcher.state === "submitting"
+	const error = fetcher.data?.error;
+	const loading = fetcher.state === "submitting";
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -59,5 +59,5 @@ export default function Page() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

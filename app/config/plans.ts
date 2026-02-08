@@ -11,75 +11,75 @@
 // Plan Types
 // -----------------------------------------------------------------------------
 
-export const PLAN_IDS = ["free", "starter", "pro", "team"] as const
-export type PlanId = (typeof PLAN_IDS)[number]
+export const PLAN_IDS = ["free", "starter", "pro", "team"] as const;
+export type PlanId = (typeof PLAN_IDS)[number];
 
 export interface PlanLimits {
 	/** Number of AI analyses per month (Infinity = unlimited with soft cap) */
-	ai_analyses: number
+	ai_analyses: number;
 	/** Voice chat minutes per month (0 = not included) */
-	voice_minutes: number
+	voice_minutes: number;
 	/** Survey responses per month */
-	survey_responses: number
+	survey_responses: number;
 	/** Number of projects allowed */
-	projects: number
+	projects: number;
 	/** Number of team accounts allowed (0 = personal only) */
-	teams: number
+	teams: number;
 }
 
 export interface PlanCredits {
 	/** Monthly credit allocation (internal, never shown to users) */
-	monthly: number
+	monthly: number;
 	/** Whether soft caps apply (false = hard limit for free tier) */
-	softCapEnabled: boolean
+	softCapEnabled: boolean;
 }
 
 export interface PlanFeatures {
 	/** AI analysis of survey responses */
-	survey_ai_analysis: boolean
+	survey_ai_analysis: boolean;
 	/** Team workspace with multiple members */
-	team_workspace: boolean
+	team_workspace: boolean;
 	/** Single sign-on support */
-	sso: boolean
+	sso: boolean;
 	/** Interview guide with AI prompts */
-	interview_guide: boolean
+	interview_guide: boolean;
 	/** Smart personas generation */
-	smart_personas: boolean
+	smart_personas: boolean;
 	/** AI-native CRM */
-	ai_crm: boolean
+	ai_crm: boolean;
 	/** Remove "Powered by UpSight" branding from embeds */
-	white_label: boolean
+	white_label: boolean;
 	/** Calendar sync for meeting intelligence */
-	calendar_sync: boolean
+	calendar_sync: boolean;
 }
 
 export interface PlanConfig {
-	id: PlanId
-	name: string
-	description: string
+	id: PlanId;
+	name: string;
+	description: string;
 	price: {
-		monthly: number
-		annual: number // per month when billed annually
-	}
+		monthly: number;
+		annual: number; // per month when billed annually
+	};
 	/** Per-user pricing (for team plan) */
-	perUser: boolean
+	perUser: boolean;
 	/** Minimum seats required (for per-user plans) */
-	minSeats?: number
+	minSeats?: number;
 	/** User-facing limits (shown in UI) */
-	limits: PlanLimits
+	limits: PlanLimits;
 	/** Internal credit allocation (hidden from users) */
-	credits: PlanCredits
+	credits: PlanCredits;
 	/** Feature entitlements */
-	features: PlanFeatures
+	features: PlanFeatures;
 	/** CTA button configuration */
 	cta: {
-		label: string
-		link: string
-		external?: boolean
-		style: "primary" | "secondary"
-	}
+		label: string;
+		link: string;
+		external?: boolean;
+		style: "primary" | "secondary";
+	};
 	/** Marketing badge (e.g., "Most Popular") */
-	badge?: string
+	badge?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -224,7 +224,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
 			style: "primary",
 		},
 	},
-} as const
+} as const;
 
 // -----------------------------------------------------------------------------
 // Helper Functions
@@ -234,14 +234,14 @@ export const PLANS: Record<PlanId, PlanConfig> = {
  * Get plan configuration by ID
  */
 export function getPlan(planId: PlanId): PlanConfig {
-	return PLANS[planId]
+	return PLANS[planId];
 }
 
 /**
  * Check if a plan has a specific feature enabled
  */
 export function hasFeature(planId: PlanId, feature: keyof PlanFeatures): boolean {
-	return PLANS[planId].features[feature]
+	return PLANS[planId].features[feature];
 }
 
 /**
@@ -249,10 +249,10 @@ export function hasFeature(planId: PlanId, feature: keyof PlanFeatures): boolean
  * Returns "Unlimited" string for Infinity values
  */
 export function getLimitDisplay(planId: PlanId, limit: keyof PlanLimits): string {
-	const value = PLANS[planId].limits[limit]
-	if (value === Number.POSITIVE_INFINITY) return "Unlimited"
-	if (value === 0 && limit === "voice_minutes") return "—"
-	return value.toLocaleString()
+	const value = PLANS[planId].limits[limit];
+	if (value === Number.POSITIVE_INFINITY) return "Unlimited";
+	if (value === 0 && limit === "voice_minutes") return "—";
+	return value.toLocaleString();
 }
 
 /**
@@ -260,15 +260,15 @@ export function getLimitDisplay(planId: PlanId, limit: keyof PlanLimits): string
  * For teams, multiply by seat count
  */
 export function getMonthlyCredits(planId: PlanId, seatCount = 1): number {
-	const plan = PLANS[planId]
-	return plan.perUser ? plan.credits.monthly * seatCount : plan.credits.monthly
+	const plan = PLANS[planId];
+	return plan.perUser ? plan.credits.monthly * seatCount : plan.credits.monthly;
 }
 
 /**
  * Check if plan uses soft caps (vs hard limits)
  */
 export function usesSoftCaps(planId: PlanId): boolean {
-	return PLANS[planId].credits.softCapEnabled
+	return PLANS[planId].credits.softCapEnabled;
 }
 
 // -----------------------------------------------------------------------------
@@ -287,6 +287,6 @@ export const FEATURE_KEYS = [
 	"ai_crm",
 	"white_label",
 	"calendar_sync",
-] as const
+] as const;
 
-export type FeatureKey = (typeof FEATURE_KEYS)[number]
+export type FeatureKey = (typeof FEATURE_KEYS)[number];

@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("personas", [
@@ -17,4 +17,4 @@ export default [
 		route("mock5", "./features/personas/components/persona_visualization_mockup5.tsx"),
 		route("mock6", "./features/personas/components/persona_spectrum_db.tsx"),
 	]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

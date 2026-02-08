@@ -9,60 +9,60 @@
  * - Progress indicator (X/Y format)
  */
 
-import { AnimatePresence, motion } from "framer-motion"
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Loader2, Search } from "lucide-react"
-import { useEffect, useId, useRef, useState } from "react"
-import { useParams } from "react-router"
-import { Button } from "~/components/ui/button"
-import { TextareaWithSTT } from "~/components/ui/textarea-with-stt"
-import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions"
-import { cn } from "~/lib/utils"
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Loader2, Search } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { useParams } from "react-router";
+import { Button } from "~/components/ui/button";
+import { TextareaWithSTT } from "~/components/ui/textarea-with-stt";
+import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions";
+import { cn } from "~/lib/utils";
 
-export type FieldType = "text" | "textarea" | "tags" | "select" | "url"
+export type FieldType = "text" | "textarea" | "tags" | "select" | "url";
 
-export type SuggestionType = "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles"
+export type SuggestionType = "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles";
 
 export interface TypeformQuestionProps {
 	/** The question to display */
-	question: string
+	question: string;
 	/** Optional description/helper text */
-	description?: string
+	description?: string;
 	/** Input field type */
-	fieldType: FieldType
+	fieldType: FieldType;
 	/** Current value */
-	value: string | string[]
+	value: string | string[];
 	/** Value change handler */
-	onChange: (value: string | string[]) => void
+	onChange: (value: string | string[]) => void;
 	/** Navigate to next question */
-	onNext: () => void
+	onNext: () => void;
 	/** Navigate to previous question */
-	onBack?: () => void
+	onBack?: () => void;
 	/** Skip this question */
-	onSkip?: () => void
+	onSkip?: () => void;
 	/** Current step number (1-indexed) */
-	stepNumber: number
+	stepNumber: number;
 	/** Total number of steps */
-	totalSteps: number
+	totalSteps: number;
 	/** Whether this question is required */
-	required?: boolean
+	required?: boolean;
 	/** Enable speech-to-text button */
-	showSTT?: boolean
+	showSTT?: boolean;
 	/** Suggestion type for ContextualSuggestions */
-	suggestionType?: SuggestionType
+	suggestionType?: SuggestionType;
 	/** Research goal for generating suggestions */
-	researchGoal?: string
+	researchGoal?: string;
 	/** Animation direction: 1 = forward, -1 = back */
-	direction?: number
+	direction?: number;
 	/** Placeholder text */
-	placeholder?: string
+	placeholder?: string;
 	/** Options for select type */
-	options?: { label: string; value: string }[]
+	options?: { label: string; value: string }[];
 	/** Whether URL research is in progress */
-	isResearching?: boolean
+	isResearching?: boolean;
 	/** Callback to trigger URL research */
-	onResearch?: () => void
+	onResearch?: () => void;
 	/** Custom className */
-	className?: string
+	className?: string;
 }
 
 // Animation variants for slide transitions
@@ -79,7 +79,7 @@ const slideVariants = {
 		x: direction > 0 ? -300 : 300,
 		opacity: 0,
 	}),
-}
+};
 
 export function TypeformQuestion({
 	question,
@@ -103,84 +103,84 @@ export function TypeformQuestion({
 	onResearch,
 	className,
 }: TypeformQuestionProps) {
-	const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
-	const formId = useId()
-	const params = useParams()
+	const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+	const formId = useId();
+	const params = useParams();
 
 	// Build API path for suggestions
 	const apiPath =
 		params.accountId && params.projectId
 			? `/a/${params.accountId}/${params.projectId}/api/contextual-suggestions`
-			: "/api/contextual-suggestions"
+			: "/api/contextual-suggestions";
 
 	// Track shown suggestions to avoid duplicates
-	const [shownSuggestions, setShownSuggestions] = useState<string[]>([])
+	const [shownSuggestions, setShownSuggestions] = useState<string[]>([]);
 
 	// Local state for tags input (controlled separately from main value)
-	const [tagInput, setTagInput] = useState("")
+	const [tagInput, setTagInput] = useState("");
 
 	// Calculate if user can proceed
-	const canProceed = !required || (Array.isArray(value) ? value.length > 0 : Boolean(value?.toString().trim()))
+	const canProceed = !required || (Array.isArray(value) ? value.length > 0 : Boolean(value?.toString().trim()));
 
 	// Has the user entered any value?
-	const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value?.toString().trim())
+	const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value?.toString().trim());
 
 	// Focus input when question changes
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			inputRef.current?.focus()
-		}, 400)
-		return () => clearTimeout(timer)
-	}, [stepNumber])
+			inputRef.current?.focus();
+		}, 400);
+		return () => clearTimeout(timer);
+	}, [stepNumber]);
 
 	// Reset shown suggestions and tag input when question changes
 	useEffect(() => {
-		setShownSuggestions([])
-		setTagInput("")
-	}, [stepNumber])
+		setShownSuggestions([]);
+		setTagInput("");
+	}, [stepNumber]);
 
 	// Keyboard navigation
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Enter") {
 				if (fieldType === "textarea" && !e.metaKey && !e.ctrlKey) {
-					return
+					return;
 				}
-				e.preventDefault()
+				e.preventDefault();
 				if (!e.shiftKey && canProceed) {
-					onNext()
+					onNext();
 				}
 			}
 			if (e.key === "Escape" && onSkip && !required) {
-				e.preventDefault()
-				onSkip()
+				e.preventDefault();
+				onSkip();
 			}
-		}
-		window.addEventListener("keydown", handleKeyDown)
-		return () => window.removeEventListener("keydown", handleKeyDown)
-	}, [fieldType, onNext, onSkip, required, canProceed])
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [fieldType, onNext, onSkip, required, canProceed]);
 
 	// Handle suggestion click from ContextualSuggestions
 	const handleSuggestionClick = (suggestion: string) => {
 		if (fieldType === "tags" && Array.isArray(value)) {
 			if (!value.includes(suggestion)) {
-				onChange([...value, suggestion])
+				onChange([...value, suggestion]);
 			}
 		} else if (typeof value === "string") {
 			// For text/textarea, set value directly
-			onChange(suggestion)
+			onChange(suggestion);
 		}
-	}
+	};
 
 	// Remove tag
 	const removeTag = (tag: string) => {
 		if (Array.isArray(value)) {
-			onChange(value.filter((v) => v !== tag))
+			onChange(value.filter((v) => v !== tag));
 		}
-	}
+	};
 
 	// Get existing items for suggestions (to avoid duplicates)
-	const existingItems = Array.isArray(value) ? value : []
+	const existingItems = Array.isArray(value) ? value : [];
 
 	return (
 		<AnimatePresence mode="wait" custom={direction}>
@@ -259,9 +259,9 @@ export function TypeformQuestion({
 									onChange={(e) => onChange(e.target.value)}
 									onTranscription={(transcript) => {
 										// Append transcript to existing value
-										const current = typeof value === "string" ? value : ""
-										const newValue = current ? `${current} ${transcript}` : transcript
-										onChange(newValue)
+										const current = typeof value === "string" ? value : "";
+										const newValue = current ? `${current} ${transcript}` : transcript;
+										onChange(newValue);
 									}}
 									showSTT={showSTT}
 									placeholder={placeholder || "Type your answer..."}
@@ -337,18 +337,18 @@ export function TypeformQuestion({
 									value={fieldType === "tags" ? tagInput : typeof value === "string" ? value : ""}
 									onChange={(e) => {
 										if (fieldType === "tags") {
-											setTagInput(e.target.value)
-											return
+											setTagInput(e.target.value);
+											return;
 										}
-										onChange(e.target.value)
+										onChange(e.target.value);
 									}}
 									onKeyDown={(e) => {
 										if (fieldType === "tags" && e.key === "Enter") {
-											e.preventDefault()
-											const input = tagInput.trim()
+											e.preventDefault();
+											const input = tagInput.trim();
 											if (input && Array.isArray(value) && !value.includes(input)) {
-												onChange([...value, input])
-												setTagInput("")
+												onChange([...value, input]);
+												setTagInput("");
 											}
 										}
 									}}
@@ -452,5 +452,5 @@ export function TypeformQuestion({
 				</div>
 			</motion.div>
 		</AnimatePresence>
-	)
+	);
 }

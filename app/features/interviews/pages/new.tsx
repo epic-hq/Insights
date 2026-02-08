@@ -1,83 +1,83 @@
-import { Plus, User, Users, X } from "lucide-react"
-import { useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import { createInterview } from "~/features/interviews/db"
-import { createPerson, getPeople } from "~/features/people/db"
-import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server"
-import { userContext } from "~/server/user-context"
+import { Plus, User, Users, X } from "lucide-react";
+import { useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { createInterview } from "~/features/interviews/db";
+import { createPerson, getPeople } from "~/features/people/db";
+import { ensureInterviewInterviewerLink } from "~/features/people/services/internalPeople.server";
+import { userContext } from "~/server/user-context";
 
-export const handle = { hideProjectStatusAgent: true } as const
+export const handle = { hideProjectStatusAgent: true } as const;
 
 export const meta: MetaFunction = () => {
-	return [{ title: "New Interview | Insights" }, { name: "description", content: "Create a new interview" }]
-}
+	return [{ title: "New Interview | Insights" }, { name: "description", content: "Create a new interview" }];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", {
 			status: 400,
-		})
+		});
 	}
 
 	// Fetch existing people for participant selection
-	const { data: people } = await getPeople({ supabase, accountId, projectId })
+	const { data: people } = await getPeople({ supabase, accountId, projectId });
 
 	return {
 		people: people || [],
 		accountId,
 		projectId,
-	}
+	};
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", {
 			status: 400,
-		})
+		});
 	}
 
-	const formData = await request.formData()
-	const title = formData.get("title") as string
-	const interviewDate = formData.get("interview_date") as string
-	const _description = formData.get("description") as string
-	const participantPseudonym = formData.get("participant_pseudonym") as string
-	const segment = formData.get("segment") as string
-	const duration_sec = Number(formData.get("duration_sec") as string)
-	const selectedPeople = formData.getAll("selected_people") as string[]
-	const newPeopleData = formData.get("new_people_data") as string
+	const formData = await request.formData();
+	const title = formData.get("title") as string;
+	const interviewDate = formData.get("interview_date") as string;
+	const _description = formData.get("description") as string;
+	const participantPseudonym = formData.get("participant_pseudonym") as string;
+	const segment = formData.get("segment") as string;
+	const duration_sec = Number(formData.get("duration_sec") as string);
+	const selectedPeople = formData.getAll("selected_people") as string[];
+	const newPeopleData = formData.get("new_people_data") as string;
 
 	if (!title?.trim()) {
-		return { error: "Title is required" }
+		return { error: "Title is required" };
 	}
 
 	// Parse new people data if provided
-	let newPeopleToCreate: Array<{ name: string; segment: string }> = []
+	let newPeopleToCreate: Array<{ name: string; segment: string }> = [];
 	if (newPeopleData) {
 		try {
-			newPeopleToCreate = JSON.parse(newPeopleData)
+			newPeopleToCreate = JSON.parse(newPeopleData);
 		} catch {
 			// Ignore parsing errors
 		}
@@ -95,10 +95,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				account_id: accountId,
 				project_id: projectId,
 			},
-		})
+		});
 
 		if (error) {
-			return { error: "Failed to create interview" }
+			return { error: "Failed to create interview" };
 		}
 
 		if (data?.id && ctx.claims?.sub) {
@@ -110,11 +110,11 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				userId: ctx.claims.sub,
 				userSettings: ctx.user_settings || null,
 				userMetadata: ctx.user_metadata || null,
-			})
+			});
 		}
 
 		// Create new people first
-		const createdPeopleIds: string[] = []
+		const createdPeopleIds: string[] = [];
 		if (newPeopleToCreate.length > 0 && data?.id) {
 			for (const newPerson of newPeopleToCreate) {
 				const { data: personData, error: personError } = await createPerson({
@@ -125,15 +125,15 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 						account_id: accountId,
 						project_id: projectId,
 					},
-				})
+				});
 				if (!personError && personData?.id) {
-					createdPeopleIds.push(personData.id)
+					createdPeopleIds.push(personData.id);
 				}
 			}
 		}
 
 		// Link all people (existing + newly created) to the interview
-		const allPeopleIds = [...selectedPeople, ...createdPeopleIds]
+		const allPeopleIds = [...selectedPeople, ...createdPeopleIds];
 		if (allPeopleIds.length > 0 && data?.id) {
 			for (const personId of allPeopleIds) {
 				await supabase.from("interview_people").insert({
@@ -141,32 +141,32 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 					person_id: personId,
 					project_id: projectId,
 					role: "participant", // Default role
-				})
+				});
 			}
 		}
 
-		return redirect(`/a/${accountId}/projects/${projectId}/interviews/${data.id}`)
+		return redirect(`/a/${accountId}/projects/${projectId}/interviews/${data.id}`);
 	} catch (_error) {
-		return { error: "Failed to create interview" }
+		return { error: "Failed to create interview" };
 	}
 }
 
 export default function NewInterview() {
-	const actionData = useActionData<typeof action>()
-	const { people } = useLoaderData<typeof loader>()
-	const [selectedPeople, setSelectedPeople] = useState<string[]>([])
-	const [showNewPersonForm, setShowNewPersonForm] = useState(false)
-	const [newPersonName, setNewPersonName] = useState("")
-	const [newPersonSegment, setNewPersonSegment] = useState("")
-	const [newPeople, setNewPeople] = useState<Array<{ name: string; segment: string; tempId: string }>>([])
+	const actionData = useActionData<typeof action>();
+	const { people } = useLoaderData<typeof loader>();
+	const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
+	const [showNewPersonForm, setShowNewPersonForm] = useState(false);
+	const [newPersonName, setNewPersonName] = useState("");
+	const [newPersonSegment, setNewPersonSegment] = useState("");
+	const [newPeople, setNewPeople] = useState<Array<{ name: string; segment: string; tempId: string }>>([]);
 
 	const togglePersonSelection = (personId: string) => {
-		setSelectedPeople((prev) => (prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]))
-	}
+		setSelectedPeople((prev) => (prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]));
+	};
 
 	const addNewPerson = () => {
 		if (newPersonName.trim()) {
-			const tempId = `temp_${Date.now()}`
+			const tempId = `temp_${Date.now()}`;
 			setNewPeople((prev) => [
 				...prev,
 				{
@@ -174,16 +174,16 @@ export default function NewInterview() {
 					segment: newPersonSegment,
 					tempId,
 				},
-			])
-			setNewPersonName("")
-			setNewPersonSegment("")
-			setShowNewPersonForm(false)
+			]);
+			setNewPersonName("");
+			setNewPersonSegment("");
+			setShowNewPersonForm(false);
 		}
-	}
+	};
 
 	const removeNewPerson = (tempId: string) => {
-		setNewPeople((prev) => prev.filter((p) => p.tempId !== tempId))
-	}
+		setNewPeople((prev) => prev.filter((p) => p.tempId !== tempId));
+	};
 
 	return (
 		<PageContainer size="lg" padded={false} className="max-w-4xl">
@@ -447,5 +447,5 @@ export default function NewInterview() {
 				</div>
 			</Form>
 		</PageContainer>
-	)
+	);
 }

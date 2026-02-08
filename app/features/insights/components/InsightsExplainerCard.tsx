@@ -6,23 +6,23 @@
  * explaining that more interviews = better consolidated insights.
  */
 
-import { CheckCircle, Layers, Loader2, Settings, Sparkles, TrendingUp } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import { useFetcher, useRevalidator } from "react-router-dom"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
-import { Button } from "~/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
+import { CheckCircle, Layers, Loader2, Settings, Sparkles, TrendingUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useFetcher, useRevalidator } from "react-router-dom";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 
 interface InsightsExplainerCardProps {
-	interviewCount: number
-	themeCount: number
-	evidenceCount: number
-	projectId: string
-	accountId: string
+	interviewCount: number;
+	themeCount: number;
+	evidenceCount: number;
+	projectId: string;
+	accountId: string;
 	/** Whether consolidation has ever been run */
-	hasConsolidated?: boolean
+	hasConsolidated?: boolean;
 	/** Similarity threshold from settings (0-1) */
-	similarityThreshold?: number
+	similarityThreshold?: number;
 }
 
 export function InsightsExplainerCard({
@@ -34,51 +34,51 @@ export function InsightsExplainerCard({
 	hasConsolidated = false,
 	similarityThreshold = 0.85,
 }: InsightsExplainerCardProps) {
-	const consolidateFetcher = useFetcher()
-	const revalidator = useRevalidator()
-	const isSubmitting = consolidateFetcher.state === "submitting"
-	const [status, setStatus] = useState<"idle" | "working" | "done">("idle")
+	const consolidateFetcher = useFetcher();
+	const revalidator = useRevalidator();
+	const isSubmitting = consolidateFetcher.state === "submitting";
+	const [status, setStatus] = useState<"idle" | "working" | "done">("idle");
 	// Track which runId we've already processed
-	const processedRunIdRef = useRef<string | null>(null)
+	const processedRunIdRef = useRef<string | null>(null);
 
 	// Handle consolidation response
 	useEffect(() => {
 		if (consolidateFetcher.state === "idle" && consolidateFetcher.data) {
 			const data = consolidateFetcher.data as {
-				ok?: boolean
-				runId?: string
-				error?: string
-			}
+				ok?: boolean;
+				runId?: string;
+				error?: string;
+			};
 			// Only process each runId once
 			if (data.ok && data.runId && processedRunIdRef.current !== data.runId) {
-				processedRunIdRef.current = data.runId
-				setStatus("working")
+				processedRunIdRef.current = data.runId;
+				setStatus("working");
 				// Poll for completion (simple approach - task is fast)
 				setTimeout(() => {
-					setStatus("done")
-					revalidator.revalidate()
+					setStatus("done");
+					revalidator.revalidate();
 					// Hide after showing "done" briefly
-					setTimeout(() => setStatus("idle"), 2000)
-				}, 5000)
+					setTimeout(() => setStatus("idle"), 2000);
+				}, 5000);
 			} else if (data.error) {
-				setStatus("idle")
+				setStatus("idle");
 			}
 		}
-	}, [consolidateFetcher.state, consolidateFetcher.data, revalidator])
+	}, [consolidateFetcher.state, consolidateFetcher.data, revalidator]);
 
 	// Reset when starting new submission
 	useEffect(() => {
 		if (isSubmitting) {
-			processedRunIdRef.current = null
-			setStatus("idle")
+			processedRunIdRef.current = null;
+			setStatus("idle");
 		}
-	}, [isSubmitting])
+	}, [isSubmitting]);
 
 	// Determine the state
-	const needsMoreData = interviewCount < 3
-	const hasEnoughForConsolidation = interviewCount >= 3 || evidenceCount >= 15
+	const needsMoreData = interviewCount < 3;
+	const hasEnoughForConsolidation = interviewCount >= 3 || evidenceCount >= 15;
 	// Only show consolidation prompt when > 10 themes
-	const tooManyThemes = themeCount > 10 && hasEnoughForConsolidation && !hasConsolidated
+	const tooManyThemes = themeCount > 10 && hasEnoughForConsolidation && !hasConsolidated;
 
 	// Early stage: Not enough data yet
 	if (needsMoreData) {
@@ -99,14 +99,14 @@ export function InsightsExplainerCard({
 					</p>
 				</AlertDescription>
 			</Alert>
-		)
+		);
 	}
 
 	// Ready for consolidation but hasn't been done yet
 	if (tooManyThemes) {
-		const isWorking = isSubmitting || status === "working"
-		const isDone = status === "done"
-		const thresholdPercent = Math.round(similarityThreshold * 100)
+		const isWorking = isSubmitting || status === "working";
+		const isDone = status === "done";
+		const thresholdPercent = Math.round(similarityThreshold * 100);
 
 		return (
 			<Alert className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
@@ -164,9 +164,9 @@ export function InsightsExplainerCard({
 					</div>
 				</AlertDescription>
 			</Alert>
-		)
+		);
 	}
 
 	// Good state - already consolidated or reasonable theme count
-	return null
+	return null;
 }

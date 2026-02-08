@@ -5,42 +5,42 @@
  * Responsive grid: 1 column on mobile, 2 on tablet+.
  */
 
-import { Glasses } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { LensResultCard } from "./LensResultCard"
+import { Glasses } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { LensResultCard } from "./LensResultCard";
 
 export interface LensSummary {
-	templateKey: string
-	name: string
-	category: "sales" | "research" | "product" | string
-	conversationCount: number
-	summary?: string
-	href: string
-	hasData?: boolean
+	templateKey: string;
+	name: string;
+	category: "sales" | "research" | "product" | string;
+	conversationCount: number;
+	summary?: string;
+	href: string;
+	hasData?: boolean;
 }
 
 export interface LensResultsGridProps {
 	/** Array of lens summaries to display */
-	lenses: LensSummary[]
+	lenses: LensSummary[];
 	/** Link to lens library for configuration */
-	lensLibraryHref: string
+	lensLibraryHref: string;
 	/** Maximum number of lenses to show (rest collapsed) */
-	maxVisible?: number
+	maxVisible?: number;
 }
 
 export function LensResultsGrid({ lenses, lensLibraryHref, maxVisible = 4 }: LensResultsGridProps) {
 	// Filter to lenses with data first, then sort by conversation count
 	const sortedLenses = [...lenses].sort((a, b) => {
 		// Prioritize lenses with data
-		if (a.hasData && !b.hasData) return -1
-		if (!a.hasData && b.hasData) return 1
+		if (a.hasData && !b.hasData) return -1;
+		if (!a.hasData && b.hasData) return 1;
 		// Then by conversation count
-		return b.conversationCount - a.conversationCount
-	})
+		return b.conversationCount - a.conversationCount;
+	});
 
-	const visibleLenses = sortedLenses.slice(0, maxVisible)
-	const hasMore = sortedLenses.length > maxVisible
+	const visibleLenses = sortedLenses.slice(0, maxVisible);
+	const hasMore = sortedLenses.length > maxVisible;
 
 	if (lenses.length === 0) {
 		return (
@@ -56,7 +56,7 @@ export function LensResultsGrid({ lenses, lensLibraryHref, maxVisible = 4 }: Len
 					<Link to={lensLibraryHref}>Configure Lenses</Link>
 				</Button>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -97,7 +97,7 @@ export function LensResultsGrid({ lenses, lensLibraryHref, maxVisible = 4 }: Len
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
-export default LensResultsGrid
+export default LensResultsGrid;

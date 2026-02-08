@@ -7,59 +7,59 @@
  * - Has Data: Shows lens results and AI insights
  */
 
-import { Pencil } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
-import { AiInsightCard } from "./AiInsightCard"
-import { EmptyState } from "./EmptyState"
-import { LensResultsGrid, type LensSummary } from "./LensResultsGrid"
-import { type ProcessingItem, ProcessingState } from "./ProcessingState"
-import { QuickActionsBar } from "./QuickActionsBar"
+import { Pencil } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
+import { AiInsightCard } from "./AiInsightCard";
+import { EmptyState } from "./EmptyState";
+import { LensResultsGrid, type LensSummary } from "./LensResultsGrid";
+import { type ProcessingItem, ProcessingState } from "./ProcessingState";
+import { QuickActionsBar } from "./QuickActionsBar";
 
 export interface DashboardV2Props {
 	/** Project name */
-	projectName: string
+	projectName: string;
 	/** Project ID */
-	projectId: string
+	projectId: string;
 	/** Account ID */
-	accountId: string
+	accountId: string;
 	/** Total number of conversations */
-	conversationCount: number
+	conversationCount: number;
 	/** Number of active/enabled lenses */
-	activeLensCount: number
+	activeLensCount: number;
 	/** Lens summaries for display */
-	lenses: LensSummary[]
+	lenses: LensSummary[];
 	/** Processing items (if any) */
-	processingItems?: ProcessingItem[]
+	processingItems?: ProcessingItem[];
 	/** Number of items currently processing */
-	processingCount?: number
+	processingCount?: number;
 	/** Whether project has goals set up */
-	hasGoals?: boolean
+	hasGoals?: boolean;
 	/** AI insight to display (if any) */
-	aiInsight?: string
+	aiInsight?: string;
 	/** Route helpers */
 	routes: {
-		setup: string
-		interviews: string
-		lensLibrary: string
-		upload: string
-		assistant: string
-	}
+		setup: string;
+		interviews: string;
+		lensLibrary: string;
+		upload: string;
+		assistant: string;
+	};
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
-type ProjectState = "empty" | "processing" | "hasData"
+type ProjectState = "empty" | "processing" | "hasData";
 
 function getProjectState(conversationCount: number, processingCount: number): ProjectState {
 	if (conversationCount === 0 && processingCount === 0) {
-		return "empty"
+		return "empty";
 	}
 	if (processingCount > 0) {
-		return "processing"
+		return "processing";
 	}
-	return "hasData"
+	return "hasData";
 }
 
 export function DashboardV2({
@@ -76,7 +76,7 @@ export function DashboardV2({
 	routes,
 	className,
 }: DashboardV2Props) {
-	const projectState = getProjectState(conversationCount, processingCount)
+	const projectState = getProjectState(conversationCount, processingCount);
 
 	return (
 		<div className={cn("space-y-6", className)}>
@@ -133,7 +133,7 @@ export function DashboardV2({
 				</>
 			)}
 		</div>
-	)
+	);
 }
 
-export default DashboardV2
+export default DashboardV2;

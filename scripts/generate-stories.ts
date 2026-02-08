@@ -12,24 +12,24 @@
  *   ./scripts/generate-stories.ts
  */
 
-import fs from "node:fs"
-import path from "node:path"
+import fs from "node:fs";
+import path from "node:path";
 
 interface StoryConfig {
-	componentPath: string
-	componentName: string
-	title: string
-	hasRouter: boolean
-	mockData?: Record<string, unknown>
-	layout?: "centered" | "padded" | "fullscreen"
+	componentPath: string;
+	componentName: string;
+	title: string;
+	hasRouter: boolean;
+	mockData?: Record<string, unknown>;
+	layout?: "centered" | "padded" | "fullscreen";
 }
 
 function generateStory(config: StoryConfig): string {
-	const { componentName, title, hasRouter, mockData, layout = "centered" } = config
+	const { componentName, title, hasRouter, mockData, layout = "centered" } = config;
 
 	const imports = `import type { Meta, StoryObj } from "@storybook/react"
 ${hasRouter ? 'import { reactRouterParameters, withRouter } from "storybook-addon-remix-react-router"' : ""}
-import { ${componentName} } from "./${componentName}"`
+import { ${componentName} } from "./${componentName}"`;
 
 	const meta = `
 const meta = {
@@ -45,7 +45,7 @@ const meta = {
 } satisfies Meta<typeof ${componentName}>
 
 export default meta
-type Story = StoryObj<typeof meta>`
+type Story = StoryObj<typeof meta>`;
 
 	const defaultStory = hasRouter
 		? `
@@ -69,9 +69,9 @@ export const Default: Story = {
 	args: {
 		// Add default props here
 	},
-}`
+}`;
 
-	return `${imports}\n${meta}\n${defaultStory}\n`
+	return `${imports}\n${meta}\n${defaultStory}\n`;
 }
 
 // =============================================================================
@@ -79,12 +79,12 @@ export const Default: Story = {
 // =============================================================================
 
 const components: Array<{
-	name: string
-	path: string
-	title?: string
-	hasRouter?: boolean
-	mockData?: Record<string, unknown>
-	layout?: "centered" | "padded" | "fullscreen"
+	name: string;
+	path: string;
+	title?: string;
+	hasRouter?: boolean;
+	mockData?: Record<string, unknown>;
+	layout?: "centered" | "padded" | "fullscreen";
 }> = [
 	// Example components - uncomment and edit:
 	// {
@@ -111,42 +111,42 @@ const components: Array<{
 	//   },
 	//   layout: "padded",
 	// },
-]
+];
 
 // =============================================================================
 // GENERATOR LOGIC
 // =============================================================================
 
 function main() {
-	console.log("🚀 Generating Storybook stories...\n")
+	console.log("🚀 Generating Storybook stories...\n");
 
 	if (components.length === 0) {
-		console.log("⚠️  No components configured!")
-		console.log("   Edit scripts/generate-stories.ts and add components to the array.\n")
-		return
+		console.log("⚠️  No components configured!");
+		console.log("   Edit scripts/generate-stories.ts and add components to the array.\n");
+		return;
 	}
 
-	let successCount = 0
-	let errorCount = 0
+	let successCount = 0;
+	let errorCount = 0;
 
 	for (const c of components) {
 		try {
 			// Resolve paths
-			const componentPath = path.resolve(process.cwd(), c.path)
-			const componentDir = path.dirname(componentPath)
-			const storyPath = path.join(componentDir, `${c.name}.stories.tsx`)
+			const componentPath = path.resolve(process.cwd(), c.path);
+			const componentDir = path.dirname(componentPath);
+			const storyPath = path.join(componentDir, `${c.name}.stories.tsx`);
 
 			// Check if component file exists
 			if (!fs.existsSync(componentPath)) {
-				console.log(`❌ Component not found: ${c.path}`)
-				errorCount++
-				continue
+				console.log(`❌ Component not found: ${c.path}`);
+				errorCount++;
+				continue;
 			}
 
 			// Check if story already exists
 			if (fs.existsSync(storyPath)) {
-				console.log(`⏭️  Story already exists: ${c.name}.stories.tsx (skipping)`)
-				continue
+				console.log(`⏭️  Story already exists: ${c.name}.stories.tsx (skipping)`);
+				continue;
 			}
 
 			// Generate story content
@@ -157,24 +157,24 @@ function main() {
 				hasRouter: c.hasRouter || false,
 				mockData: c.mockData,
 				layout: c.layout,
-			})
+			});
 
 			// Write story file
-			fs.writeFileSync(storyPath, story)
-			console.log(`✅ Generated: ${c.name}.stories.tsx`)
-			successCount++
+			fs.writeFileSync(storyPath, story);
+			console.log(`✅ Generated: ${c.name}.stories.tsx`);
+			successCount++;
 		} catch (error) {
-			console.log(`❌ Error generating story for ${c.name}:`, error)
-			errorCount++
+			console.log(`❌ Error generating story for ${c.name}:`, error);
+			errorCount++;
 		}
 	}
 
-	console.log("\n📊 Summary:")
-	console.log(`   ✅ Generated: ${successCount}`)
-	console.log(`   ❌ Errors: ${errorCount}`)
-	console.log(`   ⏭️  Skipped: ${components.length - successCount - errorCount}`)
-	console.log("\n🎉 Done!\n")
+	console.log("\n📊 Summary:");
+	console.log(`   ✅ Generated: ${successCount}`);
+	console.log(`   ❌ Errors: ${errorCount}`);
+	console.log(`   ⏭️  Skipped: ${components.length - successCount - errorCount}`);
+	console.log("\n🎉 Done!\n");
 }
 
 // Run the generator
-main()
+main();

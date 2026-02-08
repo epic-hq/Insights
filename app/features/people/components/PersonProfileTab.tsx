@@ -7,7 +7,7 @@
  * 3. Contact Information - email, phone, LinkedIn, social links
  */
 
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 import {
 	Briefcase,
 	Building2,
@@ -22,79 +22,79 @@ import {
 	Phone,
 	Twitter,
 	User2,
-} from "lucide-react"
-import { useState } from "react"
-import { InlineEditableField } from "~/components/InlineEditableField"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
-import { INDUSTRIES, JOB_FUNCTIONS, SENIORITY_LEVELS } from "~/lib/constants/options"
-import { PersonFacetLenses } from "./PersonFacetLenses"
+} from "lucide-react";
+import { useState } from "react";
+import { InlineEditableField } from "~/components/InlineEditableField";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { INDUSTRIES, JOB_FUNCTIONS, SENIORITY_LEVELS } from "~/lib/constants/options";
+import { PersonFacetLenses } from "./PersonFacetLenses";
 
 /** Contact information item with icon and optional link */
 interface ContactItem {
-	type: string
-	value: string
-	href?: string
-	icon: LucideIcon
+	type: string;
+	value: string;
+	href?: string;
+	icon: LucideIcon;
 }
 
 /** Facet entry within a lens group */
 interface FacetEntry {
-	facet_account_id: number
-	label: string
-	source: string | null
-	confidence: number | null
-	kind_slug: string
+	facet_account_id: number;
+	label: string;
+	source: string | null;
+	confidence: number | null;
+	kind_slug: string;
 }
 
 /** Facet lens group */
 interface FacetGroupLens {
-	kind_slug: string
-	label: string
-	summary?: string | null
-	facets: FacetEntry[]
+	kind_slug: string;
+	label: string;
+	summary?: string | null;
+	facets: FacetEntry[];
 }
 
 /** Available facet for adding to a person */
 interface AvailableFacet {
-	id: number
-	label: string
-	slug: string
+	id: number;
+	label: string;
+	slug: string;
 }
 
 /** Person data needed for the Profile tab (accepts full person object) */
 interface Person {
-	id: string
-	primary_email: string | null
-	primary_phone: string | null
-	linkedin_url: string | null
-	contact_info: Record<string, string> | null
-	job_function: string | null
-	seniority_level: string | null
-	industry: string | null
+	id: string;
+	primary_email: string | null;
+	primary_phone: string | null;
+	linkedin_url: string | null;
+	contact_info: Record<string, string> | null;
+	job_function: string | null;
+	seniority_level: string | null;
+	industry: string | null;
 	// Allow additional properties from loader
-	[key: string]: unknown
+	[key: string]: unknown;
 }
 
 /** Primary organization data */
 interface PrimaryOrganization {
-	industry: string | null
-	size_range: string | null
+	industry: string | null;
+	size_range: string | null;
 }
 
 interface PersonProfileTabProps {
 	/** Person data */
-	person: Person
+	person: Person;
 	/** Facet lens groups for PersonFacetLenses */
-	facetLensGroups: FacetGroupLens[]
+	facetLensGroups: FacetGroupLens[];
 	/** Available facets by kind for adding new signals */
-	availableFacetsByKind: Record<string, AvailableFacet[]>
+	availableFacetsByKind: Record<string, AvailableFacet[]>;
 	/** Whether AI summaries are being regenerated */
-	isGenerating?: boolean
+	isGenerating?: boolean;
 	/** Primary organization for fallback industry */
-	primaryOrg?: PrimaryOrganization | null
+	primaryOrg?: PrimaryOrganization | null;
 }
 
 /**
@@ -102,7 +102,7 @@ interface PersonProfileTabProps {
  * Extracts primary fields and additional JSONB fields into a consistent format
  */
 function parseContactInfo(person: Person): ContactItem[] {
-	const items: ContactItem[] = []
+	const items: ContactItem[] = [];
 
 	// Primary contact fields
 	if (person.primary_email) {
@@ -111,7 +111,7 @@ function parseContactInfo(person: Person): ContactItem[] {
 			value: person.primary_email,
 			href: `mailto:${person.primary_email}`,
 			icon: Mail,
-		})
+		});
 	}
 	if (person.primary_phone) {
 		items.push({
@@ -119,10 +119,10 @@ function parseContactInfo(person: Person): ContactItem[] {
 			value: person.primary_phone,
 			href: `tel:${person.primary_phone.replace(/\s/g, "")}`,
 			icon: Phone,
-		})
+		});
 	}
 	if (person.linkedin_url) {
-		const displayValue = person.linkedin_url.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, "").replace(/\/$/, "")
+		const displayValue = person.linkedin_url.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, "").replace(/\/$/, "");
 		items.push({
 			type: "LinkedIn",
 			value: displayValue,
@@ -130,32 +130,32 @@ function parseContactInfo(person: Person): ContactItem[] {
 				? person.linkedin_url
 				: `https://linkedin.com/in/${person.linkedin_url}`,
 			icon: Linkedin,
-		})
+		});
 	}
 
 	// Parse contact_info JSONB for additional fields
-	const info = person.contact_info
+	const info = person.contact_info;
 	if (info) {
 		if (info.twitter) {
-			const handle = info.twitter.replace(/^@/, "").replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//, "")
+			const handle = info.twitter.replace(/^@/, "").replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//, "");
 			items.push({
 				type: "X / Twitter",
 				value: `@${handle}`,
 				href: `https://x.com/${handle}`,
 				icon: Twitter,
-			})
+			});
 		}
 		if (info.instagram) {
 			const handle = info.instagram
 				.replace(/^@/, "")
 				.replace(/^https?:\/\/(www\.)?instagram\.com\//, "")
-				.replace(/\/$/, "")
+				.replace(/\/$/, "");
 			items.push({
 				type: "Instagram",
 				value: `@${handle}`,
 				href: `https://instagram.com/${handle}`,
 				icon: Instagram,
-			})
+			});
 		}
 		if (info.website) {
 			items.push({
@@ -163,25 +163,25 @@ function parseContactInfo(person: Person): ContactItem[] {
 				value: info.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""),
 				href: info.website.startsWith("http") ? info.website : `https://${info.website}`,
 				icon: Globe,
-			})
+			});
 		}
 		if (info.address) {
 			items.push({
 				type: "Address",
 				value: info.address,
 				icon: MapPin,
-			})
+			});
 		}
 	}
 
-	return items
+	return items;
 }
 
 /** Get option label from a list of options */
 function getOptionLabel(options: { value: string; label: string }[], value: string | null): string | null {
-	if (!value) return null
-	const option = options.find((o) => o.value === value)
-	return option?.label ?? value
+	if (!value) return null;
+	const option = options.find((o) => o.value === value);
+	return option?.label ?? value;
 }
 
 export function PersonProfileTab({
@@ -191,27 +191,27 @@ export function PersonProfileTab({
 	isGenerating = false,
 	primaryOrg,
 }: PersonProfileTabProps) {
-	const [contactExpanded, setContactExpanded] = useState(true)
+	const [contactExpanded, setContactExpanded] = useState(true);
 
-	const contactItems = parseContactInfo(person)
-	const hasContactInfo = contactItems.length > 0
+	const contactItems = parseContactInfo(person);
+	const hasContactInfo = contactItems.length > 0;
 
 	// Determine if we have any editable primary contact fields set
-	const hasPrimaryEmail = Boolean(person.primary_email)
-	const hasPrimaryPhone = Boolean(person.primary_phone)
-	const hasLinkedIn = Boolean(person.linkedin_url)
+	const hasPrimaryEmail = Boolean(person.primary_email);
+	const hasPrimaryPhone = Boolean(person.primary_phone);
+	const hasLinkedIn = Boolean(person.linkedin_url);
 
 	// Segment/demographic data
-	const jobFunctionLabel = getOptionLabel(JOB_FUNCTIONS, person.job_function)
-	const seniorityLabel = getOptionLabel(SENIORITY_LEVELS, person.seniority_level)
-	const industryValue = person.industry || primaryOrg?.industry || null
-	const industryLabel = getOptionLabel(INDUSTRIES, industryValue)
+	const jobFunctionLabel = getOptionLabel(JOB_FUNCTIONS, person.job_function);
+	const seniorityLabel = getOptionLabel(SENIORITY_LEVELS, person.seniority_level);
+	const industryValue = person.industry || primaryOrg?.industry || null;
+	const industryLabel = getOptionLabel(INDUSTRIES, industryValue);
 
-	const hasSegmentData = person.job_function || person.seniority_level || industryValue
+	const hasSegmentData = person.job_function || person.seniority_level || industryValue;
 
 	// Empty state
-	const hasFacetLenses = facetLensGroups.length > 0
-	const hasAnyContent = hasFacetLenses || hasSegmentData || hasContactInfo
+	const hasFacetLenses = facetLensGroups.length > 0;
+	const hasAnyContent = hasFacetLenses || hasSegmentData || hasContactInfo;
 
 	if (!hasAnyContent) {
 		return (
@@ -222,7 +222,7 @@ export function PersonProfileTab({
 					Profile data will appear here as you add conversations and evidence linked to this person.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -367,7 +367,7 @@ export function PersonProfileTab({
 									<p className="text-muted-foreground text-xs uppercase tracking-wide">All Contact Methods</p>
 									<div className="grid gap-3 sm:grid-cols-2">
 										{contactItems.map((item) => {
-											const IconComponent = item.icon
+											const IconComponent = item.icon;
 											return (
 												<div key={`${item.type}-${item.value}`} className="flex items-start gap-3">
 													<IconComponent className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -392,7 +392,7 @@ export function PersonProfileTab({
 														)}
 													</div>
 												</div>
-											)
+											);
 										})}
 									</div>
 								</div>
@@ -419,5 +419,5 @@ export function PersonProfileTab({
 				/>
 			)}
 		</div>
-	)
+	);
 }

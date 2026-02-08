@@ -1,23 +1,23 @@
-import { Bot, Plus } from "lucide-react"
-import { useNavigate, useParams } from "react-router-dom"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { Bot, Plus } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 
 interface BottomActionBarProps {
-	onToggleChat: () => void
-	isUploading?: boolean
+	onToggleChat: () => void;
+	isUploading?: boolean;
 }
 
 export function BottomActionBar({ onToggleChat, isUploading = false }: BottomActionBarProps) {
-	const navigate = useNavigate()
-	const params = useParams()
-	const { accountId, projectId } = params
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const navigate = useNavigate();
+	const params = useParams();
+	const { accountId, projectId } = params;
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// Hide on desktop (lg and up) or when uploading
 	if (isUploading) {
-		return null
+		return null;
 	}
 
 	return (
@@ -56,5 +56,5 @@ export function BottomActionBar({ onToggleChat, isUploading = false }: BottomAct
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

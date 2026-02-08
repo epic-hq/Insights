@@ -1,5 +1,5 @@
-import { Outlet } from "react-router"
-import MainNav from "~/components/navigation/MainNav"
+import { Outlet } from "react-router";
+import MainNav from "~/components/navigation/MainNav";
 
 /**
  * Marketing Layout
@@ -12,5 +12,5 @@ export default function MarketingLayout() {
 			<MainNav />
 			<Outlet />
 		</div>
-	)
+	);
 }

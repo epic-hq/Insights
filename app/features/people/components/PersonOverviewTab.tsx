@@ -10,67 +10,67 @@
  * Organization info is in the header, not duplicated here.
  */
 
-import { ChevronDown, ChevronUp, ExternalLink, Lightbulb, MessageSquareQuote, Sparkles } from "lucide-react"
-import { useState } from "react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
-import type { Insight } from "~/types"
+import { ChevronDown, ChevronUp, ExternalLink, Lightbulb, MessageSquareQuote, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3";
+import type { Insight } from "~/types";
 
 interface Theme {
-	id: string
-	name: string
-	statement: string | null
-	evidence_count: number
+	id: string;
+	name: string;
+	statement: string | null;
+	evidence_count: number;
 }
 
 interface InterviewLink {
-	id: string | number
+	id: string | number;
 	interviews: {
-		id: string
-		title: string | null
-		source_type: string | null
-		media_type: string | null
-		created_at: string | null
-	} | null
+		id: string;
+		title: string | null;
+		source_type: string | null;
+		media_type: string | null;
+		created_at: string | null;
+	} | null;
 }
 
 interface PersonOverviewTabProps {
 	/** AI-generated description / key takeaways */
-	description: string | null
+	description: string | null;
 	/** Themes this person's evidence supports */
-	themes: Theme[]
+	themes: Theme[];
 	/** AI-generated insights related to this person */
-	insights: Insight[]
+	insights: Insight[];
 	/** All interview/conversation links for recent conversations */
-	allInterviewLinks: InterviewLink[]
+	allInterviewLinks: InterviewLink[];
 	/** Route helpers */
 	routes: {
-		themes: { detail: (id: string) => string }
-		interviews: { detail: (id: string) => string }
-		evidence: { index: () => string }
-	}
+		themes: { detail: (id: string) => string };
+		interviews: { detail: (id: string) => string };
+		evidence: { index: () => string };
+	};
 	/** Person ID for filtering evidence link */
-	personId: string
+	personId: string;
 }
 
 /** Get source type icon and label */
 function getSourceInfo(sourceType: string | null, mediaType: string | null) {
 	if (sourceType === "note" || mediaType === "voice_memo") {
-		return { icon: "📝", label: "Note" }
+		return { icon: "📝", label: "Note" };
 	}
 	if (sourceType === "survey_response") {
-		return { icon: "📋", label: "Survey" }
+		return { icon: "📋", label: "Survey" };
 	}
 	if (sourceType === "public_chat") {
-		return { icon: "💬", label: "Chat" }
+		return { icon: "💬", label: "Chat" };
 	}
 	if (sourceType === "video_upload" || mediaType === "video") {
-		return { icon: "📹", label: "Interview" }
+		return { icon: "📹", label: "Interview" };
 	}
-	return { icon: "🎙️", label: "Interview" }
+	return { icon: "🎙️", label: "Interview" };
 }
 
 export function PersonOverviewTab({
@@ -81,22 +81,22 @@ export function PersonOverviewTab({
 	routes,
 	personId,
 }: PersonOverviewTabProps) {
-	const [showAllThemes, setShowAllThemes] = useState(false)
+	const [showAllThemes, setShowAllThemes] = useState(false);
 
 	// Get 3 most recent conversations
 	const recentEvidence = allInterviewLinks
 		.filter((link) => link.interviews?.id)
 		.sort((a, b) => {
-			const dateA = a.interviews?.created_at ? new Date(a.interviews.created_at).getTime() : 0
-			const dateB = b.interviews?.created_at ? new Date(b.interviews.created_at).getTime() : 0
-			return dateB - dateA
+			const dateA = a.interviews?.created_at ? new Date(a.interviews.created_at).getTime() : 0;
+			const dateB = b.interviews?.created_at ? new Date(b.interviews.created_at).getTime() : 0;
+			return dateB - dateA;
 		})
-		.slice(0, 3)
+		.slice(0, 3);
 
-	const hasDescription = description && description.trim().length > 0
-	const hasThemes = themes.length > 0
-	const hasInsights = insights.length > 0
-	const hasEvidence = recentEvidence.length > 0
+	const hasDescription = description && description.trim().length > 0;
+	const hasThemes = themes.length > 0;
+	const hasInsights = insights.length > 0;
+	const hasEvidence = recentEvidence.length > 0;
 
 	// Show empty state if nothing to display
 	if (!hasDescription && !hasThemes && !hasInsights && !hasEvidence) {
@@ -108,7 +108,7 @@ export function PersonOverviewTab({
 					Add conversations linked to this person to see key takeaways, themes, and insights.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -220,9 +220,9 @@ export function PersonOverviewTab({
 					<CardContent>
 						<div className="space-y-3">
 							{recentEvidence.map((link) => {
-								const interview = link.interviews
-								if (!interview) return null
-								const { icon, label } = getSourceInfo(interview.source_type, interview.media_type)
+								const interview = link.interviews;
+								if (!interview) return null;
+								const { icon, label } = getSourceInfo(interview.source_type, interview.media_type);
 								return (
 									<Link
 										key={link.id}
@@ -246,12 +246,12 @@ export function PersonOverviewTab({
 											)}
 										</div>
 									</Link>
-								)
+								);
 							})}
 						</div>
 					</CardContent>
 				</Card>
 			)}
 		</div>
-	)
+	);
 }

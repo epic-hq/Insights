@@ -22,94 +22,94 @@
  * - Mobile: AI panel hidden, hamburger menu for nav
  */
 
-import { useCallback, useEffect, useState } from "react"
-import { Outlet, useRouteLoaderData, useSearchParams } from "react-router"
-import { SidebarProvider } from "~/components/ui/sidebar"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { ProjectStatusAgentProvider } from "~/contexts/project-status-agent-context"
-import { useDeviceDetection } from "~/hooks/useDeviceDetection"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { BottomTabBar } from "../navigation/BottomTabBar"
-import { TopNavigation } from "../navigation/TopNavigation"
-import { useOnboarding } from "../onboarding"
-import { AIAssistantPanel } from "./AIAssistantPanel"
+import { useCallback, useEffect, useState } from "react";
+import { Outlet, useRouteLoaderData, useSearchParams } from "react-router";
+import { SidebarProvider } from "~/components/ui/sidebar";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { ProjectStatusAgentProvider } from "~/contexts/project-status-agent-context";
+import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { BottomTabBar } from "../navigation/BottomTabBar";
+import { TopNavigation } from "../navigation/TopNavigation";
+import { useOnboarding } from "../onboarding";
+import { AIAssistantPanel } from "./AIAssistantPanel";
 
 interface AccountRecord {
-	account_id: string
-	name?: string | null
-	personal_account?: boolean | null
+	account_id: string;
+	name?: string | null;
+	personal_account?: boolean | null;
 	projects?: Array<{
-		id: string
-		account_id: string
-		name?: string | null
-		slug?: string | null
-	}> | null
+		id: string;
+		account_id: string;
+		name?: string | null;
+		slug?: string | null;
+	}> | null;
 }
 
 interface ProtectedLayoutData {
-	accounts?: AccountRecord[] | null
+	accounts?: AccountRecord[] | null;
 	user_settings?: {
-		last_used_account_id?: string | null
-		last_used_project_id?: string | null
-	} | null
+		last_used_account_id?: string | null;
+		last_used_project_id?: string | null;
+	} | null;
 }
 
 interface SplitPaneLayoutProps {
 	/** System context for AI chat */
-	systemContext?: string
+	systemContext?: string;
 	/** Whether to show the journey navigation (onboarding) */
-	showJourneyNav?: boolean
+	showJourneyNav?: boolean;
 }
 
 export function SplitPaneLayout({ systemContext = "", showJourneyNav = true }: SplitPaneLayoutProps) {
-	const { isMobile } = useDeviceDetection()
-	const [searchParams] = useSearchParams()
-	const { accountId, projectId } = useCurrentProject()
-	const routes = useProjectRoutesFromIds(accountId, projectId)
-	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
-	const { aiContext: onboardingContext } = useOnboarding()
+	const { isMobile } = useDeviceDetection();
+	const [searchParams] = useSearchParams();
+	const { accountId, projectId } = useCurrentProject();
+	const routes = useProjectRoutesFromIds(accountId, projectId);
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null;
+	const { aiContext: onboardingContext } = useOnboarding();
 
 	// Combine system context with onboarding context for personalized AI
-	const combinedSystemContext = [systemContext, onboardingContext].filter(Boolean).join("\n\n")
+	const combinedSystemContext = [systemContext, onboardingContext].filter(Boolean).join("\n\n");
 
-	const isOnboarding = searchParams.get("onboarding") === "true"
-	const isWelcomeFlow = searchParams.get("welcome") === "1"
+	const isOnboarding = searchParams.get("onboarding") === "true";
+	const isWelcomeFlow = searchParams.get("welcome") === "1";
 
 	// AI Panel state - persisted to localStorage
 	const [isAIPanelOpen, setIsAIPanelOpen] = useState(() => {
-		if (typeof window === "undefined") return false
-		const stored = localStorage.getItem("ai-panel-open")
+		if (typeof window === "undefined") return false;
+		const stored = localStorage.getItem("ai-panel-open");
 		// Default to closed so floating button is visible first
-		return stored === "true"
-	})
+		return stored === "true";
+	});
 
 	// Collapse panel when entering welcome flow
 	useEffect(() => {
 		if (isWelcomeFlow) {
-			setIsAIPanelOpen(false)
+			setIsAIPanelOpen(false);
 		}
-	}, [isWelcomeFlow])
+	}, [isWelcomeFlow]);
 
-	const showMainNav = !isOnboarding
+	const showMainNav = !isOnboarding;
 
 	// Should we show the mobile navigation?
-	const showMobileNav = isMobile && showJourneyNav && showMainNav
+	const showMobileNav = isMobile && showJourneyNav && showMainNav;
 
-	const accounts = protectedData?.accounts?.filter(Boolean) ?? []
+	const accounts = protectedData?.accounts?.filter(Boolean) ?? [];
 
 	// Track AI panel width for dynamic content padding
-	const [aiPanelWidth, setAIPanelWidth] = useState(440)
+	const [aiPanelWidth, setAIPanelWidth] = useState(440);
 	const handleAIPanelWidthChange = useCallback((width: number) => {
-		setAIPanelWidth(width)
-	}, [])
+		setAIPanelWidth(width);
+	}, []);
 
 	const handleAIPanelOpenChange = useCallback((open: boolean) => {
-		setIsAIPanelOpen(open)
-	}, [])
+		setIsAIPanelOpen(open);
+	}, []);
 
 	// Show AI panel on desktop when nav is visible
-	const showAIPanel = showMainNav && !isMobile
+	const showAIPanel = showMainNav && !isMobile;
 
 	return (
 		<SidebarProvider>
@@ -157,7 +157,7 @@ export function SplitPaneLayout({ systemContext = "", showJourneyNav = true }: S
 				</div>
 			</ProjectStatusAgentProvider>
 		</SidebarProvider>
-	)
+	);
 }
 
-export default SplitPaneLayout
+export default SplitPaneLayout;

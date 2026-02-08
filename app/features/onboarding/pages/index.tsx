@@ -1,14 +1,14 @@
-import consola from "consola"
-import { useNavigate } from "react-router"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { OnboardingData } from "../components/OnboardingFlow"
-import OnboardingFlow from "../components/OnboardingFlow"
+import consola from "consola";
+import { useNavigate } from "react-router";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { OnboardingData } from "../components/OnboardingFlow";
+import OnboardingFlow from "../components/OnboardingFlow";
 
 export default function OnboardingPage() {
-	const navigate = useNavigate()
-	const { projectPath, projectId, accountId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const navigate = useNavigate();
+	const { projectPath, projectId, accountId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// For standalone onboarding route, projectId might be empty initially
 	// The OnboardingFlow will create a new project and update the projectId
@@ -20,36 +20,36 @@ export default function OnboardingPage() {
 		// 3. Store the research questions and context
 		// 4. Navigate to the project dashboard
 
-		consola.log("Onboarding completed with data:", data)
+		consola.log("Onboarding completed with data:", data);
 
 		// For now, simulate a delay and redirect
 		setTimeout(() => {
 			// Navigate to project dashboard or processing status
 			if (routes.dashboard) {
-				navigate(routes.dashboard())
+				navigate(routes.dashboard());
 			} else {
-				navigate("/dashboard")
+				navigate("/dashboard");
 			}
-		}, 1000)
-	}
+		}, 1000);
+	};
 
 	const handleAddMoreInterviews = () => {
 		// Navigate to upload/add interview page
 		if (routes.interviews?.new) {
-			navigate(routes.interviews.new())
+			navigate(routes.interviews.new());
 		} else {
-			navigate("/interviews/new")
+			navigate("/interviews/new");
 		}
-	}
+	};
 
 	const handleViewResults = () => {
 		// Navigate to full project dashboard
 		if (routes.dashboard) {
-			navigate(routes.dashboard())
+			navigate(routes.dashboard());
 		} else {
-			navigate("/dashboard")
+			navigate("/dashboard");
 		}
-	}
+	};
 
 	return (
 		<OnboardingFlow
@@ -59,5 +59,5 @@ export default function OnboardingPage() {
 			projectId={projectId || undefined}
 			accountId={accountId || undefined}
 		/>
-	)
+	);
 }

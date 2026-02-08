@@ -15,44 +15,44 @@ import {
 	HelpCircle,
 	Target,
 	Users,
-} from "lucide-react"
-import { useState } from "react"
-import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { userContext } from "~/server/user-context"
+} from "lucide-react";
+import { useState } from "react";
+import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { userContext } from "~/server/user-context";
 import {
 	type AggregatedConsultingProject,
 	type AggregatedFieldValue,
 	type AggregatedItem,
 	aggregateConsultingProject,
-} from "../services/aggregateConsultingProject.server"
+} from "../services/aggregateConsultingProject.server";
 
 // ============================================================================
 // Loader
 // ============================================================================
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const projectId = params.projectId as string
-	const projectPath = `/a/${params.accountId}/${params.projectId}`
+	const projectId = params.projectId as string;
+	const projectPath = `/a/${params.accountId}/${params.projectId}`;
 
 	if (!projectId) {
-		throw new Response("Project ID required", { status: 400 })
+		throw new Response("Project ID required", { status: 400 });
 	}
 
-	const aggregatedData = await aggregateConsultingProject({ supabase, projectId })
+	const aggregatedData = await aggregateConsultingProject({ supabase, projectId });
 
-	return { aggregatedData, projectPath }
+	return { aggregatedData, projectPath };
 }
 
 // ============================================================================
@@ -68,7 +68,7 @@ function EmptyState() {
 				Apply the "Consulting Project" lens to your stakeholder interviews to see aggregated insights here.
 			</p>
 		</div>
-	)
+	);
 }
 
 function SummaryStats({ summary }: { summary: AggregatedConsultingProject["summary"] }) {
@@ -99,7 +99,7 @@ function SummaryStats({ summary }: { summary: AggregatedConsultingProject["summa
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }
 
 function ItemList({
@@ -108,16 +108,16 @@ function ItemList({
 	emptyMessage = "No items found",
 	routes,
 }: {
-	items: AggregatedItem[]
-	maxItems?: number
-	emptyMessage?: string
-	routes: ReturnType<typeof useProjectRoutes>
+	items: AggregatedItem[];
+	maxItems?: number;
+	emptyMessage?: string;
+	routes: ReturnType<typeof useProjectRoutes>;
 }) {
-	const [showAll, setShowAll] = useState(false)
-	const displayItems = showAll ? items : items.slice(0, maxItems)
+	const [showAll, setShowAll] = useState(false);
+	const displayItems = showAll ? items : items.slice(0, maxItems);
 
 	if (items.length === 0) {
-		return <p className="text-muted-foreground text-sm italic">{emptyMessage}</p>
+		return <p className="text-muted-foreground text-sm italic">{emptyMessage}</p>;
 	}
 
 	return (
@@ -152,18 +152,18 @@ function ItemList({
 				</Button>
 			)}
 		</div>
-	)
+	);
 }
 
 function FieldValuesList({
 	fields,
 	routes,
 }: {
-	fields: AggregatedFieldValue[]
-	routes: ReturnType<typeof useProjectRoutes>
+	fields: AggregatedFieldValue[];
+	routes: ReturnType<typeof useProjectRoutes>;
 }) {
 	if (fields.length === 0) {
-		return <p className="text-muted-foreground text-sm italic">No data captured</p>
+		return <p className="text-muted-foreground text-sm italic">No data captured</p>;
 	}
 
 	return (
@@ -187,25 +187,25 @@ function FieldValuesList({
 				</div>
 			))}
 		</div>
-	)
+	);
 }
 
 function StakeholdersList({
 	stakeholders,
 	routes,
 }: {
-	stakeholders: AggregatedConsultingProject["stakeholders"]
-	routes: ReturnType<typeof useProjectRoutes>
+	stakeholders: AggregatedConsultingProject["stakeholders"];
+	routes: ReturnType<typeof useProjectRoutes>;
 }) {
 	if (stakeholders.length === 0) {
-		return <p className="text-muted-foreground text-sm italic">No stakeholders identified</p>
+		return <p className="text-muted-foreground text-sm italic">No stakeholders identified</p>;
 	}
 
 	const influenceColors: Record<string, string> = {
 		high: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 		medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
 		low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
-	}
+	};
 
 	return (
 		<div className="space-y-2">
@@ -246,25 +246,25 @@ function StakeholdersList({
 				</div>
 			))}
 		</div>
-	)
+	);
 }
 
 function NextStepsList({
 	nextSteps,
 	routes,
 }: {
-	nextSteps: AggregatedConsultingProject["next_steps"]
-	routes: ReturnType<typeof useProjectRoutes>
+	nextSteps: AggregatedConsultingProject["next_steps"];
+	routes: ReturnType<typeof useProjectRoutes>;
 }) {
 	if (nextSteps.length === 0) {
-		return <p className="text-muted-foreground text-sm italic">No action items captured</p>
+		return <p className="text-muted-foreground text-sm italic">No action items captured</p>;
 	}
 
 	const priorityColors: Record<string, string> = {
 		high: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 		medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
 		low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
-	}
+	};
 
 	return (
 		<div className="space-y-2">
@@ -298,7 +298,7 @@ function NextStepsList({
 				</div>
 			))}
 		</div>
-	)
+	);
 }
 
 // ============================================================================
@@ -306,8 +306,8 @@ function NextStepsList({
 // ============================================================================
 
 export default function AggregatedConsultingProjectPage() {
-	const { aggregatedData, projectPath } = useLoaderData<typeof loader>()
-	const routes = useProjectRoutes(projectPath)
+	const { aggregatedData, projectPath } = useLoaderData<typeof loader>();
+	const routes = useProjectRoutes(projectPath);
 
 	if (aggregatedData.interviews.length === 0) {
 		return (
@@ -315,7 +315,7 @@ export default function AggregatedConsultingProjectPage() {
 				<h1 className="mb-6 font-bold text-2xl">Consulting Project Overview</h1>
 				<EmptyState />
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -505,5 +505,5 @@ export default function AggregatedConsultingProjectPage() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

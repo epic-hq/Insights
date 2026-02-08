@@ -1,7 +1,7 @@
-import { Plus, Search } from "lucide-react"
-import { useState } from "react"
-import { useFetcher } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { Plus, Search } from "lucide-react";
+import { useState } from "react";
+import { useFetcher } from "react-router-dom";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -9,31 +9,31 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 interface Facet {
-	id: number
-	label: string
-	slug: string
+	id: number;
+	label: string;
+	slug: string;
 }
 
 interface AddFacetSignalDialogProps {
 	/** The person to add the facet to */
-	personId: string
+	personId: string;
 	/** The facet kind slug (e.g., "pain", "goal", "job_function") */
-	kindSlug: string
+	kindSlug: string;
 	/** Display label for the facet kind (e.g., "Pain", "Goal", "Job Function") */
-	kindLabel: string
+	kindLabel: string;
 	/** Available facets for this kind */
-	availableFacets: Facet[]
+	availableFacets: Facet[];
 	/** Optional custom trigger button */
-	triggerButton?: React.ReactNode
+	triggerButton?: React.ReactNode;
 	/** Callback after successful addition */
-	onSuccess?: () => void
+	onSuccess?: () => void;
 }
 
 export function AddFacetSignalDialog({
@@ -44,16 +44,18 @@ export function AddFacetSignalDialog({
 	triggerButton,
 	onSuccess,
 }: AddFacetSignalDialogProps) {
-	const [open, setOpen] = useState(false)
-	const [searchTerm, setSearchTerm] = useState("")
-	const [selectedFacetId, setSelectedFacetId] = useState<number | null>(null)
-	const [newFacetLabel, setNewFacetLabel] = useState("")
-	const fetcher = useFetcher()
+	const [open, setOpen] = useState(false);
+	const [searchTerm, setSearchTerm] = useState("");
+	const [selectedFacetId, setSelectedFacetId] = useState<number | null>(null);
+	const [newFacetLabel, setNewFacetLabel] = useState("");
+	const fetcher = useFetcher();
 
-	const filteredFacets = availableFacets.filter((facet) => facet.label.toLowerCase().includes(searchTerm.toLowerCase()))
+	const filteredFacets = availableFacets.filter((facet) =>
+		facet.label.toLowerCase().includes(searchTerm.toLowerCase())
+	);
 
 	const handleSelectExisting = () => {
-		if (!selectedFacetId) return
+		if (!selectedFacetId) return;
 
 		fetcher.submit(
 			{
@@ -62,17 +64,17 @@ export function AddFacetSignalDialog({
 				facet_account_id: selectedFacetId.toString(),
 			},
 			{ method: "post" }
-		)
+		);
 
 		// Close dialog and reset
-		setOpen(false)
-		setSearchTerm("")
-		setSelectedFacetId(null)
-		onSuccess?.()
-	}
+		setOpen(false);
+		setSearchTerm("");
+		setSelectedFacetId(null);
+		onSuccess?.();
+	};
 
 	const handleCreateNew = () => {
-		if (!newFacetLabel.trim()) return
+		if (!newFacetLabel.trim()) return;
 
 		fetcher.submit(
 			{
@@ -82,13 +84,13 @@ export function AddFacetSignalDialog({
 				facet_label: newFacetLabel.trim(),
 			},
 			{ method: "post" }
-		)
+		);
 
 		// Close dialog and reset
-		setOpen(false)
-		setNewFacetLabel("")
-		onSuccess?.()
-	}
+		setOpen(false);
+		setNewFacetLabel("");
+		onSuccess?.();
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -167,8 +169,8 @@ export function AddFacetSignalDialog({
 								placeholder={`e.g., ${kindLabel === "Pain" ? "Data integration challenges" : kindLabel === "Goal" ? "Reduce manual work" : `New ${kindLabel.toLowerCase()}`}`}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && newFacetLabel.trim()) {
-										e.preventDefault()
-										handleCreateNew()
+										e.preventDefault();
+										handleCreateNew();
 									}
 								}}
 							/>
@@ -190,5 +192,5 @@ export function AddFacetSignalDialog({
 				</Tabs>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

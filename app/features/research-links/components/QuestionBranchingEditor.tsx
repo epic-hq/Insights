@@ -8,21 +8,21 @@
  * AI-generated rules show summary, guidance (for chat agent probing), and source badge.
  */
 
-import { ChevronDown, ChevronRight, GitBranch, Loader2, MessageSquareText, Plus, Sparkles, Trash2 } from "lucide-react"
-import { useCallback, useRef, useState } from "react"
-import { useParams } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
-import type { BranchRule, ConditionOperator, QuestionBranching } from "../branching"
-import type { ResearchLinkQuestion } from "../schemas"
+import { ChevronDown, ChevronRight, GitBranch, Loader2, MessageSquareText, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import type { BranchRule, ConditionOperator, QuestionBranching } from "../branching";
+import type { ResearchLinkQuestion } from "../schemas";
 
 interface QuestionBranchingEditorProps {
-	question: ResearchLinkQuestion
-	allQuestions: ResearchLinkQuestion[]
-	questionIndex: number
-	onChange: (branching: QuestionBranching | null) => void
+	question: ResearchLinkQuestion;
+	allQuestions: ResearchLinkQuestion[];
+	questionIndex: number;
+	onChange: (branching: QuestionBranching | null) => void;
 }
 
 export function QuestionBranchingEditor({
@@ -31,32 +31,32 @@ export function QuestionBranchingEditor({
 	questionIndex,
 	onChange,
 }: QuestionBranchingEditorProps) {
-	const [isExpanded, setIsExpanded] = useState(Boolean(question.branching?.rules?.length))
-	const [nlInput, setNlInput] = useState("")
-	const [isParsing, setIsParsing] = useState(false)
-	const [parseError, setParseError] = useState<string | null>(null)
-	const [showManualAdd, setShowManualAdd] = useState(false)
-	const nlInputRef = useRef<HTMLTextAreaElement>(null)
-	const { accountId, projectId } = useParams()
+	const [isExpanded, setIsExpanded] = useState(Boolean(question.branching?.rules?.length));
+	const [nlInput, setNlInput] = useState("");
+	const [isParsing, setIsParsing] = useState(false);
+	const [parseError, setParseError] = useState<string | null>(null);
+	const [showManualAdd, setShowManualAdd] = useState(false);
+	const nlInputRef = useRef<HTMLTextAreaElement>(null);
+	const { accountId, projectId } = useParams();
 
-	const branching = question.branching
-	const rules = branching?.rules ?? []
+	const branching = question.branching;
+	const rules = branching?.rules ?? [];
 
 	// Get questions that come after this one (valid skip targets)
-	const laterQuestions = allQuestions.filter((_, idx) => idx > questionIndex)
+	const laterQuestions = allQuestions.filter((_, idx) => idx > questionIndex);
 
 	// Get options if this is a select question
-	const hasOptions = question.type === "single_select" || question.type === "multi_select"
-	const options = question.options ?? []
+	const hasOptions = question.type === "single_select" || question.type === "multi_select";
+	const options = question.options ?? [];
 
 	// NL rule parsing via AI
 	const parseNlRule = useCallback(async () => {
-		if (!nlInput.trim() || isParsing) return
-		setIsParsing(true)
-		setParseError(null)
+		if (!nlInput.trim() || isParsing) return;
+		setIsParsing(true);
+		setParseError(null);
 
 		try {
-			const apiBase = accountId && projectId ? `/a/${accountId}/${projectId}/ask` : ""
+			const apiBase = accountId && projectId ? `/a/${accountId}/${projectId}/ask` : "";
 			const response = await fetch(`${apiBase}/api/parse-branch-rule`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -72,24 +72,24 @@ export function QuestionBranchingEditor({
 						index: idx,
 					})),
 				}),
-			})
+			});
 
 			if (!response.ok) {
-				throw new Error("Failed to parse rule")
+				throw new Error("Failed to parse rule");
 			}
 
-			const data = await response.json()
+			const data = await response.json();
 			if (data.rule) {
-				onChange({ rules: [...rules, data.rule] })
-				setNlInput("")
-				setIsExpanded(true)
+				onChange({ rules: [...rules, data.rule] });
+				setNlInput("");
+				setIsExpanded(true);
 			}
 		} catch {
-			setParseError("Couldn't parse that. Try rephrasing or use manual mode.")
+			setParseError("Couldn't parse that. Try rephrasing or use manual mode.");
 		} finally {
-			setIsParsing(false)
+			setIsParsing(false);
 		}
-	}, [nlInput, isParsing, accountId, projectId, question, options, laterQuestions, rules, onChange])
+	}, [nlInput, isParsing, accountId, projectId, question, options, laterQuestions, rules, onChange]);
 
 	const addManualRule = () => {
 		const newRule: BranchRule = {
@@ -107,26 +107,26 @@ export function QuestionBranchingEditor({
 			action: laterQuestions.length > 0 ? "skip_to" : "end_survey",
 			targetQuestionId: laterQuestions[0]?.id,
 			source: "user_ui",
-		}
+		};
 
-		onChange({ rules: [...rules, newRule] })
-		setIsExpanded(true)
-		setShowManualAdd(false)
-	}
+		onChange({ rules: [...rules, newRule] });
+		setIsExpanded(true);
+		setShowManualAdd(false);
+	};
 
 	const updateRule = (ruleIndex: number, updates: Partial<BranchRule>) => {
-		const nextRules = rules.map((rule, idx) => (idx === ruleIndex ? { ...rule, ...updates } : rule))
-		onChange({ rules: nextRules })
-	}
+		const nextRules = rules.map((rule, idx) => (idx === ruleIndex ? { ...rule, ...updates } : rule));
+		onChange({ rules: nextRules });
+	};
 
 	const removeRule = (ruleIndex: number) => {
-		const nextRules = rules.filter((_, idx) => idx !== ruleIndex)
-		onChange(nextRules.length > 0 ? { rules: nextRules } : null)
-	}
+		const nextRules = rules.filter((_, idx) => idx !== ruleIndex);
+		onChange(nextRules.length > 0 ? { rules: nextRules } : null);
+	};
 
 	const updateConditionValue = (ruleIndex: number, value: string) => {
-		const rule = rules[ruleIndex]
-		if (!rule) return
+		const rule = rules[ruleIndex];
+		if (!rule) return;
 
 		updateRule(ruleIndex, {
 			conditions: {
@@ -138,12 +138,12 @@ export function QuestionBranchingEditor({
 					},
 				],
 			},
-		})
-	}
+		});
+	};
 
 	const updateConditionOperator = (ruleIndex: number, operator: ConditionOperator) => {
-		const rule = rules[ruleIndex]
-		if (!rule) return
+		const rule = rules[ruleIndex];
+		if (!rule) return;
 
 		updateRule(ruleIndex, {
 			conditions: {
@@ -155,17 +155,17 @@ export function QuestionBranchingEditor({
 					},
 				],
 			},
-		})
-	}
+		});
+	};
 
 	// Find target question prompt for display
 	const getTargetLabel = (targetId?: string) => {
-		if (!targetId) return null
-		const idx = allQuestions.findIndex((q) => q.id === targetId)
-		if (idx < 0) return null
-		const q = allQuestions[idx]
-		return `Q${idx + 1}: ${q.prompt.slice(0, 35)}${q.prompt.length > 35 ? "…" : ""}`
-	}
+		if (!targetId) return null;
+		const idx = allQuestions.findIndex((q) => q.id === targetId);
+		if (idx < 0) return null;
+		const q = allQuestions[idx];
+		return `Q${idx + 1}: ${q.prompt.slice(0, 35)}${q.prompt.length > 35 ? "…" : ""}`;
+	};
 
 	return (
 		<div>
@@ -193,13 +193,13 @@ export function QuestionBranchingEditor({
 								ref={nlInputRef}
 								value={nlInput}
 								onChange={(e) => {
-									setNlInput(e.target.value)
-									setParseError(null)
+									setNlInput(e.target.value);
+									setParseError(null);
 								}}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && !e.shiftKey) {
-										e.preventDefault()
-										parseNlRule()
+										e.preventDefault();
+										parseNlRule();
 									}
 								}}
 								placeholder='e.g. "If sponsor, skip to budget question and probe on ROI"'
@@ -224,10 +224,10 @@ export function QuestionBranchingEditor({
 
 					{/* Existing rules */}
 					{rules.map((rule, ruleIndex) => {
-						const condition = rule.conditions.conditions[0]
-						const isAiGenerated = rule.source === "ai_generated"
-						const hasSummary = Boolean(rule.summary)
-						const hasGuidance = Boolean(rule.guidance)
+						const condition = rule.conditions.conditions[0];
+						const isAiGenerated = rule.source === "ai_generated";
+						const hasSummary = Boolean(rule.summary);
+						const hasGuidance = Boolean(rule.guidance);
 
 						return (
 							<div key={rule.id} className="space-y-1.5 rounded-lg border border-border/40 bg-muted/20 p-2">
@@ -378,7 +378,7 @@ export function QuestionBranchingEditor({
 									</div>
 								)}
 							</div>
-						)
+						);
 					})}
 
 					{/* Manual add fallback */}
@@ -386,8 +386,8 @@ export function QuestionBranchingEditor({
 						<button
 							type="button"
 							onClick={() => {
-								setShowManualAdd(true)
-								addManualRule()
+								setShowManualAdd(true);
+								addManualRule();
 							}}
 							className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
 						>
@@ -397,5 +397,5 @@ export function QuestionBranchingEditor({
 				</div>
 			)}
 		</div>
-	)
+	);
 }

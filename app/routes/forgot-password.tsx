@@ -1,21 +1,21 @@
-import { type ActionFunctionArgs, data, Link, redirect, useFetcher, useSearchParams } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { getServerClient } from "~/lib/supabase/client.server"
+import { type ActionFunctionArgs, data, Link, redirect, useFetcher, useSearchParams } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-	const formData = await request.formData()
-	const email = formData.get("email") as string
+	const formData = await request.formData();
+	const email = formData.get("email") as string;
 
-	const { client: supabase, headers } = getServerClient(request)
-	const origin = new URL(request.url).origin
+	const { client: supabase, headers } = getServerClient(request);
+	const origin = new URL(request.url).origin;
 
 	// Send the actual reset password email
 	const { error } = await supabase.auth.resetPasswordForEmail(email, {
 		redirectTo: `${origin}/auth/confirm?next=/update-password`,
-	})
+	});
 
 	if (error) {
 		return data(
@@ -24,19 +24,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 				data: { email },
 			},
 			{ headers }
-		)
+		);
 	}
 
-	return redirect("/forgot-password?success")
-}
+	return redirect("/forgot-password?success");
+};
 
 export default function ForgotPassword() {
-	const fetcher = useFetcher<typeof action>()
-	const [searchParams] = useSearchParams()
+	const fetcher = useFetcher<typeof action>();
+	const [searchParams] = useSearchParams();
 
-	const success = !!searchParams.has("success")
-	const error = fetcher.data?.error
-	const loading = fetcher.state === "submitting"
+	const success = !!searchParams.has("success");
+	const error = fetcher.data?.error;
+	const loading = fetcher.state === "submitting";
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -87,5 +87,5 @@ export default function ForgotPassword() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

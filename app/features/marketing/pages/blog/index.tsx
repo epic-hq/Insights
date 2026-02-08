@@ -1,8 +1,8 @@
-import { ArrowRight, Clock, MessageSquare, Sparkles, User } from "lucide-react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { getPosts } from "~/lib/cms/payload.server"
-import { formatDate, getReadingTime } from "~/lib/cms/utils"
+import { ArrowRight, Clock, MessageSquare, Sparkles, User } from "lucide-react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { getPosts } from "~/lib/cms/payload.server";
+import { formatDate, getReadingTime } from "~/lib/cms/utils";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -24,14 +24,14 @@ export const meta: MetaFunction = () => {
 		},
 		{ property: "og:type", content: "website" },
 		{ property: "og:url", content: "https://getupsight.com/blog" },
-	]
-}
+	];
+};
 
 // Format post data on the server
 function formatPostForClient(post: any) {
 	// Use heroImage field from CMS
-	const image = post.heroImage
-	const imageUrl = image?.url ? `https://upsight-cms.vercel.app${image.url}` : null
+	const image = post.heroImage;
+	const imageUrl = image?.url ? `https://upsight-cms.vercel.app${image.url}` : null;
 
 	return {
 		id: post.id,
@@ -49,19 +49,19 @@ function formatPostForClient(post: any) {
 					avatarUrl: null,
 				}
 			: null,
-	}
+	};
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const url = new URL(request.url)
-	const page = Number.parseInt(url.searchParams.get("page") || "1", 10)
-	const limit = 12 // Posts per page
+	const url = new URL(request.url);
+	const page = Number.parseInt(url.searchParams.get("page") || "1", 10);
+	const limit = 12; // Posts per page
 
 	try {
-		const postsData = await getPosts({ limit, page })
+		const postsData = await getPosts({ limit, page });
 
 		// Format all posts on the server
-		const formattedPosts = postsData.docs.map(formatPostForClient)
+		const formattedPosts = postsData.docs.map(formatPostForClient);
 
 		return {
 			posts: formattedPosts,
@@ -72,9 +72,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				hasNextPage: postsData.hasNextPage,
 				hasPrevPage: postsData.hasPrevPage,
 			},
-		}
+		};
 	} catch (error) {
-		console.error("Failed to fetch blog posts:", error)
+		console.error("Failed to fetch blog posts:", error);
 		// Return empty state on error
 		return {
 			posts: [],
@@ -86,12 +86,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				hasPrevPage: false,
 			},
 			error: "Failed to load blog posts. Please try again later.",
-		}
+		};
 	}
 }
 
 export default function BlogIndex() {
-	const { posts, pagination, error } = useLoaderData<typeof loader>()
+	const { posts, pagination, error } = useLoaderData<typeof loader>();
 
 	return (
 		<>
@@ -184,10 +184,10 @@ export default function BlogIndex() {
 				</div>
 			</section>
 		</>
-	)
+	);
 }
 
-type FormattedPost = ReturnType<typeof formatPostForClient>
+type FormattedPost = ReturnType<typeof formatPostForClient>;
 
 // Blog Card
 function BlogCard({ post }: { post: FormattedPost }) {
@@ -240,5 +240,5 @@ function BlogCard({ post }: { post: FormattedPost }) {
 				</div>
 			</article>
 		</Link>
-	)
+	);
 }

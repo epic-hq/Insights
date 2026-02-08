@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
 	Briefcase,
@@ -12,22 +12,22 @@ import {
 	MessageSquareText,
 	Sparkles,
 	Users,
-} from "lucide-react"
-import type { RouteDefinitions } from "~/utils/route-definitions"
+} from "lucide-react";
+import type { RouteDefinitions } from "~/utils/route-definitions";
 
 export interface AppSidebarNavItem {
-	key: string
-	title: string
-	description?: string
-	icon: LucideIcon
-	to: (routes: RouteDefinitions) => string
-	featureFlag?: string
+	key: string;
+	title: string;
+	description?: string;
+	icon: LucideIcon;
+	to: (routes: RouteDefinitions) => string;
+	featureFlag?: string;
 }
 
 export interface AppSidebarSection {
-	key: string
-	title: string
-	items: AppSidebarNavItem[]
+	key: string;
+	title: string;
+	items: AppSidebarNavItem[];
 }
 
 /**
@@ -119,7 +119,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			},
 		],
 	},
-]
+];
 
 /** Footer / global utilities (Directory removed to avoid duplication) */
 export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
@@ -130,4 +130,4 @@ export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
 		icon: BookOpen,
 		to: (routes) => routes.docs(),
 	},
-]
+];

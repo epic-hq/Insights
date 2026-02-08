@@ -1,13 +1,13 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getPersonas } from "~/features/personas/db"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import { personasDetailSchema } from "~/schemas"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { getPersonas } from "~/features/personas/db";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { HOST } from "~/paths";
+import { personasDetailSchema } from "~/schemas";
+import type { Database } from "~/types";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 export const fetchPersonasTool = createTool({
 	id: "fetch-personas",
@@ -33,25 +33,25 @@ export const fetchPersonasTool = createTool({
 		searchApplied: z.string().nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const projectId = input.projectId ?? runtimeProjectId ?? null
-		const personasSearch = input.personasSearch ?? ""
-		const limit = input.limit ?? 50
+		const projectId = input.projectId ?? runtimeProjectId ?? null;
+		const personasSearch = input.personasSearch ?? "";
+		const limit = input.limit ?? 50;
 
-		const sanitizedPersonasSearch = personasSearch.trim().toLowerCase()
+		const sanitizedPersonasSearch = personasSearch.trim().toLowerCase();
 
 		consola.debug("fetch-personas: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
 			personasSearch: sanitizedPersonasSearch,
 			limit,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("fetch-personas: missing projectId")
+			consola.warn("fetch-personas: missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
@@ -59,26 +59,26 @@ export const fetchPersonasTool = createTool({
 				personas: [],
 				totalCount: 0,
 				searchApplied: null,
-			}
+			};
 		}
 
 		try {
 			// Use the centralized database function
-			const projectIdStr = projectId as string
-			const accountIdStr = runtimeAccountId as string
+			const projectIdStr = projectId as string;
+			const accountIdStr = runtimeAccountId as string;
 			const { data: personasData, error } = await getPersonas({
 				supabase,
 				projectId: projectIdStr,
-			})
+			});
 
 			if (error) {
-				consola.error("fetch-personas: failed to fetch personas", error)
-				throw error
+				consola.error("fetch-personas: failed to fetch personas", error);
+				throw error;
 			}
 
 			// Generate route definitions for URL generation
-			const projectPath = accountIdStr && projectIdStr ? `/a/${accountIdStr}/${projectIdStr}` : ""
-			const routes = createRouteDefinitions(projectPath)
+			const projectPath = accountIdStr && projectIdStr ? `/a/${accountIdStr}/${projectIdStr}` : "";
+			const routes = createRouteDefinitions(projectPath);
 
 			let personas = (personasData || []).map((persona) => ({
 				id: persona.id,
@@ -96,7 +96,7 @@ export const fetchPersonasTool = createTool({
 				createdAt: persona.created_at ? new Date(persona.created_at).toISOString() : null,
 				updatedAt: persona.updated_at ? new Date(persona.updated_at).toISOString() : null,
 				url: projectPath ? `${HOST}${routes.personas.detail(persona.id)}` : null,
-			}))
+			}));
 
 			// Apply search filtering if provided
 			if (sanitizedPersonasSearch) {
@@ -104,22 +104,22 @@ export const fetchPersonasTool = createTool({
 					const searchableText = [persona.name, persona.description, persona.primaryGoal]
 						.filter(Boolean)
 						.join(" ")
-						.toLowerCase()
+						.toLowerCase();
 
 					return (
 						searchableText.includes(sanitizedPersonasSearch) ||
 						persona.motivations?.some((motivation) => motivation.toLowerCase().includes(sanitizedPersonasSearch)) ||
 						persona.frustrations?.some((frustration) => frustration.toLowerCase().includes(sanitizedPersonasSearch))
-					)
-				})
+					);
+				});
 			}
 
 			// Apply limit
-			const limitedPersonas = personas.slice(0, limit)
+			const limitedPersonas = personas.slice(0, limit);
 
 			const message = sanitizedPersonasSearch
 				? `Found ${limitedPersonas.length} personas matching "${personasSearch}".`
-				: `Retrieved ${limitedPersonas.length} personas.`
+				: `Retrieved ${limitedPersonas.length} personas.`;
 
 			return {
 				success: true,
@@ -128,9 +128,9 @@ export const fetchPersonasTool = createTool({
 				personas: limitedPersonas,
 				totalCount: personas.length,
 				searchApplied: sanitizedPersonasSearch || null,
-			}
+			};
 		} catch (error) {
-			consola.error("fetch-personas: unexpected error", error)
+			consola.error("fetch-personas: unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error fetching personas.",
@@ -138,7 +138,7 @@ export const fetchPersonasTool = createTool({
 				personas: [],
 				totalCount: 0,
 				searchApplied: null,
-			}
+			};
 		}
 	},
-})
+});

@@ -1,4 +1,4 @@
-import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("insights", [
@@ -14,4 +14,4 @@ export default [
 		route(":insightId/edit", "./features/insights/pages/edit.tsx"),
 		route("api/update-field", "./features/insights/api/update-field.tsx"),
 	]),
-] satisfies RouteConfig
+] satisfies RouteConfig;

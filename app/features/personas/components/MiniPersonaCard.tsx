@@ -1,29 +1,29 @@
-import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent } from "~/components/ui/card";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import type { Database } from "~/types";
 
-type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
+type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 
 interface MiniPersonaCardProps {
-	persona: PersonaRow
-	className?: string
-	showLink?: boolean
+	persona: PersonaRow;
+	className?: string;
+	showLink?: boolean;
 }
 
 export default function MiniPersonaCard({ persona, className, showLink = true }: MiniPersonaCardProps) {
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	// Get persona details with fallbacks
-	const name = persona.name || "Untitled Persona"
-	const description = persona.description || "No description available"
-	const themeColor = persona.color_hex || "#6b7280"
-	const percentage = persona.percentage || 0
+	const name = persona.name || "Untitled Persona";
+	const description = persona.description || "No description available";
+	const themeColor = persona.color_hex || "#6b7280";
+	const percentage = persona.percentage || 0;
 
 	// Get initials for avatar
 	const initials =
@@ -32,7 +32,7 @@ export default function MiniPersonaCard({ persona, className, showLink = true }:
 			.map((word) => word[0])
 			.join("")
 			.toUpperCase()
-			.slice(0, 2) || "?"
+			.slice(0, 2) || "?";
 
 	const content = (
 		<Card
@@ -83,7 +83,7 @@ export default function MiniPersonaCard({ persona, className, showLink = true }:
 				</div>
 			</CardContent>
 		</Card>
-	)
+	);
 
-	return showLink ? <Link to={routes.personas.detail(persona.id)}>{content}</Link> : content
+	return showLink ? <Link to={routes.personas.detail(persona.id)}>{content}</Link> : content;
 }

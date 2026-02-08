@@ -5,21 +5,21 @@
  * Run with: npx tsx scripts/test-webhook-fixes.ts
  */
 
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-	console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars")
-	process.exit(1)
+	console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars");
+	process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function testIdempotency() {
 	// Create test interview and upload job
-	const testId = `test-${Date.now()}`
+	const testId = `test-${Date.now()}`;
 
 	const { data: interview, error: interviewError } = await supabase
 		.from("interviews")
@@ -31,10 +31,10 @@ async function testIdempotency() {
 			status: "uploaded",
 		})
 		.select()
-		.single()
+		.single();
 
 	if (interviewError) {
-		return false
+		return false;
 	}
 
 	const { error: uploadError } = await supabase
@@ -47,10 +47,10 @@ async function testIdempotency() {
 			custom_instructions: "Test instructions",
 		})
 		.select()
-		.single()
+		.single();
 
 	if (uploadError) {
-		return false
+		return false;
 	}
 
 	// Test idempotency check
@@ -58,25 +58,25 @@ async function testIdempotency() {
 		.from("upload_jobs")
 		.select("*")
 		.eq("assemblyai_id", `transcript-${testId}`)
-		.single()
+		.single();
 
 	if (findError || !foundJob) {
-		return false
+		return false;
 	}
 
 	if (foundJob.status === "done") {
 	} else {
-		return false
+		return false;
 	}
 
 	// Cleanup
-	await supabase.from("interviews").delete().eq("id", interview.id)
+	await supabase.from("interviews").delete().eq("id", interview.id);
 
-	return true
+	return true;
 }
 
 async function testStatusProgression() {
-	const testId = `status-${Date.now()}`
+	const testId = `status-${Date.now()}`;
 
 	// Create interview in uploaded state
 	const { data: interview, error: interviewError } = await supabase
@@ -89,37 +89,37 @@ async function testStatusProgression() {
 			status: "uploaded", // 20%
 		})
 		.select()
-		.single()
+		.single();
 
 	if (interviewError) {
-		return false
+		return false;
 	}
 
 	// Progress to transcribed
-	await supabase.from("interviews").update({ status: "transcribed" }).eq("id", interview.id)
+	await supabase.from("interviews").update({ status: "transcribed" }).eq("id", interview.id);
 
 	// Progress to processing
-	await supabase.from("interviews").update({ status: "processing" }).eq("id", interview.id)
+	await supabase.from("interviews").update({ status: "processing" }).eq("id", interview.id);
 
 	// Progress to ready
-	await supabase.from("interviews").update({ status: "ready" }).eq("id", interview.id)
+	await supabase.from("interviews").update({ status: "ready" }).eq("id", interview.id);
 
 	// Verify final status
-	const { data: finalInterview } = await supabase.from("interviews").select("status").eq("id", interview.id).single()
+	const { data: finalInterview } = await supabase.from("interviews").select("status").eq("id", interview.id).single();
 
 	if (finalInterview?.status === "ready") {
 	} else {
-		return false
+		return false;
 	}
 
 	// Cleanup
-	await supabase.from("interviews").delete().eq("id", interview.id)
+	await supabase.from("interviews").delete().eq("id", interview.id);
 
-	return true
+	return true;
 }
 
 async function testAuditFields() {
-	const testId = `audit-${Date.now()}`
+	const testId = `audit-${Date.now()}`;
 
 	// Create test interview
 	const { data: interview, error: interviewError } = await supabase
@@ -132,10 +132,10 @@ async function testAuditFields() {
 			status: "ready",
 		})
 		.select()
-		.single()
+		.single();
 
 	if (interviewError) {
-		return false
+		return false;
 	}
 
 	// Test creating insight without created_by (should work with nullable fields)
@@ -159,10 +159,10 @@ async function testAuditFields() {
 			// created_by and updated_by omitted (should be null)
 		})
 		.select()
-		.single()
+		.single();
 
 	if (insightError) {
-		return false
+		return false;
 	}
 
 	// Test creating insight with created_by
@@ -187,28 +187,28 @@ async function testAuditFields() {
 			updated_by: "45b0ca10-9af1-402d-9684-91198748a216",
 		})
 		.select()
-		.single()
+		.single();
 
 	if (auditError) {
-		return false
+		return false;
 	}
 
 	// Cleanup
-	await supabase.from("interviews").delete().eq("id", interview.id)
+	await supabase.from("interviews").delete().eq("id", interview.id);
 
-	return true
+	return true;
 }
 
 async function main() {
-	const results = [await testIdempotency(), await testStatusProgression(), await testAuditFields()]
+	const results = [await testIdempotency(), await testStatusProgression(), await testAuditFields()];
 
-	const allPassed = results.every(Boolean)
+	const allPassed = results.every(Boolean);
 	if (allPassed) {
 	} else {
-		process.exit(1)
+		process.exit(1);
 	}
 }
 
 main().catch((_error) => {
-	process.exit(1)
-})
+	process.exit(1);
+});

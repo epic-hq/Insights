@@ -1,9 +1,9 @@
-import { Agent } from "@mastra/core/agent"
-import { LibSQLStore } from "@mastra/libsql"
-import { Memory } from "@mastra/memory"
-import { openai } from "../../lib/billing/instrumented-openai.server"
-import { wrapToolsWithStatusEvents } from "../tools/tool-status-events"
-import { weatherTool } from "../tools/weather-tool"
+import { Agent } from "@mastra/core/agent";
+import { LibSQLStore } from "@mastra/libsql";
+import { Memory } from "@mastra/memory";
+import { openai } from "../../lib/billing/instrumented-openai.server";
+import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
+import { weatherTool } from "../tools/weather-tool";
 
 export const weatherAgent = new Agent({
 	id: "weather-agent",
@@ -30,4 +30,4 @@ export const weatherAgent = new Agent({
 			url: ":memory:", // using in-memory storage to avoid file connection issues
 		}),
 	}),
-})
+});

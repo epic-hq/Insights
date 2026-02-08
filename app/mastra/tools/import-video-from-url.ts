@@ -8,18 +8,18 @@
  *
  * All actual media processing is delegated to the Trigger.dev task.
  */
-import { createTool } from "@mastra/core/tools"
-import { tasks } from "@trigger.dev/sdk"
-import consola from "consola"
-import { z } from "zod"
-import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl"
+import { createTool } from "@mastra/core/tools";
+import { tasks } from "@trigger.dev/sdk";
+import consola from "consola";
+import { z } from "zod";
+import type { importFromUrlTask } from "~/../src/trigger/interview/importFromUrl";
 import {
 	type ExtractionResult,
 	extractAllMediaUrls,
 	isDirectMediaUrl,
 	isStreamingUrl,
-} from "~/utils/extractMediaUrl.server"
-import { resolveProjectContext } from "./context-utils"
+} from "~/utils/extractMediaUrl.server";
+import { resolveProjectContext } from "./context-utils";
 
 export const importVideoFromUrlTool = createTool({
 	id: "importVideoFromUrl",
@@ -77,17 +77,17 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 		publicRunToken: z.string().nullable(),
 	}),
 	execute: async (input, context?) => {
-		const { videoUrl: inputUrl, title, participantName, participantOrganization, participantSegment } = input
-		const { accountId, projectId, userId } = await resolveProjectContext(context, "importVideoFromUrl")
+		const { videoUrl: inputUrl, title, participantName, participantOrganization, participantSegment } = input;
+		const { accountId, projectId, userId } = await resolveProjectContext(context, "importVideoFromUrl");
 
 		// Check if this is a webpage that might have multiple media assets
 		// This provides a better UX by letting the user choose when there are options
 		if (!isDirectMediaUrl(inputUrl) && !isStreamingUrl(inputUrl)) {
-			consola.info(`[importVideoFromUrl] URL doesn't appear to be direct media, scanning page: ${inputUrl}`)
-			const extractionResult = await extractAllMediaUrls(inputUrl)
+			consola.info(`[importVideoFromUrl] URL doesn't appear to be direct media, scanning page: ${inputUrl}`);
+			const extractionResult = await extractAllMediaUrls(inputUrl);
 
 			// If multiple distinct media types found, ask user to choose
-			const uniqueTypes = new Set(extractionResult.assets.map((a) => a.type))
+			const uniqueTypes = new Set(extractionResult.assets.map((a) => a.type));
 			if (extractionResult.assets.length > 1 && uniqueTypes.size > 1) {
 				// Format options for user
 				const options = extractionResult.assets.map((asset, i) => ({
@@ -95,11 +95,11 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 					type: asset.type,
 					format: asset.format,
 					url: asset.url.length > 80 ? asset.url.slice(0, 77) + "..." : asset.url,
-				}))
+				}));
 
-				const videoCount = extractionResult.assets.filter((a) => a.type === "video").length
-				const audioCount = extractionResult.assets.filter((a) => a.type === "audio").length
-				const streamCount = extractionResult.assets.filter((a) => a.type === "stream").length
+				const videoCount = extractionResult.assets.filter((a) => a.type === "video").length;
+				const audioCount = extractionResult.assets.filter((a) => a.type === "audio").length;
+				const streamCount = extractionResult.assets.filter((a) => a.type === "stream").length;
 
 				return {
 					success: false,
@@ -122,7 +122,7 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 					interviewId: null,
 					triggerRunId: null,
 					publicRunToken: null,
-				}
+				};
 			}
 
 			// If no media found at all, return early with a helpful message
@@ -133,14 +133,14 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 					interviewId: null,
 					triggerRunId: null,
 					publicRunToken: null,
-				}
+				};
 			}
 			// Otherwise, proceed - the Trigger.dev task will handle the extraction
 		}
 
 		// Delegate all processing to the Trigger.dev task
 		// The task handles: direct media URLs, HLS/DASH streams, and webpage extraction
-		consola.info(`[importVideoFromUrl] Delegating to Trigger.dev task for URL: ${inputUrl}`)
+		consola.info(`[importVideoFromUrl] Delegating to Trigger.dev task for URL: ${inputUrl}`);
 
 		try {
 			const handle = await tasks.trigger<typeof importFromUrlTask>("interview.import-from-url", {
@@ -157,7 +157,7 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 				projectId,
 				accountId,
 				userId: userId || null,
-			})
+			});
 
 			return {
 				success: true,
@@ -166,16 +166,16 @@ The tool will scan webpages to find video/audio URLs, prioritizing HLS/DASH stre
 				interviewId: null, // Will be created by the Trigger.dev task
 				triggerRunId: handle.id,
 				publicRunToken: handle.publicAccessToken ?? null,
-			}
+			};
 		} catch (triggerError) {
-			consola.error("[importVideoFromUrl] Failed to trigger import task:", triggerError)
+			consola.error("[importVideoFromUrl] Failed to trigger import task:", triggerError);
 			return {
 				success: false,
 				message: `Failed to queue media import: ${triggerError instanceof Error ? triggerError.message : "Unknown error"}`,
 				interviewId: null,
 				triggerRunId: null,
 				publicRunToken: null,
-			}
+			};
 		}
 	},
-})
+});

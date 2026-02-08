@@ -1,13 +1,13 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { getThemes } from "~/features/themes/db"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { HOST } from "~/paths"
-import { themeDetailSchema } from "~/schemas"
-import type { Database } from "~/types"
-import { createRouteDefinitions } from "~/utils/route-definitions"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { getThemes } from "~/features/themes/db";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import { HOST } from "~/paths";
+import { themeDetailSchema } from "~/schemas";
+import type { Database } from "~/types";
+import { createRouteDefinitions } from "~/utils/route-definitions";
 
 export const fetchThemesTool = createTool({
 	id: "fetch-themes",
@@ -30,25 +30,25 @@ export const fetchThemesTool = createTool({
 		searchApplied: z.string().nullable(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
 
-		const projectId = input.projectId ?? runtimeProjectId ?? null
-		const themeSearch = input.themeSearch ?? ""
-		const limit = input.limit ?? 50
+		const projectId = input.projectId ?? runtimeProjectId ?? null;
+		const themeSearch = input.themeSearch ?? "";
+		const limit = input.limit ?? 50;
 
-		const sanitizedThemeSearch = themeSearch.trim().toLowerCase()
+		const sanitizedThemeSearch = themeSearch.trim().toLowerCase();
 
 		consola.debug("fetch-themes: execute start", {
 			projectId,
 			accountId: runtimeAccountId,
 			themeSearch: sanitizedThemeSearch,
 			limit,
-		})
+		});
 
 		if (!projectId) {
-			consola.warn("fetch-themes: missing projectId")
+			consola.warn("fetch-themes: missing projectId");
 			return {
 				success: false,
 				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
@@ -56,26 +56,26 @@ export const fetchThemesTool = createTool({
 				themes: [],
 				totalCount: 0,
 				searchApplied: null,
-			}
+			};
 		}
 
 		try {
 			// Use the centralized database function
-			const projectIdStr = projectId as string
-			const accountIdStr = runtimeAccountId as string
+			const projectIdStr = projectId as string;
+			const accountIdStr = runtimeAccountId as string;
 			const { data: themesData, error } = await getThemes({
 				supabase,
 				projectId: projectIdStr,
-			})
+			});
 
 			if (error) {
-				consola.error("fetch-themes: failed to fetch themes", error)
-				throw error
+				consola.error("fetch-themes: failed to fetch themes", error);
+				throw error;
 			}
 
 			// Generate route definitions for URL generation
-			const projectPath = accountIdStr && projectIdStr ? `/a/${accountIdStr}/${projectIdStr}` : ""
-			const routes = createRouteDefinitions(projectPath)
+			const projectPath = accountIdStr && projectIdStr ? `/a/${accountIdStr}/${projectIdStr}` : "";
+			const routes = createRouteDefinitions(projectPath);
 
 			let themes = (themesData || []).map((theme) => ({
 				id: theme.id,
@@ -93,7 +93,7 @@ export const fetchThemesTool = createTool({
 				createdAt: theme.created_at ? new Date(theme.created_at).toISOString() : null,
 				updatedAt: theme.updated_at ? new Date(theme.updated_at).toISOString() : null,
 				url: projectPath ? `${HOST}${routes.themes.detail(theme.id)}` : null,
-			}))
+			}));
 
 			// Apply search filtering if provided
 			if (sanitizedThemeSearch) {
@@ -101,22 +101,22 @@ export const fetchThemesTool = createTool({
 					const searchableText = [theme.name, theme.statement, theme.inclusionCriteria, theme.exclusionCriteria]
 						.filter(Boolean)
 						.join(" ")
-						.toLowerCase()
+						.toLowerCase();
 
 					return (
 						searchableText.includes(sanitizedThemeSearch) ||
 						theme.synonyms?.some((synonym) => synonym.toLowerCase().includes(sanitizedThemeSearch)) ||
 						theme.antiExamples?.some((example) => example.toLowerCase().includes(sanitizedThemeSearch))
-					)
-				})
+					);
+				});
 			}
 
 			// Apply limit
-			const limitedThemes = themes.slice(0, limit)
+			const limitedThemes = themes.slice(0, limit);
 
 			const message = sanitizedThemeSearch
 				? `Found ${limitedThemes.length} themes matching "${themeSearch}".`
-				: `Retrieved ${limitedThemes.length} themes.`
+				: `Retrieved ${limitedThemes.length} themes.`;
 
 			return {
 				success: true,
@@ -125,9 +125,9 @@ export const fetchThemesTool = createTool({
 				themes: limitedThemes,
 				totalCount: themes.length,
 				searchApplied: sanitizedThemeSearch || null,
-			}
+			};
 		} catch (error) {
-			consola.error("fetch-themes: unexpected error", error)
+			consola.error("fetch-themes: unexpected error", error);
 			return {
 				success: false,
 				message: "Unexpected error fetching themes.",
@@ -135,7 +135,7 @@ export const fetchThemesTool = createTool({
 				themes: [],
 				totalCount: 0,
 				searchApplied: null,
-			}
+			};
 		}
 	},
-})
+});

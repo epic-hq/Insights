@@ -1,6 +1,6 @@
-import { withRouter } from ".storybook/with-router"
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import OpportunitiesIndex from "./index"
+import { withRouter } from ".storybook/with-router";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import OpportunitiesIndex from "./index";
 
 const meta = {
 	title: "Features/Opportunities/Pages/Index",
@@ -10,10 +10,10 @@ const meta = {
 		layout: "fullscreen",
 	},
 	tags: ["autodocs"],
-} satisfies Meta<typeof OpportunitiesIndex>
+} satisfies Meta<typeof OpportunitiesIndex>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 // Mock opportunities data
 const mockOpportunities = [
@@ -47,7 +47,7 @@ const mockOpportunities = [
 		close_date: "2025-06-30",
 		created_at: "2025-01-10",
 	},
-]
+];
 
 export const Default: Story = {
 	parameters: {
@@ -55,7 +55,7 @@ export const Default: Story = {
 			opportunities: mockOpportunities,
 		},
 	},
-}
+};
 
 export const Empty: Story = {
 	parameters: {
@@ -63,7 +63,7 @@ export const Empty: Story = {
 			opportunities: [],
 		},
 	},
-}
+};
 
 export const ManyOpportunities: Story = {
 	parameters: {
@@ -93,4 +93,4 @@ export const ManyOpportunities: Story = {
 			],
 		},
 	},
-}
+};

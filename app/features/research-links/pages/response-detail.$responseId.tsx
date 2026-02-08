@@ -2,35 +2,35 @@
  * Individual response detail page
  * Shows full response with all answers, person info, and video if recorded
  */
-import { formatDistanceToNow } from "date-fns"
-import { ArrowLeft, Calendar, CheckCircle, Clock, Mail, User, Video } from "lucide-react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { createR2PresignedUrl } from "~/utils/r2.server"
-import { createRouteDefinitions } from "~/utils/route-definitions"
-import { ResearchLinkQuestionSchema } from "../schemas"
-import { extractAnswer } from "../utils"
+import { formatDistanceToNow } from "date-fns";
+import { ArrowLeft, Calendar, CheckCircle, Clock, Mail, User, Video } from "lucide-react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { createR2PresignedUrl } from "~/utils/r2.server";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+import { ResearchLinkQuestionSchema } from "../schemas";
+import { extractAnswer } from "../utils";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	if (!data) return [{ title: "Response" }]
+	if (!data) return [{ title: "Response" }];
 	return [
 		{ title: `Response from ${data.response.email}` },
 		{ name: "description", content: `Response detail for ${data.list.name}` },
-	]
-}
+	];
+};
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-	const { accountId, projectId, listId, responseId } = params
+	const { accountId, projectId, listId, responseId } = params;
 	if (!accountId || !projectId || !listId || !responseId) {
-		throw new Response("Missing route parameters", { status: 400 })
+		throw new Response("Missing route parameters", { status: 400 });
 	}
 
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
 	// Fetch the list
 	const { data: list, error: listError } = await supabase
@@ -38,13 +38,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		.select("id, name, slug, questions")
 		.eq("account_id", accountId)
 		.eq("id", listId)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (listError) {
-		throw new Response(listError.message, { status: 500 })
+		throw new Response(listError.message, { status: 500 });
 	}
 	if (!list) {
-		throw new Response("Ask link not found", { status: 404 })
+		throw new Response("Ask link not found", { status: 404 });
 	}
 
 	// Fetch the response with person data
@@ -53,27 +53,27 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		.select("*, person:people(id, name, primary_email, title, company)")
 		.eq("id", responseId)
 		.eq("research_link_id", listId)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (responseError) {
-		throw new Response(responseError.message, { status: 500 })
+		throw new Response(responseError.message, { status: 500 });
 	}
 	if (!response) {
-		throw new Response("Response not found", { status: 404 })
+		throw new Response("Response not found", { status: 404 });
 	}
 
 	// Generate signed URL for video if exists
-	let videoSignedUrl: string | null = null
+	let videoSignedUrl: string | null = null;
 	if (response.video_url) {
 		const presigned = createR2PresignedUrl({
 			key: response.video_url,
 			expiresInSeconds: 3600,
 			responseContentType: "video/webm",
-		})
-		videoSignedUrl = presigned?.url ?? null
+		});
+		videoSignedUrl = presigned?.url ?? null;
 	}
 
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
+	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
 
 	return {
 		accountId,
@@ -83,20 +83,20 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		response,
 		questions: questionsResult.success ? questionsResult.data : [],
 		videoSignedUrl,
-	}
+	};
 }
 
 export default function ResponseDetailPage() {
-	const { accountId, projectId, listId, list, response, questions, videoSignedUrl } = useLoaderData<typeof loader>()
+	const { accountId, projectId, listId, list, response, questions, videoSignedUrl } = useLoaderData<typeof loader>();
 
-	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 	const person = response.person as {
-		id: string
-		name: string | null
-		primary_email: string | null
-		title: string | null
-		company: string | null
-	} | null
+		id: string;
+		name: string | null;
+		primary_email: string | null;
+		title: string | null;
+		company: string | null;
+	} | null;
 
 	return (
 		<PageContainer className="max-w-3xl space-y-6">
@@ -178,7 +178,7 @@ export default function ResponseDetailPage() {
 				</CardHeader>
 				<CardContent className="space-y-6">
 					{questions.map((question, index) => {
-						const answer = extractAnswer(response, question)
+						const answer = extractAnswer(response, question);
 						return (
 							<div key={question.id} className="space-y-2">
 								<div className="flex items-start gap-2">
@@ -195,7 +195,7 @@ export default function ResponseDetailPage() {
 									)}
 								</div>
 							</div>
-						)
+						);
 					})}
 				</CardContent>
 			</Card>
@@ -229,5 +229,5 @@ export default function ResponseDetailPage() {
 				</Card>
 			)}
 		</PageContainer>
-	)
+	);
 }

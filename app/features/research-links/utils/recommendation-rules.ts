@@ -4,67 +4,67 @@
  * No LLM calls - deterministic rules based on project data.
  */
 
-import type { ProjectResearchContext } from "../db"
+import type { ProjectResearchContext } from "../db";
 
 /**
  * A recommendation for the user's next action.
  */
 export interface Recommendation {
 	/** Unique identifier for the recommendation */
-	id: string
+	id: string;
 	/** Priority (1 = highest) */
-	priority: number
+	priority: number;
 	/** Short title for the recommendation */
-	title: string
+	title: string;
 	/** Longer description of what this recommendation involves */
-	description: string
+	description: string;
 	/** Why this recommendation is being made */
-	reasoning: string
+	reasoning: string;
 	/** The type of action */
-	actionType: "setup" | "interview" | "survey" | "validate" | "deep_dive" | "analyze" | "decide" | "data_quality"
+	actionType: "setup" | "interview" | "survey" | "validate" | "deep_dive" | "analyze" | "decide" | "data_quality";
 	/** Optional: relative path to navigate to (e.g., "/setup", "/ask/new") */
-	navigateTo?: string
+	navigateTo?: string;
 	/** Optional: theme this recommendation focuses on */
 	focusTheme?: {
-		id: string
-		name: string
-	}
+		id: string;
+		name: string;
+	};
 	/** Optional: metadata for the action */
-	metadata?: Record<string, unknown>
+	metadata?: Record<string, unknown>;
 }
 
 /**
  * Project stage based on research progress.
  */
-export type ProjectStage = "setup" | "discovery" | "gathering" | "validation" | "synthesis"
+export type ProjectStage = "setup" | "discovery" | "gathering" | "validation" | "synthesis";
 
 /**
  * Determine the current stage of the project.
  * Stage reflects actual research progress, not just setup completeness.
  */
 export function determineProjectStage(context: ProjectResearchContext): ProjectStage {
-	const hasResearchData = context.interviewCount > 0 || context.surveyCount > 0
+	const hasResearchData = context.interviewCount > 0 || context.surveyCount > 0;
 
 	// Only "setup" if no goals AND no research data at all
 	if (!context.hasGoals && !hasResearchData) {
-		return "setup"
+		return "setup";
 	}
 
 	if (!hasResearchData) {
-		return "discovery"
+		return "discovery";
 	}
 
 	if (context.themes.length === 0) {
-		return "gathering"
+		return "gathering";
 	}
 
 	// Check if themes need validation (low evidence)
-	const lowEvidenceThemes = context.themes.filter((t) => t.evidence_count < 3)
+	const lowEvidenceThemes = context.themes.filter((t) => t.evidence_count < 3);
 	if (lowEvidenceThemes.length > context.themes.length / 2) {
-		return "validation"
+		return "validation";
 	}
 
-	return "synthesis"
+	return "synthesis";
 }
 
 /**
@@ -72,7 +72,7 @@ export function determineProjectStage(context: ProjectResearchContext): ProjectS
  * Returns up to 3 prioritized recommendations.
  */
 export function generateRecommendations(context: ProjectResearchContext): Recommendation[] {
-	const recommendations: Recommendation[] = []
+	const recommendations: Recommendation[] = [];
 
 	// Rule 1: Project setup incomplete
 	if (!context.hasGoals) {
@@ -84,7 +84,7 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			reasoning: "Project goals help me suggest the right next steps for you.",
 			actionType: "setup",
 			navigateTo: "/setup",
-		})
+		});
 	}
 
 	// Rule 2: No research data at all
@@ -100,7 +100,7 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			metadata: {
 				suggestedOptions: ["interviews", "survey"],
 			},
-		})
+		});
 	}
 
 	// Rule 2b: Has interviews but no themes/evidence extracted yet
@@ -113,13 +113,13 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			reasoning: `${context.interviewCount} interview${context.interviewCount === 1 ? " has" : "s have"} been added but no themes or evidence have been extracted yet.`,
 			actionType: "analyze",
 			navigateTo: "/themes",
-		})
+		});
 	}
 
 	// Rule 3: Low evidence themes need validation
-	const lowEvidenceThemes = context.themes.filter((t) => t.evidence_count < 3)
+	const lowEvidenceThemes = context.themes.filter((t) => t.evidence_count < 3);
 	if (lowEvidenceThemes.length > 0) {
-		const topTheme = lowEvidenceThemes[0]
+		const topTheme = lowEvidenceThemes[0];
 		recommendations.push({
 			id: `validate-theme-${topTheme.id}`,
 			priority: 3,
@@ -132,13 +132,13 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 				id: topTheme.id,
 				name: topTheme.name,
 			},
-		})
+		});
 	}
 
 	// Rule 4: High-confidence themes - go deeper
-	const highEvidenceThemes = context.themes.filter((t) => t.evidence_count >= 5)
+	const highEvidenceThemes = context.themes.filter((t) => t.evidence_count >= 5);
 	if (highEvidenceThemes.length > 0 && recommendations.length < 3) {
-		const topTheme = highEvidenceThemes[0]
+		const topTheme = highEvidenceThemes[0];
 		recommendations.push({
 			id: `deep-dive-${topTheme.id}`,
 			priority: 4,
@@ -151,7 +151,7 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 				id: topTheme.id,
 				name: topTheme.name,
 			},
-		})
+		});
 	}
 
 	// Rule 5: Pricing themes detected - special handling
@@ -161,9 +161,9 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			t.name.toLowerCase().includes("price") ||
 			t.pain?.toLowerCase().includes("cost") ||
 			t.pain?.toLowerCase().includes("budget")
-	)
+	);
 	if (pricingThemes.length > 0 && recommendations.length < 3) {
-		const pricingTheme = pricingThemes[0]
+		const pricingTheme = pricingThemes[0];
 		recommendations.push({
 			id: "pricing-validation",
 			priority: 5,
@@ -179,16 +179,16 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			metadata: {
 				surveyType: "pricing",
 			},
-		})
+		});
 	}
 
 	// Rule 6: No recent surveys - NPS check
 	const hasRecentSurvey = context.previousSurveys.some((s) => {
-		const createdAt = new Date(s.created_at)
-		const thirtyDaysAgo = new Date()
-		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-		return createdAt > thirtyDaysAgo
-	})
+		const createdAt = new Date(s.created_at);
+		const thirtyDaysAgo = new Date();
+		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+		return createdAt > thirtyDaysAgo;
+	});
 
 	if (!hasRecentSurvey && context.surveyResponseCount > 0 && recommendations.length < 3) {
 		recommendations.push({
@@ -202,7 +202,7 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			metadata: {
 				surveyType: "nps",
 			},
-		})
+		});
 	}
 
 	// Rule 7: Lots of data, no decisions - time to synthesize
@@ -215,14 +215,14 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 			reasoning: `${context.themes.length} themes from ${context.interviewCount} interviews - ready for synthesis.`,
 			actionType: "analyze",
 			navigateTo: "/themes",
-		})
+		});
 	}
 
 	// Rule 8: People need segment inference (data quality)
 	// Trigger when >5 people have titles but missing job_function/seniority
-	const { peopleNeedingSegments, totalPeople } = context.dataQuality
+	const { peopleNeedingSegments, totalPeople } = context.dataQuality;
 	if (peopleNeedingSegments >= 5 && recommendations.length < 3) {
-		const percentage = Math.round((peopleNeedingSegments / totalPeople) * 100)
+		const percentage = Math.round((peopleNeedingSegments / totalPeople) * 100);
 		recommendations.push({
 			id: "infer-segments",
 			priority: 8,
@@ -237,11 +237,11 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
 				peopleNeedingSegments,
 				totalPeople,
 			},
-		})
+		});
 	}
 
 	// Sort by priority and return top 3
-	return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 3)
+	return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 3);
 }
 
 /**
@@ -249,12 +249,12 @@ export function generateRecommendations(context: ProjectResearchContext): Recomm
  * Used by the survey creation UI.
  */
 export function getSurveyRecommendations(context: ProjectResearchContext): Recommendation[] {
-	const allRecommendations = generateRecommendations(context)
+	const allRecommendations = generateRecommendations(context);
 
 	// Include recommendations that can be addressed with a survey
 	const surveyActionable = allRecommendations.filter(
 		(r) => r.actionType === "survey" || r.actionType === "validate" || r.actionType === "deep_dive"
-	)
+	);
 
 	// If no survey-specific recommendations, suggest a discovery survey
 	if (surveyActionable.length === 0 && context.themes.length === 0) {
@@ -271,8 +271,8 @@ export function getSurveyRecommendations(context: ProjectResearchContext): Recom
 					surveyType: "discovery",
 				},
 			},
-		]
+		];
 	}
 
-	return surveyActionable
+	return surveyActionable;
 }

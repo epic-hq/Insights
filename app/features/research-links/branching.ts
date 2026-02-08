@@ -5,7 +5,7 @@
  * Used by both form mode (client-side) and chat mode (server-side agent).
  */
 
-import { z } from "zod"
+import { z } from "zod";
 
 // ============================================================================
 // Types & Schemas
@@ -23,9 +23,9 @@ export const ConditionOperatorSchema = z.enum([
 	"not_selected", // For multi-select: value not in array
 	"answered", // Question has any response
 	"not_answered", // Question has no response
-])
+]);
 
-export type ConditionOperator = z.infer<typeof ConditionOperatorSchema>
+export type ConditionOperator = z.infer<typeof ConditionOperatorSchema>;
 
 /**
  * Single condition to evaluate
@@ -34,9 +34,9 @@ export const ConditionSchema = z.object({
 	questionId: z.string().min(1),
 	operator: ConditionOperatorSchema,
 	value: z.union([z.string(), z.array(z.string())]).optional(),
-})
+});
 
-export type Condition = z.infer<typeof ConditionSchema>
+export type Condition = z.infer<typeof ConditionSchema>;
 
 /**
  * Group of conditions with AND/OR logic
@@ -44,30 +44,30 @@ export type Condition = z.infer<typeof ConditionSchema>
 export const ConditionGroupSchema = z.object({
 	logic: z.enum(["and", "or"]),
 	conditions: z.array(ConditionSchema).min(1),
-})
+});
 
-export type ConditionGroup = z.infer<typeof ConditionGroupSchema>
+export type ConditionGroup = z.infer<typeof ConditionGroupSchema>;
 
 /**
  * Branch action types
  */
-export const BranchActionSchema = z.enum(["skip_to", "end_survey"])
+export const BranchActionSchema = z.enum(["skip_to", "end_survey"]);
 
-export type BranchAction = z.infer<typeof BranchActionSchema>
+export type BranchAction = z.infer<typeof BranchActionSchema>;
 
 /**
  * Source of how the rule was created
  */
-export const RuleSourceSchema = z.enum(["user_ui", "user_voice", "ai_generated"])
+export const RuleSourceSchema = z.enum(["user_ui", "user_voice", "ai_generated"]);
 
-export type RuleSource = z.infer<typeof RuleSourceSchema>
+export type RuleSource = z.infer<typeof RuleSourceSchema>;
 
 /**
  * Confidence level for AI-parsed rules
  */
-export const RuleConfidenceSchema = z.enum(["high", "medium", "low"])
+export const RuleConfidenceSchema = z.enum(["high", "medium", "low"]);
 
-export type RuleConfidence = z.infer<typeof RuleConfidenceSchema>
+export type RuleConfidence = z.infer<typeof RuleConfidenceSchema>;
 
 /**
  * Complete branch rule with conditions and action
@@ -92,9 +92,9 @@ export const BranchRuleSchema = z.object({
 	source: RuleSourceSchema.optional(), // How the rule was created
 	confidence: RuleConfidenceSchema.optional(), // AI parsing confidence
 	createdAt: z.string().optional(), // ISO timestamp
-})
+});
 
-export type BranchRule = z.infer<typeof BranchRuleSchema>
+export type BranchRule = z.infer<typeof BranchRuleSchema>;
 
 /**
  * Branching configuration for a question
@@ -102,17 +102,17 @@ export type BranchRule = z.infer<typeof BranchRuleSchema>
 export const QuestionBranchingSchema = z.object({
 	rules: z.array(BranchRuleSchema),
 	defaultNext: z.string().optional(), // Override linear order
-})
+});
 
-export type QuestionBranching = z.infer<typeof QuestionBranchingSchema>
+export type QuestionBranching = z.infer<typeof QuestionBranchingSchema>;
 
 // ============================================================================
 // Response Types
 // ============================================================================
 
-export type ResponseValue = string | string[] | boolean | null | undefined
+export type ResponseValue = string | string[] | boolean | null | undefined;
 
-export type ResponseRecord = Record<string, ResponseValue>
+export type ResponseRecord = Record<string, ResponseValue>;
 
 // ============================================================================
 // Evaluation Functions
@@ -122,66 +122,66 @@ export type ResponseRecord = Record<string, ResponseValue>
  * Normalize a response value for comparison
  */
 function normalizeValue(value: ResponseValue): string {
-	if (value === null || value === undefined) return ""
-	if (typeof value === "boolean") return value ? "true" : "false"
-	if (Array.isArray(value)) return value.join(",")
-	return String(value)
+	if (value === null || value === undefined) return "";
+	if (typeof value === "boolean") return value ? "true" : "false";
+	if (Array.isArray(value)) return value.join(",");
+	return String(value);
 }
 
 /**
  * Check if a response has a meaningful value
  */
 function hasValue(value: ResponseValue): boolean {
-	if (value === null || value === undefined) return false
-	if (typeof value === "string") return value.trim().length > 0
-	if (Array.isArray(value)) return value.length > 0
-	return true
+	if (value === null || value === undefined) return false;
+	if (typeof value === "string") return value.trim().length > 0;
+	if (Array.isArray(value)) return value.length > 0;
+	return true;
 }
 
 /**
  * Evaluate a single condition against responses
  */
 export function evaluateCondition(condition: Condition, responses: ResponseRecord): boolean {
-	const answer = responses[condition.questionId]
-	const expectedValue = condition.value
+	const answer = responses[condition.questionId];
+	const expectedValue = condition.value;
 
 	switch (condition.operator) {
 		case "equals":
-			return normalizeValue(answer) === normalizeValue(expectedValue)
+			return normalizeValue(answer) === normalizeValue(expectedValue);
 
 		case "not_equals":
-			return normalizeValue(answer) !== normalizeValue(expectedValue)
+			return normalizeValue(answer) !== normalizeValue(expectedValue);
 
 		case "contains":
-			return normalizeValue(answer).toLowerCase().includes(normalizeValue(expectedValue).toLowerCase())
+			return normalizeValue(answer).toLowerCase().includes(normalizeValue(expectedValue).toLowerCase());
 
 		case "not_contains":
-			return !normalizeValue(answer).toLowerCase().includes(normalizeValue(expectedValue).toLowerCase())
+			return !normalizeValue(answer).toLowerCase().includes(normalizeValue(expectedValue).toLowerCase());
 
 		case "selected":
 			// For multi-select: check if value is in the array
-			if (!Array.isArray(answer)) return false
+			if (!Array.isArray(answer)) return false;
 			if (Array.isArray(expectedValue)) {
-				return expectedValue.some((v) => answer.includes(v))
+				return expectedValue.some((v) => answer.includes(v));
 			}
-			return answer.includes(expectedValue as string)
+			return answer.includes(expectedValue as string);
 
 		case "not_selected":
 			// For multi-select: check if value is NOT in the array
-			if (!Array.isArray(answer)) return true
+			if (!Array.isArray(answer)) return true;
 			if (Array.isArray(expectedValue)) {
-				return !expectedValue.some((v) => answer.includes(v))
+				return !expectedValue.some((v) => answer.includes(v));
 			}
-			return !answer.includes(expectedValue as string)
+			return !answer.includes(expectedValue as string);
 
 		case "answered":
-			return hasValue(answer)
+			return hasValue(answer);
 
 		case "not_answered":
-			return !hasValue(answer)
+			return !hasValue(answer);
 
 		default:
-			return false
+			return false;
 	}
 }
 
@@ -190,9 +190,9 @@ export function evaluateCondition(condition: Condition, responses: ResponseRecor
  */
 export function evaluateConditionGroup(group: ConditionGroup, responses: ResponseRecord): boolean {
 	if (group.logic === "and") {
-		return group.conditions.every((c) => evaluateCondition(c, responses))
+		return group.conditions.every((c) => evaluateCondition(c, responses));
 	}
-	return group.conditions.some((c) => evaluateCondition(c, responses))
+	return group.conditions.some((c) => evaluateCondition(c, responses));
 }
 
 /**
@@ -202,7 +202,7 @@ export function evaluateBranchRules(
 	branching: QuestionBranching | null | undefined,
 	responses: ResponseRecord
 ): { action: BranchAction; targetQuestionId?: string; ruleId?: string } | null {
-	if (!branching?.rules?.length) return null
+	if (!branching?.rules?.length) return null;
 
 	for (const rule of branching.rules) {
 		if (evaluateConditionGroup(rule.conditions, responses)) {
@@ -210,11 +210,11 @@ export function evaluateBranchRules(
 				action: rule.action,
 				targetQuestionId: rule.targetQuestionId,
 				ruleId: rule.id,
-			}
+			};
 		}
 	}
 
-	return null
+	return null;
 }
 
 // ============================================================================
@@ -222,8 +222,8 @@ export function evaluateBranchRules(
 // ============================================================================
 
 export interface QuestionWithBranching {
-	id: string
-	branching?: QuestionBranching | null
+	id: string;
+	branching?: QuestionBranching | null;
 }
 
 /**
@@ -240,18 +240,18 @@ export function getNextQuestionId(
 	responses: ResponseRecord
 ): string | null {
 	// Evaluate branch rules
-	const branchResult = evaluateBranchRules(currentQuestion.branching, responses)
+	const branchResult = evaluateBranchRules(currentQuestion.branching, responses);
 
 	if (branchResult) {
 		if (branchResult.action === "end_survey") {
-			return null
+			return null;
 		}
 		if (branchResult.action === "skip_to" && branchResult.targetQuestionId) {
 			// Verify target exists and is after current
-			const targetIndex = questions.findIndex((q) => q.id === branchResult.targetQuestionId)
-			const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id)
+			const targetIndex = questions.findIndex((q) => q.id === branchResult.targetQuestionId);
+			const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
 			if (targetIndex > currentIndex) {
-				return branchResult.targetQuestionId
+				return branchResult.targetQuestionId;
 			}
 			// If target is before current or not found, fall through to default
 		}
@@ -259,17 +259,17 @@ export function getNextQuestionId(
 
 	// Check for defaultNext override
 	if (currentQuestion.branching?.defaultNext) {
-		const targetIndex = questions.findIndex((q) => q.id === currentQuestion.branching?.defaultNext)
-		const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id)
+		const targetIndex = questions.findIndex((q) => q.id === currentQuestion.branching?.defaultNext);
+		const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
 		if (targetIndex > currentIndex) {
-			return currentQuestion.branching.defaultNext
+			return currentQuestion.branching.defaultNext;
 		}
 	}
 
 	// Default: next question in linear order
-	const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id)
-	const nextQuestion = questions[currentIndex + 1]
-	return nextQuestion?.id ?? null
+	const currentIndex = questions.findIndex((q) => q.id === currentQuestion.id);
+	const nextQuestion = questions[currentIndex + 1];
+	return nextQuestion?.id ?? null;
 }
 
 /**
@@ -285,17 +285,17 @@ export function getNextQuestionIndex(
 	questions: QuestionWithBranching[],
 	responses: ResponseRecord
 ): number {
-	const currentQuestion = questions[currentIndex]
-	if (!currentQuestion) return questions.length
+	const currentQuestion = questions[currentIndex];
+	if (!currentQuestion) return questions.length;
 
-	const nextId = getNextQuestionId(currentQuestion, questions, responses)
+	const nextId = getNextQuestionId(currentQuestion, questions, responses);
 
 	if (nextId === null) {
-		return questions.length // End survey
+		return questions.length; // End survey
 	}
 
-	const nextIndex = questions.findIndex((q) => q.id === nextId)
-	return nextIndex >= 0 ? nextIndex : currentIndex + 1
+	const nextIndex = questions.findIndex((q) => q.id === nextId);
+	return nextIndex >= 0 ? nextIndex : currentIndex + 1;
 }
 
 // ============================================================================
@@ -320,7 +320,7 @@ export function createSkipRule(
 		action: "skip_to",
 		targetQuestionId,
 		label,
-	}
+	};
 }
 
 /**
@@ -335,7 +335,7 @@ export function createEndRule(questionId: string, value: string, label?: string)
 		},
 		action: "end_survey",
 		label,
-	}
+	};
 }
 
 /**
@@ -348,7 +348,7 @@ export function createOrConditions(
 	return {
 		logic: "or",
 		conditions: conditions.map((c) => ({ ...c, operator })),
-	}
+	};
 }
 
 /**
@@ -361,5 +361,5 @@ export function createAndConditions(
 	return {
 		logic: "and",
 		conditions: conditions.map((c) => ({ ...c, operator })),
-	}
+	};
 }

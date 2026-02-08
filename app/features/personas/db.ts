@@ -1,12 +1,12 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~/types";
 
 export const getPersonas = async ({
 	supabase,
 	projectId,
 }: {
-	supabase: SupabaseClient<Database>
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	projectId: string;
 }) => {
 	return await supabase
 		.from("personas")
@@ -14,5 +14,5 @@ export const getPersonas = async ({
 			*,
 			people_personas(count)
 		`)
-		.eq("project_id", projectId)
-}
+		.eq("project_id", projectId);
+};

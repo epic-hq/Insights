@@ -8,86 +8,86 @@
  * Legacy sidebar layout available via ?layout=sidebar URL param for testing.
  */
 
-import { useCallback, useState } from "react"
-import { Outlet, useSearchParams } from "react-router"
-import { AppSidebar } from "~/components/navigation/AppSidebar"
-import { BottomTabBar } from "~/components/navigation/BottomTabBar"
-import { ProfileSheet } from "~/components/navigation/ProfileSheet"
-import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useDeviceDetection } from "~/hooks/useDeviceDetection"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { SplitPaneLayout } from "./SplitPaneLayout"
+import { useCallback, useState } from "react";
+import { Outlet, useSearchParams } from "react-router";
+import { AppSidebar } from "~/components/navigation/AppSidebar";
+import { BottomTabBar } from "~/components/navigation/BottomTabBar";
+import { ProfileSheet } from "~/components/navigation/ProfileSheet";
+import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useDeviceDetection } from "~/hooks/useDeviceDetection";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { SplitPaneLayout } from "./SplitPaneLayout";
 
 interface AppLayoutProps {
-	showJourneyNav?: boolean
+	showJourneyNav?: boolean;
 }
 
 export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
-	const { isMobile } = useDeviceDetection()
-	const [searchParams] = useSearchParams()
-	const { accountId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { isMobile } = useDeviceDetection();
+	const [searchParams] = useSearchParams();
+	const { accountId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
 	const persistSidebarPreference = useCallback((openState: boolean) => {
-		if (typeof window === "undefined") return
-		const serializedState = openState ? "expanded" : "collapsed"
+		if (typeof window === "undefined") return;
+		const serializedState = openState ? "expanded" : "collapsed";
 		const cookieStoreCandidate = (
 			window as typeof window & {
 				cookieStore?: {
-					set?: (options: { name: string; value: string; expires?: number; path?: string }) => Promise<void>
-				}
+					set?: (options: { name: string; value: string; expires?: number; path?: string }) => Promise<void>;
+				};
 			}
-		).cookieStore
+		).cookieStore;
 		if (cookieStoreCandidate?.set) {
 			void cookieStoreCandidate.set({
 				name: "sidebar_state",
 				value: serializedState,
 				expires: Date.now() + 60 * 60 * 24 * 7 * 1000,
 				path: "/",
-			})
-			return
+			});
+			return;
 		}
 		try {
-			window.localStorage.setItem("sidebar_state", serializedState)
+			window.localStorage.setItem("sidebar_state", serializedState);
 		} catch {
-			return
+			return;
 		}
-	}, [])
+	}, []);
 
 	const [sidebarOpen, setSidebarOpen] = useState(() => {
-		if (typeof window === "undefined") return true
+		if (typeof window === "undefined") return true;
 		try {
-			return window.localStorage.getItem("sidebar_state") !== "collapsed"
+			return window.localStorage.getItem("sidebar_state") !== "collapsed";
 		} catch {
-			return true
+			return true;
 		}
-	})
+	});
 
 	// Profile sheet state
-	const [isProfileOpen, setIsProfileOpen] = useState(false)
+	const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-	const isOnboarding = searchParams.get("onboarding") === "true"
-	const showMainNav = !isOnboarding
+	const isOnboarding = searchParams.get("onboarding") === "true";
+	const showMainNav = !isOnboarding;
 
 	// Should we show the mobile navigation?
-	const showMobileNav = isMobile && showJourneyNav && showMainNav
+	const showMobileNav = isMobile && showJourneyNav && showMainNav;
 
 	const handleSidebarOpenChange = useCallback(
 		(nextOpen: boolean) => {
-			setSidebarOpen(nextOpen)
-			persistSidebarPreference(nextOpen)
+			setSidebarOpen(nextOpen);
+			persistSidebarPreference(nextOpen);
 		},
 		[persistSidebarPreference]
-	)
+	);
 
 	// Allow legacy sidebar via URL param for testing
-	const forceLegacySidebar = searchParams.get("layout") === "sidebar"
+	const forceLegacySidebar = searchParams.get("layout") === "sidebar";
 
 	// Default to new split-pane layout (top nav + AI panel)
 	if (!forceLegacySidebar) {
-		return <SplitPaneLayout showJourneyNav={showJourneyNav} />
+		return <SplitPaneLayout showJourneyNav={showJourneyNav} />;
 	}
 
 	// Legacy sidebar layout (accessible via ?layout=sidebar)
@@ -124,5 +124,5 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 				/>
 			)}
 		</SidebarProvider>
-	)
+	);
 }

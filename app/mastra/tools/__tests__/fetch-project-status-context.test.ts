@@ -1,52 +1,52 @@
 // @vitest-environment node
 
-import { RequestContext } from "@mastra/core/di"
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { fetchProjectStatusContextTool } from "../fetch-project-status-context"
+import { RequestContext } from "@mastra/core/di";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fetchProjectStatusContextTool } from "../fetch-project-status-context";
 
 // Type for expected tool result (excluding ValidationError)
 type ToolResult = {
-	success: boolean
-	message: string
-	scopes: string[]
-	projectId?: string | null
-	projectName?: string | null
-	data?: Record<string, unknown>
-}
+	success: boolean;
+	message: string;
+	scopes: string[];
+	projectId?: string | null;
+	projectName?: string | null;
+	data?: Record<string, unknown>;
+};
 
 const mockSupabase = {
 	from: vi.fn(),
-}
+};
 
-const getProjectStatusDataMock = vi.fn()
+const getProjectStatusDataMock = vi.fn();
 
 vi.mock("~/lib/supabase/client.server", () => ({
 	supabaseAdmin: mockSupabase,
-}))
+}));
 
 vi.mock("~/utils/project-status.server", () => ({
 	getProjectStatusData: getProjectStatusDataMock,
-}))
+}));
 
 describe("fetchProjectStatusContextTool", () => {
 	beforeEach(() => {
-		mockSupabase.from.mockReset()
-		getProjectStatusDataMock.mockReset()
-	})
+		mockSupabase.from.mockReset();
+		getProjectStatusDataMock.mockReset();
+	});
 
 	it("returns missing project message when no project context provided", async () => {
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
-		const result = (await fetchProjectStatusContextTool.execute({}, { requestContext })) as ToolResult
+		const result = (await fetchProjectStatusContextTool.execute({}, { requestContext })) as ToolResult;
 
-		expect(result.success).toBe(false)
-		expect(result.message).toContain("Missing projectId")
-	})
+		expect(result.success).toBe(false);
+		expect(result.message).toContain("Missing projectId");
+	});
 
 	it("loads status even when runtime account differs from project account", async () => {
 		mockSupabase.from.mockImplementation((table: string) => {
-			if (table !== "projects") throw new Error(`Unexpected table ${table}`)
+			if (table !== "projects") throw new Error(`Unexpected table ${table}`);
 			return {
 				select: () => ({
 					eq: () => ({
@@ -64,27 +64,27 @@ describe("fetchProjectStatusContextTool", () => {
 							}),
 					}),
 				}),
-			}
-		})
+			};
+		});
 
-		getProjectStatusDataMock.mockResolvedValue(null)
+		getProjectStatusDataMock.mockResolvedValue(null);
 
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
 			{ projectId: "project-123", scopes: ["status"] },
 			{ requestContext }
-		)) as ToolResult
+		)) as ToolResult;
 
-		expect(result.success).toBe(true)
-		expect(result.message).toContain("Loaded project status context")
-		expect((result.data as any)?.status).toBeUndefined()
-	})
+		expect(result.success).toBe(true);
+		expect(result.message).toContain("Loaded project status context");
+		expect((result.data as any)?.status).toBeUndefined();
+	});
 
 	it("returns status data when project accessible and status scope requested", async () => {
 		mockSupabase.from.mockImplementation((table: string) => {
-			if (table !== "projects") throw new Error(`Unexpected table ${table}`)
+			if (table !== "projects") throw new Error(`Unexpected table ${table}`);
 			return {
 				select: () => ({
 					eq: () => ({
@@ -102,8 +102,8 @@ describe("fetchProjectStatusContextTool", () => {
 							}),
 					}),
 				}),
-			}
-		})
+			};
+		});
 
 		getProjectStatusDataMock.mockResolvedValue({
 			projectName: "Test Project",
@@ -131,23 +131,23 @@ describe("fetchProjectStatusContextTool", () => {
 			unanticipatedDiscoveries: ["Discovery B"],
 			criticalUnknowns: ["Unknown A"],
 			questionAnswers: [],
-		})
+		});
 
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
 			{ projectId: "project-123", scopes: ["status"] },
 			{ requestContext }
-		)) as ToolResult
+		)) as ToolResult;
 
-		expect(result.success).toBe(true)
-		expect((result.data as any)?.status?.projectName).toBe("Test Project")
-		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase)
-	})
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.status?.projectName).toBe("Test Project");
+		expect(getProjectStatusDataMock).toHaveBeenCalledWith("project-123", mockSupabase);
+	});
 
 	it("returns people evidence when searching for a specific person", async () => {
-		const now = new Date().toISOString()
+		const now = new Date().toISOString();
 		const projectRow = {
 			id: "project-123",
 			account_id: "account-abc",
@@ -155,7 +155,7 @@ describe("fetchProjectStatusContextTool", () => {
 			description: null,
 			created_at: now,
 			updated_at: now,
-		}
+		};
 		const peopleRows = [
 			{
 				id: "pp-1",
@@ -180,7 +180,7 @@ describe("fetchProjectStatusContextTool", () => {
 					people_personas: [],
 				},
 			},
-		]
+		];
 		const interviewPeopleRows = [
 			{
 				person_id: "person-1",
@@ -192,7 +192,7 @@ describe("fetchProjectStatusContextTool", () => {
 					status: "completed",
 				},
 			},
-		]
+		];
 		const evidenceRows = [
 			{
 				id: "evidence-1",
@@ -203,9 +203,9 @@ describe("fetchProjectStatusContextTool", () => {
 				created_at: now,
 				interview_id: "interview-1",
 			},
-		]
+		];
 
-		let recordedOrClause: string | undefined
+		let recordedOrClause: string | undefined;
 
 		mockSupabase.from.mockImplementation((table: string) => {
 			switch (table) {
@@ -216,57 +216,57 @@ describe("fetchProjectStatusContextTool", () => {
 								maybeSingle: () => Promise.resolve({ data: projectRow, error: null }),
 							}),
 						}),
-					}
+					};
 				case "project_people": {
-					const builder: any = {}
-					builder.select = () => builder
-					builder.eq = () => builder
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
 					builder.or = (clause: string) => {
-						recordedOrClause = clause
-						return builder
-					}
+						recordedOrClause = clause;
+						return builder;
+					};
 					builder.order = () => ({
 						limit: () => Promise.resolve({ data: peopleRows, error: null }),
-					})
-					return builder
+					});
+					return builder;
 				}
 				case "interview_people": {
-					const builder: any = {}
-					builder.select = () => builder
-					builder.eq = () => builder
-					builder.in = () => builder
-					builder.order = () => Promise.resolve({ data: interviewPeopleRows, error: null })
-					return builder
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => builder;
+					builder.order = () => Promise.resolve({ data: interviewPeopleRows, error: null });
+					return builder;
 				}
 				case "evidence": {
-					const builder: any = {}
-					builder.select = () => builder
-					builder.eq = () => builder
-					builder.in = () => builder
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => builder;
 					builder.order = () => ({
 						limit: () => Promise.resolve({ data: evidenceRows, error: null }),
-					})
-					return builder
+					});
+					return builder;
 				}
 				default:
-					throw new Error(`Unexpected table ${table}`)
+					throw new Error(`Unexpected table ${table}`);
 			}
-		})
+		});
 
-		const requestContext = new RequestContext()
-		requestContext.set("account_id", "account-123")
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
 
 		const result = (await fetchProjectStatusContextTool.execute(
 			{ projectId: "project-123", scopes: ["people"], peopleSearch: "Jane Doe" },
 			{ requestContext }
-		)) as ToolResult
+		)) as ToolResult;
 
-		expect(result.success).toBe(true)
-		expect(recordedOrClause).toContain("person.name.ilike.*Jane Doe*")
-		expect(getProjectStatusDataMock).not.toHaveBeenCalled()
-		const person = (result.data as any)?.people?.[0]
-		expect(person?.name).toBe("Jane Doe")
-		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.")
-		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview")
-	})
-})
+		expect(result.success).toBe(true);
+		expect(recordedOrClause).toContain("person.name.ilike.*Jane Doe*");
+		expect(getProjectStatusDataMock).not.toHaveBeenCalled();
+		const person = (result.data as any)?.people?.[0];
+		expect(person?.name).toBe("Jane Doe");
+		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.");
+		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview");
+	});
+});

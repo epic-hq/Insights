@@ -1,17 +1,17 @@
-import { motion } from "framer-motion"
-import { Mail } from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Textarea } from "~/components/ui/textarea"
-import { cn } from "~/lib/utils"
-import type { ResearchLinkQuestion } from "../schemas"
+import { motion } from "framer-motion";
+import { Mail } from "lucide-react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
+import type { ResearchLinkQuestion } from "../schemas";
 
 interface ResearchLinkPreviewProps {
-	heroTitle?: string | null
-	heroSubtitle?: string | null
-	heroCtaLabel?: string | null
-	heroCtaHelper?: string | null
-	questions: ResearchLinkQuestion[]
+	heroTitle?: string | null;
+	heroSubtitle?: string | null;
+	heroCtaLabel?: string | null;
+	heroCtaHelper?: string | null;
+	questions: ResearchLinkQuestion[];
 }
 
 export function ResearchLinkPreview({
@@ -21,8 +21,8 @@ export function ResearchLinkPreview({
 	heroCtaHelper,
 	questions,
 }: ResearchLinkPreviewProps) {
-	const firstQuestion = questions[0]
-	const usesLongText = firstQuestion?.type === "long_text"
+	const firstQuestion = questions[0];
+	const usesLongText = firstQuestion?.type === "long_text";
 
 	return (
 		<div className="sticky top-6">
@@ -87,5 +87,5 @@ export function ResearchLinkPreview({
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

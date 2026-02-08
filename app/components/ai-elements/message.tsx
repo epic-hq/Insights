@@ -1,10 +1,10 @@
-import type { UIMessage } from "ai"
-import type { HTMLAttributes } from "react"
-import { cn } from "~/lib/utils"
+import type { UIMessage } from "ai";
+import type { HTMLAttributes } from "react";
+import { cn } from "~/lib/utils";
 
 type MessageProps = HTMLAttributes<HTMLDivElement> & {
-	from: UIMessage["role"]
-}
+	from: UIMessage["role"];
+};
 
 export const Message = ({ className, from, ...props }: MessageProps) => (
 	<div
@@ -16,9 +16,9 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 		)}
 		{...props}
 	/>
-)
+);
 
-type MessageContentProps = HTMLAttributes<HTMLDivElement>
+type MessageContentProps = HTMLAttributes<HTMLDivElement>;
 
 export const MessageContent = ({ children, className, ...props }: MessageContentProps) => (
 	<div
@@ -33,4 +33,4 @@ export const MessageContent = ({ children, className, ...props }: MessageContent
 	>
 		{children}
 	</div>
-)
+);

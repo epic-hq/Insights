@@ -24,7 +24,7 @@ export {
 	systemBillingContext,
 	userBillingContext,
 	validateBillingContext,
-} from "./context"
+} from "./context";
 // Instrumented Anthropic (for Mastra agents)
 export {
 	anthropic,
@@ -32,13 +32,13 @@ export {
 	createInstrumentedAnthropic,
 	setActiveBillingContext as setAnthropicBillingContext,
 	withAgentBilling as withAnthropicAgentBilling,
-} from "./instrumented-anthropic.server"
+} from "./instrumented-anthropic.server";
 // Instrumented BAML
 export {
 	runBamlWithBilling,
 	runBamlWithBillingOrThrow,
 	UsageLimitError,
-} from "./instrumented-baml.server"
+} from "./instrumented-baml.server";
 // Instrumented embeddings
 export {
 	estimateBatchEmbeddingCost,
@@ -46,7 +46,7 @@ export {
 	generateEmbeddingsBatchWithBilling,
 	generateEmbeddingWithBilling,
 	generateEmbeddingWithBillingOrThrow,
-} from "./instrumented-embeddings.server"
+} from "./instrumented-embeddings.server";
 // Instrumented OpenAI (for Mastra agents)
 export {
 	clearActiveBillingContext,
@@ -54,7 +54,7 @@ export {
 	openai,
 	setActiveBillingContext,
 	withAgentBilling,
-} from "./instrumented-openai.server"
+} from "./instrumented-openai.server";
 // Core usage recording
 export {
 	checkAccountLimits,
@@ -62,4 +62,4 @@ export {
 	recordUsageOnly,
 	type UsageEvent,
 	type UsageResult,
-} from "./usage.server"
+} from "./usage.server";

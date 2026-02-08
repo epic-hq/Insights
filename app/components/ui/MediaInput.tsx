@@ -10,50 +10,50 @@
  * - Preview with loading states
  */
 
-import { Camera, Globe, Link2, Loader2, Trash2, Upload, User, X } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useDropzone } from "react-dropzone"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { cn } from "~/lib/utils"
+import { Camera, Globe, Link2, Loader2, Trash2, Upload, User, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { cn } from "~/lib/utils";
 
-export type MediaInputMode = "avatar" | "card" | "inline"
+export type MediaInputMode = "avatar" | "card" | "inline";
 
 interface MediaInputProps {
 	/** Name for the hidden input field */
-	name: string
+	name: string;
 	/** Current image URL or R2 key */
-	defaultValue?: string | null
+	defaultValue?: string | null;
 	/** Category for R2 storage path */
-	category?: string
+	category?: string;
 	/** Entity ID for R2 storage path */
-	entityId?: string
+	entityId?: string;
 	/** Layout mode */
-	mode?: MediaInputMode
+	mode?: MediaInputMode;
 	/** Size for avatar mode */
-	size?: "sm" | "md" | "lg" | "xl"
+	size?: "sm" | "md" | "lg" | "xl";
 	/** Whether the upload is circular (for avatars) */
-	circular?: boolean
+	circular?: boolean;
 	/** Label text */
-	label?: string
+	label?: string;
 	/** Hint text below the uploader */
-	hint?: string
+	hint?: string;
 	/** Placeholder when no image */
-	placeholder?: "user" | "camera" | "upload"
+	placeholder?: "user" | "camera" | "upload";
 	/** Accept only images or any files */
-	accept?: "image" | "any"
+	accept?: "image" | "any";
 	/** Maximum file size in bytes */
-	maxSize?: number
+	maxSize?: number;
 	/** Allow URL input */
-	allowUrl?: boolean
+	allowUrl?: boolean;
 	/** Additional class names */
-	className?: string
+	className?: string;
 	/** Callback when media is uploaded/changed */
-	onChange?: (value: string | null, type: "file" | "url") => void
+	onChange?: (value: string | null, type: "file" | "url") => void;
 	/** Callback when media is removed */
-	onRemove?: () => void
+	onRemove?: () => void;
 }
 
 const sizeClasses = {
@@ -61,14 +61,14 @@ const sizeClasses = {
 	md: "h-24 w-24",
 	lg: "h-32 w-32",
 	xl: "h-40 w-40",
-}
+};
 
 const iconSizeClasses = {
 	sm: "h-6 w-6",
 	md: "h-8 w-8",
 	lg: "h-10 w-10",
 	xl: "h-12 w-12",
-}
+};
 
 export function MediaInput({
 	name,
@@ -88,103 +88,103 @@ export function MediaInput({
 	onChange,
 	onRemove,
 }: MediaInputProps) {
-	const [value, setValue] = useState<string | null>(defaultValue || null)
-	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-	const [isUploading, setIsUploading] = useState(false)
-	const [isLoadingUrl, setIsLoadingUrl] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const [urlInputOpen, setUrlInputOpen] = useState(false)
-	const [urlInput, setUrlInput] = useState("")
-	const fileInputRef = useRef<HTMLInputElement>(null)
+	const [value, setValue] = useState<string | null>(defaultValue || null);
+	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+	const [isUploading, setIsUploading] = useState(false);
+	const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [urlInputOpen, setUrlInputOpen] = useState(false);
+	const [urlInput, setUrlInput] = useState("");
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Fetch presigned URL for R2 keys
 	useEffect(() => {
 		if (defaultValue?.startsWith("images/") && !previewUrl) {
-			setIsLoadingUrl(true)
+			setIsLoadingUrl(true);
 			fetch(`/api/upload-image?key=${encodeURIComponent(defaultValue)}`)
 				.then((res) => res.json())
 				.then((data) => {
 					if (data.success && data.url) {
-						setPreviewUrl(data.url)
+						setPreviewUrl(data.url);
 					}
 				})
 				.catch(() => {
 					// Silently fail - will show placeholder
 				})
 				.finally(() => {
-					setIsLoadingUrl(false)
-				})
+					setIsLoadingUrl(false);
+				});
 		}
-	}, [defaultValue, previewUrl])
+	}, [defaultValue, previewUrl]);
 
 	// Display URL: use fetched/uploaded preview, or direct URL if not an R2 key
-	const displayUrl = previewUrl || (value?.startsWith("images/") ? null : value)
+	const displayUrl = previewUrl || (value?.startsWith("images/") ? null : value);
 
 	const handleFileUpload = useCallback(
 		async (file: File) => {
 			// Validate file type
 			if (accept === "image" && !file.type.startsWith("image/")) {
-				setError("Please select an image file")
-				return
+				setError("Please select an image file");
+				return;
 			}
 
 			// Validate file size
 			if (file.size > maxSize) {
-				setError(`File must be less than ${Math.round(maxSize / 1024 / 1024)}MB`)
-				return
+				setError(`File must be less than ${Math.round(maxSize / 1024 / 1024)}MB`);
+				return;
 			}
 
-			setError(null)
-			setIsUploading(true)
+			setError(null);
+			setIsUploading(true);
 
 			// Create local preview for images
 			if (file.type.startsWith("image/")) {
-				const localPreview = URL.createObjectURL(file)
-				setPreviewUrl(localPreview)
+				const localPreview = URL.createObjectURL(file);
+				setPreviewUrl(localPreview);
 			}
 
 			try {
 				const params = new URLSearchParams({
 					category,
 					...(entityId && { entityId }),
-				})
+				});
 
-				const formData = new FormData()
-				formData.append("file", file)
+				const formData = new FormData();
+				formData.append("file", file);
 
 				const response = await fetch(`/api/upload-image?${params}`, {
 					method: "POST",
 					body: formData,
-				})
+				});
 
-				const result = await response.json()
+				const result = await response.json();
 
 				if (!response.ok || !result.success) {
-					throw new Error(result.error || "Upload failed")
+					throw new Error(result.error || "Upload failed");
 				}
 
-				setValue(result.imageKey)
-				setPreviewUrl(result.url)
-				onChange?.(result.imageKey, "file")
+				setValue(result.imageKey);
+				setPreviewUrl(result.url);
+				onChange?.(result.imageKey, "file");
 			} catch (err) {
-				setError(err instanceof Error ? err.message : "Upload failed")
-				setPreviewUrl(null)
+				setError(err instanceof Error ? err.message : "Upload failed");
+				setPreviewUrl(null);
 			} finally {
-				setIsUploading(false)
+				setIsUploading(false);
 			}
 		},
 		[category, entityId, maxSize, accept, onChange]
-	)
+	);
 
 	const onDrop = useCallback(
 		(acceptedFiles: File[]) => {
-			const file = acceptedFiles[0]
+			const file = acceptedFiles[0];
 			if (file) {
-				handleFileUpload(file)
+				handleFileUpload(file);
 			}
 		},
 		[handleFileUpload]
-	)
+	);
 
 	const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
 		onDrop,
@@ -192,45 +192,45 @@ export function MediaInput({
 		maxSize,
 		multiple: false,
 		noClick: mode === "avatar", // Avatar mode uses separate click handling
-	})
+	});
 
 	const handleUrlSubmit = useCallback(() => {
-		const trimmedUrl = urlInput.trim()
-		if (!trimmedUrl) return
+		const trimmedUrl = urlInput.trim();
+		if (!trimmedUrl) return;
 
 		// Basic URL validation
 		try {
-			new URL(trimmedUrl)
+			new URL(trimmedUrl);
 		} catch {
-			setError("Please enter a valid URL")
-			return
+			setError("Please enter a valid URL");
+			return;
 		}
 
-		setValue(trimmedUrl)
-		setPreviewUrl(trimmedUrl)
-		setUrlInputOpen(false)
-		setUrlInput("")
-		setError(null)
-		onChange?.(trimmedUrl, "url")
-	}, [urlInput, onChange])
+		setValue(trimmedUrl);
+		setPreviewUrl(trimmedUrl);
+		setUrlInputOpen(false);
+		setUrlInput("");
+		setError(null);
+		onChange?.(trimmedUrl, "url");
+	}, [urlInput, onChange]);
 
 	const handleRemove = useCallback(() => {
-		setValue(null)
-		setPreviewUrl(null)
-		setError(null)
-		setUrlInput("")
+		setValue(null);
+		setPreviewUrl(null);
+		setError(null);
+		setUrlInput("");
 		if (fileInputRef.current) {
-			fileInputRef.current.value = ""
+			fileInputRef.current.value = "";
 		}
-		onRemove?.()
-		onChange?.(null, "file")
-	}, [onRemove, onChange])
+		onRemove?.();
+		onChange?.(null, "file");
+	}, [onRemove, onChange]);
 
 	const handleClick = useCallback(() => {
-		fileInputRef.current?.click()
-	}, [])
+		fileInputRef.current?.click();
+	}, []);
 
-	const PlaceholderIcon = placeholder === "camera" ? Camera : placeholder === "upload" ? Upload : User
+	const PlaceholderIcon = placeholder === "camera" ? Camera : placeholder === "upload" ? Upload : User;
 
 	// Avatar mode - compact circular/square display
 	if (mode === "avatar") {
@@ -345,7 +345,7 @@ export function MediaInput({
 				{/* Hint text */}
 				{hint && !error && <p className="text-muted-foreground text-xs">{hint}</p>}
 			</div>
-		)
+		);
 	}
 
 	// Card mode - larger dropzone with preview
@@ -379,8 +379,8 @@ export function MediaInput({
 								size="icon"
 								className="-top-2 -right-2 absolute h-6 w-6"
 								onClick={(e) => {
-									e.stopPropagation()
-									handleRemove()
+									e.stopPropagation();
+									handleRemove();
 								}}
 							>
 								<X className="h-4 w-4" />
@@ -403,8 +403,8 @@ export function MediaInput({
 										type="button"
 										className="text-primary underline hover:no-underline"
 										onClick={(e) => {
-											e.stopPropagation()
-											setUrlInputOpen(true)
+											e.stopPropagation();
+											setUrlInputOpen(true);
 										}}
 									>
 										paste a URL
@@ -449,7 +449,7 @@ export function MediaInput({
 				{/* Hint text */}
 				{hint && !error && <p className="text-muted-foreground text-xs">{hint}</p>}
 			</div>
-		)
+		);
 	}
 
 	// Inline mode - compact horizontal layout
@@ -529,7 +529,7 @@ export function MediaInput({
 			{/* Hint text */}
 			{hint && !error && <p className="text-muted-foreground text-xs">{hint}</p>}
 		</div>
-	)
+	);
 }
 
-export default MediaInput
+export default MediaInput;

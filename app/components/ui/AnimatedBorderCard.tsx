@@ -1,13 +1,13 @@
-import type React from "react"
+import type React from "react";
 
 export function AnimatedBorderCard({
 	active,
 	children,
 	className = "",
 }: {
-	active?: boolean
-	children: React.ReactNode
-	className?: string
+	active?: boolean;
+	children: React.ReactNode;
+	className?: string;
 }) {
 	return (
 		<div
@@ -37,5 +37,5 @@ export function AnimatedBorderCard({
       `}</style>
 			<div className="relative z-10">{children}</div>
 		</div>
-	)
+	);
 }

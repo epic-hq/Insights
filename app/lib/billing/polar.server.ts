@@ -7,26 +7,26 @@
  * @see https://polar.sh/docs/integrate/sdk/adapters/hono
  */
 
-import { Polar } from "@polar-sh/sdk"
-import consola from "consola"
-import { PLANS, type PlanId } from "~/config/plans"
-import { getServerEnv } from "~/env.server"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { Polar } from "@polar-sh/sdk";
+import consola from "consola";
+import { PLANS, type PlanId } from "~/config/plans";
+import { getServerEnv } from "~/env.server";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
 
 /**
  * Get a configured Polar SDK client
  */
 function getPolarClient() {
-	const env = getServerEnv()
-	const accessToken = env.POLAR_ACCESS_TOKEN
+	const env = getServerEnv();
+	const accessToken = env.POLAR_ACCESS_TOKEN;
 	if (!accessToken) {
-		throw new Error("POLAR_ACCESS_TOKEN not configured")
+		throw new Error("POLAR_ACCESS_TOKEN not configured");
 	}
-	const server = env.APP_ENV === "production" ? "production" : "sandbox"
+	const server = env.APP_ENV === "production" ? "production" : "sandbox";
 	return new Polar({
 		accessToken,
 		server: server === "sandbox" ? "sandbox" : "production",
-	})
+	});
 }
 
 /**
@@ -59,7 +59,7 @@ export const POLAR_PRODUCT_MAP: Record<string, PlanId> = {
 	"23b2e81e-1a3f-48e4-b5e8-025a22cca5f7": "starter",
 	"a71ebfb2-3c62-458d-9c40-063597811b04": "pro",
 	"79bd4d5c-9838-4464-8ce1-bd56716cdf15": "team",
-}
+};
 
 type SubscriptionStatus =
 	| "trialing"
@@ -68,7 +68,7 @@ type SubscriptionStatus =
 	| "incomplete"
 	| "incomplete_expired"
 	| "past_due"
-	| "unpaid"
+	| "unpaid";
 
 /**
  * Map Polar subscription status to our internal status enum
@@ -82,20 +82,20 @@ function mapPolarStatus(polarStatus: string): SubscriptionStatus {
 		incomplete_expired: "incomplete_expired",
 		past_due: "past_due",
 		unpaid: "unpaid",
-	}
-	return statusMap[polarStatus] ?? "active"
+	};
+	return statusMap[polarStatus] ?? "active";
 }
 
 /**
  * Upsert billing customer from Polar webhook
  */
 export async function upsertBillingCustomer(params: { polarCustomerId: string; accountId: string; email?: string }) {
-	const { polarCustomerId, accountId, email } = params
+	const { polarCustomerId, accountId, email } = params;
 
 	consola.info("[polar] Upserting billing customer", {
 		polarCustomerId,
 		accountId,
-	})
+	});
 
 	const { error } = await supabaseAdmin
 		.schema("accounts")
@@ -109,11 +109,11 @@ export async function upsertBillingCustomer(params: { polarCustomerId: string; a
 				active: true,
 			},
 			{ onConflict: "id" }
-		)
+		);
 
 	if (error) {
-		consola.error("[polar] Failed to upsert billing customer", error)
-		throw error
+		consola.error("[polar] Failed to upsert billing customer", error);
+		throw error;
 	}
 }
 
@@ -121,20 +121,20 @@ export async function upsertBillingCustomer(params: { polarCustomerId: string; a
  * Upsert billing subscription from Polar webhook
  */
 export async function upsertBillingSubscription(params: {
-	polarSubscriptionId: string
-	polarCustomerId: string
-	accountId: string
-	status: string
-	productId: string
-	quantity?: number
-	currentPeriodStart?: string
-	currentPeriodEnd?: string
-	cancelAtPeriodEnd?: boolean
-	canceledAt?: string
-	endedAt?: string
-	trialStart?: string
-	trialEnd?: string
-	metadata?: Record<string, unknown>
+	polarSubscriptionId: string;
+	polarCustomerId: string;
+	accountId: string;
+	status: string;
+	productId: string;
+	quantity?: number;
+	currentPeriodStart?: string;
+	currentPeriodEnd?: string;
+	cancelAtPeriodEnd?: boolean;
+	canceledAt?: string;
+	endedAt?: string;
+	trialStart?: string;
+	trialEnd?: string;
+	metadata?: Record<string, unknown>;
 }) {
 	const {
 		polarSubscriptionId,
@@ -151,18 +151,18 @@ export async function upsertBillingSubscription(params: {
 		trialStart,
 		trialEnd,
 		metadata,
-	} = params
+	} = params;
 
 	// Resolve plan name from product ID
-	const planId = POLAR_PRODUCT_MAP[productId]
-	const planName = planId ? (PLANS[planId]?.name ?? "Unknown") : "Unknown"
+	const planId = POLAR_PRODUCT_MAP[productId];
+	const planName = planId ? (PLANS[planId]?.name ?? "Unknown") : "Unknown";
 
 	if (!planId) {
 		consola.error("[polar] Unknown Polar product ID", {
 			productId,
 			accountId,
 			polarSubscriptionId,
-		})
+		});
 	}
 
 	consola.info("[polar] Upserting billing subscription", {
@@ -171,7 +171,7 @@ export async function upsertBillingSubscription(params: {
 		status,
 		planId,
 		planName,
-	})
+	});
 
 	const { error } = await supabaseAdmin
 		.schema("accounts")
@@ -198,17 +198,17 @@ export async function upsertBillingSubscription(params: {
 				provider: "polar",
 			},
 			{ onConflict: "id" }
-		)
+		);
 
 	if (error) {
-		consola.error("[polar] Failed to upsert billing subscription", error)
-		throw error
+		consola.error("[polar] Failed to upsert billing subscription", error);
+		throw error;
 	}
 
 	// Note: billing_subscriptions.plan_name is the single source of truth for plan
 	// No need to sync to accounts.plan_id
 
-	return { planId }
+	return { planId };
 }
 
 /**
@@ -216,23 +216,23 @@ export async function upsertBillingSubscription(params: {
  * Called when a subscription becomes active
  */
 export async function provisionPlanEntitlements(params: {
-	accountId: string
-	planId: PlanId
-	validFrom?: Date
-	validUntil?: Date
+	accountId: string;
+	planId: PlanId;
+	validFrom?: Date;
+	validUntil?: Date;
 }) {
-	const { accountId, planId, validFrom, validUntil } = params
-	const plan = PLANS[planId]
+	const { accountId, planId, validFrom, validUntil } = params;
+	const plan = PLANS[planId];
 
 	if (!plan) {
-		consola.warn("[polar] Unknown plan ID, skipping entitlements", { planId })
-		return
+		consola.warn("[polar] Unknown plan ID, skipping entitlements", { planId });
+		return;
 	}
 
 	consola.info("[polar] Provisioning entitlements for plan", {
 		accountId,
 		planId,
-	})
+	});
 
 	// Delete any existing plan-based entitlements to avoid duplicate key conflicts
 	// (unique constraint on account_id, feature_key, valid_from)
@@ -241,32 +241,32 @@ export async function provisionPlanEntitlements(params: {
 		.from("feature_entitlements")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId)
-		.eq("source", "plan")
+		.eq("source", "plan");
 
 	if (deleteError) {
-		consola.error("[polar] Failed to delete existing entitlements", deleteError)
-		throw deleteError
+		consola.error("[polar] Failed to delete existing entitlements", deleteError);
+		throw deleteError;
 	}
 
 	consola.info("[polar] Deleted existing entitlements", {
 		accountId,
 		count: deleteCount,
-	})
+	});
 
 	// Build entitlements from plan features
 	const entitlements: Array<{
-		account_id: string
-		feature_key: string
-		enabled: boolean
-		source: "plan"
-		valid_from: string
-		valid_until: string | null
-		quantity_limit: number | null
-		quantity_used: number
-	}> = []
+		account_id: string;
+		feature_key: string;
+		enabled: boolean;
+		source: "plan";
+		valid_from: string;
+		valid_until: string | null;
+		quantity_limit: number | null;
+		quantity_used: number;
+	}> = [];
 
-	const now = (validFrom ?? new Date()).toISOString()
-	const until = validUntil?.toISOString() ?? null
+	const now = (validFrom ?? new Date()).toISOString();
+	const until = validUntil?.toISOString() ?? null;
 
 	// Boolean features
 	for (const [featureKey, enabled] of Object.entries(plan.features)) {
@@ -279,7 +279,7 @@ export async function provisionPlanEntitlements(params: {
 			valid_until: until,
 			quantity_limit: null,
 			quantity_used: 0,
-		})
+		});
 	}
 
 	// Metered features with quantity limits
@@ -293,7 +293,7 @@ export async function provisionPlanEntitlements(params: {
 			valid_until: until,
 			quantity_limit: plan.limits.voice_minutes === Number.POSITIVE_INFINITY ? null : plan.limits.voice_minutes,
 			quantity_used: 0,
-		})
+		});
 	}
 
 	if (plan.limits.survey_responses > 0) {
@@ -306,7 +306,7 @@ export async function provisionPlanEntitlements(params: {
 			valid_until: until,
 			quantity_limit: plan.limits.survey_responses === Number.POSITIVE_INFINITY ? null : plan.limits.survey_responses,
 			quantity_used: 0,
-		})
+		});
 	}
 
 	// AI analysis - use credits system, not entitlement quantity
@@ -319,25 +319,25 @@ export async function provisionPlanEntitlements(params: {
 		valid_until: until,
 		quantity_limit: plan.limits.ai_analyses === Number.POSITIVE_INFINITY ? null : plan.limits.ai_analyses,
 		quantity_used: 0,
-	})
+	});
 
 	// Insert all entitlements using upsert to handle any remaining conflicts
 	// The unique constraint is on (account_id, feature_key, valid_from)
 	const { error } = await supabaseAdmin.schema("billing").from("feature_entitlements").upsert(entitlements, {
 		onConflict: "account_id,feature_key,valid_from",
 		ignoreDuplicates: false,
-	})
+	});
 
 	if (error) {
-		consola.error("[polar] Failed to provision entitlements", error)
-		throw error
+		consola.error("[polar] Failed to provision entitlements", error);
+		throw error;
 	}
 
 	consola.info("[polar] Provisioned entitlements", {
 		accountId,
 		planId,
 		count: entitlements.length,
-	})
+	});
 }
 
 /**
@@ -345,32 +345,32 @@ export async function provisionPlanEntitlements(params: {
  * Called when a subscription becomes active or renews
  */
 export async function grantPlanCredits(params: {
-	accountId: string
-	planId: PlanId
-	billingPeriodStart: Date
-	billingPeriodEnd: Date
-	seatCount?: number
+	accountId: string;
+	planId: PlanId;
+	billingPeriodStart: Date;
+	billingPeriodEnd: Date;
+	seatCount?: number;
 }) {
-	const { accountId, planId, billingPeriodStart, billingPeriodEnd, seatCount } = params
-	const plan = PLANS[planId]
+	const { accountId, planId, billingPeriodStart, billingPeriodEnd, seatCount } = params;
+	const plan = PLANS[planId];
 
 	if (!plan) {
-		consola.warn("[polar] Unknown plan ID, skipping credits", { planId })
-		return
+		consola.warn("[polar] Unknown plan ID, skipping credits", { planId });
+		return;
 	}
 
 	// Calculate credits (for team plan, multiply by seats)
-	const credits = plan.perUser ? plan.credits.monthly * (seatCount ?? 1) : plan.credits.monthly
+	const credits = plan.perUser ? plan.credits.monthly * (seatCount ?? 1) : plan.credits.monthly;
 
 	// Idempotency key based on account + billing period
-	const idempotencyKey = `plan-grant:${accountId}:${billingPeriodStart.toISOString()}`
+	const idempotencyKey = `plan-grant:${accountId}:${billingPeriodStart.toISOString()}`;
 
 	consola.info("[polar] Granting plan credits", {
 		accountId,
 		planId,
 		credits,
 		idempotencyKey,
-	})
+	});
 
 	const { data, error } = await supabaseAdmin.schema("billing").rpc("grant_credits", {
 		p_account_id: accountId,
@@ -381,23 +381,23 @@ export async function grantPlanCredits(params: {
 		p_billing_period_start: billingPeriodStart.toISOString(),
 		p_billing_period_end: billingPeriodEnd.toISOString(),
 		p_metadata: { plan_id: planId, seat_count: seatCount ?? 1 },
-	})
+	});
 
 	if (error) {
-		consola.error("[polar] Failed to grant credits", error)
-		throw error
+		consola.error("[polar] Failed to grant credits", error);
+		throw error;
 	}
 
 	if (data?.[0]?.is_duplicate) {
 		consola.info("[polar] Credit grant was duplicate, skipping", {
 			idempotencyKey,
-		})
+		});
 	} else {
 		consola.info("[polar] Credits granted successfully", {
 			accountId,
 			credits,
 			idempotencyKey,
-		})
+		});
 	}
 }
 
@@ -407,7 +407,7 @@ export async function grantPlanCredits(params: {
  * by provisionTrial so only the paid subscription remains.
  */
 export async function removeTrial(params: { accountId: string }) {
-	const { accountId } = params
+	const { accountId } = params;
 
 	// Delete trial subscription first (FK child)
 	const { error: subError, count: subCount } = await supabaseAdmin
@@ -415,10 +415,10 @@ export async function removeTrial(params: { accountId: string }) {
 		.from("billing_subscriptions")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId)
-		.eq("provider", "trial")
+		.eq("provider", "trial");
 
 	if (subError) {
-		consola.error("[polar] Failed to delete trial subscription", subError)
+		consola.error("[polar] Failed to delete trial subscription", subError);
 	}
 
 	// Delete trial customer
@@ -427,10 +427,10 @@ export async function removeTrial(params: { accountId: string }) {
 		.from("billing_customers")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId)
-		.eq("provider", "trial")
+		.eq("provider", "trial");
 
 	if (custError) {
-		consola.error("[polar] Failed to delete trial customer", custError)
+		consola.error("[polar] Failed to delete trial customer", custError);
 	}
 
 	if ((subCount ?? 0) > 0 || (custCount ?? 0) > 0) {
@@ -438,7 +438,7 @@ export async function removeTrial(params: { accountId: string }) {
 			accountId,
 			subscriptionsDeleted: subCount,
 			customersDeleted: custCount,
-		})
+		});
 	}
 }
 
@@ -446,9 +446,9 @@ export async function removeTrial(params: { accountId: string }) {
  * Revoke entitlements when subscription is canceled/revoked
  */
 export async function revokeEntitlements(params: { accountId: string }) {
-	const { accountId } = params
+	const { accountId } = params;
 
-	consola.info("[polar] Revoking entitlements", { accountId })
+	consola.info("[polar] Revoking entitlements", { accountId });
 
 	// Disable all plan-based entitlements
 	const { error } = await supabaseAdmin
@@ -456,18 +456,18 @@ export async function revokeEntitlements(params: { accountId: string }) {
 		.from("feature_entitlements")
 		.update({ enabled: false, valid_until: new Date().toISOString() })
 		.eq("account_id", accountId)
-		.eq("source", "plan")
+		.eq("source", "plan");
 
 	if (error) {
-		consola.error("[polar] Failed to revoke entitlements", error)
-		throw error
+		consola.error("[polar] Failed to revoke entitlements", error);
+		throw error;
 	}
 }
 
 /**
  * Default trial duration in days
  */
-const TRIAL_DAYS = 14
+const TRIAL_DAYS = 14;
 
 /**
  * Provision a free trial for accounts without a billing subscription.
@@ -476,12 +476,12 @@ const TRIAL_DAYS = 14
  * @returns The created subscription info, or null if account already has subscription
  */
 export async function provisionTrial(params: { accountId: string; email?: string; planId?: PlanId }): Promise<{
-	isOnTrial: boolean
-	planName: string
-	trialEnd: string
+	isOnTrial: boolean;
+	planName: string;
+	trialEnd: string;
 } | null> {
-	const { accountId, email, planId = "pro" } = params
-	const plan = PLANS[planId]
+	const { accountId, email, planId = "pro" } = params;
+	const plan = PLANS[planId];
 
 	// Check if account already has ANY subscription (don't create duplicate)
 	const { data: existingSubscription } = await supabaseAdmin
@@ -490,28 +490,28 @@ export async function provisionTrial(params: { accountId: string; email?: string
 		.select("id, status")
 		.eq("account_id", accountId)
 		.limit(1)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingSubscription) {
 		consola.debug("[trial] Account already has subscription, skipping", {
 			accountId,
 			subscriptionId: existingSubscription.id,
-		})
-		return null
+		});
+		return null;
 	}
 
-	const now = new Date()
-	const trialEnd = new Date(now)
-	trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS)
+	const now = new Date();
+	const trialEnd = new Date(now);
+	trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
 
-	const customerId = `trial_${accountId}`
-	const subscriptionId = `trial_sub_${accountId}`
+	const customerId = `trial_${accountId}`;
+	const subscriptionId = `trial_sub_${accountId}`;
 
 	consola.info("[trial] Provisioning trial", {
 		accountId,
 		planId,
 		trialEnd: trialEnd.toISOString(),
-	})
+	});
 
 	// Create billing customer
 	const { error: customerError } = await supabaseAdmin
@@ -526,11 +526,11 @@ export async function provisionTrial(params: { accountId: string; email?: string
 				active: true,
 			},
 			{ onConflict: "id" }
-		)
+		);
 
 	if (customerError) {
-		consola.error("[trial] Failed to create billing customer", customerError)
-		throw customerError
+		consola.error("[trial] Failed to create billing customer", customerError);
+		throw customerError;
 	}
 
 	// Create trialing subscription
@@ -555,11 +555,11 @@ export async function provisionTrial(params: { accountId: string; email?: string
 				metadata: { trial: true, plan_id: planId },
 			},
 			{ onConflict: "id" }
-		)
+		);
 
 	if (subscriptionError) {
-		consola.error("[trial] Failed to create subscription", subscriptionError)
-		throw subscriptionError
+		consola.error("[trial] Failed to create subscription", subscriptionError);
+		throw subscriptionError;
 	}
 
 	// Provision entitlements for the trial plan
@@ -568,7 +568,7 @@ export async function provisionTrial(params: { accountId: string; email?: string
 		planId,
 		validFrom: now,
 		validUntil: trialEnd,
-	})
+	});
 
 	// Grant credits for trial period
 	await grantPlanCredits({
@@ -576,19 +576,19 @@ export async function provisionTrial(params: { accountId: string; email?: string
 		planId,
 		billingPeriodStart: now,
 		billingPeriodEnd: trialEnd,
-	})
+	});
 
 	consola.info("[trial] Trial provisioned successfully", {
 		accountId,
 		planId,
 		trialEnd: trialEnd.toISOString(),
-	})
+	});
 
 	return {
 		isOnTrial: true,
 		planName: plan.name,
 		trialEnd: trialEnd.toISOString(),
-	}
+	};
 }
 
 /**
@@ -600,10 +600,10 @@ export async function provisionTrial(params: { accountId: string; email?: string
  * @returns Updated subscription info, or null if not applicable
  */
 export async function updateSubscriptionQuantity(params: {
-	accountId: string
-	newQuantity: number
+	accountId: string;
+	newQuantity: number;
 }): Promise<{ success: boolean; quantity: number } | null> {
-	const { accountId, newQuantity } = params
+	const { accountId, newQuantity } = params;
 
 	// Find the active Polar subscription for this account
 	const { data: subscription, error: subError } = await supabaseAdmin
@@ -613,48 +613,48 @@ export async function updateSubscriptionQuantity(params: {
 		.eq("account_id", accountId)
 		.eq("provider", "polar")
 		.in("status", ["active", "trialing"])
-		.maybeSingle()
+		.maybeSingle();
 
 	if (subError) {
 		consola.error("[polar] Failed to fetch subscription for seat update", {
 			accountId,
 			error: subError,
-		})
-		throw subError
+		});
+		throw subError;
 	}
 
 	if (!subscription) {
 		consola.debug("[polar] No Polar subscription found for seat update", {
 			accountId,
-		})
-		return null
+		});
+		return null;
 	}
 
 	// Check if this is a per-user plan (Team plan)
 	const planId = Object.entries(POLAR_PRODUCT_MAP).find(
 		([_, name]) => PLANS[name]?.name === subscription.plan_name
-	)?.[1]
+	)?.[1];
 
-	const plan = planId ? PLANS[planId] : null
+	const plan = planId ? PLANS[planId] : null;
 	if (!plan?.perUser) {
 		consola.debug("[polar] Plan is not per-user, skipping seat update", {
 			accountId,
 			planName: subscription.plan_name,
-		})
-		return null
+		});
+		return null;
 	}
 
 	// Enforce minimum seats (Team plan requires at least 2 seats)
-	const minSeats = plan.minSeats ?? 1
-	const effectiveQuantity = Math.max(newQuantity, minSeats)
+	const minSeats = plan.minSeats ?? 1;
+	const effectiveQuantity = Math.max(newQuantity, minSeats);
 
 	// Don't update if quantity hasn't changed
 	if (subscription.quantity === effectiveQuantity) {
 		consola.debug("[polar] Seat quantity unchanged", {
 			accountId,
 			quantity: effectiveQuantity,
-		})
-		return { success: true, quantity: effectiveQuantity }
+		});
+		return { success: true, quantity: effectiveQuantity };
 	}
 
 	consola.info("[polar] Updating subscription seat quantity", {
@@ -664,10 +664,10 @@ export async function updateSubscriptionQuantity(params: {
 		newQuantity: effectiveQuantity,
 		requestedQuantity: newQuantity,
 		minSeats,
-	})
+	});
 
 	try {
-		const polar = getPolarClient()
+		const polar = getPolarClient();
 
 		// Update subscription seat count via Polar API
 		// Polar handles proration automatically
@@ -676,7 +676,7 @@ export async function updateSubscriptionQuantity(params: {
 			subscriptionUpdate: {
 				seats: effectiveQuantity,
 			},
-		})
+		});
 
 		// The Polar webhook (subscription.updated) will sync the new quantity back
 		// But we also update locally for immediate UI consistency
@@ -685,29 +685,29 @@ export async function updateSubscriptionQuantity(params: {
 			.schema("accounts")
 			.from("billing_subscriptions")
 			.update({ quantity: effectiveQuantity })
-			.eq("id", subscription.id)
+			.eq("id", subscription.id);
 
 		if (updateError) {
 			consola.error("[polar] Failed to update local subscription quantity", {
 				accountId,
 				error: updateError,
-			})
+			});
 			// Don't throw - the Polar webhook will eventually sync this
 		}
 
 		consola.info("[polar] Subscription seat quantity updated", {
 			accountId,
 			quantity: effectiveQuantity,
-		})
+		});
 
-		return { success: true, quantity: effectiveQuantity }
+		return { success: true, quantity: effectiveQuantity };
 	} catch (error) {
 		consola.error("[polar] Failed to update Polar subscription", {
 			accountId,
 			subscriptionId: subscription.id,
 			error,
-		})
-		throw error
+		});
+		throw error;
 	}
 }
 
@@ -718,34 +718,34 @@ export async function updateSubscriptionQuantity(params: {
  * @returns true if seat was provisioned, false if not applicable
  */
 export async function provisionSeatOnInviteAccept(params: { accountId: string }): Promise<boolean> {
-	const { accountId } = params
+	const { accountId } = params;
 
 	// Count current team members
 	const { count, error: countError } = await supabaseAdmin
 		.schema("accounts")
 		.from("account_user")
 		.select("*", { count: "exact", head: true })
-		.eq("account_id", accountId)
+		.eq("account_id", accountId);
 
 	if (countError) {
 		consola.error("[polar] Failed to count team members", {
 			accountId,
 			error: countError,
-		})
-		throw countError
+		});
+		throw countError;
 	}
 
-	const memberCount = count ?? 1
+	const memberCount = count ?? 1;
 
 	consola.info("[polar] Provisioning seat for new team member", {
 		accountId,
 		memberCount,
-	})
+	});
 
 	const result = await updateSubscriptionQuantity({
 		accountId,
 		newQuantity: memberCount,
-	})
+	});
 
-	return result !== null
+	return result !== null;
 }

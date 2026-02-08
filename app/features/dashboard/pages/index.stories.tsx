@@ -1,6 +1,6 @@
-import { withRouter } from ".storybook/with-router"
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import DashboardIndex from "./index"
+import { withRouter } from ".storybook/with-router";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import DashboardIndex from "./index";
 
 const meta = {
 	title: "Features/Dashboard/Pages/Index",
@@ -10,10 +10,10 @@ const meta = {
 		layout: "fullscreen",
 	},
 	tags: ["autodocs"],
-} satisfies Meta<typeof DashboardIndex>
+} satisfies Meta<typeof DashboardIndex>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 // Mock project data
 const mockProject = {
@@ -22,7 +22,7 @@ const mockProject = {
 	name: "Customer Research 2025",
 	description: "Understanding our enterprise customer needs",
 	created_at: "2025-01-01",
-}
+};
 
 // Mock project sections
 const mockProjectSections = [
@@ -40,7 +40,7 @@ const mockProjectSections = [
 		content: "Conduct 20 customer interviews by end of Q1",
 		created_at: "2025-01-01",
 	},
-]
+];
 
 // Mock personas
 const mockPersonas = [
@@ -54,7 +54,7 @@ const mockPersonas = [
 		name: "Business Stakeholder",
 		description: "Product managers and analysts",
 	},
-]
+];
 
 export const Default: Story = {
 	parameters: {
@@ -82,7 +82,7 @@ export const Default: Story = {
 			],
 		},
 	},
-}
+};
 
 export const EmptyProject: Story = {
 	parameters: {
@@ -102,7 +102,7 @@ export const EmptyProject: Story = {
 			tags: [],
 		},
 	},
-}
+};
 
 export const ActiveProject: Story = {
 	parameters: {
@@ -149,4 +149,4 @@ export const ActiveProject: Story = {
 			],
 		},
 	},
-}
+};

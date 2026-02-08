@@ -1,29 +1,29 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
 type Idea = {
-	id: string
-	title: string
-	fromInsightId?: string
-	votes?: number
-	createdAt: string
-}
+	id: string;
+	title: string;
+	fromInsightId?: string;
+	votes?: number;
+	createdAt: string;
+};
 
 export function IdeasBoard() {
-	const [ideas, setIdeas] = useState<Idea[] | null>(null)
+	const [ideas, setIdeas] = useState<Idea[] | null>(null);
 
 	useEffect(() => {
-		;(async () => {
-			const r = await fetch("/api/suggestions", { headers: { accept: "application/json" } })
-			setIdeas(r.ok ? await r.json() : [])
-		})()
-	}, [])
+		(async () => {
+			const r = await fetch("/api/suggestions", { headers: { accept: "application/json" } });
+			setIdeas(r.ok ? await r.json() : []);
+		})();
+	}, []);
 
 	if (!ideas || ideas.length === 0) {
 		return (
 			<div className="rounded-2xl border border-slate-300 border-dashed p-8 text-center text-slate-600">
 				No suggestions yet. Send an insight to Suggestions to start ideation.
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -46,5 +46,5 @@ export function IdeasBoard() {
 				</li>
 			))}
 		</ul>
-	)
+	);
 }

@@ -11,12 +11,12 @@ import {
 	UserPlus,
 	Users,
 	X,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useNavigate } from "react-router"
-import { toast } from "sonner"
-import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
-import { Button } from "~/components/ui/button"
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -24,15 +24,15 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { useRecordNow } from "~/hooks/useRecordNow"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
-import type { Person } from "~/types"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { useRecordNow } from "~/hooks/useRecordNow";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
+import type { Person } from "~/types";
 
 interface UploadScreenProps {
 	onNext: (
@@ -40,31 +40,31 @@ interface UploadScreenProps {
 		mediaType: string,
 		projectId?: string,
 		attachmentData?: {
-			attachType: "todo" | "existing" | "new" | "general" | "skip"
-			entityId?: string
-			fileExtension?: string
-			sourceType?: string
+			attachType: "todo" | "existing" | "new" | "general" | "skip";
+			entityId?: string;
+			fileExtension?: string;
+			sourceType?: string;
 		}
-	) => void
-	onUploadFromUrl: (url: string, personId?: string) => Promise<void>
-	onBack: () => void
-	projectId?: string
-	accountId?: string
-	error?: string
+	) => void;
+	onUploadFromUrl: (url: string, personId?: string) => Promise<void>;
+	onBack: () => void;
+	projectId?: string;
+	accountId?: string;
+	error?: string;
 }
 
-type UploadStep = "select" | "associate"
-type ActionType = "upload" | "record"
+type UploadStep = "select" | "associate";
+type ActionType = "upload" | "record";
 type SelectablePerson =
 	| (Person & { isMember?: false })
 	| {
-			id: string
-			name: string
-			company?: string | null
-			isMember: true
-			user_id: string
-			email?: string | null
-	  }
+			id: string;
+			name: string;
+			company?: string | null;
+			isMember: true;
+			user_id: string;
+			email?: string | null;
+	  };
 
 export default function UploadScreen({
 	onNext,
@@ -75,53 +75,53 @@ export default function UploadScreen({
 	error,
 }: UploadScreenProps) {
 	// File/URL state
-	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const [urlToUpload, setUrlToUpload] = useState("")
-	const [uploadTab, setUploadTab] = useState<"file" | "url">("file")
-	const [isDragOver, setIsDragOver] = useState(false)
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [urlToUpload, setUrlToUpload] = useState("");
+	const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
+	const [isDragOver, setIsDragOver] = useState(false);
 
 	// Upload flow state
-	const [uploadStep, setUploadStep] = useState<UploadStep>("select")
-	const [isSubmitting, setIsSubmitting] = useState(false)
-	const [urlError, setUrlError] = useState<string | null>(null)
+	const [uploadStep, setUploadStep] = useState<UploadStep>("select");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [urlError, setUrlError] = useState<string | null>(null);
 
 	// Track which action triggered the association step
-	const [pendingAction, setPendingAction] = useState<ActionType | null>(null)
+	const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
 
 	// Person association state - supports multiple people
-	const [searchQuery, setSearchQuery] = useState("")
-	const [people, setPeople] = useState<Person[]>([])
-	const [members, setMembers] = useState<Array<{ user_id: string; name: string; email: string | null }>>([])
-	const [isLoadingPeople, setIsLoadingPeople] = useState(false)
-	const [selectedPeople, setSelectedPeople] = useState<SelectablePerson[]>([])
-	const [showCreatePerson, setShowCreatePerson] = useState(false)
-	const [newPersonFirstName, setNewPersonFirstName] = useState("")
-	const [newPersonLastName, setNewPersonLastName] = useState("")
-	const [newPersonCompany, setNewPersonCompany] = useState("")
-	const [matchingPeople, setMatchingPeople] = useState<Person[]>([])
-	const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
-	const [duplicateError, setDuplicateError] = useState<string | null>(null)
+	const [searchQuery, setSearchQuery] = useState("");
+	const [people, setPeople] = useState<Person[]>([]);
+	const [members, setMembers] = useState<Array<{ user_id: string; name: string; email: string | null }>>([]);
+	const [isLoadingPeople, setIsLoadingPeople] = useState(false);
+	const [selectedPeople, setSelectedPeople] = useState<SelectablePerson[]>([]);
+	const [showCreatePerson, setShowCreatePerson] = useState(false);
+	const [newPersonFirstName, setNewPersonFirstName] = useState("");
+	const [newPersonLastName, setNewPersonLastName] = useState("");
+	const [newPersonCompany, setNewPersonCompany] = useState("");
+	const [matchingPeople, setMatchingPeople] = useState<Person[]>([]);
+	const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+	const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
 	// Dialogs
-	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false)
-	const [showUploadMethodDialog, setShowUploadMethodDialog] = useState(false)
-	const [showNoQuestionsDialog, setShowNoQuestionsDialog] = useState(false)
-	const [isCheckingQuestions, setIsCheckingQuestions] = useState(false)
+	const [showQuickNoteDialog, setShowQuickNoteDialog] = useState(false);
+	const [showUploadMethodDialog, setShowUploadMethodDialog] = useState(false);
+	const [showNoQuestionsDialog, setShowNoQuestionsDialog] = useState(false);
+	const [isCheckingQuestions, setIsCheckingQuestions] = useState(false);
 
-	const fileInputRef = useRef<HTMLInputElement>(null)
-	const supabase = createClient()
-	const navigate = useNavigate()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const { recordNow, isRecording } = useRecordNow()
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const supabase = createClient();
+	const navigate = useNavigate();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const { recordNow, isRecording } = useRecordNow();
 
 	// Detect file type for setting source_type
 	const getFileType = useCallback((file: File): string => {
-		const extension = file.name.split(".").pop()?.toLowerCase()
-		const mimeType = file.type.toLowerCase()
+		const extension = file.name.split(".").pop()?.toLowerCase();
+		const mimeType = file.type.toLowerCase();
 
 		if (mimeType.startsWith("text/") || ["txt", "md", "markdown"].includes(extension || "")) {
-			return "transcript"
+			return "transcript";
 		}
 		if (
 			mimeType.includes("pdf") ||
@@ -129,75 +129,75 @@ export default function UploadScreen({
 			mimeType.includes("spreadsheet") ||
 			["pdf", "doc", "docx", "csv", "xlsx"].includes(extension || "")
 		) {
-			return "document"
+			return "document";
 		}
 		if (mimeType.startsWith("video/") || ["mp4", "mov", "avi", "mkv", "webm"].includes(extension || "")) {
-			return "video_upload"
+			return "video_upload";
 		}
 		if (mimeType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(extension || "")) {
-			return "audio_upload"
+			return "audio_upload";
 		}
-		return "document"
-	}, [])
+		return "document";
+	}, []);
 
 	// File handlers
 	const handleFileSelect = (file: File) => {
-		setSelectedFile(file)
-		setPendingAction("upload")
-		setUploadStep("associate")
-	}
+		setSelectedFile(file);
+		setPendingAction("upload");
+		setUploadStep("associate");
+	};
 
 	const handleDragOver = (e: React.DragEvent) => {
-		e.preventDefault()
-		setIsDragOver(true)
-	}
+		e.preventDefault();
+		setIsDragOver(true);
+	};
 
 	const handleDragLeave = (e: React.DragEvent) => {
-		e.preventDefault()
-		setIsDragOver(false)
-	}
+		e.preventDefault();
+		setIsDragOver(false);
+	};
 
 	const handleDrop = (e: React.DragEvent) => {
-		e.preventDefault()
-		setIsDragOver(false)
-		const files = e.dataTransfer.files
+		e.preventDefault();
+		setIsDragOver(false);
+		const files = e.dataTransfer.files;
 		if (files.length > 0) {
-			handleFileSelect(files[0])
+			handleFileSelect(files[0]);
 		}
-	}
+	};
 
 	const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const files = e.target.files
+		const files = e.target.files;
 		if (files && files.length > 0) {
-			handleFileSelect(files[0])
+			handleFileSelect(files[0]);
 		}
-	}
+	};
 
 	const triggerFileInput = () => {
-		fileInputRef.current?.click()
-	}
+		fileInputRef.current?.click();
+	};
 
 	// URL handler
 	const handleUrlContinue = () => {
 		if (!urlToUpload.trim()) {
-			setUrlError("Please enter a valid URL")
-			return
+			setUrlError("Please enter a valid URL");
+			return;
 		}
-		setUrlError(null)
-		setPendingAction("upload")
-		setUploadStep("associate")
-	}
+		setUrlError(null);
+		setPendingAction("upload");
+		setUploadStep("associate");
+	};
 
 	// Record handler - check for questions first, then show person association
 	const handleRecordClick = useCallback(async () => {
 		if (!projectId) {
 			// No project yet, proceed directly
-			setPendingAction("record")
-			setUploadStep("associate")
-			return
+			setPendingAction("record");
+			setUploadStep("associate");
+			return;
 		}
 
-		setIsCheckingQuestions(true)
+		setIsCheckingQuestions(true);
 		try {
 			// Check if project has any selected interview prompts
 			const { data: prompts, error } = await supabase
@@ -205,90 +205,90 @@ export default function UploadScreen({
 				.select("id")
 				.eq("project_id", projectId)
 				.eq("is_selected", true)
-				.limit(1)
+				.limit(1);
 
 			if (error) {
-				console.warn("[UploadScreen] Failed to check questions:", error)
+				console.warn("[UploadScreen] Failed to check questions:", error);
 				// Proceed anyway on error
-				setPendingAction("record")
-				setUploadStep("associate")
-				return
+				setPendingAction("record");
+				setUploadStep("associate");
+				return;
 			}
 
 			if (!prompts || prompts.length === 0) {
 				// No questions configured, show dialog
-				setShowNoQuestionsDialog(true)
-				return
+				setShowNoQuestionsDialog(true);
+				return;
 			}
 
 			// Questions exist, proceed to person association
-			setPendingAction("record")
-			setUploadStep("associate")
+			setPendingAction("record");
+			setUploadStep("associate");
 		} finally {
-			setIsCheckingQuestions(false)
+			setIsCheckingQuestions(false);
 		}
-	}, [projectId, supabase])
+	}, [projectId, supabase]);
 
 	// Proceed to record without questions (user chose to continue)
 	const handleRecordWithoutQuestions = useCallback(() => {
-		setShowNoQuestionsDialog(false)
-		setPendingAction("record")
-		setUploadStep("associate")
-	}, [])
+		setShowNoQuestionsDialog(false);
+		setPendingAction("record");
+		setUploadStep("associate");
+	}, []);
 
 	// Navigate to questions setup
 	const handleSetupQuestions = useCallback(() => {
-		setShowNoQuestionsDialog(false)
+		setShowNoQuestionsDialog(false);
 		if (routes.questions?.index) {
-			navigate(routes.questions.index())
+			navigate(routes.questions.index());
 		} else if (projectPath) {
-			navigate(`${projectPath}/questions`)
+			navigate(`${projectPath}/questions`);
 		}
-	}, [navigate, routes, projectPath])
+	}, [navigate, routes, projectPath]);
 
 	// Start recording with optional people (pass all via comma-separated personIds param)
 	const handleStartRecording = useCallback(
 		(personIds: string[]) => {
 			// Pass all personIds via URL param - realtime.tsx parses comma-separated
-			const urlParams = personIds.length > 0 ? `personIds=${personIds.join(",")}` : ""
-			recordNow({ projectId, mode: "interview", urlParams })
+			const urlParams = personIds.length > 0 ? `personIds=${personIds.join(",")}` : "";
+			recordNow({ projectId, mode: "interview", urlParams });
 		},
 		[projectId, recordNow]
-	)
+	);
 
 	// Process action (upload or record) with optional people
 	const handleProcessAction = useCallback(async () => {
-		setIsSubmitting(true)
+		setIsSubmitting(true);
 
 		try {
 			// Collect all person IDs (existing selections + newly created)
-			const personIds: string[] = []
+			const personIds: string[] = [];
 
 			// Ensure member selections have a person row
 			if (accountId && projectId && selectedPeople.length > 0) {
 				for (const sel of selectedPeople) {
 					if ((sel as any).isMember) {
-						const memberSel = sel as Extract<SelectablePerson, { isMember: true }>
+						const memberSel = sel as Extract<SelectablePerson, { isMember: true }>;
 						// Ensure a person row exists for this team member: find, otherwise insert
-						const [first, ...rest] = (memberSel.name || "").split(/\s+/).filter(Boolean)
-						const last = rest.length ? rest.join(" ") : null
+						const [first, ...rest] = (memberSel.name || "").split(/\s+/).filter(Boolean);
+						const last = rest.length ? rest.join(" ") : null;
 
 						const { data: existingPerson, error: lookupErr } = await supabase
 							.from("people")
 							.select("id")
 							.eq("account_id", accountId)
 							.eq("user_id", memberSel.user_id)
-							.maybeSingle()
+							.maybeSingle();
 
 						if (lookupErr) {
-							console.error("[UploadScreen] Failed to lookup person for team member:", memberSel.name, lookupErr)
-							toast.error(`Could not link ${memberSel.name}`)
-							continue
+							console.error("[UploadScreen] Failed to lookup person for team member:", memberSel.name, lookupErr);
+							toast.error(`Could not link ${memberSel.name}`);
+							continue;
 						}
 
 						if (existingPerson?.id) {
-							personIds.push(existingPerson.id)
-							continue
+							personIds.push(existingPerson.id);
+							continue;
 						}
 
 						const insertPayload = {
@@ -300,32 +300,32 @@ export default function UploadScreen({
 							lastname: last,
 							company: memberSel.company ?? null,
 							primary_email: memberSel.email ?? null,
-						}
+						};
 						const { data: inserted, error: insertErr } = await supabase
 							.from("people")
 							.insert(insertPayload)
 							.select("id")
-							.single()
+							.single();
 
 						if (insertErr || !inserted?.id) {
-							console.error("[UploadScreen] Failed to insert person for team member:", memberSel.name, insertErr)
-							toast.error(`Could not link ${memberSel.name}`)
+							console.error("[UploadScreen] Failed to insert person for team member:", memberSel.name, insertErr);
+							toast.error(`Could not link ${memberSel.name}`);
 						} else {
-							personIds.push(inserted.id)
+							personIds.push(inserted.id);
 						}
 					} else {
-						personIds.push(sel.id)
+						personIds.push(sel.id);
 					}
 				}
 			} else {
-				personIds.push(...selectedPeople.map((p) => p.id))
+				personIds.push(...selectedPeople.map((p) => p.id));
 			}
 
 			// Create new person if needed (immediately, not deferred)
 			if (showCreatePerson && newPersonFirstName.trim() && accountId) {
-				const firstName = newPersonFirstName.trim()
-				const lastName = newPersonLastName.trim() || null
-				const displayName = lastName ? `${firstName} ${lastName}` : firstName
+				const firstName = newPersonFirstName.trim();
+				const lastName = newPersonLastName.trim() || null;
+				const displayName = lastName ? `${firstName} ${lastName}` : firstName;
 				const { data, error } = await supabase
 					.from("people")
 					.insert({
@@ -336,47 +336,47 @@ export default function UploadScreen({
 						company: newPersonCompany.trim() || null,
 					})
 					.select()
-					.single()
+					.single();
 
 				if (error) {
-					console.error("[UploadScreen] Failed to create person:", error)
-					toast.error("Failed to create person")
+					console.error("[UploadScreen] Failed to create person:", error);
+					toast.error("Failed to create person");
 				} else if (data) {
-					console.log("[UploadScreen] Created person:", data.id, displayName)
-					personIds.push(data.id)
-					toast.success(`Created "${displayName}"`)
+					console.log("[UploadScreen] Created person:", data.id, displayName);
+					personIds.push(data.id);
+					toast.success(`Created "${displayName}"`);
 				}
 			} else if (showCreatePerson && newPersonFirstName.trim()) {
-				console.error("[UploadScreen] Cannot create person: no accountId available")
-				toast.error("Cannot create person: missing account context")
+				console.error("[UploadScreen] Cannot create person: no accountId available");
+				toast.error("Cannot create person: missing account context");
 			}
 
 			// Handle recording - pass all person IDs
 			if (pendingAction === "record") {
-				handleStartRecording(personIds)
-				return
+				handleStartRecording(personIds);
+				return;
 			}
 
 			// Handle file upload - for now, pass first person (API supports single)
-			const firstPersonId = personIds[0]
+			const firstPersonId = personIds[0];
 			if (selectedFile) {
-				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || ""
-				const sourceType = getFileType(selectedFile)
+				const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase() || "";
+				const sourceType = getFileType(selectedFile);
 
 				onNext(selectedFile, "interview", projectId, {
 					attachType: firstPersonId ? "existing" : "skip",
 					entityId: firstPersonId,
 					fileExtension,
 					sourceType,
-				})
+				});
 			} else if (urlToUpload.trim()) {
-				await onUploadFromUrl(urlToUpload.trim(), firstPersonId)
+				await onUploadFromUrl(urlToUpload.trim(), firstPersonId);
 			}
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Failed to process"
-			setUrlError(message)
+			const message = err instanceof Error ? err.message : "Failed to process";
+			setUrlError(message);
 		} finally {
-			setIsSubmitting(false)
+			setIsSubmitting(false);
 		}
 	}, [
 		selectedFile,
@@ -394,21 +394,21 @@ export default function UploadScreen({
 		onUploadFromUrl,
 		pendingAction,
 		handleStartRecording,
-	])
+	]);
 
 	// Reset to initial state
 	const handleBack = () => {
-		setUploadStep("select")
-		setSelectedFile(null)
-		setUrlToUpload("")
-		setSelectedPeople([])
-		setShowCreatePerson(false)
-		setSearchQuery("")
-		setNewPersonFirstName("")
-		setNewPersonLastName("")
-		setNewPersonCompany("")
-		setPendingAction(null)
-	}
+		setUploadStep("select");
+		setSelectedFile(null);
+		setUrlToUpload("");
+		setSelectedPeople([]);
+		setShowCreatePerson(false);
+		setSearchQuery("");
+		setNewPersonFirstName("");
+		setNewPersonLastName("");
+		setNewPersonCompany("");
+		setPendingAction(null);
+	};
 
 	// Fetch people when entering association step
 	useEffect(() => {
@@ -418,45 +418,45 @@ export default function UploadScreen({
 			accountId,
 			projectId,
 			peopleLength: people.length,
-		})
-		if (uploadStep !== "associate" || isLoadingPeople) return
+		});
+		if (uploadStep !== "associate" || isLoadingPeople) return;
 		// Need either accountId or projectId to fetch people
-		if (!accountId && !projectId) return
+		if (!accountId && !projectId) return;
 
 		const load = async () => {
-			setIsLoadingPeople(true)
+			setIsLoadingPeople(true);
 			try {
 				// Use accountId prop, or fetch from project if not available
-				let effectiveAccountId = accountId
+				let effectiveAccountId = accountId;
 				if (!effectiveAccountId && projectId) {
-					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle()
-					effectiveAccountId = proj?.account_id ?? undefined
+					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle();
+					effectiveAccountId = proj?.account_id ?? undefined;
 				}
 
 				if (!effectiveAccountId) {
-					console.warn("[UploadScreen] No accountId available for fetching people")
-					return
+					console.warn("[UploadScreen] No accountId available for fetching people");
+					return;
 				}
 
-				console.log("[UploadScreen] Fetching people for accountId:", effectiveAccountId)
+				console.log("[UploadScreen] Fetching people for accountId:", effectiveAccountId);
 				const { data, error: fetchError } = await supabase
 					.from("people")
 					.select("id, name, company, person_type")
 					.eq("account_id", effectiveAccountId)
 					.order("name")
-					.limit(50)
+					.limit(50);
 
 				console.log("[UploadScreen] People fetch result:", {
 					count: data?.length ?? 0,
 					error: fetchError,
 					sample: data?.slice(0, 3),
-				})
+				});
 
-				if (data) setPeople(data as Person[])
+				if (data) setPeople(data as Person[]);
 
 				const { data: memberRows } = await supabase.rpc("get_account_members", {
 					account_id: effectiveAccountId,
-				})
+				});
 				if (Array.isArray(memberRows)) {
 					setMembers(
 						memberRows.map((m: any) => ({
@@ -464,45 +464,45 @@ export default function UploadScreen({
 							name: m.name || m.email || "Team member",
 							email: m.email ?? null,
 						}))
-					)
+					);
 				}
 			} finally {
-				setIsLoadingPeople(false)
+				setIsLoadingPeople(false);
 			}
-		}
+		};
 
 		if (people.length === 0) {
-			console.log("[UploadScreen] Calling load() because people.length === 0")
-			load()
+			console.log("[UploadScreen] Calling load() because people.length === 0");
+			load();
 		} else {
-			console.log("[UploadScreen] Skipping load() because people.length =", people.length)
+			console.log("[UploadScreen] Skipping load() because people.length =", people.length);
 		}
-	}, [uploadStep, people.length, supabase, accountId, projectId, isLoadingPeople])
+	}, [uploadStep, people.length, supabase, accountId, projectId, isLoadingPeople]);
 
 	// Check for matching people when creating a new person (debounced)
 	useEffect(() => {
 		if (!showCreatePerson || !newPersonFirstName.trim()) {
-			setMatchingPeople([])
-			setDuplicateError(null)
-			return
+			setMatchingPeople([]);
+			setDuplicateError(null);
+			return;
 		}
 
 		const checkMatches = async () => {
-			setIsCheckingDuplicate(true)
-			setDuplicateError(null)
+			setIsCheckingDuplicate(true);
+			setDuplicateError(null);
 
 			try {
 				// Build the name to search for
-				const searchName = `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim().toLowerCase()
+				const searchName = `${newPersonFirstName.trim()} ${newPersonLastName.trim()}`.trim().toLowerCase();
 
 				// Get effective accountId
-				let effectiveAccountId = accountId
+				let effectiveAccountId = accountId;
 				if (!effectiveAccountId && projectId) {
-					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle()
-					effectiveAccountId = proj?.account_id ?? undefined
+					const { data: proj } = await supabase.from("projects").select("account_id").eq("id", projectId).maybeSingle();
+					effectiveAccountId = proj?.account_id ?? undefined;
 				}
 
-				if (!effectiveAccountId) return
+				if (!effectiveAccountId) return;
 
 				// Search for people with similar names
 				const { data } = await supabase
@@ -510,34 +510,34 @@ export default function UploadScreen({
 					.select("id, name, company, person_type")
 					.eq("account_id", effectiveAccountId)
 					.ilike("name", `%${searchName}%`)
-					.limit(5)
+					.limit(5);
 
 				if (data && data.length > 0) {
-					setMatchingPeople(data as Person[])
+					setMatchingPeople(data as Person[]);
 
 					// Check for exact duplicate (same name + company)
-					const companyLower = (newPersonCompany.trim() || "").toLowerCase()
+					const companyLower = (newPersonCompany.trim() || "").toLowerCase();
 					const exactMatch = data.find(
 						(p) => p.name?.toLowerCase() === searchName && (p.company || "").toLowerCase() === companyLower
-					)
+					);
 
 					if (exactMatch) {
 						setDuplicateError(
 							`"${exactMatch.name}"${exactMatch.company ? ` at ${exactMatch.company}` : ""} already exists`
-						)
+						);
 					}
 				} else {
-					setMatchingPeople([])
+					setMatchingPeople([]);
 				}
 			} finally {
-				setIsCheckingDuplicate(false)
+				setIsCheckingDuplicate(false);
 			}
-		}
+		};
 
 		// Debounce the check
-		const timer = setTimeout(checkMatches, 300)
-		return () => clearTimeout(timer)
-	}, [showCreatePerson, newPersonFirstName, newPersonLastName, newPersonCompany, accountId, projectId, supabase])
+		const timer = setTimeout(checkMatches, 300);
+		return () => clearTimeout(timer);
+	}, [showCreatePerson, newPersonFirstName, newPersonLastName, newPersonCompany, accountId, projectId, supabase]);
 
 	// Filter people based on search
 	const filteredPeople = searchQuery.trim()
@@ -546,7 +546,7 @@ export default function UploadScreen({
 					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
 			)
-		: people.slice(0, 8)
+		: people.slice(0, 8);
 	const filteredMembers =
 		searchQuery.trim().length > 0
 			? members.filter(
@@ -554,18 +554,18 @@ export default function UploadScreen({
 						m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 						(m.email || "").toLowerCase().includes(searchQuery.toLowerCase())
 				)
-			: members.slice(0, 8)
+			: members.slice(0, 8);
 
 	// Quick note handler
 	const handleSaveNote = useCallback(
 		async (note: {
-			title: string
-			content: string
-			noteType: string
-			associations: Record<string, unknown>
-			tags: string[]
+			title: string;
+			content: string;
+			noteType: string;
+			associations: Record<string, unknown>;
+			tags: string[];
 		}) => {
-			if (!projectId) throw new Error("Project ID is required")
+			if (!projectId) throw new Error("Project ID is required");
 
 			const response = await fetch("/api/notes/create", {
 				method: "POST",
@@ -578,30 +578,30 @@ export default function UploadScreen({
 					associations: note.associations,
 					tags: note.tags,
 				}),
-			})
+			});
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				throw new Error(errorData.details || errorData.error || "Failed to save note")
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.details || errorData.error || "Failed to save note");
 			}
 		},
 		[projectId]
-	)
+	);
 
 	const formatFileSize = (bytes: number): string => {
-		if (bytes === 0) return "0 Bytes"
-		const k = 1024
-		const sizes = ["Bytes", "KB", "MB", "GB"]
-		const i = Math.floor(Math.log(bytes) / Math.log(k))
-		return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
-	}
+		if (bytes === 0) return "0 Bytes";
+		const k = 1024;
+		const sizes = ["Bytes", "KB", "MB", "GB"];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+	};
 
 	// ─────────────────────────────────────────────────────────────
 	// RENDER: Association Step
 	// ─────────────────────────────────────────────────────────────
 	if (uploadStep === "associate") {
-		const contentLabel = selectedFile ? selectedFile.name : urlToUpload
-		const isRecording = pendingAction === "record"
+		const contentLabel = selectedFile ? selectedFile.name : urlToUpload;
+		const isRecording = pendingAction === "record";
 
 		return (
 			<div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
@@ -651,8 +651,8 @@ export default function UploadScreen({
 										</p>
 									) : (
 										filteredPeople.map((person) => {
-											const isSelected = selectedPeople.some((p) => p.id === person.id && !p.isMember)
-											const isInternal = (person as any).person_type === "internal"
+											const isSelected = selectedPeople.some((p) => p.id === person.id && !p.isMember);
+											const isInternal = (person as any).person_type === "internal";
 											return (
 												<button
 													key={person.id}
@@ -687,7 +687,7 @@ export default function UploadScreen({
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
 												</button>
-											)
+											);
 										})
 									)}
 
@@ -695,8 +695,8 @@ export default function UploadScreen({
 										<div className="mt-4 space-y-2">
 											<p className="font-semibold text-muted-foreground text-xs uppercase">Internal teammates</p>
 											{filteredMembers.map((member) => {
-												const key = `member-${member.user_id}`
-												const isSelected = selectedPeople.some((p) => p.isMember && p.user_id === member.user_id)
+												const key = `member-${member.user_id}`;
+												const isSelected = selectedPeople.some((p) => p.isMember && p.user_id === member.user_id);
 												return (
 													<button
 														key={key}
@@ -738,7 +738,7 @@ export default function UploadScreen({
 														</div>
 														{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
 													</button>
-												)
+												);
 											})}
 										</div>
 									)}
@@ -764,12 +764,12 @@ export default function UploadScreen({
 									<button
 										type="button"
 										onClick={() => {
-											setShowCreatePerson(false)
-											setNewPersonFirstName("")
-											setNewPersonLastName("")
-											setNewPersonCompany("")
-											setMatchingPeople([])
-											setDuplicateError(null)
+											setShowCreatePerson(false);
+											setNewPersonFirstName("");
+											setNewPersonLastName("");
+											setNewPersonCompany("");
+											setMatchingPeople([]);
+											setDuplicateError(null);
 										}}
 										className="text-muted-foreground text-xs hover:text-foreground"
 									>
@@ -809,12 +809,12 @@ export default function UploadScreen({
 												key={person.id}
 												type="button"
 												onClick={() => {
-													setSelectedPeople((prev) => [...prev, person])
-													setShowCreatePerson(false)
-													setNewPersonFirstName("")
-													setNewPersonLastName("")
-													setNewPersonCompany("")
-													setMatchingPeople([])
+													setSelectedPeople((prev) => [...prev, person]);
+													setShowCreatePerson(false);
+													setNewPersonFirstName("");
+													setNewPersonLastName("");
+													setNewPersonCompany("");
+													setMatchingPeople([]);
 												}}
 												className="flex w-full items-center gap-2 rounded border border-amber-300 bg-white p-2 text-left text-sm transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900 dark:hover:bg-slate-800"
 											>
@@ -841,9 +841,9 @@ export default function UploadScreen({
 								variant="outline"
 								className="flex-1"
 								onClick={() => {
-									setSelectedPeople([])
-									setShowCreatePerson(false)
-									handleProcessAction()
+									setSelectedPeople([]);
+									setShowCreatePerson(false);
+									handleProcessAction();
 								}}
 								disabled={isSubmitting}
 							>
@@ -861,15 +861,15 @@ export default function UploadScreen({
 										<Sparkles className="mr-2 h-4 w-4" />
 										{(() => {
 											const hasPersonSelected =
-												selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim())
+												selectedPeople.length > 0 || (showCreatePerson && newPersonFirstName.trim());
 											const personCount =
-												selectedPeople.length + (showCreatePerson && newPersonFirstName.trim() ? 1 : 0)
+												selectedPeople.length + (showCreatePerson && newPersonFirstName.trim() ? 1 : 0);
 											if (isRecording) {
-												if (!hasPersonSelected) return "Start Recording"
-												return personCount > 1 ? `Record & Link ${personCount}` : "Record & Link"
+												if (!hasPersonSelected) return "Start Recording";
+												return personCount > 1 ? `Record & Link ${personCount}` : "Record & Link";
 											}
-											if (!hasPersonSelected) return "Upload"
-											return personCount > 1 ? `Upload & Link ${personCount}` : "Upload & Link"
+											if (!hasPersonSelected) return "Upload";
+											return personCount > 1 ? `Upload & Link ${personCount}` : "Upload & Link";
 										})()}
 									</>
 								)}
@@ -878,7 +878,7 @@ export default function UploadScreen({
 					</div>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	// ─────────────────────────────────────────────────────────────
@@ -1000,14 +1000,14 @@ export default function UploadScreen({
 						<TabsContent value="file" className="mt-4">
 							<div
 								onClick={() => {
-									setShowUploadMethodDialog(false)
-									triggerFileInput()
+									setShowUploadMethodDialog(false);
+									triggerFileInput();
 								}}
 								onDragOver={handleDragOver}
 								onDragLeave={handleDragLeave}
 								onDrop={(e) => {
-									setShowUploadMethodDialog(false)
-									handleDrop(e)
+									setShowUploadMethodDialog(false);
+									handleDrop(e);
 								}}
 								className={cn(
 									"flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all",
@@ -1029,16 +1029,16 @@ export default function UploadScreen({
 									placeholder="https://..."
 									value={urlToUpload}
 									onChange={(e) => {
-										setUrlToUpload(e.target.value)
-										setUrlError(null)
+										setUrlToUpload(e.target.value);
+										setUrlError(null);
 									}}
 									autoFocus
 								/>
 								{urlError && <p className="text-red-500 text-xs">{urlError}</p>}
 								<Button
 									onClick={() => {
-										setShowUploadMethodDialog(false)
-										handleUrlContinue()
+										setShowUploadMethodDialog(false);
+										handleUrlContinue();
 									}}
 									disabled={!urlToUpload.trim()}
 									className="w-full"
@@ -1083,5 +1083,5 @@ export default function UploadScreen({
 				</DialogContent>
 			</Dialog>
 		</div>
-	)
+	);
 }

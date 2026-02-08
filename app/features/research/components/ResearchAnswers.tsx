@@ -1,133 +1,133 @@
-import { ChevronRight, Lightbulb, Users } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import type { RouteDefinitions } from "~/utils/route-definitions"
+import { ChevronRight, Lightbulb, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import type { RouteDefinitions } from "~/utils/route-definitions";
 
 interface ResearchAnswerEvidence {
-	id: string
-	verbatim: string
-	support: string
-	modality: string
-	anchors: any
-	interview_id: string | null
-	created_at: string | null
+	id: string;
+	verbatim: string;
+	support: string;
+	modality: string;
+	anchors: any;
+	interview_id: string | null;
+	created_at: string | null;
 }
 
 export interface ResearchAnswerNode {
-	id: string
-	question_text: string
-	question_category: string | null
-	status: string
-	order_index: number | null
-	answered_at: string | null
+	id: string;
+	question_text: string;
+	question_category: string | null;
+	status: string;
+	order_index: number | null;
+	answered_at: string | null;
 	interview: {
-		id: string | null
-		title: string | null
-		interview_date: string | null
-	}
+		id: string | null;
+		title: string | null;
+		interview_date: string | null;
+	};
 	respondent: {
-		id: string | null
-		name: string | null
-	}
-	answer_text: string | null
-	detected_question_text: string | null
+		id: string | null;
+		name: string | null;
+	};
+	answer_text: string | null;
+	detected_question_text: string | null;
 	metrics: {
-		evidence_count: number
-		interview_count: number
-		persona_count: number
-	}
-	evidence: ResearchAnswerEvidence[]
+		evidence_count: number;
+		interview_count: number;
+		persona_count: number;
+	};
+	evidence: ResearchAnswerEvidence[];
 }
 
 export interface ResearchQuestionNode {
-	id: string
-	text: string
+	id: string;
+	text: string;
 	metrics: {
-		answered_answer_count: number
-		open_answer_count: number
-		evidence_count: number
-		interview_count: number
-		persona_count: number
-	}
-	answers: ResearchAnswerNode[]
+		answered_answer_count: number;
+		open_answer_count: number;
+		evidence_count: number;
+		interview_count: number;
+		persona_count: number;
+	};
+	answers: ResearchAnswerNode[];
 }
 
 export interface DecisionQuestionNode {
-	id: string
-	text: string
+	id: string;
+	text: string;
 	metrics: {
-		research_question_count: number
-		answered_answer_count: number
-		open_answer_count: number
-		evidence_count: number
-		interview_count: number
-		persona_count: number
-	}
-	research_questions: ResearchQuestionNode[]
+		research_question_count: number;
+		answered_answer_count: number;
+		open_answer_count: number;
+		evidence_count: number;
+		interview_count: number;
+		persona_count: number;
+	};
+	research_questions: ResearchQuestionNode[];
 }
 
 export interface ResearchAnswersData {
-	decision_questions: DecisionQuestionNode[]
-	research_questions_without_decision: ResearchQuestionNode[]
-	orphan_answers: ResearchAnswerNode[]
+	decision_questions: DecisionQuestionNode[];
+	research_questions_without_decision: ResearchQuestionNode[];
+	orphan_answers: ResearchAnswerNode[];
 	analysis_results?: Array<{
-		question_type: "decision" | "research"
-		question_id: string
-		summary: string
-		confidence: number
-		next_steps: string | null
-		goal_achievement_summary: string | null
-	}>
+		question_type: "decision" | "research";
+		question_id: string;
+		summary: string;
+		confidence: number;
+		next_steps: string | null;
+		goal_achievement_summary: string | null;
+	}>;
 }
 
 interface ResearchAnswersProps {
-	projectId: string
-	className?: string
-	projectRoutes?: RouteDefinitions
-	onMetrics?: (metrics: { answered: number; open: number; total: number }) => void
-	onData?: (data: ResearchAnswersData | null) => void
+	projectId: string;
+	className?: string;
+	projectRoutes?: RouteDefinitions;
+	onMetrics?: (metrics: { answered: number; open: number; total: number }) => void;
+	onData?: (data: ResearchAnswersData | null) => void;
 }
 
-const answered_statuses = new Set(["answered", "ad_hoc"])
-const open_statuses = new Set(["planned", "asked"])
+const answered_statuses = new Set(["answered", "ad_hoc"]);
+const open_statuses = new Set(["planned", "asked"]);
 
 function summarizeMetrics(data: ResearchAnswersData | null): { answered: number; open: number; total: number } {
-	if (!data) return { answered: 0, open: 0, total: 0 }
+	if (!data) return { answered: 0, open: 0, total: 0 };
 
-	const research_map = new Map<string, ResearchQuestionNode>()
+	const research_map = new Map<string, ResearchQuestionNode>();
 	data.decision_questions.forEach((decision) => {
 		decision.research_questions.forEach((rq) => {
-			if (!research_map.has(rq.id)) research_map.set(rq.id, rq)
-		})
-	})
+			if (!research_map.has(rq.id)) research_map.set(rq.id, rq);
+		});
+	});
 	data.research_questions_without_decision.forEach((rq) => {
-		if (!research_map.has(rq.id)) research_map.set(rq.id, rq)
-	})
+		if (!research_map.has(rq.id)) research_map.set(rq.id, rq);
+	});
 
-	let answered = 0
-	let open = 0
+	let answered = 0;
+	let open = 0;
 
 	research_map.forEach((rq) => {
-		const answered_from_metrics = rq.metrics.answered_answer_count
-		const open_from_metrics = rq.metrics.open_answer_count
+		const answered_from_metrics = rq.metrics.answered_answer_count;
+		const open_from_metrics = rq.metrics.open_answer_count;
 
-		const answered_fallback = rq.answers.filter((ans) => answered_statuses.has(ans.status)).length
-		const open_fallback = rq.answers.filter((ans) => open_statuses.has(ans.status)).length
+		const answered_fallback = rq.answers.filter((ans) => answered_statuses.has(ans.status)).length;
+		const open_fallback = rq.answers.filter((ans) => open_statuses.has(ans.status)).length;
 
-		answered += answered_from_metrics ?? answered_fallback
-		open += open_from_metrics ?? open_fallback
-	})
+		answered += answered_from_metrics ?? answered_fallback;
+		open += open_from_metrics ?? open_fallback;
+	});
 
-	const orphan_answered = data.orphan_answers.filter((ans) => answered_statuses.has(ans.status)).length
-	const orphan_open = data.orphan_answers.filter((ans) => open_statuses.has(ans.status)).length
+	const orphan_answered = data.orphan_answers.filter((ans) => answered_statuses.has(ans.status)).length;
+	const orphan_open = data.orphan_answers.filter((ans) => open_statuses.has(ans.status)).length;
 
-	answered += orphan_answered
-	open += orphan_open
+	answered += orphan_answered;
+	open += orphan_open;
 
-	const total = answered + open
-	return { answered, open, total }
+	const total = answered + open;
+	return { answered, open, total };
 }
 
 function MetricBadge({ label, value }: { label: string; value: number }) {
@@ -136,60 +136,60 @@ function MetricBadge({ label, value }: { label: string; value: number }) {
 			<span className="font-medium">{value}</span>
 			<span className="text-muted-foreground">{label}</span>
 		</Badge>
-	)
+	);
 }
 
 function AnswerRow({ answer, projectRoutes }: { answer: ResearchAnswerNode; projectRoutes?: RouteDefinitions }) {
 	// Helper to create evidence link with time parameter
 	const createEvidenceLink = (evidenceId: string, anchors: any) => {
-		if (!projectRoutes) return null
+		if (!projectRoutes) return null;
 
-		let url = projectRoutes.evidence.detail(evidenceId)
+		let url = projectRoutes.evidence.detail(evidenceId);
 
 		if (anchors && Array.isArray(anchors) && anchors.length > 0) {
-			const anchor = anchors[0]
-			const startTime = anchor?.start
+			const anchor = anchors[0];
+			const startTime = anchor?.start;
 
 			if (startTime) {
-				let seconds = 0
+				let seconds = 0;
 				if (typeof startTime === "number") {
-					seconds = startTime
+					seconds = startTime;
 				} else if (typeof startTime === "string") {
 					if (startTime.endsWith("ms")) {
-						seconds = Number.parseFloat(startTime.replace("ms", "")) / 1000
+						seconds = Number.parseFloat(startTime.replace("ms", "")) / 1000;
 					} else if (startTime.includes(":")) {
-						const parts = startTime.split(":")
+						const parts = startTime.split(":");
 						if (parts.length === 2) {
-							seconds = Number.parseInt(parts[0], 10) * 60 + Number.parseInt(parts[1], 10)
+							seconds = Number.parseInt(parts[0], 10) * 60 + Number.parseInt(parts[1], 10);
 						}
 					} else {
-						seconds = Number.parseFloat(startTime)
+						seconds = Number.parseFloat(startTime);
 					}
 				}
 
 				if (seconds > 0) {
-					url = `${url}?t=${seconds}`
+					url = `${url}?t=${seconds}`;
 				}
 			}
 		}
 
-		return url
-	}
+		return url;
+	};
 
-	const firstEvidence = answer.evidence[0]
-	const evidenceLink = firstEvidence ? createEvidenceLink(firstEvidence.id, firstEvidence.anchors) : null
+	const firstEvidence = answer.evidence[0];
+	const evidenceLink = firstEvidence ? createEvidenceLink(firstEvidence.id, firstEvidence.anchors) : null;
 	const interviewLink =
-		answer.interview.id && projectRoutes ? projectRoutes.interviews.detail(answer.interview.id) : null
-	const detailLink = evidenceLink ?? interviewLink
-	const detailLabel = evidenceLink ? "View evidence" : "View interview"
+		answer.interview.id && projectRoutes ? projectRoutes.interviews.detail(answer.interview.id) : null;
+	const detailLink = evidenceLink ?? interviewLink;
+	const detailLabel = evidenceLink ? "View evidence" : "View interview";
 
 	const evidence_list = useMemo(() => {
 		return [...answer.evidence].sort((a, b) => {
-			const a_time = a.created_at ? new Date(a.created_at).getTime() : 0
-			const b_time = b.created_at ? new Date(b.created_at).getTime() : 0
-			return a_time - b_time
-		})
-	}, [answer.evidence])
+			const a_time = a.created_at ? new Date(a.created_at).getTime() : 0;
+			const b_time = b.created_at ? new Date(b.created_at).getTime() : 0;
+			return a_time - b_time;
+		});
+	}, [answer.evidence]);
 
 	return (
 		<div className="space-y-2 rounded-md border border-border/60 bg-card/40 p-3">
@@ -233,15 +233,15 @@ function AnswerRow({ answer, projectRoutes }: { answer: ResearchAnswerNode; proj
 				) : null}
 			</div>
 		</div>
-	)
+	);
 }
 
 function ResearchQuestionSection({
 	question,
 	projectRoutes,
 }: {
-	question: ResearchQuestionNode
-	projectRoutes?: RouteDefinitions
+	question: ResearchQuestionNode;
+	projectRoutes?: RouteDefinitions;
 }) {
 	return (
 		<div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
@@ -264,15 +264,15 @@ function ResearchQuestionSection({
 				)}
 			</div>
 		</div>
-	)
+	);
 }
 
 function DecisionQuestionSection({
 	decision,
 	projectRoutes,
 }: {
-	decision: DecisionQuestionNode
-	projectRoutes?: RouteDefinitions
+	decision: DecisionQuestionNode;
+	projectRoutes?: RouteDefinitions;
 }) {
 	return (
 		<div className="space-y-4 rounded-xl border border-border bg-card">
@@ -297,58 +297,58 @@ function DecisionQuestionSection({
 				)}
 			</div>
 		</div>
-	)
+	);
 }
 
 function _ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onData }: ResearchAnswersProps) {
-	const [data, setData] = useState<ResearchAnswersData | null>(null)
-	const [error, setError] = useState<string | null>(null)
-	const [loading, setLoading] = useState(true)
+	const [data, setData] = useState<ResearchAnswersData | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		let cancelled = false
+		let cancelled = false;
 		const fetchData = async () => {
 			try {
-				setLoading(true)
-				onData?.(null)
-				const response = await fetch(`/api.research-answers?projectId=${projectId}`)
+				setLoading(true);
+				onData?.(null);
+				const response = await fetch(`/api.research-answers?projectId=${projectId}`);
 				if (!response.ok) {
-					const body = await response.json().catch(() => ({}))
-					throw new Error(body?.error || response.statusText)
+					const body = await response.json().catch(() => ({}));
+					throw new Error(body?.error || response.statusText);
 				}
-				const body = (await response.json()) as { data: ResearchAnswersData }
+				const body = (await response.json()) as { data: ResearchAnswersData };
 				if (!cancelled) {
-					setData(body.data)
-					setError(null)
-					onMetrics?.(summarizeMetrics(body.data))
-					onData?.(body.data)
+					setData(body.data);
+					setError(null);
+					onMetrics?.(summarizeMetrics(body.data));
+					onData?.(body.data);
 				}
 			} catch (err) {
 				if (!cancelled) {
-					setError(err instanceof Error ? err.message : "Failed to load research answers")
-					onMetrics?.({ answered: 0, open: 0, total: 0 })
-					onData?.(null)
+					setError(err instanceof Error ? err.message : "Failed to load research answers");
+					onMetrics?.({ answered: 0, open: 0, total: 0 });
+					onData?.(null);
 				}
 			} finally {
-				if (!cancelled) setLoading(false)
+				if (!cancelled) setLoading(false);
 			}
-		}
+		};
 
-		void fetchData()
+		void fetchData();
 
 		return () => {
-			cancelled = true
-		}
-	}, [projectId, onData, onMetrics])
+			cancelled = true;
+		};
+	}, [projectId, onData, onMetrics]);
 
-	const sections = useMemo(() => data ?? null, [data])
+	const sections = useMemo(() => data ?? null, [data]);
 
 	useEffect(() => {
-		if (loading) return
+		if (loading) return;
 		if (!data) {
-			onMetrics?.({ answered: 0, open: 0, total: 0 })
+			onMetrics?.({ answered: 0, open: 0, total: 0 });
 		}
-	}, [data, loading, onMetrics])
+	}, [data, loading, onMetrics]);
 
 	if (loading) {
 		return (
@@ -362,7 +362,7 @@ function _ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onDa
 					<div className="h-20 w-full animate-pulse rounded bg-muted" />
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	if (error) {
@@ -375,11 +375,11 @@ function _ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onDa
 					<p className="text-destructive text-sm">{error}</p>
 				</CardContent>
 			</Card>
-		)
+		);
 	}
 
 	if (!sections) {
-		return null
+		return null;
 	}
 
 	return (
@@ -430,5 +430,5 @@ function _ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onDa
 				)}
 			</CardContent>
 		</Card>
-	)
+	);
 }

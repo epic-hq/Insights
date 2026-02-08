@@ -17,57 +17,57 @@ import {
 	Pencil,
 	Sparkles,
 	Trash2,
-} from "lucide-react"
-import { useState } from "react"
-import { useFetcher, useRevalidator } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+} from "lucide-react";
+import { useState } from "react";
+import { useFetcher, useRevalidator } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Switch } from "~/components/ui/switch"
-import type { LensTemplate } from "../lib/loadLensAnalyses.server"
-import { CreateLensDialog } from "./CreateLensDialog"
-import { EditLensDialog } from "./EditLensDialog"
+} from "~/components/ui/dropdown-menu";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Switch } from "~/components/ui/switch";
+import type { LensTemplate } from "../lib/loadLensAnalyses.server";
+import { CreateLensDialog } from "./CreateLensDialog";
+import { EditLensDialog } from "./EditLensDialog";
 
 type ManageLensesDialogProps = {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	templates: LensTemplate[]
-	enabledLenses: string[]
-	accountId: string
-	userId: string | undefined
-}
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	templates: LensTemplate[];
+	enabledLenses: string[];
+	accountId: string;
+	userId: string | undefined;
+};
 
 function getCategoryIcon(category: string | null) {
 	switch (category) {
 		case "research":
-			return <FlaskConical className="h-4 w-4" />
+			return <FlaskConical className="h-4 w-4" />;
 		case "sales":
-			return <Briefcase className="h-4 w-4" />
+			return <Briefcase className="h-4 w-4" />;
 		case "product":
-			return <Package className="h-4 w-4" />
+			return <Package className="h-4 w-4" />;
 		default:
-			return <Sparkles className="h-4 w-4" />
+			return <Sparkles className="h-4 w-4" />;
 	}
 }
 
 function getCategoryColor(category: string | null) {
 	switch (category) {
 		case "research":
-			return "text-purple-600 bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300"
+			return "text-purple-600 bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300";
 		case "sales":
-			return "text-blue-600 bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300"
+			return "text-blue-600 bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300";
 		case "product":
-			return "text-green-600 bg-green-100 dark:bg-green-950/30 dark:text-green-300"
+			return "text-green-600 bg-green-100 dark:bg-green-950/30 dark:text-green-300";
 		default:
-			return "text-muted-foreground bg-muted"
+			return "text-muted-foreground bg-muted";
 	}
 }
 
@@ -79,38 +79,38 @@ export function ManageLensesDialog({
 	accountId,
 	userId,
 }: ManageLensesDialogProps) {
-	const fetcher = useFetcher()
-	const deleteFetcher = useFetcher()
-	const visibilityFetcher = useFetcher()
-	const revalidator = useRevalidator()
-	const [editingTemplate, setEditingTemplate] = useState<LensTemplate | null>(null)
+	const fetcher = useFetcher();
+	const deleteFetcher = useFetcher();
+	const visibilityFetcher = useFetcher();
+	const revalidator = useRevalidator();
+	const [editingTemplate, setEditingTemplate] = useState<LensTemplate | null>(null);
 
 	// Track pending toggle for optimistic UI
-	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null
-	const isSubmitting = fetcher.state === "submitting"
+	const pendingToggle = fetcher.formData?.get("toggle_lens") as string | null;
+	const isSubmitting = fetcher.state === "submitting";
 
 	// Compute current enabled lenses (with optimistic update)
 	const enabledLenses = (() => {
 		if (pendingToggle && fetcher.formData) {
-			const enabled = fetcher.formData.get("enabled") === "true"
-			if (enabled) return [...initialEnabled, pendingToggle]
-			return initialEnabled.filter((key) => key !== pendingToggle)
+			const enabled = fetcher.formData.get("enabled") === "true";
+			if (enabled) return [...initialEnabled, pendingToggle];
+			return initialEnabled.filter((key) => key !== pendingToggle);
 		}
-		return initialEnabled
-	})()
+		return initialEnabled;
+	})();
 
 	// Sort: custom first, then system
 	const sortedTemplates = [...templates].sort((a, b) => {
-		if (a.is_system !== b.is_system) return a.is_system ? 1 : -1
-		const catOrder = ["sales", "research", "product"]
-		const orderA = catOrder.indexOf(a.category || "") === -1 ? catOrder.length : catOrder.indexOf(a.category || "")
-		const orderB = catOrder.indexOf(b.category || "") === -1 ? catOrder.length : catOrder.indexOf(b.category || "")
-		if (orderA !== orderB) return orderA - orderB
-		return a.template_name.localeCompare(b.template_name)
-	})
+		if (a.is_system !== b.is_system) return a.is_system ? 1 : -1;
+		const catOrder = ["sales", "research", "product"];
+		const orderA = catOrder.indexOf(a.category || "") === -1 ? catOrder.length : catOrder.indexOf(a.category || "");
+		const orderB = catOrder.indexOf(b.category || "") === -1 ? catOrder.length : catOrder.indexOf(b.category || "");
+		if (orderA !== orderB) return orderA - orderB;
+		return a.template_name.localeCompare(b.template_name);
+	});
 
 	const handleToggle = (templateKey: string, enabled: boolean) => {
-		const newEnabled = enabled ? [...initialEnabled, templateKey] : initialEnabled.filter((key) => key !== templateKey)
+		const newEnabled = enabled ? [...initialEnabled, templateKey] : initialEnabled.filter((key) => key !== templateKey);
 
 		fetcher.submit(
 			{
@@ -121,11 +121,11 @@ export function ManageLensesDialog({
 				enabled: String(enabled),
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	const handleDelete = (templateKey: string) => {
-		if (!confirm("Delete this custom lens? This cannot be undone.")) return
+		if (!confirm("Delete this custom lens? This cannot be undone.")) return;
 
 		deleteFetcher.submit(
 			{
@@ -134,8 +134,8 @@ export function ManageLensesDialog({
 				account_id: accountId,
 			},
 			{ method: "POST", action: "/api/lens-templates" }
-		)
-	}
+		);
+	};
 
 	const handleToggleVisibility = (templateKey: string, isPublic: boolean) => {
 		visibilityFetcher.submit(
@@ -146,19 +146,19 @@ export function ManageLensesDialog({
 				is_public: String(isPublic),
 			},
 			{ method: "POST", action: "/api/lens-templates" }
-		)
-	}
+		);
+	};
 
 	const handleLensCreated = () => {
-		revalidator.revalidate()
-	}
+		revalidator.revalidate();
+	};
 
 	const handleLensUpdated = () => {
-		revalidator.revalidate()
-		setEditingTemplate(null)
-	}
+		revalidator.revalidate();
+		setEditingTemplate(null);
+	};
 
-	const enabledCount = enabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length
+	const enabledCount = enabledLenses.filter((key) => templates.some((t) => t.template_key === key)).length;
 
 	return (
 		<>
@@ -175,9 +175,9 @@ export function ManageLensesDialog({
 					<ScrollArea className="max-h-[60vh]">
 						<div className="space-y-1 px-6 pb-6">
 							{sortedTemplates.map((template) => {
-								const isEnabled = enabledLenses.includes(template.template_key)
-								const isCustom = !template.is_system
-								const isOwner = template.created_by === userId
+								const isEnabled = enabledLenses.includes(template.template_key);
+								const isCustom = !template.is_system;
+								const isOwner = template.created_by === userId;
 
 								return (
 									<div
@@ -262,7 +262,7 @@ export function ManageLensesDialog({
 											)}
 										</div>
 									</div>
-								)
+								);
 							})}
 						</div>
 					</ScrollArea>
@@ -285,5 +285,5 @@ export function ManageLensesDialog({
 				/>
 			)}
 		</>
-	)
+	);
 }

@@ -1,10 +1,10 @@
-import { ArrowRight, Clock, Lightbulb, Shield, Users } from "lucide-react"
-import { Link, type MetaFunction } from "react-router"
-import MainNav from "~/components/navigation/MainNav"
-import { Button } from "~/components/ui/button"
-import { Card } from "~/components/ui/card"
+import { ArrowRight, Clock, Lightbulb, Shield, Users } from "lucide-react";
+import { Link, type MetaFunction } from "react-router";
+import MainNav from "~/components/navigation/MainNav";
+import { Button } from "~/components/ui/button";
+import { Card } from "~/components/ui/card";
 
-import { PATHS } from "~/paths"
+import { PATHS } from "~/paths";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -14,8 +14,8 @@ export const meta: MetaFunction = () => {
 			content:
 				"The only research platform that coaches your team, uncovers wedge opportunities, and delivers executive-ready insights—backed by 100% traceable evidence. Built for business users, not researchers.",
 		},
-	]
-}
+	];
+};
 
 export default function LandingPage() {
 	return (
@@ -305,5 +305,5 @@ export default function LandingPage() {
 				</nav>
 			</footer>
 		</div>
-	)
+	);
 }

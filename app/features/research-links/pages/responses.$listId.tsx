@@ -1,4 +1,4 @@
-import consola from "consola"
+import consola from "consola";
 import {
 	ChevronLeft,
 	ChevronRight,
@@ -11,24 +11,24 @@ import {
 	Sparkles,
 	Users,
 	Video,
-} from "lucide-react"
-import { useEffect, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { getPostHogServerClient } from "~/lib/posthog.server"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
-import { createRouteDefinitions } from "~/utils/route-definitions"
-import { ResearchLinkResponsesDataTable } from "../components/ResearchLinkResponsesDataTable"
-import { getResearchLinkWithResponses } from "../db"
-import type { ResearchLinkQuestion } from "../schemas"
-import { ResearchLinkQuestionSchema } from "../schemas"
-import { buildResponsesCsv, extractAnswer } from "../utils"
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { getPostHogServerClient } from "~/lib/posthog.server";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+import { ResearchLinkResponsesDataTable } from "../components/ResearchLinkResponsesDataTable";
+import { getResearchLinkWithResponses } from "../db";
+import type { ResearchLinkQuestion } from "../schemas";
+import { ResearchLinkQuestionSchema } from "../schemas";
+import { buildResponsesCsv, extractAnswer } from "../utils";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -37,74 +37,74 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "Review and export responses from your Ask link.",
 		},
-	]
-}
+	];
+};
 
 /** Statistics for a single question */
 interface QuestionStats {
-	questionId: string
-	questionText: string
-	questionType: string
+	questionId: string;
+	questionText: string;
+	questionType: string;
 	/** Inferred type used for display (handles "auto" → actual type) */
-	effectiveType: "likert" | "single_select" | "multi_select" | "text"
-	responseCount: number
-	totalResponses: number
+	effectiveType: "likert" | "single_select" | "multi_select" | "text";
+	responseCount: number;
+	totalResponses: number;
 	/** For numeric/likert questions */
 	numeric?: {
-		average: number
-		min: number
-		max: number
-		scale: number // The max scale value (e.g., 5 for 1-5)
-		distribution: Record<number, number> // value -> count
-	}
+		average: number;
+		min: number;
+		max: number;
+		scale: number; // The max scale value (e.g., 5 for 1-5)
+		distribution: Record<number, number>; // value -> count
+	};
 	/** For single/multi select questions */
 	choices?: {
 		options: Array<{
-			value: string
-			count: number
-			percentage: number
-		}>
-	}
+			value: string;
+			count: number;
+			percentage: number;
+		}>;
+	};
 	/** For text questions - show sample responses */
 	text?: {
-		sampleResponses: string[]
-		totalAnswered: number
-	}
+		sampleResponses: string[];
+		totalAnswered: number;
+	};
 }
 
 /** Pre-computed statistics stored in research_links.statistics JSONB */
 interface PrecomputedStats {
-	computedAt: string
-	responseCount: number
-	completedCount: number
+	computedAt: string;
+	responseCount: number;
+	completedCount: number;
 	questions: Array<{
-		questionId: string
-		prompt: string
-		type: string
-		responseCount: number
+		questionId: string;
+		prompt: string;
+		type: string;
+		responseCount: number;
 		stats?: {
-			average?: number
-			distribution?: Record<string, number>
-			percentages?: Record<string, number>
-		}
-		topResponses?: Array<{ answer: string; personId: string | null }>
-	}>
+			average?: number;
+			distribution?: Record<string, number>;
+			percentages?: Record<string, number>;
+		};
+		topResponses?: Array<{ answer: string; personId: string | null }>;
+	}>;
 }
 
 /** Saved AI analysis stored in research_links.ai_analysis JSONB */
 interface SavedAiAnalysis {
-	mode: "quick" | "detailed"
-	updatedAt: string
-	customInstructions?: string | null
-	result: AnalysisResult | DetailedAnalysisResult
+	mode: "quick" | "detailed";
+	updatedAt: string;
+	customInstructions?: string | null;
+	result: AnalysisResult | DetailedAnalysisResult;
 }
 
 /** Map question type string to effective display type */
 function mapQuestionType(type: string): "likert" | "single_select" | "multi_select" | "text" {
-	if (type === "likert") return "likert"
-	if (type === "single_select" || type === "image_select") return "single_select"
-	if (type === "multi_select") return "multi_select"
-	return "text"
+	if (type === "likert") return "likert";
+	if (type === "single_select" || type === "image_select") return "single_select";
+	if (type === "multi_select") return "multi_select";
+	return "text";
 }
 
 /**
@@ -116,51 +116,51 @@ function inferEffectiveType(
 	answers: unknown[]
 ): "likert" | "single_select" | "multi_select" | "text" {
 	// Explicit types map directly
-	if (question.type === "likert") return "likert"
-	if (question.type === "single_select" || question.type === "image_select") return "single_select"
-	if (question.type === "multi_select") return "multi_select"
-	if (question.type === "short_text" || question.type === "long_text") return "text"
+	if (question.type === "likert") return "likert";
+	if (question.type === "single_select" || question.type === "image_select") return "single_select";
+	if (question.type === "multi_select") return "multi_select";
+	if (question.type === "short_text" || question.type === "long_text") return "text";
 
 	// For "auto" type, infer from question config and response data
 	// If question has options defined, it's a select
 	if (question.options && question.options.length > 0) {
-		const hasArrayResponses = answers.some((a) => Array.isArray(a))
-		return hasArrayResponses ? "multi_select" : "single_select"
+		const hasArrayResponses = answers.some((a) => Array.isArray(a));
+		return hasArrayResponses ? "multi_select" : "single_select";
 	}
 
 	// If question has likert config, it's likert
-	if (question.likertScale) return "likert"
+	if (question.likertScale) return "likert";
 
 	// Check if all non-empty responses are numeric
-	const nonEmptyAnswers = answers.filter((a) => a !== undefined && a !== null && a !== "")
+	const nonEmptyAnswers = answers.filter((a) => a !== undefined && a !== null && a !== "");
 	if (nonEmptyAnswers.length > 0) {
 		const allNumeric = nonEmptyAnswers.every((a) => {
-			if (typeof a === "number") return true
+			if (typeof a === "number") return true;
 			if (typeof a === "string") {
-				const num = Number.parseFloat(a)
-				return !Number.isNaN(num) && num >= 1 && num <= 10
+				const num = Number.parseFloat(a);
+				return !Number.isNaN(num) && num >= 1 && num <= 10;
 			}
-			return false
-		})
-		if (allNumeric) return "likert"
+			return false;
+		});
+		if (allNumeric) return "likert";
 	}
 
 	// Default to text
-	return "text"
+	return "text";
 }
 
 function computeQuestionStats(
 	questions: ResearchLinkQuestion[],
 	responses: Array<{ responses: Record<string, unknown> | null }>
 ): QuestionStats[] {
-	const totalResponses = responses.length
+	const totalResponses = responses.length;
 
 	return questions.map((question) => {
-		const questionId = question.id
-		const allAnswers = responses.map((r) => r.responses?.[questionId])
-		const nonEmptyAnswers = allAnswers.filter((a) => a !== undefined && a !== null && a !== "")
+		const questionId = question.id;
+		const allAnswers = responses.map((r) => r.responses?.[questionId]);
+		const nonEmptyAnswers = allAnswers.filter((a) => a !== undefined && a !== null && a !== "");
 
-		const effectiveType = inferEffectiveType(question, nonEmptyAnswers)
+		const effectiveType = inferEffectiveType(question, nonEmptyAnswers);
 
 		const base: QuestionStats = {
 			questionId,
@@ -169,117 +169,117 @@ function computeQuestionStats(
 			effectiveType,
 			responseCount: nonEmptyAnswers.length,
 			totalResponses,
-		}
+		};
 
 		if (effectiveType === "likert") {
 			const numericAnswers = nonEmptyAnswers
 				.map((a) => (typeof a === "number" ? a : typeof a === "string" ? Number.parseFloat(a) : Number.NaN))
-				.filter((n) => !Number.isNaN(n))
+				.filter((n) => !Number.isNaN(n));
 
 			if (numericAnswers.length > 0) {
-				const sum = numericAnswers.reduce((acc, n) => acc + n, 0)
-				const distribution: Record<number, number> = {}
+				const sum = numericAnswers.reduce((acc, n) => acc + n, 0);
+				const distribution: Record<number, number> = {};
 				for (const n of numericAnswers) {
-					distribution[n] = (distribution[n] || 0) + 1
+					distribution[n] = (distribution[n] || 0) + 1;
 				}
-				const scale = question.likertScale || Math.max(...numericAnswers)
+				const scale = question.likertScale || Math.max(...numericAnswers);
 				base.numeric = {
 					average: sum / numericAnswers.length,
 					min: Math.min(...numericAnswers),
 					max: Math.max(...numericAnswers),
 					scale,
 					distribution,
-				}
+				};
 			}
 		} else if (effectiveType === "single_select" || effectiveType === "multi_select") {
-			const optionCounts: Record<string, number> = {}
+			const optionCounts: Record<string, number> = {};
 
 			for (const answer of nonEmptyAnswers) {
-				const selections = Array.isArray(answer) ? answer : [answer]
+				const selections = Array.isArray(answer) ? answer : [answer];
 				for (const sel of selections) {
 					if (typeof sel === "string" && sel.trim()) {
-						optionCounts[sel] = (optionCounts[sel] || 0) + 1
+						optionCounts[sel] = (optionCounts[sel] || 0) + 1;
 					}
 				}
 			}
 
 			// Calculate percentage based on respondents (not total selections)
-			const respondentCount = nonEmptyAnswers.length
+			const respondentCount = nonEmptyAnswers.length;
 			const options = Object.entries(optionCounts)
 				.map(([value, count]) => ({
 					value,
 					count,
 					percentage: respondentCount > 0 ? Math.round((count / respondentCount) * 100) : 0,
 				}))
-				.sort((a, b) => b.count - a.count)
+				.sort((a, b) => b.count - a.count);
 
-			base.choices = { options }
+			base.choices = { options };
 		} else {
 			// Text questions - collect sample responses
-			const textAnswers = nonEmptyAnswers.filter((a): a is string => typeof a === "string" && a.trim().length > 0)
+			const textAnswers = nonEmptyAnswers.filter((a): a is string => typeof a === "string" && a.trim().length > 0);
 
 			// Get up to 5 sample responses, prioritizing variety (different lengths)
-			const sortedByLength = [...textAnswers].sort((a, b) => b.length - a.length)
-			const samples: string[] = []
+			const sortedByLength = [...textAnswers].sort((a, b) => b.length - a.length);
+			const samples: string[] = [];
 			// Take longest, shortest, and some from middle
-			if (sortedByLength.length > 0) samples.push(sortedByLength[0])
-			if (sortedByLength.length > 1) samples.push(sortedByLength[sortedByLength.length - 1])
-			if (sortedByLength.length > 2) samples.push(sortedByLength[Math.floor(sortedByLength.length / 2)])
+			if (sortedByLength.length > 0) samples.push(sortedByLength[0]);
+			if (sortedByLength.length > 1) samples.push(sortedByLength[sortedByLength.length - 1]);
+			if (sortedByLength.length > 2) samples.push(sortedByLength[Math.floor(sortedByLength.length / 2)]);
 			// Add more if we have them
 			for (const text of sortedByLength) {
-				if (samples.length >= 5) break
-				if (!samples.includes(text)) samples.push(text)
+				if (samples.length >= 5) break;
+				if (!samples.includes(text)) samples.push(text);
 			}
 
 			base.text = {
 				sampleResponses: samples,
 				totalAnswered: textAnswers.length,
-			}
+			};
 		}
 
-		return base
-	})
+		return base;
+	});
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-	const { accountId, projectId, listId } = params
+	const { accountId, projectId, listId } = params;
 	if (!accountId || !projectId || !listId) {
-		throw new Response("Missing route parameters", { status: 400 })
+		throw new Response("Missing route parameters", { status: 400 });
 	}
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 	const { list, listError, responses, responsesError } = await getResearchLinkWithResponses({
 		supabase,
 		accountId,
 		listId,
-	})
+	});
 	if (listError) {
-		throw new Response(listError.message, { status: 500 })
+		throw new Response(listError.message, { status: 500 });
 	}
 	if (responsesError) {
-		throw new Response(responsesError.message, { status: 500 })
+		throw new Response(responsesError.message, { status: 500 });
 	}
 	if (!list) {
-		throw new Response("Ask link not found", { status: 404 })
+		throw new Response("Ask link not found", { status: 404 });
 	}
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
-	const questions = questionsResult.success ? questionsResult.data : []
-	const origin = new URL(request.url).origin
+	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
+	const questions = questionsResult.success ? questionsResult.data : [];
+	const origin = new URL(request.url).origin;
 
 	// Always use inline computation to include partial responses
 	// Pre-computed stats from trigger task may be stale
-	let questionStats: QuestionStats[]
-	const precomputedStats = list.statistics as PrecomputedStats | null
-	const totalResponseCount = responses?.length ?? 0
+	let questionStats: QuestionStats[];
+	const precomputedStats = list.statistics as PrecomputedStats | null;
+	const totalResponseCount = responses?.length ?? 0;
 
 	// TODO: Re-enable pre-computed stats after trigger task is deployed with fix
 	// For now, always compute inline to ensure partial responses are included
-	const usePrecomputedStats = false
+	const usePrecomputedStats = false;
 
 	if (precomputedStats?.questions?.length && usePrecomputedStats) {
 		// Convert pre-computed stats to the expected format
 		questionStats = precomputedStats.questions.map((q) => {
-			const question = questions.find((qDef) => qDef.id === q.questionId)
-			const effectiveType = mapQuestionType(q.type)
+			const question = questions.find((qDef) => qDef.id === q.questionId);
+			const effectiveType = mapQuestionType(q.type);
 
 			const base: QuestionStats = {
 				questionId: q.questionId,
@@ -288,11 +288,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 				effectiveType,
 				responseCount: q.responseCount,
 				totalResponses: precomputedStats.responseCount,
-			}
+			};
 
 			if (q.stats) {
 				if (effectiveType === "likert" && q.stats.average !== undefined) {
-					const scale = question?.likertScale ?? 5
+					const scale = question?.likertScale ?? 5;
 					base.numeric = {
 						average: q.stats.average,
 						min: 1,
@@ -301,7 +301,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 						distribution: Object.fromEntries(
 							Object.entries(q.stats.distribution ?? {}).map(([k, v]) => [Number(k), v])
 						),
-					}
+					};
 				} else if (effectiveType === "single_select" || effectiveType === "multi_select") {
 					base.choices = {
 						options: Object.entries(q.stats.distribution ?? {}).map(([value, count]) => ({
@@ -309,7 +309,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 							count,
 							percentage: q.stats?.percentages?.[value] ?? 0,
 						})),
-					}
+					};
 				}
 			}
 
@@ -317,11 +317,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 				base.text = {
 					sampleResponses: q.topResponses.map((r) => r.answer),
 					totalAnswered: q.responseCount,
-				}
+				};
 			}
 
-			return base
-		})
+			return base;
+		});
 	} else {
 		// Fall back to inline computation
 		questionStats = computeQuestionStats(
@@ -329,44 +329,44 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 			(responses ?? []).map((r) => ({
 				responses: r.responses as Record<string, unknown> | null,
 			}))
-		)
+		);
 	}
 
 	// Generate signed URLs for videos
 	const responsesWithSignedVideos = (responses ?? []).map((response) => {
 		if (!response.video_url) {
-			return { ...response, signed_video_url: null }
+			return { ...response, signed_video_url: null };
 		}
 		// Extract the R2 key from the public URL
-		const key = getR2KeyFromPublicUrl(response.video_url)
+		const key = getR2KeyFromPublicUrl(response.video_url);
 		if (!key) {
 			consola.warn("Could not extract R2 key from video URL", {
 				video_url: response.video_url,
-			})
-			return { ...response, signed_video_url: null }
+			});
+			return { ...response, signed_video_url: null };
 		}
-		const ext = key.split(".").pop()?.toLowerCase()
-		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm"
+		const ext = key.split(".").pop()?.toLowerCase();
+		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm";
 		const presigned = createR2PresignedUrl({
 			key,
 			expiresInSeconds: 3600, // 1 hour
 			responseContentType: contentType,
-		})
-		return { ...response, signed_video_url: presigned?.url ?? null }
-	})
+		});
+		return { ...response, signed_video_url: presigned?.url ?? null };
+	});
 
 	// Load saved AI analysis if available
 	// Note: ai_analysis column may not exist until migration is applied
-	const savedAnalysis = (list as { ai_analysis?: unknown }).ai_analysis as SavedAiAnalysis | null | undefined
+	const savedAnalysis = (list as { ai_analysis?: unknown }).ai_analysis as SavedAiAnalysis | null | undefined;
 
 	// Track survey_results_viewed event for PLG instrumentation
 	try {
-		const posthogServer = getPostHogServerClient()
+		const posthogServer = getPostHogServerClient();
 		if (posthogServer) {
 			// Get user from supabase auth session
 			const {
 				data: { user },
-			} = await supabase.auth.getUser()
+			} = await supabase.auth.getUser();
 			if (user) {
 				posthogServer.capture({
 					distinctId: user.id,
@@ -380,11 +380,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 						has_ai_analysis: !!savedAnalysis,
 						$groups: { account: accountId },
 					},
-				})
+				});
 			}
 		}
 	} catch (trackingError) {
-		consola.warn("[SURVEY_RESULTS] PostHog tracking failed:", trackingError)
+		consola.warn("[SURVEY_RESULTS] PostHog tracking failed:", trackingError);
 		// Don't throw - tracking failure shouldn't block user flow
 	}
 
@@ -397,54 +397,54 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		questionStats,
 		publicUrl: `${origin}/ask/${list.slug}`,
 		savedAnalysis,
-	}
+	};
 }
 
 // Type for analysis results (matches BAML QuickResponseSummary)
 interface AnalysisResult {
-	summary: string
-	quality_responses_count: number
-	total_responses_count: number
-	top_insights: string[]
-	sentiment_overview: string
-	suggested_actions: string[]
+	summary: string;
+	quality_responses_count: number;
+	total_responses_count: number;
+	top_insights: string[];
+	sentiment_overview: string;
+	suggested_actions: string[];
 	/** Plain English warning when data quality is poor (>50% junk responses) */
-	data_quality_warning?: string
+	data_quality_warning?: string;
 }
 
 // Type for detailed analysis (matches BAML AskLinkInsightsResponse)
 interface QuestionInsight {
-	question: string
-	summary: string
-	key_findings: string[]
-	common_answers: string[]
-	notable_outliers: string[]
+	question: string;
+	summary: string;
+	key_findings: string[];
+	common_answers: string[];
+	notable_outliers: string[];
 }
 
 interface ResponseTheme {
-	theme: string
-	description: string
-	frequency: number
-	sentiment: string
-	example_quotes: string[]
+	theme: string;
+	description: string;
+	frequency: number;
+	sentiment: string;
+	example_quotes: string[];
 }
 
 interface DetailedAnalysisResult {
-	executive_summary: string
-	total_responses: number
-	completion_rate: number
-	top_themes: ResponseTheme[]
-	question_insights: QuestionInsight[]
+	executive_summary: string;
+	total_responses: number;
+	completion_rate: number;
+	top_themes: ResponseTheme[];
+	question_insights: QuestionInsight[];
 	response_segments: Array<{
-		segment_name: string
-		segment_description: string
-		respondent_count: number
-		key_characteristics: string[]
-		recommended_actions: string[]
-	}>
-	recommended_followups: string[]
-	actionable_insights: string[]
-	data_quality_notes: string[]
+		segment_name: string;
+		segment_description: string;
+		respondent_count: number;
+		key_characteristics: string[];
+		recommended_actions: string[];
+	}>;
+	recommended_followups: string[];
+	actionable_insights: string[];
+	data_quality_notes: string[];
 }
 
 function QuestionBreakdown({
@@ -457,14 +457,14 @@ function QuestionBreakdown({
 	aiInsight,
 	hideHeader = false,
 }: {
-	stat: QuestionStats
-	idx: number
-	compact?: boolean
-	showDivider?: boolean
-	onOpenFullScreen?: (index: number) => void
-	showFullScreenTrigger?: boolean
-	aiInsight?: QuestionInsight
-	hideHeader?: boolean
+	stat: QuestionStats;
+	idx: number;
+	compact?: boolean;
+	showDivider?: boolean;
+	onOpenFullScreen?: (index: number) => void;
+	showFullScreenTrigger?: boolean;
+	aiInsight?: QuestionInsight;
+	hideHeader?: boolean;
 }) {
 	return (
 		<div className={`space-y-3 ${showDivider ? "border-b pb-6 last:border-b-0 last:pb-0" : ""}`}>
@@ -509,8 +509,8 @@ function QuestionBreakdown({
 					</div>
 					<div className="space-y-1">
 						{Array.from({ length: stat.numeric.scale }, (_, i) => stat.numeric!.scale - i).map((value) => {
-							const count = stat.numeric!.distribution[value] || 0
-							const pct = stat.responseCount > 0 ? Math.round((count / stat.responseCount) * 100) : 0
+							const count = stat.numeric!.distribution[value] || 0;
+							const pct = stat.responseCount > 0 ? Math.round((count / stat.responseCount) * 100) : 0;
 							return (
 								<div key={value} className="flex items-center gap-2 text-sm">
 									<span className="w-4 text-right font-medium">{value}</span>
@@ -521,7 +521,7 @@ function QuestionBreakdown({
 										{pct}% ({count})
 									</span>
 								</div>
-							)
+							);
 						})}
 					</div>
 				</div>
@@ -601,149 +601,149 @@ function QuestionBreakdown({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 export default function ResearchLinkResponsesPage() {
 	const { accountId, projectId, list, responses, questions, questionStats, publicUrl, savedAnalysis } =
-		useLoaderData<typeof loader>()
-	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
-	const basePath = `/a/${accountId}/${projectId}`
+		useLoaderData<typeof loader>();
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
+	const basePath = `/a/${accountId}/${projectId}`;
 
 	// Initialize state with saved analysis if available
-	const initialQuickAnalysis = savedAnalysis?.mode === "quick" ? (savedAnalysis.result as AnalysisResult) : null
+	const initialQuickAnalysis = savedAnalysis?.mode === "quick" ? (savedAnalysis.result as AnalysisResult) : null;
 	const initialDetailedAnalysis =
-		savedAnalysis?.mode === "detailed" ? (savedAnalysis.result as DetailedAnalysisResult) : null
+		savedAnalysis?.mode === "detailed" ? (savedAnalysis.result as DetailedAnalysisResult) : null;
 
-	const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(initialQuickAnalysis)
-	const [detailedResult, setDetailedResult] = useState<DetailedAnalysisResult | null>(initialDetailedAnalysis)
-	const [customInstructions, setCustomInstructions] = useState("")
-	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
-	const [showCustomInstructionsDialog, setShowCustomInstructionsDialog] = useState(false)
-	const [showBreakdownModal, setShowBreakdownModal] = useState(false)
-	const [showAiAnalysisModal, setShowAiAnalysisModal] = useState(false)
-	const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
+	const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(initialQuickAnalysis);
+	const [detailedResult, setDetailedResult] = useState<DetailedAnalysisResult | null>(initialDetailedAnalysis);
+	const [customInstructions, setCustomInstructions] = useState("");
+	const [showCustomInstructions, setShowCustomInstructions] = useState(false);
+	const [showCustomInstructionsDialog, setShowCustomInstructionsDialog] = useState(false);
+	const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+	const [showAiAnalysisModal, setShowAiAnalysisModal] = useState(false);
+	const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
 	// AI Analysis modal: 0 = summary, 1-N = themes, N+1 = recommendations
-	const [activeAnalysisCard, setActiveAnalysisCard] = useState(0)
-	const [showVideoGallery, setShowVideoGallery] = useState(false)
-	const [activeVideoIndex, setActiveVideoIndex] = useState(0)
+	const [activeAnalysisCard, setActiveAnalysisCard] = useState(0);
+	const [showVideoGallery, setShowVideoGallery] = useState(false);
+	const [activeVideoIndex, setActiveVideoIndex] = useState(0);
 	const analyzeFetcher = useFetcher<
 		{ mode: "quick"; result: AnalysisResult } | { mode: "detailed"; result: DetailedAnalysisResult } | { error: string }
-	>()
+	>();
 
-	const isAnalyzing = analyzeFetcher.state !== "idle"
+	const isAnalyzing = analyzeFetcher.state !== "idle";
 
 	// Handle analysis result based on mode
 	if (analyzeFetcher.data && !("error" in analyzeFetcher.data)) {
 		if (analyzeFetcher.data.mode === "quick" && analyzeFetcher.data.result !== analysisResult) {
-			setAnalysisResult(analyzeFetcher.data.result as AnalysisResult)
+			setAnalysisResult(analyzeFetcher.data.result as AnalysisResult);
 		} else if (analyzeFetcher.data.mode === "detailed" && analyzeFetcher.data.result !== detailedResult) {
-			setDetailedResult(analyzeFetcher.data.result as DetailedAnalysisResult)
+			setDetailedResult(analyzeFetcher.data.result as DetailedAnalysisResult);
 		}
 	}
 
 	const handleAnalyze = (mode: "quick" | "detailed", instructions?: string) => {
-		const payload: Record<string, string> = { listId: list.id, mode }
+		const payload: Record<string, string> = { listId: list.id, mode };
 		if (instructions && instructions.trim()) {
-			payload.customInstructions = instructions.trim()
+			payload.customInstructions = instructions.trim();
 		}
 		analyzeFetcher.submit(payload, {
 			method: "POST",
 			action: routes.ask.index() + "/api/analyze-responses",
-		})
-		setShowCustomInstructions(false)
-	}
+		});
+		setShowCustomInstructions(false);
+	};
 
 	// Get AI insight for a specific question (by index, with text fallback)
 	const getQuestionInsight = (questionText: string, questionIndex: number): QuestionInsight | undefined => {
-		if (!detailedResult?.question_insights) return undefined
+		if (!detailedResult?.question_insights) return undefined;
 		// Primary: match by index (BAML returns insights in question order)
 		if (detailedResult.question_insights[questionIndex]) {
-			return detailedResult.question_insights[questionIndex]
+			return detailedResult.question_insights[questionIndex];
 		}
 		// Fallback: fuzzy text match
 		return detailedResult.question_insights.find(
 			(insight) =>
 				insight.question.toLowerCase().includes(questionText.toLowerCase()) ||
 				questionText.toLowerCase().includes(insight.question.toLowerCase())
-		)
-	}
+		);
+	};
 
 	// Analytics
-	const totalResponses = responses.length
+	const totalResponses = responses.length;
 
 	// Video responses - define early for modal card count
-	const videoResponses = responses.filter((r) => r.signed_video_url)
-	const activeVideoResponse = videoResponses[activeVideoIndex]
-	const hasVideoCard = videoResponses.length > 0
-	const breakdownCardCount = questionStats.length + (hasVideoCard ? 1 : 0)
+	const videoResponses = responses.filter((r) => r.signed_video_url);
+	const activeVideoResponse = videoResponses[activeVideoIndex];
+	const hasVideoCard = videoResponses.length > 0;
+	const breakdownCardCount = questionStats.length + (hasVideoCard ? 1 : 0);
 
 	const handleExport = () => {
-		const csv = buildResponsesCsv(questions, responses)
-		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-		const url = URL.createObjectURL(blob)
-		const link = document.createElement("a")
-		link.href = url
-		link.download = `${list.slug || "research-link"}-responses.csv`
-		document.body.appendChild(link)
-		link.click()
-		document.body.removeChild(link)
-		URL.revokeObjectURL(url)
-	}
+		const csv = buildResponsesCsv(questions, responses);
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `${list.slug || "research-link"}-responses.csv`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	};
 
 	const openBreakdownModal = (startIndex = 0) => {
-		setActiveQuestionIndex(startIndex)
-		setShowBreakdownModal(true)
-	}
+		setActiveQuestionIndex(startIndex);
+		setShowBreakdownModal(true);
+	};
 
 	const goToQuestion = (direction: "prev" | "next") => {
-		if (questionStats.length === 0) return
-		const maxIndex = hasVideoCard ? questionStats.length : questionStats.length - 1
+		if (questionStats.length === 0) return;
+		const maxIndex = hasVideoCard ? questionStats.length : questionStats.length - 1;
 		setActiveQuestionIndex((prev) => {
-			if (direction === "prev") return Math.max(prev - 1, 0)
-			return Math.min(prev + 1, maxIndex)
-		})
-	}
+			if (direction === "prev") return Math.max(prev - 1, 0);
+			return Math.min(prev + 1, maxIndex);
+		});
+	};
 
-	const activeBreakdown = questionStats[activeQuestionIndex]
-	const isOnVideoCard = hasVideoCard && activeQuestionIndex >= questionStats.length
+	const activeBreakdown = questionStats[activeQuestionIndex];
+	const isOnVideoCard = hasVideoCard && activeQuestionIndex >= questionStats.length;
 	// AI Analysis card layout: 0=summary, 1 to N=themes, N+1=recommendations
 	const analysisCardCount = detailedResult
 		? 1 + detailedResult.top_themes.length + (detailedResult.actionable_insights.length > 0 ? 1 : 0)
-		: 0
+		: 0;
 	const activeThemeForCard =
 		activeAnalysisCard > 0 && activeAnalysisCard <= (detailedResult?.top_themes.length ?? 0)
 			? detailedResult?.top_themes[activeAnalysisCard - 1]
-			: null
+			: null;
 
 	// Arrow key navigation for modals
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (showBreakdownModal) {
 				if (e.key === "ArrowLeft" && activeQuestionIndex > 0) {
-					setActiveQuestionIndex((prev) => prev - 1)
+					setActiveQuestionIndex((prev) => prev - 1);
 				} else if (e.key === "ArrowRight" && activeQuestionIndex < breakdownCardCount - 1) {
-					setActiveQuestionIndex((prev) => prev + 1)
+					setActiveQuestionIndex((prev) => prev + 1);
 				}
 			}
 			if (showAiAnalysisModal && analysisCardCount > 0) {
 				if (e.key === "ArrowLeft" && activeAnalysisCard > 0) {
-					setActiveAnalysisCard((prev) => prev - 1)
+					setActiveAnalysisCard((prev) => prev - 1);
 				} else if (e.key === "ArrowRight" && activeAnalysisCard < analysisCardCount - 1) {
-					setActiveAnalysisCard((prev) => prev + 1)
+					setActiveAnalysisCard((prev) => prev + 1);
 				}
 			}
 			if (showVideoGallery && videoResponses.length > 0) {
 				if (e.key === "ArrowLeft" && activeVideoIndex > 0) {
-					setActiveVideoIndex((prev) => prev - 1)
+					setActiveVideoIndex((prev) => prev - 1);
 				} else if (e.key === "ArrowRight" && activeVideoIndex < videoResponses.length - 1) {
-					setActiveVideoIndex((prev) => prev + 1)
+					setActiveVideoIndex((prev) => prev + 1);
 				}
 			}
-		}
+		};
 
-		window.addEventListener("keydown", handleKeyDown)
-		return () => window.removeEventListener("keydown", handleKeyDown)
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [
 		showBreakdownModal,
 		showAiAnalysisModal,
@@ -754,7 +754,7 @@ export default function ResearchLinkResponsesPage() {
 		breakdownCardCount,
 		analysisCardCount,
 		videoResponses.length,
-	])
+	]);
 
 	return (
 		<PageContainer className="space-y-6">
@@ -817,8 +817,8 @@ export default function ResearchLinkResponsesPage() {
 								variant="outline"
 								size="sm"
 								onClick={() => {
-									setActiveVideoIndex(0)
-									setShowVideoGallery(true)
+									setActiveVideoIndex(0);
+									setShowVideoGallery(true);
 								}}
 							>
 								<Video className="mr-2 h-4 w-4" />
@@ -850,8 +850,8 @@ export default function ResearchLinkResponsesPage() {
 									variant="ghost"
 									size="sm"
 									onClick={() => {
-										setActiveAnalysisCard(0)
-										setShowAiAnalysisModal(true)
+										setActiveAnalysisCard(0);
+										setShowAiAnalysisModal(true);
 									}}
 								>
 									<Maximize2 className="mr-2 h-4 w-4" />
@@ -966,8 +966,8 @@ export default function ResearchLinkResponsesPage() {
 														variant="outline"
 														size="sm"
 														onClick={() => {
-															setShowCustomInstructions(false)
-															setCustomInstructions("")
+															setShowCustomInstructions(false);
+															setCustomInstructions("");
 														}}
 													>
 														Cancel
@@ -1085,8 +1085,8 @@ export default function ResearchLinkResponsesPage() {
 					<Dialog
 						open={showBreakdownModal}
 						onOpenChange={(open) => {
-							setShowBreakdownModal(open)
-							if (!open) setActiveQuestionIndex(0)
+							setShowBreakdownModal(open);
+							if (!open) setActiveQuestionIndex(0);
 						}}
 					>
 						<DialogContent
@@ -1129,8 +1129,8 @@ export default function ResearchLinkResponsesPage() {
 															<button
 																type="button"
 																onClick={() => {
-																	setActiveVideoIndex(idx)
-																	setShowVideoGallery(true)
+																	setActiveVideoIndex(idx);
+																	setShowVideoGallery(true);
 																}}
 																className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100"
 															>
@@ -1214,13 +1214,13 @@ export default function ResearchLinkResponsesPage() {
 													<div className="space-y-2">
 														{responses
 															.map((r) => {
-																const answer = r.responses?.[activeBreakdown.questionId]
-																if (typeof answer !== "string" || !answer.trim()) return null
+																const answer = r.responses?.[activeBreakdown.questionId];
+																if (typeof answer !== "string" || !answer.trim()) return null;
 																return {
 																	answer: answer.trim(),
 																	email: r.email,
 																	name: r.person?.name,
-																}
+																};
 															})
 															.filter(Boolean)
 															.map((item, i) => (
@@ -1304,8 +1304,8 @@ export default function ResearchLinkResponsesPage() {
 					<Dialog
 						open={showAiAnalysisModal}
 						onOpenChange={(open) => {
-							setShowAiAnalysisModal(open)
-							if (!open) setActiveAnalysisCard(0)
+							setShowAiAnalysisModal(open);
+							if (!open) setActiveAnalysisCard(0);
 						}}
 					>
 						<DialogContent
@@ -1460,16 +1460,16 @@ export default function ResearchLinkResponsesPage() {
 									<Button
 										variant="outline"
 										onClick={() => {
-											setShowCustomInstructionsDialog(false)
-											setCustomInstructions("")
+											setShowCustomInstructionsDialog(false);
+											setCustomInstructions("");
 										}}
 									>
 										Cancel
 									</Button>
 									<Button
 										onClick={() => {
-											handleAnalyze("detailed", customInstructions)
-											setShowCustomInstructionsDialog(false)
+											handleAnalyze("detailed", customInstructions);
+											setShowCustomInstructionsDialog(false);
 										}}
 										disabled={isAnalyzing}
 									>
@@ -1489,8 +1489,8 @@ export default function ResearchLinkResponsesPage() {
 					<Dialog
 						open={showVideoGallery}
 						onOpenChange={(open) => {
-							setShowVideoGallery(open)
-							if (!open) setActiveVideoIndex(0)
+							setShowVideoGallery(open);
+							if (!open) setActiveVideoIndex(0);
 						}}
 					>
 						<DialogContent className="max-h-[92vh] max-w-[calc(100%-1rem)] overflow-hidden p-4 sm:max-w-4xl sm:p-6">
@@ -1587,5 +1587,5 @@ export default function ResearchLinkResponsesPage() {
 				</>
 			)}
 		</PageContainer>
-	)
+	);
 }

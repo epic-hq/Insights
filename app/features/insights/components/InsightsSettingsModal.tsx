@@ -5,10 +5,10 @@
  * Extracted from project settings page to make it accessible from the Insights page actions menu.
  */
 
-import { Save, Settings2 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useFetcher } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { Save, Settings2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFetcher } from "react-router-dom";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -16,58 +16,58 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Label } from "~/components/ui/label"
-import { Slider } from "~/components/ui/slider"
+} from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import { Slider } from "~/components/ui/slider";
 
 // Default thresholds matching SIMILARITY_THRESHOLDS in openai.server.ts
-const DEFAULT_THEME_DEDUP = 0.8
-const DEFAULT_EVIDENCE_LINK = 0.4
+const DEFAULT_THEME_DEDUP = 0.8;
+const DEFAULT_EVIDENCE_LINK = 0.4;
 
 interface InsightsSettingsModalProps {
-	projectId: string
-	accountId: string
+	projectId: string;
+	accountId: string;
 	/** Current settings from project_settings JSONB */
 	currentSettings?: {
-		theme_dedup_threshold?: number
-		evidence_link_threshold?: number
-	}
+		theme_dedup_threshold?: number;
+		evidence_link_threshold?: number;
+	};
 	/** Optional trigger element - defaults to a button */
-	trigger?: React.ReactNode
+	trigger?: React.ReactNode;
 }
 
 export function InsightsSettingsModal({ projectId, accountId, currentSettings, trigger }: InsightsSettingsModalProps) {
-	const [open, setOpen] = useState(false)
-	const fetcher = useFetcher()
+	const [open, setOpen] = useState(false);
+	const fetcher = useFetcher();
 
-	const initialThemeDedup = currentSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP
-	const initialEvidenceLink = currentSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK
+	const initialThemeDedup = currentSettings?.theme_dedup_threshold ?? DEFAULT_THEME_DEDUP;
+	const initialEvidenceLink = currentSettings?.evidence_link_threshold ?? DEFAULT_EVIDENCE_LINK;
 
-	const [themeDedupThreshold, setThemeDedupThreshold] = useState(initialThemeDedup)
-	const [evidenceLinkThreshold, setEvidenceLinkThreshold] = useState(initialEvidenceLink)
+	const [themeDedupThreshold, setThemeDedupThreshold] = useState(initialThemeDedup);
+	const [evidenceLinkThreshold, setEvidenceLinkThreshold] = useState(initialEvidenceLink);
 
-	const isSaving = fetcher.state !== "idle"
-	const success = fetcher.data?.success
+	const isSaving = fetcher.state !== "idle";
+	const success = fetcher.data?.success;
 
 	// Close modal on successful save
 	useEffect(() => {
 		if (success && fetcher.state === "idle") {
 			// Short delay to show success message briefly
 			const timer = setTimeout(() => {
-				setOpen(false)
-			}, 800)
-			return () => clearTimeout(timer)
+				setOpen(false);
+			}, 800);
+			return () => clearTimeout(timer);
 		}
-	}, [success, fetcher.state])
+	}, [success, fetcher.state]);
 
 	// Reset to initial values when modal closes
 	const handleOpenChange = (newOpen: boolean) => {
-		setOpen(newOpen)
+		setOpen(newOpen);
 		if (!newOpen) {
-			setThemeDedupThreshold(initialThemeDedup)
-			setEvidenceLinkThreshold(initialEvidenceLink)
+			setThemeDedupThreshold(initialThemeDedup);
+			setEvidenceLinkThreshold(initialEvidenceLink);
 		}
-	}
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
@@ -157,5 +157,5 @@ export function InsightsSettingsModal({ projectId, accountId, currentSettings, t
 				</fetcher.Form>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

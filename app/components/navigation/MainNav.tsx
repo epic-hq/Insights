@@ -1,40 +1,40 @@
-import { Menu, X } from "lucide-react"
-import { useState } from "react"
-import { Link, NavLink, useLocation } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { useAuth } from "~/contexts/AuthContext"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { PATHS } from "~/paths"
-import { UserProfile } from "../auth/UserProfile"
-import { LogoBrand } from "../branding"
-import { AppSidebar } from "./AppSidebar"
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { useAuth } from "~/contexts/AuthContext";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { PATHS } from "~/paths";
+import { UserProfile } from "../auth/UserProfile";
+import { LogoBrand } from "../branding";
+import { AppSidebar } from "./AppSidebar";
 
 const marketingLinks = [
 	{ key: "benefits", label: "Why", link: "/#benefits" },
 	{ key: "features", label: "Features", link: "/#features" },
 	{ key: "pricing", label: "Pricing", link: "/pricing" },
 	{ key: "blog", label: "Learn", link: "/blog" },
-]
+];
 
 export default function MainNav() {
-	const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-	const { user } = useAuth()
-	const { pathname } = useLocation()
-	const { accountId, projectId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const { user } = useAuth();
+	const { pathname } = useLocation();
+	const { accountId, projectId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
-	const hasProjectContext = Boolean(accountId && projectId)
-	const dashboardLink = hasProjectContext ? routes.dashboard() : PATHS.HOME
-	const isHomePage = pathname === "/"
-	const isAboutPage = pathname === "/about"
-	const isBlogPage = pathname.startsWith("/blog")
-	const isCaseStudiesPage = pathname.startsWith("/case-studies")
-	const isPricingPage = pathname === "/pricing"
-	const isMarketingPage = !user || isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage
+	const hasProjectContext = Boolean(accountId && projectId);
+	const dashboardLink = hasProjectContext ? routes.dashboard() : PATHS.HOME;
+	const isHomePage = pathname === "/";
+	const isAboutPage = pathname === "/about";
+	const isBlogPage = pathname.startsWith("/blog");
+	const isCaseStudiesPage = pathname.startsWith("/case-studies");
+	const isPricingPage = pathname === "/pricing";
+	const isMarketingPage = !user || isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage || isPricingPage;
 
 	if (user && !isMarketingPage) {
-		return <AppSidebar />
+		return <AppSidebar />;
 	}
 
 	return (
@@ -146,5 +146,5 @@ export default function MainNav() {
 				)}
 			</div>
 		</nav>
-	)
+	);
 }

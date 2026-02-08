@@ -1,53 +1,53 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database, Evidence, Interview, InterviewPeople } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database, Evidence, Interview, InterviewPeople } from "~/types";
 
-const DEFAULT_EVIDENCE_LIMIT = 12
+const DEFAULT_EVIDENCE_LIMIT = 12;
 
-type InterviewRow = Interview
-type EvidenceRow = Evidence
+type InterviewRow = Interview;
+type EvidenceRow = Evidence;
 type InterviewParticipantRow = InterviewPeople & {
 	people?:
 		| (Database["public"]["Tables"]["people"]["Row"] & {
 				people_personas?: Array<{
-					persona_id: string | null
-					personas?: Database["public"]["Tables"]["personas"]["Row"] | null
-				}> | null
+					persona_id: string | null;
+					personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
+				}> | null;
 		  })
-		| null
-}
+		| null;
+};
 
 type ThemeRow = {
-	id: string
-	name: string | null
-	statement: string | null
-	pain: string | null
-	desired_outcome: string | null
-	category: string | null
-	journey_stage: string | null
-	emotional_response: string | null
-	updated_at: string | null
-	interview_id: string | null
-	project_id: string | null
-}
+	id: string;
+	name: string | null;
+	statement: string | null;
+	pain: string | null;
+	desired_outcome: string | null;
+	category: string | null;
+	journey_stage: string | null;
+	emotional_response: string | null;
+	updated_at: string | null;
+	interview_id: string | null;
+	project_id: string | null;
+};
 
 type EmpathyMapItem = {
-	text: string
-	evidenceId?: string
-	anchors?: unknown
-}
+	text: string;
+	evidenceId?: string;
+	anchors?: unknown;
+};
 
 type EmpathyMap = {
-	says: EmpathyMapItem[]
-	does: EmpathyMapItem[]
-	thinks: EmpathyMapItem[]
-	feels: EmpathyMapItem[]
-	pains: EmpathyMapItem[]
-	gains: EmpathyMapItem[]
-}
+	says: EmpathyMapItem[];
+	does: EmpathyMapItem[];
+	thinks: EmpathyMapItem[];
+	feels: EmpathyMapItem[];
+	pains: EmpathyMapItem[];
+	gains: EmpathyMapItem[];
+};
 
 const emptyEmpathyMap = (): EmpathyMap => ({
 	says: [],
@@ -56,45 +56,45 @@ const emptyEmpathyMap = (): EmpathyMap => ({
 	feels: [],
 	pains: [],
 	gains: [],
-})
+});
 
 function toStringArray(value: unknown): string[] {
 	if (Array.isArray(value)) {
 		return value
 			.map((item) => (typeof item === "string" ? item.trim() : ""))
-			.filter((item): item is string => Boolean(item))
+			.filter((item): item is string => Boolean(item));
 	}
 
 	if (typeof value === "string") {
 		try {
-			const parsed = JSON.parse(value)
+			const parsed = JSON.parse(value);
 			if (Array.isArray(parsed)) {
 				return parsed
 					.map((item) => (typeof item === "string" ? item.trim() : ""))
-					.filter((item): item is string => Boolean(item))
+					.filter((item): item is string => Boolean(item));
 			}
 		} catch {
-			const trimmed = value.trim()
-			if (trimmed) return [trimmed]
+			const trimmed = value.trim();
+			if (trimmed) return [trimmed];
 		}
 	}
 
-	return []
+	return [];
 }
 
 function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap {
-	const map = emptyEmpathyMap()
+	const map = emptyEmpathyMap();
 	if (!Array.isArray(evidence)) {
-		return map
+		return map;
 	}
 
 	for (const item of evidence) {
-		const evidenceId = item.id
+		const evidenceId = item.id;
 
 		if (Array.isArray(item.says)) {
 			for (const says of item.says) {
 				if (typeof says === "string" && says.trim()) {
-					map.says.push({ text: says.trim(), evidenceId, anchors: item.anchors })
+					map.says.push({ text: says.trim(), evidenceId, anchors: item.anchors });
 				}
 			}
 		}
@@ -102,7 +102,7 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.does)) {
 			for (const does of item.does) {
 				if (typeof does === "string" && does.trim()) {
-					map.does.push({ text: does.trim(), evidenceId, anchors: item.anchors })
+					map.does.push({ text: does.trim(), evidenceId, anchors: item.anchors });
 				}
 			}
 		}
@@ -110,7 +110,7 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.thinks)) {
 			for (const thinks of item.thinks) {
 				if (typeof thinks === "string" && thinks.trim()) {
-					map.thinks.push({ text: thinks.trim(), evidenceId, anchors: item.anchors })
+					map.thinks.push({ text: thinks.trim(), evidenceId, anchors: item.anchors });
 				}
 			}
 		}
@@ -118,7 +118,7 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.feels)) {
 			for (const feels of item.feels) {
 				if (typeof feels === "string" && feels.trim()) {
-					map.feels.push({ text: feels.trim(), evidenceId, anchors: item.anchors })
+					map.feels.push({ text: feels.trim(), evidenceId, anchors: item.anchors });
 				}
 			}
 		}
@@ -126,7 +126,7 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.pains)) {
 			for (const pains of item.pains) {
 				if (typeof pains === "string" && pains.trim()) {
-					map.pains.push({ text: pains.trim(), evidenceId, anchors: item.anchors })
+					map.pains.push({ text: pains.trim(), evidenceId, anchors: item.anchors });
 				}
 			}
 		}
@@ -134,43 +134,43 @@ function buildEmpathyMap(evidence: EvidenceRow[] | null | undefined): EmpathyMap
 		if (Array.isArray(item.gains)) {
 			for (const gains of item.gains) {
 				if (typeof gains === "string" && gains.trim()) {
-					map.gains.push({ text: gains.trim(), evidenceId, anchors: item.anchors })
+					map.gains.push({ text: gains.trim(), evidenceId, anchors: item.anchors });
 				}
 			}
 		}
 	}
 
-	return map
+	return map;
 }
 
 function summarizePersonalFacets(participants: InterviewParticipantRow[]): Array<{
-	participantId?: number
-	name: string | null
-	summary: string | null
-	personas: string[]
+	participantId?: number;
+	name: string | null;
+	summary: string | null;
+	personas: string[];
 }> {
 	return participants.map((participant) => {
-		const person = participant.people
+		const person = participant.people;
 		const personaNames = Array.from(
 			new Set(
 				(person?.people_personas || [])
 					?.map((entry) => entry?.personas?.name)
 					.filter((name): name is string => Boolean(name)) ?? []
 			)
-		) as string[]
+		) as string[];
 
-		const facets: string[] = []
-		if (participant.role) facets.push(`Role: ${participant.role}`)
-		if (person?.segment) facets.push(`Segment: ${person.segment}`)
-		if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`)
+		const facets: string[] = [];
+		if (participant.role) facets.push(`Role: ${participant.role}`);
+		if (person?.segment) facets.push(`Segment: ${person.segment}`);
+		if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`);
 
 		return {
 			participantId: participant.id,
 			name: person?.name || participant.display_name || null,
 			summary: facets.length > 0 ? facets.join(" | ") : null,
 			personas: personaNames,
-		}
-	})
+		};
+	});
 }
 
 export const fetchInterviewContextTool = createTool({
@@ -329,15 +329,15 @@ export const fetchInterviewContextTool = createTool({
 			.optional(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeInterviewId = context?.requestContext?.get?.("interview_id")
-		const runtimeProjectId = context?.requestContext?.get?.("project_id")
-		const runtimeAccountId = context?.requestContext?.get?.("account_id")
-		const interviewId = (input.interviewId || runtimeInterviewId || "").toString().trim()
-		const projectId = (runtimeProjectId || "").toString().trim()
-		const accountId = runtimeAccountId
-		const includeEvidence = input.includeEvidence !== false
-		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const runtimeInterviewId = context?.requestContext?.get?.("interview_id");
+		const runtimeProjectId = context?.requestContext?.get?.("project_id");
+		const runtimeAccountId = context?.requestContext?.get?.("account_id");
+		const interviewId = (input.interviewId || runtimeInterviewId || "").toString().trim();
+		const projectId = (runtimeProjectId || "").toString().trim();
+		const accountId = runtimeAccountId;
+		const includeEvidence = input.includeEvidence !== false;
+		const evidenceLimit = input.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT;
 
 		consola.debug("fetch-interview-context: execute start", {
 			requestedInterviewId: input.interviewId,
@@ -345,27 +345,27 @@ export const fetchInterviewContextTool = createTool({
 			projectId,
 			includeEvidence,
 			evidenceLimit,
-		})
+		});
 
 		if (!interviewId) {
 			consola.warn("fetch-interview-context: missing interviewId", {
 				requestedInterviewId: input.interviewId,
 				runtimeInterviewId,
-			})
+			});
 			return {
 				success: false,
 				message: "Missing interviewId. Pass one explicitly or ensure the runtime context sets interview_id.",
-			}
+			};
 		}
 
 		if (!projectId) {
 			consola.warn("fetch-interview-context: missing projectId", {
 				runtimeProjectId,
-			})
+			});
 			return {
 				success: false,
 				message: "Missing project_id in runtime context. This tool requires project scope to load interview data.",
-			}
+			};
 		}
 
 		try {
@@ -404,7 +404,7 @@ export const fetchInterviewContextTool = createTool({
 							.order("created_at", { ascending: false })
 							.limit(evidenceLimit)
 					: Promise.resolve({ data: null, error: null }),
-			])
+			]);
 
 			if (interviewResult.error) {
 				consola.error("fetch-interview-context: failed to load interview", {
@@ -412,16 +412,16 @@ export const fetchInterviewContextTool = createTool({
 					projectId,
 					accountId,
 					error: interviewResult.error,
-				})
-				return { success: false, message: interviewResult.error.message }
+				});
+				return { success: false, message: interviewResult.error.message };
 			}
 
-			const interview = interviewResult.data as InterviewRow | null
+			const interview = interviewResult.data as InterviewRow | null;
 			if (!interview) {
 				return {
 					success: false,
 					message: "Interview not found or inaccessible for the current project.",
-				}
+				};
 			}
 
 			if (participantResult.error) {
@@ -429,7 +429,7 @@ export const fetchInterviewContextTool = createTool({
 					interviewId,
 					projectId,
 					error: participantResult.error,
-				})
+				});
 			}
 
 			if (themesResult.error) {
@@ -437,7 +437,7 @@ export const fetchInterviewContextTool = createTool({
 					interviewId,
 					projectId,
 					error: themesResult.error,
-				})
+				});
 			}
 
 			if (evidenceResult && "error" in evidenceResult && evidenceResult.error) {
@@ -445,14 +445,14 @@ export const fetchInterviewContextTool = createTool({
 					interviewId,
 					projectId,
 					error: evidenceResult.error,
-				})
+				});
 			}
 
-			const participants = (participantResult.data || []) as InterviewParticipantRow[]
-			const personalFacets = summarizePersonalFacets(participants)
-			const themes = (themesResult.data || []) as ThemeRow[]
-			const evidence = includeEvidence ? ((evidenceResult.data || []) as EvidenceRow[]) : null
-			const empathyMap = includeEvidence ? buildEmpathyMap(evidence) : emptyEmpathyMap()
+			const participants = (participantResult.data || []) as InterviewParticipantRow[];
+			const personalFacets = summarizePersonalFacets(participants);
+			const themes = (themesResult.data || []) as ThemeRow[];
+			const evidence = includeEvidence ? ((evidenceResult.data || []) as EvidenceRow[]) : null;
+			const empathyMap = includeEvidence ? buildEmpathyMap(evidence) : emptyEmpathyMap();
 
 			const formattedThemes = themes.map((row) => ({
 				id: row.id,
@@ -465,7 +465,7 @@ export const fetchInterviewContextTool = createTool({
 				emotional_response: row.emotional_response || undefined,
 				updated_at: row.updated_at || undefined,
 				tags: [] as string[], // themes don't have tags in the junction table
-			}))
+			}));
 
 			const formattedEvidence = evidence?.map((row) => ({
 				id: row.id,
@@ -480,7 +480,7 @@ export const fetchInterviewContextTool = createTool({
 				feels: toStringArray(row.feels),
 				pains: toStringArray(row.pains),
 				gains: toStringArray(row.gains),
-			}))
+			}));
 
 			consola.debug("fetch-interview-context: success", {
 				interviewId,
@@ -488,7 +488,7 @@ export const fetchInterviewContextTool = createTool({
 				participantCount: participants.length,
 				insightCount: formattedThemes.length,
 				evidenceCount: formattedEvidence?.length ?? 0,
-			})
+			});
 
 			return {
 				success: true,
@@ -541,18 +541,18 @@ export const fetchInterviewContextTool = createTool({
 					evidence: formattedEvidence || undefined,
 					empathyMap,
 				},
-			}
+			};
 		} catch (error) {
 			consola.error("fetch-interview-context: unexpected error", {
 				interviewId,
 				projectId,
 				accountId,
 				error,
-			})
+			});
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Unknown error fetching interview context",
-			}
+			};
 		}
 	},
-})
+});

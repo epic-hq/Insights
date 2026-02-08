@@ -12,30 +12,30 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
-} from "@tanstack/react-table"
-import consola from "consola"
-import { Bot, Calendar as CalendarIcon, ChevronDown, ChevronRight, Filter, LayoutGrid, List, X } from "lucide-react"
-import * as React from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { Link, redirect, useFetcher, useLoaderData, useSearchParams } from "react-router"
-import { Button } from "~/components/ui/button"
-import { Calendar } from "~/components/ui/calendar"
-import InlineEdit from "~/components/ui/inline-edit"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
-import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
-import { TaskCreateModal } from "~/features/tasks/components/TaskCreateModal"
-import { StatusDropdown } from "~/features/tasks/components/TaskStatus"
-import { createTask, getTasks, updateTask } from "~/features/tasks/db"
-import { seedTasks } from "~/features/tasks/seed"
-import type { Task, TaskStatus } from "~/features/tasks/types"
-import { userContext } from "~/server/user-context"
+} from "@tanstack/react-table";
+import consola from "consola";
+import { Bot, Calendar as CalendarIcon, ChevronDown, ChevronRight, Filter, LayoutGrid, List, X } from "lucide-react";
+import * as React from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { Link, redirect, useFetcher, useLoaderData, useSearchParams } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Calendar } from "~/components/ui/calendar";
+import InlineEdit from "~/components/ui/inline-edit";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
+import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars";
+import { TaskCreateModal } from "~/features/tasks/components/TaskCreateModal";
+import { StatusDropdown } from "~/features/tasks/components/TaskStatus";
+import { createTask, getTasks, updateTask } from "~/features/tasks/db";
+import { seedTasks } from "~/features/tasks/seed";
+import type { Task, TaskStatus } from "~/features/tasks/types";
+import { userContext } from "~/server/user-context";
 
-type Stage = "activation" | "onboarding" | "retention"
-type Impact = 1 | 2 | 3
-type Priority = 1 | 2 | 3
+type Stage = "activation" | "onboarding" | "retention";
+type Impact = 1 | 2 | 3;
+type Priority = 1 | 2 | 3;
 type Category =
 	| "Product"
 	| "Usability"
@@ -46,62 +46,62 @@ type Category =
 	| "Support"
 	| "Trust & Risk"
 	| "Ops & Scale"
-	| "Other"
+	| "Other";
 
 export type FeatureRow = {
-	id: string
-	feature: string
-	benefit: string
-	segments: string
-	impact: Impact
-	stage: Stage
-	priority: Priority
-	reason: string
-	category: Category
-	due_date: string | null
-}
+	id: string;
+	feature: string;
+	benefit: string;
+	segments: string;
+	impact: Impact;
+	stage: Stage;
+	priority: Priority;
+	reason: string;
+	category: Category;
+	due_date: string | null;
+};
 
 // ============================================================================
 // Loader - Fetch tasks from database
 // ============================================================================
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 
 	if (!ctx?.claims) {
-		return redirect("/login")
+		return redirect("/login");
 	}
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		throw new Response("Missing account or project ID", { status: 400 })
+		throw new Response("Missing account or project ID", { status: 400 });
 	}
 
 	// Verify user has access to this account
-	const userAccounts = ctx.accounts || []
-	const hasAccess = userAccounts.some((acc) => acc.account_id === accountId)
+	const userAccounts = ctx.accounts || [];
+	const hasAccess = userAccounts.some((acc) => acc.account_id === accountId);
 	if (!hasAccess) {
 		consola.warn("priorities: access denied", {
 			accountId,
 			userId: ctx.claims?.sub,
-		})
+		});
 		throw new Response("Unauthorized: You don't have access to this account", {
 			status: 403,
-		})
+		});
 	}
 
 	if (!ctx.supabase) {
-		throw new Response("Supabase client missing", { status: 500 })
+		throw new Response("Supabase client missing", { status: 500 });
 	}
 
-	const userId = ctx.claims.sub
+	const userId = ctx.claims.sub;
 
 	// Get filters from URL
-	const url = new URL(request.url)
-	const statusFilter = url.searchParams.get("status") || "all"
-	const priorityFilter = url.searchParams.get("priority") || "all"
+	const url = new URL(request.url);
+	const statusFilter = url.searchParams.get("status") || "all";
+	const priorityFilter = url.searchParams.get("priority") || "all";
 
 	// Fetch ALL tasks for this project (no filters applied server-side)
 	// We'll filter on the client to ensure counts are accurate
@@ -110,7 +110,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		accountId,
 		projectId,
 		options: {},
-	})
+	});
 
 	// consola.info("🔍 [PRIORITIES DEBUG] Fetched tasks:", {
 	// 	count: tasks.length,
@@ -142,7 +142,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// 	}
 	// }
 
-	const projectPath = `/a/${accountId}/${projectId}`
+	const projectPath = `/a/${accountId}/${projectId}`;
 	return {
 		tasks,
 		accountId,
@@ -150,7 +150,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		statusFilter,
 		priorityFilter,
 		projectPath,
-	}
+	};
 }
 
 // ============================================================================
@@ -158,37 +158,37 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 // ============================================================================
 
 export async function action({ context, request }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 
 	if (!ctx?.claims) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
 	if (!ctx.supabase) {
-		throw new Response("Supabase client missing", { status: 500 })
+		throw new Response("Supabase client missing", { status: 500 });
 	}
 
-	const userId = ctx.claims.sub
-	const formData = await request.formData()
-	const action = formData.get("_action") as string
-	const taskId = formData.get("taskId") as string
-	const field = formData.get("field") as string
-	const value = formData.get("value") as string
+	const userId = ctx.claims.sub;
+	const formData = await request.formData();
+	const action = formData.get("_action") as string;
+	const taskId = formData.get("taskId") as string;
+	const field = formData.get("field") as string;
+	const value = formData.get("value") as string;
 
 	if (action === "update-field") {
 		if (!taskId || !field) {
-			throw new Response("Missing required fields", { status: 400 })
+			throw new Response("Missing required fields", { status: 400 });
 		}
 
 		try {
 			// Parse value based on field type
-			let parsedValue: unknown = value
+			let parsedValue: unknown = value;
 			if (field === "priority" || field === "impact") {
-				parsedValue = Number.parseInt(value, 10)
+				parsedValue = Number.parseInt(value, 10);
 			} else if (field === "status") {
-				parsedValue = value as TaskStatus
+				parsedValue = value as TaskStatus;
 			} else if (field === "due_date") {
-				parsedValue = value === "" ? null : value
+				parsedValue = value === "" ? null : value;
 			}
 
 			await updateTask({
@@ -196,38 +196,38 @@ export async function action({ context, request }: ActionFunctionArgs) {
 				taskId,
 				userId,
 				updates: { [field]: parsedValue } as any,
-			})
+			});
 
-			return { success: true }
+			return { success: true };
 		} catch (error) {
-			consola.error("Error updating task:", error)
-			throw new Response("Failed to update task", { status: 500 })
+			consola.error("Error updating task:", error);
+			throw new Response("Failed to update task", { status: 500 });
 		}
 	}
 
 	// Handle task creation from modal
-	const intent = formData.get("intent") as string
+	const intent = formData.get("intent") as string;
 	if (intent === "create") {
-		const title = formData.get("title") as string
-		const description = formData.get("description") as string
-		const cluster = formData.get("cluster") as string
-		const priority = Number.parseInt(formData.get("priority") as string, 10) || 3
-		const sourceThemeId = formData.get("source_theme_id") as string | null
-		const dueDateRaw = formData.get("due_date") as string | null
-		const dueDate = dueDateRaw && dueDateRaw.trim() !== "" ? dueDateRaw : null
+		const title = formData.get("title") as string;
+		const description = formData.get("description") as string;
+		const cluster = formData.get("cluster") as string;
+		const priority = Number.parseInt(formData.get("priority") as string, 10) || 3;
+		const sourceThemeId = formData.get("source_theme_id") as string | null;
+		const dueDateRaw = formData.get("due_date") as string | null;
+		const dueDate = dueDateRaw && dueDateRaw.trim() !== "" ? dueDateRaw : null;
 
 		if (!title) {
-			return { success: false, error: "Title is required" }
+			return { success: false, error: "Title is required" };
 		}
 
 		// Get accountId and projectId from the URL
-		const url = new URL(request.url)
-		const pathParts = url.pathname.split("/")
-		const accountId = pathParts[2] // /a/:accountId/:projectId/priorities
-		const projectId = pathParts[3]
+		const url = new URL(request.url);
+		const pathParts = url.pathname.split("/");
+		const accountId = pathParts[2]; // /a/:accountId/:projectId/priorities
+		const projectId = pathParts[3];
 
 		if (!accountId || !projectId) {
-			throw new Response("Missing account or project ID", { status: 400 })
+			throw new Response("Missing account or project ID", { status: 400 });
 		}
 
 		try {
@@ -244,16 +244,16 @@ export async function action({ context, request }: ActionFunctionArgs) {
 					source_theme_id: sourceThemeId || null,
 					due_date: dueDate,
 				},
-			})
+			});
 
-			return { success: true, taskId: createdTask.id }
+			return { success: true, taskId: createdTask.id };
 		} catch (error) {
-			consola.error("Error creating task:", error)
-			return { success: false, error: "Failed to create task" }
+			consola.error("Error creating task:", error);
+			return { success: false, error: "Failed to create task" };
 		}
 	}
 
-	throw new Response("Invalid action", { status: 400 })
+	throw new Response("Invalid action", { status: 400 });
 }
 
 // ============================================================================
@@ -272,7 +272,7 @@ function taskToFeatureRow(task: Task): FeatureRow {
 		reason: task.reason || "",
 		category: task.cluster as Category, // DB field is 'cluster', UI shows 'category'
 		due_date: task.due_date,
-	}
+	};
 }
 
 // ============================================================================
@@ -280,19 +280,19 @@ function taskToFeatureRow(task: Task): FeatureRow {
 // ============================================================================
 
 function EditableTextCell({ taskId, field, value }: { taskId: string; field: string; value: string }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleSubmit = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", field)
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", field);
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<InlineEdit
@@ -303,23 +303,23 @@ function EditableTextCell({ taskId, field, value }: { taskId: string; field: str
 			multiline={field === "benefit" || field === "reason"}
 			autoSize={true}
 		/>
-	)
+	);
 }
 
 function TaskTitleCell({ taskId, value, detailHref }: { taskId: string; value: string; detailHref: string }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	const handleSubmit = (newValue: string) => {
-		if (newValue === value) return
+		if (newValue === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", "title")
-		formData.append("value", newValue)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", "title");
+		formData.append("value", newValue);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
 	return (
 		<div className="flex items-center gap-2">
@@ -327,64 +327,64 @@ function TaskTitleCell({ taskId, value, detailHref }: { taskId: string; value: s
 				{value}
 			</Link>
 		</div>
-	)
+	);
 }
 
 function EditableStatusCell({ taskId, value }: { taskId: string; value: TaskStatus }) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
 	// Use optimistic value if update is in progress
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "status") {
-			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? (optimisticValue as TaskStatus) : value
+			const optimisticValue = fetcher.formData.get("value");
+			return optimisticValue ? (optimisticValue as TaskStatus) : value;
 		}
-		return value
-	}, [fetcher.formData, taskId, value])
+		return value;
+	}, [fetcher.formData, taskId, value]);
 
 	const handleStatusChange = (_taskId: string, newStatus: TaskStatus) => {
-		if (newStatus === value) return
+		if (newStatus === value) return;
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", "status")
-		formData.append("value", newStatus)
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", "status");
+		formData.append("value", newStatus);
 
-		fetcher.submit(formData, { method: "POST" })
-	}
+		fetcher.submit(formData, { method: "POST" });
+	};
 
-	return <StatusDropdown currentStatus={displayValue} taskId={taskId} onStatusChange={handleStatusChange} size="sm" />
+	return <StatusDropdown currentStatus={displayValue} taskId={taskId} onStatusChange={handleStatusChange} size="sm" />;
 }
 
 function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priority }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = React.useState(false)
+	const fetcher = useFetcher();
+	const [open, setOpen] = React.useState(false);
 
 	// Use optimistic value if update is in progress
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "priority") {
-			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? (Number.parseInt(optimisticValue as string, 10) as Priority) : value
+			const optimisticValue = fetcher.formData.get("value");
+			return optimisticValue ? (Number.parseInt(optimisticValue as string, 10) as Priority) : value;
 		}
-		return value
-	}, [fetcher.formData, taskId, value])
+		return value;
+	}, [fetcher.formData, taskId, value]);
 
 	const handleSelect = (newValue: number) => {
 		if (newValue === value) {
-			setOpen(false)
-			return
+			setOpen(false);
+			return;
 		}
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", "priority")
-		formData.append("value", newValue.toString())
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", "priority");
+		formData.append("value", newValue.toString());
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -413,37 +413,37 @@ function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priori
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = React.useState(false)
+	const fetcher = useFetcher();
+	const [open, setOpen] = React.useState(false);
 
 	// Use optimistic value if update is in progress
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "impact") {
-			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? (Number.parseInt(optimisticValue as string, 10) as Impact) : value
+			const optimisticValue = fetcher.formData.get("value");
+			return optimisticValue ? (Number.parseInt(optimisticValue as string, 10) as Impact) : value;
 		}
-		return value
-	}, [fetcher.formData, taskId, value])
+		return value;
+	}, [fetcher.formData, taskId, value]);
 
 	const handleSelect = (newValue: number) => {
 		if (newValue === value) {
-			setOpen(false)
-			return
+			setOpen(false);
+			return;
 		}
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", "impact")
-		formData.append("value", newValue.toString())
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", "impact");
+		formData.append("value", newValue.toString());
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -472,57 +472,57 @@ function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 function EditableDueDateCell({ taskId, value }: { taskId: string; value: string | null }) {
-	const fetcher = useFetcher()
-	const [open, setOpen] = React.useState(false)
-	const [optimisticValue, setOptimisticValue] = React.useState<string | null>(value)
+	const fetcher = useFetcher();
+	const [open, setOpen] = React.useState(false);
+	const [optimisticValue, setOptimisticValue] = React.useState<string | null>(value);
 
 	// Sync optimistic value when prop changes (after server response)
 	React.useEffect(() => {
-		setOptimisticValue(value)
-	}, [value])
+		setOptimisticValue(value);
+	}, [value]);
 
 	const handleSelect = (date: Date | undefined) => {
-		const newValue = date ? date.toISOString().split("T")[0] : null
-		setOptimisticValue(newValue)
+		const newValue = date ? date.toISOString().split("T")[0] : null;
+		setOptimisticValue(newValue);
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", "due_date")
-		formData.append("value", newValue || "")
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", "due_date");
+		formData.append("value", newValue || "");
 
-		fetcher.submit(formData, { method: "POST" })
-		if (date) setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		if (date) setOpen(false);
+	};
 
 	const handleClear = () => {
-		setOptimisticValue(null)
+		setOptimisticValue(null);
 
-		const formData = new FormData()
-		formData.append("_action", "update-field")
-		formData.append("taskId", taskId)
-		formData.append("field", "due_date")
-		formData.append("value", "")
+		const formData = new FormData();
+		formData.append("_action", "update-field");
+		formData.append("taskId", taskId);
+		formData.append("field", "due_date");
+		formData.append("value", "");
 
-		fetcher.submit(formData, { method: "POST" })
-		setOpen(false)
-	}
+		fetcher.submit(formData, { method: "POST" });
+		setOpen(false);
+	};
 
-	const selectedDate = optimisticValue ? new Date(optimisticValue) : undefined
-	const now = new Date()
-	const isOverdue = selectedDate && selectedDate < now && selectedDate.toDateString() !== now.toDateString()
-	const isToday = selectedDate && selectedDate.toDateString() === now.toDateString()
+	const selectedDate = optimisticValue ? new Date(optimisticValue) : undefined;
+	const now = new Date();
+	const isOverdue = selectedDate && selectedDate < now && selectedDate.toDateString() !== now.toDateString();
+	const isToday = selectedDate && selectedDate.toDateString() === now.toDateString();
 
 	const formatted = selectedDate
 		? selectedDate.toLocaleDateString("en-US", {
 				month: "short",
 				day: "numeric",
 			})
-		: null
+		: null;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -559,7 +559,7 @@ function EditableDueDateCell({ taskId, value }: { taskId: string; value: string 
 				)}
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 // ============================================================================
@@ -578,7 +578,7 @@ function ColumnHeader({ title, tooltip }: { title: string; tooltip: string }) {
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 function SortableColumnHeader({ title, tooltip, column }: { title: string; tooltip: string; column: any }) {
@@ -601,7 +601,7 @@ function SortableColumnHeader({ title, tooltip, column }: { title: string; toolt
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 // ============================================================================
@@ -609,7 +609,7 @@ function SortableColumnHeader({ title, tooltip, column }: { title: string; toolt
 // ============================================================================
 
 function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; tasks: Task[] }) {
-	const [open, setOpen] = React.useState(false)
+	const [open, setOpen] = React.useState(false);
 
 	// Count tasks by status
 	const statusCounts = React.useMemo(() => {
@@ -622,14 +622,14 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 			review: 0,
 			done: 0,
 			archived: 0,
-		}
+		};
 		tasks.forEach((task) => {
 			if (task.status && counts[task.status] !== undefined) {
-				counts[task.status]++
+				counts[task.status]++;
 			}
-		})
-		return counts
-	}, [tasks])
+		});
+		return counts;
+	}, [tasks]);
 
 	const filterOptions = [
 		{ value: "all", label: "All", className: "text-foreground" },
@@ -668,7 +668,7 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 			label: "Archived",
 			className: "text-gray-700 dark:text-gray-300",
 		},
-	]
+	];
 
 	return (
 		<TooltipProvider>
@@ -707,11 +707,11 @@ function StatusFilterHeader({ currentFilter, tasks }: { currentFilter: string; t
 				</Popover>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string; tasks: Task[] }) {
-	const [open, setOpen] = React.useState(false)
+	const [open, setOpen] = React.useState(false);
 
 	// Count tasks by priority
 	const priorityCounts = React.useMemo(() => {
@@ -720,14 +720,14 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 			high: 0,
 			medium: 0,
 			low: 0,
-		}
+		};
 		tasks.forEach((task) => {
-			if (task.priority === 3) counts.high++
-			else if (task.priority === 2) counts.medium++
-			else if (task.priority === 1) counts.low++
-		})
-		return counts
-	}, [tasks])
+			if (task.priority === 3) counts.high++;
+			else if (task.priority === 2) counts.medium++;
+			else if (task.priority === 1) counts.low++;
+		});
+		return counts;
+	}, [tasks]);
 
 	const filterOptions = [
 		{ value: "all", label: "All", className: "text-foreground" },
@@ -749,7 +749,7 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 			color: "slate",
 			className: "text-slate-700 dark:text-slate-300",
 		},
-	]
+	];
 
 	return (
 		<TooltipProvider>
@@ -791,7 +791,7 @@ function PriorityFilterHeader({ currentFilter, tasks }: { currentFilter: string;
 				</Popover>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 // ============================================================================
@@ -819,7 +819,7 @@ const createColumns = (
 					tooltip="The task, feature, or initiative to be implemented"
 					column={column}
 				/>
-			)
+			);
 		},
 		cell: ({ row }) => (
 			<TaskTitleCell
@@ -832,14 +832,14 @@ const createColumns = (
 	{
 		accessorKey: "benefit",
 		header: () => {
-			return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />
+			return <ColumnHeader title="Benefits" tooltip="Who benefits from this task and what value it provides to them" />;
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
 	},
 	{
 		accessorKey: "segments",
 		header: () => {
-			return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />
+			return <ColumnHeader title="Segments" tooltip="The customer or user segments this task targets" />;
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
 	},
@@ -852,7 +852,7 @@ const createColumns = (
 					tooltip="How big of an impact the task will make for the market segment (1=Low, 2=Medium, 3=High)"
 					column={column}
 				/>
-			)
+			);
 		},
 		cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
 	},
@@ -864,34 +864,34 @@ const createColumns = (
 					title="Stage"
 					tooltip="The customer journey stage this task addresses (activation, onboarding, retention)"
 				/>
-			)
+			);
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
 	},
 	{
 		accessorKey: "priority",
 		header: () => {
-			return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />
+			return <PriorityFilterHeader currentFilter={priorityFilter} tasks={tasks} />;
 		},
 		cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
 	},
 	{
 		accessorKey: "due_date",
 		header: () => {
-			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />
+			return <ColumnHeader title="Due" tooltip="The target date for completing this task" />;
 		},
 		cell: ({ row }) => <EditableDueDateCell taskId={row.original.id} value={row.original.due_date} />,
 	},
 	{
 		accessorKey: "status",
 		header: () => {
-			return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />
+			return <StatusFilterHeader currentFilter={statusFilter} tasks={tasks} />;
 		},
 		cell: ({ row }) => {
 			// Get status from the original task data
-			const task = tasks.find((t) => t.id === row.original.id)
-			const status = task?.status || "backlog"
-			return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />
+			const task = tasks.find((t) => t.id === row.original.id);
+			const status = task?.status || "backlog";
+			return <EditableStatusCell taskId={row.original.id} value={status as TaskStatus} />;
 		},
 	},
 	{
@@ -899,7 +899,7 @@ const createColumns = (
 		header: () => {
 			return (
 				<ColumnHeader title="Reason" tooltip="Why this task is important and the rationale behind its prioritization" />
-			)
+			);
 		},
 		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
 	},
@@ -908,15 +908,15 @@ const createColumns = (
 		header: () => {
 			return (
 				<ColumnHeader title="Action" tooltip="Ask the AI assistant for insights and recommendations about this task" />
-			)
+			);
 		},
 		cell: ({ row }) => <AskUppyCell row={row.original} />,
 	},
-]
+];
 
 function AskUppyCell({ row }: { row: FeatureRow }) {
-	const { insertText } = useProjectStatusAgent()
-	const [open, setOpen] = React.useState(false)
+	const { insertText } = useProjectStatusAgent();
+	const [open, setOpen] = React.useState(false);
 
 	const handleAskUppy = () => {
 		const question = `Given this initiative: "${row.feature}".
@@ -930,12 +930,12 @@ Context:
 - Reason: ${row.reason}
 - Category: ${row.category}
 
-`
+`;
 
 		// Insert text into ProjectStatusAgent without navigating
-		insertText(question)
-		setOpen(false)
-	}
+		insertText(question);
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -960,7 +960,7 @@ Context:
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 // ============================================================================
@@ -968,68 +968,68 @@ Context:
 // ============================================================================
 
 export default function FeaturePrioritizationPage() {
-	const { tasks, statusFilter, priorityFilter, projectPath } = useLoaderData<typeof loader>()
-	const [searchParams, setSearchParams] = useSearchParams()
-	const [compactView, setCompactView] = React.useState(true)
+	const { tasks, statusFilter, priorityFilter, projectPath } = useLoaderData<typeof loader>();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [compactView, setCompactView] = React.useState(true);
 
 	// Handle ?new=true query param to open create modal
-	const showCreateModal = searchParams.get("new") === "true"
+	const showCreateModal = searchParams.get("new") === "true";
 	const handleCreateModalChange = (open: boolean) => {
 		if (!open) {
 			// Remove ?new param when closing
-			const newParams = new URLSearchParams(searchParams)
-			newParams.delete("new")
-			setSearchParams(newParams, { replace: true })
+			const newParams = new URLSearchParams(searchParams);
+			newParams.delete("new");
+			setSearchParams(newParams, { replace: true });
 		}
-	}
+	};
 
 	// Apply client-side filtering
 	const filteredTasks = React.useMemo(() => {
-		let filtered = tasks
+		let filtered = tasks;
 
 		// Apply status filter
 		if (statusFilter !== "all") {
-			filtered = filtered.filter((task) => task.status === statusFilter)
+			filtered = filtered.filter((task) => task.status === statusFilter);
 		} else {
 			// Default: exclude archived tasks when showing "all"
-			filtered = filtered.filter((task) => task.status !== "archived")
+			filtered = filtered.filter((task) => task.status !== "archived");
 		}
 
 		// Apply priority filter
 		if (priorityFilter === "high") {
-			filtered = filtered.filter((task) => task.priority === 3)
+			filtered = filtered.filter((task) => task.priority === 3);
 		} else if (priorityFilter === "medium") {
-			filtered = filtered.filter((task) => task.priority === 2)
+			filtered = filtered.filter((task) => task.priority === 2);
 		} else if (priorityFilter === "low") {
-			filtered = filtered.filter((task) => task.priority === 1)
+			filtered = filtered.filter((task) => task.priority === 1);
 		}
 
-		return filtered
-	}, [tasks, statusFilter, priorityFilter])
+		return filtered;
+	}, [tasks, statusFilter, priorityFilter]);
 
 	// Transform filtered tasks to feature rows
-	const data = React.useMemo(() => filteredTasks.map(taskToFeatureRow), [filteredTasks])
+	const data = React.useMemo(() => filteredTasks.map(taskToFeatureRow), [filteredTasks]);
 
 	// Create columns with ALL tasks (for accurate counts) and filters
 	const columns = React.useMemo(
 		() => createColumns(tasks, statusFilter, priorityFilter, projectPath),
 		[tasks, statusFilter, priorityFilter, projectPath]
-	)
+	);
 
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "priority", desc: false },
 		{ id: "impact", desc: true },
-	])
-	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-	const [grouping, setGrouping] = React.useState<GroupingState>(["category"])
+	]);
+	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+	const [grouping, setGrouping] = React.useState<GroupingState>(["category"]);
 	// User controls expansion state - preserve across updates
 	// Start with all groups expanded
-	const [expanded, setExpanded] = React.useState<ExpandedState>(true)
+	const [expanded, setExpanded] = React.useState<ExpandedState>(true);
 
 	// Keep groups expanded on fresh load and after filtering
 	React.useEffect(() => {
-		setExpanded(true)
-	}, [])
+		setExpanded(true);
+	}, []);
 
 	const table = useReactTable({
 		data,
@@ -1064,9 +1064,9 @@ export default function FeaturePrioritizationPage() {
 		getGroupedRowModel: getGroupedRowModel(),
 		getExpandedRowModel: getExpandedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
-	})
+	});
 
-	const stageOptions: Stage[] = ["activation", "onboarding", "retention"]
+	const stageOptions: Stage[] = ["activation", "onboarding", "retention"];
 	const categoryOptions: Category[] = [
 		"Product",
 		"Usability",
@@ -1078,7 +1078,7 @@ export default function FeaturePrioritizationPage() {
 		"Trust & Risk",
 		"Ops & Scale",
 		"Other",
-	]
+	];
 
 	return (
 		<div className="container mx-auto p-6">
@@ -1109,8 +1109,8 @@ export default function FeaturePrioritizationPage() {
 
 					<select
 						onChange={(e) => {
-							const col = table.getColumn("category")
-							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value)
+							const col = table.getColumn("category");
+							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value);
 						}}
 						className="rounded-md border px-3 py-2 text-sm"
 					>
@@ -1124,8 +1124,8 @@ export default function FeaturePrioritizationPage() {
 
 					<select
 						onChange={(e) => {
-							const col = table.getColumn("stage")
-							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value)
+							const col = table.getColumn("stage");
+							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value);
 						}}
 						className="rounded-md border px-3 py-2 text-sm"
 					>
@@ -1206,7 +1206,7 @@ export default function FeaturePrioritizationPage() {
 												</button>
 											</td>
 										</tr>
-									)
+									);
 								}
 
 								// Regular data row
@@ -1214,15 +1214,15 @@ export default function FeaturePrioritizationPage() {
 									<tr key={row.id} className="border-b hover:bg-muted/30">
 										{row.getVisibleCells().map((cell) => {
 											// Skip category column in detail rows
-											if (cell.column.id === "category") return null
+											if (cell.column.id === "category") return null;
 											return (
 												<td key={cell.id} className="px-4 py-3">
 													{flexRender(cell.column.columnDef.cell, cell.getContext())}
 												</td>
-											)
+											);
 										})}
 									</tr>
-								)
+								);
 							})}
 						</tbody>
 					</table>
@@ -1246,5 +1246,5 @@ export default function FeaturePrioritizationPage() {
 				*/}
 			</div>
 		</div>
-	)
+	);
 }

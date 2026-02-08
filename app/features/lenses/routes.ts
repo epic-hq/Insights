@@ -1,4 +1,4 @@
-import { route } from "@react-router/dev/routes"
+import { route } from "@react-router/dev/routes";
 
 export default [
 	// Analysis Page - Redesigned entry point (replaces Lens Library)
@@ -15,4 +15,4 @@ export default [
 	route("product-lens", "./features/lenses/pages/product-lens.tsx"),
 	// BANT Lens - Budget × Authority Matrix (legacy, uses opportunities)
 	route("bant-lens", "./features/lenses/pages/bant-lens.tsx"),
-]
+];

@@ -1,6 +1,6 @@
-import { useMemo } from "react"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { PATHS } from "~/paths"
+import { useMemo } from "react";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { PATHS } from "~/paths";
 
 /**
  * React hook to generate account/project-aware paths.
@@ -10,18 +10,18 @@ import { PATHS } from "~/paths"
  *   // => /a/{accountId}/{projectId}/insights/123
  */
 export function useProjectPath() {
-	const { accountId, projectId } = useCurrentProject()
+	const { accountId, projectId } = useCurrentProject();
 
 	// Pregenerate all base paths for this account/project
 	const basePaths = useMemo(() => {
-		const result: Record<string, string> = {}
-		;(Object.keys(PATHS) as (keyof typeof PATHS)[]).forEach((key) => {
+		const result: Record<string, string> = {};
+		(Object.keys(PATHS) as (keyof typeof PATHS)[]).forEach((key) => {
 			if (typeof PATHS[key] === "string") {
-				result[key] = `/a/${accountId}/${projectId}${PATHS[key]}`
+				result[key] = `/a/${accountId}/${projectId}${PATHS[key]}`;
 			}
-		})
-		return result
-	}, [accountId, projectId])
+		});
+		return result;
+	}, [accountId, projectId]);
 
 	/**
 	 * Returns the full path for a given feature key and optional subPath.
@@ -29,10 +29,10 @@ export function useProjectPath() {
 	 * @param subPath - string (e.g. "/123" or "?sort=latest")
 	 */
 	function projectPath(key: keyof typeof PATHS, subPath = ""): string {
-		const base = basePaths[key]
-		if (!base) throw new Error(`Unknown path key: ${key}`)
-		return `${base}${subPath}`
+		const base = basePaths[key];
+		if (!base) throw new Error(`Unknown path key: ${key}`);
+		return `${base}${subPath}`;
 	}
 
-	return projectPath
+	return projectPath;
 }

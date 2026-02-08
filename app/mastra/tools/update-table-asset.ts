@@ -1,7 +1,7 @@
-import { createTool } from "@mastra/core/tools"
-import consola from "consola"
-import { z } from "zod"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { createTool } from "@mastra/core/tools";
+import consola from "consola";
+import { z } from "zod";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 /**
  * Update an existing table asset in project_assets.
@@ -10,28 +10,28 @@ import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
  */
 
 function generateMarkdownTable(headers: string[], rows: Record<string, string>[], maxRows?: number): string {
-	if (headers.length === 0) return "*No data to display*"
+	if (headers.length === 0) return "*No data to display*";
 
-	const displayRows = maxRows ? rows.slice(0, maxRows) : rows
-	const lines: string[] = []
+	const displayRows = maxRows ? rows.slice(0, maxRows) : rows;
+	const lines: string[] = [];
 
-	lines.push(`| ${headers.join(" | ")} |`)
-	lines.push(`| ${headers.map(() => "---").join(" | ")} |`)
+	lines.push(`| ${headers.join(" | ")} |`);
+	lines.push(`| ${headers.map(() => "---").join(" | ")} |`);
 
 	for (const row of displayRows) {
 		const values = headers.map((h) => {
-			const val = row[h] || ""
-			return val.replace(/\|/g, "\\|")
-		})
-		lines.push(`| ${values.join(" | ")} |`)
+			const val = row[h] || "";
+			return val.replace(/\|/g, "\\|");
+		});
+		lines.push(`| ${values.join(" | ")} |`);
 	}
 
 	if (maxRows && rows.length > maxRows) {
-		lines.push("")
-		lines.push(`*...and ${rows.length - maxRows} more rows*`)
+		lines.push("");
+		lines.push(`*...and ${rows.length - maxRows} more rows*`);
 	}
 
-	return lines.join("\n")
+	return lines.join("\n");
 }
 
 export const updateTableAssetTool = createTool({
@@ -110,20 +110,20 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 	}),
 	execute: async (input, context?) => {
 		try {
-			const { assetId, operation, newRows, updates, rowIndices, columnName, defaultValue, headers, rows } = input
+			const { assetId, operation, newRows, updates, rowIndices, columnName, defaultValue, headers, rows } = input;
 
-			const accountId = context?.requestContext?.get?.("account_id") as string | undefined
-			const projectId = context?.requestContext?.get?.("project_id") as string | undefined
+			const accountId = context?.requestContext?.get?.("account_id") as string | undefined;
+			const projectId = context?.requestContext?.get?.("project_id") as string | undefined;
 
 			if (!accountId || !projectId) {
 				return {
 					success: false,
 					message: "Missing account or project context",
 					error: "account_id and project_id required",
-				}
+				};
 			}
 
-			const supabase = createSupabaseAdminClient()
+			const supabase = createSupabaseAdminClient();
 
 			// Fetch current asset
 			const { data: asset, error: fetchError } = await supabase
@@ -131,36 +131,36 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 				.select("id, title, table_data, row_count, column_count")
 				.eq("id", assetId)
 				.eq("project_id", projectId)
-				.single()
+				.single();
 
 			if (fetchError || !asset) {
 				return {
 					success: false,
 					message: `Table asset not found: ${assetId}`,
 					error: fetchError?.message || "Asset not found",
-				}
+				};
 			}
 
-			const tableData = asset.table_data as { headers: string[]; rows: Record<string, string>[] } | null
+			const tableData = asset.table_data as { headers: string[]; rows: Record<string, string>[] } | null;
 			if (!tableData) {
 				return {
 					success: false,
 					message: "Asset has no table data",
 					error: "No table_data found",
-				}
+				};
 			}
 
-			let updatedHeaders = [...tableData.headers]
-			let updatedRows = [...tableData.rows]
+			let updatedHeaders = [...tableData.headers];
+			let updatedRows = [...tableData.rows];
 
 			switch (operation) {
 				case "addRows": {
 					if (!newRows || newRows.length === 0) {
-						return { success: false, message: "No rows provided for addRows operation", error: "newRows required" }
+						return { success: false, message: "No rows provided for addRows operation", error: "newRows required" };
 					}
-					updatedRows = [...updatedRows, ...newRows]
-					consola.info(`[update-table-asset] Added ${newRows.length} rows to ${asset.title}`)
-					break
+					updatedRows = [...updatedRows, ...newRows];
+					consola.info(`[update-table-asset] Added ${newRows.length} rows to ${asset.title}`);
+					break;
 				}
 
 				case "updateRows": {
@@ -169,18 +169,18 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 							success: false,
 							message: "No updates provided for updateRows operation",
 							error: "updates required",
-						}
+						};
 					}
 					for (const update of updates) {
 						if (update.rowIndex >= 0 && update.rowIndex < updatedRows.length) {
 							updatedRows[update.rowIndex] = {
 								...updatedRows[update.rowIndex],
 								[update.column]: update.value,
-							}
+							};
 						}
 					}
-					consola.info(`[update-table-asset] Updated ${updates.length} cells in ${asset.title}`)
-					break
+					consola.info(`[update-table-asset] Updated ${updates.length} cells in ${asset.title}`);
+					break;
 				}
 
 				case "removeRows": {
@@ -189,17 +189,17 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 							success: false,
 							message: "No row indices provided for removeRows operation",
 							error: "rowIndices required",
-						}
+						};
 					}
 					// Remove in reverse order to preserve indices
-					const sortedIndices = [...rowIndices].sort((a, b) => b - a)
+					const sortedIndices = [...rowIndices].sort((a, b) => b - a);
 					for (const idx of sortedIndices) {
 						if (idx >= 0 && idx < updatedRows.length) {
-							updatedRows.splice(idx, 1)
+							updatedRows.splice(idx, 1);
 						}
 					}
-					consola.info(`[update-table-asset] Removed ${rowIndices.length} rows from ${asset.title}`)
-					break
+					consola.info(`[update-table-asset] Removed ${rowIndices.length} rows from ${asset.title}`);
+					break;
 				}
 
 				case "addColumn": {
@@ -208,15 +208,15 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 							success: false,
 							message: "No column name provided for addColumn operation",
 							error: "columnName required",
-						}
+						};
 					}
-					updatedHeaders = [...updatedHeaders, columnName]
+					updatedHeaders = [...updatedHeaders, columnName];
 					updatedRows = updatedRows.map((row) => ({
 						...row,
 						[columnName]: defaultValue || "",
-					}))
-					consola.info(`[update-table-asset] Added column "${columnName}" to ${asset.title}`)
-					break
+					}));
+					consola.info(`[update-table-asset] Added column "${columnName}" to ${asset.title}`);
+					break;
 				}
 
 				case "replaceAll": {
@@ -225,20 +225,20 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 							success: false,
 							message: "Headers and rows required for replaceAll operation",
 							error: "headers and rows required",
-						}
+						};
 					}
-					updatedHeaders = headers
-					updatedRows = rows
-					consola.info(`[update-table-asset] Replaced all data in ${asset.title}`)
-					break
+					updatedHeaders = headers;
+					updatedRows = rows;
+					consola.info(`[update-table-asset] Replaced all data in ${asset.title}`);
+					break;
 				}
 
 				default:
-					return { success: false, message: `Unknown operation: ${operation}`, error: "Invalid operation" }
+					return { success: false, message: `Unknown operation: ${operation}`, error: "Invalid operation" };
 			}
 
 			// Generate updated markdown
-			const markdownTable = generateMarkdownTable(updatedHeaders, updatedRows, 20)
+			const markdownTable = generateMarkdownTable(updatedHeaders, updatedRows, 20);
 
 			// Save updates
 			const { error: updateError } = await supabase
@@ -250,18 +250,18 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 					column_count: updatedHeaders.length,
 					updated_at: new Date().toISOString(),
 				})
-				.eq("id", assetId)
+				.eq("id", assetId);
 
 			if (updateError) {
-				consola.error("[update-table-asset] Update failed:", updateError)
+				consola.error("[update-table-asset] Update failed:", updateError);
 				return {
 					success: false,
 					message: `Failed to update table: ${updateError.message}`,
 					error: updateError.message,
-				}
+				};
 			}
 
-			const assetUrl = `/a/${accountId}/${projectId}/assets/${assetId}`
+			const assetUrl = `/a/${accountId}/${projectId}/assets/${assetId}`;
 
 			return {
 				success: true,
@@ -269,14 +269,14 @@ IMPORTANT: Do NOT redraw the table in chat after updating - the UI refreshes aut
 				rowCount: updatedRows.length,
 				columnCount: updatedHeaders.length,
 				assetUrl,
-			}
+			};
 		} catch (error) {
-			consola.error("[update-table-asset] Error:", error)
+			consola.error("[update-table-asset] Error:", error);
 			return {
 				success: false,
 				message: "Failed to update table",
 				error: error instanceof Error ? error.message : "Unknown error",
-			}
+			};
 		}
 	},
-})
+});

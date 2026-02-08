@@ -5,7 +5,7 @@
  *
  * Features voice-first survey creation - just describe what you want to learn
  */
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -21,26 +21,26 @@ import {
 	Sparkles,
 	Square,
 	X,
-} from "lucide-react"
-import { customAlphabet } from "nanoid"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
-import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Switch } from "~/components/ui/switch"
-import { Textarea } from "~/components/ui/textarea"
-import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { cn } from "~/lib/utils"
-import { createRouteDefinitions } from "~/utils/route-definitions"
-import type { BranchRule } from "../branching"
-import { getProjectResearchContext } from "../db"
-import { createEmptyQuestion, ResearchLinkPayloadSchema, type ResearchLinkQuestion } from "../schemas"
-import { getSurveyRecommendations } from "../utils/recommendation-rules"
+} from "lucide-react";
+import { customAlphabet } from "nanoid";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router";
+import { Form, Link, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Switch } from "~/components/ui/switch";
+import { Textarea } from "~/components/ui/textarea";
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+import type { BranchRule } from "../branching";
+import { getProjectResearchContext } from "../db";
+import { createEmptyQuestion, ResearchLinkPayloadSchema, type ResearchLinkQuestion } from "../schemas";
+import { getSurveyRecommendations } from "../utils/recommendation-rules";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -49,19 +49,19 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "Create a shareable link in under a minute",
 		},
-	]
-}
+	];
+};
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-	const { accountId, projectId } = params
+	const { accountId, projectId } = params;
 	if (!accountId) {
-		throw new Response("Account id required", { status: 400 })
+		throw new Response("Account id required", { status: 400 });
 	}
 	if (!projectId) {
-		throw new Response("Project id required", { status: 400 })
+		throw new Response("Project id required", { status: 400 });
 	}
 
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 
 	// Fetch interview prompts and project context in parallel
 	const [promptsResult, projectContext] = await Promise.all([
@@ -72,10 +72,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 			.eq("is_selected", true)
 			.order("selected_order", { ascending: true, nullsFirst: false }),
 		getProjectResearchContext({ supabase, projectId }),
-	])
+	]);
 
 	// Generate survey recommendations based on project state
-	const suggestions = getSurveyRecommendations(projectContext)
+	const suggestions = getSurveyRecommendations(projectContext);
 
 	return {
 		accountId,
@@ -94,23 +94,23 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 			themeCount: projectContext.themes.length,
 			interviewCount: projectContext.interviewCount,
 		},
-	}
+	};
 }
 
 interface ActionError {
-	errors: Record<string, string>
+	errors: Record<string, string>;
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-	const { accountId, projectId } = params
+	const { accountId, projectId } = params;
 	if (!accountId) {
-		throw new Response("Account id required", { status: 400 })
+		throw new Response("Account id required", { status: 400 });
 	}
 	if (!projectId) {
-		throw new Response("Project id required", { status: 400 })
+		throw new Response("Project id required", { status: 400 });
 	}
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 	const rawPayload = {
 		name: formData.get("name") ?? "",
 		slug: formData.get("slug") ?? "",
@@ -126,24 +126,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		defaultResponseMode: "form",
 		isLive: formData.get("is_live") === "true",
 		questions: formData.get("questions") ?? "[]",
-	}
+	};
 
-	const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload)
+	const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload);
 	if (!parsed.success) {
 		const issues = parsed.error.issues.reduce<Record<string, string>>((acc, issue) => {
 			if (issue.path.length > 0) {
-				acc[issue.path[0] as string] = issue.message
+				acc[issue.path[0] as string] = issue.message;
 			} else {
-				acc._form = issue.message
+				acc._form = issue.message;
 			}
-			return acc
-		}, {})
-		return Response.json({ errors: issues }, { status: 400 })
+			return acc;
+		}, {});
+		return Response.json({ errors: issues }, { status: 400 });
 	}
 
-	const payload = parsed.data
-	const { client: supabase } = getServerClient(request)
-	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
+	const payload = parsed.data;
+	const { client: supabase } = getServerClient(request);
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 
 	const { data, error } = await supabase
 		.from("research_links")
@@ -164,84 +164,84 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			is_live: payload.isLive,
 		})
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (error) {
 		if (error.code === "23505") {
-			return Response.json({ errors: { slug: "That URL is already in use" } }, { status: 400 })
+			return Response.json({ errors: { slug: "That URL is already in use" } }, { status: 400 });
 		}
-		return Response.json({ errors: { _form: error.message } }, { status: 500 })
+		return Response.json({ errors: { _form: error.message } }, { status: 500 });
 	}
 
 	if (!data) {
-		return Response.json({ errors: { _form: "Unable to create Ask link" } }, { status: 500 })
+		return Response.json({ errors: { _form: "Unable to create Ask link" } }, { status: 500 });
 	}
 
-	return redirect(routes.ask.edit(data.id))
+	return redirect(routes.ask.edit(data.id));
 }
 
-type Step = 1 | 2 | 3
+type Step = 1 | 2 | 3;
 
 // BASE58 alphabet excludes ambiguous characters: 0, O, I, l
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-const generateSlug = customAlphabet(BASE58, 6)
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const generateSlug = customAlphabet(BASE58, 6);
 
 export default function CreateResearchLinkPage() {
-	const { accountId, projectId, interviewPrompts, suggestions, projectState } = useLoaderData<typeof loader>()
-	const actionData = useActionData<ActionError>()
-	const navigation = useNavigation()
-	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
-	const isSubmitting = navigation.state === "submitting"
+	const { accountId, projectId, interviewPrompts, suggestions, projectState } = useLoaderData<typeof loader>();
+	const actionData = useActionData<ActionError>();
+	const navigation = useNavigation();
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
+	const isSubmitting = navigation.state === "submitting";
 
 	// Show suggestions step if there are any
-	const hasSuggestions = suggestions.length > 0
+	const hasSuggestions = suggestions.length > 0;
 
 	// Wizard state - start at step 0 (suggestions) if available
-	const [step, setStep] = useState<Step>(1)
-	const [name, setName] = useState("")
-	const [description, setDescription] = useState("")
-	const [instructions, setInstructions] = useState("")
+	const [step, setStep] = useState<Step>(1);
+	const [name, setName] = useState("");
+	const [description, setDescription] = useState("");
+	const [instructions, setInstructions] = useState("");
 	// Generate random slug once on mount - no manual editing needed
-	const [slug] = useState(() => generateSlug())
-	const [questions, setQuestions] = useState<ResearchLinkQuestion[]>([])
-	const [isLive, setIsLive] = useState(true)
-	const [copied, setCopied] = useState(false)
+	const [slug] = useState(() => generateSlug());
+	const [questions, setQuestions] = useState<ResearchLinkQuestion[]>([]);
+	const [isLive, setIsLive] = useState(true);
+	const [copied, setCopied] = useState(false);
 
 	// Track which creation mode is active to focus the UI
-	const [activeInput, setActiveInput] = useState<"voice" | "form" | null>(null)
+	const [activeInput, setActiveInput] = useState<"voice" | "form" | null>(null);
 
 	// Bulk paste state for step 2
-	const [bulkText, setBulkText] = useState("")
+	const [bulkText, setBulkText] = useState("");
 
 	// AI edit state
-	const [aiPrompt, setAiPrompt] = useState("")
-	const [aiPopoverOpen, setAiPopoverOpen] = useState(false)
+	const [aiPrompt, setAiPrompt] = useState("");
+	const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
 
 	// LLM generation
-	const generateFetcher = useFetcher()
-	const isGenerating = generateFetcher.state !== "idle"
+	const generateFetcher = useFetcher();
+	const isGenerating = generateFetcher.state !== "idle";
 
 	// Voice-first survey generation
-	const voiceFetcher = useFetcher()
-	const isGeneratingFromVoice = voiceFetcher.state !== "idle"
-	const [voiceTranscript, setVoiceTranscript] = useState("")
-	const [showVoiceInput, setShowVoiceInput] = useState(true)
+	const voiceFetcher = useFetcher();
+	const isGeneratingFromVoice = voiceFetcher.state !== "idle";
+	const [voiceTranscript, setVoiceTranscript] = useState("");
+	const [showVoiceInput, setShowVoiceInput] = useState(true);
 
 	// Clarifications state for medium/low confidence guidelines
 	type Clarification = {
-		guidelineId: string
-		summary: string
-		confidence: string
-		question: string
-	}
-	const [clarifications, setClarifications] = useState<Clarification[]>([])
-	const [showClarifications, setShowClarifications] = useState(false)
+		guidelineId: string;
+		summary: string;
+		confidence: string;
+		question: string;
+	};
+	const [clarifications, setClarifications] = useState<Clarification[]>([]);
+	const [showClarifications, setShowClarifications] = useState(false);
 
 	// Speech to text hook for voice input
 	const handleVoiceTranscription = useCallback(
 		(text: string) => {
-			setVoiceTranscript(text)
-			setActiveInput("voice")
+			setVoiceTranscript(text);
+			setActiveInput("voice");
 			// Auto-submit to generate survey from voice
 			voiceFetcher.submit(
 				{ transcript: text },
@@ -249,10 +249,10 @@ export default function CreateResearchLinkPage() {
 					method: "POST",
 					action: `/a/${accountId}/${projectId}/ask/api/generate-from-voice`,
 				}
-			)
+			);
 		},
 		[voiceFetcher, accountId, projectId]
-	)
+	);
 
 	const {
 		toggleRecording,
@@ -261,30 +261,30 @@ export default function CreateResearchLinkPage() {
 		error: voiceError,
 		isSupported: isVoiceSupported,
 		intensity,
-	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
+	} = useSpeechToText({ onTranscription: handleVoiceTranscription });
 
 	// Process voice-generated survey
 	useEffect(() => {
 		if (voiceFetcher.data && !voiceFetcher.data.error) {
-			const data = voiceFetcher.data
-			if (data.name) setName(data.name)
-			if (data.description) setDescription(data.description)
-			if (data.instructions) setInstructions(data.instructions)
+			const data = voiceFetcher.data;
+			if (data.name) setName(data.name);
+			if (data.description) setDescription(data.description);
+			if (data.instructions) setInstructions(data.instructions);
 
-			let generatedQuestions = data.questions ?? []
+			let generatedQuestions = data.questions ?? [];
 
 			// Wire AI-generated guidelines into question branching rules
 			if (generatedQuestions.length > 0 && data.guidelines?.length > 0) {
 				// Clone questions so we can mutate branching
-				generatedQuestions = generatedQuestions.map((q: ResearchLinkQuestion) => ({ ...q }))
+				generatedQuestions = generatedQuestions.map((q: ResearchLinkQuestion) => ({ ...q }));
 
 				for (const g of data.guidelines) {
-					const triggerQ = generatedQuestions[g.triggerQuestionIndex]
-					if (!triggerQ) continue
+					const triggerQ = generatedQuestions[g.triggerQuestionIndex];
+					if (!triggerQ) continue;
 
 					// Determine operator based on question type
-					const isSelect = triggerQ.type === "single_select" || triggerQ.type === "multi_select"
-					const operator = isSelect ? "equals" : "contains"
+					const isSelect = triggerQ.type === "single_select" || triggerQ.type === "multi_select";
+					const operator = isSelect ? "equals" : "contains";
 
 					const rule: BranchRule = {
 						id: g.id ?? `gl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -304,34 +304,34 @@ export default function CreateResearchLinkPage() {
 						guidance: g.guidance,
 						source: "ai_generated" as const,
 						confidence: g.confidence ?? "high",
-					}
+					};
 
 					if (!triggerQ.branching) {
-						triggerQ.branching = { rules: [] }
+						triggerQ.branching = { rules: [] };
 					}
-					triggerQ.branching.rules.push(rule)
+					triggerQ.branching.rules.push(rule);
 				}
 			}
 
 			if (generatedQuestions.length > 0) {
-				setQuestions(generatedQuestions)
-				hasAutoGenerated.current = true // Prevent auto-generate on step 2
+				setQuestions(generatedQuestions);
+				hasAutoGenerated.current = true; // Prevent auto-generate on step 2
 			}
-			setShowVoiceInput(false)
+			setShowVoiceInput(false);
 
 			// Handle clarifications if any guidelines need them
 			if (data.needsClarification && data.clarifications?.length > 0) {
-				setClarifications(data.clarifications)
-				setShowClarifications(true)
+				setClarifications(data.clarifications);
+				setShowClarifications(true);
 			} else {
-				setClarifications([])
-				setShowClarifications(false)
+				setClarifications([]);
+				setShowClarifications(false);
 			}
 
 			// Jump to step 2 with all the generated content
-			setStep(2)
+			setStep(2);
 		}
-	}, [voiceFetcher.data])
+	}, [voiceFetcher.data]);
 
 	// Process generated questions
 	useEffect(() => {
@@ -339,32 +339,32 @@ export default function CreateResearchLinkPage() {
 			const newQuestions: ResearchLinkQuestion[] = generateFetcher.data.questions.map((prompt: string) => ({
 				...createEmptyQuestion(),
 				prompt,
-			}))
-			setQuestions((prev) => [...prev, ...newQuestions])
+			}));
+			setQuestions((prev) => [...prev, ...newQuestions]);
 		}
-	}, [generateFetcher.data])
+	}, [generateFetcher.data]);
 
 	// Auto-generate questions when entering step 2 with no questions
-	const hasAutoGenerated = useRef(false)
+	const hasAutoGenerated = useRef(false);
 	useEffect(() => {
 		if (step === 2 && questions.length === 0 && name.trim() && !isGenerating && !hasAutoGenerated.current) {
-			hasAutoGenerated.current = true
-			handleGenerate()
+			hasAutoGenerated.current = true;
+			handleGenerate();
 		}
-	}, [step, questions.length, name, isGenerating])
+	}, [step, questions.length, name, isGenerating]);
 
 	// Validation
-	const step1Valid = name.trim().length > 0
-	const step2Valid = questions.length > 0 && questions.every((q) => q.prompt.trim().length > 0)
+	const step1Valid = name.trim().length > 0;
+	const step2Valid = questions.length > 0 && questions.every((q) => q.prompt.trim().length > 0);
 
-	const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}${routes.ask.public(slug || "your-ask")}`
-	const questionsJson = useMemo(() => JSON.stringify(questions), [questions])
+	const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}${routes.ask.public(slug || "your-ask")}`;
+	const questionsJson = useMemo(() => JSON.stringify(questions), [questions]);
 
 	const handleCopyLink = useCallback(() => {
-		navigator.clipboard.writeText(publicUrl)
-		setCopied(true)
-		setTimeout(() => setCopied(false), 2000)
-	}, [publicUrl])
+		navigator.clipboard.writeText(publicUrl);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	}, [publicUrl]);
 
 	const handleBulkSubmit = () => {
 		const lines = bulkText
@@ -376,17 +376,17 @@ export default function CreateResearchLinkPage() {
 					.replace(/^\d+\.\s*/, "")
 					.replace(/^\*\s*/, "")
 					.replace(/^-\s*/, "")
-			)
+			);
 
 		if (lines.length > 0) {
 			const newQuestions: ResearchLinkQuestion[] = lines.map((prompt) => ({
 				...createEmptyQuestion(),
 				prompt,
-			}))
-			setQuestions((prev) => [...prev, ...newQuestions])
-			setBulkText("")
+			}));
+			setQuestions((prev) => [...prev, ...newQuestions]);
+			setBulkText("");
 		}
-	}
+	};
 
 	const handleGenerate = (customPrompt?: string) => {
 		generateFetcher.submit(
@@ -400,29 +400,29 @@ export default function CreateResearchLinkPage() {
 				method: "POST",
 				action: `/a/${accountId}/${projectId}/ask/api/generate-questions`,
 			}
-		)
+		);
 		if (customPrompt) {
-			setAiPrompt("")
-			setAiPopoverOpen(false)
+			setAiPrompt("");
+			setAiPopoverOpen(false);
 		}
-	}
+	};
 
 	const handleImportPrompts = () => {
-		if (interviewPrompts.length === 0) return
+		if (interviewPrompts.length === 0) return;
 		const imported: ResearchLinkQuestion[] = interviewPrompts.map((p) => ({
 			...createEmptyQuestion(),
 			prompt: p.text,
-		}))
-		setQuestions((prev) => [...prev, ...imported])
-	}
+		}));
+		setQuestions((prev) => [...prev, ...imported]);
+	};
 
 	// Handle selecting a suggestion
 	const handleSelectSuggestion = (suggestion: (typeof suggestions)[0]) => {
-		setName(suggestion.title)
-		setDescription(suggestion.description)
+		setName(suggestion.title);
+		setDescription(suggestion.description);
 		// Move to step 1 with pre-filled data
-		setStep(1)
-	}
+		setStep(1);
+	};
 
 	// Step indicator component
 	const StepIndicator = () => (
@@ -447,7 +447,7 @@ export default function CreateResearchLinkPage() {
 				</div>
 			))}
 		</div>
-	)
+	);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-12">
@@ -568,8 +568,8 @@ export default function CreateResearchLinkPage() {
 													<button
 														type="button"
 														onClick={() => {
-															setActiveInput("voice")
-															toggleRecording()
+															setActiveInput("voice");
+															toggleRecording();
 														}}
 														className="group relative flex h-20 w-20 items-center justify-center"
 													>
@@ -714,7 +714,7 @@ export default function CreateResearchLinkPage() {
 														size="sm"
 														className="text-amber-600 hover:text-amber-700"
 														onClick={() => {
-															setShowClarifications(false)
+															setShowClarifications(false);
 														}}
 													>
 														I'll review the skip logic below
@@ -784,15 +784,15 @@ export default function CreateResearchLinkPage() {
 																			questions.map((q) =>
 																				q.id === question.id ? { ...q, prompt: e.target.value } : q
 																			)
-																		)
+																		);
 																	}}
 																	placeholder="Enter your question..."
 																	className="min-h-[40px] resize-none py-2"
 																	rows={1}
 																	onInput={(e) => {
-																		const target = e.target as HTMLTextAreaElement
-																		target.style.height = "auto"
-																		target.style.height = `${target.scrollHeight}px`
+																		const target = e.target as HTMLTextAreaElement;
+																		target.style.height = "auto";
+																		target.style.height = `${target.scrollHeight}px`;
 																	}}
 																/>
 																{/* AI guidance hints */}
@@ -992,5 +992,5 @@ export default function CreateResearchLinkPage() {
 				)}
 			</div>
 		</div>
-	)
+	);
 }

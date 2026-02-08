@@ -11,8 +11,8 @@
  * - Shows progress indicators with field names (not just abstract dots)
  */
 
-import { CheckCircle2, FileText, Settings, Target } from "lucide-react"
-import { Link, useLocation } from "react-router-dom"
+import { CheckCircle2, FileText, Settings, Target } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -21,44 +21,44 @@ import {
 	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
-} from "~/components/ui/sidebar"
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
-import { cn } from "~/lib/utils"
+} from "~/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import { cn } from "~/lib/utils";
 
-export type JourneyPhase = "plan" | "collect" | "learn"
-export type PlanSubStep = "context" | "prompts"
+export type JourneyPhase = "plan" | "collect" | "learn";
+export type PlanSubStep = "context" | "prompts";
 
 // Field status for progress tracking
 export interface FieldStatus {
-	key: string
-	label: string
-	filled: boolean
+	key: string;
+	label: string;
+	filled: boolean;
 }
 
 export interface JourneyProgress {
-	contextComplete: boolean
-	promptsComplete: boolean
-	hasConversations: boolean
-	hasInsights: boolean
+	contextComplete: boolean;
+	promptsComplete: boolean;
+	hasConversations: boolean;
+	hasInsights: boolean;
 	// Detailed field tracking for progress indicators
-	contextFieldsFilled?: number
-	contextFieldsTotal?: number
-	contextFields?: FieldStatus[]
-	promptsCount?: number
+	contextFieldsFilled?: number;
+	contextFieldsTotal?: number;
+	contextFields?: FieldStatus[];
+	promptsCount?: number;
 }
 
 interface JourneySidebarGroupProps {
-	basePath: string
-	currentPhase: JourneyPhase
-	planSubStep?: PlanSubStep
-	progress: JourneyProgress
+	basePath: string;
+	currentPhase: JourneyPhase;
+	planSubStep?: PlanSubStep;
+	progress: JourneyProgress;
 }
 
 /**
  * Progress badge showing fraction with tooltip listing field names
  */
 function ProgressBadge({ filled, total, fields }: { filled: number; total: number; fields?: FieldStatus[] }) {
-	if (total === 0) return null
+	if (total === 0) return null;
 
 	const badge = (
 		<span
@@ -73,7 +73,7 @@ function ProgressBadge({ filled, total, fields }: { filled: number; total: numbe
 		>
 			{filled}/{total}
 		</span>
-	)
+	);
 
 	// If we have field details, show them in a tooltip
 	if (fields && fields.length > 0) {
@@ -95,14 +95,14 @@ function ProgressBadge({ filled, total, fields }: { filled: number; total: numbe
 					</div>
 				</TooltipContent>
 			</Tooltip>
-		)
+		);
 	}
 
-	return badge
+	return badge;
 }
 
 export function JourneySidebarGroup({ basePath, progress }: JourneySidebarGroupProps) {
-	const location = useLocation()
+	const location = useLocation();
 	const {
 		contextComplete,
 		promptsComplete,
@@ -112,14 +112,14 @@ export function JourneySidebarGroup({ basePath, progress }: JourneySidebarGroupP
 		contextFieldsTotal = 0,
 		contextFields,
 		promptsCount = 0,
-	} = progress
+	} = progress;
 
-	const planComplete = contextComplete && promptsComplete
-	const allComplete = planComplete && hasConversations && hasInsights
+	const planComplete = contextComplete && promptsComplete;
+	const allComplete = planComplete && hasConversations && hasInsights;
 
 	// Check if current path matches
-	const isContextActive = location.pathname.endsWith("/setup")
-	const isPromptsActive = location.pathname.endsWith("/questions")
+	const isContextActive = location.pathname.endsWith("/setup");
+	const isPromptsActive = location.pathname.endsWith("/questions");
 
 	// After full onboarding complete, show collapsed "Research Plan" link
 	if (allComplete) {
@@ -142,7 +142,7 @@ export function JourneySidebarGroup({ basePath, progress }: JourneySidebarGroupP
 					</SidebarMenu>
 				</SidebarGroupContent>
 			</SidebarGroup>
-		)
+		);
 	}
 
 	// During onboarding: show Getting Started with Context and Prompts
@@ -207,5 +207,5 @@ export function JourneySidebarGroup({ basePath, progress }: JourneySidebarGroupP
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>
-	)
+	);
 }

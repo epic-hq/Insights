@@ -7,72 +7,72 @@
  * - Positioned outside the layout flow (fixed positioning)
  */
 
-import { CheckSquare, History, Map, Minus, Plus, Sparkles, X } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Link, useFetcher } from "react-router"
-import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+import { CheckSquare, History, Map, Minus, Plus, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useFetcher } from "react-router";
+import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
-import { getCompletedCardCount, getTotalCards } from "~/features/journey-map/journey-config"
-import { useJourneyProgress } from "~/hooks/useJourneyProgress"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { useSidebarCounts } from "~/hooks/useSidebarCounts"
-import { cn } from "~/lib/utils"
-import type { RouteDefinitions } from "~/utils/route-definitions"
+} from "~/components/ui/dropdown-menu";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectStatusAgent } from "~/contexts/project-status-agent-context";
+import { getCompletedCardCount, getTotalCards } from "~/features/journey-map/journey-config";
+import { useJourneyProgress } from "~/hooks/useJourneyProgress";
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes";
+import { useSidebarCounts } from "~/hooks/useSidebarCounts";
+import { cn } from "~/lib/utils";
+import type { RouteDefinitions } from "~/utils/route-definitions";
 
 interface ChatThread {
-	id: string
-	title: string
-	createdAt: string
+	id: string;
+	title: string;
+	createdAt: string;
 }
 
 interface ChatThreadSelectorProps {
-	accountId: string
-	projectId: string
-	onSelectThread: (threadId: string) => void
-	onNewChat: () => void
+	accountId: string;
+	projectId: string;
+	onSelectThread: (threadId: string) => void;
+	onNewChat: () => void;
 }
 
 function ChatThreadSelector({ accountId, projectId, onSelectThread, onNewChat }: ChatThreadSelectorProps) {
-	const threadsFetcher = useFetcher<{ threads: ChatThread[] }>()
-	const [open, setOpen] = useState(false)
+	const threadsFetcher = useFetcher<{ threads: ChatThread[] }>();
+	const [open, setOpen] = useState(false);
 
 	const handleOpenChange = (isOpen: boolean) => {
-		setOpen(isOpen)
+		setOpen(isOpen);
 		if (isOpen && threadsFetcher.state === "idle" && !threadsFetcher.data) {
-			threadsFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/threads`)
+			threadsFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/threads`);
 		}
-	}
+	};
 
-	const threads = threadsFetcher.data?.threads ?? []
-	const isLoading = threadsFetcher.state === "loading"
+	const threads = threadsFetcher.data?.threads ?? [];
+	const isLoading = threadsFetcher.state === "loading";
 
 	const formatDate = (dateStr: string) => {
 		try {
-			const date = new Date(dateStr)
-			const now = new Date()
-			const diffMs = now.getTime() - date.getTime()
-			const diffMins = Math.floor(diffMs / 60000)
-			if (diffMins < 1) return "Just now"
-			if (diffMins < 60) return `${diffMins}m ago`
-			const diffHours = Math.floor(diffMins / 60)
-			if (diffHours < 24) return `${diffHours}h ago`
-			const diffDays = Math.floor(diffHours / 24)
-			if (diffDays < 7) return `${diffDays}d ago`
-			return date.toLocaleDateString()
+			const date = new Date(dateStr);
+			const now = new Date();
+			const diffMs = now.getTime() - date.getTime();
+			const diffMins = Math.floor(diffMs / 60000);
+			if (diffMins < 1) return "Just now";
+			if (diffMins < 60) return `${diffMins}m ago`;
+			const diffHours = Math.floor(diffMins / 60);
+			if (diffHours < 24) return `${diffHours}h ago`;
+			const diffDays = Math.floor(diffHours / 24);
+			if (diffDays < 7) return `${diffDays}d ago`;
+			return date.toLocaleDateString();
 		} catch {
-			return ""
+			return "";
 		}
-	}
+	};
 
 	return (
 		<DropdownMenu open={open} onOpenChange={handleOpenChange}>
@@ -84,8 +84,8 @@ function ChatThreadSelector({ accountId, projectId, onSelectThread, onNewChat }:
 			<DropdownMenuContent align="start" className="w-64">
 				<DropdownMenuItem
 					onClick={() => {
-						onNewChat()
-						setOpen(false)
+						onNewChat();
+						setOpen(false);
 					}}
 					className="gap-2 font-medium"
 				>
@@ -101,8 +101,8 @@ function ChatThreadSelector({ accountId, projectId, onSelectThread, onNewChat }:
 					<DropdownMenuItem
 						key={thread.id}
 						onClick={() => {
-							onSelectThread(thread.id)
-							setOpen(false)
+							onSelectThread(thread.id);
+							setOpen(false);
 						}}
 						className="flex flex-col items-start gap-0.5"
 					>
@@ -112,126 +112,126 @@ function ChatThreadSelector({ accountId, projectId, onSelectThread, onNewChat }:
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
-	)
+	);
 }
 
-const PANEL_WIDTH_MIN = 360
-const PANEL_WIDTH_MAX = 600
-const PANEL_WIDTH_DEFAULT = 440
-const PANEL_WIDTH_KEY = "ai-panel-width"
+const PANEL_WIDTH_MIN = 360;
+const PANEL_WIDTH_MAX = 600;
+const PANEL_WIDTH_DEFAULT = 440;
+const PANEL_WIDTH_KEY = "ai-panel-width";
 
 interface AIAssistantPanelProps {
 	/** Whether the panel is open/expanded */
-	isOpen: boolean
+	isOpen: boolean;
 	/** Callback when panel open state changes */
-	onOpenChange: (open: boolean) => void
+	onOpenChange: (open: boolean) => void;
 	/** Callback when panel width changes (for layout padding) */
-	onWidthChange?: (width: number) => void
+	onWidthChange?: (width: number) => void;
 	/** Accounts for team switcher */
 	accounts?: Array<{
-		account_id: string
-		name?: string | null
-		personal_account?: boolean | null
-	}>
+		account_id: string;
+		name?: string | null;
+		personal_account?: boolean | null;
+	}>;
 	/** System context for AI chat */
-	systemContext?: string
+	systemContext?: string;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 	/** When true, don't persist panel open/close state to localStorage (used during welcome flow) */
-	suppressPersistence?: boolean
+	suppressPersistence?: boolean;
 }
 
 interface TaskItem {
-	title: string
-	link: string
+	title: string;
+	link: string;
 }
 
 function getTopTasks(routes: RouteDefinitions, counts: Record<string, number | undefined>): TaskItem[] {
-	const tasks: TaskItem[] = []
-	const surveyResponses = counts.surveyResponses ?? 0
-	const highPriorityTasks = counts.highPriorityTasks ?? 0
-	const encounters = counts.encounters ?? 0
-	const themes = counts.themes ?? 0
-	const insights = counts.insights ?? 0
-	const people = counts.people ?? 0
+	const tasks: TaskItem[] = [];
+	const surveyResponses = counts.surveyResponses ?? 0;
+	const highPriorityTasks = counts.highPriorityTasks ?? 0;
+	const encounters = counts.encounters ?? 0;
+	const themes = counts.themes ?? 0;
+	const insights = counts.insights ?? 0;
+	const people = counts.people ?? 0;
 
 	if (surveyResponses > 0) {
 		tasks.push({
 			title: `Review ${surveyResponses} new survey response${surveyResponses > 1 ? "s" : ""}`,
 			link: routes.ask.index(),
-		})
+		});
 	}
 
 	if (highPriorityTasks > 0) {
 		tasks.push({
 			title: `${highPriorityTasks} priority task${highPriorityTasks > 1 ? "s" : ""} this week`,
 			link: routes.priorities(),
-		})
+		});
 	}
 
 	if (encounters > 0 && themes === 0) {
 		tasks.push({
 			title: `${encounters} conversation${encounters > 1 ? "s" : ""} ready — run analysis`,
 			link: routes.interviews.index(),
-		})
+		});
 	} else if (themes > 0 && insights === 0) {
 		tasks.push({
 			title: `${themes} theme${themes > 1 ? "s" : ""} found — generate insights`,
 			link: routes.insights.table(),
-		})
+		});
 	} else if (themes > 0 && encounters >= 3 && insights > 0) {
 		tasks.push({
 			title: `${themes} theme${themes > 1 ? "s" : ""} across ${encounters} conversations`,
 			link: routes.insights.table(),
-		})
+		});
 	}
 
 	if (people > 0 && tasks.length < 3) {
 		tasks.push({
 			title: `${people} contact${people > 1 ? "s" : ""} — review & segment`,
 			link: routes.people.index(),
-		})
+		});
 	}
 
 	if (tasks.length === 0) {
 		tasks.push({
 			title: "Upload a conversation or create a survey",
 			link: routes.interviews.upload(),
-		})
+		});
 	}
 
-	return tasks.slice(0, 3)
+	return tasks.slice(0, 3);
 }
 
 interface TopTasksProps {
-	routes: RouteDefinitions
-	counts: Record<string, number | undefined>
-	projectId?: string
+	routes: RouteDefinitions;
+	counts: Record<string, number | undefined>;
+	projectId?: string;
 }
 
 function TopTasks({ routes, counts, projectId }: TopTasksProps) {
 	const [dismissed, setDismissed] = useState(() => {
-		if (typeof window === "undefined") return false
-		return localStorage.getItem("ai-panel-tasks-dismissed") === "true"
-	})
+		if (typeof window === "undefined") return false;
+		return localStorage.getItem("ai-panel-tasks-dismissed") === "true";
+	});
 
 	const handleDismiss = useCallback(() => {
-		setDismissed(true)
-		localStorage.setItem("ai-panel-tasks-dismissed", "true")
-	}, [])
+		setDismissed(true);
+		localStorage.setItem("ai-panel-tasks-dismissed", "true");
+	}, []);
 
 	const handleShow = useCallback(() => {
-		setDismissed(false)
-		localStorage.setItem("ai-panel-tasks-dismissed", "false")
-	}, [])
+		setDismissed(false);
+		localStorage.setItem("ai-panel-tasks-dismissed", "false");
+	}, []);
 
-	const tasks = getTopTasks(routes, counts)
+	const tasks = getTopTasks(routes, counts);
 
 	// Compact journey progress for inline display
-	const { progress } = useJourneyProgress(projectId || "")
-	const totalCards = getTotalCards()
-	const completedCards = getCompletedCardCount(counts, progress)
-	const progressPercent = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0
+	const { progress } = useJourneyProgress(projectId || "");
+	const totalCards = getTotalCards();
+	const completedCards = getCompletedCardCount(counts, progress);
+	const progressPercent = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
 
 	const journeyBadge = projectId ? (
 		<Link
@@ -252,7 +252,7 @@ function TopTasks({ routes, counts, projectId }: TopTasksProps) {
 				</span>
 			</div>
 		</Link>
-	) : null
+	) : null;
 
 	if (dismissed) {
 		return (
@@ -267,7 +267,7 @@ function TopTasks({ routes, counts, projectId }: TopTasksProps) {
 				</button>
 				{journeyBadge}
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -299,7 +299,7 @@ function TopTasks({ routes, counts, projectId }: TopTasksProps) {
 				))}
 			</ul>
 		</div>
-	)
+	);
 }
 
 export function AIAssistantPanel({
@@ -311,119 +311,119 @@ export function AIAssistantPanel({
 	className,
 	suppressPersistence = false,
 }: AIAssistantPanelProps) {
-	const { accountId, projectId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutesFromIds(accountId, projectId)
-	const { counts } = useSidebarCounts(accountId, projectId)
-	const { isExpanded, setIsExpanded } = useProjectStatusAgent()
+	const { accountId, projectId, projectPath } = useCurrentProject();
+	const routes = useProjectRoutesFromIds(accountId, projectId);
+	const { counts } = useSidebarCounts(accountId, projectId);
+	const { isExpanded, setIsExpanded } = useProjectStatusAgent();
 
 	// Sync context isExpanded → panel open state (skip initial mount to respect localStorage)
-	const isInitialMount = useRef(true)
+	const isInitialMount = useRef(true);
 	useEffect(() => {
 		if (isInitialMount.current) {
-			isInitialMount.current = false
+			isInitialMount.current = false;
 			// On mount, sync context to match panel state (from localStorage)
-			setIsExpanded(isOpen)
-			return
+			setIsExpanded(isOpen);
+			return;
 		}
 		// After mount, context changes drive the panel
 		if (isExpanded !== isOpen) {
-			onOpenChange(isExpanded)
+			onOpenChange(isExpanded);
 		}
-	}, [isExpanded]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [isExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Sync panel open state → context (when toggled via panel controls)
 	useEffect(() => {
 		if (isOpen !== isExpanded) {
-			setIsExpanded(isOpen)
+			setIsExpanded(isOpen);
 		}
-	}, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Panel width state with localStorage persistence
 	const [panelWidth, setPanelWidth] = useState(() => {
-		if (typeof window === "undefined") return PANEL_WIDTH_DEFAULT
-		const stored = localStorage.getItem(PANEL_WIDTH_KEY)
+		if (typeof window === "undefined") return PANEL_WIDTH_DEFAULT;
+		const stored = localStorage.getItem(PANEL_WIDTH_KEY);
 		if (stored) {
-			const parsed = Number.parseInt(stored, 10)
+			const parsed = Number.parseInt(stored, 10);
 			if (!Number.isNaN(parsed) && parsed >= PANEL_WIDTH_MIN && parsed <= PANEL_WIDTH_MAX) {
-				return parsed
+				return parsed;
 			}
 		}
-		return PANEL_WIDTH_DEFAULT
-	})
+		return PANEL_WIDTH_DEFAULT;
+	});
 
 	// Emit width on mount and when it changes
 	useEffect(() => {
-		onWidthChange?.(panelWidth)
-	}, [panelWidth, onWidthChange])
+		onWidthChange?.(panelWidth);
+	}, [panelWidth, onWidthChange]);
 
 	// Persist panel state to localStorage
 	useEffect(() => {
 		if (typeof window !== "undefined" && !suppressPersistence) {
-			localStorage.setItem("ai-panel-open", String(isOpen))
+			localStorage.setItem("ai-panel-open", String(isOpen));
 		}
-	}, [isOpen, suppressPersistence])
+	}, [isOpen, suppressPersistence]);
 
 	const handleToggle = useCallback(() => {
-		onOpenChange(!isOpen)
-	}, [isOpen, onOpenChange])
+		onOpenChange(!isOpen);
+	}, [isOpen, onOpenChange]);
 
 	// Resize drag handling
-	const isResizing = useRef(false)
+	const isResizing = useRef(false);
 	const handleResizeStart = useCallback(
 		(e: React.MouseEvent) => {
-			e.preventDefault()
-			isResizing.current = true
-			const startX = e.clientX
-			const startWidth = panelWidth
+			e.preventDefault();
+			isResizing.current = true;
+			const startX = e.clientX;
+			const startWidth = panelWidth;
 
 			const onMouseMove = (ev: MouseEvent) => {
-				const delta = ev.clientX - startX
-				const newWidth = Math.min(PANEL_WIDTH_MAX, Math.max(PANEL_WIDTH_MIN, startWidth + delta))
-				setPanelWidth(newWidth)
-			}
+				const delta = ev.clientX - startX;
+				const newWidth = Math.min(PANEL_WIDTH_MAX, Math.max(PANEL_WIDTH_MIN, startWidth + delta));
+				setPanelWidth(newWidth);
+			};
 
 			const onMouseUp = () => {
-				isResizing.current = false
-				document.removeEventListener("mousemove", onMouseMove)
-				document.removeEventListener("mouseup", onMouseUp)
-				document.body.style.cursor = ""
-				document.body.style.userSelect = ""
+				isResizing.current = false;
+				document.removeEventListener("mousemove", onMouseMove);
+				document.removeEventListener("mouseup", onMouseUp);
+				document.body.style.cursor = "";
+				document.body.style.userSelect = "";
 				// Persist final width
 				setPanelWidth((w) => {
-					localStorage.setItem(PANEL_WIDTH_KEY, String(w))
-					return w
-				})
-			}
+					localStorage.setItem(PANEL_WIDTH_KEY, String(w));
+					return w;
+				});
+			};
 
-			document.body.style.cursor = "col-resize"
-			document.body.style.userSelect = "none"
-			document.addEventListener("mousemove", onMouseMove)
-			document.addEventListener("mouseup", onMouseUp)
+			document.body.style.cursor = "col-resize";
+			document.body.style.userSelect = "none";
+			document.addEventListener("mousemove", onMouseMove);
+			document.addEventListener("mouseup", onMouseUp);
 		},
 		[panelWidth]
-	)
+	);
 
 	// Ref to the chat's clearChat function
-	const clearChatRef = useRef<(() => void) | null>(null)
+	const clearChatRef = useRef<(() => void) | null>(null);
 	const handleClearChatRef = useCallback((fn: (() => void) | null) => {
-		clearChatRef.current = fn
-	}, [])
+		clearChatRef.current = fn;
+	}, []);
 
 	// Ref to load a specific thread's messages
-	const loadThreadRef = useRef<((threadId: string) => void) | null>(null)
+	const loadThreadRef = useRef<((threadId: string) => void) | null>(null);
 	const handleLoadThreadRef = useCallback((fn: ((threadId: string) => void) | null) => {
-		loadThreadRef.current = fn
-	}, [])
+		loadThreadRef.current = fn;
+	}, []);
 
 	const handleNewChat = useCallback(() => {
-		clearChatRef.current?.()
-	}, [])
+		clearChatRef.current?.();
+	}, []);
 
 	const handleSelectThread = useCallback((threadId: string) => {
-		loadThreadRef.current?.(threadId)
-	}, [])
+		loadThreadRef.current?.(threadId);
+	}, []);
 
-	const taskCount = counts.highPriorityTasks ?? 0
+	const taskCount = counts.highPriorityTasks ?? 0;
 
 	// Collapsed state — floating action button
 	if (!isOpen) {
@@ -451,7 +451,7 @@ export function AIAssistantPanel({
 					</Badge>
 				)}
 			</button>
-		)
+		);
 	}
 
 	// Expanded state — floating panel overlay
@@ -537,7 +537,7 @@ export function AIAssistantPanel({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
-export default AIAssistantPanel
+export default AIAssistantPanel;

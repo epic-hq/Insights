@@ -19,21 +19,21 @@ import {
 	type SortingState,
 	useReactTable,
 	type VisibilityState,
-} from "@tanstack/react-table"
-import { CheckSquareIcon, ChevronDown, ChevronRight, Columns3, Users } from "lucide-react"
+} from "@tanstack/react-table";
+import { CheckSquareIcon, ChevronDown, ChevronRight, Columns3, Users } from "lucide-react";
 
 // Segment data for an insight
 export interface InsightSegmentData {
-	jobFunction: Record<string, number>
-	seniority: Record<string, number>
-	segment: Record<string, number>
-	facets: Record<string, number>
+	jobFunction: Record<string, number>;
+	seniority: Record<string, number>;
+	segment: Record<string, number>;
+	facets: Record<string, number>;
 }
 
-import { useEffect, useId, useMemo, useState } from "react"
-import { Link, useFetcher } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
+import { useEffect, useId, useMemo, useState } from "react";
+import { Link, useFetcher } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -41,34 +41,34 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Switch } from "~/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
-import type { Insight as BaseInsight } from "~/types"
-import { InsightActions } from "./InsightActions"
+} from "~/components/ui/dropdown-menu";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Switch } from "~/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { PriorityBars, priorityConfig } from "~/features/tasks/components/PriorityBars";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
+import type { Insight as BaseInsight } from "~/types";
+import { InsightActions } from "./InsightActions";
 
-const ENABLE_LINKED_TASK_LOOKUP = false
+const ENABLE_LINKED_TASK_LOOKUP = false;
 
 // Extend Insight to include computed fields
 type Insight = BaseInsight & {
-	priority: number
-	evidence_count?: number
-	person_count?: number
-	persona_insights?: Array<{ personas: { id: string; name: string | null } }>
-}
+	priority: number;
+	evidence_count?: number;
+	person_count?: number;
+	persona_insights?: Array<{ personas: { id: string; name: string | null } }>;
+};
 
 interface InsightsDataTableProps {
-	data: Insight[]
-	segmentData?: Record<string, InsightSegmentData>
+	data: Insight[];
+	segmentData?: Record<string, InsightSegmentData>;
 }
 
 // Helper to get top N entries from a count object
@@ -76,7 +76,7 @@ function getTopEntries(counts: Record<string, number>, n: number): Array<{ label
 	return Object.entries(counts)
 		.sort((a, b) => b[1] - a[1])
 		.slice(0, n)
-		.map(([label, count]) => ({ label, count }))
+		.map(([label, count]) => ({ label, count }));
 }
 
 // Segment breakdown cell component
@@ -84,16 +84,16 @@ function SegmentBreakdownCell({
 	data,
 	type,
 }: {
-	data: InsightSegmentData | undefined
-	type: "jobFunction" | "seniority" | "segment" | "facets"
+	data: InsightSegmentData | undefined;
+	type: "jobFunction" | "seniority" | "segment" | "facets";
 }) {
-	if (!data) return <span className="text-muted-foreground text-sm">-</span>
+	if (!data) return <span className="text-muted-foreground text-sm">-</span>;
 
-	const counts = data[type]
-	const entries = getTopEntries(counts, 3)
+	const counts = data[type];
+	const entries = getTopEntries(counts, 3);
 
 	if (entries.length === 0) {
-		return <span className="text-muted-foreground text-sm">-</span>
+		return <span className="text-muted-foreground text-sm">-</span>;
 	}
 
 	return (
@@ -105,13 +105,13 @@ function SegmentBreakdownCell({
 				</Badge>
 			))}
 		</div>
-	)
+	);
 }
 
-type ViewMode = "flat" | "grouped"
+type ViewMode = "flat" | "grouped";
 
-const STORAGE_KEY = "insights_table_columns_v3"
-const VIEW_MODE_KEY = "insights_table_view_mode"
+const STORAGE_KEY = "insights_table_columns_v3";
+const VIEW_MODE_KEY = "insights_table_view_mode";
 
 // Column labels for visibility selector (ordered)
 const columnLabels: Record<string, string> = {
@@ -129,10 +129,10 @@ const columnLabels: Record<string, string> = {
 	impact: "Impact",
 	benefit: "Benefit",
 	priority: "Priority",
-}
+};
 
 // Columns that should have segment header styling
-const SEGMENT_COLUMNS = new Set(["seg_jobFunction", "seg_seniority", "seg_facets"])
+const SEGMENT_COLUMNS = new Set(["seg_jobFunction", "seg_seniority", "seg_facets"]);
 
 // Default column visibility
 const defaultColumnVisibility: VisibilityState = {
@@ -147,40 +147,40 @@ const defaultColumnVisibility: VisibilityState = {
 	impact: true,
 	benefit: true,
 	priority: true,
-}
+};
 
 // Group insights by category
 function groupByCategory(insights: Insight[]) {
-	const groups: Record<string, Insight[]> = {}
-	const uncategorized: Insight[] = []
+	const groups: Record<string, Insight[]> = {};
+	const uncategorized: Insight[] = [];
 
 	for (const insight of insights) {
-		const category = insight.category
+		const category = insight.category;
 		if (category) {
-			if (!groups[category]) groups[category] = []
-			groups[category].push(insight)
+			if (!groups[category]) groups[category] = [];
+			groups[category].push(insight);
 		} else {
-			uncategorized.push(insight)
+			uncategorized.push(insight);
 		}
 	}
 
-	const sortedCategories = Object.keys(groups).sort()
+	const sortedCategories = Object.keys(groups).sort();
 	const result: { category: string; insights: Insight[] }[] = sortedCategories.map((category) => ({
 		category,
 		insights: groups[category],
-	}))
+	}));
 
 	if (uncategorized.length > 0) {
-		result.push({ category: "Uncategorized", insights: uncategorized })
+		result.push({ category: "Uncategorized", insights: uncategorized });
 	}
 
-	return result
+	return result;
 }
 
 // Truncate text helper
 function truncateText(text: string | null | undefined, maxLength: number): string {
-	if (!text) return ""
-	return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+	if (!text) return "";
+	return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
 // Small badge to indicate a linked task exists
@@ -189,40 +189,40 @@ function LinkedTaskIndicator({
 	projectPath,
 	enableLinkedTaskLookup = false,
 }: {
-	insightId: string
-	projectPath: string
-	enableLinkedTaskLookup?: boolean
+	insightId: string;
+	projectPath: string;
+	enableLinkedTaskLookup?: boolean;
 }) {
-	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(null)
-	const routes = useProjectRoutes(projectPath)
+	const [linkedTaskId, setLinkedTaskId] = useState<string | null>(null);
+	const routes = useProjectRoutes(projectPath);
 
 	useEffect(() => {
-		if (!ENABLE_LINKED_TASK_LOOKUP || !enableLinkedTaskLookup) return
+		if (!ENABLE_LINKED_TASK_LOOKUP || !enableLinkedTaskLookup) return;
 
-		let cancelled = false
+		let cancelled = false;
 
 		async function checkLinkedTask() {
 			try {
-				const supabase = createClient()
-				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insightId).limit(1)
+				const supabase = createClient();
+				const { data } = await supabase.from("tasks").select("id").eq("source_theme_id", insightId).limit(1);
 
-				const id = (data as Array<{ id: string }> | null)?.[0]?.id
+				const id = (data as Array<{ id: string }> | null)?.[0]?.id;
 				if (!cancelled && id) {
-					setLinkedTaskId(id)
+					setLinkedTaskId(id);
 				}
 			} catch {
 				// No linked task found
 			}
 		}
 
-		checkLinkedTask()
+		checkLinkedTask();
 
 		return () => {
-			cancelled = true
-		}
-	}, [enableLinkedTaskLookup, insightId])
+			cancelled = true;
+		};
+	}, [enableLinkedTaskLookup, insightId]);
 
-	if (!linkedTaskId) return null
+	if (!linkedTaskId) return null;
 
 	return (
 		<TooltipProvider>
@@ -240,19 +240,19 @@ function LinkedTaskIndicator({
 				<TooltipContent>View linked task</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }
 
 // Priority popover component matching Tasks page
 function PriorityPopover({ priority, onSelect }: { priority: number; onSelect: (p: number) => void }) {
-	const [open, setOpen] = useState(false)
+	const [open, setOpen] = useState(false);
 
 	const handleSelect = (p: number) => {
 		if (p !== priority) {
-			onSelect(p)
+			onSelect(p);
 		}
-		setOpen(false)
-	}
+		setOpen(false);
+	};
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -281,56 +281,56 @@ function PriorityPopover({ priority, onSelect }: { priority: number; onSelect: (
 				</div>
 			</PopoverContent>
 		</Popover>
-	)
+	);
 }
 
 export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps) {
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
-	const priorityFetcher = useFetcher()
-	const view_mode_id = useId()
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
+	const priorityFetcher = useFetcher();
+	const view_mode_id = useId();
 
-	const [sorting, setSorting] = useState<SortingState>([{ id: "evidence_count", desc: true }])
-	const [columnFilters, setColumnFilters] = useState<any[]>([])
+	const [sorting, setSorting] = useState<SortingState>([{ id: "evidence_count", desc: true }]);
+	const [columnFilters, setColumnFilters] = useState<any[]>([]);
 	const [viewMode, setViewMode] = useState<ViewMode>(() => {
-		if (typeof window === "undefined") return "grouped"
+		if (typeof window === "undefined") return "grouped";
 		try {
-			const stored = window.localStorage.getItem(VIEW_MODE_KEY)
-			return stored === "flat" ? "flat" : "grouped"
+			const stored = window.localStorage.getItem(VIEW_MODE_KEY);
+			return stored === "flat" ? "flat" : "grouped";
 		} catch {
-			return "grouped"
+			return "grouped";
 		}
-	})
+	});
 	const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
 		() => new Set() // Start empty, will be initialized once
-	)
-	const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false)
-	const [filterValue, setFilterValue] = useState("")
+	);
+	const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false);
+	const [filterValue, setFilterValue] = useState("");
 
 	// Column visibility with localStorage persistence
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-		if (typeof window === "undefined") return defaultColumnVisibility
+		if (typeof window === "undefined") return defaultColumnVisibility;
 		try {
-			const stored = window.localStorage.getItem(STORAGE_KEY)
-			return stored ? JSON.parse(stored) : defaultColumnVisibility
+			const stored = window.localStorage.getItem(STORAGE_KEY);
+			return stored ? JSON.parse(stored) : defaultColumnVisibility;
 		} catch {
-			return defaultColumnVisibility
+			return defaultColumnVisibility;
 		}
-	})
+	});
 
 	// Persist column visibility to localStorage
 	useEffect(() => {
 		if (typeof window !== "undefined") {
-			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(columnVisibility))
+			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(columnVisibility));
 		}
-	}, [columnVisibility])
+	}, [columnVisibility]);
 
 	// Persist view mode to localStorage
 	useEffect(() => {
 		if (typeof window !== "undefined") {
-			window.localStorage.setItem(VIEW_MODE_KEY, viewMode)
+			window.localStorage.setItem(VIEW_MODE_KEY, viewMode);
 		}
-	}, [viewMode])
+	}, [viewMode]);
 
 	// Handle priority change
 	const handlePriorityChange = (insightId: string, newPriority: number) => {
@@ -346,44 +346,44 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				action: `${projectPath}/insights/api/update-field`,
 				encType: "application/json",
 			}
-		)
-	}
+		);
+	};
 
 	// Filter data based on search
 	const filteredData = useMemo(() => {
-		if (!filterValue.trim()) return data
-		const normalized = filterValue.trim().toLowerCase()
+		if (!filterValue.trim()) return data;
+		const normalized = filterValue.trim().toLowerCase();
 		return data.filter((insight) => {
-			const haystack = [insight.name, insight.statement, insight.category, insight.jtbd, insight.desired_outcome]
-			return haystack.some((text) => typeof text === "string" && text.toLowerCase().includes(normalized))
-		})
-	}, [data, filterValue])
+			const haystack = [insight.name, insight.statement, insight.category, insight.jtbd, insight.desired_outcome];
+			return haystack.some((text) => typeof text === "string" && text.toLowerCase().includes(normalized));
+		});
+	}, [data, filterValue]);
 
 	// Group filtered data
-	const grouped = useMemo(() => groupByCategory(filteredData), [filteredData])
+	const grouped = useMemo(() => groupByCategory(filteredData), [filteredData]);
 
 	// Initialize expanded categories ONLY once on first load
 	useEffect(() => {
 		if (!hasInitializedExpanded && grouped.length > 0) {
-			setExpandedCategories(new Set(grouped.map((g) => g.category)))
-			setHasInitializedExpanded(true)
+			setExpandedCategories(new Set(grouped.map((g) => g.category)));
+			setHasInitializedExpanded(true);
 		}
-	}, [grouped, hasInitializedExpanded])
+	}, [grouped, hasInitializedExpanded]);
 
 	const toggleCategory = (category: string) => {
 		setExpandedCategories((prev) => {
-			const next = new Set(prev)
+			const next = new Set(prev);
 			if (next.has(category)) {
-				next.delete(category)
+				next.delete(category);
 			} else {
-				next.add(category)
+				next.add(category);
 			}
-			return next
-		})
-	}
+			return next;
+		});
+	};
 
-	const expandAll = () => setExpandedCategories(new Set(grouped.map((g) => g.category)))
-	const collapseAll = () => setExpandedCategories(new Set())
+	const expandAll = () => setExpandedCategories(new Set(grouped.map((g) => g.category)));
+	const collapseAll = () => setExpandedCategories(new Set());
 
 	const columns = useMemo<ColumnDef<Insight>[]>(
 		() => [
@@ -408,12 +408,12 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.person_count ?? 0,
 				header: () => "People",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const count = cell.getValue() as number
+					const count = cell.getValue() as number;
 					return count > 0 ? (
 						<span className="font-semibold text-sm">{count}</span>
 					) : (
 						<span className="text-muted-foreground text-sm">0</span>
-					)
+					);
 				},
 			},
 			{
@@ -421,15 +421,15 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.evidence_count ?? 0,
 				header: () => "Evidence",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const count = cell.getValue() as number
-					const insightId = cell.row.original.id
+					const count = cell.getValue() as number;
+					const insightId = cell.row.original.id;
 					return count > 0 ? (
 						<Link to={`${routes.evidence.index()}?theme_id=${insightId}`} className="hover:underline">
 							<span className="font-semibold text-sm">{count}</span>
 						</Link>
 					) : (
 						<span className="text-muted-foreground text-sm">0</span>
-					)
+					);
 				},
 			},
 			// Demographic segment columns (grouped together after counts)
@@ -464,8 +464,8 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.persona_insights?.map((p) => p.personas?.name).filter(Boolean) || [],
 				header: () => "Personas",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const personas = cell.getValue() as string[]
-					if (!personas.length) return <span className="text-muted-foreground text-sm">-</span>
+					const personas = cell.getValue() as string[];
+					if (!personas.length) return <span className="text-muted-foreground text-sm">-</span>;
 					return (
 						<div className="flex flex-wrap gap-1">
 							{personas.slice(0, 2).map((name, i) => (
@@ -479,7 +479,7 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 								</Badge>
 							)}
 						</div>
-					)
+					);
 				},
 			},
 			{
@@ -487,8 +487,8 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.jtbd,
 				header: () => "JTBD",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const jtbd = cell.getValue() as string | null
-					if (!jtbd) return <span className="text-muted-foreground text-sm">-</span>
+					const jtbd = cell.getValue() as string | null;
+					if (!jtbd) return <span className="text-muted-foreground text-sm">-</span>;
 					return (
 						<TooltipProvider>
 							<Tooltip>
@@ -500,7 +500,7 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
-					)
+					);
 				},
 			},
 			{
@@ -508,8 +508,8 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.impact,
 				header: () => "Impact",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const impact = cell.getValue() as string | null
-					if (!impact) return <span className="text-muted-foreground text-sm">-</span>
+					const impact = cell.getValue() as string | null;
+					if (!impact) return <span className="text-muted-foreground text-sm">-</span>;
 					return (
 						<TooltipProvider>
 							<Tooltip>
@@ -521,7 +521,7 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
-					)
+					);
 				},
 			},
 			{
@@ -529,8 +529,8 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.desired_outcome,
 				header: () => "Benefit",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const benefit = cell.getValue() as string | null
-					if (!benefit) return <span className="text-muted-foreground text-sm">-</span>
+					const benefit = cell.getValue() as string | null;
+					if (!benefit) return <span className="text-muted-foreground text-sm">-</span>;
 					return (
 						<TooltipProvider>
 							<Tooltip>
@@ -542,7 +542,7 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
-					)
+					);
 				},
 			},
 			{
@@ -550,22 +550,22 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				accessorFn: (row) => row.priority ?? 3,
 				header: () => "Priority",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const priority = cell.getValue() as number
-					const insightId = cell.row.original.id
-					return <PriorityPopover priority={priority} onSelect={(p) => handlePriorityChange(insightId, p)} />
+					const priority = cell.getValue() as number;
+					const insightId = cell.row.original.id;
+					return <PriorityPopover priority={priority} onSelect={(p) => handlePriorityChange(insightId, p)} />;
 				},
 			},
 			{
 				id: "actions",
 				header: () => "Actions",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const insight = cell.row.original
-					return <InsightActions insight={insight} projectPath={projectPath || ""} size="sm" showLabel={false} />
+					const insight = cell.row.original;
+					return <InsightActions insight={insight} projectPath={projectPath || ""} size="sm" showLabel={false} />;
 				},
 			},
 		],
 		[routes.evidence, routes.insights, projectPath, segmentData]
-	)
+	);
 
 	const table = useReactTable({
 		data: filteredData,
@@ -581,11 +581,11 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
-	})
+	});
 
 	// Render rows for grouped view (no headers - shared header at top)
 	const renderCategoryRows = (insights: Insight[]) => {
-		const sortedInsights = [...insights].sort((a, b) => (b.evidence_count ?? 0) - (a.evidence_count ?? 0))
+		const sortedInsights = [...insights].sort((a, b) => (b.evidence_count ?? 0) - (a.evidence_count ?? 0));
 
 		return sortedInsights.map((insight) => (
 			<TableRow key={insight.id}>
@@ -600,8 +600,8 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 						</TableCell>
 					))}
 			</TableRow>
-		))
-	}
+		));
+	};
 
 	return (
 		<div className="space-y-4">
@@ -626,8 +626,8 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 							<DropdownMenuLabel>Visible columns</DropdownMenuLabel>
 							<DropdownMenuSeparator />
 							{Object.entries(columnLabels).map(([columnId, label]) => {
-								const column = table.getColumn(columnId)
-								if (!column) return null
+								const column = table.getColumn(columnId);
+								if (!column) return null;
 								return (
 									<DropdownMenuCheckboxItem
 										key={columnId}
@@ -636,7 +636,7 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 									>
 										{label}
 									</DropdownMenuCheckboxItem>
-								)
+								);
 							})}
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -768,5 +768,5 @@ export function InsightsDataTable({ data, segmentData }: InsightsDataTableProps)
 				</div>
 			)}
 		</div>
-	)
+	);
 }

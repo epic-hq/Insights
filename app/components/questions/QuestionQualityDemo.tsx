@@ -1,10 +1,10 @@
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import QuestionEvaluator from "./QuestionEvaluator"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import QuestionEvaluator from "./QuestionEvaluator";
 
 export default function QuestionQualityDemo() {
-	const [currentQuestion, setCurrentQuestion] = useState("")
-	const [showEvaluator, setShowEvaluator] = useState(false)
+	const [currentQuestion, setCurrentQuestion] = useState("");
+	const [showEvaluator, setShowEvaluator] = useState(false);
 
 	const sampleQuestions = [
 		{
@@ -23,23 +23,23 @@ export default function QuestionQualityDemo() {
 			label: "Good Question (GREEN)",
 			context: "Design collaboration tool research",
 		},
-	]
+	];
 
 	const handleQuestionSelect = (question: string) => {
-		setCurrentQuestion(question)
-		setShowEvaluator(true)
-	}
+		setCurrentQuestion(question);
+		setShowEvaluator(true);
+	};
 
 	const handleProceed = () => {
-		setShowEvaluator(false)
-		setCurrentQuestion("")
+		setShowEvaluator(false);
+		setCurrentQuestion("");
 		// In real implementation, this would add the question to the interview
-		console.log("Proceeding with question:", currentQuestion)
-	}
+		console.log("Proceeding with question:", currentQuestion);
+	};
 
 	const handleQuestionChange = (newQuestion: string) => {
-		setCurrentQuestion(newQuestion)
-	}
+		setCurrentQuestion(newQuestion);
+	};
 
 	return (
 		<div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -77,8 +77,8 @@ export default function QuestionQualityDemo() {
 								<button
 									className="text-blue-600 text-sm underline hover:text-blue-700"
 									onClick={() => {
-										setCurrentQuestion("")
-										setShowEvaluator(true)
+										setCurrentQuestion("");
+										setShowEvaluator(true);
 									}}
 								>
 									Or evaluate a custom question →
@@ -97,5 +97,5 @@ export default function QuestionQualityDemo() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

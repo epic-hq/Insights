@@ -9,55 +9,55 @@
  * - inline-full: Full form with video and questions
  * - email-first: Email capture that reveals more after submission
  */
-import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, Check, CheckCircle2, Loader2, Play, X } from "lucide-react"
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData, useSearchParams } from "react-router-dom"
-import { z } from "zod"
-import { Logo } from "~/components/branding"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { hasFeature, PLANS, type PlanId } from "~/config/plans"
-import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { cn } from "~/lib/utils"
-import { createR2PresignedUrl } from "~/utils/r2.server"
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Check, CheckCircle2, Loader2, Play, X } from "lucide-react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData, useSearchParams } from "react-router-dom";
+import { z } from "zod";
+import { Logo } from "~/components/branding";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { hasFeature, PLANS, type PlanId } from "~/config/plans";
+import { type ResearchLinkQuestion, ResearchLinkQuestionSchema } from "~/features/research-links/schemas";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { cn } from "~/lib/utils";
+import { createR2PresignedUrl } from "~/utils/r2.server";
 
-const emailSchema = z.string().email()
+const emailSchema = z.string().email();
 
 // Layout options for the embed
-type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact" | "video-first"
-type EmbedTheme = "dark" | "light" | "transparent" | "auto"
+type EmbedLayout = "inline-email" | "inline-full" | "email-first" | "compact" | "video-first";
+type EmbedTheme = "dark" | "light" | "transparent" | "auto";
 
 // Embed configuration from URL params
 interface EmbedConfig {
-	layout: EmbedLayout
-	theme: EmbedTheme
-	accentColor: string
-	borderRadius: number
-	showBranding: boolean
-	buttonText: string
-	placeholder: string
-	successMessage: string
-	videoThumbnail: boolean
+	layout: EmbedLayout;
+	theme: EmbedTheme;
+	accentColor: string;
+	borderRadius: number;
+	showBranding: boolean;
+	buttonText: string;
+	placeholder: string;
+	successMessage: string;
+	videoThumbnail: boolean;
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	if (!data) {
-		return [{ title: "Embed" }]
+		return [{ title: "Embed" }];
 	}
-	return [{ title: data.list.hero_title || data.list.name || "Embed" }, { name: "robots", content: "noindex" }]
-}
+	return [{ title: data.list.hero_title || data.list.name || "Embed" }, { name: "robots", content: "noindex" }];
+};
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-	const slug = params.slug
+	const slug = params.slug;
 	if (!slug) {
-		throw new Response("Missing slug", { status: 400 })
+		throw new Response("Missing slug", { status: 400 });
 	}
 
-	const url = new URL(request.url)
+	const url = new URL(request.url);
 
 	// Parse embed configuration from URL params
 	const config: EmbedConfig = {
@@ -70,43 +70,43 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		placeholder: url.searchParams.get("placeholder") || "you@company.com",
 		successMessage: url.searchParams.get("success") || "Thanks for signing up!",
 		videoThumbnail: url.searchParams.get("videoThumbnail") !== "false",
-	}
+	};
 
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 	const { data: list, error } = await supabase
 		.from("research_links")
 		.select(
 			"id, name, slug, description, hero_title, hero_subtitle, instructions, hero_cta_label, hero_cta_helper, redirect_url, calendar_url, questions, allow_chat, allow_voice, allow_video, walkthrough_video_url, default_response_mode, is_live, account_id, identity_mode, identity_field"
 		)
 		.eq("slug", slug)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (error) {
-		throw new Response(error.message, { status: 500 })
+		throw new Response(error.message, { status: 500 });
 	}
 	if (!list || !list.is_live) {
-		throw new Response("Form not found", { status: 404 })
+		throw new Response("Form not found", { status: 404 });
 	}
 
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
+	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
 
 	// Generate signed URL for walkthrough video if it exists
-	let walkthroughSignedUrl: string | null = null
+	let walkthroughSignedUrl: string | null = null;
 	if (list.walkthrough_video_url) {
-		const key = list.walkthrough_video_url
-		const ext = key.split(".").pop()?.toLowerCase()
-		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm"
+		const key = list.walkthrough_video_url;
+		const ext = key.split(".").pop()?.toLowerCase();
+		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm";
 		const presigned = createR2PresignedUrl({
 			key,
 			expiresInSeconds: 3600,
 			responseContentType: contentType,
-		})
-		walkthroughSignedUrl = presigned?.url ?? null
+		});
+		walkthroughSignedUrl = presigned?.url ?? null;
 	}
 
 	// Get plan from billing_subscriptions (single source of truth)
 	// Free tier always shows branding regardless of config
-	let planId: PlanId = "free"
+	let planId: PlanId = "free";
 	const { data: subscription } = await supabase
 		.schema("accounts")
 		.from("billing_subscriptions")
@@ -115,23 +115,23 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		.in("status", ["active", "trialing"])
 		.order("created_at", { ascending: false })
 		.limit(1)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (subscription?.plan_name) {
 		// Map plan_name to PlanId (handle variations like "Pro", "pro", "PRO")
-		const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId
+		const normalizedPlan = subscription.plan_name.toLowerCase() as PlanId;
 		if (normalizedPlan in PLANS) {
-			planId = normalizedPlan
+			planId = normalizedPlan;
 		}
 	}
 
 	// Enforce branding for accounts without white_label feature
-	const canRemoveBranding = hasFeature(planId, "white_label")
+	const canRemoveBranding = hasFeature(planId, "white_label");
 	const finalConfig: EmbedConfig = {
 		...config,
 		// Override showBranding: if they don't have white_label, always show branding
 		showBranding: canRemoveBranding ? config.showBranding : true,
-	}
+	};
 
 	return {
 		slug,
@@ -140,147 +140,147 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		walkthroughSignedUrl,
 		config: finalConfig,
 		canRemoveBranding,
-	}
+	};
 }
 
-type IdentityMode = "anonymous" | "identified"
-type IdentityField = "email" | "phone"
+type IdentityMode = "anonymous" | "identified";
+type IdentityField = "email" | "phone";
 
 type LoaderData = {
-	slug: string
-	canRemoveBranding: boolean
+	slug: string;
+	canRemoveBranding: boolean;
 	list: {
-		id: string
-		name: string
-		slug: string
-		description: string | null
-		hero_title: string | null
-		hero_subtitle: string | null
-		instructions: string | null
-		hero_cta_label: string | null
-		hero_cta_helper: string | null
-		redirect_url: string | null
-		calendar_url: string | null
-		questions: unknown
-		allow_chat: boolean
-		allow_voice: boolean
-		allow_video: boolean
-		walkthrough_video_url: string | null
-		default_response_mode: "form" | "chat" | "voice" | null
-		is_live: boolean
-		account_id: string
-		identity_mode: IdentityMode
-		identity_field: IdentityField
-	}
-	questions: Array<ResearchLinkQuestion>
-	walkthroughSignedUrl: string | null
-	config: EmbedConfig
-}
+		id: string;
+		name: string;
+		slug: string;
+		description: string | null;
+		hero_title: string | null;
+		hero_subtitle: string | null;
+		instructions: string | null;
+		hero_cta_label: string | null;
+		hero_cta_helper: string | null;
+		redirect_url: string | null;
+		calendar_url: string | null;
+		questions: unknown;
+		allow_chat: boolean;
+		allow_voice: boolean;
+		allow_video: boolean;
+		walkthrough_video_url: string | null;
+		default_response_mode: "form" | "chat" | "voice" | null;
+		is_live: boolean;
+		account_id: string;
+		identity_mode: IdentityMode;
+		identity_field: IdentityField;
+	};
+	questions: Array<ResearchLinkQuestion>;
+	walkthroughSignedUrl: string | null;
+	config: EmbedConfig;
+};
 
-type Stage = "initial" | "form" | "complete"
+type Stage = "initial" | "form" | "complete";
 
 type StartSignupResult = {
-	responseId: string
-	responses: Record<string, unknown>
-	completed: boolean
-	personId: string | null
-}
+	responseId: string;
+	responses: Record<string, unknown>;
+	completed: boolean;
+	personId: string | null;
+};
 
 async function startSignup(
 	slug: string,
 	payload: {
-		email: string
-		firstName?: string | null
-		lastName?: string | null
-		responseId?: string | null
+		email: string;
+		firstName?: string | null;
+		lastName?: string | null;
+		responseId?: string | null;
 	}
 ): Promise<StartSignupResult> {
 	const response = await fetch(`/api/research-links/${slug}/start`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
-	})
+	});
 	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}))
-		throw new Error(errorData.message || "Failed to start")
+		const errorData = await response.json().catch(() => ({}));
+		throw new Error(errorData.message || "Failed to start");
 	}
-	return (await response.json()) as StartSignupResult
+	return (await response.json()) as StartSignupResult;
 }
 
 export default function EmbedPage() {
-	const { slug, list, walkthroughSignedUrl, config, questions } = useLoaderData() as LoaderData
-	const emailId = useId()
-	const [searchParams] = useSearchParams()
+	const { slug, list, walkthroughSignedUrl, config, questions } = useLoaderData() as LoaderData;
+	const emailId = useId();
+	const [searchParams] = useSearchParams();
 
-	const [stage, setStage] = useState<Stage>("initial")
-	const [email, setEmail] = useState("")
-	const [firstName, setFirstName] = useState("")
-	const [lastName, setLastName] = useState("")
-	const [responseId, setResponseId] = useState<string | null>(null)
-	const [isSaving, setIsSaving] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const [showVideo, setShowVideo] = useState(false)
-	const [needsName, setNeedsName] = useState(false)
+	const [stage, setStage] = useState<Stage>("initial");
+	const [email, setEmail] = useState("");
+	const [firstName, setFirstName] = useState("");
+	const [lastName, setLastName] = useState("");
+	const [responseId, setResponseId] = useState<string | null>(null);
+	const [isSaving, setIsSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [showVideo, setShowVideo] = useState(false);
+	const [needsName, setNeedsName] = useState(false);
 
-	const isEmailValid = emailSchema.safeParse(email).success
-	const containerRef = useRef<HTMLDivElement>(null)
-	const containerWidthClass = "mx-auto w-full max-w-2xl"
+	const isEmailValid = emailSchema.safeParse(email).success;
+	const containerRef = useRef<HTMLDivElement>(null);
+	const containerWidthClass = "mx-auto w-full max-w-2xl";
 
 	// Communicate height to parent window for iframe resizing
 	useEffect(() => {
 		const sendHeight = () => {
-			if (typeof window === "undefined" || window.parent === window) return
-			const height = containerRef.current?.scrollHeight || document.body.scrollHeight
-			window.parent.postMessage({ type: "upsight:resize", height }, "*")
-		}
+			if (typeof window === "undefined" || window.parent === window) return;
+			const height = containerRef.current?.scrollHeight || document.body.scrollHeight;
+			window.parent.postMessage({ type: "upsight:resize", height }, "*");
+		};
 
 		// Send initial height
-		sendHeight()
+		sendHeight();
 
 		// Observe for changes
-		const resizeObserver = new ResizeObserver(sendHeight)
+		const resizeObserver = new ResizeObserver(sendHeight);
 		if (containerRef.current) {
-			resizeObserver.observe(containerRef.current)
+			resizeObserver.observe(containerRef.current);
 		}
 
 		// Also send on window resize
-		window.addEventListener("resize", sendHeight)
+		window.addEventListener("resize", sendHeight);
 
 		return () => {
-			resizeObserver.disconnect()
-			window.removeEventListener("resize", sendHeight)
-		}
-	}, [stage])
+			resizeObserver.disconnect();
+			window.removeEventListener("resize", sendHeight);
+		};
+	}, [stage]);
 
 	// Notify parent when loaded
 	useEffect(() => {
 		if (typeof window !== "undefined" && window.parent !== window) {
-			window.parent.postMessage({ type: "upsight:loaded", slug }, "*")
+			window.parent.postMessage({ type: "upsight:loaded", slug }, "*");
 		}
-	}, [slug])
+	}, [slug]);
 
 	// Set transparent body background for transparent theme
 	// Use useLayoutEffect to apply BEFORE paint to prevent white flash
 	useLayoutEffect(() => {
 		if (config.theme === "transparent" && typeof document !== "undefined") {
 			// Set inline styles with !important to override Tailwind base layer
-			document.documentElement.style.setProperty("background", "transparent", "important")
-			document.documentElement.style.setProperty("background-color", "transparent", "important")
-			document.body.style.setProperty("background", "transparent", "important")
-			document.body.style.setProperty("background-color", "transparent", "important")
+			document.documentElement.style.setProperty("background", "transparent", "important");
+			document.documentElement.style.setProperty("background-color", "transparent", "important");
+			document.body.style.setProperty("background", "transparent", "important");
+			document.body.style.setProperty("background-color", "transparent", "important");
 		}
 		return () => {
 			if (typeof document !== "undefined") {
-				document.documentElement.style.removeProperty("background")
-				document.documentElement.style.removeProperty("background-color")
-				document.body.style.removeProperty("background")
-				document.body.style.removeProperty("background-color")
+				document.documentElement.style.removeProperty("background");
+				document.documentElement.style.removeProperty("background-color");
+				document.body.style.removeProperty("background");
+				document.body.style.removeProperty("background-color");
 			}
-		}
-	}, [config.theme])
+		};
+	}, [config.theme]);
 
 	// Determine button text based on config and list settings
-	const buttonText = config.buttonText || list.hero_cta_label || "Get Started"
+	const buttonText = config.buttonText || list.hero_cta_label || "Get Started";
 
 	// Theme classes
 	const themeClasses = useMemo(() => {
@@ -293,7 +293,7 @@ export default function EmbedPage() {
 				input: "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400",
 				button: "bg-gray-900 text-white hover:bg-gray-800",
 				card: "bg-gray-50",
-			}
+			};
 		}
 		if (config.theme === "transparent") {
 			// Transparent background - blends with parent page
@@ -306,7 +306,7 @@ export default function EmbedPage() {
 					"bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400",
 				button: "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:opacity-90",
 				card: "bg-transparent",
-			}
+			};
 		}
 		// Dark theme (default)
 		return {
@@ -317,8 +317,8 @@ export default function EmbedPage() {
 			input: "bg-black/40 border-white/10 text-white placeholder:text-white/40",
 			button: "bg-white text-black hover:bg-white/90",
 			card: "bg-white/5",
-		}
-	}, [config.theme])
+		};
+	}, [config.theme]);
 
 	// CSS custom properties for accent color
 	const customStyles = useMemo(
@@ -327,30 +327,30 @@ export default function EmbedPage() {
 			"--border-radius": `${config.borderRadius}px`,
 		}),
 		[config.accentColor, config.borderRadius]
-	) as React.CSSProperties
+	) as React.CSSProperties;
 
 	async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
-		event.preventDefault()
-		setError(null)
+		event.preventDefault();
+		setError(null);
 
 		if (!email.trim()) {
-			setError("Enter an email to continue")
-			return
+			setError("Enter an email to continue");
+			return;
 		}
 
 		try {
-			setIsSaving(true)
+			setIsSaving(true);
 			const result = await startSignup(slug, {
 				email: email.trim(),
 				responseId,
-			})
-			setResponseId(result.responseId)
+			});
+			setResponseId(result.responseId);
 
 			// If no person linked, we need to collect name info (for full layouts)
 			if (!result.personId && config.layout !== "inline-email" && config.layout !== "compact") {
-				setNeedsName(true)
-				setStage("form")
-				return
+				setNeedsName(true);
+				setStage("form");
+				return;
 			}
 
 			// For email-only layouts, check if there are questions to continue to
@@ -364,77 +364,77 @@ export default function EmbedPage() {
 							responseId: result.responseId,
 						},
 						"*"
-					)
+					);
 				}
 
 				// If there are questions, redirect parent page to full survey
-				console.log("[UpSight Embed] questions:", questions?.length, questions)
+				console.log("[UpSight Embed] questions:", questions?.length, questions);
 				if (questions && questions.length > 0) {
-					const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
-					const fullSurveyUrl = `${baseUrl}/ask/${slug}?email=${encodeURIComponent(email.trim())}&responseId=${result.responseId}`
-					console.log("[UpSight Embed] Redirecting to questions:", fullSurveyUrl)
+					const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+					const fullSurveyUrl = `${baseUrl}/ask/${slug}?email=${encodeURIComponent(email.trim())}&responseId=${result.responseId}`;
+					console.log("[UpSight Embed] Redirecting to questions:", fullSurveyUrl);
 					if (typeof window !== "undefined") {
 						// Navigate the parent/top window, not the iframe
-						const targetWindow = window.top || window.parent || window
-						targetWindow.location.href = fullSurveyUrl
+						const targetWindow = window.top || window.parent || window;
+						targetWindow.location.href = fullSurveyUrl;
 					}
-					return
+					return;
 				}
 
 				// No questions - go straight to complete
-				console.log("[UpSight Embed] No questions, showing complete")
-				setStage("complete")
-				return
+				console.log("[UpSight Embed] No questions, showing complete");
+				setStage("complete");
+				return;
 			}
 
 			// For full layouts, go to form stage or complete
 			if (result.completed) {
-				setStage("complete")
+				setStage("complete");
 			} else {
-				setStage("form")
+				setStage("form");
 			}
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Something went wrong")
+			setError(caught instanceof Error ? caught.message : "Something went wrong");
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
 	}
 
 	async function handleNameSubmit(event: React.FormEvent<HTMLFormElement>) {
-		event.preventDefault()
-		setError(null)
+		event.preventDefault();
+		setError(null);
 
 		if (!firstName.trim()) {
-			setError("Enter your first name to continue")
-			return
+			setError("Enter your first name to continue");
+			return;
 		}
 		if (!responseId) {
-			setError("Something went wrong. Please refresh and try again.")
-			return
+			setError("Something went wrong. Please refresh and try again.");
+			return;
 		}
 
 		try {
-			setIsSaving(true)
+			setIsSaving(true);
 			const result = await startSignup(slug, {
 				email: email.trim(),
 				firstName: firstName.trim(),
 				lastName: lastName.trim() || null,
 				responseId,
-			})
-			setResponseId(result.responseId)
-			setNeedsName(false)
+			});
+			setResponseId(result.responseId);
+			setNeedsName(false);
 
 			// Redirect to full survey page (navigate parent window, not iframe)
-			const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
-			const fullSurveyUrl = `${baseUrl}/ask/${slug}?email=${encodeURIComponent(email)}&responseId=${result.responseId}`
+			const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+			const fullSurveyUrl = `${baseUrl}/ask/${slug}?email=${encodeURIComponent(email)}&responseId=${result.responseId}`;
 			if (typeof window !== "undefined") {
-				const targetWindow = window.top || window.parent || window
-				targetWindow.location.href = fullSurveyUrl
+				const targetWindow = window.top || window.parent || window;
+				targetWindow.location.href = fullSurveyUrl;
 			}
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Something went wrong")
+			setError(caught instanceof Error ? caught.message : "Something went wrong");
 		} finally {
-			setIsSaving(false)
+			setIsSaving(false);
 		}
 	}
 
@@ -553,7 +553,7 @@ export default function EmbedPage() {
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	// Render compact layout (minimal, single line)
@@ -605,7 +605,7 @@ export default function EmbedPage() {
 					)}
 				</AnimatePresence>
 			</div>
-		)
+		);
 	}
 
 	// Render email-first layout (reveals more after email submission)
@@ -752,7 +752,7 @@ export default function EmbedPage() {
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	// Render full inline layout
@@ -899,7 +899,7 @@ export default function EmbedPage() {
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	// Render video-first layout (video prominent, email below - best conversion)
@@ -1046,21 +1046,21 @@ export default function EmbedPage() {
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	// Choose layout renderer
 	switch (config.layout) {
 		case "compact":
-			return renderCompact()
+			return renderCompact();
 		case "email-first":
-			return renderEmailFirst()
+			return renderEmailFirst();
 		case "inline-full":
-			return renderInlineFull()
+			return renderInlineFull();
 		case "video-first":
-			return renderVideoFirst()
+			return renderVideoFirst();
 		case "inline-email":
 		default:
-			return renderInlineEmail()
+			return renderInlineEmail();
 	}
 }

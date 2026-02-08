@@ -5,15 +5,15 @@
  * Uses OpenAI embeddings and pgvector for similarity search.
  */
 
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
-const DEFAULT_MATCH_COUNT = 10
-const DEFAULT_MATCH_THRESHOLD = 0.35 // Assets need lower threshold - structured data has lower semantic similarity
+const DEFAULT_MATCH_COUNT = 10;
+const DEFAULT_MATCH_THRESHOLD = 0.35; // Assets need lower threshold - structured data has lower semantic similarity
 
 export const semanticSearchAssetsTool = createTool({
 	id: "semantic-search-assets",
@@ -60,13 +60,13 @@ export const semanticSearchAssetsTool = createTool({
 		threshold: z.number(),
 	}),
 	execute: async (input, context?) => {
-		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const projectId = input.projectId ?? context?.requestContext?.get?.("project_id") ?? null
-		const accountId = context?.requestContext?.get?.("account_id") ?? null
+		const supabase = supabaseAdmin as SupabaseClient<Database>;
+		const projectId = input.projectId ?? context?.requestContext?.get?.("project_id") ?? null;
+		const accountId = context?.requestContext?.get?.("account_id") ?? null;
 
-		const query = input.query?.trim()
-		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD
-		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT
+		const query = input.query?.trim();
+		const matchThreshold = input.matchThreshold ?? DEFAULT_MATCH_THRESHOLD;
+		const matchCount = input.matchCount ?? DEFAULT_MATCH_COUNT;
 
 		consola.info("semantic-search-assets: execute start", {
 			projectId,
@@ -74,7 +74,7 @@ export const semanticSearchAssetsTool = createTool({
 			assetType: input.assetType,
 			matchThreshold,
 			matchCount,
-		})
+		});
 
 		if (!projectId) {
 			return {
@@ -84,7 +84,7 @@ export const semanticSearchAssetsTool = createTool({
 				assets: [],
 				totalCount: 0,
 				threshold: matchThreshold,
-			}
+			};
 		}
 
 		if (!query) {
@@ -95,17 +95,17 @@ export const semanticSearchAssetsTool = createTool({
 				assets: [],
 				totalCount: 0,
 				threshold: matchThreshold,
-			}
+			};
 		}
 
 		try {
 			// 1. Generate embedding for the query using OpenAI
-			const openaiApiKey = process.env.OPENAI_API_KEY
+			const openaiApiKey = process.env.OPENAI_API_KEY;
 			if (!openaiApiKey) {
-				throw new Error("OPENAI_API_KEY environment variable is not set")
+				throw new Error("OPENAI_API_KEY environment variable is not set");
 			}
 
-			consola.info("semantic-search-assets: generating query embedding")
+			consola.info("semantic-search-assets: generating query embedding");
 			const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
 				method: "POST",
 				headers: {
@@ -116,15 +116,15 @@ export const semanticSearchAssetsTool = createTool({
 					model: "text-embedding-3-small",
 					input: query,
 				}),
-			})
+			});
 
 			if (!embeddingResponse.ok) {
-				const errorText = await embeddingResponse.text()
-				throw new Error(`OpenAI API error: ${embeddingResponse.status} ${errorText}`)
+				const errorText = await embeddingResponse.text();
+				throw new Error(`OpenAI API error: ${embeddingResponse.status} ${errorText}`);
 			}
 
-			const embeddingData = await embeddingResponse.json()
-			const queryEmbedding = embeddingData.data[0].embedding as number[]
+			const embeddingData = await embeddingResponse.json();
+			const queryEmbedding = embeddingData.data[0].embedding as number[];
 
 			// 2. Search for similar assets using pgvector
 			consola.info("semantic-search-assets: calling find_similar_assets RPC", {
@@ -132,14 +132,14 @@ export const semanticSearchAssetsTool = createTool({
 				embeddingLength: queryEmbedding.length,
 				matchThreshold,
 				matchCount,
-			})
+			});
 
 			const { data: assetsData, error: assetsError } = await supabase.rpc("find_similar_assets", {
 				query_embedding: queryEmbedding as unknown as string, // pgvector expects array, types are wrong
 				project_id_param: projectId as string,
 				match_threshold: matchThreshold,
 				match_count: matchCount,
-			})
+			});
 
 			consola.info("semantic-search-assets: RPC response", {
 				hasError: !!assetsError,
@@ -150,17 +150,17 @@ export const semanticSearchAssetsTool = createTool({
 					title: a.title,
 					similarity: a.similarity,
 				})),
-			})
+			});
 
 			if (assetsError) {
-				consola.error("semantic-search-assets: database error", assetsError)
-				throw assetsError
+				consola.error("semantic-search-assets: database error", assetsError);
+				throw assetsError;
 			}
 
 			// Filter by asset type if specified
-			let results = assetsData || []
+			let results = assetsData || [];
 			if (input.assetType) {
-				results = results.filter((a: any) => a.asset_type === input.assetType)
+				results = results.filter((a: any) => a.asset_type === input.assetType);
 			}
 
 			const assets = results.map((row: any) => ({
@@ -173,7 +173,7 @@ export const semanticSearchAssetsTool = createTool({
 				rowCount: row.row_count || null,
 				columnCount: row.column_count || null,
 				preview: row.content_md?.slice(0, 500) || null,
-			}))
+			}));
 
 			// Diagnostic info when no results
 			if (assets.length === 0) {
@@ -181,13 +181,13 @@ export const semanticSearchAssetsTool = createTool({
 				const { count: totalAssets } = await supabase
 					.from("project_assets")
 					.select("*", { count: "exact", head: true })
-					.eq("project_id", projectId as string)
+					.eq("project_id", projectId as string);
 
 				const { count: assetsWithEmbeddings } = await supabase
 					.from("project_assets")
 					.select("*", { count: "exact", head: true })
 					.eq("project_id", projectId as string)
-					.not("embedding", "is", null)
+					.not("embedding", "is", null);
 
 				// Try with no threshold to see actual similarity scores
 				const { data: topMatches } = await supabase.rpc("find_similar_assets", {
@@ -195,7 +195,7 @@ export const semanticSearchAssetsTool = createTool({
 					project_id_param: projectId as string,
 					match_threshold: 0.0, // No threshold
 					match_count: 5,
-				})
+				});
 
 				consola.warn("semantic-search-assets: no results - diagnostics", {
 					query,
@@ -209,9 +209,9 @@ export const semanticSearchAssetsTool = createTool({
 							similarity: m.similarity,
 							title: m.title,
 						})) || [],
-				})
+				});
 
-				const highestScore = topMatches?.[0]?.similarity || 0
+				const highestScore = topMatches?.[0]?.similarity || 0;
 				const diagnosticMessage =
 					(totalAssets || 0) === 0
 						? "No assets exist in this project yet."
@@ -219,7 +219,7 @@ export const semanticSearchAssetsTool = createTool({
 							? `Found ${totalAssets} assets, but none have embeddings. Run embedding backfill.`
 							: highestScore > 0 && highestScore < matchThreshold
 								? `Highest similarity is ${highestScore.toFixed(2)} for "${topMatches?.[0]?.title}", below threshold ${matchThreshold}. Try lowering threshold.`
-								: `No assets found matching "${query}". Try different terms.`
+								: `No assets found matching "${query}". Try different terms.`;
 
 				return {
 					success: true,
@@ -228,10 +228,10 @@ export const semanticSearchAssetsTool = createTool({
 					assets: [],
 					totalCount: 0,
 					threshold: matchThreshold,
-				}
+				};
 			}
 
-			consola.info(`semantic-search-assets: found ${assets.length} matching assets for "${query}"`)
+			consola.info(`semantic-search-assets: found ${assets.length} matching assets for "${query}"`);
 
 			return {
 				success: true,
@@ -240,9 +240,9 @@ export const semanticSearchAssetsTool = createTool({
 				assets,
 				totalCount: assets.length,
 				threshold: matchThreshold,
-			}
+			};
 		} catch (error) {
-			consola.error("semantic-search-assets: error", error)
+			consola.error("semantic-search-assets: error", error);
 			return {
 				success: false,
 				message: `Search failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -250,7 +250,7 @@ export const semanticSearchAssetsTool = createTool({
 				assets: [],
 				totalCount: 0,
 				threshold: matchThreshold,
-			}
+			};
 		}
 	},
-})
+});

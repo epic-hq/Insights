@@ -2,7 +2,7 @@
  * Default facet kinds for real-time evidence extraction.
  * Shared between the API route and Trigger.dev task.
  */
-import type { FacetCatalogKind } from "baml_client"
+import type { FacetCatalogKind } from "baml_client";
 
 export const DEFAULT_FACET_KINDS: FacetCatalogKind[] = [
 	{ slug: "goal", label: "Goals" },
@@ -17,4 +17,4 @@ export const DEFAULT_FACET_KINDS: FacetCatalogKind[] = [
 	{ slug: "context", label: "Context" },
 	{ slug: "demographic", label: "Demographics" },
 	{ slug: "artifact", label: "Artifacts" },
-]
+];

@@ -75,7 +75,13 @@
 					"level": "error",
 					"fix": "safe",
 					"options": {
-						"functions": ["cn", "cva", "tw", "clsx", "twMerge"]
+						"functions": [
+							"cn",
+							"cva",
+							"tw",
+							"clsx",
+							"twMerge"
+						]
 					}
 				}
 			}
@@ -83,7 +89,9 @@
 	},
 	"javascript": {
 		"formatter": {
-			"semicolons": "asNeeded",
+			"enabled": true,
+			"lineWidth": 120,
+			"indentStyle": "tab",
 			"trailingCommas": "es5"
 		}
 	}

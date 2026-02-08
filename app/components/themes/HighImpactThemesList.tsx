@@ -1,13 +1,13 @@
 export interface ThemeItem {
-	tag: string // #theme_tag
-	text: string // one-sentence insight
-	impact: number // 1-5
-	novelty: number // 1-5
+	tag: string; // #theme_tag
+	text: string; // one-sentence insight
+	impact: number; // 1-5
+	novelty: number; // 1-5
 }
 
 interface HighImpactThemesListProps {
-	themes: ThemeItem[]
-	className?: string
+	themes: ThemeItem[];
+	className?: string;
 }
 
 export default function HighImpactThemesList({ themes, className }: HighImpactThemesListProps) {
@@ -33,5 +33,5 @@ export default function HighImpactThemesList({ themes, className }: HighImpactTh
 				))}
 			</ul>
 		</div>
-	)
+	);
 }

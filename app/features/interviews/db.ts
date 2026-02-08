@@ -1,15 +1,15 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import type { Database, InterviewWithPeople } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import type { Database, InterviewWithPeople } from "~/types";
 
 export const getInterviews = async ({
 	supabase,
 	accountId,
 	projectId,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId?: string
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	accountId?: string;
+	projectId: string;
 }): Promise<{ data: InterviewWithPeople[] | null; error: unknown }> => {
 	// First get interviews
 	let interviewsQuery = supabase.from("interviews").select(
@@ -49,20 +49,20 @@ export const getInterviews = async ({
 				)
 			)
 		`
-	)
+	);
 
-	interviewsQuery = interviewsQuery.eq("project_id", projectId)
+	interviewsQuery = interviewsQuery.eq("project_id", projectId);
 
 	if (accountId) {
-		interviewsQuery = interviewsQuery.eq("account_id", accountId)
+		interviewsQuery = interviewsQuery.eq("account_id", accountId);
 	}
 
 	const { data: interviews, error } = await interviewsQuery.order("created_at", {
 		ascending: false,
-	})
+	});
 
 	if (error || !interviews) {
-		return { data: null, error }
+		return { data: null, error };
 	}
 
 	// Get evidence counts for all interviews in one query
@@ -73,29 +73,29 @@ export const getInterviews = async ({
 		.in(
 			"interview_id",
 			interviews.map((i) => i.id)
-		)
+		);
 
 	// Build a map of interview_id -> evidence count
-	const evidenceCountMap = new Map<string, number>()
+	const evidenceCountMap = new Map<string, number>();
 	if (evidenceCounts) {
 		evidenceCounts.forEach((e) => {
 			if (e.interview_id) {
-				evidenceCountMap.set(e.interview_id, (evidenceCountMap.get(e.interview_id) || 0) + 1)
+				evidenceCountMap.set(e.interview_id, (evidenceCountMap.get(e.interview_id) || 0) + 1);
 			}
-		})
+		});
 	}
 
 	// Attach evidence counts to interviews
 	const interviewsWithCounts = interviews.map((interview) => ({
 		...interview,
 		evidence_count: evidenceCountMap.get(interview.id) || 0,
-	}))
+	}));
 
 	return {
 		data: interviewsWithCounts as unknown as InterviewWithPeople[],
 		error: null,
-	}
-}
+	};
+};
 
 export const getInterviewById = async ({
 	supabase,
@@ -103,13 +103,13 @@ export const getInterviewById = async ({
 	projectId,
 	id,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId?: string
-	projectId: string
-	id: string
+	supabase: SupabaseClient<Database>;
+	accountId?: string;
+	projectId: string;
+	id: string;
 }) => {
 	// Fetch interview without nested relations (participants fetched separately)
-	consola.log("getInterviewById", projectId, id)
+	consola.log("getInterviewById", projectId, id);
 	const { data, error } = await supabase
 		.from("interviews")
 		.select(
@@ -142,31 +142,31 @@ export const getInterviewById = async ({
 		)
 		.eq("project_id", projectId)
 		.eq("id", id)
-		.single()
+		.single();
 
 	if (error) {
-		consola.error("getInterviewById: failed to load interview", { id, error })
-		return { data: null, error }
+		consola.error("getInterviewById: failed to load interview", { id, error });
+		return { data: null, error };
 	}
 
 	if (!data) {
 		return {
 			data: null,
 			error: { message: "Interview not found", code: "PGRST116" },
-		}
+		};
 	}
 
-	return { data, error: null }
-}
+	return { data, error: null };
+};
 
 export const getInterviewParticipants = async ({
 	supabase,
 	projectId,
 	interviewId,
 }: {
-	supabase: SupabaseClient<Database>
-	projectId: string
-	interviewId: string
+	supabase: SupabaseClient<Database>;
+	projectId: string;
+	interviewId: string;
 }) => {
 	// Fetch participant data separately to avoid junction table query issues
 	return await supabase
@@ -198,15 +198,15 @@ export const getInterviewParticipants = async ({
 		`
 		)
 		.eq("project_id", projectId)
-		.eq("interview_id", interviewId)
-}
+		.eq("interview_id", interviewId);
+};
 
 export const getInterviewInsights = async ({
 	supabase,
 	interviewId,
 }: {
-	supabase: SupabaseClient<Database>
-	interviewId: string
+	supabase: SupabaseClient<Database>;
+	interviewId: string;
 }) => {
 	// Fetch themes related to this interview via theme_evidence junction and evidence table
 	// Note: Themes are now project-level entities, not directly linked to interviews
@@ -229,14 +229,14 @@ export const getInterviewInsights = async ({
 			)
 		`
 		)
-		.eq("evidence.interview_id", interviewId)
+		.eq("evidence.interview_id", interviewId);
 
 	if (error) {
-		return { data: null, error }
+		return { data: null, error };
 	}
 
 	// Deduplicate themes (same theme can be linked to multiple evidence items)
-	const themeMap = new Map()
+	const themeMap = new Map();
 	data?.forEach((row: any) => {
 		if (row.themes && !themeMap.has(row.themes.id)) {
 			themeMap.set(row.themes.id, {
@@ -249,14 +249,14 @@ export const getInterviewInsights = async ({
 				updated_at: row.themes.updated_at,
 				category: null, // Removed in new schema, keeping for backwards compatibility
 				insight_tags: [], // No tags support in new schema yet
-			})
+			});
 		}
-	})
+	});
 
-	const enriched = Array.from(themeMap.values())
+	const enriched = Array.from(themeMap.values());
 
-	return { data: enriched, error: null }
-}
+	return { data: enriched, error: null };
+};
 
 const _getRelatedInterviews = async ({
 	supabase,
@@ -265,11 +265,11 @@ const _getRelatedInterviews = async ({
 	excludeId,
 	limit = 5,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId: string
-	excludeId: string
-	limit?: number
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId: string;
+	excludeId: string;
+	limit?: number;
 }) => {
 	// Get related interviews from the same project
 	return await supabase
@@ -313,18 +313,18 @@ const _getRelatedInterviews = async ({
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.neq("id", excludeId)
-		.limit(limit)
-}
+		.limit(limit);
+};
 
 export const createInterview = async ({
 	supabase,
 	data,
 }: {
-	supabase: SupabaseClient<Database>
-	data: Database["public"]["Tables"]["interviews"]["Insert"]
+	supabase: SupabaseClient<Database>;
+	data: Database["public"]["Tables"]["interviews"]["Insert"];
 }) => {
-	return await supabase.from("interviews").insert(data).select().single()
-}
+	return await supabase.from("interviews").insert(data).select().single();
+};
 
 export const updateInterview = async ({
 	supabase,
@@ -333,14 +333,14 @@ export const updateInterview = async ({
 	projectId,
 	data,
 }: {
-	supabase: SupabaseClient<Database>
-	id: string
-	accountId: string
-	projectId: string
-	data: Database["public"]["Tables"]["interviews"]["Update"]
+	supabase: SupabaseClient<Database>;
+	id: string;
+	accountId: string;
+	projectId: string;
+	data: Database["public"]["Tables"]["interviews"]["Update"];
 }) => {
-	return await supabase.from("interviews").update(data).eq("id", id).eq("project_id", projectId).select().single()
-}
+	return await supabase.from("interviews").update(data).eq("id", id).eq("project_id", projectId).select().single();
+};
 
 export const deleteInterview = async ({
 	supabase,
@@ -348,10 +348,10 @@ export const deleteInterview = async ({
 	accountId,
 	projectId,
 }: {
-	supabase: SupabaseClient<Database>
-	id: string
-	accountId: string
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	id: string;
+	accountId: string;
+	projectId: string;
 }) => {
-	return await supabase.from("interviews").delete().eq("id", id).eq("project_id", projectId)
-}
+	return await supabase.from("interviews").delete().eq("id", id).eq("project_id", projectId);
+};

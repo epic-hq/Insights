@@ -1,21 +1,21 @@
-import type { PostgrestError } from "@supabase/supabase-js"
-import consola from "consola"
-import { formatDistance } from "date-fns"
-import { Download, Grid, List, MessageSquareText, MessagesSquare, Upload } from "lucide-react"
-import { useEffect, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { PrettySegmentPie } from "~/components/charts/PieSemgents"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import InterviewCard from "~/features/interviews/components/InterviewCard"
-import { getInterviews } from "~/features/interviews/db"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import type { InterviewWithPeople } from "~/types"
+import type { PostgrestError } from "@supabase/supabase-js";
+import consola from "consola";
+import { formatDistance } from "date-fns";
+import { Download, Grid, List, MessageSquareText, MessagesSquare, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { PrettySegmentPie } from "~/components/charts/PieSemgents";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import InterviewCard from "~/features/interviews/components/InterviewCard";
+import { getInterviews } from "~/features/interviews/db";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import type { InterviewWithPeople } from "~/types";
 
 function TableMediaPreview({
 	media_url,
@@ -24,31 +24,31 @@ function TableMediaPreview({
 	media_type,
 	source_type,
 }: {
-	media_url?: string | null
-	thumbnail_url?: string | null
-	file_extension?: string | null
-	media_type?: string | null
-	source_type?: string | null
+	media_url?: string | null;
+	thumbnail_url?: string | null;
+	file_extension?: string | null;
+	media_type?: string | null;
+	source_type?: string | null;
 }) {
-	const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"]
-	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"]
+	const audio_extensions = ["mp3", "wav", "m4a", "ogg", "flac", "aac"];
+	const image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
 
-	const ext = file_extension?.toLowerCase() || ""
-	const is_audio_only = media_type === "voice_memo" || source_type?.includes("audio") || audio_extensions.includes(ext)
-	const is_image = image_extensions.includes(ext)
+	const ext = file_extension?.toLowerCase() || "";
+	const is_audio_only = media_type === "voice_memo" || source_type?.includes("audio") || audio_extensions.includes(ext);
+	const is_image = image_extensions.includes(ext);
 
-	const preview_source = thumbnail_url || (is_image ? media_url : null)
-	const [signedUrl, setSignedUrl] = useState<string | null>(null)
+	const preview_source = thumbnail_url || (is_image ? media_url : null);
+	const [signedUrl, setSignedUrl] = useState<string | null>(null);
 
 	useEffect(() => {
-		let cancelled = false
-		setSignedUrl(null)
-		if (!preview_source) return
+		let cancelled = false;
+		setSignedUrl(null);
+		if (!preview_source) return;
 
-		const is_http_url = preview_source.startsWith("http://") || preview_source.startsWith("https://")
+		const is_http_url = preview_source.startsWith("http://") || preview_source.startsWith("https://");
 		if (is_http_url) {
-			setSignedUrl(preview_source)
-			return
+			setSignedUrl(preview_source);
+			return;
 		}
 
 		const run = async () => {
@@ -61,30 +61,30 @@ function TableMediaPreview({
 						mediaUrl: preview_source,
 						intent: "playback",
 					}),
-				})
+				});
 
-				if (!response.ok) return
-				const data = (await response.json()) as { signedUrl?: string }
+				if (!response.ok) return;
+				const data = (await response.json()) as { signedUrl?: string };
 				if (!cancelled && data.signedUrl) {
-					setSignedUrl(data.signedUrl)
+					setSignedUrl(data.signedUrl);
 				}
 			} catch {
 				// best-effort thumbnail signing
 			}
-		}
+		};
 
-		void run()
+		void run();
 		return () => {
-			cancelled = true
-		}
-	}, [preview_source])
+			cancelled = true;
+		};
+	}, [preview_source]);
 
 	if (preview_source) {
 		return signedUrl ? (
 			<img src={signedUrl} alt="" className="h-9 w-14 shrink-0 rounded-md object-cover" loading="lazy" />
 		) : (
 			<div className="h-9 w-14 shrink-0 rounded-md bg-muted/40" />
-		)
+		);
 	}
 
 	if (is_audio_only) {
@@ -98,61 +98,61 @@ function TableMediaPreview({
 					showLabel={false}
 				/>
 			</div>
-		)
+		);
 	}
 
-	return <div className="h-9 w-14 shrink-0 rounded-md bg-muted/40" />
+	return <div className="h-9 w-14 shrink-0 rounded-md bg-muted/40" />;
 }
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Conversations | Insights" }, { name: "description", content: "Interviews, meetings, and calls" }]
-}
+	return [{ title: "Conversations | Insights" }, { name: "description", content: "Interviews, meetings, and calls" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", {
 			status: 400,
-		})
+		});
 	}
 
 	const interviewsResult = await getInterviews({
 		supabase,
 		accountId,
 		projectId,
-	})
+	});
 
 	const { data: rows, error } = interviewsResult as {
-		data: InterviewWithPeople[] | null
-		error: PostgrestError | null
-	}
+		data: InterviewWithPeople[] | null;
+		error: PostgrestError | null;
+	};
 
 	if (error) {
-		consola.error("Interviews query error:", error)
+		consola.error("Interviews query error:", error);
 		throw new Response(`Error fetching interviews: ${error.message}`, {
 			status: 500,
-		})
+		});
 	}
 
 	// Build persona/segment distribution from interview participants
-	const personaCountMap = new Map<string, number>()
+	const personaCountMap = new Map<string, number>();
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+	(rows || []).forEach((interview) => {
+		const primaryParticipant = interview.interview_people?.[0];
+		const segment = primaryParticipant?.people?.segment || "Unknown";
+		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1);
+	});
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
 		value,
 		color: "#d1d5db",
-	}))
+	}));
 
 	// Filter to conversations only (exclude notes, voice memos, survey responses, chats)
 	const conversations = (rows || [])
@@ -166,8 +166,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				item.media_type !== "document"
 		)
 		.map((interview) => {
-			const primaryParticipant = interview.interview_people?.[0]
-			const participant = primaryParticipant?.people
+			const primaryParticipant = interview.interview_people?.[0];
+			const participant = primaryParticipant?.people;
 
 			return {
 				...interview,
@@ -177,64 +177,64 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				date: interview.interview_date || interview.created_at || "",
 				duration: interview.duration_sec ? `${Math.round((interview.duration_sec / 60) * 10) / 10} min` : "Unknown",
 				evidenceCount: interview.evidence_count || 0,
-			}
-		})
+			};
+		});
 
-	return { interviews: conversations, segmentData }
+	return { interviews: conversations, segmentData };
 }
 
 export default function InterviewsIndex({ showPie = false }: { showPie?: boolean }) {
-	const { interviews, segmentData } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
-	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+	const { interviews, segmentData } = useLoaderData<typeof loader>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
-	type InterviewListItem = (typeof interviews)[number]
+	type InterviewListItem = (typeof interviews)[number];
 
 	const get_interview_participants_summary = (interview: InterviewListItem) => {
-		const interview_people = interview.interview_people ?? []
+		const interview_people = interview.interview_people ?? [];
 		const sorted_people = [...interview_people].sort((a, b) => {
-			if (a.role === "participant") return -1
-			if (b.role === "participant") return 1
-			return 0
-		})
+			if (a.role === "participant") return -1;
+			if (b.role === "participant") return 1;
+			return 0;
+		});
 
 		const participant_names = Array.from(
 			new Set(sorted_people.map((p) => p.people?.name?.trim()).filter((name): name is string => Boolean(name)))
-		)
-		const display_participant_names = participant_names.length > 0 ? participant_names : [interview.participant]
-		const displayed_participant_names = display_participant_names.slice(0, 3)
+		);
+		const display_participant_names = participant_names.length > 0 ? participant_names : [interview.participant];
+		const displayed_participant_names = display_participant_names.slice(0, 3);
 		const remaining_participant_count = Math.max(
 			0,
 			display_participant_names.length - displayed_participant_names.length
-		)
+		);
 		const names_label =
 			remaining_participant_count > 0
 				? `${displayed_participant_names.join(", ")} +${remaining_participant_count}`
-				: displayed_participant_names.join(", ")
+				: displayed_participant_names.join(", ");
 
 		const participant_segments = Array.from(
 			new Set(
 				sorted_people.map((p) => p.people?.segment?.trim()).filter((segment): segment is string => Boolean(segment))
 			)
-		)
-		const display_segments = participant_segments.length > 0 ? participant_segments : ["Participant"]
-		const displayed_segments = display_segments.slice(0, 2)
-		const remaining_segment_count = Math.max(0, display_segments.length - displayed_segments.length)
+		);
+		const display_segments = participant_segments.length > 0 ? participant_segments : ["Participant"];
+		const displayed_segments = display_segments.slice(0, 2);
+		const remaining_segment_count = Math.max(0, display_segments.length - displayed_segments.length);
 		const segments_label =
 			remaining_segment_count > 0
 				? `${displayed_segments.join(", ")} +${remaining_segment_count}`
-				: displayed_segments.join(", ")
+				: displayed_segments.join(", ");
 
-		return { names_label, segments_label }
-	}
+		return { names_label, segments_label };
+	};
 
 	// Sort interviews chronologically
 	const allItems = [...interviews].sort((a, b) => {
-		const dateA = new Date(a.created_at).getTime()
-		const dateB = new Date(b.created_at).getTime()
-		return dateB - dateA
-	})
+		const dateA = new Date(a.created_at).getTime();
+		const dateB = new Date(b.created_at).getTime();
+		return dateB - dateA;
+	});
 
 	return (
 		<div className="relative min-h-screen bg-background">
@@ -257,7 +257,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									value={viewMode}
 									onValueChange={(v) => {
 										if (v === "cards" || v === "table") {
-											setViewMode(v)
+											setViewMode(v);
 										}
 									}}
 									size="sm"
@@ -381,7 +381,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								</thead>
 								<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 									{allItems.map((interview) => {
-										const { names_label, segments_label } = get_interview_participants_summary(interview)
+										const { names_label, segments_label } = get_interview_participants_summary(interview);
 										return (
 											<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
 												<td className="px-4 py-3">
@@ -437,7 +437,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 													{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}
 												</td>
 											</tr>
-										)
+										);
 									})}
 								</tbody>
 							</table>
@@ -446,5 +446,5 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				)}
 			</PageContainer>
 		</div>
-	)
+	);
 }

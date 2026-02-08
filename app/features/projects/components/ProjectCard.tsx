@@ -1,60 +1,60 @@
-import { motion } from "framer-motion"
-import { Hash, MessageCircleQuestion, Pencil, Settings2 } from "lucide-react"
-import { Link } from "react-router-dom"
-import { Streamdown } from "streamdown"
+import { motion } from "framer-motion";
+import { Hash, MessageCircleQuestion, Pencil, Settings2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Streamdown } from "streamdown";
 // Flattened sections view (no accordion)
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Separator } from "~/components/ui/separator"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Project, Project_Section } from "~/types"
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Separator } from "~/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { Project, Project_Section } from "~/types";
 
 interface ProjectCardProps {
-	project: Project
-	sections: Project_Section[] // <- new
-	className?: string
-	projectPath: string
+	project: Project;
+	sections: Project_Section[]; // <- new
+	className?: string;
+	projectPath: string;
 }
 
 function stringToColor(str: string) {
-	let hash = 0
-	for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
-	const c = (hash & 0x00ffffff).toString(16).toUpperCase()
-	return `#${"00000".substring(0, 6 - c.length)}${c}`
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+	const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+	return `#${"00000".substring(0, 6 - c.length)}${c}`;
 }
 
 function groupLatestByKind(sections: Project_Section[]) {
-	const byKind = new Map<string, Project_Section[]>()
+	const byKind = new Map<string, Project_Section[]>();
 	for (const s of sections) {
-		const arr = byKind.get(s.kind) ?? []
-		arr.push(s)
-		byKind.set(s.kind, arr)
+		const arr = byKind.get(s.kind) ?? [];
+		arr.push(s);
+		byKind.set(s.kind, arr);
 	}
 	// sort newest first within kind (position asc nulls last already in loader is fine; here prefer created_at desc)
 	for (const [k, arr] of byKind) {
-		arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-		byKind.set(k, arr)
+		arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+		byKind.set(k, arr);
 	}
-	return byKind
+	return byKind;
 }
 
 function _preview(text: string, n = 140) {
-	const t = text.replace(/[*`_#>-]+/g, " ").trim()
-	return t.length > n ? `${t.slice(0, n).trim()}…` : t
+	const t = text.replace(/[*`_#>-]+/g, " ").trim();
+	return t.length > n ? `${t.slice(0, n).trim()}…` : t;
 }
 
 export function ProjectCard({ project, sections, className, projectPath }: ProjectCardProps) {
-	const themeColor = stringToColor(project.slug || project.name || "P")
+	const themeColor = stringToColor(project.slug || project.name || "P");
 	const initials = (project.slug || project.name || "P")
 		.split(" ")
 		.map((n) => n[0])
 		.join("")
 		.toUpperCase()
-		.slice(0, 2)
-	const routes = useProjectRoutes(projectPath)
-	const byKind = groupLatestByKind(sections)
+		.slice(0, 2);
+	const routes = useProjectRoutes(projectPath);
+	const byKind = groupLatestByKind(sections);
 
 	// Preferred display order; fall back to any others present
 	const preferredOrder = [
@@ -65,11 +65,11 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 		"assumptions",
 		"unknowns",
 		"custom_instructions",
-	]
+	];
 	// Build kinds, but exclude 'questions' from inline content since it has a dedicated editor
 	const kinds = [...new Set([...preferredOrder, ...Array.from(byKind.keys())])]
 		.filter((k) => byKind.has(k))
-		.filter((k) => k !== "questions")
+		.filter((k) => k !== "questions");
 
 	const kindLabel: Record<string, string> = {
 		research_goal: "Research Goal",
@@ -82,7 +82,7 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 		goal: "Goal",
 		findings: "Findings",
 		background: "Background",
-	}
+	};
 
 	const editBtn = (
 		<TooltipProvider>
@@ -103,7 +103,7 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 				<TooltipContent side="left">Edit</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 
 	return (
 		<motion.div
@@ -163,8 +163,8 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 				</div>
 				<div className="space-y-4">
 					{kinds.map((k) => {
-						const arr = byKind.get(k)!
-						const latest = arr[0]
+						const arr = byKind.get(k)!;
+						const latest = arr[0];
 						return (
 							<div key={k} className="rounded-md border p-4">
 								<div className="mb-2 flex items-center justify-between gap-2">
@@ -199,10 +199,10 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 									</div>
 								)}
 							</div>
-						)
+						);
 					})}
 				</div>
 			</div>
 		</motion.div>
-	)
+	);
 }

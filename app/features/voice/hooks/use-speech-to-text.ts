@@ -1,22 +1,22 @@
-import consola from "consola"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useAudioIntensity } from "./use-audio-intensity"
-import { useMediaRecorder } from "./use-media-recorder"
+import consola from "consola";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAudioIntensity } from "./use-audio-intensity";
+import { useMediaRecorder } from "./use-media-recorder";
 
 type UseSpeechToTextOptions = {
-	onTranscription?: (text: string) => void
-}
+	onTranscription?: (text: string) => void;
+};
 
 type SpeechToTextState = {
-	startRecording: () => void
-	stopRecording: () => void
-	toggleRecording: () => void
-	isRecording: boolean
-	isTranscribing: boolean
-	error: string | null
-	isSupported: boolean
-	intensity: number
-}
+	startRecording: () => void;
+	stopRecording: () => void;
+	toggleRecording: () => void;
+	isRecording: boolean;
+	isTranscribing: boolean;
+	error: string | null;
+	isSupported: boolean;
+	intensity: number;
+};
 
 const recorderErrorMessages: Record<string, string> = {
 	permission_denied: "Microphone permission denied",
@@ -34,22 +34,22 @@ const recorderErrorMessages: Record<string, string> = {
 	delayed_start: "",
 	paused: "",
 	unknown: "Recording error",
-}
+};
 
 export function useSpeechToText({ onTranscription }: UseSpeechToTextOptions = {}): SpeechToTextState {
-	const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
-	const [isTranscribing, setIsTranscribing] = useState(false)
-	const isMounted = useRef(true)
+	const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+	const [isTranscribing, setIsTranscribing] = useState(false);
+	const isMounted = useRef(true);
 
 	useEffect(() => {
 		return () => {
-			isMounted.current = false
-		}
-	}, [])
+			isMounted.current = false;
+		};
+	}, []);
 
 	const isSupported = useMemo(() => {
-		return typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia)
-	}, [])
+		return typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia);
+	}, []);
 
 	const {
 		status,
@@ -64,68 +64,68 @@ export function useSpeechToText({ onTranscription }: UseSpeechToTextOptions = {}
 		stopStreamsOnStop: true,
 		onStop: async (_blobUrl, blob) => {
 			if (!blob || blob.size === 0) {
-				setTranscriptionError("No audio captured, please try again.")
-				return
+				setTranscriptionError("No audio captured, please try again.");
+				return;
 			}
 
-			setIsTranscribing(true)
-			setTranscriptionError(null)
+			setIsTranscribing(true);
+			setTranscriptionError(null);
 
 			try {
 				const response = await fetch("/api/transcribe", {
 					method: "POST",
 					body: blob,
-				})
+				});
 
-				const transcript = await response.text()
+				const transcript = await response.text();
 				if (!response.ok) {
-					throw new Error(`Transcription failed (${response.status})`)
+					throw new Error(`Transcription failed (${response.status})`);
 				}
 
-				const cleaned = transcript.trim()
+				const cleaned = transcript.trim();
 				if (cleaned.length > 0) {
-					onTranscription?.(cleaned)
+					onTranscription?.(cleaned);
 				} else {
-					setTranscriptionError("No speech detected in recording.")
+					setTranscriptionError("No speech detected in recording.");
 				}
 			} catch (error: any) {
-				consola.error("Transcription error", error)
-				setTranscriptionError("Failed to transcribe audio. Please try again.")
+				consola.error("Transcription error", error);
+				setTranscriptionError("Failed to transcribe audio. Please try again.");
 			} finally {
 				if (isMounted.current) {
-					setIsTranscribing(false)
+					setIsTranscribing(false);
 				}
 			}
 		},
-	})
+	});
 
-	const intensity = useAudioIntensity(previewAudioStream)
+	const intensity = useAudioIntensity(previewAudioStream);
 
 	useEffect(() => {
-		if (!recorderError || recorderError === "NONE") return
-		const friendly = recorderErrorMessages[recorderError] || recorderErrorMessages.unknown
-		setTranscriptionError(friendly)
-	}, [recorderError])
+		if (!recorderError || recorderError === "NONE") return;
+		const friendly = recorderErrorMessages[recorderError] || recorderErrorMessages.unknown;
+		setTranscriptionError(friendly);
+	}, [recorderError]);
 
 	const handleStart = useCallback(() => {
 		if (!isSupported) {
-			setTranscriptionError("Microphone not supported in this browser.")
-			return
+			setTranscriptionError("Microphone not supported in this browser.");
+			return;
 		}
-		setTranscriptionError(null)
-		clearBlobUrl()
-		startRecording()
-	}, [clearBlobUrl, isSupported, startRecording])
+		setTranscriptionError(null);
+		clearBlobUrl();
+		startRecording();
+	}, [clearBlobUrl, isSupported, startRecording]);
 
-	const isRecording = status === "recording"
+	const isRecording = status === "recording";
 
 	const toggleRecording = useCallback(() => {
 		if (isRecording) {
-			stopRecording()
+			stopRecording();
 		} else {
-			handleStart()
+			handleStart();
 		}
-	}, [isRecording, stopRecording, handleStart])
+	}, [isRecording, stopRecording, handleStart]);
 
 	return {
 		startRecording: handleStart,
@@ -136,5 +136,5 @@ export function useSpeechToText({ onTranscription }: UseSpeechToTextOptions = {}
 		error: transcriptionError,
 		isSupported,
 		intensity,
-	}
+	};
 }

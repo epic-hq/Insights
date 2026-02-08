@@ -1,14 +1,14 @@
-import { cn } from "~/lib/utils"
+import { cn } from "~/lib/utils";
 
 interface InterviewMetadataProps {
-	interviewId: string
-	date: string
-	interviewer: string
-	participant: string
-	segment: string
-	duration: number // minutes
-	transcriptLink?: string
-	className?: string
+	interviewId: string;
+	date: string;
+	interviewer: string;
+	participant: string;
+	segment: string;
+	duration: number; // minutes
+	transcriptLink?: string;
+	className?: string;
 }
 
 export default function InterviewMetadata({
@@ -51,5 +51,5 @@ export default function InterviewMetadata({
 				</div>
 			)}
 		</div>
-	)
+	);
 }

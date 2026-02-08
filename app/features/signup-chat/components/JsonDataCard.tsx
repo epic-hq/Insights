@@ -1,7 +1,7 @@
 // Plan card component where the plan based on what the agent
 // sets via tool calls.
 
-import { Badge } from "~/components/ui/badge"
+import { Badge } from "~/components/ui/badge";
 
 export function JsonDataCard({ title, jsonData }: { title?: string; jsonData?: Record<string, any> }) {
 	// {/* Next Steps Widget */}
@@ -28,5 +28,5 @@ export function JsonDataCard({ title, jsonData }: { title?: string; jsonData?: R
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

@@ -1,6 +1,6 @@
-import { ArrowLeft } from "lucide-react"
-import { Link } from "react-router"
-import { Button } from "~/components/ui/button"
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "~/components/ui/button";
 
 export default function ResearchWorkflow() {
 	return (
@@ -21,5 +21,5 @@ export default function ResearchWorkflow() {
 				<p className="lead">Coming soon: Detailed workflow documentation</p>
 			</div>
 		</div>
-	)
+	);
 }

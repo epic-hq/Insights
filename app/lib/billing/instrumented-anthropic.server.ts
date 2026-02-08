@@ -16,27 +16,27 @@
  * ```
  */
 
-import { type AnthropicProvider, createAnthropic } from "@ai-sdk/anthropic"
-import consola from "consola"
-import type { BillingContext } from "./context"
-import { recordUsageOnly } from "./usage.server"
+import { type AnthropicProvider, createAnthropic } from "@ai-sdk/anthropic";
+import consola from "consola";
+import type { BillingContext } from "./context";
+import { recordUsageOnly } from "./usage.server";
 
 // Re-export for convenience
-export type { BillingContext } from "./context"
-export { systemBillingContext, userBillingContext } from "./context"
+export type { BillingContext } from "./context";
+export { systemBillingContext, userBillingContext } from "./context";
 
 // Store active context for the current request
 // This is a workaround since we can't pass context through the AI SDK's fetch wrapper
-let _activeContext: BillingContext | null = null
-let _activeIdempotencyPrefix: string | null = null
+let _activeContext: BillingContext | null = null;
+let _activeIdempotencyPrefix: string | null = null;
 
 /**
  * Set the active billing context for the current request.
  * Call this at the start of agent execution.
  */
 export function setActiveBillingContext(ctx: BillingContext, idempotencyPrefix: string): void {
-	_activeContext = ctx
-	_activeIdempotencyPrefix = idempotencyPrefix
+	_activeContext = ctx;
+	_activeIdempotencyPrefix = idempotencyPrefix;
 }
 
 /**
@@ -44,8 +44,8 @@ export function setActiveBillingContext(ctx: BillingContext, idempotencyPrefix: 
  * Call this at the end of agent execution.
  */
 export function clearActiveBillingContext(): void {
-	_activeContext = null
-	_activeIdempotencyPrefix = null
+	_activeContext = null;
+	_activeIdempotencyPrefix = null;
 }
 
 /**
@@ -58,58 +58,58 @@ export function createInstrumentedAnthropic(): AnthropicProvider {
 	return createAnthropic({
 		// Custom fetch that intercepts responses to extract usage
 		fetch: async (url, options) => {
-			const response = await fetch(url, options)
+			const response = await fetch(url, options);
 
 			// Only process messages API
 			if (typeof url === "string" && url.includes("/messages") && _activeContext && _activeIdempotencyPrefix) {
 				// Clone response to read body without consuming it
-				const cloned = response.clone()
+				const cloned = response.clone();
 
 				try {
 					// For streaming responses, we need to handle differently
-					const contentType = response.headers.get("content-type")
+					const contentType = response.headers.get("content-type");
 					if (contentType?.includes("text/event-stream")) {
 						// Streaming response - usage tracked on completion
-						consola.debug("[billing:anthropic] Streaming response - usage tracked on completion")
+						consola.debug("[billing:anthropic] Streaming response - usage tracked on completion");
 					} else {
 						// Non-streaming response - extract usage directly
-						const data = await cloned.json()
+						const data = await cloned.json();
 						if (data.usage) {
-							await recordAnthropicUsage(data)
+							await recordAnthropicUsage(data);
 						}
 					}
 				} catch (err) {
-					consola.debug("[billing:anthropic] Failed to extract usage:", err)
+					consola.debug("[billing:anthropic] Failed to extract usage:", err);
 				}
 			}
 
-			return response
+			return response;
 		},
-	})
+	});
 }
 
 /**
  * Record usage from Anthropic response
  */
 async function recordAnthropicUsage(data: {
-	model?: string
+	model?: string;
 	usage?: {
-		input_tokens?: number
-		output_tokens?: number
-	}
+		input_tokens?: number;
+		output_tokens?: number;
+	};
 }): Promise<void> {
 	if (!_activeContext || !_activeIdempotencyPrefix || !data.usage) {
-		return
+		return;
 	}
 
-	const model = data.model || "claude-sonnet-4-20250514"
-	const inputTokens = data.usage.input_tokens || 0
-	const outputTokens = data.usage.output_tokens || 0
+	const model = data.model || "claude-sonnet-4-20250514";
+	const inputTokens = data.usage.input_tokens || 0;
+	const outputTokens = data.usage.output_tokens || 0;
 
 	// Estimate cost based on model
-	const costUsd = estimateAnthropicCost(model, inputTokens, outputTokens)
+	const costUsd = estimateAnthropicCost(model, inputTokens, outputTokens);
 
-	const idempotencyKey = `${_activeIdempotencyPrefix}:${Date.now()}`
+	const idempotencyKey = `${_activeIdempotencyPrefix}:${Date.now()}`;
 
 	await recordUsageOnly(
 		_activeContext,
@@ -122,8 +122,8 @@ async function recordAnthropicUsage(data: {
 		},
 		idempotencyKey
 	).catch((err) => {
-		consola.error("[billing:anthropic] Failed to record usage:", err)
-	})
+		consola.error("[billing:anthropic] Failed to record usage:", err);
+	});
 }
 
 /**
@@ -142,14 +142,14 @@ export function estimateAnthropicCost(model: string, inputTokens: number, output
 		"claude-3-haiku-20240307": [0.25, 1.25],
 		// Fallback for unknown models
 		default: [3.0, 15.0],
-	}
+	};
 
-	const [inputRate, outputRate] = pricing[model] || pricing.default
+	const [inputRate, outputRate] = pricing[model] || pricing.default;
 
-	const inputCost = (inputTokens / 1_000_000) * inputRate
-	const outputCost = (outputTokens / 1_000_000) * outputRate
+	const inputCost = (inputTokens / 1_000_000) * inputRate;
+	const outputCost = (outputTokens / 1_000_000) * outputRate;
 
-	return inputCost + outputCost
+	return inputCost + outputCost;
 }
 
 /**
@@ -174,10 +174,10 @@ export async function withAgentBilling<T>(
 	fn: () => Promise<T>
 ): Promise<T> {
 	try {
-		setActiveBillingContext(ctx, idempotencyPrefix)
-		return await fn()
+		setActiveBillingContext(ctx, idempotencyPrefix);
+		return await fn();
 	} finally {
-		clearActiveBillingContext()
+		clearActiveBillingContext();
 	}
 }
 
@@ -185,4 +185,4 @@ export async function withAgentBilling<T>(
  * The instrumented Anthropic provider instance.
  * Import this instead of the default @ai-sdk/anthropic provider.
  */
-export const anthropic = createInstrumentedAnthropic()
+export const anthropic = createInstrumentedAnthropic();

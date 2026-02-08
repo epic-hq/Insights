@@ -1,18 +1,20 @@
-import consola from "consola"
-import { ArrowLeft } from "lucide-react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import PersonaStrategicPanel, { type PersonaStrategicProps } from "~/features/personas/components/PersonaStrategicPanel"
-import { getServerClient } from "~/lib/supabase/client.server"
+import consola from "consola";
+import { ArrowLeft } from "lucide-react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import PersonaStrategicPanel, {
+	type PersonaStrategicProps,
+} from "~/features/personas/components/PersonaStrategicPanel";
+import { getServerClient } from "~/lib/supabase/client.server";
 
-const MOCKDATA = true
+const MOCKDATA = true;
 
-export const meta: MetaFunction = () => [{ title: "Persona Detail | Insights" }]
+export const meta: MetaFunction = () => [{ title: "Persona Detail | Insights" }];
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const { projectId, personaId } = params as { projectId: string; personaId: string }
+	const { client: supabase } = getServerClient(request);
+	const { projectId, personaId } = params as { projectId: string; personaId: string };
 
 	if (MOCKDATA) {
 		return {
@@ -39,7 +41,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 					notes: "Notes",
 				},
 			},
-		}
+		};
 	}
 	const { data, error } = await supabase
 		.from("personas")
@@ -52,10 +54,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     `)
 		.eq("project_id", projectId)
 		.eq("id", personaId)
-		.single()
+		.single();
 
 	if (error) {
-		throw new Response(`Error fetching persona: ${error.message}`, { status: 500 })
+		throw new Response(`Error fetching persona: ${error.message}`, { status: 500 });
 	}
 
 	// Map DB -> component props; keep names consistent with component
@@ -76,19 +78,19 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		coaching_prompts: data.coaching_prompts ?? [],
 		evidence: data.evidence ?? [],
 		learning_loop: data.learning_loop ?? undefined,
-	}
+	};
 
-	return { projectId, personaId, persona: props }
+	return { projectId, personaId, persona: props };
 }
 
 export default function PersonaDetailPage() {
-	const { projectId, personaId, persona } = useLoaderData<typeof loader>()
+	const { projectId, personaId, persona } = useLoaderData<typeof loader>();
 
 	const handleAskAI = (topic: string) => {
 		// Hook your LLM endpoint/action here
 		// e.g., submit fetcher to /api.ask with { personaId, topic }
-		consola.log("Ask AI:", topic, { projectId, personaId })
-	}
+		consola.log("Ask AI:", topic, { projectId, personaId });
+	};
 
 	return (
 		<div className="mx-auto max-w-5xl px-4 py-6">
@@ -102,5 +104,5 @@ export default function PersonaDetailPage() {
 
 			<PersonaStrategicPanel {...persona} onAskAI={handleAskAI} />
 		</div>
-	)
+	);
 }

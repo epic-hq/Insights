@@ -2,7 +2,7 @@
  * Ask routes - project-scoped shareable prompts for collecting responses
  * Reuses research-links pages but scoped to current project
  */
-import { index, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	// /ask - list of Ask links for this project
@@ -21,4 +21,4 @@ export default [
 	route("api/parse-branch-rule", "./features/research-links/api/parse-branch-rule.tsx"),
 	route("api/analyze-responses", "./features/research-links/api/analyze-responses.tsx"),
 	route("api/delete-survey/:listId", "./features/research-links/api/delete-survey.tsx"),
-] satisfies RouteConfig
+] satisfies RouteConfig;

@@ -1,13 +1,13 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { action as webhookAction } from "~/routes/api.assemblyai-webhook"
-import { action as onboardingAction } from "~/routes/api.onboarding-start"
-import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { action as webhookAction } from "~/routes/api.assemblyai-webhook";
+import { action as onboardingAction } from "~/routes/api.onboarding-start";
+import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
 
 // Mock dependencies that require external services
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
 	createSupabaseAdminClient: () => testDb, // Use test DB as admin client
-}))
+}));
 
 vi.mock("~/utils/processInterview.server", () => ({
 	processInterviewTranscriptWithAdminClient: vi.fn().mockResolvedValue({
@@ -40,22 +40,22 @@ vi.mock("~/utils/processInterview.server", () => ({
 			},
 		],
 	}),
-}))
+}));
 
-vi.mock("consola")
+vi.mock("consola");
 
 // Mock AssemblyAI API
-global.fetch = vi.fn()
+global.fetch = vi.fn();
 
 describe("Onboarding Pipeline Integration", () => {
 	beforeEach(async () => {
-		await seedTestData()
-		vi.clearAllMocks()
-	})
+		await seedTestData();
+		vi.clearAllMocks();
+	});
 
 	afterAll(async () => {
-		await testDb.removeAllChannels()
-	})
+		await testDb.removeAllChannels();
+	});
 
 	describe("Complete Onboarding Flow", () => {
 		it("should complete full pipeline from upload to ready status", async () => {
@@ -66,7 +66,7 @@ describe("Onboarding Pipeline Integration", () => {
 					Promise.resolve({
 						upload_url: "https://api.assemblyai.com/v2/upload/test-123",
 					}),
-			} as Response)
+			} as Response);
 
 			// Mock successful transcription start
 			vi.mocked(fetch).mockResolvedValueOnce({
@@ -76,54 +76,54 @@ describe("Onboarding Pipeline Integration", () => {
 						id: "transcript-123",
 						status: "queued",
 					}),
-			} as Response)
+			} as Response);
 
 			// Step 1: Start onboarding
-			const formData = new FormData()
-			formData.append("fileName", "test-interview.mp3")
-			formData.append("fileType", "audio/mpeg")
-			formData.append("projectTitle", "Test Project")
-			formData.append("customInstructions", "Test instructions")
+			const formData = new FormData();
+			formData.append("fileName", "test-interview.mp3");
+			formData.append("fileType", "audio/mpeg");
+			formData.append("projectTitle", "Test Project");
+			formData.append("customInstructions", "Test instructions");
 
 			// Mock file data
 			const mockFile = new File(["test audio data"], "test-interview.mp3", {
 				type: "audio/mpeg",
-			})
-			formData.append("audioFile", mockFile)
+			});
+			formData.append("audioFile", mockFile);
 
 			const onboardingRequest = new Request("http://localhost/api/onboarding-start", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
-			const onboardingResponse = await onboardingAction({ request: onboardingRequest })
-			expect(onboardingResponse.status).toBe(200)
+			const onboardingResponse = await onboardingAction({ request: onboardingRequest });
+			expect(onboardingResponse.status).toBe(200);
 
-			const onboardingResult = await onboardingResponse.json()
-			expect(onboardingResult.success).toBe(true)
-			expect(onboardingResult.interviewId).toBeDefined()
+			const onboardingResult = await onboardingResponse.json();
+			expect(onboardingResult.success).toBe(true);
+			expect(onboardingResult.interviewId).toBeDefined();
 
-			const interviewId = onboardingResult.interviewId
+			const interviewId = onboardingResult.interviewId;
 
 			// Verify database state after onboarding
-			const { data: interview } = await testDb.from("interviews").select("*").eq("id", interviewId).single()
+			const { data: interview } = await testDb.from("interviews").select("*").eq("id", interviewId).single();
 
-			expect(interview?.status).toBe("uploaded")
-			expect(interview?.title).toBe("Test Project")
+			expect(interview?.status).toBe("uploaded");
+			expect(interview?.title).toBe("Test Project");
 
-			const { data: uploadJob } = await testDb.from("upload_jobs").select("*").eq("interview_id", interviewId).single()
+			const { data: uploadJob } = await testDb.from("upload_jobs").select("*").eq("interview_id", interviewId).single();
 
-			expect(uploadJob?.assemblyai_id).toBe("transcript-123")
-			expect(uploadJob?.status).toBe("in_progress")
+			expect(uploadJob?.assemblyai_id).toBe("transcript-123");
+			expect(uploadJob?.status).toBe("in_progress");
 
 			// Verify onboarding completion flag
 			const { data: userSettings } = await testDb
 				.from("user_settings")
 				.select("*")
 				.eq("user_id", TEST_ACCOUNT_ID)
-				.single()
+				.single();
 
-			expect(userSettings?.onboarding_completed).toBe(true)
+			expect(userSettings?.onboarding_completed).toBe(true);
 
 			// Step 2: Simulate webhook callback for completed transcription
 			// Mock AssemblyAI transcript fetch
@@ -135,7 +135,7 @@ describe("Onboarding Pipeline Integration", () => {
 						confidence: 0.95,
 						audio_duration: 180,
 					}),
-			} as Response)
+			} as Response);
 
 			const webhookPayload = {
 				transcript_id: "transcript-123",
@@ -143,54 +143,57 @@ describe("Onboarding Pipeline Integration", () => {
 				text: "This is a test transcript about user research and insights.",
 				confidence: 0.95,
 				audio_duration: 180,
-			}
+			};
 
 			const webhookRequest = new Request("http://localhost/api/assemblyai-webhook", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(webhookPayload),
-			})
+			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest })
-			expect(webhookResponse.status).toBe(200)
+			const webhookResponse = await webhookAction({ request: webhookRequest });
+			expect(webhookResponse.status).toBe(200);
 
-			const webhookResult = await webhookResponse.json()
-			expect(webhookResult.success).toBe(true)
+			const webhookResult = await webhookResponse.json();
+			expect(webhookResult.success).toBe(true);
 
 			// Verify final database state
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interviewId).single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interviewId).single();
 
-			expect(finalInterview?.status).toBe("ready")
-			expect(finalInterview?.transcript).toBe("This is a test transcript about user research and insights.")
-			expect(finalInterview?.duration_sec).toBe(180) // 180 seconds = 3 minutes
+			expect(finalInterview?.status).toBe("ready");
+			expect(finalInterview?.transcript).toBe("This is a test transcript about user research and insights.");
+			expect(finalInterview?.duration_sec).toBe(180); // 180 seconds = 3 minutes
 
 			const { data: finalUploadJob } = await testDb
 				.from("upload_jobs")
 				.select("*")
 				.eq("interview_id", interviewId)
-				.single()
+				.single();
 
-			expect(finalUploadJob?.status).toBe("done")
+			expect(finalUploadJob?.status).toBe("done");
 
 			const { data: analysisJob } = await testDb
 				.from("analysis_jobs")
 				.select("*")
 				.eq("interview_id", interviewId)
-				.single()
+				.single();
 
-			expect(analysisJob?.status).toBe("done")
-			expect(analysisJob?.progress).toBe(100)
+			expect(analysisJob?.status).toBe("done");
+			expect(analysisJob?.progress).toBe(100);
 
 			// Verify insights and people were created
-			const { data: insights } = await testDb.from("themes").select("*").eq("interview_id", interviewId)
+			const { data: insights } = await testDb.from("themes").select("*").eq("interview_id", interviewId);
 
-			expect(insights).toHaveLength(1)
-			expect(insights?.[0]?.name).toBe("Test Insight")
+			expect(insights).toHaveLength(1);
+			expect(insights?.[0]?.name).toBe("Test Insight");
 
-			const { data: people } = await testDb.from("interview_people").select("people(*)").eq("interview_id", interviewId)
+			const { data: people } = await testDb
+				.from("interview_people")
+				.select("people(*)")
+				.eq("interview_id", interviewId);
 
-			expect(people).toHaveLength(1)
-		})
+			expect(people).toHaveLength(1);
+		});
 
 		it("should handle webhook idempotency correctly", async () => {
 			// Create an interview with completed upload job
@@ -205,7 +208,7 @@ describe("Onboarding Pipeline Integration", () => {
 					transcript: "Existing transcript",
 				})
 				.select()
-				.single()
+				.single();
 
 			await testDb.from("upload_jobs").insert({
 				id: "test-upload-job-idempotent",
@@ -213,39 +216,39 @@ describe("Onboarding Pipeline Integration", () => {
 				assemblyai_id: "transcript-456",
 				status: "done", // Already completed
 				custom_instructions: "Test instructions",
-			})
+			});
 
 			// Send webhook for already completed job
 			const webhookPayload = {
 				transcript_id: "transcript-456",
 				status: "completed" as const,
 				text: "New transcript that should be ignored",
-			}
+			};
 
 			const webhookRequest = new Request("http://localhost/api/assemblyai-webhook", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(webhookPayload),
-			})
+			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest })
-			expect(webhookResponse.status).toBe(200)
+			const webhookResponse = await webhookAction({ request: webhookRequest });
+			expect(webhookResponse.status).toBe(200);
 
-			const webhookResult = await webhookResponse.json()
-			expect(webhookResult.success).toBe(true)
-			expect(webhookResult.message).toBe("Already processed")
+			const webhookResult = await webhookResponse.json();
+			expect(webhookResult.success).toBe(true);
+			expect(webhookResult.message).toBe("Already processed");
 
 			// Verify original transcript was not overwritten
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single();
 
-			expect(finalInterview?.transcript).toBe("Existing transcript")
-			expect(finalInterview?.status).toBe("ready")
+			expect(finalInterview?.transcript).toBe("Existing transcript");
+			expect(finalInterview?.status).toBe("ready");
 
 			// Verify no duplicate analysis jobs were created
-			const { data: analysisJobs } = await testDb.from("analysis_jobs").select("*").eq("interview_id", interview?.id)
+			const { data: analysisJobs } = await testDb.from("analysis_jobs").select("*").eq("interview_id", interview?.id);
 
-			expect(analysisJobs).toHaveLength(0) // No analysis jobs should be created
-		})
+			expect(analysisJobs).toHaveLength(0); // No analysis jobs should be created
+		});
 
 		it("should progress through correct status transitions", async () => {
 			// Create interview in uploaded state
@@ -259,7 +262,7 @@ describe("Onboarding Pipeline Integration", () => {
 					status: "uploaded",
 				})
 				.select()
-				.single()
+				.single();
 
 			await testDb.from("upload_jobs").insert({
 				id: "test-upload-job-status",
@@ -267,7 +270,7 @@ describe("Onboarding Pipeline Integration", () => {
 				assemblyai_id: "transcript-789",
 				status: "pending",
 				custom_instructions: "",
-			})
+			});
 
 			// Mock AssemblyAI transcript fetch
 			vi.mocked(fetch).mockResolvedValueOnce({
@@ -278,45 +281,45 @@ describe("Onboarding Pipeline Integration", () => {
 						confidence: 0.9,
 						audio_duration: 120,
 					}),
-			} as Response)
+			} as Response);
 
 			// Track status changes by querying before and after
 			const getStatus = async () => {
-				const { data } = await testDb.from("interviews").select("status").eq("id", interview?.id).single()
-				return data?.status
-			}
+				const { data } = await testDb.from("interviews").select("status").eq("id", interview?.id).single();
+				return data?.status;
+			};
 
-			expect(await getStatus()).toBe("uploaded") // 20%
+			expect(await getStatus()).toBe("uploaded"); // 20%
 
 			// Send webhook
 			const webhookPayload = {
 				transcript_id: "transcript-789",
 				status: "completed" as const,
 				text: "Status progression test transcript",
-			}
+			};
 
 			const webhookRequest = new Request("http://localhost/api/assemblyai-webhook", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(webhookPayload),
-			})
+			});
 
-			await webhookAction({ request: webhookRequest })
+			await webhookAction({ request: webhookRequest });
 
 			// Final status should be ready (100%)
-			expect(await getStatus()).toBe("ready")
+			expect(await getStatus()).toBe("ready");
 
 			// Verify analysis job completed
 			const { data: analysisJob } = await testDb
 				.from("analysis_jobs")
 				.select("*")
 				.eq("interview_id", interview?.id)
-				.single()
+				.single();
 
-			expect(analysisJob?.status).toBe("done")
-			expect(analysisJob?.progress).toBe(100)
-		})
-	})
+			expect(analysisJob?.status).toBe("done");
+			expect(analysisJob?.progress).toBe(100);
+		});
+	});
 
 	describe("Error Scenarios", () => {
 		it("should handle transcription failures gracefully", async () => {
@@ -331,7 +334,7 @@ describe("Onboarding Pipeline Integration", () => {
 					status: "uploaded",
 				})
 				.select()
-				.single()
+				.single();
 
 			await testDb.from("upload_jobs").insert({
 				id: "test-upload-job-error",
@@ -339,37 +342,37 @@ describe("Onboarding Pipeline Integration", () => {
 				assemblyai_id: "transcript-error",
 				status: "pending",
 				custom_instructions: "",
-			})
+			});
 
 			// Send webhook with failed status
 			const webhookPayload = {
 				transcript_id: "transcript-error",
 				status: "failed" as const,
-			}
+			};
 
 			const webhookRequest = new Request("http://localhost/api/assemblyai-webhook", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(webhookPayload),
-			})
+			});
 
-			const webhookResponse = await webhookAction({ request: webhookRequest })
-			expect(webhookResponse.status).toBe(200)
+			const webhookResponse = await webhookAction({ request: webhookRequest });
+			expect(webhookResponse.status).toBe(200);
 
 			// Verify error status was set
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single();
 
-			expect(finalInterview?.status).toBe("error")
+			expect(finalInterview?.status).toBe("error");
 
 			const { data: uploadJob } = await testDb
 				.from("upload_jobs")
 				.select("*")
 				.eq("interview_id", interview?.id)
-				.single()
+				.single();
 
-			expect(uploadJob?.status).toBe("error")
-			expect(uploadJob?.status_detail).toBe("Transcription failed")
-			expect(uploadJob?.last_error).toContain("AssemblyAI transcription failed")
-		})
-	})
-})
+			expect(uploadJob?.status).toBe("error");
+			expect(uploadJob?.status_detail).toBe("Transcription failed");
+			expect(uploadJob?.last_error).toContain("AssemblyAI transcription failed");
+		});
+	});
+});

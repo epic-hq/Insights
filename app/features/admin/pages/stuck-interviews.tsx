@@ -3,40 +3,40 @@
  * Provides "now and forever" solution for stuck interview recovery
  */
 
-import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
-import { useEffect } from "react"
-import { json, useFetcher, useLoaderData, useRevalidator } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import type { Route } from "./+types/stuck-interviews"
+import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import { useEffect } from "react";
+import { json, useFetcher, useLoaderData, useRevalidator } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import type { Route } from "./+types/stuck-interviews";
 
 export async function loader({ request }: Route.LoaderArgs) {
-	const url = new URL(request.url)
-	const apiUrl = `${url.origin}/api/fix-stuck-interview`
+	const url = new URL(request.url);
+	const apiUrl = `${url.origin}/api/fix-stuck-interview`;
 
 	const response = await fetch(apiUrl, {
 		headers: {
 			cookie: request.headers.get("cookie") || "",
 		},
-	})
+	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to fetch stuck interviews: ${response.statusText}`)
+		throw new Error(`Failed to fetch stuck interviews: ${response.statusText}`);
 	}
 
-	const data = await response.json()
-	return data
+	const data = await response.json();
+	return data;
 }
 
 export async function action({ request }: Route.ActionArgs) {
-	const formData = await request.formData()
-	const intent = formData.get("intent")
-	const interviewId = formData.get("interviewId")
+	const formData = await request.formData();
+	const intent = formData.get("intent");
+	const interviewId = formData.get("interviewId");
 
-	const url = new URL(request.url)
-	const apiUrl = `${url.origin}/api/fix-stuck-interview`
+	const url = new URL(request.url);
+	const apiUrl = `${url.origin}/api/fix-stuck-interview`;
 
 	if (intent === "fix-one") {
 		const response = await fetch(apiUrl, {
@@ -46,15 +46,15 @@ export async function action({ request }: Route.ActionArgs) {
 				cookie: request.headers.get("cookie") || "",
 			},
 			body: JSON.stringify({ interviewId }),
-		})
+		});
 
 		if (!response.ok) {
-			const error = await response.json()
-			return { success: false, error: error.error }
+			const error = await response.json();
+			return { success: false, error: error.error };
 		}
 
-		const result = await response.json()
-		return { success: true, message: result.message }
+		const result = await response.json();
+		return { success: true, message: result.message };
 	}
 
 	if (intent === "fix-all") {
@@ -65,35 +65,35 @@ export async function action({ request }: Route.ActionArgs) {
 				cookie: request.headers.get("cookie") || "",
 			},
 			body: JSON.stringify({ fixAll: true }),
-		})
+		});
 
 		if (!response.ok) {
-			const error = await response.json()
-			return { success: false, error: error.error }
+			const error = await response.json();
+			return { success: false, error: error.error };
 		}
 
-		const result = await response.json()
-		return { success: true, message: result.message, fixed: result.fixed }
+		const result = await response.json();
+		return { success: true, message: result.message, fixed: result.fixed };
 	}
 
-	return { success: false, error: "Invalid intent" }
+	return { success: false, error: "Invalid intent" };
 }
 
 export default function StuckInterviews({ loaderData }: Route.ComponentProps) {
-	const data = loaderData as Awaited<ReturnType<typeof loader>>
-	const fetcher = useFetcher()
-	const revalidator = useRevalidator()
+	const data = loaderData as Awaited<ReturnType<typeof loader>>;
+	const fetcher = useFetcher();
+	const revalidator = useRevalidator();
 
 	// Auto-refresh every 30 seconds
 	useEffect(() => {
 		const interval = setInterval(() => {
-			revalidator.revalidate()
-		}, 30000)
-		return () => clearInterval(interval)
-	}, [revalidator])
+			revalidator.revalidate();
+		}, 30000);
+		return () => clearInterval(interval);
+	}, [revalidator]);
 
-	const isLoading = fetcher.state !== "idle"
-	const stuckCount = data.stuckInterviews?.length || 0
+	const isLoading = fetcher.state !== "idle";
+	const stuckCount = data.stuckInterviews?.length || 0;
 
 	return (
 		<div className="container mx-auto space-y-6 py-8">
@@ -241,5 +241,5 @@ export default function StuckInterviews({ loaderData }: Route.ComponentProps) {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

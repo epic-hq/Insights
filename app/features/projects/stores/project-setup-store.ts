@@ -5,68 +5,68 @@
  * Uses subscribeWithSelector for fine-grained reactivity.
  */
 
-import { create } from "zustand"
-import { subscribeWithSelector } from "zustand/middleware"
+import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 
 /**
  * Section data that can be edited in project setup
  * Matches the structure in project_sections table
  */
 export interface ProjectSectionData {
-	customer_problem: string
-	target_orgs: string[]
-	target_roles: string[]
-	offerings: string[]
-	competitors: string[]
-	research_goal: string
-	research_goal_details: string
-	decision_questions: string[]
-	assumptions: string[]
-	unknowns: string[]
-	custom_instructions: string
+	customer_problem: string;
+	target_orgs: string[];
+	target_roles: string[];
+	offerings: string[];
+	competitors: string[];
+	research_goal: string;
+	research_goal_details: string;
+	decision_questions: string[];
+	assumptions: string[];
+	unknowns: string[];
+	custom_instructions: string;
 }
 
 /** Sync status for the setup data */
-export type SyncStatus = "synced" | "saving" | "offline" | "error"
+export type SyncStatus = "synced" | "saving" | "offline" | "error";
 
 /** Steps in the project setup journey */
-export type SetupStep = "define" | "design" | "collect" | "synthesize" | "prioritize"
+export type SetupStep = "define" | "design" | "collect" | "synthesize" | "prioritize";
 
 interface ProjectSetupState {
 	// Core data
-	sections: ProjectSectionData
-	projectId: string | null
+	sections: ProjectSectionData;
+	projectId: string | null;
 
 	// Sync status
-	syncStatus: SyncStatus
-	lastSyncedAt: Date | null
-	pendingChanges: Set<string>
+	syncStatus: SyncStatus;
+	lastSyncedAt: Date | null;
+	pendingChanges: Set<string>;
 
 	// Progress tracking
-	currentStep: SetupStep
-	completedSteps: SetupStep[]
+	currentStep: SetupStep;
+	completedSteps: SetupStep[];
 
 	// Actions - Data
 	updateSection: <K extends keyof ProjectSectionData>(
 		key: K,
 		value: ProjectSectionData[K],
 		options?: { skipSync?: boolean }
-	) => void
-	setSections: (sections: Partial<ProjectSectionData>) => void
-	setProjectId: (projectId: string) => void
+	) => void;
+	setSections: (sections: Partial<ProjectSectionData>) => void;
+	setProjectId: (projectId: string) => void;
 
 	// Actions - Sync
-	setSyncStatus: (status: SyncStatus) => void
-	markSynced: () => void
-	addPendingChange: (kind: string) => void
-	removePendingChange: (kind: string) => void
+	setSyncStatus: (status: SyncStatus) => void;
+	markSynced: () => void;
+	addPendingChange: (kind: string) => void;
+	removePendingChange: (kind: string) => void;
 
 	// Actions - Navigation
-	setCurrentStep: (step: SetupStep) => void
-	markStepComplete: (step: SetupStep) => void
+	setCurrentStep: (step: SetupStep) => void;
+	markStepComplete: (step: SetupStep) => void;
 
 	// Actions - Reset
-	reset: () => void
+	reset: () => void;
 }
 
 const DEFAULT_SECTIONS: ProjectSectionData = {
@@ -81,7 +81,7 @@ const DEFAULT_SECTIONS: ProjectSectionData = {
 	assumptions: [],
 	unknowns: [],
 	custom_instructions: "",
-}
+};
 
 export const useProjectSetupStore = create<ProjectSetupState>()(
 	subscribeWithSelector((set, get) => ({
@@ -99,10 +99,10 @@ export const useProjectSetupStore = create<ProjectSetupState>()(
 			set((state) => ({
 				sections: { ...state.sections, [key]: value },
 				syncStatus: options?.skipSync ? state.syncStatus : "saving",
-			}))
+			}));
 
 			if (!options?.skipSync) {
-				get().addPendingChange(key)
+				get().addPendingChange(key);
 			}
 		},
 
@@ -110,11 +110,11 @@ export const useProjectSetupStore = create<ProjectSetupState>()(
 		setSections: (sections) => {
 			set((state) => ({
 				sections: { ...state.sections, ...sections },
-			}))
+			}));
 		},
 
 		setProjectId: (projectId) => {
-			set({ projectId })
+			set({ projectId });
 		},
 
 		// Sync status management
@@ -129,18 +129,18 @@ export const useProjectSetupStore = create<ProjectSetupState>()(
 		addPendingChange: (kind) => {
 			set((state) => ({
 				pendingChanges: new Set(state.pendingChanges).add(kind),
-			}))
+			}));
 		},
 
 		removePendingChange: (kind) => {
 			set((state) => {
-				const updated = new Set(state.pendingChanges)
-				updated.delete(kind)
+				const updated = new Set(state.pendingChanges);
+				updated.delete(kind);
 				return {
 					pendingChanges: updated,
 					syncStatus: updated.size === 0 ? "synced" : state.syncStatus,
-				}
-			})
+				};
+			});
 		},
 
 		// Step navigation
@@ -149,7 +149,7 @@ export const useProjectSetupStore = create<ProjectSetupState>()(
 		markStepComplete: (step) => {
 			set((state) => ({
 				completedSteps: state.completedSteps.includes(step) ? state.completedSteps : [...state.completedSteps, step],
-			}))
+			}));
 		},
 
 		// Reset to initial state
@@ -164,13 +164,13 @@ export const useProjectSetupStore = create<ProjectSetupState>()(
 				completedSteps: [],
 			}),
 	}))
-)
+);
 
 /**
  * Selector for getting just the sections data
  * Use this to minimize re-renders when only sections change
  */
-export const selectSections = (state: ProjectSetupState) => state.sections
+export const selectSections = (state: ProjectSetupState) => state.sections;
 
 /**
  * Selector for sync-related state
@@ -179,7 +179,7 @@ export const selectSyncState = (state: ProjectSetupState) => ({
 	syncStatus: state.syncStatus,
 	lastSyncedAt: state.lastSyncedAt,
 	pendingChanges: state.pendingChanges,
-})
+});
 
 /**
  * Selector for step navigation state
@@ -187,4 +187,4 @@ export const selectSyncState = (state: ProjectSetupState) => ({
 export const selectStepState = (state: ProjectSetupState) => ({
 	currentStep: state.currentStep,
 	completedSteps: state.completedSteps,
-})
+});

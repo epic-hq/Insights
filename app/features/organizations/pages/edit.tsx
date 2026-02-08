@@ -1,28 +1,28 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
-import { getOrganizationById, updateOrganization } from "~/features/organizations/db"
-import { userContext } from "~/server/user-context"
-import type { Organization } from "~/types"
-import { createProjectRoutes } from "~/utils/routes.server"
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { getOrganizationById, updateOrganization } from "~/features/organizations/db";
+import { userContext } from "~/server/user-context";
+import type { Organization } from "~/types";
+import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-	const title = data?.organization?.name ? `Edit ${data.organization.name}` : "Edit Organization"
-	return [{ title }, { name: "description", content: "Edit organization details" }]
-}
+	const title = data?.organization?.name ? `Edit ${data.organization.name}` : "Edit Organization";
+	return [{ title }, { name: "description", content: "Edit organization details" }];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const organizationId = params.organizationId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const organizationId = params.organizationId;
 
 	if (!accountId || !projectId || !organizationId) {
-		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 });
 	}
 
 	const { data, error } = await getOrganizationById({
@@ -30,59 +30,59 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		accountId,
 		projectId,
 		id: organizationId,
-	})
+	});
 	if (error || !data) {
-		throw new Response("Failed to load organization", { status: 500 })
+		throw new Response("Failed to load organization", { status: 500 });
 	}
 
-	return { organization: data as Organization }
+	return { organization: data as Organization };
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const organizationId = params.organizationId
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const organizationId = params.organizationId;
 
 	if (!accountId || !projectId || !organizationId) {
-		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 })
+		throw new Response("Account ID, Project ID, and Organization ID are required", { status: 400 });
 	}
 
-	const routes = createProjectRoutes(accountId, projectId)
-	const formData = await request.formData()
+	const routes = createProjectRoutes(accountId, projectId);
+	const formData = await request.formData();
 
-	const name = (formData.get("name") as string | null)?.trim()
+	const name = (formData.get("name") as string | null)?.trim();
 	if (!name) {
-		return { error: "Name is required" }
+		return { error: "Name is required" };
 	}
 
-	const legal_name = (formData.get("legal_name") as string | null)?.trim() || null
-	const website_url = (formData.get("website_url") as string | null)?.trim() || null
-	const domain = (formData.get("domain") as string | null)?.trim() || null
-	const industry = (formData.get("industry") as string | null)?.trim() || null
-	const sub_industry = (formData.get("sub_industry") as string | null)?.trim() || null
-	const company_type = (formData.get("company_type") as string | null)?.trim() || null
-	const size_range = (formData.get("size_range") as string | null)?.trim() || null
-	const headquarters_location = (formData.get("headquarters_location") as string | null)?.trim() || null
-	const linkedin_url = (formData.get("linkedin_url") as string | null)?.trim() || null
-	const phone = (formData.get("phone") as string | null)?.trim() || null
-	const email = (formData.get("email") as string | null)?.trim() || null
-	const notes = (formData.get("notes") as string | null)?.trim() || null
-	const description = (formData.get("description") as string | null)?.trim() || null
+	const legal_name = (formData.get("legal_name") as string | null)?.trim() || null;
+	const website_url = (formData.get("website_url") as string | null)?.trim() || null;
+	const domain = (formData.get("domain") as string | null)?.trim() || null;
+	const industry = (formData.get("industry") as string | null)?.trim() || null;
+	const sub_industry = (formData.get("sub_industry") as string | null)?.trim() || null;
+	const company_type = (formData.get("company_type") as string | null)?.trim() || null;
+	const size_range = (formData.get("size_range") as string | null)?.trim() || null;
+	const headquarters_location = (formData.get("headquarters_location") as string | null)?.trim() || null;
+	const linkedin_url = (formData.get("linkedin_url") as string | null)?.trim() || null;
+	const phone = (formData.get("phone") as string | null)?.trim() || null;
+	const email = (formData.get("email") as string | null)?.trim() || null;
+	const notes = (formData.get("notes") as string | null)?.trim() || null;
+	const description = (formData.get("description") as string | null)?.trim() || null;
 
-	const employeeCountRaw = (formData.get("employee_count") as string | null)?.trim()
-	const annualRevenueRaw = (formData.get("annual_revenue") as string | null)?.trim()
+	const employeeCountRaw = (formData.get("employee_count") as string | null)?.trim();
+	const annualRevenueRaw = (formData.get("annual_revenue") as string | null)?.trim();
 
-	const employee_count = employeeCountRaw ? Number.parseInt(employeeCountRaw, 10) : null
-	const annual_revenue = annualRevenueRaw ? Number.parseFloat(annualRevenueRaw) : null
+	const employee_count = employeeCountRaw ? Number.parseInt(employeeCountRaw, 10) : null;
+	const annual_revenue = annualRevenueRaw ? Number.parseFloat(annualRevenueRaw) : null;
 
 	if (employeeCountRaw && Number.isNaN(employee_count)) {
-		return { error: "Employee count must be a number" }
+		return { error: "Employee count must be a number" };
 	}
 
 	if (annualRevenueRaw && Number.isNaN(annual_revenue)) {
-		return { error: "Annual revenue must be a number" }
+		return { error: "Annual revenue must be a number" };
 	}
 
 	const { error } = await updateOrganization({
@@ -107,19 +107,19 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			employee_count,
 			annual_revenue,
 		},
-	})
+	});
 
 	if (error) {
-		console.error("Failed to update organization:", error)
-		return { error: `Failed to update organization: ${error.message}` }
+		console.error("Failed to update organization:", error);
+		return { error: `Failed to update organization: ${error.message}` };
 	}
 
-	return redirect(routes.organizations.detail(organizationId))
+	return redirect(routes.organizations.detail(organizationId));
 }
 
 export default function EditOrganizationPage() {
-	const { organization } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
+	const { organization } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
 
 	return (
 		<div className="mx-auto max-w-3xl px-4 py-10">
@@ -276,5 +276,5 @@ export default function EditOrganizationPage() {
 				</div>
 			</Form>
 		</div>
-	)
+	);
 }

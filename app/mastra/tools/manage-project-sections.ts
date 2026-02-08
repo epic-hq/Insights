@@ -1,27 +1,27 @@
-import { createTool } from "@mastra/core/tools"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import { createTool } from "@mastra/core/tools";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { z } from "zod";
+import { supabaseAdmin } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 const baseOutput = z.object({
 	success: z.boolean(),
 	message: z.string(),
 	warnings: z.array(z.string()).optional(),
-})
+});
 
 function ensureContext(context?: Map<string, unknown> | any) {
-	const accountId = context?.requestContext?.get?.("account_id") as string | undefined
-	const projectId = context?.requestContext?.get?.("project_id") as string | undefined
-	const userId = context?.requestContext?.get?.("user_id") as string | undefined
+	const accountId = context?.requestContext?.get?.("account_id") as string | undefined;
+	const projectId = context?.requestContext?.get?.("project_id") as string | undefined;
+	const userId = context?.requestContext?.get?.("user_id") as string | undefined;
 	if (!accountId || !projectId) {
-		throw new Error("Missing accountId or projectId in runtime context")
+		throw new Error("Missing accountId or projectId in runtime context");
 	}
 	if (!userId) {
-		throw new Error("Missing userId in runtime context")
+		throw new Error("Missing userId in runtime context");
 	}
-	return { accountId, projectId, userId }
+	return { accountId, projectId, userId };
 }
 
 const sectionOutputSchema = z.object({
@@ -32,7 +32,7 @@ const sectionOutputSchema = z.object({
 	projectId: z.string(),
 	createdAt: z.string(),
 	updatedAt: z.string(),
-})
+});
 
 export const fetchProjectSectionTool = createTool({
 	id: "fetch-project-section",
@@ -46,17 +46,17 @@ export const fetchProjectSectionTool = createTool({
 	}),
 	execute: async (input, context?) => {
 		try {
-			const supabase = supabaseAdmin as SupabaseClient<Database>
+			const supabase = supabaseAdmin as SupabaseClient<Database>;
 
 			// Use input project_id or fall back to runtime context
-			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
-			const projectId = input.project_id || runtimeProjectId
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined;
+			const projectId = input.project_id || runtimeProjectId;
 
 			if (!projectId) {
 				return {
 					success: false,
 					message: "Missing project_id in both input and runtime context",
-				}
+				};
 			}
 
 			const { data, error } = await supabase
@@ -66,11 +66,11 @@ export const fetchProjectSectionTool = createTool({
 				.eq("kind", input.kind)
 				.order("updated_at", { ascending: false })
 				.limit(1)
-				.maybeSingle()
+				.maybeSingle();
 
 			if (error) {
-				consola.error("fetchProjectSectionTool error", error)
-				return { success: false, message: error.message }
+				consola.error("fetchProjectSectionTool error", error);
+				return { success: false, message: error.message };
 			}
 
 			if (!data) {
@@ -78,7 +78,7 @@ export const fetchProjectSectionTool = createTool({
 					success: true,
 					message: `No section found for kind: ${input.kind}`,
 					section: null,
-				}
+				};
 			}
 
 			return {
@@ -93,14 +93,14 @@ export const fetchProjectSectionTool = createTool({
 					createdAt: data.created_at,
 					updatedAt: data.updated_at,
 				},
-			}
+			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Unknown error"
-			consola.error("fetchProjectSectionTool unexpected error", message)
-			return { success: false, message }
+			const message = error instanceof Error ? error.message : "Unknown error";
+			consola.error("fetchProjectSectionTool unexpected error", message);
+			return { success: false, message };
 		}
 	},
-})
+});
 
 export const updateProjectSectionMetaTool = createTool({
 	id: "update-project-section-meta",
@@ -122,23 +122,23 @@ export const updateProjectSectionMetaTool = createTool({
 	}),
 	execute: async (input, context?) => {
 		try {
-			const supabase = supabaseAdmin as SupabaseClient<Database>
+			const supabase = supabaseAdmin as SupabaseClient<Database>;
 
 			// Use input project_id or fall back to runtime context
-			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
-			const runtimeUserId = context?.requestContext?.get?.("user_id") as string | undefined
-			const projectId = input.project_id || runtimeProjectId
-			const userId = runtimeUserId || "system"
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined;
+			const runtimeUserId = context?.requestContext?.get?.("user_id") as string | undefined;
+			const projectId = input.project_id || runtimeProjectId;
+			const userId = runtimeUserId || "system";
 
 			if (!projectId) {
 				return {
 					success: false,
 					message: "Missing project_id in both input and runtime context",
-				}
+				};
 			}
 
 			// Fetch existing section if merging
-			let finalMeta = input.meta
+			let finalMeta = input.meta;
 			if (input.mergeMeta) {
 				const { data: existing } = await supabase
 					.from("project_sections")
@@ -147,23 +147,23 @@ export const updateProjectSectionMetaTool = createTool({
 					.eq("kind", input.kind)
 					.order("updated_at", { ascending: false })
 					.limit(1)
-					.maybeSingle()
+					.maybeSingle();
 
 				if (existing?.meta) {
-					const existingMeta = existing.meta as Record<string, any>
-					finalMeta = { ...existingMeta }
+					const existingMeta = existing.meta as Record<string, any>;
+					finalMeta = { ...existingMeta };
 
 					// Merge logic: arrays are concatenated and deduplicated, objects are merged
 					for (const [key, value] of Object.entries(input.meta)) {
 						if (Array.isArray(value) && Array.isArray(existingMeta[key])) {
 							// Merge arrays and remove duplicates
-							finalMeta[key] = [...new Set([...existingMeta[key], ...value])]
+							finalMeta[key] = [...new Set([...existingMeta[key], ...value])];
 						} else if (typeof value === "object" && value !== null && !Array.isArray(value)) {
 							// Merge objects
-							finalMeta[key] = { ...(existingMeta[key] || {}), ...value }
+							finalMeta[key] = { ...(existingMeta[key] || {}), ...value };
 						} else {
 							// Replace scalar values
-							finalMeta[key] = value
+							finalMeta[key] = value;
 						}
 					}
 
@@ -172,7 +172,7 @@ export const updateProjectSectionMetaTool = createTool({
 						existing: existingMeta,
 						new: input.meta,
 						merged: finalMeta,
-					})
+					});
 				}
 			}
 
@@ -180,10 +180,10 @@ export const updateProjectSectionMetaTool = createTool({
 			const updates: Database["public"]["Tables"]["project_sections"]["Update"] = {
 				meta: finalMeta,
 				updated_by: userId,
-			}
+			};
 
 			if (input.contentMd) {
-				updates.content_md = input.contentMd
+				updates.content_md = input.contentMd;
 			}
 
 			// Upsert section
@@ -203,14 +203,14 @@ export const updateProjectSectionMetaTool = createTool({
 					}
 				)
 				.select("*")
-				.single()
+				.single();
 
 			if (error || !data) {
-				consola.error("updateProjectSectionMetaTool error", error)
+				consola.error("updateProjectSectionMetaTool error", error);
 				return {
 					success: false,
 					message: error?.message || "Failed to update section",
-				}
+				};
 			}
 
 			return {
@@ -225,14 +225,14 @@ export const updateProjectSectionMetaTool = createTool({
 					createdAt: data.created_at,
 					updatedAt: data.updated_at,
 				},
-			}
+			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Unknown error"
-			consola.error("updateProjectSectionMetaTool unexpected error", message)
-			return { success: false, message }
+			const message = error instanceof Error ? error.message : "Unknown error";
+			consola.error("updateProjectSectionMetaTool unexpected error", message);
+			return { success: false, message };
 		}
 	},
-})
+});
 
 export const deleteProjectSectionMetaKeyTool = createTool({
 	id: "delete-project-section-meta-key",
@@ -251,19 +251,19 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 	}),
 	execute: async (input, context?) => {
 		try {
-			const supabase = supabaseAdmin as SupabaseClient<Database>
+			const supabase = supabaseAdmin as SupabaseClient<Database>;
 
 			// Use input project_id or fall back to runtime context
-			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined
-			const runtimeUserId = context?.requestContext?.get?.("user_id") as string | undefined
-			const projectId = input.project_id || runtimeProjectId
-			const userId = runtimeUserId || "system"
+			const runtimeProjectId = context?.requestContext?.get?.("project_id") as string | undefined;
+			const runtimeUserId = context?.requestContext?.get?.("user_id") as string | undefined;
+			const projectId = input.project_id || runtimeProjectId;
+			const userId = runtimeUserId || "system";
 
 			if (!projectId) {
 				return {
 					success: false,
 					message: "Missing project_id in both input and runtime context",
-				}
+				};
 			}
 
 			// Fetch existing section
@@ -274,25 +274,25 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 				.eq("kind", input.kind)
 				.order("updated_at", { ascending: false })
 				.limit(1)
-				.maybeSingle()
+				.maybeSingle();
 
 			if (fetchError) {
-				return { success: false, message: fetchError.message }
+				return { success: false, message: fetchError.message };
 			}
 
 			if (!existing) {
 				return {
 					success: false,
 					message: `No section found for kind: ${input.kind}`,
-				}
+				};
 			}
 
-			const meta = (existing.meta as Record<string, any>) || {}
+			const meta = (existing.meta as Record<string, any>) || {};
 
 			// Delete specific keys
 			if (input.keys && input.keys.length > 0) {
 				for (const key of input.keys) {
-					delete meta[key]
+					delete meta[key];
 				}
 			}
 
@@ -300,7 +300,7 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 			if (input.removeFromArrays) {
 				for (const [field, itemsToRemove] of Object.entries(input.removeFromArrays)) {
 					if (Array.isArray(meta[field])) {
-						meta[field] = meta[field].filter((item: any) => !itemsToRemove.includes(item))
+						meta[field] = meta[field].filter((item: any) => !itemsToRemove.includes(item));
 					}
 				}
 			}
@@ -314,14 +314,14 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 				})
 				.eq("id", existing.id)
 				.select("*")
-				.single()
+				.single();
 
 			if (error || !data) {
-				consola.error("deleteProjectSectionMetaKeyTool error", error)
+				consola.error("deleteProjectSectionMetaKeyTool error", error);
 				return {
 					success: false,
 					message: error?.message || "Failed to delete meta keys",
-				}
+				};
 			}
 
 			return {
@@ -336,11 +336,11 @@ export const deleteProjectSectionMetaKeyTool = createTool({
 					createdAt: data.created_at,
 					updatedAt: data.updated_at,
 				},
-			}
+			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Unknown error"
-			consola.error("deleteProjectSectionMetaKeyTool unexpected error", message)
-			return { success: false, message }
+			const message = error instanceof Error ? error.message : "Unknown error";
+			consola.error("deleteProjectSectionMetaKeyTool unexpected error", message);
+			return { success: false, message };
 		}
 	},
-})
+});

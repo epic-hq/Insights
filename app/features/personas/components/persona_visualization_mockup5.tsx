@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js"
-import { useEffect, useMemo, useState } from "react"
+import { createClient } from "@supabase/supabase-js";
+import { useEffect, useMemo, useState } from "react";
 import {
 	CartesianGrid,
 	Legend,
@@ -10,7 +10,7 @@ import {
 	XAxis,
 	YAxis,
 	ZAxis,
-} from "recharts"
+} from "recharts";
 
 /**
  * Persona Visualization V2 — Radial Spectrum (Supabase‑ready + Demo fallback)
@@ -25,29 +25,29 @@ import {
 // ----------------------
 // Types
 // ----------------------
-export type SpectrumPoint = { x: number; y: number; z?: number; label?: string }
-export type PersonaPoints = Record<string, SpectrumPoint> // axisName -> point
+export type SpectrumPoint = { x: number; y: number; z?: number; label?: string };
+export type PersonaPoints = Record<string, SpectrumPoint>; // axisName -> point
 export type PersonaRow = {
-	id: string
-	set_id: string
-	name_and_tagline: string
-	differentiators: string[]
-	spectrum_positions?: PersonaPoints | null // JSONB
-	kind?: "provisional" | "contrast" | "core" | string // drives color bucketing
-}
+	id: string;
+	set_id: string;
+	name_and_tagline: string;
+	differentiators: string[];
+	spectrum_positions?: PersonaPoints | null; // JSONB
+	kind?: "provisional" | "contrast" | "core" | string; // drives color bucketing
+};
 
-export type DataSet = { name: string; color?: string; points: (SpectrumPoint & { personaId?: string })[] }
+export type DataSet = { name: string; color?: string; points: (SpectrumPoint & { personaId?: string })[] };
 
 // utils
 function capitalize(s?: string) {
-	return (s || "").charAt(0).toUpperCase() + (s || "").slice(1)
+	return (s || "").charAt(0).toUpperCase() + (s || "").slice(1);
 }
 function parseAxisSides(axis: string): [string, string] {
-	const parts = axis.split("↔")
-	if (parts.length === 2) return [parts[0].trim(), parts[1].trim()]
-	const hy = axis.split("-")
-	if (hy.length === 2) return [hy[0].trim(), hy[1].trim()]
-	return ["Left", "Right"]
+	const parts = axis.split("↔");
+	if (parts.length === 2) return [parts[0].trim(), parts[1].trim()];
+	const hy = axis.split("-");
+	if (hy.length === 2) return [hy[0].trim(), hy[1].trim()];
+	return ["Left", "Right"];
 }
 
 // ----------------------
@@ -64,7 +64,7 @@ function readSupabaseEnv() {
 	// const url = fromWindow.SUPABASE_URL || fromGlobal.SUPABASE_URL || fromImportMeta.VITE_SUPABASE_URL || fromProcess.VITE_SUPABASE_URL || fromProcess.SUPABASE_URL || undefined;
 	// const anon = fromWindow.SUPABASE_ANON_KEY || fromGlobal.SUPABASE_ANON_KEY || fromImportMeta.VITE_SUPABASE_ANON_KEY || fromProcess.VITE_SUPABASE_ANON_KEY || fromProcess.SUPABASE_ANON_KEY || undefined;
 	// return { url, anon } as { url?: string; anon?: string };
-	return { url: "", anon: "" }
+	return { url: "", anon: "" };
 }
 
 // ----------------------
@@ -76,10 +76,10 @@ export function RadialSpectrumView({
 	axisY = "Dimension Y",
 	dataSets,
 }: {
-	title?: string
-	axisX?: string
-	axisY?: string
-	dataSets: DataSet[]
+	title?: string;
+	axisX?: string;
+	axisY?: string;
+	dataSets: DataSet[];
 }) {
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
@@ -144,7 +144,7 @@ export function RadialSpectrumView({
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 // ----------------------
@@ -165,64 +165,64 @@ export function RadialSpectrumFromSupabase({
 	supabaseUrl,
 	supabaseAnon,
 }: {
-	setId: string
-	axis?: string // which spectrum to pull out of spectrum_positions
-	axisXLabel?: string
-	axisYLabel?: string
-	bucketBy?: (p: PersonaRow) => string // groups into datasets
-	mapPersonaToPoints?: (p: PersonaRow, axis: string) => SpectrumPoint | null // fallback mapping
-	supabaseUrl?: string
-	supabaseAnon?: string
+	setId: string;
+	axis?: string; // which spectrum to pull out of spectrum_positions
+	axisXLabel?: string;
+	axisYLabel?: string;
+	bucketBy?: (p: PersonaRow) => string; // groups into datasets
+	mapPersonaToPoints?: (p: PersonaRow, axis: string) => SpectrumPoint | null; // fallback mapping
+	supabaseUrl?: string;
+	supabaseAnon?: string;
 }) {
-	const [rows, setRows] = useState<PersonaRow[] | null>(null)
-	const [err, setErr] = useState<string | null>(null)
+	const [rows, setRows] = useState<PersonaRow[] | null>(null);
+	const [err, setErr] = useState<string | null>(null);
 
 	// Resolve env at runtime if not provided via props
-	const env = useMemo(() => readSupabaseEnv(), [])
-	const url = supabaseUrl ?? env.url
-	const anon = supabaseAnon ?? env.anon
+	const env = useMemo(() => readSupabaseEnv(), []);
+	const url = supabaseUrl ?? env.url;
+	const anon = supabaseAnon ?? env.anon;
 
 	useEffect(() => {
 		if (!url || !anon) {
-			setErr("Supabase env not configured — using demo in default export")
-			return
+			setErr("Supabase env not configured — using demo in default export");
+			return;
 		}
-		const sb = createClient(url, anon)
-		;(async () => {
+		const sb = createClient(url, anon);
+		(async () => {
 			const { data, error } = await sb
 				.from("personas")
 				.select("id,set_id,name_and_tagline,differentiators,spectrum_positions,kind")
-				.eq("set_id", setId)
-			if (error) setErr(error.message)
-			else setRows((data || []) as PersonaRow[])
-		})()
-	}, [setId, url, anon])
+				.eq("set_id", setId);
+			if (error) setErr(error.message);
+			else setRows((data || []) as PersonaRow[]);
+		})();
+	}, [setId, url, anon]);
 
 	const dataSets: DataSet[] = useMemo(() => {
-		if (!rows) return []
-		const byBucket = new Map<string, (SpectrumPoint & { personaId?: string })[]>()
+		if (!rows) return [];
+		const byBucket = new Map<string, (SpectrumPoint & { personaId?: string })[]>();
 		for (const p of rows) {
-			const fromJson = (p.spectrum_positions || ({} as PersonaPoints))[axis] as SpectrumPoint | undefined
-			const pt = fromJson ?? mapPersonaToPoints?.(p, axis) ?? null
-			if (!pt) continue
-			const b = bucketBy(p)
-			if (!byBucket.has(b)) byBucket.set(b, [])
-			byBucket.get(b)?.push({ ...pt, z: pt.z ?? 80, personaId: p.id })
+			const fromJson = (p.spectrum_positions || ({} as PersonaPoints))[axis] as SpectrumPoint | undefined;
+			const pt = fromJson ?? mapPersonaToPoints?.(p, axis) ?? null;
+			if (!pt) continue;
+			const b = bucketBy(p);
+			if (!byBucket.has(b)) byBucket.set(b, []);
+			byBucket.get(b)?.push({ ...pt, z: pt.z ?? 80, personaId: p.id });
 		}
 		const colorFor = (name: string, idx: number) => {
-			const n = name.toLowerCase()
-			if (n.includes("contrast")) return "#34d399" // emerald
-			if (n.includes("provisional")) return "#818cf8" // indigo
-			if (n.includes("core")) return "#94a3b8" // slate
-			return idx === 0 ? "#818cf8" : "#34d399"
-		}
-		return Array.from(byBucket.entries()).map(([name, points], i) => ({ name, color: colorFor(name, i), points }))
-	}, [rows, axis, mapPersonaToPoints, bucketBy])
+			const n = name.toLowerCase();
+			if (n.includes("contrast")) return "#34d399"; // emerald
+			if (n.includes("provisional")) return "#818cf8"; // indigo
+			if (n.includes("core")) return "#94a3b8"; // slate
+			return idx === 0 ? "#818cf8" : "#34d399";
+		};
+		return Array.from(byBucket.entries()).map(([name, points], i) => ({ name, color: colorFor(name, i), points }));
+	}, [rows, axis, mapPersonaToPoints, bucketBy]);
 
-	const [leftLabel, rightLabel] = useMemo(() => parseAxisSides(axis), [axis])
+	const [leftLabel, rightLabel] = useMemo(() => parseAxisSides(axis), [axis]);
 
-	if (err) return <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200">{err}</div>
-	if (!rows) return <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-zinc-400">Loading…</div>
+	if (err) return <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200">{err}</div>;
+	if (!rows) return <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-zinc-400">Loading…</div>;
 
 	return (
 		<div className="relative">
@@ -232,28 +232,28 @@ export function RadialSpectrumFromSupabase({
 				<span>{rightLabel}</span>
 			</div>
 		</div>
-	)
+	);
 }
 
 // ----------------------
 // Optional helper: compute spectrum point from differentiators
 // ----------------------
 export const defaultMapperFromDifferentiators = (p: PersonaRow, axis: string): SpectrumPoint | null => {
-	const diffs = (p.differentiators || []).map((d) => d.toLowerCase())
-	const has = (s: string) => diffs.some((d) => d.includes(s))
+	const diffs = (p.differentiators || []).map((d) => d.toLowerCase());
+	const has = (s: string) => diffs.some((d) => d.includes(s));
 
 	if (axis.includes("Autonomy") && axis.includes("Guidance")) {
-		const x = has("autonomy") || has("explore") ? 80 : has("structure") || has("guided") ? 20 : 50
-		const y = has("nudges") ? 30 : 70 // y as Nudge‑Sensitivity proxy
-		return { x, y, z: 80, label: has("autonomy") ? "Autonomy" : has("guided") ? "Guidance" : "Neutral" }
+		const x = has("autonomy") || has("explore") ? 80 : has("structure") || has("guided") ? 20 : 50;
+		const y = has("nudges") ? 30 : 70; // y as Nudge‑Sensitivity proxy
+		return { x, y, z: 80, label: has("autonomy") ? "Autonomy" : has("guided") ? "Guidance" : "Neutral" };
 	}
 	if (axis.includes("Speed") && axis.includes("Depth")) {
-		const x = has("fast") || has("speed") || has("sprint") ? 80 : has("depth") || has("mastery") ? 20 : 50
-		const y = has("planning") ? 60 : 40 // y as Planning tendency
-		return { x, y, z: 80, label: has("depth") ? "Depth" : "Speed" }
+		const x = has("fast") || has("speed") || has("sprint") ? 80 : has("depth") || has("mastery") ? 20 : 50;
+		const y = has("planning") ? 60 : 40; // y as Planning tendency
+		return { x, y, z: 80, label: has("depth") ? "Depth" : "Speed" };
 	}
-	return null
-}
+	return null;
+};
 
 // ----------------------
 // Demo fallback (default export)
@@ -275,23 +275,23 @@ const DEMO_DATA: DataSet[] = [
 			{ x: 70, y: 45, z: 60, label: "Exploration" },
 		],
 	},
-]
+];
 
 export default function PersonaSpectrumV2Demo({
 	supabaseUrl,
 	supabaseAnon,
 }: {
-	supabaseUrl?: string
-	supabaseAnon?: string
+	supabaseUrl?: string;
+	supabaseAnon?: string;
 }) {
-	const [axis, setAxis] = useState("Autonomy ↔ Guidance")
-	const [axisX, setAxisX] = useState("Autonomy → Guidance")
-	const [axisY, setAxisY] = useState("Nudge‑Sensitivity")
+	const [axis, setAxis] = useState("Autonomy ↔ Guidance");
+	const [axisX, setAxisX] = useState("Autonomy → Guidance");
+	const [axisY, setAxisY] = useState("Nudge‑Sensitivity");
 
-	const env = readSupabaseEnv()
-	const canUseSupabase = Boolean((supabaseUrl ?? env.url) && (supabaseAnon ?? env.anon))
+	const env = readSupabaseEnv();
+	const canUseSupabase = Boolean((supabaseUrl ?? env.url) && (supabaseAnon ?? env.anon));
 
-	const [leftLabel, rightLabel] = useMemo(() => parseAxisSides(axis), [axis])
+	const [leftLabel, rightLabel] = useMemo(() => parseAxisSides(axis), [axis]);
 
 	return (
 		<div className="space-y-3">
@@ -362,5 +362,5 @@ export default function PersonaSpectrumV2Demo({
 				</div>
 			)}
 		</div>
-	)
+	);
 }

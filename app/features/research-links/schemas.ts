@@ -1,6 +1,6 @@
-import slugify from "@sindresorhus/slugify"
-import { z } from "zod"
-import { QuestionBranchingSchema } from "./branching"
+import slugify from "@sindresorhus/slugify";
+import { z } from "zod";
+import { QuestionBranchingSchema } from "./branching";
 
 export const ResearchLinkQuestionSchema = z.object({
 	id: z.string().min(1, "Question id is required"),
@@ -18,8 +18,8 @@ export const ResearchLinkQuestionSchema = z.object({
 				"multi_select",
 				"likert",
 				"image_select",
-			] as const
-			return (valid as readonly string[]).includes(val) ? (val as (typeof valid)[number]) : "short_text"
+			] as const;
+			return (valid as readonly string[]).includes(val) ? (val as (typeof valid)[number]) : "short_text";
 		}),
 	placeholder: z.string().optional().nullable(),
 	helperText: z.string().optional().nullable(),
@@ -47,13 +47,13 @@ export const ResearchLinkQuestionSchema = z.object({
 	videoUrl: z.string().optional().nullable(),
 	// Conditional branching rules
 	branching: QuestionBranchingSchema.optional().nullable(),
-})
+});
 
-export type ResearchLinkQuestion = z.infer<typeof ResearchLinkQuestionSchema>
+export type ResearchLinkQuestion = z.infer<typeof ResearchLinkQuestionSchema>;
 
 export function createEmptyQuestion(): ResearchLinkQuestion {
 	const id =
-		typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+		typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 	return {
 		id,
 		prompt: "",
@@ -66,36 +66,36 @@ export function createEmptyQuestion(): ResearchLinkQuestion {
 		likertLabels: null,
 		imageOptions: null,
 		videoUrl: null,
-	}
+	};
 }
 
 const QuestionsJsonSchema = z
 	.string({ required_error: "Questions payload is required" })
 	.transform((value, ctx) => {
 		try {
-			const parsed = JSON.parse(value ?? "[]")
-			return parsed
+			const parsed = JSON.parse(value ?? "[]");
+			return parsed;
 		} catch (error) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "Invalid questions payload",
-			})
-			return z.NEVER
+			});
+			return z.NEVER;
 		}
 	})
-	.pipe(z.array(ResearchLinkQuestionSchema).min(1, "Add at least one question"))
+	.pipe(z.array(ResearchLinkQuestionSchema).min(1, "Add at least one question"));
 
 const textField = z
 	.string()
 	.optional()
 	.transform((value) => {
-		const trimmed = value?.trim() ?? ""
-		return trimmed.length > 0 ? trimmed : null
-	})
+		const trimmed = value?.trim() ?? "";
+		return trimmed.length > 0 ? trimmed : null;
+	});
 
 const booleanFlag = z
 	.union([z.string(), z.boolean(), z.undefined(), z.null()])
-	.transform((value) => value === true || value === "true" || value === "on")
+	.transform((value) => value === true || value === "true" || value === "on");
 
 export const ResearchLinkPayloadSchema = z.object({
 	name: z
@@ -116,36 +116,36 @@ export const ResearchLinkPayloadSchema = z.object({
 		.string()
 		.optional()
 		.transform((value, ctx) => {
-			const trimmed = value?.trim() ?? ""
-			if (trimmed.length === 0) return null
+			const trimmed = value?.trim() ?? "";
+			if (trimmed.length === 0) return null;
 			try {
 				// eslint-disable-next-line no-new
-				new URL(trimmed)
-				return trimmed
+				new URL(trimmed);
+				return trimmed;
 			} catch {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: "Enter a valid calendar URL",
-				})
-				return z.NEVER
+				});
+				return z.NEVER;
 			}
 		}),
 	redirectUrl: z
 		.string()
 		.optional()
 		.transform((value, ctx) => {
-			const trimmed = value?.trim() ?? ""
-			if (trimmed.length === 0) return null
+			const trimmed = value?.trim() ?? "";
+			if (trimmed.length === 0) return null;
 			try {
 				// eslint-disable-next-line no-new
-				new URL(trimmed)
-				return trimmed
+				new URL(trimmed);
+				return trimmed;
 			} catch {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: "Enter a valid redirect URL",
-				})
-				return z.NEVER
+				});
+				return z.NEVER;
 			}
 		}),
 	allowChat: booleanFlag,
@@ -154,22 +154,22 @@ export const ResearchLinkPayloadSchema = z.object({
 	defaultResponseMode: z
 		.union([z.literal("form"), z.literal("chat"), z.literal("voice"), z.string().optional(), z.null()])
 		.transform((value) => {
-			if (value === "chat") return "chat"
-			if (value === "voice") return "voice"
-			return "form"
+			if (value === "chat") return "chat";
+			if (value === "voice") return "voice";
+			return "form";
 		}),
 	isLive: booleanFlag,
 	questions: QuestionsJsonSchema,
-})
+});
 
-export type ResearchLinkPayload = z.infer<typeof ResearchLinkPayloadSchema>
+export type ResearchLinkPayload = z.infer<typeof ResearchLinkPayloadSchema>;
 
 export const ResearchLinkResponseStartSchema = z.object({
 	email: z.string({ required_error: "Email is required" }).email("Enter a valid email"),
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
 	utmParams: z.record(z.string()).optional().nullable(),
-})
+});
 
 /**
  * Schema for starting an anonymous response (no identification required)
@@ -178,7 +178,7 @@ export const ResearchLinkAnonymousStartSchema = z.object({
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
 	utmParams: z.record(z.string()).optional().nullable(),
-})
+});
 
 /**
  * Schema for starting a phone-identified response
@@ -188,7 +188,7 @@ export const ResearchLinkPhoneStartSchema = z.object({
 	responseId: z.string().uuid().optional().nullable(),
 	responseMode: z.enum(["form", "chat"]).optional(),
 	utmParams: z.record(z.string()).optional().nullable(),
-})
+});
 
 /**
  * Schema for creating a person when one doesn't exist for the given email
@@ -200,7 +200,7 @@ export const ResearchLinkCreatePersonSchema = z.object({
 	responseId: z.string().uuid({ message: "Response ID is required" }),
 	responseMode: z.enum(["form", "chat"]).optional(),
 	utmParams: z.record(z.string()).optional().nullable(),
-})
+});
 
 export const ResearchLinkResponseSaveSchema = z.object({
 	responseId: z.string().uuid({ message: "Response id is required" }),
@@ -210,6 +210,6 @@ export const ResearchLinkResponseSaveSchema = z.object({
 		.default({}),
 	completed: z.boolean().optional(),
 	merge: z.boolean().optional().default(false), // If true, merge responses with existing instead of replacing
-})
+});
 
-export type ResearchLinkResponsePayload = z.infer<typeof ResearchLinkResponseSaveSchema>
+export type ResearchLinkResponsePayload = z.infer<typeof ResearchLinkResponseSaveSchema>;

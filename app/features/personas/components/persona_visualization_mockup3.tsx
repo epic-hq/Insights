@@ -1,6 +1,6 @@
-import { createClient } from "@supabase/supabase-js"
-import { useEffect, useMemo, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
+import { createClient } from "@supabase/supabase-js";
+import { useEffect, useMemo, useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import {
 	CartesianGrid,
 	Legend,
@@ -11,8 +11,8 @@ import {
 	XAxis,
 	YAxis,
 	ZAxis,
-} from "recharts"
-import { getServerClient } from "~/lib/supabase/client.server"
+} from "recharts";
+import { getServerClient } from "~/lib/supabase/client.server";
 
 /**
  * Persona Visualization V2 — Radial Spectrum wired to Supabase (Remix-friendly)
@@ -29,46 +29,46 @@ import { getServerClient } from "~/lib/supabase/client.server"
  * - If `spectrum_positions` is absent, you can supply a `mapPersonaToPoints` prop.
  */
 
-export type DataSet = { name: string; color?: string; points: (SpectrumPoint & { personaId: string })[] }
+export type DataSet = { name: string; color?: string; points: (SpectrumPoint & { personaId: string })[] };
 
 export const meta: MetaFunction = () => [
 	{ title: "Persona Spectrum | Insights" },
 	{ name: "description", content: "Compare personas on configurable spectrums with clear labels." },
-]
+];
 
 // ----------------------
 // Types
 // ----------------------
-type SpectrumPoint = { x: number; y: number; z?: number; label?: string }
+type SpectrumPoint = { x: number; y: number; z?: number; label?: string };
 
 export type PersonaRow = {
-	id: string
-	name_and_tagline: string
-	differentiators: string[] | null
-	spectrum_positions: Record<string, SpectrumPoint> | null
-	kind?: "provisional" | "contrast" | "core" | string | null
-}
+	id: string;
+	name_and_tagline: string;
+	differentiators: string[] | null;
+	spectrum_positions: Record<string, SpectrumPoint> | null;
+	kind?: "provisional" | "contrast" | "core" | string | null;
+};
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const projectId = params.projectId as string | undefined
+	const { client: supabase } = getServerClient(request);
+	const projectId = params.projectId as string | undefined;
 
 	// If we have Supabase configured on server, pull real data.
 	try {
-		if (!projectId) throw new Error("Missing projectId route param")
+		if (!projectId) throw new Error("Missing projectId route param");
 
 		const { data, error } = await supabase
 			.from("personas")
 			.select("id,name_and_tagline,differentiators,spectrum_positions,kind")
 			.eq("project_id", projectId)
-			.order("created_at", { ascending: false })
+			.order("created_at", { ascending: false });
 
-		if (error) throw error
+		if (error) throw error;
 
 		return {
 			personas: (data || []) as PersonaRow[],
 			hasSupabase: true,
-		}
+		};
 	} catch (_e) {
 		// Safe demo fallback when env/DB is not available in sandbox
 		const demo: PersonaRow[] = [
@@ -92,9 +92,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 				},
 				kind: "provisional",
 			},
-		]
+		];
 
-		return { personas: demo, hasSupabase: false }
+		return { personas: demo, hasSupabase: false };
 	}
 }
 // ----------------------
@@ -106,10 +106,10 @@ export function RadialSpectrumView({
 	axisY = "Dimension Y",
 	dataSets,
 }: {
-	title?: string
-	axisX?: string
-	axisY?: string
-	dataSets: DataSet[]
+	title?: string;
+	axisX?: string;
+	axisY?: string;
+	dataSets: DataSet[];
 }) {
 	return (
 		<div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
@@ -150,7 +150,7 @@ export function RadialSpectrumView({
 				</ResponsiveContainer>
 			</div>
 		</div>
-	)
+	);
 }
 
 // ----------------------
@@ -169,17 +169,17 @@ export function RadialSpectrumFromSupabase({
 	supabaseAnon = (typeof window !== "undefined" ? (window as any).ENV?.SUPABASE_ANON_KEY : undefined) ||
 		import.meta.env.VITE_SUPABASE_ANON_KEY,
 }: {
-	setId: string
-	axis?: string // which spectrum to pull out of spectrum_positions
-	axisXLabel?: string
-	axisYLabel?: string
-	bucketBy?: (p: PersonaRow) => string // groups into datasets (e.g., Provisional vs Contrast)
-	mapPersonaToPoints?: (p: PersonaRow, axis: string) => SpectrumPoint | null // fallback mapping
-	supabaseUrl?: string
-	supabaseAnon?: string
+	setId: string;
+	axis?: string; // which spectrum to pull out of spectrum_positions
+	axisXLabel?: string;
+	axisYLabel?: string;
+	bucketBy?: (p: PersonaRow) => string; // groups into datasets (e.g., Provisional vs Contrast)
+	mapPersonaToPoints?: (p: PersonaRow, axis: string) => SpectrumPoint | null; // fallback mapping
+	supabaseUrl?: string;
+	supabaseAnon?: string;
 }) {
-	const [rows, setRows] = useState<PersonaRow[] | null>(null)
-	const [err, setErr] = useState<string | null>(null)
+	const [rows, setRows] = useState<PersonaRow[] | null>(null);
+	const [err, setErr] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!supabaseUrl || !supabaseAnon) {
@@ -201,43 +201,43 @@ export function RadialSpectrumFromSupabase({
 						[axis]: { x: 22, y: 78, z: 85, label: "Guidance" },
 					},
 				},
-			]
-			setRows(demoRows)
-			return
+			];
+			setRows(demoRows);
+			return;
 		}
-		const sb = createClient(supabaseUrl, supabaseAnon)
-		;(async () => {
+		const sb = createClient(supabaseUrl, supabaseAnon);
+		(async () => {
 			const { data, error } = await sb
 				.from("personas")
 				.select("id,set_id,name_and_tagline,differentiators,spectrum_positions")
-				.eq("set_id", setId)
-			if (error) setErr(error.message)
-			else setRows(data as PersonaRow[])
-		})()
-	}, [setId, supabaseUrl, supabaseAnon, axis])
+				.eq("set_id", setId);
+			if (error) setErr(error.message);
+			else setRows(data as PersonaRow[]);
+		})();
+	}, [setId, supabaseUrl, supabaseAnon, axis]);
 
 	const dataSets: DataSet[] = useMemo(() => {
-		if (!rows) return []
-		const byBucket = new Map<string, (SpectrumPoint & { personaId: string })[]>()
+		if (!rows) return [];
+		const byBucket = new Map<string, (SpectrumPoint & { personaId: string })[]>();
 		for (const p of rows) {
-			const fromJson = p.spectrum_positions?.[axis] as SpectrumPoint | undefined
-			const pt = fromJson ?? mapPersonaToPoints?.(p, axis) ?? null
-			if (!pt) continue
-			const b = bucketBy(p)
-			if (!byBucket.has(b)) byBucket.set(b, [])
-			byBucket.get(b)?.push({ ...pt, z: pt.z ?? 80, personaId: p.id })
+			const fromJson = p.spectrum_positions?.[axis] as SpectrumPoint | undefined;
+			const pt = fromJson ?? mapPersonaToPoints?.(p, axis) ?? null;
+			if (!pt) continue;
+			const b = bucketBy(p);
+			if (!byBucket.has(b)) byBucket.set(b, []);
+			byBucket.get(b)?.push({ ...pt, z: pt.z ?? 80, personaId: p.id });
 		}
 		return Array.from(byBucket.entries()).map(([name, points], i) => ({
 			name,
 			color: i === 0 ? "#818cf8" : "#34d399",
 			points,
-		}))
-	}, [rows, axis, mapPersonaToPoints, bucketBy])
+		}));
+	}, [rows, axis, mapPersonaToPoints, bucketBy]);
 
-	if (err) return <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-200">{err}</div>
-	if (!rows) return <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-zinc-400">Loading…</div>
+	if (err) return <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-200">{err}</div>;
+	if (!rows) return <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-zinc-400">Loading…</div>;
 
-	return <RadialSpectrumView title={`Spectrum: ${axis}`} axisX={axisXLabel} axisY={axisYLabel} dataSets={dataSets} />
+	return <RadialSpectrumView title={`Spectrum: ${axis}`} axisX={axisXLabel} axisY={axisYLabel} dataSets={dataSets} />;
 }
 
 // ----------------------
@@ -245,21 +245,21 @@ export function RadialSpectrumFromSupabase({
 // ----------------------
 export const defaultMapperFromDifferentiators = (p: PersonaRow, axis: string): SpectrumPoint | null => {
 	// Naive mapping examples; replace with your domain logic
-	const diffs = (p.differentiators || []).map((d) => d.toLowerCase())
-	const has = (s: string) => diffs.some((d) => d.includes(s))
+	const diffs = (p.differentiators || []).map((d) => d.toLowerCase());
+	const has = (s: string) => diffs.some((d) => d.includes(s));
 
 	if (axis.includes("Autonomy") && axis.includes("Guidance")) {
-		const x = has("autonomy") || has("explore") ? 80 : has("structure") || has("guided") ? 20 : 50
-		const y = has("nudges") ? 30 : 70 // y as Nudge‑Sensitivity proxy
-		return { x, y, z: 80, label: has("autonomy") ? "Autonomy" : has("guided") ? "Guidance" : "Neutral" }
+		const x = has("autonomy") || has("explore") ? 80 : has("structure") || has("guided") ? 20 : 50;
+		const y = has("nudges") ? 30 : 70; // y as Nudge‑Sensitivity proxy
+		return { x, y, z: 80, label: has("autonomy") ? "Autonomy" : has("guided") ? "Guidance" : "Neutral" };
 	}
 	if (axis.includes("Speed") && axis.includes("Depth")) {
-		const x = has("fast") || has("speed") || has("sprint") ? 80 : has("depth") || has("mastery") ? 20 : 50
-		const y = has("planning") ? 60 : 40 // y as Planning tendency
-		return { x, y, z: 80, label: has("depth") ? "Depth" : "Speed" }
+		const x = has("fast") || has("speed") || has("sprint") ? 80 : has("depth") || has("mastery") ? 20 : 50;
+		const y = has("planning") ? 60 : 40; // y as Planning tendency
+		return { x, y, z: 80, label: has("depth") ? "Depth" : "Speed" };
 	}
-	return null
-}
+	return null;
+};
 
 // ----------------------
 // Example usage (client)

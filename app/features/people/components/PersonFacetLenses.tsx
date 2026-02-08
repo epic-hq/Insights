@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 import {
 	AlignLeft,
 	BarChart3,
@@ -13,42 +13,42 @@ import {
 	Users,
 	Wrench,
 	X,
-} from "lucide-react"
-import { useFetcher } from "react-router-dom"
-import { AddFacetSignalDialog } from "~/components/dialogs/AddFacetSignalDialog"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { cn } from "~/lib/utils"
-import { InlineEditableFacetSummary } from "./InlineEditableFacetSummary"
+} from "lucide-react";
+import { useFetcher } from "react-router-dom";
+import { AddFacetSignalDialog } from "~/components/dialogs/AddFacetSignalDialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
+import { InlineEditableFacetSummary } from "./InlineEditableFacetSummary";
 
 type FacetEntry = {
-	facet_account_id: number
-	label: string
-	source: string | null
-	confidence: number | null
-	kind_slug: string
-}
+	facet_account_id: number;
+	label: string;
+	source: string | null;
+	confidence: number | null;
+	kind_slug: string;
+};
 
 type FacetGroupLens = {
-	kind_slug: string
-	label: string
-	summary?: string | null
-	facets: FacetEntry[]
-}
+	kind_slug: string;
+	label: string;
+	summary?: string | null;
+	facets: FacetEntry[];
+};
 
 type AvailableFacet = {
-	id: number
-	label: string
-	slug: string
-}
+	id: number;
+	label: string;
+	slug: string;
+};
 
 type PersonFacetLensesProps = {
-	groups: FacetGroupLens[]
-	personId: string
-	availableFacetsByKind?: Record<string, AvailableFacet[]>
-	isGenerating?: boolean
-}
+	groups: FacetGroupLens[];
+	personId: string;
+	availableFacetsByKind?: Record<string, AvailableFacet[]>;
+	isGenerating?: boolean;
+};
 
 const KIND_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
 	pain: { icon: Heart, color: "text-rose-600", bg: "bg-rose-50" },
@@ -62,14 +62,14 @@ const KIND_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: strin
 	behavior: { icon: PersonStanding, color: "text-orange-700", bg: "bg-orange-50" },
 	context: { icon: Image, color: "text-teal-700", bg: "bg-teal-50" },
 	job_function: { icon: Boxes, color: "text-violet-700", bg: "bg-violet-50" },
-}
+};
 
 function getIcon(kindSlug: string) {
-	return KIND_ICON_MAP[kindSlug] ?? { icon: Sparkles, color: "text-slate-700", bg: "bg-slate-100" }
+	return KIND_ICON_MAP[kindSlug] ?? { icon: Sparkles, color: "text-slate-700", bg: "bg-slate-100" };
 }
 
 function confidenceIcon(confidence: number | null) {
-	if (confidence === null || confidence === undefined) return null
+	if (confidence === null || confidence === undefined) return null;
 
 	// High confidence (>= 0.7): 3 bars
 	if (confidence >= 0.7) {
@@ -79,7 +79,7 @@ function confidenceIcon(confidence: number | null) {
 				<div className="h-3 w-1 rounded-sm bg-emerald-600" />
 				<div className="h-3.5 w-1 rounded-sm bg-emerald-600" />
 			</div>
-		)
+		);
 	}
 
 	// Medium confidence (>= 0.4): 2 bars
@@ -90,7 +90,7 @@ function confidenceIcon(confidence: number | null) {
 				<div className="h-3 w-1 rounded-sm bg-amber-600" />
 				<div className="h-3.5 w-1 rounded-sm bg-muted-foreground/30" />
 			</div>
-		)
+		);
 	}
 
 	// Low confidence: 1 bar
@@ -100,16 +100,16 @@ function confidenceIcon(confidence: number | null) {
 			<div className="h-3 w-1 rounded-sm bg-muted-foreground/30" />
 			<div className="h-3.5 w-1 rounded-sm bg-muted-foreground/30" />
 		</div>
-	)
+	);
 }
 
 function fallbackSummary(facets: FacetEntry[]) {
-	if (!facets?.length) return "No attributes captured yet."
+	if (!facets?.length) return "No attributes captured yet.";
 	const labels = facets
 		.map((facet) => facet.label)
 		.filter(Boolean)
-		.slice(0, 3)
-	return labels.join(" • ") || "No attributes captured yet."
+		.slice(0, 3);
+	return labels.join(" • ") || "No attributes captured yet.";
 }
 
 export function PersonFacetLenses({
@@ -118,11 +118,11 @@ export function PersonFacetLenses({
 	availableFacetsByKind = {},
 	isGenerating,
 }: PersonFacetLensesProps) {
-	const fetcher = useFetcher()
+	const fetcher = useFetcher();
 
-	if (!groups.length) return null
+	if (!groups.length) return null;
 
-	const defaultAccordionValue = groups[0]?.kind_slug
+	const defaultAccordionValue = groups[0]?.kind_slug;
 
 	const handleRemoveFacet = (facetAccountId: number) => {
 		fetcher.submit(
@@ -132,8 +132,8 @@ export function PersonFacetLenses({
 				facet_account_id: facetAccountId.toString(),
 			},
 			{ method: "post" }
-		)
-	}
+		);
+	};
 
 	return (
 		<section className="space-y-3">
@@ -151,14 +151,14 @@ export function PersonFacetLenses({
 
 			<Accordion type="single" collapsible defaultValue={defaultAccordionValue} className="mx-auto max-w-3xl space-y-3">
 				{groups.map((group) => {
-					const iconConfig = getIcon(group.kind_slug)
-					const _summaryText = group.summary?.trim() || fallbackSummary(group.facets)
-					const availableFacets = availableFacetsByKind[group.kind_slug] || []
+					const iconConfig = getIcon(group.kind_slug);
+					const _summaryText = group.summary?.trim() || fallbackSummary(group.facets);
+					const availableFacets = availableFacetsByKind[group.kind_slug] || [];
 					// Filter out facets that are already linked to this person
-					const linkedFacetIds = new Set(group.facets.map((f) => f.facet_account_id))
-					const unlinkedFacets = availableFacets.filter((f) => !linkedFacetIds.has(f.id))
+					const linkedFacetIds = new Set(group.facets.map((f) => f.facet_account_id));
+					const unlinkedFacets = availableFacets.filter((f) => !linkedFacetIds.has(f.id));
 					// Sort facets by confidence (highest first)
-					const sortedFacets = [...group.facets].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+					const sortedFacets = [...group.facets].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
 
 					return (
 						<AccordionItem
@@ -224,9 +224,9 @@ export function PersonFacetLenses({
 								</div>
 							</AccordionContent>
 						</AccordionItem>
-					)
+					);
 				})}
 			</Accordion>
 		</section>
-	)
+	);
 }

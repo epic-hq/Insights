@@ -1,75 +1,75 @@
-import consola from "consola"
-import { useEffect } from "react"
-import { type ActionFunctionArgs, Link, redirect, useFetcher, useSearchParams } from "react-router"
-import { LogoBrand } from "~/components/branding"
-import { LoginForm } from "~/components/login-form"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm"
+import consola from "consola";
+import { useEffect } from "react";
+import { type ActionFunctionArgs, Link, redirect, useFetcher, useSearchParams } from "react-router";
+import { LogoBrand } from "~/components/branding";
+import { LoginForm } from "~/components/login-form";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-	const { client: supabase, headers } = getServerClient(request)
+	const { client: supabase, headers } = getServerClient(request);
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 
-	const email = formData.get("email") as string
-	const password = formData.get("password") as string
-	const redirectTo = formData.get("redirect") as string | null
+	const email = formData.get("email") as string;
+	const password = formData.get("password") as string;
+	const redirectTo = formData.get("redirect") as string | null;
 
 	const { error } = await supabase.auth.signInWithPassword({
 		email,
 		password,
-	})
+	});
 
 	if (error) {
 		return {
 			error: error instanceof Error ? error.message : "An error occurred",
-		}
+		};
 	}
 
 	// Redirect to login_success with the original redirect destination
-	const successUrl = redirectTo ? `/login_success?next=${encodeURIComponent(redirectTo)}` : "/login_success"
-	return redirect(successUrl, { headers })
-}
+	const successUrl = redirectTo ? `/login_success?next=${encodeURIComponent(redirectTo)}` : "/login_success";
+	return redirect(successUrl, { headers });
+};
 
 export default function Login() {
-	const fetcher = useFetcher<typeof action>()
-	const [searchParams] = useSearchParams()
+	const fetcher = useFetcher<typeof action>();
+	const [searchParams] = useSearchParams();
 
-	const error = fetcher.data?.error || searchParams.get("error")
-	const loading = fetcher.state === "submitting"
-	const redirectTo = searchParams.get("redirect")
+	const error = fetcher.data?.error || searchParams.get("error");
+	const loading = fetcher.state === "submitting";
+	const redirectTo = searchParams.get("redirect");
 
 	// Build sign-up URL with redirect param if present
-	const signUpUrl = redirectTo ? `/sign-up?redirect=${encodeURIComponent(redirectTo)}` : "/sign-up"
+	const signUpUrl = redirectTo ? `/sign-up?redirect=${encodeURIComponent(redirectTo)}` : "/sign-up";
 
 	// Persist incoming UTM params so they survive Supabase redirects
 	useEffect(() => {
-		const utmParams = extractUtmParamsFromSearch(location.search)
+		const utmParams = extractUtmParamsFromSearch(location.search);
 		if (!hasUtmParams(utmParams)) {
-			return
+			return;
 		}
 
 		try {
 			const existingRaw = document.cookie
 				.split("; ")
 				.find((row) => row.startsWith(`${UTM_COOKIE_NAME}=`))
-				?.split("=")[1]
+				?.split("=")[1];
 
-			const existing = existingRaw ? (JSON.parse(decodeURIComponent(existingRaw)) as UtmParams) : {}
-			const merged = mergeUtmParams(existing, utmParams)
-			const cookieValue = encodeURIComponent(JSON.stringify(merged))
-			const secure = window.location.protocol === "https:" ? "; Secure" : ""
-			const oneWeekSeconds = 60 * 60 * 24 * 7
+			const existing = existingRaw ? (JSON.parse(decodeURIComponent(existingRaw)) as UtmParams) : {};
+			const merged = mergeUtmParams(existing, utmParams);
+			const cookieValue = encodeURIComponent(JSON.stringify(merged));
+			const secure = window.location.protocol === "https:" ? "; Secure" : "";
+			const oneWeekSeconds = 60 * 60 * 24 * 7;
 
-			document.cookie = `${UTM_COOKIE_NAME}=${cookieValue}; Path=/; Max-Age=${oneWeekSeconds}; SameSite=Lax${secure}`
+			document.cookie = `${UTM_COOKIE_NAME}=${cookieValue}; Path=/; Max-Age=${oneWeekSeconds}; SameSite=Lax${secure}`;
 		} catch (error) {
-			consola.warn("[AUTH] Failed to persist UTM params", error)
+			consola.warn("[AUTH] Failed to persist UTM params", error);
 		}
-	}, [])
+	}, []);
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -151,5 +151,5 @@ export default function Login() {
 				</Card>
 			</div>
 		</div>
-	)
+	);
 }

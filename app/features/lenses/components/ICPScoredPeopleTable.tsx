@@ -13,26 +13,26 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
-} from "@tanstack/react-table"
-import { FileText } from "lucide-react"
-import { useMemo, useState } from "react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { ICPScoredPerson } from "./AnalysisByPersonTab"
-import { BandBadge } from "./ICPMatchSection"
+} from "@tanstack/react-table";
+import { FileText } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import type { ICPScoredPerson } from "./AnalysisByPersonTab";
+import { BandBadge } from "./ICPMatchSection";
 
 type ICPScoredPeopleTableProps = {
-	people: ICPScoredPerson[]
-	projectPath: string
-	onEditPerson: (person: ICPScoredPerson) => void
-}
+	people: ICPScoredPerson[];
+	projectPath: string;
+	onEditPerson: (person: ICPScoredPerson) => void;
+};
 
 export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPScoredPeopleTableProps) {
-	const routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutes(projectPath);
 
-	const [sorting, setSorting] = useState<SortingState>([{ id: "score", desc: true }])
+	const [sorting, setSorting] = useState<SortingState>([{ id: "score", desc: true }]);
 
 	const columns = useMemo<ColumnDef<ICPScoredPerson>[]>(
 		() => [
@@ -54,15 +54,15 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				accessorKey: "title",
 				header: "Title",
 				cell: ({ row }) => {
-					const val = row.original.title
+					const val = row.original.title;
 					if (!val) {
 						return (
 							<span className="rounded bg-yellow-50 px-1.5 py-0.5 text-xs text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400">
 								—
 							</span>
-						)
+						);
 					}
-					return <span className="text-foreground/70 text-xs">{val}</span>
+					return <span className="text-foreground/70 text-xs">{val}</span>;
 				},
 				enableSorting: false,
 			},
@@ -70,15 +70,15 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				id: "company",
 				header: "Company",
 				cell: ({ row }) => {
-					const val = row.original.org_name || row.original.company
+					const val = row.original.org_name || row.original.company;
 					if (!val) {
 						return (
 							<span className="rounded bg-yellow-50 px-1.5 py-0.5 text-xs text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400">
 								—
 							</span>
-						)
+						);
 					}
-					return <span className="text-foreground/70 text-xs">{val}</span>
+					return <span className="text-foreground/70 text-xs">{val}</span>;
 				},
 				enableSorting: false,
 			},
@@ -86,16 +86,16 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				accessorKey: "evidence_count",
 				header: "Evidence",
 				cell: ({ row }) => {
-					const count = row.original.evidence_count
+					const count = row.original.evidence_count;
 					if (!count) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
 					return (
 						<Badge variant="secondary" className="gap-1 px-1.5 py-0 text-[10px]">
 							<FileText className="h-2.5 w-2.5" />
 							{count}
 						</Badge>
-					)
+					);
 				},
 				enableSorting: true,
 			},
@@ -103,17 +103,17 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				accessorKey: "score",
 				header: "ICP Score",
 				cell: ({ row }) => {
-					const { score, confidence } = row.original
+					const { score, confidence } = row.original;
 					if (confidence === 0 || score == null) {
-						return <span className="text-muted-foreground text-xs">—</span>
+						return <span className="text-muted-foreground text-xs">—</span>;
 					}
-					return <span className="font-medium text-xs tabular-nums">{Math.round(score * 100)}%</span>
+					return <span className="font-medium text-xs tabular-nums">{Math.round(score * 100)}%</span>;
 				},
 				enableSorting: true,
 				sortingFn: (a, b) => {
-					const aScore = a.original.confidence === 0 ? -1 : (a.original.score ?? -1)
-					const bScore = b.original.confidence === 0 ? -1 : (b.original.score ?? -1)
-					return aScore - bScore
+					const aScore = a.original.confidence === 0 ? -1 : (a.original.score ?? -1);
+					const bScore = b.original.confidence === 0 ? -1 : (b.original.score ?? -1);
+					return aScore - bScore;
 				},
 			},
 			{
@@ -126,15 +126,15 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 						HIGH: 4,
 						MEDIUM: 3,
 						LOW: 2,
-					}
-					const aVal = a.original.band ? (order[a.original.band] ?? 1) : a.original.confidence === 0 ? 0 : 1
-					const bVal = b.original.band ? (order[b.original.band] ?? 1) : b.original.confidence === 0 ? 0 : 1
-					return aVal - bVal
+					};
+					const aVal = a.original.band ? (order[a.original.band] ?? 1) : a.original.confidence === 0 ? 0 : 1;
+					const bVal = b.original.band ? (order[b.original.band] ?? 1) : b.original.confidence === 0 ? 0 : 1;
+					return aVal - bVal;
 				},
 			},
 		],
 		[routes.people]
-	)
+	);
 
 	const table = useReactTable({
 		data: people,
@@ -143,10 +143,10 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
-	})
+	});
 
 	if (people.length === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -185,5 +185,5 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				</TableBody>
 			</Table>
 		</div>
-	)
+	);
 }

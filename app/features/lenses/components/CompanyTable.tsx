@@ -1,31 +1,31 @@
-import { formatDistanceToNow } from "date-fns"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import type { InterviewLensFramework, LensSlotValue } from "~/features/lenses/types"
-import { cn } from "~/lib/utils"
+import { formatDistanceToNow } from "date-fns";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import type { InterviewLensFramework, LensSlotValue } from "~/features/lenses/types";
+import { cn } from "~/lib/utils";
 
 const hygieneBadgeClasses: Record<string, string> = {
 	info: "border-sky-200 bg-sky-50 text-sky-700",
 	warning: "border-amber-200 bg-amber-50 text-amber-700",
 	critical: "border-rose-200 bg-rose-50 text-rose-700",
-}
+};
 
 const confidenceBadgeClasses = [
 	{ threshold: 0.7, className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
 	{ threshold: 0.4, className: "border-amber-200 bg-amber-50 text-amber-700" },
-]
+];
 
 type LensSlotTableProps = {
-	framework: InterviewLensFramework
-	className?: string
-	showHeader?: boolean
-}
+	framework: InterviewLensFramework;
+	className?: string;
+	showHeader?: boolean;
+};
 
 export function LensSlotTable({ framework, className, showHeader = true }: LensSlotTableProps) {
 	const lastUpdatedLabel = framework.computedAt
 		? formatDistanceToNow(new Date(framework.computedAt), { addSuffix: true })
-		: null
+		: null;
 
 	return (
 		<Card className={cn("overflow-hidden border border-border/60 shadow-sm", className)}>
@@ -143,14 +143,14 @@ export function LensSlotTable({ framework, className, showHeader = true }: LensS
 				) : null}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 function LensValue({ slot }: { slot: LensSlotValue }) {
-	const primaryValue = derivePrimaryValue(slot)
+	const primaryValue = derivePrimaryValue(slot);
 
 	if (!primaryValue) {
-		return <span className="text-muted-foreground text-sm">No value captured</span>
+		return <span className="text-muted-foreground text-sm">No value captured</span>;
 	}
 
 	return (
@@ -162,12 +162,12 @@ function LensValue({ slot }: { slot: LensSlotValue }) {
 				<p className="text-muted-foreground text-xs">Numeric: {slot.numericValue}</p>
 			) : null}
 		</div>
-	)
+	);
 }
 
 function LensOwnership({ slot }: { slot: LensSlotValue }) {
 	if (!slot.ownerName && slot.relatedNames.length === 0) {
-		return <span className="text-muted-foreground text-xs">Unassigned</span>
+		return <span className="text-muted-foreground text-xs">Unassigned</span>;
 	}
 
 	return (
@@ -177,46 +177,46 @@ function LensOwnership({ slot }: { slot: LensSlotValue }) {
 				<p className="text-muted-foreground">Related: {slot.relatedNames.join(", ")}</p>
 			) : null}
 		</div>
-	)
+	);
 }
 
 function LensConfidence({ slot }: { slot: LensSlotValue }) {
 	if (typeof slot.confidence !== "number") {
-		return <span className="text-muted-foreground text-xs">—</span>
+		return <span className="text-muted-foreground text-xs">—</span>;
 	}
 
-	const percent = Math.round(slot.confidence * 100)
+	const percent = Math.round(slot.confidence * 100);
 	const badgeStyle =
 		confidenceBadgeClasses.find((entry) => slot.confidence >= entry.threshold)?.className ??
-		"border-rose-200 bg-rose-50 text-rose-700"
+		"border-rose-200 bg-rose-50 text-rose-700";
 
 	return (
 		<Badge variant="outline" className={cn("font-medium text-xs", badgeStyle)}>
 			{percent}% sure
 		</Badge>
-	)
+	);
 }
 
 function derivePrimaryValue(slot: LensSlotValue) {
-	if (slot.textValue) return slot.textValue
-	if (typeof slot.numericValue === "number") return String(slot.numericValue)
-	if (slot.dateValue) return slot.dateValue
-	if (slot.summary) return slot.summary
-	return null
+	if (slot.textValue) return slot.textValue;
+	if (typeof slot.numericValue === "number") return String(slot.numericValue);
+	if (slot.dateValue) return slot.dateValue;
+	if (slot.summary) return slot.summary;
+	return null;
 }
 
 function friendlyFrameworkName(name: InterviewLensFramework["name"]) {
 	switch (name) {
 		case "BANT_GPCT":
-			return "Sales (BANT)"
+			return "Sales (BANT)";
 		case "SPICED":
-			return "SPICED"
+			return "SPICED";
 		case "MEDDIC":
-			return "MEDDIC"
+			return "MEDDIC";
 		case "MAP":
-			return "Mutual Action Plan"
+			return "Mutual Action Plan";
 		default:
-			return name
+			return name;
 	}
 }
 
@@ -224,5 +224,5 @@ function titleCase(value: string) {
 	return value
 		.split(/[_\s-]+/)
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-		.join(" ")
+		.join(" ");
 }

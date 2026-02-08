@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
 
 // Mock BAML client before importing processInterview
 vi.mock("~/../baml_client", () => ({
@@ -8,15 +8,15 @@ vi.mock("~/../baml_client", () => ({
 		ExtractInsights: vi.fn(),
 		AssignPersonaToInterview: vi.fn(),
 	},
-}))
+}));
 
-import { b } from "~/../baml_client"
-import { processInterviewTranscript } from "~/utils/processInterview.server"
+import { b } from "~/../baml_client";
+import { processInterviewTranscript } from "~/utils/processInterview.server";
 
 // Get mocked functions after import
-const mockExtractEvidence = b.ExtractEvidenceFromTranscriptV2 as ReturnType<typeof vi.fn>
-const mockExtractInsights = b.ExtractInsights as ReturnType<typeof vi.fn>
-const mockAssignPersona = b.AssignPersonaToInterview as ReturnType<typeof vi.fn>
+const mockExtractEvidence = b.ExtractEvidenceFromTranscriptV2 as ReturnType<typeof vi.fn>;
+const mockExtractInsights = b.ExtractInsights as ReturnType<typeof vi.fn>;
+const mockAssignPersona = b.AssignPersonaToInterview as ReturnType<typeof vi.fn>;
 
 /**
  * Integration test for processInterviewTranscript to verify:
@@ -27,15 +27,15 @@ const mockAssignPersona = b.AssignPersonaToInterview as ReturnType<typeof vi.fn>
  */
 describe("processInterviewTranscript Integration", () => {
 	beforeEach(async () => {
-		mockExtractEvidence.mockReset()
-		mockExtractInsights.mockReset()
-		mockAssignPersona.mockReset()
-		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any)
-		mockExtractEvidence.mockResolvedValue({ facet_catalog_version: "test", evidence: [], people: [] } as any)
-		mockExtractInsights.mockResolvedValue({ insights: [], participant: null } as any)
-		await cleanupTestData()
-		await seedTestData()
-	})
+		mockExtractEvidence.mockReset();
+		mockExtractInsights.mockReset();
+		mockAssignPersona.mockReset();
+		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any);
+		mockExtractEvidence.mockResolvedValue({ facet_catalog_version: "test", evidence: [], people: [] } as any);
+		mockExtractInsights.mockResolvedValue({ insights: [], participant: null } as any);
+		await cleanupTestData();
+		await seedTestData();
+	});
 
 	it("should create people, personas, and tags from interview upload", async () => {
 		// Seed facet catalog for test account/project
@@ -46,10 +46,10 @@ describe("processInterviewTranscript Integration", () => {
 				{ slug: "scale", label: "Scale", description: "Scales" },
 			],
 			{ onConflict: "slug" }
-		)
+		);
 
-		const { data: kindRows } = await testDb.from("facet_kind_global").select("id, slug")
-		const kindIdBySlug = new Map((kindRows ?? []).map((row) => [row.slug, row.id]))
+		const { data: kindRows } = await testDb.from("facet_kind_global").select("id, slug");
+		const kindIdBySlug = new Map((kindRows ?? []).map((row) => [row.slug, row.id]));
 
 		await testDb.from("facet_global").upsert(
 			[
@@ -62,15 +62,15 @@ describe("processInterviewTranscript Integration", () => {
 				},
 			],
 			{ onConflict: "slug" }
-		)
+		);
 
 		const { data: goalFacetRow } = await testDb
 			.from("facet_global")
 			.select("id, slug")
 			.eq("slug", "goal_speed")
-			.single()
+			.single();
 
-		if (!goalFacetRow?.id) throw new Error("Failed to seed facet_global for integration test")
+		if (!goalFacetRow?.id) throw new Error("Failed to seed facet_global for integration test");
 
 		// Mock BAML responses with realistic data
 		const mockEvidenceResponse = {
@@ -133,7 +133,7 @@ describe("processInterviewTranscript Integration", () => {
 					],
 				},
 			],
-		}
+		};
 
 		const mockInsightsResponse = {
 			insights: [
@@ -170,16 +170,16 @@ describe("processInterviewTranscript Integration", () => {
 			highImpactThemes: "Navigation and performance are key pain points",
 			openQuestionsAndNextSteps: "Follow up on mobile performance metrics",
 			observationsAndNotes: "User seemed frustrated with current state",
-		}
+		};
 
-		mockExtractEvidence.mockResolvedValue(mockEvidenceResponse as any)
-		mockExtractInsights.mockResolvedValue(mockInsightsResponse as any)
-		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any)
+		mockExtractEvidence.mockResolvedValue(mockEvidenceResponse as any);
+		mockExtractInsights.mockResolvedValue(mockInsightsResponse as any);
+		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any);
 
 		const mockRequest = new Request("http://localhost:3000/api/upload", {
 			method: "POST",
 			headers: { Authorization: "Bearer test-token" },
-		})
+		});
 
 		const metadata = {
 			accountId: TEST_ACCOUNT_ID,
@@ -187,12 +187,12 @@ describe("processInterviewTranscript Integration", () => {
 			interviewTitle: "User Research Session",
 			interviewDate: "2025-01-25",
 			fileName: "interview_john_smith.mp3",
-		}
+		};
 
 		const transcriptData = {
 			full_transcript: "This is a test transcript with user feedback about navigation and performance issues.",
 			duration: 1800, // 30 minutes
-		}
+		};
 
 		// Execute the function
 		const result = await processInterviewTranscript({
@@ -201,65 +201,65 @@ describe("processInterviewTranscript Integration", () => {
 			transcriptData,
 			userCustomInstructions: "Focus on UX issues",
 			request: mockRequest,
-		})
+		});
 
 		// Verify interview was created
-		expect(result.interview).toBeDefined()
-		expect(result.interview.title).toBe("User Research Session")
-		expect(result.interview.status).toBe("ready")
+		expect(result.interview).toBeDefined();
+		expect(result.interview.title).toBe("User Research Session");
+		expect(result.interview.status).toBe("ready");
 
 		// Verify insights were created
-		expect(result.stored).toHaveLength(2)
-		expect(result.stored[0].name).toBe("Navigation is confusing")
-		expect(result.stored[1].name).toBe("Performance issues on mobile")
+		expect(result.stored).toHaveLength(2);
+		expect(result.stored[0].name).toBe("Navigation is confusing");
+		expect(result.stored[1].name).toBe("Performance issues on mobile");
 
 		// Verify person was created
 		const { data: people } = await testDb
 			.from("people")
 			.select("*")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("name", "John Smith")
+			.eq("name", "John Smith");
 
-		expect(people).toHaveLength(1)
-		expect(people[0].name).toBe("John Smith")
-		expect(people[0].segment).toBe("Professional")
-		expect(people[0].contact_info).toBe("john@company.com")
+		expect(people).toHaveLength(1);
+		expect(people[0].name).toBe("John Smith");
+		expect(people[0].segment).toBe("Professional");
+		expect(people[0].contact_info).toBe("john@company.com");
 
 		// Verify persona was created
 		const { data: personas } = await testDb
 			.from("personas")
 			.select("*")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("name", "Product Manager")
+			.eq("name", "Product Manager");
 
-		expect(personas).toHaveLength(1)
-		expect(personas[0].name).toBe("Product Manager")
-		expect(personas[0].description).toContain("User Research Session")
+		expect(personas).toHaveLength(1);
+		expect(personas[0].name).toBe("Product Manager");
+		expect(personas[0].description).toContain("User Research Session");
 
 		// Verify person is linked to persona
-		expect(people[0].persona_id).toBe(personas[0].id)
+		expect(people[0].persona_id).toBe(personas[0].id);
 
 		// Verify interview-people junction
 		const { data: interviewPeople } = await testDb
 			.from("interview_people")
 			.select("*")
 			.eq("interview_id", result.interview.id)
-			.eq("person_id", people[0].id)
+			.eq("person_id", people[0].id);
 
-		expect(interviewPeople).toHaveLength(1)
-		expect(interviewPeople[0].role).toBe("participant")
+		expect(interviewPeople).toHaveLength(1);
+		expect(interviewPeople[0].role).toBe("participant");
 
 		// Verify tags were created from relatedTags arrays
-		const expectedTags = ["navigation", "user_experience", "confusion", "performance", "mobile", "loading_speed"]
+		const expectedTags = ["navigation", "user_experience", "confusion", "performance", "mobile", "loading_speed"];
 		const { data: tags } = await testDb
 			.from("tags")
 			.select("*")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.in("tag", expectedTags)
+			.in("tag", expectedTags);
 
-		expect(tags).toHaveLength(6)
-		const tagNames = tags.map((t) => t.tag).sort()
-		expect(tagNames).toEqual(expectedTags.sort())
+		expect(tags).toHaveLength(6);
+		const tagNames = tags.map((t) => t.tag).sort();
+		expect(tagNames).toEqual(expectedTags.sort());
 
 		// Verify insight-tag junction tables
 		const { data: insightTags } = await testDb
@@ -268,10 +268,10 @@ describe("processInterviewTranscript Integration", () => {
 			.in(
 				"insight_id",
 				result.stored.map((i) => i.id)
-			)
+			);
 
 		// Should have 6 total links (3 tags per insight)
-		expect(insightTags).toHaveLength(6)
+		expect(insightTags).toHaveLength(6);
 
 		// Verify persona-insight junction (should be created by trigger)
 		const { data: personaInsights } = await testDb
@@ -281,17 +281,17 @@ describe("processInterviewTranscript Integration", () => {
 			.in(
 				"insight_id",
 				result.stored.map((i) => i.id)
-			)
+			);
 
-		expect(personaInsights).toHaveLength(2)
-		expect(personaInsights[0].relevance_score).toBe(1.0)
+		expect(personaInsights).toHaveLength(2);
+		expect(personaInsights[0].relevance_score).toBe(1.0);
 
 		// Verify facet persistence
 		const { data: personFacets } = await testDb
 			.from("person_facet")
 			.select("person_id, facet_account_id, confidence")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("project_id", "test-project-id")
+			.eq("project_id", "test-project-id");
 
 		expect(personFacets).toEqual([
 			{
@@ -299,13 +299,13 @@ describe("processInterviewTranscript Integration", () => {
 				facet_account_id: goalFacetRow.id,
 				confidence: 0.95,
 			},
-		])
+		]);
 
 		const { data: evidenceFacets } = await testDb
 			.from("evidence_facet")
 			.select("evidence_id, kind_slug, label, facet_account_id")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("project_id", "test-project-id")
+			.eq("project_id", "test-project-id");
 
 		expect(evidenceFacets).toEqual(
 			expect.arrayContaining([
@@ -320,13 +320,13 @@ describe("processInterviewTranscript Integration", () => {
 					label: expect.any(String),
 				}),
 			])
-		)
+		);
 
 		const { data: scaleRows } = await testDb
 			.from("person_scale")
 			.select("person_id, kind_slug, score, confidence")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("project_id", "test-project-id")
+			.eq("project_id", "test-project-id");
 
 		expect(scaleRows).toEqual([
 			{
@@ -335,13 +335,13 @@ describe("processInterviewTranscript Integration", () => {
 				score: 0.8,
 				confidence: 0.9,
 			},
-		])
+		]);
 
 		const { data: candidateRows } = await testDb
 			.from("facet_candidate")
 			.select("kind_slug, label, status")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("project_id", "test-project-id")
+			.eq("project_id", "test-project-id");
 
 		expect(candidateRows).toEqual([
 			{
@@ -349,8 +349,8 @@ describe("processInterviewTranscript Integration", () => {
 				label: "Manual Reporting",
 				status: "pending",
 			},
-		])
-	})
+		]);
+	});
 
 	it("should handle missing persona gracefully", async () => {
 		const mockInsights = {
@@ -369,15 +369,15 @@ describe("processInterviewTranscript Integration", () => {
 			highImpactThemes: null,
 			openQuestionsAndNextSteps: null,
 			observationsAndNotes: null,
-		}
+		};
 
-		mockExtractInsights.mockResolvedValueOnce(mockInsights as any)
-		mockExtractEvidence.mockResolvedValueOnce({ facet_catalog_version: "fallback", evidence: [], people: [] } as any)
+		mockExtractInsights.mockResolvedValueOnce(mockInsights as any);
+		mockExtractEvidence.mockResolvedValueOnce({ facet_catalog_version: "fallback", evidence: [], people: [] } as any);
 
 		const mockRequest = new Request("http://localhost:3000/api/upload", {
 			method: "POST",
 			headers: { Authorization: "Bearer test-token" },
-		})
+		});
 
 		const _result = await processInterviewTranscript({
 			metadata: {
@@ -390,21 +390,21 @@ describe("processInterviewTranscript Integration", () => {
 				duration: 600,
 			},
 			request: mockRequest,
-		})
+		});
 
 		// Verify person was still created
 		const { data: people } = await testDb
 			.from("people")
 			.select("*")
 			.eq("account_id", TEST_ACCOUNT_ID)
-			.eq("name", "Jane Doe")
+			.eq("name", "Jane Doe");
 
-		expect(people).toHaveLength(1)
-		expect(people[0].persona_id).toBeNull() // No persona assigned
+		expect(people).toHaveLength(1);
+		expect(people[0].persona_id).toBeNull(); // No persona assigned
 
 		// Verify no personas were created
-		const { data: personas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID)
+		const { data: personas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID);
 
-		expect(personas).toHaveLength(0)
-	})
-})
+		expect(personas).toHaveLength(0);
+	});
+});

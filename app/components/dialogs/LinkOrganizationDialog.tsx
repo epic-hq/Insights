@@ -1,7 +1,7 @@
-import { Building2, Plus, Search } from "lucide-react"
-import { useState } from "react"
-import { Form, useFetcher } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { Building2, Plus, Search } from "lucide-react";
+import { useState } from "react";
+import { Form, useFetcher } from "react-router-dom";
+import { Button } from "~/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -9,23 +9,23 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+} from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 interface Organization {
-	id: string
-	name: string
-	headquarters_location?: string | null
+	id: string;
+	name: string;
+	headquarters_location?: string | null;
 }
 
 interface LinkOrganizationDialogProps {
-	personId: string
-	availableOrganizations: Organization[]
-	triggerButton?: React.ReactNode
-	onSuccess?: () => void
+	personId: string;
+	availableOrganizations: Organization[];
+	triggerButton?: React.ReactNode;
+	onSuccess?: () => void;
 }
 
 export function LinkOrganizationDialog({
@@ -34,18 +34,18 @@ export function LinkOrganizationDialog({
 	triggerButton,
 	onSuccess,
 }: LinkOrganizationDialogProps) {
-	const [open, setOpen] = useState(false)
-	const [searchTerm, setSearchTerm] = useState("")
-	const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("")
-	const [role, setRole] = useState("")
-	const fetcher = useFetcher()
+	const [open, setOpen] = useState(false);
+	const [searchTerm, setSearchTerm] = useState("");
+	const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("");
+	const [role, setRole] = useState("");
+	const fetcher = useFetcher();
 
 	const filteredOrganizations = availableOrganizations.filter((org) =>
 		org.name.toLowerCase().includes(searchTerm.toLowerCase())
-	)
+	);
 
 	const handleLink = () => {
-		if (!selectedOrganizationId) return
+		if (!selectedOrganizationId) return;
 
 		fetcher.submit(
 			{
@@ -54,15 +54,15 @@ export function LinkOrganizationDialog({
 				role: role || "",
 			},
 			{ method: "post" }
-		)
+		);
 
 		// Close dialog and reset on success
-		setOpen(false)
-		setSearchTerm("")
-		setSelectedOrganizationId("")
-		setRole("")
-		onSuccess?.()
-	}
+		setOpen(false);
+		setSearchTerm("");
+		setSelectedOrganizationId("");
+		setRole("");
+		onSuccess?.();
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -153,11 +153,11 @@ export function LinkOrganizationDialog({
 						<Form
 							method="post"
 							onSubmit={(e) => {
-								e.preventDefault()
-								const formData = new FormData(e.currentTarget)
-								fetcher.submit(formData, { method: "post" })
-								setOpen(false)
-								onSuccess?.()
+								e.preventDefault();
+								const formData = new FormData(e.currentTarget);
+								fetcher.submit(formData, { method: "post" });
+								setOpen(false);
+								onSuccess?.();
 							}}
 						>
 							<input type="hidden" name="_action" value="create-and-link-organization" />
@@ -194,5 +194,5 @@ export function LinkOrganizationDialog({
 				</Tabs>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

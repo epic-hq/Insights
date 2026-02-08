@@ -1,25 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { aggregateAutoInsightsData, formatDataForLLM } from "./autoInsightsData.server"
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { aggregateAutoInsightsData, formatDataForLLM } from "./autoInsightsData.server";
 
 // Mock Supabase client
-vi.mock("~/lib/supabase/client.server")
+vi.mock("~/lib/supabase/client.server");
 
 const mockSupabase = {
 	from: vi.fn(),
-}
+};
 
-const mockGetServerClient = vi.mocked(getServerClient)
+const mockGetServerClient = vi.mocked(getServerClient);
 
 describe("Auto-Insights Data Aggregation", () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
-		mockGetServerClient.mockReturnValue({ client: mockSupabase } as any)
-	})
+		vi.clearAllMocks();
+		mockGetServerClient.mockReturnValue({ client: mockSupabase } as any);
+	});
 
 	describe("aggregateAutoInsightsData", () => {
-		const mockRequest = new Request("http://localhost/test")
-		const accountId = "account-123"
+		const mockRequest = new Request("http://localhost/test");
+		const accountId = "account-123";
 
 		beforeEach(() => {
 			// Setup default successful responses
@@ -29,24 +29,24 @@ describe("Auto-Insights Data Aggregation", () => {
 				order: vi.fn().mockReturnThis(),
 				limit: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
-			}
+			};
 
-			mockSupabase.from.mockReturnValue(mockQuery)
+			mockSupabase.from.mockReturnValue(mockQuery);
 
 			// Mock count queries
 			mockQuery.select.mockImplementation((_fields, options) => {
 				if (options?.count === "exact") {
-					return Promise.resolve({ count: 54, error: null })
+					return Promise.resolve({ count: 54, error: null });
 				}
-				return mockQuery
-			})
+				return mockQuery;
+			});
 
 			// Mock data queries
 			mockQuery.eq.mockResolvedValue({
 				data: [],
 				error: null,
-			})
-		})
+			});
+		});
 
 		it("should aggregate comprehensive data for auto-insights", async () => {
 			// Mock insights data
@@ -65,7 +65,7 @@ describe("Auto-Insights Data Aggregation", () => {
 					journey_stage: "Planning",
 					confidence: "High",
 				},
-			]
+			];
 
 			const mockPersonas = [
 				{
@@ -74,7 +74,7 @@ describe("Auto-Insights Data Aggregation", () => {
 					description: "Time-constrained professionals seeking efficiency",
 					percentage: 60,
 				},
-			]
+			];
 
 			// Setup specific query responses
 			mockSupabase.from.mockImplementation((table) => {
@@ -84,41 +84,41 @@ describe("Auto-Insights Data Aggregation", () => {
 					order: vi.fn().mockReturnThis(),
 					limit: vi.fn().mockReturnThis(),
 					in: vi.fn().mockReturnThis(),
-				}
+				};
 
 				if (table === "themes") {
 					mockQuery.eq.mockResolvedValue({
 						data: mockInsights,
 						error: null,
-					})
+					});
 					mockQuery.select.mockImplementation((_fields, options) => {
 						if (options?.count === "exact") {
-							return Promise.resolve({ count: 54, error: null })
+							return Promise.resolve({ count: 54, error: null });
 						}
-						return mockQuery
-					})
+						return mockQuery;
+					});
 				} else if (table === "personas") {
 					mockQuery.eq.mockResolvedValue({
 						data: mockPersonas,
 						error: null,
-					})
+					});
 				} else {
 					mockQuery.eq.mockResolvedValue({
 						data: [],
 						error: null,
-					})
+					});
 					mockQuery.select.mockImplementation((_fields, options) => {
 						if (options?.count === "exact") {
-							return Promise.resolve({ count: 0, error: null })
+							return Promise.resolve({ count: 0, error: null });
 						}
-						return mockQuery
-					})
+						return mockQuery;
+					});
 				}
 
-				return mockQuery
-			})
+				return mockQuery;
+			});
 
-			const result = await aggregateAutoInsightsData(mockRequest, accountId)
+			const result = await aggregateAutoInsightsData(mockRequest, accountId);
 
 			expect(result).toMatchObject({
 				summary: {
@@ -144,8 +144,8 @@ describe("Auto-Insights Data Aggregation", () => {
 						percentage: 60,
 					}),
 				]),
-			})
-		})
+			});
+		});
 
 		it("should handle database errors gracefully", async () => {
 			mockSupabase.from.mockReturnValue({
@@ -155,19 +155,19 @@ describe("Auto-Insights Data Aggregation", () => {
 						error: { message: "Database connection failed" },
 					}),
 				}),
-			})
+			});
 
 			await expect(aggregateAutoInsightsData(mockRequest, accountId)).rejects.toThrow(
 				"Failed to fetch insights: Database connection failed"
-			)
-		})
+			);
+		});
 
 		it("should prioritize high-impact insights", async () => {
 			const mockInsights = [
 				{ id: "1", name: "Low Impact", impact: 2, novelty: 1 },
 				{ id: "2", name: "High Impact", impact: 5, novelty: 4 },
 				{ id: "3", name: "Medium Impact", impact: 3, novelty: 3 },
-			]
+			];
 
 			mockSupabase.from.mockImplementation((table) => {
 				if (table === "themes") {
@@ -184,21 +184,21 @@ describe("Auto-Insights Data Aggregation", () => {
 								}),
 							}),
 						}),
-					}
+					};
 				}
 				return {
 					select: vi.fn().mockReturnValue({
 						eq: vi.fn().mockResolvedValue({ data: [], error: null }),
 					}),
-				}
-			})
+				};
+			});
 
-			const result = await aggregateAutoInsightsData(mockRequest, accountId)
+			const result = await aggregateAutoInsightsData(mockRequest, accountId);
 
 			// Should include all insights but prioritize by impact/novelty
-			expect(result.insights).toHaveLength(3)
-			expect(result.insights[0].name).toBe("High Impact")
-		})
+			expect(result.insights).toHaveLength(3);
+			expect(result.insights[0].name).toBe("High Impact");
+		});
 
 		it("should limit results to fit LLM context window", async () => {
 			// Create 100 mock insights
@@ -207,7 +207,7 @@ describe("Auto-Insights Data Aggregation", () => {
 				name: `Insight ${i}`,
 				impact: Math.floor(Math.random() * 5) + 1,
 				novelty: Math.floor(Math.random() * 5) + 1,
-			}))
+			}));
 
 			mockSupabase.from.mockImplementation((table) => {
 				if (table === "themes") {
@@ -224,21 +224,21 @@ describe("Auto-Insights Data Aggregation", () => {
 								}),
 							}),
 						}),
-					}
+					};
 				}
 				return {
 					select: vi.fn().mockReturnValue({
 						eq: vi.fn().mockResolvedValue({ data: [], error: null }),
 					}),
-				}
-			})
+				};
+			});
 
-			const result = await aggregateAutoInsightsData(mockRequest, accountId)
+			const result = await aggregateAutoInsightsData(mockRequest, accountId);
 
 			// Should be limited to 50 insights for context window
-			expect(result.insights.length).toBeLessThanOrEqual(50)
-		})
-	})
+			expect(result.insights.length).toBeLessThanOrEqual(50);
+		});
+	});
 
 	describe("formatDataForLLM", () => {
 		const mockData = {
@@ -306,19 +306,19 @@ describe("Auto-Insights Data Aggregation", () => {
 					insight_count: 8,
 				},
 			],
-		}
+		};
 
 		it("should format data into structured LLM prompt", () => {
-			const formatted = formatDataForLLM(mockData)
+			const formatted = formatDataForLLM(mockData);
 
-			expect(formatted).toContain("# User Research Data Summary")
-			expect(formatted).toContain("**Total Insights**: 54")
-			expect(formatted).toContain("**Total Interviews**: 15")
-			expect(formatted).toContain("Time Management Struggles")
-			expect(formatted).toContain("Busy Professional (60% of users)")
-			expect(formatted).toContain("AI Planning Assistant")
-			expect(formatted).toContain("time_management: 15 insights")
-		})
+			expect(formatted).toContain("# User Research Data Summary");
+			expect(formatted).toContain("**Total Insights**: 54");
+			expect(formatted).toContain("**Total Interviews**: 15");
+			expect(formatted).toContain("Time Management Struggles");
+			expect(formatted).toContain("Busy Professional (60% of users)");
+			expect(formatted).toContain("AI Planning Assistant");
+			expect(formatted).toContain("time_management: 15 insights");
+		});
 
 		it("should handle empty data gracefully", () => {
 			const emptyData = {
@@ -335,15 +335,15 @@ describe("Auto-Insights Data Aggregation", () => {
 				opportunities: [],
 				tags: [],
 				interviews: [],
-			}
+			};
 
-			const formatted = formatDataForLLM(emptyData)
+			const formatted = formatDataForLLM(emptyData);
 
-			expect(formatted).toContain("**Total Insights**: 0")
-			expect(formatted).toContain("**Total Interviews**: 0")
-			expect(formatted).not.toContain("undefined")
-			expect(formatted).not.toContain("null")
-		})
+			expect(formatted).toContain("**Total Insights**: 0");
+			expect(formatted).toContain("**Total Interviews**: 0");
+			expect(formatted).not.toContain("undefined");
+			expect(formatted).not.toContain("null");
+		});
 
 		it("should limit insights to top 20 for context window", () => {
 			const manyInsights = Array.from({ length: 50 }, (_, i) => ({
@@ -361,19 +361,19 @@ describe("Auto-Insights Data Aggregation", () => {
 				confidence: "High",
 				tags: [],
 				personas: [],
-			}))
+			}));
 
 			const dataWithManyInsights = {
 				...mockData,
 				insights: manyInsights,
-			}
+			};
 
-			const formatted = formatDataForLLM(dataWithManyInsights)
+			const formatted = formatDataForLLM(dataWithManyInsights);
 
 			// Should only include top 20 insights
-			const insightMatches = formatted.match(/### Insight \d+/g)
-			expect(insightMatches?.length).toBeLessThanOrEqual(20)
-		})
+			const insightMatches = formatted.match(/### Insight \d+/g);
+			expect(insightMatches?.length).toBeLessThanOrEqual(20);
+		});
 
 		it("should handle null/undefined values gracefully", () => {
 			const dataWithNulls = {
@@ -396,71 +396,71 @@ describe("Auto-Insights Data Aggregation", () => {
 						personas: [],
 					},
 				],
-			}
+			};
 
-			const formatted = formatDataForLLM(dataWithNulls)
+			const formatted = formatDataForLLM(dataWithNulls);
 
-			expect(formatted).toContain("**Pain**: N/A")
-			expect(formatted).toContain("**Desired Outcome**: N/A")
-			expect(formatted).toContain("**Evidence**: N/A")
-			expect(formatted).not.toContain("null")
-			expect(formatted).not.toContain("undefined")
-		})
+			expect(formatted).toContain("**Pain**: N/A");
+			expect(formatted).toContain("**Desired Outcome**: N/A");
+			expect(formatted).toContain("**Evidence**: N/A");
+			expect(formatted).not.toContain("null");
+			expect(formatted).not.toContain("undefined");
+		});
 
 		it("should provide executive-level summary format", () => {
-			const formatted = formatDataForLLM(mockData)
+			const formatted = formatDataForLLM(mockData);
 
 			// Should include key sections for executive analysis
-			expect(formatted).toContain("## Overview")
-			expect(formatted).toContain("## Top Insights (by Impact & Novelty)")
-			expect(formatted).toContain("## Personas & Segments")
-			expect(formatted).toContain("## Current Opportunities Pipeline")
-			expect(formatted).toContain("## Trending Tags & Themes")
-			expect(formatted).toContain("## Recent Interview Themes")
-		})
+			expect(formatted).toContain("## Overview");
+			expect(formatted).toContain("## Top Insights (by Impact & Novelty)");
+			expect(formatted).toContain("## Personas & Segments");
+			expect(formatted).toContain("## Current Opportunities Pipeline");
+			expect(formatted).toContain("## Trending Tags & Themes");
+			expect(formatted).toContain("## Recent Interview Themes");
+		});
 
 		it("should optimize for strategic decision making", () => {
-			const formatted = formatDataForLLM(mockData)
+			const formatted = formatDataForLLM(mockData);
 
 			// Should emphasize business-relevant information
-			expect(formatted).toContain("Impact**: 5/5")
-			expect(formatted).toContain("Novelty**: 3/5")
-			expect(formatted).toContain("60% of users")
-			expect(formatted).toContain("Status: Explore")
-			expect(formatted).toContain("Supporting Insights")
-		})
-	})
+			expect(formatted).toContain("Impact**: 5/5");
+			expect(formatted).toContain("Novelty**: 3/5");
+			expect(formatted).toContain("60% of users");
+			expect(formatted).toContain("Status: Explore");
+			expect(formatted).toContain("Supporting Insights");
+		});
+	});
 
 	describe("Data Quality Validation", () => {
 		it("should validate minimum data requirements", async () => {
-			const mockRequest = new Request("http://localhost/test")
-			const accountId = "account-123"
+			const mockRequest = new Request("http://localhost/test");
+			const accountId = "account-123";
 
 			// Mock insufficient data
 			mockSupabase.from.mockReturnValue({
 				select: vi.fn().mockImplementation((_fields, options) => {
 					if (options?.count === "exact") {
-						return Promise.resolve({ count: 2, error: null }) // Below minimum
+						return Promise.resolve({ count: 2, error: null }); // Below minimum
 					}
 					return {
 						eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-					}
+					};
 				}),
-			})
+			});
 
-			const result = await aggregateAutoInsightsData(mockRequest, accountId)
+			const result = await aggregateAutoInsightsData(mockRequest, accountId);
 
-			expect(result.summary.total_insights).toBe(2)
-			expect(result.summary.total_interviews).toBe(2)
+			expect(result.summary.total_insights).toBe(2);
+			expect(result.summary.total_interviews).toBe(2);
 			// Should still return data but with low counts
-		})
+		});
 
 		it("should ensure data consistency across entities", async () => {
-			const mockRequest = new Request("http://localhost/test")
-			const accountId = "account-123"
+			const mockRequest = new Request("http://localhost/test");
+			const accountId = "account-123";
 
 			// Mock consistent data relationships
-			const mockInsights = [{ id: "insight-1", name: "Test", category: "Test" }]
+			const mockInsights = [{ id: "insight-1", name: "Test", category: "Test" }];
 
 			mockSupabase.from.mockImplementation((table) => {
 				const mockQuery = {
@@ -469,34 +469,34 @@ describe("Auto-Insights Data Aggregation", () => {
 					order: vi.fn().mockReturnThis(),
 					limit: vi.fn().mockReturnThis(),
 					in: vi.fn().mockReturnThis(),
-				}
+				};
 
 				if (table === "themes") {
 					mockQuery.eq.mockResolvedValue({
 						data: mockInsights,
 						error: null,
-					})
+					});
 				} else {
 					mockQuery.eq.mockResolvedValue({
 						data: [],
 						error: null,
-					})
+					});
 				}
 
 				mockQuery.select.mockImplementation((_fields, options) => {
 					if (options?.count === "exact") {
-						return Promise.resolve({ count: 1, error: null })
+						return Promise.resolve({ count: 1, error: null });
 					}
-					return mockQuery
-				})
+					return mockQuery;
+				});
 
-				return mockQuery
-			})
+				return mockQuery;
+			});
 
-			const result = await aggregateAutoInsightsData(mockRequest, accountId)
+			const result = await aggregateAutoInsightsData(mockRequest, accountId);
 
-			expect(result.insights).toHaveLength(1)
-			expect(result.insights[0].id).toBe("insight-1")
-		})
-	})
-})
+			expect(result.insights).toHaveLength(1);
+			expect(result.insights[0].id).toBe("insight-1");
+		});
+	});
+});

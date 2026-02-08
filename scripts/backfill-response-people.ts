@@ -3,10 +3,10 @@
  * Run with: npx tsx scripts/backfill-response-people.ts
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import consola from "consola";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import type { Database } from "~/types";
 
 async function findOrCreatePerson({
 	supabase,
@@ -14,12 +14,12 @@ async function findOrCreatePerson({
 	projectId,
 	email,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId: string | null
-	email: string
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId: string | null;
+	email: string;
 }): Promise<string | null> {
-	const normalizedEmail = email.toLowerCase().trim()
+	const normalizedEmail = email.toLowerCase().trim();
 
 	// Try to find existing person by email
 	const { data: existingPerson } = await supabase
@@ -27,23 +27,23 @@ async function findOrCreatePerson({
 		.select("id")
 		.eq("account_id", accountId)
 		.eq("primary_email", normalizedEmail)
-		.maybeSingle()
+		.maybeSingle();
 
 	if (existingPerson?.id) {
-		return existingPerson.id
+		return existingPerson.id;
 	}
 
 	// Parse name from email (use part before @)
-	const emailName = normalizedEmail.split("@")[0] || "Unknown"
-	const nameParts = emailName.replace(/[._-]/g, " ").split(/\s+/)
-	const firstname = nameParts[0]?.charAt(0).toUpperCase() + (nameParts[0]?.slice(1) || "")
+	const emailName = normalizedEmail.split("@")[0] || "Unknown";
+	const nameParts = emailName.replace(/[._-]/g, " ").split(/\s+/);
+	const firstname = nameParts[0]?.charAt(0).toUpperCase() + (nameParts[0]?.slice(1) || "");
 	const lastname =
 		nameParts.length > 1
 			? nameParts
 					.slice(1)
 					.map((p) => p.charAt(0).toUpperCase() + p.slice(1))
 					.join(" ")
-			: null
+			: null;
 
 	// Create new person
 	const { data: newPerson, error: createError } = await supabase
@@ -57,7 +57,7 @@ async function findOrCreatePerson({
 			person_type: "respondent",
 		})
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (createError) {
 		// Handle unique constraint violation - person may have been created concurrently
@@ -67,20 +67,20 @@ async function findOrCreatePerson({
 				.select("id")
 				.eq("account_id", accountId)
 				.eq("primary_email", normalizedEmail)
-				.maybeSingle()
-			return retryPerson?.id ?? null
+				.maybeSingle();
+			return retryPerson?.id ?? null;
 		}
-		consola.error("Failed to create person for response", createError)
-		return null
+		consola.error("Failed to create person for response", createError);
+		return null;
 	}
 
-	return newPerson?.id ?? null
+	return newPerson?.id ?? null;
 }
 
 async function main() {
-	const supabase = createSupabaseAdminClient()
+	const supabase = createSupabaseAdminClient();
 
-	consola.start("Backfilling person records for Ask link responses")
+	consola.start("Backfilling person records for Ask link responses");
 
 	// Find all completed responses without a person_id
 	const { data: responses, error: responsesError } = await supabase
@@ -94,33 +94,33 @@ async function main() {
     `
 		)
 		.eq("completed", true)
-		.is("person_id", null)
+		.is("person_id", null);
 
 	if (responsesError) {
-		throw responsesError
+		throw responsesError;
 	}
 
 	if (!responses?.length) {
-		consola.success("No responses need backfilling")
-		return
+		consola.success("No responses need backfilling");
+		return;
 	}
 
-	consola.info(`Found ${responses.length} completed responses without person_id`)
+	consola.info(`Found ${responses.length} completed responses without person_id`);
 
-	let updated = 0
-	let skipped = 0
-	let errors = 0
+	let updated = 0;
+	let skipped = 0;
+	let errors = 0;
 
 	for (const response of responses) {
 		const researchLink = response.research_link as {
-			account_id: string
-			project_id: string | null
-		} | null
+			account_id: string;
+			project_id: string | null;
+		} | null;
 
 		if (!researchLink?.account_id) {
-			consola.warn(`Response ${response.id} has no linked research_link`)
-			skipped++
-			continue
+			consola.warn(`Response ${response.id} has no linked research_link`);
+			skipped++;
+			continue;
 		}
 
 		const personId = await findOrCreatePerson({
@@ -128,33 +128,33 @@ async function main() {
 			accountId: researchLink.account_id,
 			projectId: researchLink.project_id,
 			email: response.email,
-		})
+		});
 
 		if (!personId) {
-			consola.warn(`Could not create person for response ${response.id}`)
-			errors++
-			continue
+			consola.warn(`Could not create person for response ${response.id}`);
+			errors++;
+			continue;
 		}
 
 		const { error: updateError } = await supabase
 			.from("research_link_responses")
 			.update({ person_id: personId })
-			.eq("id", response.id)
+			.eq("id", response.id);
 
 		if (updateError) {
-			consola.error(`Failed to update response ${response.id}`, updateError)
-			errors++
-			continue
+			consola.error(`Failed to update response ${response.id}`, updateError);
+			errors++;
+			continue;
 		}
 
-		updated++
-		consola.info(`Linked response ${response.id} to person ${personId}`)
+		updated++;
+		consola.info(`Linked response ${response.id} to person ${personId}`);
 	}
 
-	consola.success(`Backfill complete. Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`)
+	consola.success(`Backfill complete. Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`);
 }
 
 main().catch((err) => {
-	consola.error("Backfill failed", err)
-	process.exit(1)
-})
+	consola.error("Backfill failed", err);
+	process.exit(1);
+});

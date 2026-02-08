@@ -3,7 +3,7 @@
  * Uses absolute positioning within the journey container (not fixed).
  */
 
-import { useMemo } from "react"
+import { useMemo } from "react";
 
 function Stars() {
 	const stars = useMemo(() => {
@@ -13,8 +13,8 @@ function Stars() {
 			top: `${Math.random() * 60}%`,
 			delay: `${Math.random() * 3}s`,
 			size: `${Math.random() * 2 + 1}px`,
-		}))
-	}, [])
+		}));
+	}, []);
 
 	return (
 		<div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -32,7 +32,7 @@ function Stars() {
 				/>
 			))}
 		</div>
-	)
+	);
 }
 
 function Mountains() {
@@ -62,7 +62,7 @@ function Mountains() {
 				</text>
 			</g>
 		</svg>
-	)
+	);
 }
 
 function Terrain() {
@@ -95,7 +95,7 @@ function Terrain() {
 				<path d="M1500,48 Q1505,23 1510,48" stroke="#22c55e" strokeWidth="2" fill="none" />
 			</g>
 		</svg>
-	)
+	);
 }
 
 export function JourneyBackground() {
@@ -105,5 +105,5 @@ export function JourneyBackground() {
 			<Mountains />
 			<Terrain />
 		</>
-	)
+	);
 }

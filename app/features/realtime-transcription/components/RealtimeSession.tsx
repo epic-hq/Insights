@@ -9,7 +9,7 @@
  * streamed to the server-side AssemblyAI WebSocket proxy at /ws/realtime-transcribe.
  */
 
-import type { EvidenceTurn, Person } from "baml_client"
+import type { EvidenceTurn, Person } from "baml_client";
 import {
 	AlertCircle,
 	ChevronDown,
@@ -23,35 +23,35 @@ import {
 	Sparkles,
 	Square,
 	Users,
-} from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { cn } from "~/lib/utils"
-import { deduplicateEvidence, downsampleTo16kPCM16, formatDuration } from "../lib/audio"
-import { EvidenceCard } from "./EvidenceCard"
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { cn } from "~/lib/utils";
+import { deduplicateEvidence, downsampleTo16kPCM16, formatDuration } from "../lib/audio";
+import { EvidenceCard } from "./EvidenceCard";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
 export interface TranscriptTurn {
-	id: string
-	speaker: string
-	text: string
-	startMs: number
-	endMs: number
-	isFinal: boolean
+	id: string;
+	speaker: string;
+	text: string;
+	startMs: number;
+	endMs: number;
+	isFinal: boolean;
 }
 
-type SessionMode = "idle" | "recording" | "paused" | "simulating" | "stopped"
-type ExtractionStatus = "idle" | "processing" | "error"
+type SessionMode = "idle" | "recording" | "paused" | "simulating" | "stopped";
+type ExtractionStatus = "idle" | "processing" | "error";
 
 // ── Sample conversation for demo simulation ──────────────────────────────
 
 const SAMPLE_CONVERSATION: Array<{
-	speaker: string
-	text: string
-	delayMs: number
+	speaker: string;
+	text: string;
+	delayMs: number;
 }> = [
 	{
 		speaker: "SPEAKER A",
@@ -113,7 +113,7 @@ const SAMPLE_CONVERSATION: Array<{
 		text: "It's a real bottleneck. Our PM spends half of Friday just updating spreadsheets. And by Monday, things are already outdated because engineers worked over the weekend or priorities shifted. We've actually missed deadlines because leadership was looking at stale data in the roadmap.",
 		delayMs: 7000,
 	},
-]
+];
 
 // ── Audio Worklet Processor (inline) ─────────────────────────────────────
 
@@ -138,105 +138,105 @@ class PcmProcessor extends AudioWorkletProcessor {
   }
 }
 registerProcessor("pcm-processor", PcmProcessor)
-`
+`;
 
 // ── Component Props ───────────────────────────────────────────────────────
 
 interface RealtimeSessionProps {
 	/** Optional participant names to label speakers (e.g., ["Alice", "Bob"]) */
-	participantNames?: string[]
+	participantNames?: string[];
 	/** Project ID for saving evidence to database (optional for demo) */
-	projectId?: string
+	projectId?: string;
 	/** Interview ID for linking evidence (optional for demo) */
-	interviewId?: string
+	interviewId?: string;
 }
 
 // ── Component ────────────────────────────────────────────────────────────
 
 export function RealtimeSession({ participantNames = [], projectId, interviewId }: RealtimeSessionProps) {
 	// Core state
-	const [mode, setMode] = useState<SessionMode>("idle")
-	const [turns, setTurns] = useState<TranscriptTurn[]>([])
-	const [currentCaption, setCurrentCaption] = useState("")
-	const [evidence, setEvidence] = useState<EvidenceTurn[]>([])
-	const [people, setPeople] = useState<Person[]>([])
-	const [duration, setDuration] = useState(0)
-	const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus>("idle")
-	const [error, setError] = useState<string | null>(null)
-	const [newEvidenceIds, setNewEvidenceIds] = useState<Set<string>>(new Set())
-	const [showTranscript, setShowTranscript] = useState(true)
+	const [mode, setMode] = useState<SessionMode>("idle");
+	const [turns, setTurns] = useState<TranscriptTurn[]>([]);
+	const [currentCaption, setCurrentCaption] = useState("");
+	const [evidence, setEvidence] = useState<EvidenceTurn[]>([]);
+	const [people, setPeople] = useState<Person[]>([]);
+	const [duration, setDuration] = useState(0);
+	const [extractionStatus, setExtractionStatus] = useState<ExtractionStatus>("idle");
+	const [error, setError] = useState<string | null>(null);
+	const [newEvidenceIds, setNewEvidenceIds] = useState<Set<string>>(new Set());
+	const [showTranscript, setShowTranscript] = useState(true);
 
 	// Mode ref to avoid stale closures in WS callbacks
-	const modeRef = useRef<SessionMode>("idle")
+	const modeRef = useRef<SessionMode>("idle");
 	useEffect(() => {
-		modeRef.current = mode
-	}, [mode])
+		modeRef.current = mode;
+	}, [mode]);
 
 	// Refs for audio recording
-	const wsRef = useRef<WebSocket | null>(null)
-	const audioCtxRef = useRef<AudioContext | null>(null)
-	const processorRef = useRef<AudioWorkletNode | null>(null)
-	const mediaStreamRef = useRef<MediaStream | null>(null)
-	const durationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-	const startTimeRef = useRef<number>(0)
+	const wsRef = useRef<WebSocket | null>(null);
+	const audioCtxRef = useRef<AudioContext | null>(null);
+	const processorRef = useRef<AudioWorkletNode | null>(null);
+	const mediaStreamRef = useRef<MediaStream | null>(null);
+	const durationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const startTimeRef = useRef<number>(0);
 
 	// Refs for evidence batching
-	const allTurnsRef = useRef<TranscriptTurn[]>([])
-	const extractionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const batchIndexRef = useRef(0)
-	const isExtractingRef = useRef(false)
-	const lastExtractedCountRef = useRef(0)
+	const allTurnsRef = useRef<TranscriptTurn[]>([]);
+	const extractionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const batchIndexRef = useRef(0);
+	const isExtractingRef = useRef(false);
+	const lastExtractedCountRef = useRef(0);
 
 	// Refs for simulation
-	const simTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+	const simTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
 	// Scroll refs
-	const transcriptEndRef = useRef<HTMLDivElement>(null)
-	const evidenceEndRef = useRef<HTMLDivElement>(null)
+	const transcriptEndRef = useRef<HTMLDivElement>(null);
+	const evidenceEndRef = useRef<HTMLDivElement>(null);
 
 	// Map generic speaker labels to participant names
 	const speakerNameMap = useMemo(() => {
-		const map: Record<string, string> = {}
+		const map: Record<string, string> = {};
 		if (participantNames.length > 0) {
 			// Map SPEAKER A -> first name, SPEAKER B -> second name, etc.
-			const labels = ["SPEAKER A", "SPEAKER B", "SPEAKER C", "SPEAKER D"]
+			const labels = ["SPEAKER A", "SPEAKER B", "SPEAKER C", "SPEAKER D"];
 			labels.forEach((label, idx) => {
 				if (participantNames[idx]) {
-					map[label] = participantNames[idx]
+					map[label] = participantNames[idx];
 				}
-			})
+			});
 		}
-		return map
-	}, [participantNames])
+		return map;
+	}, [participantNames]);
 
 	// Helper to get display name for a speaker
-	const getDisplayName = useCallback((speaker: string) => speakerNameMap[speaker] || speaker, [speakerNameMap])
+	const getDisplayName = useCallback((speaker: string) => speakerNameMap[speaker] || speaker, [speakerNameMap]);
 
 	// Derive unique speakers from turns
 	const uniqueSpeakers = useMemo(() => {
-		const speakers = new Set(turns.map((t) => t.speaker))
-		return Array.from(speakers)
-	}, [turns])
+		const speakers = new Set(turns.map((t) => t.speaker));
+		return Array.from(speakers);
+	}, [turns]);
 
 	// Derive recommendations from evidence (pains + gains + why_it_matters)
 	const recommendations = useMemo(() => {
 		const recs: Array<{
-			type: "pain" | "gain" | "insight"
-			text: string
-			source: string
-		}> = []
+			type: "pain" | "gain" | "insight";
+			text: string;
+			source: string;
+		}> = [];
 
 		for (const ev of evidence) {
 			// Extract pains as problems to address
 			if (ev.pains?.length) {
 				for (const pain of ev.pains) {
-					recs.push({ type: "pain", text: pain, source: ev.gist })
+					recs.push({ type: "pain", text: pain, source: ev.gist });
 				}
 			}
 			// Extract gains as opportunities
 			if (ev.gains?.length) {
 				for (const gain of ev.gains) {
-					recs.push({ type: "gain", text: gain, source: ev.gist })
+					recs.push({ type: "gain", text: gain, source: ev.gist });
 				}
 			}
 			// Extract why_it_matters as insights
@@ -245,56 +245,56 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 					type: "insight",
 					text: ev.why_it_matters,
 					source: ev.gist,
-				})
+				});
 			}
 		}
 
 		// Deduplicate by text
-		const seen = new Set<string>()
+		const seen = new Set<string>();
 		return recs.filter((r) => {
-			const key = r.text.toLowerCase()
-			if (seen.has(key)) return false
-			seen.add(key)
-			return true
-		})
-	}, [evidence])
+			const key = r.text.toLowerCase();
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	}, [evidence]);
 
 	// Auto-scroll transcript
 	useEffect(() => {
-		transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" })
-	}, [turns, currentCaption])
+		transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, [turns, currentCaption]);
 
 	// Auto-scroll evidence
 	useEffect(() => {
-		evidenceEndRef.current?.scrollIntoView({ behavior: "smooth" })
-	}, [evidence])
+		evidenceEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, [evidence]);
 
 	// Clear new evidence markers after animation
 	useEffect(() => {
-		if (newEvidenceIds.size === 0) return
-		const timer = setTimeout(() => setNewEvidenceIds(new Set()), 1000)
-		return () => clearTimeout(timer)
-	}, [newEvidenceIds])
+		if (newEvidenceIds.size === 0) return;
+		const timer = setTimeout(() => setNewEvidenceIds(new Set()), 1000);
+		return () => clearTimeout(timer);
+	}, [newEvidenceIds]);
 
 	// Auto-hide transcript when stopped
 	useEffect(() => {
 		if (mode === "stopped") {
-			setShowTranscript(false)
+			setShowTranscript(false);
 		} else if (mode === "recording" || mode === "simulating") {
-			setShowTranscript(true)
+			setShowTranscript(true);
 		}
-	}, [mode])
+	}, [mode]);
 
 	// ── Evidence extraction ─────────────────────────────────────────────
 
 	const extractEvidence = useCallback(async () => {
-		const allTurns = allTurnsRef.current
-		if (allTurns.length === 0 || isExtractingRef.current) return
-		if (allTurns.length <= lastExtractedCountRef.current) return
+		const allTurns = allTurnsRef.current;
+		if (allTurns.length === 0 || isExtractingRef.current) return;
+		if (allTurns.length <= lastExtractedCountRef.current) return;
 
-		isExtractingRef.current = true
-		setExtractionStatus("processing")
-		const batchIdx = batchIndexRef.current++
+		isExtractingRef.current = true;
+		setExtractionStatus("processing");
+		const batchIdx = batchIndexRef.current++;
 
 		try {
 			const utterances = allTurns.map((t) => ({
@@ -302,92 +302,92 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 				text: t.text,
 				start: t.startMs,
 				end: t.endMs,
-			}))
+			}));
 
 			const response = await fetch("/api/realtime-evidence", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ utterances, language: "en" }),
-			})
+			});
 
 			if (!response.ok) {
-				throw new Error(`Extraction failed: ${response.status}`)
+				throw new Error(`Extraction failed: ${response.status}`);
 			}
 
-			const data = await response.json()
+			const data = await response.json();
 
 			if (data.evidence?.length) {
-				const newIds = new Set<string>()
+				const newIds = new Set<string>();
 				setEvidence((prev) => {
-					const fresh = deduplicateEvidence(prev, data.evidence)
+					const fresh = deduplicateEvidence(prev, data.evidence);
 					for (const e of fresh) {
-						newIds.add(`${e.gist}::${e.verbatim}`)
+						newIds.add(`${e.gist}::${e.verbatim}`);
 					}
-					return [...prev, ...fresh]
-				})
-				setNewEvidenceIds(newIds)
+					return [...prev, ...fresh];
+				});
+				setNewEvidenceIds(newIds);
 			}
 
 			if (data.people?.length) {
 				setPeople((prev) => {
-					const existingKeys = new Set(prev.map((p) => p.person_key))
-					const fresh = data.people.filter((p: Person) => !existingKeys.has(p.person_key))
-					return [...prev, ...fresh]
-				})
+					const existingKeys = new Set(prev.map((p) => p.person_key));
+					const fresh = data.people.filter((p: Person) => !existingKeys.has(p.person_key));
+					return [...prev, ...fresh];
+				});
 			}
 
-			lastExtractedCountRef.current = allTurns.length
-			setExtractionStatus("idle")
+			lastExtractedCountRef.current = allTurns.length;
+			setExtractionStatus("idle");
 		} catch (err: any) {
-			setExtractionStatus("error")
-			setError(err?.message || "Evidence extraction failed")
+			setExtractionStatus("error");
+			setError(err?.message || "Evidence extraction failed");
 			// Reset after error so we can retry
 			setTimeout(() => {
-				setExtractionStatus("idle")
-				setError(null)
-			}, 5000)
+				setExtractionStatus("idle");
+				setError(null);
+			}, 5000);
 		} finally {
-			isExtractingRef.current = false
+			isExtractingRef.current = false;
 		}
-	}, [])
+	}, []);
 
 	// Schedule evidence extraction when turns accumulate
 	const scheduleExtraction = useCallback(() => {
-		if (extractionTimerRef.current) clearTimeout(extractionTimerRef.current)
+		if (extractionTimerRef.current) clearTimeout(extractionTimerRef.current);
 		extractionTimerRef.current = setTimeout(() => {
-			extractEvidence()
-		}, 2000) // Wait 2s after last turn before extracting
-	}, [extractEvidence])
+			extractEvidence();
+		}, 2000); // Wait 2s after last turn before extracting
+	}, [extractEvidence]);
 
 	// ── Add a turn ──────────────────────────────────────────────────────
 
 	const addTurn = useCallback(
 		(turn: TranscriptTurn) => {
-			setTurns((prev) => [...prev, turn])
-			allTurnsRef.current = [...allTurnsRef.current, turn]
+			setTurns((prev) => [...prev, turn]);
+			allTurnsRef.current = [...allTurnsRef.current, turn];
 
 			// Auto-extract every 4 new turns or schedule extraction
-			const newTurnsSinceExtract = allTurnsRef.current.length - lastExtractedCountRef.current
+			const newTurnsSinceExtract = allTurnsRef.current.length - lastExtractedCountRef.current;
 			if (newTurnsSinceExtract >= 4 && !isExtractingRef.current) {
-				extractEvidence()
+				extractEvidence();
 			} else {
-				scheduleExtraction()
+				scheduleExtraction();
 			}
 		},
 		[extractEvidence, scheduleExtraction]
-	)
+	);
 
 	// ── Live recording ──────────────────────────────────────────────────
 
 	const startRecording = useCallback(async () => {
 		try {
-			setError(null)
-			setTurns([])
-			setEvidence([])
-			setPeople([])
-			allTurnsRef.current = []
-			lastExtractedCountRef.current = 0
-			batchIndexRef.current = 0
+			setError(null);
+			setTurns([]);
+			setEvidence([]);
+			setPeople([]);
+			allTurnsRef.current = [];
+			lastExtractedCountRef.current = 0;
+			batchIndexRef.current = 0;
 
 			// Get microphone
 			const stream = await navigator.mediaDevices.getUserMedia({
@@ -396,45 +396,45 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 					noiseSuppression: true,
 					sampleRate: 48000,
 				},
-			})
-			mediaStreamRef.current = stream
+			});
+			mediaStreamRef.current = stream;
 
 			// Create AudioContext
-			const ctx = new AudioContext({ sampleRate: 48000 })
-			audioCtxRef.current = ctx
+			const ctx = new AudioContext({ sampleRate: 48000 });
+			audioCtxRef.current = ctx;
 
 			// Register AudioWorklet
-			const blob = new Blob([WORKLET_CODE], { type: "application/javascript" })
-			const workletUrl = URL.createObjectURL(blob)
-			await ctx.audioWorklet.addModule(workletUrl)
-			URL.revokeObjectURL(workletUrl)
+			const blob = new Blob([WORKLET_CODE], { type: "application/javascript" });
+			const workletUrl = URL.createObjectURL(blob);
+			await ctx.audioWorklet.addModule(workletUrl);
+			URL.revokeObjectURL(workletUrl);
 
 			// Connect mic -> worklet (don't connect to destination to avoid echo)
-			const source = ctx.createMediaStreamSource(stream)
-			const processor = ctx.createAudioWorkletNode(ctx, "pcm-processor")
-			processorRef.current = processor
-			source.connect(processor)
+			const source = ctx.createMediaStreamSource(stream);
+			const processor = ctx.createAudioWorkletNode(ctx, "pcm-processor");
+			processorRef.current = processor;
+			source.connect(processor);
 
 			// Connect WebSocket
-			const protocol = location.protocol === "https:" ? "wss" : "ws"
-			const ws = new WebSocket(`${protocol}://${location.host}/ws/realtime-transcribe`)
-			wsRef.current = ws
+			const protocol = location.protocol === "https:" ? "wss" : "ws";
+			const ws = new WebSocket(`${protocol}://${location.host}/ws/realtime-transcribe`);
+			wsRef.current = ws;
 
-			let turnCounter = 0
+			let turnCounter = 0;
 
 			ws.onopen = () => {
-				setMode("recording")
-				startTimeRef.current = Date.now()
+				setMode("recording");
+				startTimeRef.current = Date.now();
 
 				// Start duration timer
 				durationTimerRef.current = setInterval(() => {
-					setDuration(Date.now() - startTimeRef.current)
-				}, 200)
-			}
+					setDuration(Date.now() - startTimeRef.current);
+				}, 200);
+			};
 
 			ws.onmessage = (event) => {
 				try {
-					const msg = JSON.parse(event.data)
+					const msg = JSON.parse(event.data);
 					if (msg.type === "Turn") {
 						if (msg.end_of_turn) {
 							const turn: TranscriptTurn = {
@@ -444,105 +444,105 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 								startMs: msg.words?.[0]?.start ? msg.words[0].start * 1000 : Date.now() - startTimeRef.current,
 								endMs: msg.words?.at(-1)?.end ? msg.words.at(-1).end * 1000 : Date.now() - startTimeRef.current,
 								isFinal: true,
-							}
-							setCurrentCaption("")
-							addTurn(turn)
+							};
+							setCurrentCaption("");
+							addTurn(turn);
 						} else {
-							setCurrentCaption(msg.transcript || "")
+							setCurrentCaption(msg.transcript || "");
 						}
 					}
 				} catch {}
-			}
+			};
 
 			ws.onerror = () => {
-				setError("WebSocket connection error. Check that the server is running.")
-			}
+				setError("WebSocket connection error. Check that the server is running.");
+			};
 
 			ws.onclose = () => {
 				if (modeRef.current === "recording") {
-					setMode("stopped")
+					setMode("stopped");
 				}
-			}
+			};
 
 			// Stream audio to WebSocket
 			processor.port.onmessage = (event) => {
-				if (ws.readyState !== WebSocket.OPEN) return
-				const float32 = new Float32Array(event.data)
-				const pcm16 = downsampleTo16kPCM16(float32, 48000)
+				if (ws.readyState !== WebSocket.OPEN) return;
+				const float32 = new Float32Array(event.data);
+				const pcm16 = downsampleTo16kPCM16(float32, 48000);
 				if (pcm16) {
-					ws.send(pcm16.buffer)
+					ws.send(pcm16.buffer);
 				}
-			}
+			};
 		} catch (err: any) {
-			setError(err?.message || "Failed to start recording")
-			setMode("idle")
+			setError(err?.message || "Failed to start recording");
+			setMode("idle");
 		}
-	}, [addTurn])
+	}, [addTurn]);
 
 	const stopRecording = useCallback(() => {
 		// Close WebSocket
 		if (wsRef.current) {
 			try {
-				wsRef.current.send("__end__")
+				wsRef.current.send("__end__");
 			} catch {}
 			try {
-				wsRef.current.close()
+				wsRef.current.close();
 			} catch {}
-			wsRef.current = null
+			wsRef.current = null;
 		}
 
 		// Stop audio
 		if (processorRef.current) {
-			processorRef.current.disconnect()
-			processorRef.current = null
+			processorRef.current.disconnect();
+			processorRef.current = null;
 		}
 		if (audioCtxRef.current) {
-			audioCtxRef.current.close()
-			audioCtxRef.current = null
+			audioCtxRef.current.close();
+			audioCtxRef.current = null;
 		}
 		if (mediaStreamRef.current) {
-			for (const track of mediaStreamRef.current.getTracks()) track.stop()
-			mediaStreamRef.current = null
+			for (const track of mediaStreamRef.current.getTracks()) track.stop();
+			mediaStreamRef.current = null;
 		}
 
 		// Stop timer
 		if (durationTimerRef.current) {
-			clearInterval(durationTimerRef.current)
-			durationTimerRef.current = null
+			clearInterval(durationTimerRef.current);
+			durationTimerRef.current = null;
 		}
 
-		setMode("stopped")
+		setMode("stopped");
 
 		// Run final extraction
 		if (allTurnsRef.current.length > lastExtractedCountRef.current) {
-			extractEvidence()
+			extractEvidence();
 		}
-	}, [extractEvidence])
+	}, [extractEvidence]);
 
 	// ── Simulation mode ─────────────────────────────────────────────────
 
 	const startSimulation = useCallback(() => {
-		setError(null)
-		setTurns([])
-		setEvidence([])
-		setPeople([])
-		allTurnsRef.current = []
-		lastExtractedCountRef.current = 0
-		batchIndexRef.current = 0
-		setMode("simulating")
-		startTimeRef.current = Date.now()
+		setError(null);
+		setTurns([]);
+		setEvidence([]);
+		setPeople([]);
+		allTurnsRef.current = [];
+		lastExtractedCountRef.current = 0;
+		batchIndexRef.current = 0;
+		setMode("simulating");
+		startTimeRef.current = Date.now();
 
 		// Start duration timer
 		durationTimerRef.current = setInterval(() => {
-			setDuration(Date.now() - startTimeRef.current)
-		}, 200)
+			setDuration(Date.now() - startTimeRef.current);
+		}, 200);
 
-		let cumulativeDelay = 0
-		let turnCounter = 0
-		const timers: ReturnType<typeof setTimeout>[] = []
+		let cumulativeDelay = 0;
+		let turnCounter = 0;
+		const timers: ReturnType<typeof setTimeout>[] = [];
 
 		for (const entry of SAMPLE_CONVERSATION) {
-			cumulativeDelay += entry.delayMs
+			cumulativeDelay += entry.delayMs;
 			const timer = setTimeout(() => {
 				const turn: TranscriptTurn = {
 					id: `sim-${++turnCounter}`,
@@ -551,41 +551,41 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 					startMs: cumulativeDelay,
 					endMs: cumulativeDelay + entry.text.length * 30, // rough estimate
 					isFinal: true,
-				}
-				addTurn(turn)
-			}, cumulativeDelay + 500) // small buffer
-			timers.push(timer)
+				};
+				addTurn(turn);
+			}, cumulativeDelay + 500); // small buffer
+			timers.push(timer);
 		}
 
 		// Auto-stop after all turns + buffer
 		const stopTimer = setTimeout(() => {
-			setMode("stopped")
+			setMode("stopped");
 			if (durationTimerRef.current) {
-				clearInterval(durationTimerRef.current)
-				durationTimerRef.current = null
+				clearInterval(durationTimerRef.current);
+				durationTimerRef.current = null;
 			}
 			// Final extraction
 			if (allTurnsRef.current.length > lastExtractedCountRef.current) {
-				extractEvidence()
+				extractEvidence();
 			}
-		}, cumulativeDelay + 3000)
-		timers.push(stopTimer)
+		}, cumulativeDelay + 3000);
+		timers.push(stopTimer);
 
-		simTimersRef.current = timers
-	}, [addTurn, extractEvidence])
+		simTimersRef.current = timers;
+	}, [addTurn, extractEvidence]);
 
 	const stopSimulation = useCallback(() => {
-		for (const timer of simTimersRef.current) clearTimeout(timer)
-		simTimersRef.current = []
+		for (const timer of simTimersRef.current) clearTimeout(timer);
+		simTimersRef.current = [];
 		if (durationTimerRef.current) {
-			clearInterval(durationTimerRef.current)
-			durationTimerRef.current = null
+			clearInterval(durationTimerRef.current);
+			durationTimerRef.current = null;
 		}
-		setMode("stopped")
+		setMode("stopped");
 		if (allTurnsRef.current.length > lastExtractedCountRef.current) {
-			extractEvidence()
+			extractEvidence();
 		}
-	}, [extractEvidence])
+	}, [extractEvidence]);
 
 	// ── Cleanup ─────────────────────────────────────────────────────────
 
@@ -593,27 +593,27 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 		return () => {
 			if (wsRef.current) {
 				try {
-					wsRef.current.close()
+					wsRef.current.close();
 				} catch {}
 			}
 			if (audioCtxRef.current) {
 				try {
-					audioCtxRef.current.close()
+					audioCtxRef.current.close();
 				} catch {}
 			}
 			if (mediaStreamRef.current) {
-				for (const track of mediaStreamRef.current.getTracks()) track.stop()
+				for (const track of mediaStreamRef.current.getTracks()) track.stop();
 			}
-			if (durationTimerRef.current) clearInterval(durationTimerRef.current)
-			if (extractionTimerRef.current) clearTimeout(extractionTimerRef.current)
-			for (const timer of simTimersRef.current) clearTimeout(timer)
-		}
-	}, [])
+			if (durationTimerRef.current) clearInterval(durationTimerRef.current);
+			if (extractionTimerRef.current) clearTimeout(extractionTimerRef.current);
+			for (const timer of simTimersRef.current) clearTimeout(timer);
+		};
+	}, []);
 
 	// ── Render ──────────────────────────────────────────────────────────
 
-	const isActive = mode === "recording" || mode === "simulating"
-	const isStopped = mode === "stopped"
+	const isActive = mode === "recording" || mode === "simulating";
+	const isStopped = mode === "stopped";
 
 	return (
 		<div className="flex h-screen flex-col bg-background">
@@ -696,9 +696,9 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 					<>
 						<Button
 							onClick={() => {
-								setMode("idle")
-								setDuration(0)
-								setShowTranscript(true)
+								setMode("idle");
+								setDuration(0);
+								setShowTranscript(true);
 							}}
 							variant="outline"
 							size="sm"
@@ -911,5 +911,5 @@ export function RealtimeSession({ participantNames = [], projectId, interviewId 
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

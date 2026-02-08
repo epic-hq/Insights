@@ -1,56 +1,56 @@
-import type { ActionFunctionArgs } from "react-router"
-import { Form, useActionData, useNavigation } from "react-router-dom"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrateArrayData.server"
+import type { ActionFunctionArgs } from "react-router";
+import { Form, useActionData, useNavigation } from "react-router-dom";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrateArrayData.server";
 
 export async function action({ request }: ActionFunctionArgs) {
-	const formData = await request.formData()
-	const action = formData.get("action") as string
-	const dryRun = formData.get("dryRun") === "true"
+	const formData = await request.formData();
+	const action = formData.get("action") as string;
+	const dryRun = formData.get("dryRun") === "true";
 
 	try {
 		// Get authenticated user and account ID using existing pattern
-		const { client: supabase } = getServerClient(request)
-		const { data: jwt } = await supabase.auth.getClaims()
-		const accountId = jwt?.claims.sub
+		const { client: supabase } = getServerClient(request);
+		const { data: jwt } = await supabase.auth.getClaims();
+		const accountId = jwt?.claims.sub;
 
 		if (!accountId) {
-			return { error: "Not authenticated or no account ID found" }
+			return { error: "Not authenticated or no account ID found" };
 		}
 
 		if (action === "status") {
-			const status = await getMigrationStatus(request, accountId)
-			return { status, accountId }
+			const status = await getMigrationStatus(request, accountId);
+			return { status, accountId };
 		}
 
 		if (action === "migrate") {
 			if (dryRun) {
-				const status = await getMigrationStatus(request, accountId)
+				const status = await getMigrationStatus(request, accountId);
 				return {
 					dryRun: true,
 					status,
 					accountId,
 					message: `Would migrate ${status.needsMigration.total} items`,
-				}
+				};
 			}
-			const stats = await migrateArrayDataToJunctions(request, accountId)
+			const stats = await migrateArrayDataToJunctions(request, accountId);
 			return {
 				migrationStats: stats,
 				accountId,
 				success: stats.errors.length === 0,
-			}
+			};
 		}
 
-		return { error: "Invalid action" }
+		return { error: "Invalid action" };
 	} catch (error) {
-		return { error: `Migration failed: ${error instanceof Error ? error.message : "Unknown error"}` }
+		return { error: `Migration failed: ${error instanceof Error ? error.message : "Unknown error"}` };
 	}
 }
 
 export default function MigratePage() {
-	const actionData = useActionData<typeof action>()
-	const navigation = useNavigation()
-	const isLoading = navigation.state === "submitting"
+	const actionData = useActionData<typeof action>();
+	const navigation = useNavigation();
+	const isLoading = navigation.state === "submitting";
 
 	return (
 		<div className="mx-auto max-w-4xl p-6">
@@ -199,5 +199,5 @@ export default function MigratePage() {
 				)}
 			</div>
 		</div>
-	)
+	);
 }

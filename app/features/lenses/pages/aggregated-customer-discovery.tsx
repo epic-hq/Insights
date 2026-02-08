@@ -22,59 +22,59 @@ import {
 	Target,
 	TrendingUp,
 	X,
-} from "lucide-react"
-import { useMemo, useState } from "react"
-import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import { userContext } from "~/server/user-context"
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
+import { userContext } from "~/server/user-context";
 import {
 	type AggregatedFieldValue,
 	type AggregatedPattern,
 	aggregateCustomerDiscovery,
-} from "../services/aggregateCustomerDiscovery.server"
+} from "../services/aggregateCustomerDiscovery.server";
 
 // ============================================================================
 // Loader
 // ============================================================================
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	if (!supabase) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const projectId = params.projectId as string
-	const projectPath = `/a/${params.accountId}/${params.projectId}`
+	const projectId = params.projectId as string;
+	const projectPath = `/a/${params.accountId}/${params.projectId}`;
 
 	if (!projectId) {
-		throw new Response("Project ID required", { status: 400 })
+		throw new Response("Project ID required", { status: 400 });
 	}
 
 	const aggregatedData = await aggregateCustomerDiscovery({
 		supabase,
 		projectId,
-	})
+	});
 
-	return { aggregatedData, projectPath }
+	return { aggregatedData, projectPath };
 }
 
 // ============================================================================
 // Signal Status Types
 // ============================================================================
 
-type SignalStrength = "validated" | "emerging" | "needs_research" | "no_data"
+type SignalStrength = "validated" | "emerging" | "needs_research" | "no_data";
 
 function getSignalStrength(evidenceCount: number): SignalStrength {
-	if (evidenceCount >= 3) return "validated"
-	if (evidenceCount >= 1) return "emerging"
-	return "no_data"
+	if (evidenceCount >= 3) return "validated";
+	if (evidenceCount >= 1) return "emerging";
+	return "no_data";
 }
 
 function SignalBadge({ strength }: { strength: SignalStrength }) {
@@ -99,16 +99,16 @@ function SignalBadge({ strength }: { strength: SignalStrength }) {
 			label: "No Data",
 			className: "bg-gray-50 text-gray-500 border-gray-200",
 		},
-	}[strength]
+	}[strength];
 
-	const Icon = config.icon
+	const Icon = config.icon;
 
 	return (
 		<Badge variant="outline" className={cn("gap-1 font-medium", config.className)}>
 			<Icon className="h-3 w-3" />
 			{config.label}
 		</Badge>
-	)
+	);
 }
 
 // ============================================================================
@@ -116,42 +116,42 @@ function SignalBadge({ strength }: { strength: SignalStrength }) {
 // ============================================================================
 
 export default function AggregatedCustomerDiscoveryPage() {
-	const { aggregatedData, projectPath } = useLoaderData<typeof loader>()
-	const routes = useProjectRoutes(projectPath)
+	const { aggregatedData, projectPath } = useLoaderData<typeof loader>();
+	const routes = useProjectRoutes(projectPath);
 
 	// Filter state
-	const [segmentFilter, setSegmentFilter] = useState<string>("all")
-	const [dateRangeFilter, setDateRangeFilter] = useState<string>("all")
+	const [segmentFilter, setSegmentFilter] = useState<string>("all");
+	const [dateRangeFilter, setDateRangeFilter] = useState<string>("all");
 
 	const DATE_RANGES = [
 		{ value: "7", label: "Last 7 days" },
 		{ value: "30", label: "Last 30 days" },
 		{ value: "90", label: "Last 90 days" },
 		{ value: "all", label: "All time" },
-	]
+	];
 
 	const uniqueSegments = useMemo(() => {
-		return aggregatedData.summary.unique_segments.filter(Boolean).sort()
-	}, [aggregatedData.summary.unique_segments])
+		return aggregatedData.summary.unique_segments.filter(Boolean).sort();
+	}, [aggregatedData.summary.unique_segments]);
 
 	// Apply filters
 	const filteredData = useMemo(() => {
-		const now = new Date()
+		const now = new Date();
 		const cutoffDate =
 			dateRangeFilter === "all"
 				? null
-				: new Date(now.getTime() - Number.parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000)
+				: new Date(now.getTime() - Number.parseInt(dateRangeFilter) * 24 * 60 * 60 * 1000);
 
 		const filteredInterviews = aggregatedData.interviews.filter((interview) => {
-			if (segmentFilter !== "all" && interview.segment !== segmentFilter) return false
+			if (segmentFilter !== "all" && interview.segment !== segmentFilter) return false;
 			if (cutoffDate && interview.processed_at) {
-				const processedDate = new Date(interview.processed_at)
-				if (processedDate < cutoffDate) return false
+				const processedDate = new Date(interview.processed_at);
+				if (processedDate < cutoffDate) return false;
 			}
-			return true
-		})
+			return true;
+		});
 
-		const filteredInterviewIds = new Set(filteredInterviews.map((i) => i.interview_id))
+		const filteredInterviewIds = new Set(filteredInterviews.map((i) => i.interview_id));
 
 		const filterFieldValues = (fields: AggregatedFieldValue[]): AggregatedFieldValue[] => {
 			return fields
@@ -159,8 +159,8 @@ export default function AggregatedCustomerDiscoveryPage() {
 					...f,
 					values: f.values.filter((v) => filteredInterviewIds.has(v.interview_id)),
 				}))
-				.filter((f) => f.values.length > 0)
-		}
+				.filter((f) => f.values.length > 0);
+		};
 
 		const filterPatterns = (patterns: AggregatedPattern[]): AggregatedPattern[] => {
 			return patterns
@@ -170,8 +170,8 @@ export default function AggregatedCustomerDiscoveryPage() {
 					count: p.interviews.filter((i) => filteredInterviewIds.has(i.id)).length,
 				}))
 				.filter((p) => p.count > 0)
-				.sort((a, b) => b.count - a.count)
-		}
+				.sort((a, b) => b.count - a.count);
+		};
 
 		return {
 			...aggregatedData,
@@ -201,81 +201,87 @@ export default function AggregatedCustomerDiscoveryPage() {
 				...aggregatedData.summary,
 				total_interviews: filteredInterviews.length,
 			},
-		}
-	}, [aggregatedData, segmentFilter, dateRangeFilter])
+		};
+	}, [aggregatedData, segmentFilter, dateRangeFilter]);
 
-	const hasFilters = segmentFilter !== "all" || dateRangeFilter !== "all"
+	const hasFilters = segmentFilter !== "all" || dateRangeFilter !== "all";
 
 	const clearFilters = () => {
-		setSegmentFilter("all")
-		setDateRangeFilter("all")
-	}
+		setSegmentFilter("all");
+		setDateRangeFilter("all");
+	};
 
-	const { total_interviews: totalConversations } = filteredData.summary
+	const { total_interviews: totalConversations } = filteredData.summary;
 
 	// Calculate validation signals
-	const problemEvidenceCount = filteredData.common_problems.length
-	const solutionEvidenceCount = filteredData.solution_validation_fields.reduce((sum, f) => sum + f.values.length, 0)
-	const marketEvidenceCount = filteredData.current_solutions.length + filteredData.competitive_alternatives.length
+	const problemEvidenceCount = filteredData.common_problems.length;
+	const solutionEvidenceCount = filteredData.solution_validation_fields.reduce((sum, f) => sum + f.values.length, 0);
+	const marketEvidenceCount = filteredData.current_solutions.length + filteredData.competitive_alternatives.length;
 	const wtpEvidenceCount =
-		filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values.length || 0
+		filteredData.market_insights_fields.find((f) => f.field_key.includes("willingness"))?.values.length || 0;
 
-	const problemSignal = getSignalStrength(problemEvidenceCount)
-	const solutionSignal = getSignalStrength(solutionEvidenceCount)
-	const marketSignal = getSignalStrength(marketEvidenceCount)
-	const wtpSignal = getSignalStrength(wtpEvidenceCount)
+	const problemSignal = getSignalStrength(problemEvidenceCount);
+	const solutionSignal = getSignalStrength(solutionEvidenceCount);
+	const marketSignal = getSignalStrength(marketEvidenceCount);
+	const wtpSignal = getSignalStrength(wtpEvidenceCount);
 
 	// Calculate overall research confidence (0-100)
 	const calculateConfidence = () => {
-		const signals = [problemSignal, solutionSignal, marketSignal, wtpSignal]
+		const signals = [problemSignal, solutionSignal, marketSignal, wtpSignal];
 		const weights = {
 			validated: 25,
 			emerging: 12,
 			needs_research: 5,
 			no_data: 0,
-		}
-		return signals.reduce((sum, s) => sum + weights[s], 0)
-	}
-	const researchConfidence = calculateConfidence()
+		};
+		return signals.reduce((sum, s) => sum + weights[s], 0);
+	};
+	const researchConfidence = calculateConfidence();
 
 	// Generate executive summary takeaways
 	const keyTakeaways = useMemo(() => {
-		const takeaways: string[] = []
+		const takeaways: string[] = [];
 
 		// Top problem
 		if (filteredData.common_problems[0]) {
 			takeaways.push(
 				`Top problem: "${filteredData.common_problems[0].pattern}" (${filteredData.common_problems[0].count} mentions)`
-			)
+			);
 		}
 
 		// Solution validation status
 		if (solutionSignal === "validated") {
-			takeaways.push("Solution resonates with multiple customers")
+			takeaways.push("Solution resonates with multiple customers");
 		} else if (solutionSignal === "emerging") {
-			takeaways.push("Early positive signals on solution fit")
+			takeaways.push("Early positive signals on solution fit");
 		}
 
 		// Market landscape
 		if (filteredData.current_solutions.length > 0) {
-			takeaways.push(`${filteredData.current_solutions.length} competing solutions identified`)
+			takeaways.push(`${filteredData.current_solutions.length} competing solutions identified`);
 		}
 
 		// Open objections
-		const openObjections = filteredData.objections.filter((o) => o.status !== "addressed")
+		const openObjections = filteredData.objections.filter((o) => o.status !== "addressed");
 		if (openObjections.length > 0) {
-			takeaways.push(`${openObjections.length} open objection(s) to address`)
+			takeaways.push(`${openObjections.length} open objection(s) to address`);
 		}
 
 		// Willingness to pay
 		if (wtpSignal === "validated") {
-			takeaways.push("Willingness to pay validated")
+			takeaways.push("Willingness to pay validated");
 		} else if (wtpSignal === "no_data") {
-			takeaways.push("Willingness to pay not yet explored")
+			takeaways.push("Willingness to pay not yet explored");
 		}
 
-		return takeaways.slice(0, 4)
-	}, [filteredData.common_problems, filteredData.current_solutions, filteredData.objections, solutionSignal, wtpSignal])
+		return takeaways.slice(0, 4);
+	}, [
+		filteredData.common_problems,
+		filteredData.current_solutions,
+		filteredData.objections,
+		solutionSignal,
+		wtpSignal,
+	]);
 
 	if (totalConversations === 0 && !hasFilters) {
 		return (
@@ -297,7 +303,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 					</Link>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -619,7 +625,7 @@ export default function AggregatedCustomerDiscoveryPage() {
 				</LearningSection>
 			)}
 		</div>
-	)
+	);
 }
 
 // ============================================================================
@@ -633,31 +639,31 @@ function ConfidenceMeter({
 	marketSignal,
 	wtpSignal,
 }: {
-	value: number
-	problemSignal: SignalStrength
-	solutionSignal: SignalStrength
-	marketSignal: SignalStrength
-	wtpSignal: SignalStrength
+	value: number;
+	problemSignal: SignalStrength;
+	solutionSignal: SignalStrength;
+	marketSignal: SignalStrength;
+	wtpSignal: SignalStrength;
 }) {
 	const getLabel = () => {
-		if (value >= 80) return "Strong"
-		if (value >= 50) return "Growing"
-		if (value >= 25) return "Early"
-		return "Starting"
-	}
+		if (value >= 80) return "Strong";
+		if (value >= 50) return "Growing";
+		if (value >= 25) return "Early";
+		return "Starting";
+	};
 
 	const getColor = () => {
-		if (value >= 80) return "bg-emerald-500"
-		if (value >= 50) return "bg-amber-500"
-		if (value >= 25) return "bg-blue-500"
-		return "bg-gray-400"
-	}
+		if (value >= 80) return "bg-emerald-500";
+		if (value >= 50) return "bg-amber-500";
+		if (value >= 25) return "bg-blue-500";
+		return "bg-gray-400";
+	};
 
 	const signalToIcon = (s: SignalStrength) => {
-		if (s === "validated") return "text-emerald-500"
-		if (s === "emerging") return "text-amber-500"
-		return "text-gray-300"
-	}
+		if (s === "validated") return "text-emerald-500";
+		if (s === "emerging") return "text-amber-500";
+		return "text-gray-300";
+	};
 
 	return (
 		<div className="space-y-3">
@@ -693,7 +699,7 @@ function ConfidenceMeter({
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 // ============================================================================
@@ -701,10 +707,10 @@ function ConfidenceMeter({
 // ============================================================================
 
 interface FitItem {
-	label: string
-	signal: SignalStrength
-	count: number
-	highlight?: string
+	label: string;
+	signal: SignalStrength;
+	count: number;
+	highlight?: string;
 }
 
 function FitCard({ title, question, items }: { title: string; question: string; items: FitItem[] }) {
@@ -735,7 +741,7 @@ function FitCard({ title, question, items }: { title: string; question: string; 
 				))}
 			</CardContent>
 		</Card>
-	)
+	);
 }
 
 // ============================================================================
@@ -749,11 +755,11 @@ function LearningSection({
 	iconColor,
 	children,
 }: {
-	title: string
-	subtitle: string
-	icon: typeof Target
-	iconColor: string
-	children: React.ReactNode
+	title: string;
+	subtitle: string;
+	icon: typeof Target;
+	iconColor: string;
+	children: React.ReactNode;
 }) {
 	return (
 		<section className="space-y-4">
@@ -768,7 +774,7 @@ function LearningSection({
 			</div>
 			{children}
 		</section>
-	)
+	);
 }
 
 // ============================================================================
@@ -783,19 +789,19 @@ function QuoteCard({
 	sources,
 	projectPath,
 }: {
-	label?: string
-	quote: string
-	count?: number
-	source?: { id: string; title: string; interviewee_name: string | null }
+	label?: string;
+	quote: string;
+	count?: number;
+	source?: { id: string; title: string; interviewee_name: string | null };
 	sources?: Array<{
-		id: string
-		title: string
-		interviewee_name: string | null
-	}>
-	projectPath: string
+		id: string;
+		title: string;
+		interviewee_name: string | null;
+	}>;
+	projectPath: string;
 }) {
-	const routes = useProjectRoutes(projectPath)
-	const displaySources = sources || (source ? [source] : [])
+	const routes = useProjectRoutes(projectPath);
+	const displaySources = sources || (source ? [source] : []);
 
 	return (
 		<div className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30">
@@ -833,7 +839,7 @@ function QuoteCard({
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
 
 // ============================================================================
@@ -848,6 +854,6 @@ function formatGapCode(code: string): string {
 		missing_willingness_to_pay: "Willingness to pay not discussed",
 		no_champion: "No internal advocate identified",
 		unaddressed_objection: "Objection not resolved",
-	}
-	return labels[code] || code.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+	};
+	return labels[code] || code.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

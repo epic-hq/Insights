@@ -1,9 +1,9 @@
-import type React from "react"
+import type React from "react";
 // Import types
-import type { OpportunityView } from "~/types"
+import type { OpportunityView } from "~/types";
 
 interface OpportunityDetailProps {
-	opportunity: OpportunityView
+	opportunity: OpportunityView;
 }
 
 // Mock data with stable IDs
@@ -15,30 +15,30 @@ const mockQuotes = [
 	},
 	{ id: "q2", text: "I've been waiting for something like this.", author: "Interviewee 2" },
 	{ id: "q3", text: "This is a game-changer for our team.", author: "Interviewee 3" },
-]
+];
 
 const mockInterviews = [
 	{ id: "int1", name: "Interview 1", role: "Product Manager", date: new Date(2023, 0, 15) },
 	{ id: "int2", name: "Interview 2", role: "Developer", date: new Date(2023, 1, 20) },
 	{ id: "int3", name: "Interview 3", role: "Designer", date: new Date(2023, 2, 25) },
-]
+];
 
 const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) => {
 	// Helper function to get status color
 	const _getStatusColor = (status?: string) => {
 		switch (status) {
 			case "Build":
-				return "bg-green-500"
+				return "bg-green-500";
 			case "Validate":
-				return "bg-blue-500"
+				return "bg-blue-500";
 			default:
-				return "bg-yellow-500" // Explore
+				return "bg-yellow-500"; // Explore
 		}
-	}
+	};
 
 	// Calculate impact/effort score
 	const impactEffortRatio =
-		opportunity.impact && opportunity.effort ? (opportunity.impact / opportunity.effort).toFixed(1) : "N/A"
+		opportunity.impact && opportunity.effort ? (opportunity.impact / opportunity.effort).toFixed(1) : "N/A";
 
 	return (
 		<div className="mx-auto max-w-7xl">
@@ -194,7 +194,7 @@ const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) =>
 				</div>
 			</div>
 		</div>
-	)
-}
+	);
+};
 
-export default OpportunityDetail
+export default OpportunityDetail;

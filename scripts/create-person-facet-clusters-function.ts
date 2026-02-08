@@ -2,11 +2,11 @@
  * Create the missing find_person_facet_clusters function
  */
 
-import { createClient } from "@supabase/supabase-js"
-import consola from "consola"
+import { createClient } from "@supabase/supabase-js";
+import consola from "consola";
 
-const SUPABASE_URL = process.env.SUPABASE_URL!
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const functionSQL = `
 create or replace function public.find_person_facet_clusters(
@@ -59,42 +59,42 @@ end;
 $ language plpgsql;
 
 comment on function public.find_person_facet_clusters is 'Find clusters of similar person facets for semantic segment grouping (e.g., "Product Manager" + "PM" + "Product Lead")';
-`
+`;
 
 async function main() {
-	const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+	const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-	consola.start("Creating find_person_facet_clusters function...")
+	consola.start("Creating find_person_facet_clusters function...");
 
-	const { error } = await supabase.rpc("exec_sql", { sql: functionSQL })
+	const { error } = await supabase.rpc("exec_sql", { sql: functionSQL });
 
 	if (error) {
 		// Try direct query instead
-		consola.warn("exec_sql RPC not available, trying direct query...")
+		consola.warn("exec_sql RPC not available, trying direct query...");
 
-		const { error: directError } = await supabase.from("_sql").select("*").eq("query", functionSQL)
+		const { error: directError } = await supabase.from("_sql").select("*").eq("query", functionSQL);
 
 		if (directError) {
-			consola.error("Failed to create function:", directError)
-			return
+			consola.error("Failed to create function:", directError);
+			return;
 		}
 	}
 
-	consola.success("Function created successfully!")
+	consola.success("Function created successfully!");
 
 	// Test the function
-	consola.info("Testing function...")
+	consola.info("Testing function...");
 	const { data, error: testError } = await supabase.rpc("find_person_facet_clusters", {
 		project_id_param: "6dbcbb68-0662-4ebc-9f84-dd13b8ff758d",
 		kind_slug_param: "job_function",
 		similarity_threshold: 0.75,
-	})
+	});
 
 	if (testError) {
-		consola.error("Function test failed:", testError)
+		consola.error("Function test failed:", testError);
 	} else {
-		consola.success(`Function works! Found ${data?.length || 0} clusters`)
+		consola.success(`Function works! Found ${data?.length || 0} clusters`);
 	}
 }
 
-main().catch(consola.error)
+main().catch(consola.error);

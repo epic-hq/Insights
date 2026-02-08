@@ -2,7 +2,7 @@
  * Video editor component for per-question intro videos
  * Supports: record in-app, upload file, or add remote URL
  */
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertCircle,
 	Camera,
@@ -15,20 +15,20 @@ import {
 	Upload,
 	Video,
 	X,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { cn } from "~/lib/utils"
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { cn } from "~/lib/utils";
 
 type QuestionVideoEditorProps = {
-	listId: string
-	questionId: string
-	existingVideoUrl?: string | null
-	onVideoChange: (videoUrl: string | null) => void
-}
+	listId: string;
+	questionId: string;
+	existingVideoUrl?: string | null;
+	onVideoChange: (videoUrl: string | null) => void;
+};
 
-type EditorMode = "idle" | "record" | "upload" | "url"
+type EditorMode = "idle" | "record" | "upload" | "url";
 
 type RecordingState =
 	| "idle"
@@ -38,49 +38,49 @@ type RecordingState =
 	| "stopped"
 	| "uploading"
 	| "complete"
-	| "error"
+	| "error";
 
-const MAX_RECORDING_SECONDS = 180 // 3 minutes max for question intro
+const MAX_RECORDING_SECONDS = 180; // 3 minutes max for question intro
 
 function getSupportedVideoMimeType(): string {
-	const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"]
-	return types.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm"
+	const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
+	return types.find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm";
 }
 
 export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVideoChange }: QuestionVideoEditorProps) {
-	const [mode, setMode] = useState<EditorMode>("idle")
-	const [recordingState, setRecordingState] = useState<RecordingState>("idle")
-	const [error, setError] = useState<string | null>(null)
-	const [recordingSeconds, setRecordingSeconds] = useState(0)
-	const [videoUrl, setVideoUrl] = useState<string | null>(null)
-	const [urlInput, setUrlInput] = useState("")
-	const [isUploading, setIsUploading] = useState(false)
+	const [mode, setMode] = useState<EditorMode>("idle");
+	const [recordingState, setRecordingState] = useState<RecordingState>("idle");
+	const [error, setError] = useState<string | null>(null);
+	const [recordingSeconds, setRecordingSeconds] = useState(0);
+	const [videoUrl, setVideoUrl] = useState<string | null>(null);
+	const [urlInput, setUrlInput] = useState("");
+	const [isUploading, setIsUploading] = useState(false);
 
-	const videoPreviewRef = useRef<HTMLVideoElement>(null)
-	const mediaStreamRef = useRef<MediaStream | null>(null)
-	const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-	const chunksRef = useRef<Blob[]>([])
-	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-	const fileInputRef = useRef<HTMLInputElement>(null)
+	const videoPreviewRef = useRef<HTMLVideoElement>(null);
+	const mediaStreamRef = useRef<MediaStream | null>(null);
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+	const chunksRef = useRef<Blob[]>([]);
+	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
 			if (mediaStreamRef.current) {
-				mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+				mediaStreamRef.current.getTracks().forEach((track) => track.stop());
 			}
 			if (timerRef.current) {
-				clearInterval(timerRef.current)
+				clearInterval(timerRef.current);
 			}
 			if (videoUrl) {
-				URL.revokeObjectURL(videoUrl)
+				URL.revokeObjectURL(videoUrl);
 			}
-		}
-	}, [videoUrl])
+		};
+	}, [videoUrl]);
 
 	const startPreview = useCallback(async () => {
-		setRecordingState("requesting_permission")
-		setError(null)
+		setRecordingState("requesting_permission");
+		setError(null);
 
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
@@ -90,215 +90,215 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 					height: { ideal: 720 },
 				},
 				audio: true,
-			})
+			});
 
-			mediaStreamRef.current = stream
+			mediaStreamRef.current = stream;
 
 			if (videoPreviewRef.current) {
-				videoPreviewRef.current.srcObject = stream
-				videoPreviewRef.current.muted = true
-				await videoPreviewRef.current.play()
+				videoPreviewRef.current.srcObject = stream;
+				videoPreviewRef.current.muted = true;
+				await videoPreviewRef.current.play();
 			}
 
-			setRecordingState("preview")
+			setRecordingState("preview");
 		} catch (err) {
 			const message =
 				err instanceof Error
 					? err.name === "NotAllowedError"
 						? "Camera access denied. Please allow camera and microphone access."
 						: err.message
-					: "Failed to access camera"
-			setError(message)
-			setRecordingState("error")
+					: "Failed to access camera";
+			setError(message);
+			setRecordingState("error");
 		}
-	}, [])
+	}, []);
 
 	const startRecording = useCallback(() => {
-		if (!mediaStreamRef.current) return
+		if (!mediaStreamRef.current) return;
 
-		chunksRef.current = []
-		const mimeType = getSupportedVideoMimeType()
+		chunksRef.current = [];
+		const mimeType = getSupportedVideoMimeType();
 
 		const recorder = new MediaRecorder(mediaStreamRef.current, {
 			mimeType,
 			videoBitsPerSecond: 2500000,
-		})
+		});
 
 		recorder.ondataavailable = (event) => {
 			if (event.data.size > 0) {
-				chunksRef.current.push(event.data)
+				chunksRef.current.push(event.data);
 			}
-		}
+		};
 
 		recorder.onstop = () => {
-			const blob = new Blob(chunksRef.current, { type: mimeType })
-			const url = URL.createObjectURL(blob)
-			setVideoUrl(url)
+			const blob = new Blob(chunksRef.current, { type: mimeType });
+			const url = URL.createObjectURL(blob);
+			setVideoUrl(url);
 
 			if (mediaStreamRef.current) {
-				mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-				mediaStreamRef.current = null
+				mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+				mediaStreamRef.current = null;
 			}
 
-			setRecordingState("stopped")
-		}
+			setRecordingState("stopped");
+		};
 
-		mediaRecorderRef.current = recorder
-		recorder.start(1000)
-		setRecordingState("recording")
-		setRecordingSeconds(0)
+		mediaRecorderRef.current = recorder;
+		recorder.start(1000);
+		setRecordingState("recording");
+		setRecordingSeconds(0);
 
 		timerRef.current = setInterval(() => {
 			setRecordingSeconds((prev) => {
-				const next = prev + 1
+				const next = prev + 1;
 				if (next >= MAX_RECORDING_SECONDS) {
-					stopRecording()
+					stopRecording();
 				}
-				return next
-			})
-		}, 1000)
-	}, [])
+				return next;
+			});
+		}, 1000);
+	}, []);
 
 	const stopRecording = useCallback(() => {
 		if (timerRef.current) {
-			clearInterval(timerRef.current)
-			timerRef.current = null
+			clearInterval(timerRef.current);
+			timerRef.current = null;
 		}
 
 		if (mediaRecorderRef.current?.state === "recording") {
-			mediaRecorderRef.current.stop()
+			mediaRecorderRef.current.stop();
 		}
-	}, [])
+	}, []);
 
 	const resetRecording = useCallback(() => {
 		if (videoUrl) {
-			URL.revokeObjectURL(videoUrl)
-			setVideoUrl(null)
+			URL.revokeObjectURL(videoUrl);
+			setVideoUrl(null);
 		}
-		setRecordingSeconds(0)
-		chunksRef.current = []
-		startPreview()
-	}, [videoUrl, startPreview])
+		setRecordingSeconds(0);
+		chunksRef.current = [];
+		startPreview();
+	}, [videoUrl, startPreview]);
 
 	const cancelMode = useCallback(() => {
 		if (mediaStreamRef.current) {
-			mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-			mediaStreamRef.current = null
+			mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+			mediaStreamRef.current = null;
 		}
 		if (timerRef.current) {
-			clearInterval(timerRef.current)
-			timerRef.current = null
+			clearInterval(timerRef.current);
+			timerRef.current = null;
 		}
 		if (videoUrl) {
-			URL.revokeObjectURL(videoUrl)
-			setVideoUrl(null)
+			URL.revokeObjectURL(videoUrl);
+			setVideoUrl(null);
 		}
-		chunksRef.current = []
-		setRecordingSeconds(0)
-		setRecordingState("idle")
-		setMode("idle")
-		setUrlInput("")
-		setError(null)
-	}, [videoUrl])
+		chunksRef.current = [];
+		setRecordingSeconds(0);
+		setRecordingState("idle");
+		setMode("idle");
+		setUrlInput("");
+		setError(null);
+	}, [videoUrl]);
 
 	const uploadRecordedVideo = useCallback(async () => {
-		if (!videoUrl || chunksRef.current.length === 0) return
+		if (!videoUrl || chunksRef.current.length === 0) return;
 
-		setRecordingState("uploading")
-		setError(null)
+		setRecordingState("uploading");
+		setError(null);
 
 		try {
-			const mimeType = getSupportedVideoMimeType()
-			const blob = new Blob(chunksRef.current, { type: mimeType })
-			const ext = mimeType.includes("mp4") ? "mp4" : "webm"
+			const mimeType = getSupportedVideoMimeType();
+			const blob = new Blob(chunksRef.current, { type: mimeType });
+			const ext = mimeType.includes("mp4") ? "mp4" : "webm";
 			const file = new File([blob], `question-video.${ext}`, {
 				type: mimeType,
-			})
+			});
 
-			const formData = new FormData()
-			formData.append("video", file)
-			formData.append("questionId", questionId)
+			const formData = new FormData();
+			formData.append("video", file);
+			formData.append("questionId", questionId);
 
 			const response = await fetch(`/api/research-links/${listId}/upload-question-video`, {
 				method: "POST",
 				body: formData,
-			})
+			});
 
 			if (!response.ok) {
-				const data = await response.json().catch(() => ({}))
-				throw new Error(data.error || "Upload failed")
+				const data = await response.json().catch(() => ({}));
+				throw new Error(data.error || "Upload failed");
 			}
 
-			const result = await response.json()
-			setRecordingState("complete")
-			onVideoChange(result.videoUrl)
-			setMode("idle")
+			const result = await response.json();
+			setRecordingState("complete");
+			onVideoChange(result.videoUrl);
+			setMode("idle");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Upload failed")
-			setRecordingState("error")
+			setError(err instanceof Error ? err.message : "Upload failed");
+			setRecordingState("error");
 		}
-	}, [videoUrl, listId, questionId, onVideoChange])
+	}, [videoUrl, listId, questionId, onVideoChange]);
 
 	const handleFileUpload = useCallback(
 		async (file: File) => {
 			if (!file.type.startsWith("video/")) {
-				setError("Please select a video file")
-				return
+				setError("Please select a video file");
+				return;
 			}
 
-			setIsUploading(true)
-			setError(null)
+			setIsUploading(true);
+			setError(null);
 
 			try {
-				const formData = new FormData()
-				formData.append("video", file)
-				formData.append("questionId", questionId)
+				const formData = new FormData();
+				formData.append("video", file);
+				formData.append("questionId", questionId);
 
 				const response = await fetch(`/api/research-links/${listId}/upload-question-video`, {
 					method: "POST",
 					body: formData,
-				})
+				});
 
 				if (!response.ok) {
-					const data = await response.json().catch(() => ({}))
-					throw new Error(data.error || "Upload failed")
+					const data = await response.json().catch(() => ({}));
+					throw new Error(data.error || "Upload failed");
 				}
 
-				const result = await response.json()
-				onVideoChange(result.videoUrl)
-				setMode("idle")
+				const result = await response.json();
+				onVideoChange(result.videoUrl);
+				setMode("idle");
 			} catch (err) {
-				setError(err instanceof Error ? err.message : "Upload failed")
+				setError(err instanceof Error ? err.message : "Upload failed");
 			} finally {
-				setIsUploading(false)
+				setIsUploading(false);
 			}
 		},
 		[listId, questionId, onVideoChange]
-	)
+	);
 
 	const handleUrlSubmit = useCallback(() => {
-		const trimmed = urlInput.trim()
-		if (!trimmed) return
+		const trimmed = urlInput.trim();
+		if (!trimmed) return;
 
 		try {
-			new URL(trimmed)
-			onVideoChange(trimmed)
-			setMode("idle")
-			setUrlInput("")
+			new URL(trimmed);
+			onVideoChange(trimmed);
+			setMode("idle");
+			setUrlInput("");
 		} catch {
-			setError("Please enter a valid URL")
+			setError("Please enter a valid URL");
 		}
-	}, [urlInput, onVideoChange])
+	}, [urlInput, onVideoChange]);
 
 	const handleDelete = useCallback(() => {
-		onVideoChange(null)
-	}, [onVideoChange])
+		onVideoChange(null);
+	}, [onVideoChange]);
 
 	const formatTime = (seconds: number) => {
-		const mins = Math.floor(seconds / 60)
-		const secs = seconds % 60
-		return `${mins}:${secs.toString().padStart(2, "0")}`
-	}
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
+	};
 
 	// If there's an existing video, show it with option to delete/replace
 	if (existingVideoUrl && mode === "idle") {
@@ -334,7 +334,7 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 				</div>
 				<video src={existingVideoUrl} className="aspect-video w-full rounded-lg bg-black" controls playsInline />
 			</div>
-		)
+		);
 	}
 
 	// Idle state - show add video options
@@ -350,8 +350,8 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 						size="sm"
 						className="h-7 px-2 text-muted-foreground text-xs hover:text-foreground"
 						onClick={() => {
-							setMode("record")
-							startPreview()
+							setMode("record");
+							startPreview();
 						}}
 					>
 						<Camera className="mr-1 h-3 w-3" />
@@ -363,8 +363,8 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 						size="sm"
 						className="h-7 px-2 text-muted-foreground text-xs hover:text-foreground"
 						onClick={() => {
-							setMode("upload")
-							fileInputRef.current?.click()
+							setMode("upload");
+							fileInputRef.current?.click();
 						}}
 					>
 						<Upload className="mr-1 h-3 w-3" />
@@ -387,13 +387,13 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 					accept="video/*"
 					className="hidden"
 					onChange={(event) => {
-						const file = event.target.files?.[0]
-						if (file) handleFileUpload(file)
-						event.target.value = ""
+						const file = event.target.files?.[0];
+						if (file) handleFileUpload(file);
+						event.target.value = "";
 					}}
 				/>
 			</div>
-		)
+		);
 	}
 
 	// URL input mode
@@ -409,8 +409,8 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 						className="h-8 flex-1 text-xs"
 						onKeyDown={(event) => {
 							if (event.key === "Enter") {
-								event.preventDefault()
-								handleUrlSubmit()
+								event.preventDefault();
+								handleUrlSubmit();
 							}
 						}}
 					/>
@@ -428,7 +428,7 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 					</div>
 				)}
 			</div>
-		)
+		);
 	}
 
 	// Upload mode (shows uploading state)
@@ -471,13 +471,13 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 					accept="video/*"
 					className="hidden"
 					onChange={(event) => {
-						const file = event.target.files?.[0]
-						if (file) handleFileUpload(file)
-						event.target.value = ""
+						const file = event.target.files?.[0];
+						if (file) handleFileUpload(file);
+						event.target.value = "";
 					}}
 				/>
 			</div>
-		)
+		);
 	}
 
 	// Record mode
@@ -586,5 +586,5 @@ export function QuestionVideoEditor({ listId, questionId, existingVideoUrl, onVi
 				)}
 			</div>
 		</div>
-	)
+	);
 }

@@ -3,13 +3,13 @@
  * Creates/updates the survey in the database and returns the URL for navigation.
  */
 
-import { createTool } from "@mastra/core/tools"
-import slugify from "@sindresorhus/slugify"
-import consola from "consola"
-import { customAlphabet } from "nanoid"
-import { z } from "zod"
+import { createTool } from "@mastra/core/tools";
+import slugify from "@sindresorhus/slugify";
+import consola from "consola";
+import { customAlphabet } from "nanoid";
+import { z } from "zod";
 
-const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8)
+const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8);
 
 const QuestionInputSchema = z.object({
 	prompt: z.string().describe("The question text"),
@@ -29,7 +29,7 @@ const QuestionInputSchema = z.object({
 		.nullish()
 		.nullable()
 		.describe("Labels for low/high ends of likert scale"),
-})
+});
 
 export const createSurveyTool = createTool({
 	id: "create-survey",
@@ -70,27 +70,27 @@ Question types:
 	execute: async (input, context?) => {
 		try {
 			// Use explicit projectId from input (required)
-			const projectId = input.projectId
+			const projectId = input.projectId;
 
 			// Get accountId from project record
-			const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server")
-			const supabase = createSupabaseAdminClient()
+			const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server");
+			const supabase = createSupabaseAdminClient();
 
 			const { data: project, error: projectError } = await supabase
 				.from("projects")
 				.select("account_id")
 				.eq("id", projectId)
-				.single()
+				.single();
 
 			if (projectError || !project) {
 				return {
 					success: false,
 					message: `Project not found: ${projectId}`,
 					error: { code: "PROJECT_NOT_FOUND", message: "Invalid project ID" },
-				}
+				};
 			}
 
-			const accountId = project.account_id
+			const accountId = project.account_id;
 
 			// Transform questions to the expected format
 			const questions = input.questions.map((q) => ({
@@ -105,7 +105,7 @@ Question types:
 				likertLabels: q.likertLabels || null,
 				imageOptions: null,
 				videoUrl: null,
-			}))
+			}));
 
 			// UPDATE existing survey
 			if (input.surveyId) {
@@ -113,7 +113,7 @@ Question types:
 					surveyId: input.surveyId,
 					name: input.name,
 					questionCount: questions.length,
-				})
+				});
 
 				const { data, error } = await supabase
 					.from("research_links")
@@ -127,19 +127,19 @@ Question types:
 					})
 					.eq("id", input.surveyId)
 					.select("id, slug")
-					.single()
+					.single();
 
 				if (error) {
-					consola.error("create-survey: update error", error)
+					consola.error("create-survey: update error", error);
 					return {
 						success: false,
 						message: `Failed to update survey: ${error.message}`,
 						error: { code: error.code || "DB_ERROR", message: error.message },
-					}
+					};
 				}
 
-				const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`
-				const publicUrl = `/research/${data.slug}`
+				const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`;
+				const publicUrl = `/research/${data.slug}`;
 
 				return {
 					success: true,
@@ -147,12 +147,12 @@ Question types:
 					surveyId: data.id,
 					editUrl,
 					publicUrl,
-				}
+				};
 			}
 
 			// CREATE new survey
-			const baseSlug = slugify(input.name, { lowercase: true })
-			const slug = `${baseSlug}-${nanoid()}`
+			const baseSlug = slugify(input.name, { lowercase: true });
+			const slug = `${baseSlug}-${nanoid()}`;
 
 			consola.info("create-survey: creating survey", {
 				name: input.name,
@@ -160,7 +160,7 @@ Question types:
 				questionCount: questions.length,
 				projectId,
 				accountId,
-			})
+			});
 
 			const { data, error } = await supabase
 				.from("research_links")
@@ -180,25 +180,25 @@ Question types:
 					hero_cta_helper: null,
 				})
 				.select("id, slug")
-				.single()
+				.single();
 
 			if (error) {
-				consola.error("create-survey: database error", error)
+				consola.error("create-survey: database error", error);
 				return {
 					success: false,
 					message: `Failed to create survey: ${error.message}`,
 					error: { code: error.code || "DB_ERROR", message: error.message },
-				}
+				};
 			}
 
-			const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`
-			const publicUrl = `/research/${data.slug}`
+			const editUrl = `/a/${accountId}/${projectId}/ask/${data.id}/edit`;
+			const publicUrl = `/research/${data.slug}`;
 
 			consola.info("create-survey: survey created", {
 				surveyId: data.id,
 				editUrl,
 				publicUrl,
-			})
+			});
 
 			return {
 				success: true,
@@ -206,9 +206,9 @@ Question types:
 				surveyId: data.id,
 				editUrl,
 				publicUrl,
-			}
+			};
 		} catch (error) {
-			consola.error("create-survey: unexpected error", error)
+			consola.error("create-survey: unexpected error", error);
 			return {
 				success: false,
 				message: error instanceof Error ? error.message : "Failed to create survey",
@@ -216,7 +216,7 @@ Question types:
 					code: "UNEXPECTED_ERROR",
 					message: error instanceof Error ? error.message : "Failed to create survey",
 				},
-			}
+			};
 		}
 	},
-})
+});

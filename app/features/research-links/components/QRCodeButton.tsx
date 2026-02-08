@@ -1,11 +1,11 @@
-import { QrCode } from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
-import { Button } from "~/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import { QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 
 interface QRCodeButtonProps {
-	url: string
-	onClick: () => void
+	url: string;
+	onClick: () => void;
 }
 
 export function QRCodeButton({ url, onClick }: QRCodeButtonProps) {
@@ -29,5 +29,5 @@ export function QRCodeButton({ url, onClick }: QRCodeButtonProps) {
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	)
+	);
 }

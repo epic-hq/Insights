@@ -1,17 +1,17 @@
-import consola from "consola"
+import consola from "consola";
 
 type WriterLike = {
-	custom?: (payload: unknown) => Promise<unknown> | unknown
-}
+	custom?: (payload: unknown) => Promise<unknown> | unknown;
+};
 
 type ToolContextLike = {
-	writer?: WriterLike
-}
+	writer?: WriterLike;
+};
 
 type ToolLike = {
-	id?: string
-	execute?: (input: unknown, context?: unknown) => Promise<unknown> | unknown
-}
+	id?: string;
+	execute?: (input: unknown, context?: unknown) => Promise<unknown> | unknown;
+};
 
 type ToolStatus =
 	| "thinking"
@@ -22,49 +22,49 @@ type ToolStatus =
 	| "deleting"
 	| "saving"
 	| "done"
-	| "error"
+	| "error";
 
 function inferStatus(tool_name: string): ToolStatus {
-	const name = tool_name.toLowerCase()
+	const name = tool_name.toLowerCase();
 
 	if (name.includes("semantic") || name.includes("search") || name.startsWith("fetch") || name.includes("lookup")) {
-		return "searching"
+		return "searching";
 	}
-	if (name.includes("delete") || name.includes("remove") || name.includes("archive")) return "deleting"
-	if (name.includes("update") || name.includes("edit") || name.includes("set")) return "updating"
+	if (name.includes("delete") || name.includes("remove") || name.includes("archive")) return "deleting";
+	if (name.includes("update") || name.includes("edit") || name.includes("set")) return "updating";
 	if (name.includes("create") || name.includes("upsert") || name.includes("import") || name.includes("generate"))
-		return "creating"
-	if (name.includes("save")) return "saving"
+		return "creating";
+	if (name.includes("save")) return "saving";
 
-	return "doing"
+	return "doing";
 }
 
 function statusMessage(status: ToolStatus): string {
 	switch (status) {
 		case "thinking":
-			return "Thinking…"
+			return "Thinking…";
 		case "searching":
-			return "Searching…"
+			return "Searching…";
 		case "creating":
-			return "Creating…"
+			return "Creating…";
 		case "updating":
-			return "Updating…"
+			return "Updating…";
 		case "deleting":
-			return "Deleting…"
+			return "Deleting…";
 		case "saving":
-			return "Saving…"
+			return "Saving…";
 		case "done":
-			return "Done"
+			return "Done";
 		case "error":
-			return "Error"
+			return "Error";
 		default:
-			return "Working…"
+			return "Working…";
 	}
 }
 
 async function emitToolStatus(params: { context?: unknown; tool: string; status: ToolStatus; message?: string }) {
 	try {
-		const writer = (params.context as ToolContextLike | undefined)?.writer
+		const writer = (params.context as ToolContextLike | undefined)?.writer;
 		await writer?.custom?.({
 			type: "data-tool-progress",
 			data: {
@@ -72,18 +72,18 @@ async function emitToolStatus(params: { context?: unknown; tool: string; status:
 				status: params.status,
 				message: params.message ?? statusMessage(params.status),
 			},
-		})
+		});
 	} catch (error) {
-		consola.debug("[tool-status-events] failed to emit tool status", error)
+		consola.debug("[tool-status-events] failed to emit tool status", error);
 	}
 }
 
 export function wrapToolWithStatusEvents<T extends ToolLike>(tool: T, tool_name: string): T {
-	if (!tool?.execute) return tool
+	if (!tool?.execute) return tool;
 
-	const original_execute = tool.execute.bind(tool)
-	const wrapped = Object.create(Object.getPrototypeOf(tool)) as T
-	Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(tool))
+	const original_execute = tool.execute.bind(tool);
+	const wrapped = Object.create(Object.getPrototypeOf(tool)) as T;
+	Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(tool));
 
 	Object.defineProperty(wrapped, "execute", {
 		configurable: true,
@@ -94,34 +94,34 @@ export function wrapToolWithStatusEvents<T extends ToolLike>(tool: T, tool_name:
 				hasContext: !!context,
 				contextType: typeof context,
 				contextKeys: context ? Object.keys(context as object) : [],
-			})
+			});
 
-			const status = inferStatus(tool_name)
-			await emitToolStatus({ context, tool: tool_name, status })
+			const status = inferStatus(tool_name);
+			await emitToolStatus({ context, tool: tool_name, status });
 
 			try {
-				const result = await original_execute(input, context)
-				await emitToolStatus({ context, tool: tool_name, status: "done" })
-				return result
+				const result = await original_execute(input, context);
+				await emitToolStatus({ context, tool: tool_name, status: "done" });
+				return result;
 			} catch (error) {
 				await emitToolStatus({
 					context,
 					tool: tool_name,
 					status: "error",
 					message: error instanceof Error ? error.message : "Tool failed",
-				})
-				throw error
+				});
+				throw error;
 			}
 		},
-	})
+	});
 
-	return wrapped
+	return wrapped;
 }
 
 export function wrapToolsWithStatusEvents<T extends Record<string, unknown>>(tools: T): T {
-	const wrapped: Record<string, unknown> = {}
+	const wrapped: Record<string, unknown> = {};
 	for (const [key, tool] of Object.entries(tools)) {
-		wrapped[key] = wrapToolWithStatusEvents(tool as ToolLike, key)
+		wrapped[key] = wrapToolWithStatusEvents(tool as ToolLike, key);
 	}
-	return wrapped as T
+	return wrapped as T;
 }

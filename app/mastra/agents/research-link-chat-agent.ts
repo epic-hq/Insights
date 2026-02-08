@@ -2,87 +2,87 @@
  * Mastra agent for conversational survey experience
  */
 
-import { Agent } from "@mastra/core/agent"
-import { z } from "zod"
-import { anthropic } from "../../lib/billing/instrumented-anthropic.server"
-import { markSurveyCompleteTool, saveResearchResponseTool } from "../tools/save-research-response"
+import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
+import { anthropic } from "../../lib/billing/instrumented-anthropic.server";
+import { markSurveyCompleteTool, saveResearchResponseTool } from "../tools/save-research-response";
 // import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 
 export const researchLinkChatAgent = new Agent({
 	id: "research-link-chat-agent",
 	name: "researchLinkChatAgent",
 	instructions: async ({ requestContext }) => {
-		const surveyName = requestContext?.get("survey_name") ?? "Survey"
-		const surveyContext = requestContext?.get("survey_context") ?? ""
-		const surveyInstructions = requestContext?.get("survey_instructions") ?? ""
-		const accountName = requestContext?.get("account_name") ?? "the team"
-		const questionsJson = requestContext?.get("questions") ?? "[]"
-		const answeredJson = requestContext?.get("answered_questions") ?? "[]"
-		const nextQuestionJson = requestContext?.get("next_question_full") ?? ""
-		const hasMessageHistory = requestContext?.get("has_message_history") === "true"
-		const responseId = requestContext?.get("response_id") ?? ""
-		const slug = requestContext?.get("slug") ?? ""
+		const surveyName = requestContext?.get("survey_name") ?? "Survey";
+		const surveyContext = requestContext?.get("survey_context") ?? "";
+		const surveyInstructions = requestContext?.get("survey_instructions") ?? "";
+		const accountName = requestContext?.get("account_name") ?? "the team";
+		const questionsJson = requestContext?.get("questions") ?? "[]";
+		const answeredJson = requestContext?.get("answered_questions") ?? "[]";
+		const nextQuestionJson = requestContext?.get("next_question_full") ?? "";
+		const hasMessageHistory = requestContext?.get("has_message_history") === "true";
+		const responseId = requestContext?.get("response_id") ?? "";
+		const slug = requestContext?.get("slug") ?? "";
 
 		// NEW: AI autonomy level, person context, and project context
-		const aiAutonomy = (requestContext?.get("ai_autonomy") as "strict" | "moderate" | "adaptive") ?? "strict"
-		const personContextJson = requestContext?.get("person_context")
-		const projectContextJson = requestContext?.get("project_context")
-		const calendarUrl = requestContext?.get("calendar_url") ?? ""
+		const aiAutonomy = (requestContext?.get("ai_autonomy") as "strict" | "moderate" | "adaptive") ?? "strict";
+		const personContextJson = requestContext?.get("person_context");
+		const projectContextJson = requestContext?.get("project_context");
+		const calendarUrl = requestContext?.get("calendar_url") ?? "";
 
 		let questions: Array<{
-			id: string
-			prompt: string
-			type: string
-			required: boolean
-		}> = []
-		let answered: Array<{ id: string; prompt: string; answer: string }> = []
-		let nextQuestion: { id: string; prompt: string; type: string } | null = null
+			id: string;
+			prompt: string;
+			type: string;
+			required: boolean;
+		}> = [];
+		let answered: Array<{ id: string; prompt: string; answer: string }> = [];
+		let nextQuestion: { id: string; prompt: string; type: string } | null = null;
 		let personContext: {
-			name?: string
-			title?: string
-			company?: string
-			segment?: string
-			jobFunction?: string
-			pastInterviewCount?: number
-		} | null = null
+			name?: string;
+			title?: string;
+			company?: string;
+			segment?: string;
+			jobFunction?: string;
+			pastInterviewCount?: number;
+		} | null = null;
 		let projectContext: {
-			researchGoal?: string
-			targetOrgs?: string[]
-			targetRoles?: string[]
-			unknowns?: string[]
-			decisionQuestions?: string[]
-			customInstructions?: string
-		} | null = null
+			researchGoal?: string;
+			targetOrgs?: string[];
+			targetRoles?: string[];
+			unknowns?: string[];
+			decisionQuestions?: string[];
+			customInstructions?: string;
+		} | null = null;
 
 		try {
-			questions = JSON.parse(String(questionsJson))
-			answered = JSON.parse(String(answeredJson))
+			questions = JSON.parse(String(questionsJson));
+			answered = JSON.parse(String(answeredJson));
 			if (nextQuestionJson) {
-				nextQuestion = JSON.parse(String(nextQuestionJson))
+				nextQuestion = JSON.parse(String(nextQuestionJson));
 			}
 			if (personContextJson) {
-				personContext = JSON.parse(String(personContextJson))
+				personContext = JSON.parse(String(personContextJson));
 			}
 			if (projectContextJson) {
-				projectContext = JSON.parse(String(projectContextJson))
+				projectContext = JSON.parse(String(projectContextJson));
 			}
 		} catch {
 			// ignore parse errors
 		}
 
 		// Only show START instruction if no message history AND no answered questions
-		const isFirstMessage = answered.length === 0 && !hasMessageHistory
+		const isFirstMessage = answered.length === 0 && !hasMessageHistory;
 
 		// Format question with type hints
 		const formatQuestion = (q: { prompt: string; type: string }) => {
 			if (q.type === "likert") {
-				return `${q.prompt} (ask for 1-5 rating)`
+				return `${q.prompt} (ask for 1-5 rating)`;
 			}
 			if (q.type === "multiselect") {
-				return `${q.prompt} (can list multiple)`
+				return `${q.prompt} (can list multiple)`;
 			}
-			return q.prompt
-		}
+			return q.prompt;
+		};
 
 		// Build person context section (only if we have data)
 		const personSection = personContext
@@ -94,24 +94,24 @@ ${personContext.company ? `- Company: ${personContext.company}` : ""}
 ${personContext.segment ? `- Segment: ${personContext.segment}` : ""}
 ${personContext.pastInterviewCount ? `- Previous interviews: ${personContext.pastInterviewCount}` : "- First-time respondent"}
 `.trim()
-			: ""
+			: "";
 
 		// Build autonomy-specific instructions
-		let autonomyInstructions = ""
+		let autonomyInstructions = "";
 		if (aiAutonomy === "strict") {
 			autonomyInstructions = `
 AUTONOMY: STRICT
 - Follow questions EXACTLY in order
 - Do NOT skip any questions
 - Do NOT ask follow-up questions
-- Keep responses brief, move to next question`
+- Keep responses brief, move to next question`;
 		} else if (aiAutonomy === "moderate") {
 			autonomyInstructions = `
 AUTONOMY: MODERATE
 - Follow question order generally
 - You may ask ONE brief follow-up if an answer is particularly interesting or unclear
 - Skip questions clearly irrelevant to their context (if known)
-- Still aim for brevity`
+- Still aim for brevity`;
 		} else if (aiAutonomy === "adaptive") {
 			autonomyInstructions = `
 AUTONOMY: ADAPTIVE
@@ -124,7 +124,7 @@ ${projectContext?.researchGoal ? `- Research goal: ${projectContext.researchGoal
 ${projectContext?.unknowns?.length ? `- Key unknowns to explore: ${projectContext.unknowns.join("; ")}` : ""}
 ${projectContext?.decisionQuestions?.length ? `- Decision questions: ${projectContext.decisionQuestions.join("; ")}` : ""}
 ${projectContext?.targetRoles?.length ? `- Target roles: ${projectContext.targetRoles.join(", ")}` : ""}
-${projectContext?.customInstructions ? `- Custom instructions: ${projectContext.customInstructions}` : ""}`
+${projectContext?.customInstructions ? `- Custom instructions: ${projectContext.customInstructions}` : ""}`;
 		}
 
 		return `You are a research assistant for ${accountName}. Keep responses ULTRA brief.
@@ -160,7 +160,7 @@ RULES:
 - For likert: ask for 1-5 rating
 - NEVER repeat questions already answered
 - NEVER restart the survey
-- When complete, mention the signup link`
+- When complete, mention the signup link`;
 	},
 	model: anthropic("claude-sonnet-4-20250514"),
 	// Temporarily remove wrapper to debug context passing
@@ -168,4 +168,4 @@ RULES:
 		"save-research-response": saveResearchResponseTool,
 		"mark-survey-complete": markSurveyCompleteTool,
 	},
-})
+});

@@ -1,70 +1,75 @@
-import type { DraggableProvidedDraggableProps, DraggableProvidedDragHandleProps } from "@hello-pangea/dnd"
-import { motion } from "framer-motion"
-import { Check, Edit, GripVertical, MoreHorizontal, Trash2, TriangleAlert, X, Zap } from "lucide-react"
-import React, { type RefCallback } from "react"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Textarea } from "~/components/ui/textarea"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import type { DraggableProvidedDraggableProps, DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
+import { motion } from "framer-motion";
+import { Check, Edit, GripVertical, MoreHorizontal, Trash2, TriangleAlert, X, Zap } from "lucide-react";
+import React, { type RefCallback } from "react";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Textarea } from "~/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 
 export type QualityFlagType = {
-	assessment: "red" | "yellow" | "green"
-	score: number
-	description: string
-}
+	assessment: "red" | "yellow" | "green";
+	score: number;
+	description: string;
+};
 
 export interface QuestionCardProps {
 	question: {
-		id: string
-		text: string
-		categoryId: string
-		estimatedMinutes?: number
-		timesAnswered: number
-		source?: "ai" | "user"
-		isMustHave?: boolean
-		qualityFlag?: QualityFlagType | null
-	}
-	index?: number
-	categoryLabel: string
-	categoryClass: string
-	fitsInTime: boolean
+		id: string;
+		text: string;
+		categoryId: string;
+		estimatedMinutes?: number;
+		timesAnswered: number;
+		source?: "ai" | "user";
+		isMustHave?: boolean;
+		qualityFlag?: QualityFlagType | null;
+	};
+	index?: number;
+	categoryLabel: string;
+	categoryClass: string;
+	fitsInTime: boolean;
 
 	// Drag
-	dragHandleProps?: DraggableProvidedDragHandleProps | null
-	draggableProps?: DraggableProvidedDraggableProps
-	innerRef?: RefCallback<HTMLDivElement>
+	dragHandleProps?: DraggableProvidedDragHandleProps | null;
+	draggableProps?: DraggableProvidedDraggableProps;
+	innerRef?: RefCallback<HTMLDivElement>;
 
 	// Editing
-	isEditing: boolean
-	editingText: string
-	onEditingTextChange: (v: string) => void
-	onSaveEdit: () => void
-	onCancelEdit: () => void
+	isEditing: boolean;
+	editingText: string;
+	onEditingTextChange: (v: string) => void;
+	onSaveEdit: () => void;
+	onCancelEdit: () => void;
 
 	// Menu actions
-	onToggleMustHave: () => void
-	onGenerateFollowups: () => void
-	generatingFollowUp?: boolean
-	onEditStart: () => void
-	onRemove: () => void
+	onToggleMustHave: () => void;
+	onGenerateFollowups: () => void;
+	generatingFollowUp?: boolean;
+	onEditStart: () => void;
+	onRemove: () => void;
 }
 
 function QualityFlag({ qualityFlag }: { qualityFlag?: QualityFlagType | null }) {
-	if (!qualityFlag) return null
+	if (!qualityFlag) return null;
 	const color =
 		qualityFlag.assessment === "red"
 			? "bg-red-100 text-red-700 border-red-200"
 			: qualityFlag.assessment === "yellow"
 				? "bg-yellow-100 text-yellow-700 border-yellow-200"
-				: "bg-green-100 text-green-700 border-green-200"
+				: "bg-green-100 text-green-700 border-green-200";
 	return (
 		<div className={`inline-flex items-center rounded-full border px-2 py-1 text-xs ${color}`}>
 			<TriangleAlert className="mr-1 h-3.5 w-3.5" />
 			{qualityFlag.score}
 		</div>
-	)
+	);
 }
 
 function QuestionCardComponent(props: QuestionCardProps) {
@@ -86,7 +91,7 @@ function QuestionCardComponent(props: QuestionCardProps) {
 		generatingFollowUp,
 		onEditStart,
 		onRemove,
-	} = props
+	} = props;
 
 	return (
 		<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
@@ -194,7 +199,7 @@ function QuestionCardComponent(props: QuestionCardProps) {
 				</CardContent>
 			</Card>
 		</motion.div>
-	)
+	);
 }
 
-export default React.memo(QuestionCardComponent)
+export default React.memo(QuestionCardComponent);

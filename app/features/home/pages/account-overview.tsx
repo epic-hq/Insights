@@ -1,59 +1,59 @@
-import { Link, type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router"
+import { Link, type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router";
 
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { userContext } from "~/server/user-context"
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { userContext } from "~/server/user-context";
 
 type Project = {
-	id: string
-	account_id: string
-	name: string | null
-	description: string | null
-	status: string | null
-	slug: string | null
-	created_at: string
-	updated_at: string
-}
+	id: string;
+	account_id: string;
+	name: string | null;
+	description: string | null;
+	status: string | null;
+	slug: string | null;
+	created_at: string;
+	updated_at: string;
+};
 
 type UserAccount = {
-	account_id: string
-	account_role: string
-	is_primary_owner: boolean
-	name: string | null
-	slug: string | null
-	personal_account: boolean | null
-	created_at: string
-	updated_at: string
-	projects: Project[]
-}
+	account_id: string;
+	account_role: string;
+	is_primary_owner: boolean;
+	name: string | null;
+	slug: string | null;
+	personal_account: boolean | null;
+	created_at: string;
+	updated_at: string;
+	projects: Project[];
+};
 
 type AccountSummary = UserAccount & {
-	projectCount: number
-}
+	projectCount: number;
+};
 
 type User = {
-	email?: string
+	email?: string;
 	user_metadata?: {
-		full_name?: string
-	}
-}
+		full_name?: string;
+	};
+};
 
 export async function loader({ context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
+	const ctx = context.get(userContext);
 	if (!ctx?.claims) {
-		throw new Response("Unauthorized", { status: 401 })
+		throw new Response("Unauthorized", { status: 401 });
 	}
 
-	const { supabase, accounts = [] } = ctx
+	const { supabase, accounts = [] } = ctx;
 
 	if (!supabase) {
-		throw new Response("Database connection not available", { status: 500 })
+		throw new Response("Database connection not available", { status: 500 });
 	}
 
 	// Filter business accounts from user context (accounts already include personal_account field)
-	const businessAccounts = accounts.filter((account: UserAccount) => !account.personal_account)
+	const businessAccounts = accounts.filter((account: UserAccount) => !account.personal_account);
 
 	// Get project counts for each account
 	const accountSummaries = await Promise.all(
@@ -61,19 +61,19 @@ export async function loader({ context }: LoaderFunctionArgs) {
 			const { count: projectCount } = await supabase
 				.from("projects")
 				.select("*", { count: "exact", head: true })
-				.eq("account_id", account.account_id)
+				.eq("account_id", account.account_id);
 
 			return {
 				...account,
 				projectCount: projectCount || 0,
-			}
+			};
 		})
-	)
+	);
 
 	return {
 		accounts: accountSummaries,
 		user: ctx.claims,
-	}
+	};
 }
 
 function getInitials(name: string) {
@@ -82,18 +82,18 @@ function getInitials(name: string) {
 		.map((n) => n[0])
 		.join("")
 		.toUpperCase()
-		.slice(0, 2)
+		.slice(0, 2);
 }
 
 export default function AccountOverview() {
-	const { accounts } = useLoaderData<{ accounts: AccountSummary[]; user: User }>()
-	const navigate = useNavigate()
+	const { accounts } = useLoaderData<{ accounts: AccountSummary[]; user: User }>();
+	const navigate = useNavigate();
 
 	// If user only has one business account, redirect to that account's home
 	if (accounts.length === 1) {
-		const account = accounts[0]
-		navigate(`/a/${account.account_id}/home`, { replace: true })
-		return null
+		const account = accounts[0];
+		navigate(`/a/${account.account_id}/home`, { replace: true });
+		return null;
 	}
 
 	return (
@@ -144,5 +144,5 @@ export default function AccountOverview() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }

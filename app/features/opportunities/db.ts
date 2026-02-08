@@ -1,22 +1,22 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~/types";
 
 export const getOpportunities = async ({
 	supabase,
 	accountId,
 	projectId,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId: string;
 }) => {
 	return await supabase
 		.from("opportunities")
 		.select("*")
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
-		.order("created_at", { ascending: false })
-}
+		.order("created_at", { ascending: false });
+};
 
 export const getOpportunityById = async ({
 	supabase,
@@ -24,10 +24,10 @@ export const getOpportunityById = async ({
 	projectId,
 	id,
 }: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	projectId: string
-	id: string
+	supabase: SupabaseClient<Database>;
+	accountId: string;
+	projectId: string;
+	id: string;
 }) => {
 	return await supabase
 		.from("opportunities")
@@ -35,18 +35,18 @@ export const getOpportunityById = async ({
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)
-		.single()
-}
+		.single();
+};
 
 export const createOpportunity = async ({
 	supabase,
 	data,
 }: {
-	supabase: SupabaseClient<Database>
-	data: Database["public"]["Tables"]["opportunities"]["Insert"]
+	supabase: SupabaseClient<Database>;
+	data: Database["public"]["Tables"]["opportunities"]["Insert"];
 }) => {
-	return await supabase.from("opportunities").insert(data).select().single()
-}
+	return await supabase.from("opportunities").insert(data).select().single();
+};
 
 export const updateOpportunity = async ({
 	supabase,
@@ -55,11 +55,11 @@ export const updateOpportunity = async ({
 	projectId,
 	data,
 }: {
-	supabase: SupabaseClient<Database>
-	id: string
-	accountId: string
-	projectId: string
-	data: Database["public"]["Tables"]["opportunities"]["Update"]
+	supabase: SupabaseClient<Database>;
+	id: string;
+	accountId: string;
+	projectId: string;
+	data: Database["public"]["Tables"]["opportunities"]["Update"];
 }) => {
 	return await supabase
 		.from("opportunities")
@@ -68,8 +68,8 @@ export const updateOpportunity = async ({
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.select()
-		.single()
-}
+		.single();
+};
 
 export const deleteOpportunity = async ({
 	supabase,
@@ -77,15 +77,15 @@ export const deleteOpportunity = async ({
 	accountId,
 	projectId,
 }: {
-	supabase: SupabaseClient<Database>
-	id: string
-	accountId: string
-	projectId: string
+	supabase: SupabaseClient<Database>;
+	id: string;
+	accountId: string;
+	projectId: string;
 }) => {
 	return await supabase
 		.from("opportunities")
 		.delete()
 		.eq("id", id)
 		.eq("account_id", accountId)
-		.eq("project_id", projectId)
-}
+		.eq("project_id", projectId);
+};

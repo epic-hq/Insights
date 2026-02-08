@@ -1,4 +1,4 @@
-import consola from "consola"
+import consola from "consola";
 import {
 	AlertTriangle,
 	CheckCircle2,
@@ -8,24 +8,24 @@ import {
 	Target,
 	User,
 	XCircle,
-} from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { createClient } from "~/lib/supabase/client"
-import { cn } from "~/lib/utils"
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "~/lib/supabase/client";
+import { cn } from "~/lib/utils";
 
-type SignupData = Record<string, any> | undefined
+type SignupData = Record<string, any> | undefined;
 
 interface SignupDataWatcherProps {
-	userId?: string
-	data?: SignupData
-	title?: string
-	className?: string
-	onDataUpdate?: (data: SignupData) => void
-	onCompleted?: () => void
+	userId?: string;
+	data?: SignupData;
+	title?: string;
+	className?: string;
+	onDataUpdate?: (data: SignupData) => void;
+	onCompleted?: () => void;
 	/** Whether to render the JsonDataCard. Defaults to true. */
-	showCard?: boolean
+	showCard?: boolean;
 	/** Whether to subscribe to Supabase changes. Defaults to true. */
-	subscribe?: boolean
+	subscribe?: boolean;
 }
 
 /**
@@ -44,10 +44,10 @@ export function SignupDataWatcher({
 	showCard = true,
 	subscribe = true,
 }: SignupDataWatcherProps) {
-	const supabase = createClient()
+	const supabase = createClient();
 
 	useEffect(() => {
-		if (!subscribe || !userId) return
+		if (!subscribe || !userId) return;
 
 		const channel = supabase
 			.channel("signup_data_watch")
@@ -56,33 +56,33 @@ export function SignupDataWatcher({
 				{ event: "UPDATE", schema: "public", table: "user_settings", filter: `user_id=eq.${userId}` },
 				(payload) => {
 					try {
-						const newData = (payload.new as any)?.signup_data
-						onDataUpdate?.(newData)
-						const completed = newData?.completed === true
+						const newData = (payload.new as any)?.signup_data;
+						onDataUpdate?.(newData);
+						const completed = newData?.completed === true;
 						if (completed) {
-							onCompleted?.()
+							onCompleted?.();
 						}
 					} catch (err) {
 						// no-op
-						consola.error(err)
+						consola.error(err);
 					}
 				}
 			)
-			.subscribe()
+			.subscribe();
 
 		return () => {
-			supabase.removeChannel(channel)
-		}
-	}, [supabase, userId, onDataUpdate, onCompleted, subscribe])
+			supabase.removeChannel(channel);
+		};
+	}, [supabase, userId, onDataUpdate, onCompleted, subscribe]);
 
 	const normalized = useMemo(() => {
-		const d = data ?? {}
+		const d = data ?? {};
 		const toArray = (v: unknown): string[] =>
 			Array.isArray(v)
 				? (v as any[]).map((x) => `${x}`.trim()).filter(Boolean)
 				: typeof v === "string" && v.trim()
 					? [v.trim()]
-					: []
+					: [];
 		return {
 			name: typeof d.name === "string" ? d.name.trim() || undefined : (d.name?.toString?.() ?? undefined),
 			goal: typeof d.goal === "string" ? d.goal.trim() || undefined : (d.goal?.toString?.() ?? undefined),
@@ -94,12 +94,12 @@ export function SignupDataWatcher({
 					? d.other_feedback.trim() || undefined
 					: (d.other_feedback?.toString?.() ?? undefined),
 			completed: d.completed === true,
-		}
-	}, [data])
+		};
+	}, [data]);
 
-	const [isOpen, setIsOpen] = useState(false)
+	const [isOpen, setIsOpen] = useState(false);
 
-	if (!showCard) return <div />
+	if (!showCard) return <div />;
 
 	return (
 		<div className={cn("@container", className)}>
@@ -326,5 +326,5 @@ export function SignupDataWatcher({
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

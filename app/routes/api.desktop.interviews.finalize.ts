@@ -8,11 +8,11 @@
  * 4. Create tasks from extracted action items
  * 5. Update interview status to complete
  */
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import { z } from "zod"
-import { createTask, createTaskLink } from "~/features/tasks/db"
-import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server"
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import { z } from "zod";
+import { createTask, createTaskLink } from "~/features/tasks/db";
+import { authenticateDesktopRequest } from "~/lib/auth/desktop-auth.server";
 
 const FinalizeRequestSchema = z.object({
 	interview_id: z.string().uuid(),
@@ -49,61 +49,61 @@ const FinalizeRequestSchema = z.object({
 	duration_seconds: z.number().optional(),
 	platform: z.string().optional(),
 	meeting_title: z.string().optional(),
-})
+});
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
-	const auth = await authenticateDesktopRequest(request)
+	const auth = await authenticateDesktopRequest(request);
 	if (!auth) {
-		return Response.json({ error: "Unauthorized" }, { status: 401 })
+		return Response.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const { supabase, user } = auth
+	const { supabase, user } = auth;
 
 	try {
-		const body = await request.json()
-		const parsed = FinalizeRequestSchema.safeParse(body)
+		const body = await request.json();
+		const parsed = FinalizeRequestSchema.safeParse(body);
 
 		if (!parsed.success) {
-			consola.warn("[desktop-finalize] Invalid request body:", parsed.error.issues)
-			return Response.json({ error: "Invalid request body", details: parsed.error.issues }, { status: 400 })
+			consola.warn("[desktop-finalize] Invalid request body:", parsed.error.issues);
+			return Response.json({ error: "Invalid request body", details: parsed.error.issues }, { status: 400 });
 		}
 
-		const { interview_id, transcript, tasks, people, duration_seconds, platform } = parsed.data
+		const { interview_id, transcript, tasks, people, duration_seconds, platform } = parsed.data;
 
-		consola.info(`[desktop-finalize] Finalizing interview ${interview_id}`)
+		consola.info(`[desktop-finalize] Finalizing interview ${interview_id}`);
 
 		// Get interview record
 		const { data: interview, error: interviewError } = await supabase
 			.from("interviews")
 			.select("*, account_id, project_id")
 			.eq("id", interview_id)
-			.single()
+			.single();
 
 		if (interviewError || !interview) {
-			consola.error("[desktop-finalize] Interview not found:", interview_id, interviewError)
-			return Response.json({ error: "Interview not found" }, { status: 404 })
+			consola.error("[desktop-finalize] Interview not found:", interview_id, interviewError);
+			return Response.json({ error: "Interview not found" }, { status: 404 });
 		}
 
-		const { account_id, project_id } = interview
+		const { account_id, project_id } = interview;
 		const results: {
-			transcript_saved: boolean
-			tasks_created: number
-			people_resolved: number
-			status_updated: boolean
+			transcript_saved: boolean;
+			tasks_created: number;
+			people_resolved: number;
+			status_updated: boolean;
 		} = {
 			transcript_saved: false,
 			tasks_created: 0,
 			people_resolved: 0,
 			status_updated: false,
-		}
+		};
 
 		// 1. Save full transcript if provided
 		if (transcript && transcript.length > 0) {
-			const fullTranscript = transcript.map((t) => `${t.speaker}: ${t.text}`).join("\n")
+			const fullTranscript = transcript.map((t) => `${t.speaker}: ${t.text}`).join("\n");
 
 			// Build structured transcript for transcript_formatted
 			const transcriptFormatted = transcript.map((t, i) => ({
@@ -111,7 +111,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				speaker: t.speaker,
 				text: t.text,
 				timestamp_ms: t.timestamp_ms || null,
-			}))
+			}));
 
 			const { error: transcriptError } = await supabase
 				.from("interviews")
@@ -128,18 +128,18 @@ export async function action({ request }: ActionFunctionArgs) {
 						duration_seconds,
 					},
 				})
-				.eq("id", interview_id)
+				.eq("id", interview_id);
 
 			if (!transcriptError) {
-				results.transcript_saved = true
-				consola.info(`[desktop-finalize] Saved transcript with ${transcript.length} turns`)
+				results.transcript_saved = true;
+				consola.info(`[desktop-finalize] Saved transcript with ${transcript.length} turns`);
 			} else {
-				consola.error("[desktop-finalize] Failed to save transcript:", transcriptError.message)
+				consola.error("[desktop-finalize] Failed to save transcript:", transcriptError.message);
 			}
 		}
 
 		// 2. Resolve people mentions and find/create person records
-		const peopleMap = new Map<string, string>() // person_key -> person_id
+		const peopleMap = new Map<string, string>(); // person_key -> person_id
 		if (people && people.length > 0) {
 			for (const person of people) {
 				// Try to find existing person by name (fuzzy match)
@@ -148,11 +148,11 @@ export async function action({ request }: ActionFunctionArgs) {
 					.select("id, name")
 					.eq("account_id", account_id)
 					.ilike("name", `%${person.person_name}%`)
-					.limit(1)
+					.limit(1);
 
 				if (existingPeople && existingPeople.length > 0) {
-					peopleMap.set(person.person_key, existingPeople[0].id)
-					results.people_resolved++
+					peopleMap.set(person.person_key, existingPeople[0].id);
+					results.people_resolved++;
 				} else {
 					// Create new person record
 					const { data: newPerson, error: personError } = await supabase
@@ -164,12 +164,12 @@ export async function action({ request }: ActionFunctionArgs) {
 							source: "desktop_meeting",
 						})
 						.select("id")
-						.single()
+						.single();
 
 					if (newPerson && !personError) {
-						peopleMap.set(person.person_key, newPerson.id)
-						results.people_resolved++
-						consola.info(`[desktop-finalize] Created person: ${person.person_name}`)
+						peopleMap.set(person.person_key, newPerson.id);
+						results.people_resolved++;
+						consola.info(`[desktop-finalize] Created person: ${person.person_name}`);
 					}
 				}
 			}
@@ -180,38 +180,38 @@ export async function action({ request }: ActionFunctionArgs) {
 			for (const task of tasks) {
 				try {
 					// Try to resolve assignee
-					let assigneeId: string | null = null
+					let assigneeId: string | null = null;
 					if (task.assignee) {
-						const assigneeKey = task.assignee.toLowerCase().replace(/\s+/g, "")
+						const assigneeKey = task.assignee.toLowerCase().replace(/\s+/g, "");
 						for (const [key, personId] of peopleMap.entries()) {
 							if (key.toLowerCase().includes(assigneeKey)) {
-								assigneeId = personId
-								break
+								assigneeId = personId;
+								break;
 							}
 						}
 					}
 
 					// Parse due date if provided
-					let dueDate: string | null = null
+					let dueDate: string | null = null;
 					if (task.due) {
 						// Try to parse relative dates like "tomorrow", "next week"
-						const now = new Date()
-						const dueLower = task.due.toLowerCase()
+						const now = new Date();
+						const dueLower = task.due.toLowerCase();
 						if (dueLower.includes("tomorrow")) {
-							now.setDate(now.getDate() + 1)
-							dueDate = now.toISOString().split("T")[0]
+							now.setDate(now.getDate() + 1);
+							dueDate = now.toISOString().split("T")[0];
 						} else if (dueLower.includes("next week")) {
-							now.setDate(now.getDate() + 7)
-							dueDate = now.toISOString().split("T")[0]
+							now.setDate(now.getDate() + 7);
+							dueDate = now.toISOString().split("T")[0];
 						} else if (dueLower.includes("end of week")) {
-							const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7
-							now.setDate(now.getDate() + daysUntilFriday)
-							dueDate = now.toISOString().split("T")[0]
+							const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7;
+							now.setDate(now.getDate() + daysUntilFriday);
+							dueDate = now.toISOString().split("T")[0];
 						} else {
 							// Try to parse as date string
-							const parsed = new Date(task.due)
+							const parsed = new Date(task.due);
 							if (!isNaN(parsed.getTime())) {
-								dueDate = parsed.toISOString().split("T")[0]
+								dueDate = parsed.toISOString().split("T")[0];
 							}
 						}
 					}
@@ -238,7 +238,7 @@ export async function action({ request }: ActionFunctionArgs) {
 								: [],
 							tags: ["from-meeting"],
 						},
-					})
+					});
 
 					// Link task to interview
 					await createTaskLink({
@@ -251,12 +251,12 @@ export async function action({ request }: ActionFunctionArgs) {
 							link_type: "source",
 							description: "Created from desktop meeting",
 						},
-					})
+					});
 
-					results.tasks_created++
-					consola.info(`[desktop-finalize] Created task: ${task.text}`)
+					results.tasks_created++;
+					consola.info(`[desktop-finalize] Created task: ${task.text}`);
 				} catch (taskError: any) {
-					consola.error("[desktop-finalize] Failed to create task:", taskError.message)
+					consola.error("[desktop-finalize] Failed to create task:", taskError.message);
 				}
 			}
 		}
@@ -270,16 +270,16 @@ export async function action({ request }: ActionFunctionArgs) {
 				tasks_created: results.tasks_created,
 				people_resolved: results.people_resolved,
 			},
-		}
+		};
 		// Set these if not already set by the transcript step
 		if (duration_seconds && !interview.duration_sec) {
-			statusUpdate.duration_sec = duration_seconds
+			statusUpdate.duration_sec = duration_seconds;
 		}
 		if (platform && !interview.meeting_platform) {
-			statusUpdate.meeting_platform = platform
+			statusUpdate.meeting_platform = platform;
 		}
 		if (user?.id && !interview.created_by) {
-			statusUpdate.created_by = user.id
+			statusUpdate.created_by = user.id;
 		}
 
 		// Re-fetch to get latest processing_metadata (transcript step may have updated it)
@@ -287,7 +287,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			.from("interviews")
 			.select("processing_metadata")
 			.eq("id", interview_id)
-			.single()
+			.single();
 
 		if (freshInterview) {
 			statusUpdate.processing_metadata = {
@@ -295,26 +295,26 @@ export async function action({ request }: ActionFunctionArgs) {
 				finalized_at: new Date().toISOString(),
 				tasks_created: results.tasks_created,
 				people_resolved: results.people_resolved,
-			}
+			};
 		}
 
-		const { error: statusError } = await supabase.from("interviews").update(statusUpdate).eq("id", interview_id)
+		const { error: statusError } = await supabase.from("interviews").update(statusUpdate).eq("id", interview_id);
 
 		if (statusError) {
-			consola.error("[desktop-finalize] Status update failed:", statusError.message)
+			consola.error("[desktop-finalize] Status update failed:", statusError.message);
 		} else {
-			results.status_updated = true
+			results.status_updated = true;
 		}
 
-		consola.info(`[desktop-finalize] Finalization complete for ${interview_id}`, results)
+		consola.info(`[desktop-finalize] Finalization complete for ${interview_id}`, results);
 
 		return Response.json({
 			success: true,
 			interview_id,
 			results,
-		})
+		});
 	} catch (error: any) {
-		consola.error("[desktop-finalize] Error:", error)
-		return Response.json({ error: error?.message || "Finalization failed" }, { status: 500 })
+		consola.error("[desktop-finalize] Error:", error);
+		return Response.json({ error: error?.message || "Finalization failed" }, { status: 500 });
 	}
 }

@@ -1,55 +1,55 @@
-import consola from "consola"
-import { Plus, Search } from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { useLoaderData } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import { EmotionBadge, EmotionsMap } from "~/components/ui/emotion-badge"
-import { Input } from "~/components/ui/input"
-import { getInsights } from "~/features/insights/db"
-import { userContext } from "~/server/user-context"
-import type { Insight } from "~/types"
+import consola from "consola";
+import { Plus, Search } from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { useLoaderData } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { EmotionBadge, EmotionsMap } from "~/components/ui/emotion-badge";
+import { Input } from "~/components/ui/input";
+import { getInsights } from "~/features/insights/db";
+import { userContext } from "~/server/user-context";
+import type { Insight } from "~/types";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Mobile Insights | Insights" }, { name: "description", content: "Mobile insights interface" }]
-}
+	return [{ title: "Mobile Insights | Insights" }, { name: "description", content: "Mobile insights interface" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+		throw new Response("Account ID and Project ID are required", { status: 400 });
 	}
 
 	const { data: insights, error } = await getInsights({
 		supabase,
 		accountId,
 		projectId,
-	})
+	});
 
 	if (error) {
-		consola.error("Insights query error:", error)
-		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
+		consola.error("Insights query error:", error);
+		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 });
 	}
 
-	consola.log(`Found ${insights?.length || 0} insights`)
+	consola.log(`Found ${insights?.length || 0} insights`);
 
 	return {
 		insights: insights || [],
-	}
+	};
 }
 
 export default function InsightsRoute() {
-	const { insights } = useLoaderData<typeof loader>()
-	const [searchQuery, setSearchQuery] = useState("")
-	const [selected, setSelected] = useState<Insight | null>(null)
+	const { insights } = useLoaderData<typeof loader>();
+	const [searchQuery, setSearchQuery] = useState("");
+	const [selected, setSelected] = useState<Insight | null>(null);
 
 	// emotion emoji/category logic now handled by EmotionBadge
 
@@ -57,7 +57,7 @@ export default function InsightsRoute() {
 		(insight: Insight) =>
 			insight.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			insight.details?.toLowerCase().includes(searchQuery.toLowerCase())
-	)
+	);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 p-4">
@@ -83,10 +83,10 @@ export default function InsightsRoute() {
 											() => {
 												const mainEmotion = Object.keys(EmotionsMap).find(
 													(key) => key.toLowerCase() === insight.emotional_response?.toLowerCase()
-												) as keyof typeof EmotionsMap | undefined
+												) as keyof typeof EmotionsMap | undefined;
 												return mainEmotion && EmotionsMap[mainEmotion]?.color?.bg
 													? `${EmotionsMap[mainEmotion].color.bg} border-2`
-													: "border-gray-200"
+													: "border-gray-200";
 											}
 										)()
 									: "border-gray-200"
@@ -176,5 +176,5 @@ export default function InsightsRoute() {
 				</Dialog>
 			)}
 		</div>
-	)
+	);
 }

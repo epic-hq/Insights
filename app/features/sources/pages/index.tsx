@@ -3,41 +3,41 @@
  *
  * Combined view of notes and uploaded files, separated from the main Conversations page.
  */
-import type { PostgrestError } from "@supabase/supabase-js"
-import consola from "consola"
-import { formatDistance } from "date-fns"
-import { FileSpreadsheet, FileText, FolderOpen, HelpCircle, Search, StickyNote, Table, Upload } from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import NoteCard from "~/features/interviews/components/NoteCard"
-import { getInterviews } from "~/features/interviews/db"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
-import type { InterviewWithPeople } from "~/types"
+import type { PostgrestError } from "@supabase/supabase-js";
+import consola from "consola";
+import { formatDistance } from "date-fns";
+import { FileSpreadsheet, FileText, FolderOpen, HelpCircle, Search, StickyNote, Table, Upload } from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import NoteCard from "~/features/interviews/components/NoteCard";
+import { getInterviews } from "~/features/interviews/db";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
+import type { InterviewWithPeople } from "~/types";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Notes & Files | Insights" }, { name: "description", content: "Notes and uploaded files" }]
-}
+	return [{ title: "Notes & Files | Insights" }, { name: "description", content: "Notes and uploaded files" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", {
 			status: 400,
-		})
+		});
 	}
 
 	const [interviewsResult, assetsResult] = await Promise.all([
@@ -47,31 +47,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			.select("id, title, asset_type, row_count, column_count, status, source_type, created_at, updated_at")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
-	])
+	]);
 
 	const { data: rows, error } = interviewsResult as {
-		data: InterviewWithPeople[] | null
-		error: PostgrestError | null
-	}
-	const { data: assets, error: assetsError } = assetsResult
+		data: InterviewWithPeople[] | null;
+		error: PostgrestError | null;
+	};
+	const { data: assets, error: assetsError } = assetsResult;
 
 	if (error) {
-		consola.error("Sources notes query error:", error)
+		consola.error("Sources notes query error:", error);
 		throw new Response(`Error fetching notes: ${error.message}`, {
 			status: 500,
-		})
+		});
 	}
 
 	if (assetsError) {
-		consola.warn("Sources assets query error:", assetsError)
+		consola.warn("Sources assets query error:", assetsError);
 	}
 
 	// Filter to only notes and voice memos
 	const notes = (rows || [])
 		.filter((item) => item.source_type === "note" || item.media_type === "voice_memo")
 		.map((interview) => {
-			const primaryParticipant = interview.interview_people?.[0]
-			const participant = primaryParticipant?.people
+			const primaryParticipant = interview.interview_people?.[0];
+			const participant = primaryParticipant?.people;
 
 			return {
 				...interview,
@@ -81,8 +81,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				date: interview.interview_date || interview.created_at || "",
 				duration: interview.duration_sec ? `${Math.round((interview.duration_sec / 60) * 10) / 10} min` : "Unknown",
 				evidenceCount: interview.evidence_count || 0,
-			}
-		})
+			};
+		});
 
 	const projectAssets = (assets || []).map((asset) => ({
 		id: asset.id,
@@ -94,36 +94,36 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		source_type: asset.source_type,
 		created_at: asset.created_at,
 		updated_at: asset.updated_at,
-	}))
+	}));
 
-	return { notes, projectAssets }
+	return { notes, projectAssets };
 }
 
 export default function SourcesIndex() {
-	const { notes, projectAssets } = useLoaderData<typeof loader>()
-	const { projectPath, projectId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
-	const [sourceTab, setSourceTab] = useState<"notes" | "files">("notes")
-	const [fileSearchQuery, setFileSearchQuery] = useState("")
-	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+	const { notes, projectAssets } = useLoaderData<typeof loader>();
+	const { projectPath, projectId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
+	const [sourceTab, setSourceTab] = useState<"notes" | "files">("notes");
+	const [fileSearchQuery, setFileSearchQuery] = useState("");
+	const [noteDialogOpen, setNoteDialogOpen] = useState(false);
 
 	const filteredAssets = fileSearchQuery
 		? projectAssets.filter((asset) => asset.title.toLowerCase().includes(fileSearchQuery.toLowerCase()))
-		: projectAssets
+		: projectAssets;
 
 	const handleSaveNote = async (note: {
-		title: string
-		content: string
-		noteType: string
-		associations: Record<string, unknown>
-		tags: string[]
+		title: string;
+		content: string;
+		noteType: string;
+		associations: Record<string, unknown>;
+		tags: string[];
 	}) => {
-		const pathParts = projectPath?.split("/").filter(Boolean) || []
-		const extractedProjectId = pathParts[2]
+		const pathParts = projectPath?.split("/").filter(Boolean) || [];
+		const extractedProjectId = pathParts[2];
 
 		if (!extractedProjectId) {
-			console.error("No project ID found in path:", projectPath)
-			throw new Error("Project ID is required")
+			console.error("No project ID found in path:", projectPath);
+			throw new Error("Project ID is required");
 		}
 
 		const response = await fetch("/api/notes/create", {
@@ -139,14 +139,14 @@ export default function SourcesIndex() {
 				associations: note.associations,
 				tags: note.tags,
 			}),
-		})
+		});
 
 		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}))
-			console.error("Failed to save note:", errorData)
-			throw new Error(errorData.details || errorData.error || "Failed to save note")
+			const errorData = await response.json().catch(() => ({}));
+			console.error("Failed to save note:", errorData);
+			throw new Error(errorData.details || errorData.error || "Failed to save note");
 		}
-	}
+	};
 
 	return (
 		<div className="relative min-h-screen bg-background">
@@ -183,7 +183,7 @@ export default function SourcesIndex() {
 								value={sourceTab}
 								onValueChange={(v) => {
 									if (v === "notes" || v === "files") {
-										setSourceTab(v)
+										setSourceTab(v);
 									}
 								}}
 								size="sm"
@@ -358,5 +358,5 @@ export default function SourcesIndex() {
 				availableOpportunities={[]}
 			/>
 		</div>
-	)
+	);
 }

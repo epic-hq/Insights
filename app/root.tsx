@@ -1,8 +1,8 @@
-import consola from "consola"
-import { PostHogProvider } from "posthog-js/react"
-import { useEffect, useState } from "react"
-import { useTranslation } from "react-i18next"
-import type { LoaderFunctionArgs } from "react-router"
+import consola from "consola";
+import { PostHogProvider } from "posthog-js/react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { LoaderFunctionArgs } from "react-router";
 import {
 	isRouteErrorResponse,
 	Links,
@@ -13,56 +13,56 @@ import {
 	Scripts,
 	ScrollRestoration,
 	useRouteError,
-} from "react-router"
-import { useChangeLanguage } from "remix-i18next/react"
-import { Toaster } from "sonner"
-import { ClientOnly } from "~/components/ClientOnly"
-import ErrorBoundaryComponent from "~/components/ErrorBoundary"
-import { NotificationProvider } from "~/contexts/NotificationContext"
-import { ThemeProvider } from "~/contexts/ThemeContext"
-import { ValidationViewProvider } from "~/contexts/ValidationViewContext"
-import { getClientEnv } from "~/env.server"
-import { loadContext } from "~/server/load-context"
-import { loader as authCallbackLoader } from "./routes/auth.callback"
-import { ClientHintCheck, getHints } from "./services/client-hints"
-import tailwindcss from "./tailwind.css?url"
+} from "react-router";
+import { useChangeLanguage } from "remix-i18next/react";
+import { Toaster } from "sonner";
+import { ClientOnly } from "~/components/ClientOnly";
+import ErrorBoundaryComponent from "~/components/ErrorBoundary";
+import { NotificationProvider } from "~/contexts/NotificationContext";
+import { ThemeProvider } from "~/contexts/ThemeContext";
+import { ValidationViewProvider } from "~/contexts/ValidationViewContext";
+import { getClientEnv } from "~/env.server";
+import { loadContext } from "~/server/load-context";
+import { loader as authCallbackLoader } from "./routes/auth.callback";
+import { ClientHintCheck, getHints } from "./services/client-hints";
+import tailwindcss from "./tailwind.css?url";
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-	const requestUrl = new URL(request.url)
+	const requestUrl = new URL(request.url);
 	if (requestUrl.pathname === "/" && requestUrl.searchParams.has("code")) {
-		return authCallbackLoader({ request, params: {} })
+		return authCallbackLoader({ request, params: {} });
 	}
 
-	let lang = "en"
-	let clientEnv: Record<string, unknown> | undefined
+	let lang = "en";
+	let clientEnv: Record<string, unknown> | undefined;
 
 	try {
 		const loadCtx = context.get(loadContext) as {
-			lang?: string
-			clientEnv?: Record<string, unknown>
-			env?: { APP_ENV: string }
-			isProductionDeployment?: boolean
-			t?: (key: string) => string
-		}
+			lang?: string;
+			clientEnv?: Record<string, unknown>;
+			env?: { APP_ENV: string };
+			isProductionDeployment?: boolean;
+			t?: (key: string) => string;
+		};
 
 		if (loadCtx?.lang) {
-			lang = loadCtx.lang
+			lang = loadCtx.lang;
 		}
 
 		if (loadCtx?.clientEnv) {
-			clientEnv = loadCtx.clientEnv
+			clientEnv = loadCtx.clientEnv;
 		}
 	} catch (error) {
-		consola.warn("[root.loader] Missing loadContext; falling back to defaults", error)
+		consola.warn("[root.loader] Missing loadContext; falling back to defaults", error);
 	}
 
-	const hints = getHints(request)
+	const hints = getHints(request);
 
 	return {
 		lang,
 		clientEnv: clientEnv ?? getClientEnv(),
 		hints,
-	}
+	};
 }
 
 // Define the links for the application
@@ -80,7 +80,7 @@ export const links: LinksFunction = () => [
 	{ rel: "icon", type: "image/png", sizes: "16x16", href: "/icons/icon-16x16.png" },
 	{ rel: "icon", type: "image/png", sizes: "192x192", href: "/icons/icon-192x192.png" },
 	{ rel: "icon", type: "image/png", sizes: "512x512", href: "/icons/icon-512x512.png" },
-]
+];
 
 // Define meta tags for the application
 export const meta: MetaFunction = () => {
@@ -90,16 +90,16 @@ export const meta: MetaFunction = () => {
 		{ name: "msapplication-config", content: "/browserconfig.xml" },
 		{ name: "msapplication-TileColor", content: "#2563eb" },
 		{ name: "msapplication-TileImage", content: "/icons/icon-144x144.png" },
-	]
-}
+	];
+};
 
 export const handle = {
 	i18n: "common",
-}
+};
 
 export default function App({ loaderData }: Route.ComponentProps) {
-	const { lang, clientEnv } = loaderData
-	useChangeLanguage(lang)
+	const { lang, clientEnv } = loaderData;
+	useChangeLanguage(lang);
 
 	// Minimal PostHog host normalization: add https:// if missing and trim trailing slash
 	const apiHost = clientEnv.POSTHOG_HOST
@@ -108,11 +108,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
 					? clientEnv.POSTHOG_HOST
 					: `https://${clientEnv.POSTHOG_HOST}`) as string
 			).replace(/\/+$/, "")
-		: undefined
+		: undefined;
 
 	// Make clientEnv available globally on window.env for polyEnv pattern
 	if (typeof window !== "undefined") {
-		window.env = clientEnv
+		window.env = clientEnv;
 	}
 
 	return (
@@ -139,11 +139,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
 			</ThemeProvider>
 			{/* </AuthProvider> */}
 		</ClientOnly>
-	)
+	);
 }
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-	const { i18n } = useTranslation()
+	const { i18n } = useTranslation();
 	return (
 		<html className="overflow-y-auto overflow-x-hidden" lang={i18n.language} dir={i18n.dir()}>
 			<head>
@@ -160,8 +160,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 				<Scripts />
 			</body>
 		</html>
-	)
-}
+	);
+};
 
 // Animated 404 experience adapted from https://codepen.io/jkantner/pen/YPwZWoy
 const NotFoundFace = () => {
@@ -389,7 +389,7 @@ const NotFoundFace = () => {
 		transform: translate(0, 22.5px);
 	}
 }
-`
+`;
 
 	return (
 		<div data-404-page>
@@ -432,24 +432,24 @@ const NotFoundFace = () => {
 				</div>
 			</main>
 		</div>
-	)
-}
+	);
+};
 
 const ServerErrorGears = ({
 	status = 500,
 	headline = "Unexpected Error",
 	message,
 }: {
-	status?: number
-	headline?: string
-	message?: string
+	status?: number;
+	headline?: string;
+	message?: string;
 }) => {
-	const [isLoading, setIsLoading] = useState(true)
+	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		const timeoutId = window.setTimeout(() => setIsLoading(false), 1000)
-		return () => window.clearTimeout(timeoutId)
-	}, [])
+		const timeoutId = window.setTimeout(() => setIsLoading(false), 1000);
+		return () => window.clearTimeout(timeoutId);
+	}, []);
 
 	const gearStyles = `
 [data-500-page],
@@ -755,10 +755,10 @@ const ServerErrorGears = ({
 		transition-duration: 0.01ms !important;
 	}
 }
-`
+`;
 
 	const resolvedMessage =
-		message ?? "We ran into a problem while processing your request. Please try again in a moment."
+		message ?? "We ran into a problem while processing your request. Please try again in a moment.";
 
 	return (
 		<div data-500-page className={isLoading ? "loading" : undefined}>
@@ -801,27 +801,27 @@ const ServerErrorGears = ({
 				</div>
 			</main>
 		</div>
-	)
-}
+	);
+};
 
 export const ErrorBoundary = () => {
-	const error = useRouteError()
+	const error = useRouteError();
 
 	// For 404 errors, show the splat route style (keeping existing behavior)
 	if (isRouteErrorResponse(error) && error.status === 404) {
-		return <NotFoundFace />
+		return <NotFoundFace />;
 	}
 
 	if (isRouteErrorResponse(error) && error.status >= 500) {
-		const headline = error.statusText || "Unexpected Error"
-		const errorMessage = typeof error.data === "string" ? error.data : "Something went wrong on our end."
-		return <ServerErrorGears status={error.status} headline={headline} message={errorMessage} />
+		const headline = error.statusText || "Unexpected Error";
+		const errorMessage = typeof error.data === "string" ? error.data : "Something went wrong on our end.";
+		return <ServerErrorGears status={error.status} headline={headline} message={errorMessage} />;
 	}
 
 	// For everything else, fall back to our standard error boundary
 	if (error instanceof Error) {
-		return <ServerErrorGears headline={error.name || "Unexpected Error"} message={error.message} />
+		return <ServerErrorGears headline={error.name || "Unexpected Error"} message={error.message} />;
 	}
 
-	return <ErrorBoundaryComponent error={error instanceof Error ? error : undefined} />
-}
+	return <ErrorBoundaryComponent error={error instanceof Error ? error : undefined} />;
+};

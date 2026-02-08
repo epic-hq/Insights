@@ -1,21 +1,21 @@
-import { Building2, User, Users, VenetianMask } from "lucide-react"
-import { Link, useLocation } from "react-router"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
+import { Building2, User, Users, VenetianMask } from "lucide-react";
+import { Link, useLocation } from "react-router";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
 
 interface PersonaPeopleSubnavProps {
-	className?: string
+	className?: string;
 }
 
 export function PersonaPeopleSubnav({ className }: PersonaPeopleSubnavProps) {
-	const location = useLocation()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const location = useLocation();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath || "");
 
-	const isPersonasActive = location.pathname.includes("/personas")
-	const isPeopleActive = location.pathname.includes("/people")
-	const isOrganizationsActive = location.pathname.includes("/organizations")
+	const isPersonasActive = location.pathname.includes("/personas");
+	const isPeopleActive = location.pathname.includes("/people");
+	const isOrganizationsActive = location.pathname.includes("/organizations");
 
 	return (
 		<div className={cn("border-b bg-background", className)}>
@@ -60,5 +60,5 @@ export function PersonaPeopleSubnav({ className }: PersonaPeopleSubnavProps) {
 				</nav>
 			</div>
 		</div>
-	)
+	);
 }

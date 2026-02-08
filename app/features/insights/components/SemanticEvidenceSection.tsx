@@ -5,69 +5,69 @@
  * not yet linked, helping users discover relevant quotes across interviews.
  */
 
-import { Lightbulb, Loader2, Sparkles } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
+import { Lightbulb, Loader2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { cn } from "~/lib/utils";
 
 interface SemanticEvidence {
-	id: string
-	gist: string | null
-	verbatim: string | null
-	interview_id: string | null
+	id: string;
+	gist: string | null;
+	verbatim: string | null;
+	interview_id: string | null;
 	interview: {
-		id: string
-		title: string | null
-		thumbnail_url: string | null
-	} | null
-	attribution: string
-	similarity: number | null
+		id: string;
+		title: string | null;
+		thumbnail_url: string | null;
+	} | null;
+	attribution: string;
+	similarity: number | null;
 }
 
 interface SemanticEvidenceSectionProps {
-	insightId: string
-	projectPath: string
+	insightId: string;
+	projectPath: string;
 }
 
 export function SemanticEvidenceSection({ insightId, projectPath }: SemanticEvidenceSectionProps) {
-	const [evidence, setEvidence] = useState<SemanticEvidence[]>([])
-	const [isLoading, setIsLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
+	const [evidence, setEvidence] = useState<SemanticEvidence[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-	const { projectId } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+	const { projectId } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
 
 	useEffect(() => {
 		async function fetchRelatedEvidence() {
-			if (!projectId) return
+			if (!projectId) return;
 
-			setIsLoading(true)
-			setError(null)
+			setIsLoading(true);
+			setError(null);
 
 			try {
-				const response = await fetch(`/api/similar-evidence-for-insight?insightId=${insightId}&projectId=${projectId}`)
+				const response = await fetch(`/api/similar-evidence-for-insight?insightId=${insightId}&projectId=${projectId}`);
 
 				if (!response.ok) {
-					throw new Error("Failed to fetch related evidence")
+					throw new Error("Failed to fetch related evidence");
 				}
 
-				const data = await response.json()
-				setEvidence(data.evidence || [])
+				const data = await response.json();
+				setEvidence(data.evidence || []);
 			} catch (err) {
-				console.error("[SemanticEvidenceSection] Error:", err)
-				setError("Could not load related evidence")
+				console.error("[SemanticEvidenceSection] Error:", err);
+				setError("Could not load related evidence");
 			} finally {
-				setIsLoading(false)
+				setIsLoading(false);
 			}
 		}
 
-		fetchRelatedEvidence()
-	}, [insightId, projectId])
+		fetchRelatedEvidence();
+	}, [insightId, projectId]);
 
 	// Don't show section if loading or no results
 	if (isLoading) {
@@ -76,11 +76,11 @@ export function SemanticEvidenceSection({ insightId, projectPath }: SemanticEvid
 				<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 				Finding related evidence...
 			</div>
-		)
+		);
 	}
 
 	if (error || evidence.length === 0) {
-		return null
+		return null;
 	}
 
 	return (
@@ -103,13 +103,13 @@ export function SemanticEvidenceSection({ insightId, projectPath }: SemanticEvid
 				))}
 			</div>
 		</div>
-	)
+	);
 }
 
 function SemanticEvidenceCard({ evidence, projectPath }: { evidence: SemanticEvidence; projectPath: string }) {
-	const routes = useProjectRoutes(projectPath)
-	const statement = evidence.gist || evidence.verbatim || "No statement"
-	const similarity = evidence.similarity != null ? Math.round(evidence.similarity * 100) : null
+	const routes = useProjectRoutes(projectPath);
+	const statement = evidence.gist || evidence.verbatim || "No statement";
+	const similarity = evidence.similarity != null ? Math.round(evidence.similarity * 100) : null;
 
 	return (
 		<Link to={evidence.interview_id ? routes.interviews.detail(evidence.interview_id) : "#"} className="group block">
@@ -138,5 +138,5 @@ function SemanticEvidenceCard({ evidence, projectPath }: { evidence: SemanticEvi
 				</CardContent>
 			</Card>
 		</Link>
-	)
+	);
 }

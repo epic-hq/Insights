@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
 	...prefix("evidence", [
@@ -7,4 +7,4 @@ export default [
 	]),
 	// API route for fetching evidence data (used by EvidenceModal)
 	route("api/evidence/:evidenceId", "./features/evidence/api/get-evidence.tsx"),
-] satisfies RouteConfig
+] satisfies RouteConfig;

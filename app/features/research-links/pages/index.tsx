@@ -1,8 +1,8 @@
-import { Copy, ExternalLink, Link2, MessageSquare, MoreHorizontal, Pencil, Trash2, Video } from "lucide-react"
-import { useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
+import { Copy, ExternalLink, Link2, MessageSquare, MoreHorizontal, Pencil, Trash2, Video } from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,23 +12,23 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "~/components/ui/alert-dialog"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+} from "~/components/ui/alert-dialog";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { createRouteDefinitions } from "~/utils/route-definitions"
-import { QRCodeButton } from "../components/QRCodeButton"
-import { QRCodeModal } from "../components/QRCodeModal"
-import { getResearchLinks } from "../db"
-import { ResearchLinkQuestionSchema } from "../schemas"
+} from "~/components/ui/dropdown-menu";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+import { QRCodeButton } from "../components/QRCodeButton";
+import { QRCodeModal } from "../components/QRCodeModal";
+import { getResearchLinks } from "../db";
+import { ResearchLinkQuestionSchema } from "../schemas";
 
 export const meta: MetaFunction = () => {
 	return [
@@ -37,88 +37,88 @@ export const meta: MetaFunction = () => {
 			name: "description",
 			content: "Create shareable links to collect responses from participants.",
 		},
-	]
-}
+	];
+};
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	const { accountId, projectId } = params
+	const { accountId, projectId } = params;
 	if (!accountId) {
-		throw new Response("Account id required", { status: 400 })
+		throw new Response("Account id required", { status: 400 });
 	}
 	if (!projectId) {
-		throw new Response("Project id required", { status: 400 })
+		throw new Response("Project id required", { status: 400 });
 	}
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 	const { data, error } = await getResearchLinks({
 		supabase,
 		accountId,
 		projectId,
-	})
+	});
 	if (error) {
-		throw new Response(error.message, { status: 500 })
+		throw new Response(error.message, { status: 500 });
 	}
-	const origin = new URL(request.url).origin
-	return { accountId, projectId, origin, lists: data ?? [] }
+	const origin = new URL(request.url).origin;
+	return { accountId, projectId, origin, lists: data ?? [] };
 }
 
 interface LoaderData {
-	accountId: string
-	projectId: string
-	origin: string
+	accountId: string;
+	projectId: string;
+	origin: string;
 	lists: Array<{
-		id: string
-		name: string
-		slug: string
-		description: string | null
-		hero_title: string | null
-		hero_subtitle: string | null
-		hero_cta_label: string | null
-		hero_cta_helper: string | null
-		redirect_url: string | null
-		calendar_url: string | null
-		questions: unknown
-		allow_chat: boolean
-		allow_video: boolean
-		default_response_mode: "form" | "chat"
-		is_live: boolean
-		updated_at: string
-		walkthrough_video_url: string | null
-		research_link_responses?: Array<{ count: number | null }>
-	}>
+		id: string;
+		name: string;
+		slug: string;
+		description: string | null;
+		hero_title: string | null;
+		hero_subtitle: string | null;
+		hero_cta_label: string | null;
+		hero_cta_helper: string | null;
+		redirect_url: string | null;
+		calendar_url: string | null;
+		questions: unknown;
+		allow_chat: boolean;
+		allow_video: boolean;
+		default_response_mode: "form" | "chat";
+		is_live: boolean;
+		updated_at: string;
+		walkthrough_video_url: string | null;
+		research_link_responses?: Array<{ count: number | null }>;
+	}>;
 }
 
 interface AskLinkCardProps {
-	list: LoaderData["lists"][0]
-	questions: Array<{ id: string; prompt: string }>
-	responsesCount: number
-	publicUrl: string
-	routes: ReturnType<typeof createRouteDefinitions>
+	list: LoaderData["lists"][0];
+	questions: Array<{ id: string; prompt: string }>;
+	responsesCount: number;
+	publicUrl: string;
+	routes: ReturnType<typeof createRouteDefinitions>;
 }
 
 function AskLinkCard({ list, questions, responsesCount, publicUrl, routes }: AskLinkCardProps) {
-	const [copied, setCopied] = useState(false)
-	const [isQRModalOpen, setIsQRModalOpen] = useState(false)
-	const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-	const deleteFetcher = useFetcher()
-	const isDeleting = deleteFetcher.state !== "idle"
+	const [copied, setCopied] = useState(false);
+	const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const deleteFetcher = useFetcher();
+	const isDeleting = deleteFetcher.state !== "idle";
 
 	const copyUrl = async () => {
-		await navigator.clipboard.writeText(publicUrl)
-		setCopied(true)
-		setTimeout(() => setCopied(false), 2000)
-	}
+		await navigator.clipboard.writeText(publicUrl);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	};
 
 	const openQRModal = () => {
-		setIsQRModalOpen(true)
-	}
+		setIsQRModalOpen(true);
+	};
 
 	const handleDelete = () => {
 		deleteFetcher.submit(null, {
 			method: "POST",
 			action: `${routes.ask.index()}/api/delete-survey/${list.id}`,
-		})
-		setIsDeleteOpen(false)
-	}
+		});
+		setIsDeleteOpen(false);
+	};
 
 	return (
 		<>
@@ -248,12 +248,12 @@ function AskLinkCard({ list, questions, responsesCount, publicUrl, routes }: Ask
 				</AlertDialogContent>
 			</AlertDialog>
 		</>
-	)
+	);
 }
 
 export default function ResearchLinksIndexPage() {
-	const { accountId, projectId, origin, lists } = useLoaderData<LoaderData>()
-	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
+	const { accountId, projectId, origin, lists } = useLoaderData<LoaderData>();
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
 
 	return (
 		<PageContainer className="space-y-6">
@@ -283,10 +283,10 @@ export default function ResearchLinksIndexPage() {
 			) : (
 				<div className="grid gap-4 lg:grid-cols-2">
 					{lists.map((list) => {
-						const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions)
-						const questions = questionsResult.success ? questionsResult.data : []
-						const responsesCount = list.research_link_responses?.[0]?.count ?? 0
-						const publicUrl = `${origin}${routes.ask.public(list.slug)}`
+						const questionsResult = ResearchLinkQuestionSchema.array().safeParse(list.questions);
+						const questions = questionsResult.success ? questionsResult.data : [];
+						const responsesCount = list.research_link_responses?.[0]?.count ?? 0;
+						const publicUrl = `${origin}${routes.ask.public(list.slug)}`;
 						return (
 							<AskLinkCard
 								key={list.id}
@@ -296,10 +296,10 @@ export default function ResearchLinksIndexPage() {
 								publicUrl={publicUrl}
 								routes={routes}
 							/>
-						)
+						);
 					})}
 				</div>
 			)}
 		</PageContainer>
-	)
+	);
 }

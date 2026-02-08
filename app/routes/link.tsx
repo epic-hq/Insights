@@ -1,12 +1,12 @@
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
-import { ExternalLink, FileText, MessageSquare, Presentation } from "lucide-react"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { cn } from "~/lib/utils"
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { ExternalLink, FileText, MessageSquare, Presentation } from "lucide-react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { cn } from "~/lib/utils";
 
 const RESOURCE_LINKS = [
 	{
@@ -30,10 +30,10 @@ const RESOURCE_LINKS = [
 		url: "#lead-magnet",
 		type: "download" as const,
 	},
-]
+];
 
 export default function LinkPage() {
-	const [input, setInput] = useState("")
+	const [input, setInput] = useState("");
 	const { messages, sendMessage, status } = useChat({
 		transport: new DefaultChatTransport({
 			api: "http://localhost:4111/chat/web-lead",
@@ -50,14 +50,14 @@ export default function LinkPage() {
 				],
 			},
 		],
-	})
+	});
 
 	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault()
-		if (!input.trim()) return
-		sendMessage({ text: input })
-		setInput("")
-	}
+		e.preventDefault();
+		if (!input.trim()) return;
+		sendMessage({ text: input });
+		setInput("");
+	};
 	return (
 		<div className="flex h-screen flex-col bg-background md:flex-row">
 			{/* Sidebar */}
@@ -74,7 +74,7 @@ export default function LinkPage() {
 						<div className="space-y-4">
 							<h2 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">Resources</h2>
 							{RESOURCE_LINKS.map((resource) => {
-								const Icon = resource.icon
+								const Icon = resource.icon;
 								return (
 									<Card key={resource.title} className="transition-shadow hover:shadow-md">
 										<CardHeader className="pb-3">
@@ -97,7 +97,7 @@ export default function LinkPage() {
 											</Button>
 										</CardContent>
 									</Card>
-								)
+								);
 							})}
 						</div>
 
@@ -141,7 +141,7 @@ export default function LinkPage() {
 								message.parts
 									?.filter((part: any) => part.type === "text")
 									.map((part: any) => part.text)
-									.join("") || ""
+									.join("") || "";
 
 							return (
 								<div
@@ -167,7 +167,7 @@ export default function LinkPage() {
 										</div>
 									)}
 								</div>
-							)
+							);
 						})}
 						{status === "streaming" && (
 							<div className="flex gap-3">
@@ -209,5 +209,5 @@ export default function LinkPage() {
 				</div>
 			</main>
 		</div>
-	)
+	);
 }

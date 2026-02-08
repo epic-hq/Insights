@@ -1,5 +1,5 @@
-import type { InitOptions } from "i18next"
-import { supportedLanguages } from "./resource"
+import type { InitOptions } from "i18next";
+import { supportedLanguages } from "./resource";
 
 export default {
 	// This is the list of languages your application supports
@@ -9,4 +9,4 @@ export default {
 	fallbackLng: "en",
 	// The default namespace of i18next is "translation", but you can customize it here
 	defaultNS: "common",
-} satisfies Omit<InitOptions, "react" | "detection">
+} satisfies Omit<InitOptions, "react" | "detection">;

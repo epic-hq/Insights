@@ -1,89 +1,89 @@
-import { Dialog, Transition } from "@headlessui/react"
-import { Fragment, useState } from "react"
-import { useDropzone } from "react-dropzone"
-import { useNavigate } from "react-router-dom"
-import { useNotification } from "~/contexts/NotificationContext"
-import type { ProcessingResult } from "~/utils/processInterview.server"
+import { Dialog, Transition } from "@headlessui/react";
+import { Fragment, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { useNavigate } from "react-router-dom";
+import { useNotification } from "~/contexts/NotificationContext";
+import type { ProcessingResult } from "~/utils/processInterview.server";
 
 interface AddInterviewProps {
-	open: boolean
-	onClose: () => void
-	onSuccess?: (result: ProcessingResult) => void
-	accountId: string
-	projectId: string
+	open: boolean;
+	onClose: () => void;
+	onSuccess?: (result: ProcessingResult) => void;
+	accountId: string;
+	projectId: string;
 }
 
 export default function AddInterview({ open, onClose, onSuccess, accountId, projectId }: AddInterviewProps) {
-	const [isProcessing, setIsProcessing] = useState(false)
-	const [processingMessage, setProcessingMessage] = useState("")
-	const [error, setError] = useState<string | null>(null)
-	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const { showNotification } = useNotification()
-	const _navigate = useNavigate()
+	const [isProcessing, setIsProcessing] = useState(false);
+	const [processingMessage, setProcessingMessage] = useState("");
+	const [error, setError] = useState<string | null>(null);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const { showNotification } = useNotification();
+	const _navigate = useNavigate();
 
 	const handleFileUpload = async (files: File[]) => {
-		if (!files.length) return
+		if (!files.length) return;
 
-		const file = files[0]
-		setSelectedFile(file)
-		setError(null)
-		setIsProcessing(true)
-		setProcessingMessage("Uploading file...")
+		const file = files[0];
+		setSelectedFile(file);
+		setError(null);
+		setIsProcessing(true);
+		setProcessingMessage("Uploading file...");
 
 		try {
-			const formData = new FormData()
-			formData.append("file", file)
+			const formData = new FormData();
+			formData.append("file", file);
 
 			// TODO: Get accountId and projectId from AuthContext
-			formData.append("accountId", accountId)
-			formData.append("projectId", projectId)
-			formData.append("userCustomInstructions", "")
+			formData.append("accountId", accountId);
+			formData.append("projectId", projectId);
+			formData.append("userCustomInstructions", "");
 
-			setProcessingMessage("🎯 Processing transcript with AI...")
+			setProcessingMessage("🎯 Processing transcript with AI...");
 			const response = await fetch("/api/upload-file", {
 				method: "POST",
 				body: formData,
-			})
+			});
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-				throw new Error(errorData.error || `HTTP ${response.status}`)
+				const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+				throw new Error(errorData.error || `HTTP ${response.status}`);
 			}
 
-			const result: ProcessingResult = await response.json()
+			const result: ProcessingResult = await response.json();
 
-			setProcessingMessage("✨ Processing complete! Insights ready for review.")
+			setProcessingMessage("✨ Processing complete! Insights ready for review.");
 
 			// Store results for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				;(window as any).lastProcessingResult = result
+				(window as any).lastProcessingResult = result;
 			}
 
 			// Call success callback if provided
-			onSuccess?.(result)
+			onSuccess?.(result);
 
 			// Close modal after brief delay
 			setTimeout(() => {
-				onClose()
-				setIsProcessing(false)
-				setSelectedFile(null)
-				setProcessingMessage("")
-			}, 1500)
+				onClose();
+				setIsProcessing(false);
+				setSelectedFile(null);
+				setProcessingMessage("");
+			}, 1500);
 		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred"
-			setError(errorMessage)
-			setIsProcessing(false)
-			setProcessingMessage("")
+			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+			setError(errorMessage);
+			setIsProcessing(false);
+			setProcessingMessage("");
 
 			// Show error notification
-			showNotification(`Upload failed: ${errorMessage}`, "error", 6000)
+			showNotification(`Upload failed: ${errorMessage}`, "error", 6000);
 
 			// Store error for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				;(window as any).lastUploadError = err
+				(window as any).lastUploadError = err;
 			}
 		}
-	}
+	};
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop: handleFileUpload,
@@ -94,16 +94,16 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 		},
 		multiple: false,
 		disabled: isProcessing,
-	})
+	});
 
 	const handleClose = () => {
 		if (!isProcessing) {
-			onClose()
-			setError(null)
-			setSelectedFile(null)
-			setProcessingMessage("")
+			onClose();
+			setError(null);
+			setSelectedFile(null);
+			setProcessingMessage("");
 		}
-	}
+	};
 
 	return (
 		<Transition.Root show={open} as={Fragment}>
@@ -210,5 +210,5 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 				</div>
 			</Dialog>
 		</Transition.Root>
-	)
+	);
 }

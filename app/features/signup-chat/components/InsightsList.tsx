@@ -1,20 +1,20 @@
-import { useMemo, useState } from "react"
-import { useLoaderData, useSearchParams } from "react-router-dom"
-import type { Emotion } from "~/components/ui/emotion-badge"
-import { CategoryFilterChip } from "~/features/signup-chat/components/FilterChips"
-import { InsightCard } from "~/features/signup-chat/components/InsightCardSmall"
-import { applyFilters, type SortKey, sortInsights } from "~/features/signup-chat/lib/filters"
-import type { Insight } from "~/types"
+import { useMemo, useState } from "react";
+import { useLoaderData, useSearchParams } from "react-router-dom";
+import type { Emotion } from "~/components/ui/emotion-badge";
+import { CategoryFilterChip } from "~/features/signup-chat/components/FilterChips";
+import { InsightCard } from "~/features/signup-chat/components/InsightCardSmall";
+import { applyFilters, type SortKey, sortInsights } from "~/features/signup-chat/lib/filters";
+import type { Insight } from "~/types";
 
 export function InsightsList() {
-	const { insights } = useLoaderData() as { insights: Insight[] }
+	const { insights } = useLoaderData() as { insights: Insight[] };
 	const categories = useMemo(
 		() => Array.from(new Set(insights.map((i) => i.category).filter(Boolean))) as string[],
 		[insights]
-	)
+	);
 
-	const [params, setParams] = useSearchParams()
-	const [sortBy, setSortBy] = useState<SortKey>((params.get("sort") as SortKey) || "newest")
+	const [params, setParams] = useSearchParams();
+	const [sortBy, setSortBy] = useState<SortKey>((params.get("sort") as SortKey) || "newest");
 
 	const filters = {
 		q: params.get("q") || "",
@@ -22,15 +22,15 @@ export function InsightsList() {
 		emotion: (params.get("emotion") || undefined) as Emotion | undefined,
 		pinned: params.get("pinned") ? params.get("pinned") === "1" : undefined,
 		hasEvidence: params.get("evidence") === "1",
-	}
+	};
 
 	const update = (patch: Record<string, string | null>) => {
-		const next = new URLSearchParams(params)
-		Object.entries(patch).forEach(([k, v]) => (v == null ? next.delete(k) : next.set(k, v)))
-		setParams(next, { replace: true })
-	}
+		const next = new URLSearchParams(params);
+		Object.entries(patch).forEach(([k, v]) => (v == null ? next.delete(k) : next.set(k, v)));
+		setParams(next, { replace: true });
+	};
 
-	const data = useMemo(() => sortInsights(applyFilters(insights, filters), sortBy), [insights, filters, sortBy])
+	const data = useMemo(() => sortInsights(applyFilters(insights, filters), sortBy), [insights, filters, sortBy]);
 
 	return (
 		<div className="space-y-3">
@@ -84,5 +84,5 @@ export function InsightsList() {
 				))}
 			</ul>
 		</div>
-	)
+	);
 }

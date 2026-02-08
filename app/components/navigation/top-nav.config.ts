@@ -5,7 +5,7 @@
  * Categories: Plan, Sources, Insights, CRM
  */
 
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
 	Briefcase,
@@ -24,27 +24,27 @@ import {
 	Target,
 	Upload,
 	Users,
-} from "lucide-react"
-import type { RouteDefinitions } from "~/utils/route-definitions"
+} from "lucide-react";
+import type { RouteDefinitions } from "~/utils/route-definitions";
 
 export interface TopNavItem {
-	key: string
-	title: string
-	description?: string
-	icon: LucideIcon
-	to: (routes: RouteDefinitions) => string
+	key: string;
+	title: string;
+	description?: string;
+	icon: LucideIcon;
+	to: (routes: RouteDefinitions) => string;
 	/** Badge count key for displaying counts */
-	countKey?: string
+	countKey?: string;
 	/** PostHog feature flag key — item hidden when flag is off */
-	featureFlag?: string
+	featureFlag?: string;
 }
 
 export interface TopNavCategory {
-	key: string
-	title: string
-	description: string
-	icon: LucideIcon
-	items: TopNavItem[]
+	key: string;
+	title: string;
+	description: string;
+	icon: LucideIcon;
+	items: TopNavItem[];
 }
 
 /**
@@ -197,7 +197,7 @@ export const TOP_NAV_CATEGORIES: TopNavCategory[] = [
 			},
 		],
 	},
-]
+];
 
 /**
  * Utility nav items (right side of top nav)
@@ -209,4 +209,4 @@ export const TOP_NAV_UTILITY_ITEMS: TopNavItem[] = [
 		icon: Settings,
 		to: (routes) => routes.projects.setup(),
 	},
-]
+];

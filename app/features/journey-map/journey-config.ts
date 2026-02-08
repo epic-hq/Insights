@@ -3,7 +3,7 @@
  * Maps card completion to sidebar count keys and card CTAs to route definitions.
  */
 
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 import {
 	CheckCircle,
 	FileText,
@@ -16,48 +16,48 @@ import {
 	Share2,
 	Upload,
 	Users,
-} from "lucide-react"
-import type { RouteDefinitions } from "~/utils/route-definitions"
+} from "lucide-react";
+import type { RouteDefinitions } from "~/utils/route-definitions";
 
-export type PhaseState = "completed" | "active" | "upcoming" | "locked"
+export type PhaseState = "completed" | "active" | "upcoming" | "locked";
 
 export interface JourneyCardConfig {
-	id: string
-	title: string
-	icon: LucideIcon
-	cta: string
+	id: string;
+	title: string;
+	icon: LucideIcon;
+	cta: string;
 	/** Function that returns route from route definitions */
-	getRoute: (routes: RouteDefinitions) => string
+	getRoute: (routes: RouteDefinitions) => string;
 	/** Key from useSidebarCounts to check completion */
-	completionKey?: string
+	completionKey?: string;
 	/** Alternative: custom completion check function */
 	completionCheck?: (
 		counts: Record<string, number | undefined>,
 		journeyProgress: {
-			contextComplete: boolean
-			promptsComplete: boolean
-			hasConversations: boolean
-			hasInsights: boolean
+			contextComplete: boolean;
+			promptsComplete: boolean;
+			hasConversations: boolean;
+			hasInsights: boolean;
 		}
-	) => boolean
+	) => boolean;
 }
 
 export interface JourneyPhaseConfig {
-	id: string
-	number: number
-	title: string
-	icon: LucideIcon
-	cards: JourneyCardConfig[]
+	id: string;
+	number: number;
+	title: string;
+	icon: LucideIcon;
+	cards: JourneyCardConfig[];
 	/** Check if this phase is complete using counts + journey progress */
 	isComplete: (
 		counts: Record<string, number | undefined>,
 		journeyProgress: {
-			contextComplete: boolean
-			promptsComplete: boolean
-			hasConversations: boolean
-			hasInsights: boolean
+			contextComplete: boolean;
+			promptsComplete: boolean;
+			hasConversations: boolean;
+			hasInsights: boolean;
 		}
-	) => boolean
+	) => boolean;
 }
 
 export const JOURNEY_PHASES: JourneyPhaseConfig[] = [
@@ -186,11 +186,11 @@ export const JOURNEY_PHASES: JourneyPhaseConfig[] = [
 			},
 		],
 	},
-]
+];
 
 /** Get total number of cards across all phases */
 export function getTotalCards(): number {
-	return JOURNEY_PHASES.reduce((sum, phase) => sum + phase.cards.length, 0)
+	return JOURNEY_PHASES.reduce((sum, phase) => sum + phase.cards.length, 0);
 }
 
 /** Check if a card is complete */
@@ -198,34 +198,34 @@ export function isCardComplete(
 	card: JourneyCardConfig,
 	counts: Record<string, number | undefined>,
 	journeyProgress: {
-		contextComplete: boolean
-		promptsComplete: boolean
-		hasConversations: boolean
-		hasInsights: boolean
+		contextComplete: boolean;
+		promptsComplete: boolean;
+		hasConversations: boolean;
+		hasInsights: boolean;
 	}
 ): boolean {
 	if (card.completionCheck) {
-		return card.completionCheck(counts, journeyProgress)
+		return card.completionCheck(counts, journeyProgress);
 	}
 	if (card.completionKey) {
-		return (counts[card.completionKey] ?? 0) > 0
+		return (counts[card.completionKey] ?? 0) > 0;
 	}
-	return false
+	return false;
 }
 
 /** Get the number of completed cards across all phases */
 export function getCompletedCardCount(
 	counts: Record<string, number | undefined>,
 	journeyProgress: {
-		contextComplete: boolean
-		promptsComplete: boolean
-		hasConversations: boolean
-		hasInsights: boolean
+		contextComplete: boolean;
+		promptsComplete: boolean;
+		hasConversations: boolean;
+		hasInsights: boolean;
 	}
 ): number {
 	return JOURNEY_PHASES.reduce((sum, phase) => {
-		return sum + phase.cards.filter((card) => isCardComplete(card, counts, journeyProgress)).length
-	}, 0)
+		return sum + phase.cards.filter((card) => isCardComplete(card, counts, journeyProgress)).length;
+	}, 0);
 }
 
 /** Determine the state of each phase */
@@ -233,27 +233,27 @@ export function getPhaseState(
 	phaseIndex: number,
 	counts: Record<string, number | undefined>,
 	journeyProgress: {
-		contextComplete: boolean
-		promptsComplete: boolean
-		hasConversations: boolean
-		hasInsights: boolean
+		contextComplete: boolean;
+		promptsComplete: boolean;
+		hasConversations: boolean;
+		hasInsights: boolean;
 	}
 ): PhaseState {
-	const phases = JOURNEY_PHASES
+	const phases = JOURNEY_PHASES;
 
 	// Check if this phase is complete
 	if (phases[phaseIndex].isComplete(counts, journeyProgress)) {
-		return "completed"
+		return "completed";
 	}
 
 	// Check if this is the first incomplete phase (active)
 	for (let i = 0; i < phaseIndex; i++) {
 		if (!phases[i].isComplete(counts, journeyProgress)) {
 			// A previous phase is incomplete, so this one is upcoming or locked
-			return phaseIndex - i > 1 ? "locked" : "upcoming"
+			return phaseIndex - i > 1 ? "locked" : "upcoming";
 		}
 	}
 
 	// All previous phases complete, this is active
-	return "active"
+	return "active";
 }

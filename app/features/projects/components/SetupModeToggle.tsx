@@ -5,17 +5,17 @@
  * All modes access the same underlying data.
  */
 
-import { FileText, MessageSquare, Volume2 } from "lucide-react"
-import { cn } from "~/lib/utils"
+import { FileText, MessageSquare, Volume2 } from "lucide-react";
+import { cn } from "~/lib/utils";
 
-export type SetupMode = "chat" | "voice" | "form"
+export type SetupMode = "chat" | "voice" | "form";
 
 interface SetupModeToggleProps {
-	mode: SetupMode
-	onModeChange: (mode: SetupMode) => void
-	className?: string
+	mode: SetupMode;
+	onModeChange: (mode: SetupMode) => void;
+	className?: string;
 	/** Whether to show voice mode option */
-	showVoice?: boolean
+	showVoice?: boolean;
 }
 
 /**
@@ -77,7 +77,7 @@ export function SetupModeToggle({ mode, onModeChange, className, showVoice = fal
 				</button>
 			)}
 		</div>
-	)
+	);
 }
 
 /**
@@ -116,5 +116,5 @@ export function SetupModeToggleCompact({ mode, onModeChange, className }: SetupM
 				<FileText className="h-4 w-4" />
 			</button>
 		</div>
-	)
+	);
 }

@@ -1,24 +1,24 @@
-import consola from "consola"
-import type { ActionFunction } from "react-router"
-import { userContext } from "~/server/user-context"
+import consola from "consola";
+import type { ActionFunction } from "react-router";
+import { userContext } from "~/server/user-context";
 
 interface CommentPayload {
-	insightId: string
-	comment: string
-	projectId: string
+	insightId: string;
+	comment: string;
+	projectId: string;
 }
 
 export const action: ActionFunction = async ({ context, request }) => {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = ctx.account_id
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
+	const accountId = ctx.account_id;
 
 	try {
-		const payload = (await request.json()) as CommentPayload
-		const { insightId, comment, projectId } = payload
+		const payload = (await request.json()) as CommentPayload;
+		const { insightId, comment, projectId } = payload;
 
 		if (!insightId || !comment?.trim() || !projectId) {
-			return Response.json({ error: "Missing required parameters" }, { status: 400 })
+			return Response.json({ error: "Missing required parameters" }, { status: 400 });
 		}
 
 		// Verify the insight exists and user has access
@@ -28,11 +28,11 @@ export const action: ActionFunction = async ({ context, request }) => {
 			.eq("id", insightId)
 			.eq("account_id", accountId)
 			.eq("project_id", projectId)
-			.single()
+			.single();
 
 		if (fetchError || !insight) {
-			consola.error("Failed to verify insight for comment:", fetchError)
-			return Response.json({ error: "Insight not found" }, { status: 404 })
+			consola.error("Failed to verify insight for comment:", fetchError);
+			return Response.json({ error: "Insight not found" }, { status: 404 });
 		}
 
 		// Create the comment using actual schema fields
@@ -46,20 +46,20 @@ export const action: ActionFunction = async ({ context, request }) => {
 				// created_at and updated_at are auto-generated
 			})
 			.select()
-			.single()
+			.single();
 
 		if (insertError) {
-			consola.error("Failed to create comment:", insertError)
-			return Response.json({ error: insertError.message }, { status: 500 })
+			consola.error("Failed to create comment:", insertError);
+			return Response.json({ error: insertError.message }, { status: 500 });
 		}
 
-		consola.log(`Successfully added comment to insight ${insightId}`)
+		consola.log(`Successfully added comment to insight ${insightId}`);
 		return Response.json({
 			success: true,
 			comment: newComment,
-		})
+		});
 	} catch (err) {
-		consola.error("Add comment API error:", err)
-		return Response.json({ error: "Internal server error" }, { status: 500 })
+		consola.error("Add comment API error:", err);
+		return Response.json({ error: "Internal server error" }, { status: 500 });
 	}
-}
+};

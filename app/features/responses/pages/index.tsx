@@ -4,35 +4,35 @@
  * Shows survey and chat responses, grouped by survey (research_link).
  * Separated from the main Conversations page.
  */
-import type { PostgrestError } from "@supabase/supabase-js"
-import consola from "consola"
-import { formatDistance } from "date-fns"
-import { ExternalLink, MessageSquareText, Mic, ScrollText, Video } from "lucide-react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
+import type { PostgrestError } from "@supabase/supabase-js";
+import consola from "consola";
+import { formatDistance } from "date-fns";
+import { ExternalLink, MessageSquareText, Mic, ScrollText, Video } from "lucide-react";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon";
+import { useCurrentProject } from "~/contexts/current-project-context";
+import { useProjectRoutes } from "~/hooks/useProjectRoutes";
+import { userContext } from "~/server/user-context";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Responses | Insights" }, { name: "description", content: "Survey and chat responses" }]
-}
+	return [{ title: "Responses | Insights" }, { name: "description", content: "Survey and chat responses" }];
+};
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
-	const accountId = params.accountId
-	const projectId = params.projectId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", {
 			status: 400,
-		})
+		});
 	}
 
 	// Fetch survey/chat response interviews
@@ -62,13 +62,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		)
 		.eq("project_id", projectId)
 		.in("source_type", ["survey_response", "public_chat"])
-		.order("created_at", { ascending: false })
+		.order("created_at", { ascending: false });
 
 	if (error) {
-		consola.error("Responses query error:", error)
+		consola.error("Responses query error:", error);
 		throw new Response(`Error fetching responses: ${(error as PostgrestError).message}`, {
 			status: 500,
-		})
+		});
 	}
 
 	// Fetch research links (surveys) for grouping
@@ -76,65 +76,65 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("research_links")
 		.select("id, title, slug, response_mode")
 		.eq("project_id", projectId)
-		.order("created_at", { ascending: false })
+		.order("created_at", { ascending: false });
 
 	// Build survey lookup
-	const surveyMap = new Map<string, { id: string; title: string; slug: string; response_mode: string | null }>()
+	const surveyMap = new Map<string, { id: string; title: string; slug: string; response_mode: string | null }>();
 	for (const survey of surveys || []) {
-		surveyMap.set(survey.id, survey)
+		surveyMap.set(survey.id, survey);
 	}
 
 	// Group responses by survey
-	const grouped = new Map<string, typeof responses>()
-	const ungrouped: typeof responses = []
+	const grouped = new Map<string, typeof responses>();
+	const ungrouped: typeof responses = [];
 
 	for (const response of responses || []) {
-		const linkId = (response as { research_link_id?: string | null }).research_link_id
+		const linkId = (response as { research_link_id?: string | null }).research_link_id;
 		if (linkId && surveyMap.has(linkId)) {
-			const existing = grouped.get(linkId) || []
-			existing.push(response)
-			grouped.set(linkId, existing)
+			const existing = grouped.get(linkId) || [];
+			existing.push(response);
+			grouped.set(linkId, existing);
 		} else {
-			ungrouped.push(response)
+			ungrouped.push(response);
 		}
 	}
 
 	const surveyGroups = Array.from(grouped.entries()).map(([surveyId, items]) => ({
 		survey: surveyMap.get(surveyId)!,
 		responses: items,
-	}))
+	}));
 
 	return {
 		surveyGroups,
 		ungroupedResponses: ungrouped,
 		totalCount: (responses || []).length,
-	}
+	};
 }
 
 type ResponseItem = {
-	id: string
-	title: string
-	status: string | null
-	source_type: string | null
-	media_type: string | null
-	media_url: string | null
-	file_extension: string | null
-	created_at: string
-	updated_at: string | null
-	research_link_id?: string | null
+	id: string;
+	title: string;
+	status: string | null;
+	source_type: string | null;
+	media_type: string | null;
+	media_url: string | null;
+	file_extension: string | null;
+	created_at: string;
+	updated_at: string | null;
+	research_link_id?: string | null;
 	interview_people: Array<{
-		role: string | null
+		role: string | null;
 		people: {
-			id: string
-			name: string | null
-			segment: string | null
-		} | null
-	}>
-}
+			id: string;
+			name: string | null;
+			segment: string | null;
+		} | null;
+	}>;
+};
 
 function ResponseCard({ response, routes }: { response: ResponseItem; routes: ReturnType<typeof useProjectRoutes> }) {
-	const participant = response.interview_people?.[0]?.people
-	const participantName = participant?.name || response.title || "Anonymous"
+	const participant = response.interview_people?.[0]?.people;
+	const participantName = participant?.name || response.title || "Anonymous";
 
 	const getResponseTypeBadge = () => {
 		if (response.source_type === "public_chat") {
@@ -143,7 +143,7 @@ function ResponseCard({ response, routes }: { response: ResponseItem; routes: Re
 					<MessageSquareText className="h-3 w-3" />
 					Chat
 				</Badge>
-			)
+			);
 		}
 		// Survey response - check media type for format
 		if (response.media_type === "video" || response.file_extension === "webm") {
@@ -152,7 +152,7 @@ function ResponseCard({ response, routes }: { response: ResponseItem; routes: Re
 					<Video className="h-3 w-3" />
 					Video
 				</Badge>
-			)
+			);
 		}
 		if (response.media_type === "voice_memo" || response.media_type === "audio") {
 			return (
@@ -160,15 +160,15 @@ function ResponseCard({ response, routes }: { response: ResponseItem; routes: Re
 					<Mic className="h-3 w-3" />
 					Voice
 				</Badge>
-			)
+			);
 		}
 		return (
 			<Badge variant="outline" className="gap-1 text-xs">
 				<ScrollText className="h-3 w-3" />
 				Form
 			</Badge>
-		)
-	}
+		);
+	};
 
 	return (
 		<Link
@@ -204,13 +204,13 @@ function ResponseCard({ response, routes }: { response: ResponseItem; routes: Re
 			</div>
 			<ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
 		</Link>
-	)
+	);
 }
 
 export default function ResponsesIndex() {
-	const { surveyGroups, ungroupedResponses, totalCount } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+	const { surveyGroups, ungroupedResponses, totalCount } = useLoaderData<typeof loader>();
+	const { projectPath } = useCurrentProject();
+	const routes = useProjectRoutes(projectPath);
 
 	return (
 		<div className="relative min-h-screen bg-background">
@@ -312,5 +312,5 @@ export default function ResponsesIndex() {
 				)}
 			</PageContainer>
 		</div>
-	)
+	);
 }

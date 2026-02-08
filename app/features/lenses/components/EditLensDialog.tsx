@@ -7,12 +7,12 @@
  * 3. Tabs to compare Current vs Preview structure
  */
 
-import { Check, Loader2, Pencil, RefreshCw } from "lucide-react"
-import { useEffect, useId, useState } from "react"
-import { useFetcher } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Check, Loader2, Pencil, RefreshCw } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { useFetcher } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -20,49 +20,49 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "~/components/ui/dialog"
-import { Label } from "~/components/ui/label"
-import { Switch } from "~/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { Textarea } from "~/components/ui/textarea"
-import type { LensTemplate } from "../lib/loadLensAnalyses.server"
+} from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import { Switch } from "~/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Textarea } from "~/components/ui/textarea";
+import type { LensTemplate } from "../lib/loadLensAnalyses.server";
 
 type GeneratedTemplate = {
-	template_name: string
-	summary: string
-	primary_objective: string
+	template_name: string;
+	summary: string;
+	primary_objective: string;
 	template_definition: {
 		sections: Array<{
-			section_key: string
-			section_name: string
-			description?: string
+			section_key: string;
+			section_name: string;
+			description?: string;
 			fields: Array<{
-				field_key: string
-				field_name: string
-				field_type: string
-				description?: string
-			}>
-		}>
-		entities: string[]
-		recommendations_enabled: boolean
-	}
-}
+				field_key: string;
+				field_name: string;
+				field_type: string;
+				description?: string;
+			}>;
+		}>;
+		entities: string[];
+		recommendations_enabled: boolean;
+	};
+};
 
 type EditLensDialogProps = {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	template: LensTemplate
-	accountId: string
-	onUpdated?: () => void
-}
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	template: LensTemplate;
+	accountId: string;
+	onUpdated?: () => void;
+};
 
 // Helper component for rendering structure (sections + entities)
 function StructurePreview({
 	sections,
 	entities,
 }: {
-	sections: GeneratedTemplate["template_definition"]["sections"]
-	entities: string[]
+	sections: GeneratedTemplate["template_definition"]["sections"];
+	entities: string[];
 }) {
 	return (
 		<div className="space-y-3">
@@ -95,69 +95,69 @@ function StructurePreview({
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 export function EditLensDialog({ open, onOpenChange, template, accountId, onUpdated }: EditLensDialogProps) {
-	const [description, setDescription] = useState(template.nlp_source || "")
-	const [isPublic, setIsPublic] = useState(template.is_public)
-	const [generated, setGenerated] = useState<GeneratedTemplate | null>(null)
-	const [error, setError] = useState<string | null>(null)
-	const [structureTab, setStructureTab] = useState<"current" | "preview">("current")
+	const [description, setDescription] = useState(template.nlp_source || "");
+	const [isPublic, setIsPublic] = useState(template.is_public);
+	const [generated, setGenerated] = useState<GeneratedTemplate | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [structureTab, setStructureTab] = useState<"current" | "preview">("current");
 
-	const descriptionId = useId()
-	const visibilityId = useId()
+	const descriptionId = useId();
+	const visibilityId = useId();
 
-	const generateFetcher = useFetcher()
-	const updateFetcher = useFetcher()
+	const generateFetcher = useFetcher();
+	const updateFetcher = useFetcher();
 
-	const isGenerating = generateFetcher.state === "submitting"
-	const isUpdating = updateFetcher.state === "submitting"
+	const isGenerating = generateFetcher.state === "submitting";
+	const isUpdating = updateFetcher.state === "submitting";
 
 	// Reset state when dialog opens
 	useEffect(() => {
 		if (open) {
-			setDescription(template.nlp_source || "")
-			setIsPublic(template.is_public)
-			setGenerated(null)
-			setError(null)
-			setStructureTab("current")
+			setDescription(template.nlp_source || "");
+			setIsPublic(template.is_public);
+			setGenerated(null);
+			setError(null);
+			setStructureTab("current");
 		}
-	}, [open, template])
+	}, [open, template]);
 
 	// Handle generate response - auto-switch to preview tab
 	useEffect(() => {
 		if (generateFetcher.data && !generated && !isGenerating) {
 			if (generateFetcher.data.ok && generateFetcher.data.generated) {
-				setGenerated(generateFetcher.data.generated)
-				setError(null)
-				setStructureTab("preview") // Auto-switch to preview
+				setGenerated(generateFetcher.data.generated);
+				setError(null);
+				setStructureTab("preview"); // Auto-switch to preview
 			} else if (generateFetcher.data.error) {
-				setError(generateFetcher.data.error)
+				setError(generateFetcher.data.error);
 			}
 		}
-	}, [generateFetcher.data, generated, isGenerating])
+	}, [generateFetcher.data, generated, isGenerating]);
 
 	// Handle update response
 	useEffect(() => {
 		if (updateFetcher.data && !isUpdating) {
 			if (updateFetcher.data.ok) {
-				onOpenChange(false)
-				onUpdated?.()
+				onOpenChange(false);
+				onUpdated?.();
 			} else if (updateFetcher.data.error) {
-				setError(updateFetcher.data.error)
+				setError(updateFetcher.data.error);
 			}
 		}
-	}, [updateFetcher.data, isUpdating, onOpenChange, onUpdated])
+	}, [updateFetcher.data, isUpdating, onOpenChange, onUpdated]);
 
 	function handleGenerate() {
 		if (description.length < 10) {
-			setError("Description must be at least 10 characters")
-			return
+			setError("Description must be at least 10 characters");
+			return;
 		}
 
-		setError(null)
-		setGenerated(null)
+		setError(null);
+		setGenerated(null);
 
 		generateFetcher.submit(
 			{
@@ -168,7 +168,7 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
+		);
 	}
 
 	function handleSaveVisibility() {
@@ -183,11 +183,11 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
+		);
 	}
 
 	function handleSaveRegenerated() {
-		if (!generated) return
+		if (!generated) return;
 
 		updateFetcher.submit(
 			{
@@ -205,7 +205,7 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 				method: "POST",
 				action: "/api/lens-templates",
 			}
-		)
+		);
 	}
 
 	return (
@@ -357,5 +357,5 @@ export function EditLensDialog({ open, onOpenChange, template, accountId, onUpda
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

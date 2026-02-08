@@ -1,78 +1,78 @@
-import slugify from "@sindresorhus/slugify"
-import { motion } from "framer-motion"
-import { ArrowLeft, Check, Copy, ExternalLink } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Switch } from "~/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { Textarea } from "~/components/ui/textarea"
-import { getServerClient } from "~/lib/supabase/client.server"
-import { createR2PresignedUrl } from "~/utils/r2.server"
-import { createRouteDefinitions } from "~/utils/route-definitions"
-import { EmbedCodeGenerator } from "../components/EmbedCodeGenerator"
-import { QuestionListEditor } from "../components/QuestionListEditor"
-import { ResearchLinkPreview } from "../components/ResearchLinkPreview"
-import { WalkthroughRecorder } from "../components/WalkthroughRecorder"
-import { getResearchLinkById } from "../db"
+import slugify from "@sindresorhus/slugify";
+import { motion } from "framer-motion";
+import { ArrowLeft, Check, Copy, ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router-dom";
+import { PageContainer } from "~/components/layout/PageContainer";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Switch } from "~/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Textarea } from "~/components/ui/textarea";
+import { getServerClient } from "~/lib/supabase/client.server";
+import { createR2PresignedUrl } from "~/utils/r2.server";
+import { createRouteDefinitions } from "~/utils/route-definitions";
+import { EmbedCodeGenerator } from "../components/EmbedCodeGenerator";
+import { QuestionListEditor } from "../components/QuestionListEditor";
+import { ResearchLinkPreview } from "../components/ResearchLinkPreview";
+import { WalkthroughRecorder } from "../components/WalkthroughRecorder";
+import { getResearchLinkById } from "../db";
 import {
 	createEmptyQuestion,
 	ResearchLinkPayloadSchema,
 	type ResearchLinkQuestion,
 	ResearchLinkQuestionSchema,
-} from "../schemas"
+} from "../schemas";
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Edit Ask Link" }, { name: "description", content: "Customize your Ask link experience." }]
-}
+	return [{ title: "Edit Ask Link" }, { name: "description", content: "Customize your Ask link experience." }];
+};
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-	const { accountId, projectId, listId } = params
+	const { accountId, projectId, listId } = params;
 	if (!accountId || !projectId || !listId) {
-		throw new Response("Missing route parameters", { status: 400 })
+		throw new Response("Missing route parameters", { status: 400 });
 	}
-	const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request);
 	const { data, error } = await getResearchLinkById({
 		supabase,
 		accountId,
 		listId,
-	})
+	});
 	if (error) {
-		throw new Response(error.message, { status: 500 })
+		throw new Response(error.message, { status: 500 });
 	}
 	if (!data) {
-		throw new Response("Ask link not found", { status: 404 })
+		throw new Response("Ask link not found", { status: 404 });
 	}
-	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(data.questions)
+	const questionsResult = ResearchLinkQuestionSchema.array().safeParse(data.questions);
 
 	// Generate signed URLs for walkthrough video + thumbnail if they exist
-	let walkthroughSignedUrl: string | null = null
-	let walkthroughThumbnailUrl: string | null = null
+	let walkthroughSignedUrl: string | null = null;
+	let walkthroughThumbnailUrl: string | null = null;
 	if (data.walkthrough_video_url) {
-		const key = data.walkthrough_video_url
-		const ext = key.split(".").pop()?.toLowerCase()
-		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm"
+		const key = data.walkthrough_video_url;
+		const ext = key.split(".").pop()?.toLowerCase();
+		const contentType = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : "video/webm";
 		const presigned = createR2PresignedUrl({
 			key,
 			expiresInSeconds: 3600,
 			responseContentType: contentType,
-		})
-		walkthroughSignedUrl = presigned?.url ?? null
+		});
+		walkthroughSignedUrl = presigned?.url ?? null;
 	}
 	if (data.walkthrough_thumbnail_url) {
 		const presigned = createR2PresignedUrl({
 			key: data.walkthrough_thumbnail_url,
 			expiresInSeconds: 3600,
 			responseContentType: "image/jpeg",
-		})
-		const origin = new URL(request.url).origin
-		const publicUrl = data.is_live ? `${origin}/ask/${data.slug}/thumbnail` : null
-		walkthroughThumbnailUrl = publicUrl ?? presigned?.url ?? null
+		});
+		const origin = new URL(request.url).origin;
+		const publicUrl = data.is_live ? `${origin}/ask/${data.slug}/thumbnail` : null;
+		walkthroughThumbnailUrl = publicUrl ?? presigned?.url ?? null;
 	}
 
 	return {
@@ -83,40 +83,40 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		questions: questionsResult.success ? questionsResult.data : [],
 		walkthroughSignedUrl,
 		walkthroughThumbnailUrl,
-	}
+	};
 }
 
 interface EditActionData {
-	errors?: Record<string, string>
+	errors?: Record<string, string>;
 	values?: {
-		name?: string
-		slug?: string
-		description?: string | null
-		heroTitle?: string | null
-		heroSubtitle?: string | null
-		instructions?: string | null
-		heroCtaLabel?: string | null
-		heroCtaHelper?: string | null
-		calendarUrl?: string | null
-		redirectUrl?: string | null
-		allowChat?: boolean
-		allowVoice?: boolean
-		allowVideo?: boolean
-		defaultResponseMode?: "form" | "chat" | "voice"
-		isLive?: boolean
-		questions?: ResearchLinkQuestion[]
-	}
-	ok?: boolean
+		name?: string;
+		slug?: string;
+		description?: string | null;
+		heroTitle?: string | null;
+		heroSubtitle?: string | null;
+		instructions?: string | null;
+		heroCtaLabel?: string | null;
+		heroCtaHelper?: string | null;
+		calendarUrl?: string | null;
+		redirectUrl?: string | null;
+		allowChat?: boolean;
+		allowVoice?: boolean;
+		allowVideo?: boolean;
+		defaultResponseMode?: "form" | "chat" | "voice";
+		isLive?: boolean;
+		questions?: ResearchLinkQuestion[];
+	};
+	ok?: boolean;
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-	const accountId = params.accountId
-	const listId = params.listId
+	const accountId = params.accountId;
+	const listId = params.listId;
 	if (!accountId || !listId) {
-		throw new Response("Missing route parameters", { status: 400 })
+		throw new Response("Missing route parameters", { status: 400 });
 	}
 
-	const formData = await request.formData()
+	const formData = await request.formData();
 	const rawPayload = {
 		name: formData.get("name") ?? "",
 		slug: formData.get("slug") ?? "",
@@ -134,29 +134,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		defaultResponseMode: formData.get("default_response_mode"),
 		isLive: formData.get("is_live"),
 		questions: formData.get("questions") ?? "[]",
-	}
+	};
 
-	let fallbackQuestions: ResearchLinkQuestion[] = []
+	let fallbackQuestions: ResearchLinkQuestion[] = [];
 	try {
-		const candidate = JSON.parse(String(rawPayload.questions ?? "[]"))
-		const validated = ResearchLinkQuestionSchema.array().safeParse(candidate)
+		const candidate = JSON.parse(String(rawPayload.questions ?? "[]"));
+		const validated = ResearchLinkQuestionSchema.array().safeParse(candidate);
 		if (validated.success) {
-			fallbackQuestions = validated.data
+			fallbackQuestions = validated.data;
 		}
 	} catch {
-		fallbackQuestions = []
+		fallbackQuestions = [];
 	}
 
-	const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload)
+	const parsed = ResearchLinkPayloadSchema.safeParse(rawPayload);
 	if (!parsed.success) {
 		const issues = parsed.error.issues.reduce<Record<string, string>>((acc, issue) => {
 			if (issue.path.length > 0) {
-				acc[issue.path[0] as string] = issue.message
+				acc[issue.path[0] as string] = issue.message;
 			} else {
-				acc._form = issue.message
+				acc._form = issue.message;
 			}
-			return acc
-		}, {})
+			return acc;
+		}, {});
 		return Response.json<EditActionData>(
 			{
 				errors: issues,
@@ -177,49 +177,49 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				},
 			},
 			{ status: 400 }
-		)
+		);
 	}
 
-	const payload = parsed.data
-	const { client: supabase } = getServerClient(request)
+	const payload = parsed.data;
+	const { client: supabase } = getServerClient(request);
 
 	const updatePayload: Record<string, unknown> = {
 		name: payload.name,
 		slug: payload.slug,
-	}
+	};
 
-	if (formData.has("description")) updatePayload.description = payload.description
-	if (formData.has("hero_title")) updatePayload.hero_title = payload.heroTitle
-	if (formData.has("hero_subtitle")) updatePayload.hero_subtitle = payload.heroSubtitle
-	if (formData.has("instructions")) updatePayload.instructions = payload.instructions
-	if (formData.has("hero_cta_label")) updatePayload.hero_cta_label = payload.heroCtaLabel
-	if (formData.has("hero_cta_helper")) updatePayload.hero_cta_helper = payload.heroCtaHelper
-	if (formData.has("calendar_url")) updatePayload.calendar_url = payload.calendarUrl
-	if (formData.has("redirect_url")) updatePayload.redirect_url = payload.redirectUrl
-	if (formData.has("questions")) updatePayload.questions = payload.questions
-	if (formData.has("allow_chat")) updatePayload.allow_chat = payload.allowChat
-	if (formData.has("allow_voice")) updatePayload.allow_voice = payload.allowVoice
-	if (formData.has("allow_video")) updatePayload.allow_video = payload.allowVideo
-	if (formData.has("default_response_mode")) updatePayload.default_response_mode = payload.defaultResponseMode
-	if (formData.has("is_live")) updatePayload.is_live = payload.isLive
+	if (formData.has("description")) updatePayload.description = payload.description;
+	if (formData.has("hero_title")) updatePayload.hero_title = payload.heroTitle;
+	if (formData.has("hero_subtitle")) updatePayload.hero_subtitle = payload.heroSubtitle;
+	if (formData.has("instructions")) updatePayload.instructions = payload.instructions;
+	if (formData.has("hero_cta_label")) updatePayload.hero_cta_label = payload.heroCtaLabel;
+	if (formData.has("hero_cta_helper")) updatePayload.hero_cta_helper = payload.heroCtaHelper;
+	if (formData.has("calendar_url")) updatePayload.calendar_url = payload.calendarUrl;
+	if (formData.has("redirect_url")) updatePayload.redirect_url = payload.redirectUrl;
+	if (formData.has("questions")) updatePayload.questions = payload.questions;
+	if (formData.has("allow_chat")) updatePayload.allow_chat = payload.allowChat;
+	if (formData.has("allow_voice")) updatePayload.allow_voice = payload.allowVoice;
+	if (formData.has("allow_video")) updatePayload.allow_video = payload.allowVideo;
+	if (formData.has("default_response_mode")) updatePayload.default_response_mode = payload.defaultResponseMode;
+	if (formData.has("is_live")) updatePayload.is_live = payload.isLive;
 	if (formData.has("ai_autonomy")) {
-		const autonomy = formData.get("ai_autonomy")
+		const autonomy = formData.get("ai_autonomy");
 		if (autonomy === "strict" || autonomy === "moderate" || autonomy === "adaptive") {
-			updatePayload.ai_autonomy = autonomy
+			updatePayload.ai_autonomy = autonomy;
 		}
 	}
 	// Convert simplified identity_type back to identity_mode + identity_field
 	if (formData.has("identity_type")) {
-		const type = formData.get("identity_type")
+		const type = formData.get("identity_type");
 		if (type === "anonymous") {
-			updatePayload.identity_mode = "anonymous"
-			updatePayload.identity_field = "email" // default, not used
+			updatePayload.identity_mode = "anonymous";
+			updatePayload.identity_field = "email"; // default, not used
 		} else if (type === "email") {
-			updatePayload.identity_mode = "identified"
-			updatePayload.identity_field = "email"
+			updatePayload.identity_mode = "identified";
+			updatePayload.identity_field = "email";
 		} else if (type === "phone") {
-			updatePayload.identity_mode = "identified"
-			updatePayload.identity_field = "phone"
+			updatePayload.identity_mode = "identified";
+			updatePayload.identity_field = "phone";
 		}
 	}
 
@@ -229,7 +229,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		.eq("account_id", accountId)
 		.eq("id", listId)
 		.select("id")
-		.maybeSingle()
+		.maybeSingle();
 
 	if (error) {
 		if (error.code === "23505") {
@@ -239,7 +239,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					values: { ...payload, questions: payload.questions },
 				},
 				{ status: 400 }
-			)
+			);
 		}
 		return Response.json<EditActionData>(
 			{
@@ -247,7 +247,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				values: { ...payload, questions: payload.questions },
 			},
 			{ status: 500 }
-		)
+		);
 	}
 
 	if (!data) {
@@ -257,10 +257,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				values: { ...payload, questions: payload.questions },
 			},
 			{ status: 500 }
-		)
+		);
 	}
 
-	return { ok: true, values: { ...payload, questions: payload.questions } }
+	return { ok: true, values: { ...payload, questions: payload.questions } };
 }
 
 export default function EditResearchLinkPage() {
@@ -272,109 +272,109 @@ export default function EditResearchLinkPage() {
 		questions: initialQuestions,
 		walkthroughSignedUrl: initialWalkthroughUrl,
 		walkthroughThumbnailUrl: initialWalkthroughThumbnailUrl,
-	} = useLoaderData<typeof loader>()
-	const actionData = useActionData<EditActionData>()
-	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`)
-	const navigation = useNavigation()
-	const isSubmitting = navigation.state === "submitting"
+	} = useLoaderData<typeof loader>();
+	const actionData = useActionData<EditActionData>();
+	const routes = createRouteDefinitions(`/a/${accountId}/${projectId}`);
+	const navigation = useNavigation();
+	const isSubmitting = navigation.state === "submitting";
 
-	const [name, setName] = useState(list.name)
-	const [slug, setSlug] = useState(list.slug)
-	const [slugEdited, setSlugEdited] = useState(true)
-	const [heroTitle, setHeroTitle] = useState(list.hero_title ?? "")
-	const [heroSubtitle, setHeroSubtitle] = useState(list.hero_subtitle ?? "")
-	const [instructions, setInstructions] = useState((list as { instructions?: string | null }).instructions ?? "")
-	const [heroCtaLabel, setHeroCtaLabel] = useState(list.hero_cta_label ?? "Continue")
-	const [heroCtaHelper, setHeroCtaHelper] = useState(list.hero_cta_helper ?? "")
-	const [calendarUrl, setCalendarUrl] = useState(list.calendar_url ?? "")
-	const [redirectUrl, setRedirectUrl] = useState(list.redirect_url ?? "")
-	const [allowChat, setAllowChat] = useState(Boolean(list.allow_chat))
-	const [allowVoice, setAllowVoice] = useState(Boolean(list.allow_voice))
-	const [allowVideo, setAllowVideo] = useState(Boolean(list.allow_video))
+	const [name, setName] = useState(list.name);
+	const [slug, setSlug] = useState(list.slug);
+	const [slugEdited, setSlugEdited] = useState(true);
+	const [heroTitle, setHeroTitle] = useState(list.hero_title ?? "");
+	const [heroSubtitle, setHeroSubtitle] = useState(list.hero_subtitle ?? "");
+	const [instructions, setInstructions] = useState((list as { instructions?: string | null }).instructions ?? "");
+	const [heroCtaLabel, setHeroCtaLabel] = useState(list.hero_cta_label ?? "Continue");
+	const [heroCtaHelper, setHeroCtaHelper] = useState(list.hero_cta_helper ?? "");
+	const [calendarUrl, setCalendarUrl] = useState(list.calendar_url ?? "");
+	const [redirectUrl, setRedirectUrl] = useState(list.redirect_url ?? "");
+	const [allowChat, setAllowChat] = useState(Boolean(list.allow_chat));
+	const [allowVoice, setAllowVoice] = useState(Boolean(list.allow_voice));
+	const [allowVideo, setAllowVideo] = useState(Boolean(list.allow_video));
 	const [defaultResponseMode, setDefaultResponseMode] = useState<"form" | "chat" | "voice">(
 		(list.default_response_mode as "form" | "chat" | "voice") ?? "form"
-	)
-	const [isLive, setIsLive] = useState(Boolean(list.is_live))
+	);
+	const [isLive, setIsLive] = useState(Boolean(list.is_live));
 	const [aiAutonomy, setAiAutonomy] = useState<"strict" | "moderate" | "adaptive">(
 		((list as { ai_autonomy?: string }).ai_autonomy as "strict" | "moderate" | "adaptive") ?? "strict"
-	)
+	);
 	// Simplified identity type: anonymous | email | phone
 	const [identityType, setIdentityType] = useState<"anonymous" | "email" | "phone">(() => {
-		const mode = (list as { identity_mode?: string }).identity_mode as "anonymous" | "identified" | undefined
-		const field = (list as { identity_field?: string }).identity_field as "email" | "phone" | undefined
-		if (mode === "anonymous") return "anonymous"
-		return field || "email"
-	})
-	const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(initialWalkthroughUrl ?? null)
+		const mode = (list as { identity_mode?: string }).identity_mode as "anonymous" | "identified" | undefined;
+		const field = (list as { identity_field?: string }).identity_field as "email" | "phone" | undefined;
+		if (mode === "anonymous") return "anonymous";
+		return field || "email";
+	});
+	const [walkthroughVideoUrl, setWalkthroughVideoUrl] = useState<string | null>(initialWalkthroughUrl ?? null);
 	const [walkthroughThumbnailUrl, setWalkthroughThumbnailUrl] = useState<string | null>(
 		initialWalkthroughThumbnailUrl ?? null
-	)
-	const [copiedLink, setCopiedLink] = useState(false)
+	);
+	const [copiedLink, setCopiedLink] = useState(false);
 	const [questions, setQuestions] = useState<ResearchLinkQuestion[]>(() => {
-		if (initialQuestions.length > 0) return initialQuestions
-		return [createEmptyQuestion()]
-	})
+		if (initialQuestions.length > 0) return initialQuestions;
+		return [createEmptyQuestion()];
+	});
 
 	useEffect(() => {
 		if (!slugEdited) {
-			const nextSlug = slugify(name || "research-link", { lowercase: true })
-			setSlug(nextSlug)
+			const nextSlug = slugify(name || "research-link", { lowercase: true });
+			setSlug(nextSlug);
 		}
-	}, [name, slugEdited])
+	}, [name, slugEdited]);
 
 	useEffect(() => {
 		if (!allowChat && defaultResponseMode === "chat") {
-			setDefaultResponseMode("form")
+			setDefaultResponseMode("form");
 		}
 		if (!allowVoice && defaultResponseMode === "voice") {
-			setDefaultResponseMode("form")
+			setDefaultResponseMode("form");
 		}
-	}, [allowChat, allowVoice, defaultResponseMode])
+	}, [allowChat, allowVoice, defaultResponseMode]);
 
 	useEffect(() => {
 		if (actionData?.values?.questions) {
-			setQuestions(actionData.values.questions.length ? actionData.values.questions : [createEmptyQuestion()])
+			setQuestions(actionData.values.questions.length ? actionData.values.questions : [createEmptyQuestion()]);
 		}
-	}, [actionData?.values?.questions])
+	}, [actionData?.values?.questions]);
 
 	useEffect(() => {
 		if (actionData?.ok && actionData.values) {
-			if (typeof actionData.values.name === "string") setName(actionData.values.name)
-			if (typeof actionData.values.slug === "string") setSlug(actionData.values.slug)
-			if (typeof actionData.values.heroTitle === "string") setHeroTitle(actionData.values.heroTitle)
-			if (typeof actionData.values.heroSubtitle === "string") setHeroSubtitle(actionData.values.heroSubtitle)
-			if (typeof actionData.values.instructions === "string") setInstructions(actionData.values.instructions)
-			if (typeof actionData.values.heroCtaLabel === "string") setHeroCtaLabel(actionData.values.heroCtaLabel)
-			if (typeof actionData.values.heroCtaHelper === "string") setHeroCtaHelper(actionData.values.heroCtaHelper)
-			if (typeof actionData.values.calendarUrl === "string") setCalendarUrl(actionData.values.calendarUrl)
-			if (typeof actionData.values.redirectUrl === "string") setRedirectUrl(actionData.values.redirectUrl)
-			if (typeof actionData.values.allowChat === "boolean") setAllowChat(actionData.values.allowChat)
-			if (typeof actionData.values.allowVoice === "boolean") setAllowVoice(actionData.values.allowVoice)
-			if (typeof actionData.values.allowVideo === "boolean") setAllowVideo(actionData.values.allowVideo)
+			if (typeof actionData.values.name === "string") setName(actionData.values.name);
+			if (typeof actionData.values.slug === "string") setSlug(actionData.values.slug);
+			if (typeof actionData.values.heroTitle === "string") setHeroTitle(actionData.values.heroTitle);
+			if (typeof actionData.values.heroSubtitle === "string") setHeroSubtitle(actionData.values.heroSubtitle);
+			if (typeof actionData.values.instructions === "string") setInstructions(actionData.values.instructions);
+			if (typeof actionData.values.heroCtaLabel === "string") setHeroCtaLabel(actionData.values.heroCtaLabel);
+			if (typeof actionData.values.heroCtaHelper === "string") setHeroCtaHelper(actionData.values.heroCtaHelper);
+			if (typeof actionData.values.calendarUrl === "string") setCalendarUrl(actionData.values.calendarUrl);
+			if (typeof actionData.values.redirectUrl === "string") setRedirectUrl(actionData.values.redirectUrl);
+			if (typeof actionData.values.allowChat === "boolean") setAllowChat(actionData.values.allowChat);
+			if (typeof actionData.values.allowVoice === "boolean") setAllowVoice(actionData.values.allowVoice);
+			if (typeof actionData.values.allowVideo === "boolean") setAllowVideo(actionData.values.allowVideo);
 			if (typeof actionData.values.defaultResponseMode === "string") {
-				const mode = actionData.values.defaultResponseMode
-				setDefaultResponseMode(mode === "chat" ? "chat" : mode === "voice" ? "voice" : "form")
+				const mode = actionData.values.defaultResponseMode;
+				setDefaultResponseMode(mode === "chat" ? "chat" : mode === "voice" ? "voice" : "form");
 			}
-			if (typeof actionData.values.isLive === "boolean") setIsLive(actionData.values.isLive)
+			if (typeof actionData.values.isLive === "boolean") setIsLive(actionData.values.isLive);
 		}
-	}, [actionData?.ok, actionData?.values])
+	}, [actionData?.ok, actionData?.values]);
 
-	const questionsJson = useMemo(() => JSON.stringify(questions), [questions])
+	const questionsJson = useMemo(() => JSON.stringify(questions), [questions]);
 	const publicLink = useMemo(() => {
-		const path = routes.ask.public(slug || "your-slug")
-		if (typeof window === "undefined") return path
-		return `${window.location.origin}${path}`
-	}, [routes, slug])
+		const path = routes.ask.public(slug || "your-slug");
+		if (typeof window === "undefined") return path;
+		return `${window.location.origin}${path}`;
+	}, [routes, slug]);
 
 	const handleCopyLink = async () => {
 		try {
-			await navigator.clipboard.writeText(publicLink)
-			setCopiedLink(true)
-			window.setTimeout(() => setCopiedLink(false), 2000)
+			await navigator.clipboard.writeText(publicLink);
+			setCopiedLink(true);
+			window.setTimeout(() => setCopiedLink(false), 2000);
 		} catch {
-			setCopiedLink(false)
+			setCopiedLink(false);
 		}
-	}
+	};
 
 	return (
 		<PageContainer className="max-w-3xl space-y-4">
@@ -438,9 +438,9 @@ export default function EditResearchLinkPage() {
 													const slugified = slugify(event.target.value, {
 														lowercase: true,
 														preserveLeadingUnderscore: false,
-													})
-													setSlug(slugified)
-													setSlugEdited(true)
+													});
+													setSlug(slugified);
+													setSlugEdited(true);
 												}}
 												required
 												className="h-9"
@@ -559,12 +559,12 @@ export default function EditResearchLinkPage() {
 													listId={list.id}
 													existingVideoUrl={walkthroughVideoUrl}
 													onUploadComplete={(url) => {
-														setWalkthroughVideoUrl(url)
-														setWalkthroughThumbnailUrl(null)
+														setWalkthroughVideoUrl(url);
+														setWalkthroughThumbnailUrl(null);
 													}}
 													onDelete={() => {
-														setWalkthroughVideoUrl(null)
-														setWalkthroughThumbnailUrl(null)
+														setWalkthroughVideoUrl(null);
+														setWalkthroughThumbnailUrl(null);
 													}}
 												/>
 											</div>
@@ -820,5 +820,5 @@ export default function EditResearchLinkPage() {
 				</div>
 			</Form>
 		</PageContainer>
-	)
+	);
 }

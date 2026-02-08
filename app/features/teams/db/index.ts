@@ -1,2 +1,2 @@
-export * from "./accounts"
-export * from "./invitations"
+export * from "./accounts";
+export * from "./invitations";

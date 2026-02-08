@@ -5,22 +5,22 @@
  * Large touch targets, clear visual hierarchy.
  */
 
-import { FileAudio, FileText, Mic, Target, Upload } from "lucide-react"
-import { Link } from "react-router"
-import { Card, CardContent } from "~/components/ui/card"
-import { cn } from "~/lib/utils"
+import { FileAudio, FileText, Mic, Target, Upload } from "lucide-react";
+import { Link } from "react-router";
+import { Card, CardContent } from "~/components/ui/card";
+import { cn } from "~/lib/utils";
 
 export interface EmptyStateProps {
 	/** Project name to display */
-	projectName: string
+	projectName: string;
 	/** Link to project goals/setup */
-	goalsHref: string
+	goalsHref: string;
 	/** Link to upload page */
-	uploadHref: string
+	uploadHref: string;
 	/** Whether goals have been set up */
-	hasGoals?: boolean
+	hasGoals?: boolean;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function EmptyState({ projectName, goalsHref, uploadHref, hasGoals = false, className }: EmptyStateProps) {
@@ -86,7 +86,7 @@ export function EmptyState({ projectName, goalsHref, uploadHref, hasGoals = fals
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
 
-export default EmptyState
+export default EmptyState;

@@ -1,15 +1,15 @@
-import type { CSSProperties } from "react"
-import { Badge } from "~/components/ui/badge"
-import { cn } from "~/lib/utils"
+import type { CSSProperties } from "react";
+import { Badge } from "~/components/ui/badge";
+import { cn } from "~/lib/utils";
 
 interface Tag {
-	name: string
-	frequency: number
+	name: string;
+	frequency: number;
 }
 
 interface TagDisplayProps {
-	tags?: Tag[]
-	maxTags?: number
+	tags?: Tag[];
+	maxTags?: number;
 }
 
 export const StyledTag = ({ name, style, frequency }: { name: string; style: CSSProperties; frequency?: number }) => {
@@ -24,38 +24,38 @@ export const StyledTag = ({ name, style, frequency }: { name: string; style: CSS
 				{frequency && <span className="ml-2 text-xs opacity-90">{frequency}</span>}
 			</Badge>
 		</div>
-	)
-}
+	);
+};
 
 export default function TagDisplay({ tags = [], maxTags = 5 }: TagDisplayProps) {
-	const defaultTags: Tag[] = []
+	const defaultTags: Tag[] = [];
 
 	// Use provided tags or default tags, then limit to maxTags
-	const allTags = tags.length > 0 ? tags : defaultTags
+	const allTags = tags.length > 0 ? tags : defaultTags;
 	const displayTags = allTags
 		.sort((a, b) => b.frequency - a.frequency) // Sort by frequency descending
-		.slice(0, maxTags) // Take only the top N tags
+		.slice(0, maxTags); // Take only the top N tags
 
 	// Find min and max frequencies for normalization
-	const frequencies = displayTags.map((tag) => tag.frequency)
-	const minFreq = Math.min(...frequencies)
-	const maxFreq = Math.max(...frequencies)
+	const frequencies = displayTags.map((tag) => tag.frequency);
+	const minFreq = Math.min(...frequencies);
+	const maxFreq = Math.max(...frequencies);
 
 	// Get vibrant, high-contrast styling based on frequency
 	const getTagStyle = (frequency: number) => {
-		const normalized = (frequency - minFreq) / (maxFreq - minFreq)
+		const normalized = (frequency - minFreq) / (maxFreq - minFreq);
 
 		// Create distinct frequency tiers for better visual hierarchy
-		let tier = 0
+		let tier = 0;
 		if (normalized > 0.8)
-			tier = 4 // Top 20%
+			tier = 4; // Top 20%
 		else if (normalized > 0.6)
-			tier = 3 // 60-80%
+			tier = 3; // 60-80%
 		else if (normalized > 0.4)
-			tier = 2 // 40-60%
+			tier = 2; // 40-60%
 		else if (normalized > 0.2)
-			tier = 1 // 20-40%
-		else tier = 0 // Bottom 20%
+			tier = 1; // 20-40%
+		else tier = 0; // Bottom 20%
 
 		const styles = [
 			// Tier 0 - Lowest frequency
@@ -99,13 +99,13 @@ export default function TagDisplay({ tags = [], maxTags = 5 }: TagDisplayProps) 
 				border: "2px solid #1e3a8a",
 				boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
 			},
-		]
+		];
 
-		return styles[tier]
-	}
+		return styles[tier];
+	};
 
 	if (displayTags.length === 0) {
-		return <div className="mx-auto flex w-full max-w-2xl items-center p-6">No insight tags yet</div>
+		return <div className="mx-auto flex w-full max-w-2xl items-center p-6">No insight tags yet</div>;
 	}
 
 	return (
@@ -119,7 +119,7 @@ export default function TagDisplay({ tags = [], maxTags = 5 }: TagDisplayProps) 
 				{displayTags
 					.sort((a, b) => b.frequency - a.frequency)
 					.map((tag, _index) => {
-						const style = getTagStyle(tag.frequency)
+						const style = getTagStyle(tag.frequency);
 
 						return (
 							<StyledTag
@@ -128,9 +128,9 @@ export default function TagDisplay({ tags = [], maxTags = 5 }: TagDisplayProps) 
 								style={style}
 								frequency={tag.frequency > 1 ? tag.frequency : undefined}
 							/>
-						)
+						);
 					})}
 			</div>
 		</div>
-	)
+	);
 }

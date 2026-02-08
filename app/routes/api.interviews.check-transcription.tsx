@@ -8,41 +8,41 @@
  * Called by ProcessingScreen when an interview appears stuck.
  */
 
-import { tasks } from "@trigger.dev/sdk/v3"
-import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
-import type { Json } from "~/../supabase/types"
-import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { tasks } from "@trigger.dev/sdk/v3";
+import consola from "consola";
+import type { ActionFunctionArgs } from "react-router";
+import type { Json } from "~/../supabase/types";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server";
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return Response.json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
-		const { interviewId } = await request.json()
+		const { interviewId } = await request.json();
 
 		if (!interviewId) {
-			return Response.json({ error: "Missing interviewId" }, { status: 400 })
+			return Response.json({ error: "Missing interviewId" }, { status: 400 });
 		}
 
-		const supabase = createSupabaseAdminClient()
+		const supabase = createSupabaseAdminClient();
 
 		// Fetch interview with transcription metadata
 		const { data: interview, error: fetchError } = await supabase
 			.from("interviews")
 			.select("id, status, transcript, conversation_analysis, account_id, project_id, title, participant_pseudonym")
 			.eq("id", interviewId)
-			.single()
+			.single();
 
 		if (fetchError || !interview) {
-			return Response.json({ error: "Interview not found" }, { status: 404 })
+			return Response.json({ error: "Interview not found" }, { status: 404 });
 		}
 
-		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown>) || {}
-		const transcriptData = (conversationAnalysis.transcript_data as Record<string, unknown>) || {}
-		const assemblyaiId = transcriptData.assemblyai_id as string | undefined
+		const conversationAnalysis = (interview.conversation_analysis as Record<string, unknown>) || {};
+		const transcriptData = (conversationAnalysis.transcript_data as Record<string, unknown>) || {};
+		const assemblyaiId = transcriptData.assemblyai_id as string | undefined;
 
 		// Check if already processed
 		if (interview.status === "ready" || interview.status === "transcribed") {
@@ -50,7 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				success: true,
 				status: interview.status,
 				message: "Already processed",
-			})
+			});
 		}
 
 		// Check if there's a pending AssemblyAI transcription
@@ -61,26 +61,26 @@ export async function action({ request }: ActionFunctionArgs) {
 				.from("interviews")
 				.select("media_url, source_type")
 				.eq("id", interviewId)
-				.single()
+				.single();
 
-			const mediaUrl = fullInterview?.media_url
+			const mediaUrl = fullInterview?.media_url;
 			const isAudioVideo =
-				fullInterview?.source_type === "audio_upload" || fullInterview?.source_type === "video_upload"
+				fullInterview?.source_type === "audio_upload" || fullInterview?.source_type === "video_upload";
 
 			if (mediaUrl && isAudioVideo) {
-				consola.info("[check-transcription] No assemblyai_id but has media_url - submitting fresh to AssemblyAI")
+				consola.info("[check-transcription] No assemblyai_id but has media_url - submitting fresh to AssemblyAI");
 
 				// Generate presigned URL for AssemblyAI to access the R2 file
-				const { createR2PresignedReadUrl } = await import("~/utils/r2.server")
-				const presignedUrl = createR2PresignedReadUrl(mediaUrl, 3600)
+				const { createR2PresignedReadUrl } = await import("~/utils/r2.server");
+				const presignedUrl = createR2PresignedReadUrl(mediaUrl, 3600);
 
 				if (!presignedUrl) {
-					return Response.json({ error: "Failed to generate presigned URL for media file" }, { status: 500 })
+					return Response.json({ error: "Failed to generate presigned URL for media file" }, { status: 500 });
 				}
 
-				const apiKey = process.env.ASSEMBLYAI_API_KEY
+				const apiKey = process.env.ASSEMBLYAI_API_KEY;
 				if (!apiKey) {
-					return Response.json({ error: "AssemblyAI not configured" }, { status: 500 })
+					return Response.json({ error: "AssemblyAI not configured" }, { status: 500 });
 				}
 
 				// Determine webhook URL
@@ -88,8 +88,8 @@ export async function action({ request }: ActionFunctionArgs) {
 					? `https://${process.env.PUBLIC_TUNNEL_URL}`
 					: process.env.FLY_APP_NAME
 						? `https://${process.env.FLY_APP_NAME}.fly.dev`
-						: "https://getupsight.com"
-				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`
+						: "https://getupsight.com";
+				const webhookUrl = `${baseUrl}/api/assemblyai-webhook`;
 
 				// Submit to AssemblyAI
 				const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
@@ -107,21 +107,21 @@ export async function action({ request }: ActionFunctionArgs) {
 						punctuate: true,
 						sentiment_analysis: false,
 					}),
-				})
+				});
 
 				if (!transcriptResponse.ok) {
-					const errorText = await transcriptResponse.text()
-					consola.error("[check-transcription] AssemblyAI submission failed:", errorText)
+					const errorText = await transcriptResponse.text();
+					consola.error("[check-transcription] AssemblyAI submission failed:", errorText);
 					return Response.json(
 						{
 							error: `AssemblyAI submission failed: ${transcriptResponse.status}`,
 						},
 						{ status: 500 }
-					)
+					);
 				}
 
-				const assemblyData = await transcriptResponse.json()
-				consola.info("[check-transcription] AssemblyAI job created (recovery):", assemblyData.id)
+				const assemblyData = await transcriptResponse.json();
+				consola.info("[check-transcription] AssemblyAI job created (recovery):", assemblyData.id);
 
 				// Update interview with AssemblyAI ID for future polling
 				await supabase
@@ -139,52 +139,52 @@ export async function action({ request }: ActionFunctionArgs) {
 							status_detail: "Transcription submitted (recovery)",
 						} as Json,
 					})
-					.eq("id", interviewId)
+					.eq("id", interviewId);
 
 				return Response.json({
 					success: true,
 					status: "processing",
 					assemblyaiId: assemblyData.id,
 					message: "Transcription submitted via recovery path",
-				})
+				});
 			}
 
 			return Response.json({
 				success: false,
 				status: interview.status,
 				message: "No pending transcription found and no media file to process",
-			})
+			});
 		}
 
 		// Check if orchestrator is already running
-		const existingRunId = conversationAnalysis.trigger_run_id as string | undefined
+		const existingRunId = conversationAnalysis.trigger_run_id as string | undefined;
 		if (existingRunId) {
 			return Response.json({
 				success: true,
 				status: "processing",
 				runId: existingRunId,
 				message: "Orchestrator already running",
-			})
+			});
 		}
 
 		// Poll AssemblyAI for transcription status
-		const apiKey = process.env.ASSEMBLYAI_API_KEY
+		const apiKey = process.env.ASSEMBLYAI_API_KEY;
 		if (!apiKey) {
-			return Response.json({ error: "AssemblyAI not configured" }, { status: 500 })
+			return Response.json({ error: "AssemblyAI not configured" }, { status: 500 });
 		}
 
-		consola.info(`[check-transcription] Polling AssemblyAI for ${assemblyaiId}`)
+		consola.info(`[check-transcription] Polling AssemblyAI for ${assemblyaiId}`);
 
 		const assemblyResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${assemblyaiId}`, {
 			headers: { Authorization: apiKey },
-		})
+		});
 
 		if (!assemblyResponse.ok) {
-			return Response.json({ error: `AssemblyAI request failed: ${assemblyResponse.status}` }, { status: 500 })
+			return Response.json({ error: `AssemblyAI request failed: ${assemblyResponse.status}` }, { status: 500 });
 		}
 
-		const assemblyData = await assemblyResponse.json()
-		consola.info(`[check-transcription] AssemblyAI status: ${assemblyData.status}`)
+		const assemblyData = await assemblyResponse.json();
+		consola.info(`[check-transcription] AssemblyAI status: ${assemblyData.status}`);
 
 		if (assemblyData.status === "queued" || assemblyData.status === "processing") {
 			// Still processing, nothing to do
@@ -193,7 +193,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				status: "transcribing",
 				assemblyStatus: assemblyData.status,
 				message: "Transcription still in progress",
-			})
+			});
 		}
 
 		if (assemblyData.status === "error") {
@@ -208,17 +208,17 @@ export async function action({ request }: ActionFunctionArgs) {
 						last_error: assemblyData.error || "AssemblyAI transcription failed",
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			return Response.json({
 				success: false,
 				status: "error",
 				message: assemblyData.error || "Transcription failed",
-			})
+			});
 		}
 
 		if (assemblyData.status === "completed") {
-			consola.info(`[check-transcription] Transcription complete, resuming processing for ${interviewId}`)
+			consola.info(`[check-transcription] Transcription complete, resuming processing for ${interviewId}`);
 
 			// Format transcript data
 			const formattedTranscriptData = safeSanitizeTranscriptPayload({
@@ -234,7 +234,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				sentiment_analysis_results: assemblyData.sentiment_analysis_results || [],
 				auto_chapters: assemblyData.auto_chapters || assemblyData.chapters || [],
 				language_code: assemblyData.language_code,
-			})
+			});
 
 			// Update interview with transcript
 			await supabase
@@ -245,46 +245,46 @@ export async function action({ request }: ActionFunctionArgs) {
 					transcript_formatted: formattedTranscriptData as Json,
 					duration_sec: assemblyData.audio_duration ? Math.round(assemblyData.audio_duration) : null,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			// Check if this is a voice memo (skip analysis)
-			const isVoiceMemo = conversationAnalysis.voice_memo_only === true
+			const isVoiceMemo = conversationAnalysis.voice_memo_only === true;
 			if (isVoiceMemo) {
 				await supabase
 					.from("interviews")
 					.update({ status: "ready" as const })
-					.eq("id", interviewId)
+					.eq("id", interviewId);
 
 				return Response.json({
 					success: true,
 					status: "ready",
 					message: "Voice memo transcription complete",
-				})
+				});
 			}
 
 			// Trigger orchestrator for full analysis
-			const customInstructions = (conversationAnalysis.custom_instructions as string) || ""
+			const customInstructions = (conversationAnalysis.custom_instructions as string) || "";
 			const uploadMetadata = {
 				file_name: transcriptData.file_name as string | undefined,
 				external_url: transcriptData.external_url as string | undefined,
-			}
+			};
 
 			// Fetch participant info
-			let participantName: string | undefined
+			let participantName: string | undefined;
 			const { data: interviewPeople } = await supabase
 				.from("interview_people")
 				.select("display_name, role, people(name)")
-				.eq("interview_id", interviewId)
+				.eq("interview_id", interviewId);
 
 			if (interviewPeople?.length) {
-				const participant = interviewPeople.find((p) => p.role !== "interviewer") || interviewPeople[0]
+				const participant = interviewPeople.find((p) => p.role !== "interviewer") || interviewPeople[0];
 				participantName =
-					participant?.display_name || (participant?.people as { name: string | null } | null)?.name || undefined
+					participant?.display_name || (participant?.people as { name: string | null } | null)?.name || undefined;
 			}
 			if (!participantName && interview.participant_pseudonym) {
-				const pseudonym = interview.participant_pseudonym
+				const pseudonym = interview.participant_pseudonym;
 				if (!pseudonym.match(/^(Participant|Anonymous)\s*\d*$/i)) {
-					participantName = pseudonym
+					participantName = pseudonym;
 				}
 			}
 
@@ -295,7 +295,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				interviewTitle: interview.title ?? undefined,
 				fileName: uploadMetadata.file_name,
 				participantName,
-			}
+			};
 
 			// Update status before triggering
 			await supabase
@@ -309,10 +309,10 @@ export async function action({ request }: ActionFunctionArgs) {
 						completed_steps: [...((conversationAnalysis.completed_steps as string[]) || []), "transcription"],
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
 			// Trigger v2 orchestrator with idempotency key
-			const idempotencyKey = `interview-orchestrator-${interviewId}`
+			const idempotencyKey = `interview-orchestrator-${interviewId}`;
 
 			const handle = await tasks.trigger(
 				"interview.v2.orchestrator",
@@ -325,7 +325,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					userCustomInstructions: customInstructions,
 				},
 				{ idempotencyKey, idempotencyKeyTTL: "24h" }
-			)
+			);
 
 			// Store trigger run ID
 			await supabase
@@ -339,16 +339,16 @@ export async function action({ request }: ActionFunctionArgs) {
 						completed_steps: [...((conversationAnalysis.completed_steps as string[]) || []), "transcription"],
 					} as Json,
 				})
-				.eq("id", interviewId)
+				.eq("id", interviewId);
 
-			consola.success(`[check-transcription] Triggered orchestrator: ${handle.id}`)
+			consola.success(`[check-transcription] Triggered orchestrator: ${handle.id}`);
 
 			return Response.json({
 				success: true,
 				status: "processing",
 				runId: handle.id,
 				message: "Resumed processing via polling fallback",
-			})
+			});
 		}
 
 		// Unknown status
@@ -357,9 +357,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			status: interview.status,
 			assemblyStatus: assemblyData.status,
 			message: `Unknown AssemblyAI status: ${assemblyData.status}`,
-		})
+		});
 	} catch (error) {
-		consola.error("[check-transcription] Error:", error)
-		return Response.json({ error: error instanceof Error ? error.message : "Check failed" }, { status: 500 })
+		consola.error("[check-transcription] Error:", error);
+		return Response.json({ error: error instanceof Error ? error.message : "Check failed" }, { status: 500 });
 	}
 }

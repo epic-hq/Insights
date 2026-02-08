@@ -5,35 +5,35 @@
  * Each phase has clear steps and progress indication.
  */
 
-import { ArrowRight, Building2, FileText, Lightbulb, MessageSquareText, Mic, Settings, Upload } from "lucide-react"
-import { Link } from "react-router-dom"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
-import { cn } from "~/lib/utils"
+import { ArrowRight, Building2, FileText, Lightbulb, MessageSquareText, Mic, Settings, Upload } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { cn } from "~/lib/utils";
 
 export interface OnboardingDashboardProps {
 	/** Project name to display */
-	projectName: string
+	projectName: string;
 	/** Base path for project routes */
-	projectPath: string
+	projectPath: string;
 	/** Project ID for skip functionality */
-	projectId: string
+	projectId: string;
 	/** Whether project goals have been set up */
-	hasGoals: boolean
+	hasGoals: boolean;
 	/** Whether lenses have been configured */
-	hasLenses: boolean
+	hasLenses: boolean;
 	/** Whether company context has been set up */
-	hasCompanyContext: boolean
+	hasCompanyContext: boolean;
 	/** Whether interview prompts have been generated */
-	hasPrompts?: boolean
+	hasPrompts?: boolean;
 	/** Whether the user has conversations */
-	hasConversations?: boolean
+	hasConversations?: boolean;
 	/** Whether the user has applied lenses */
-	hasAppliedLenses?: boolean
+	hasAppliedLenses?: boolean;
 	/** Hide the header (when parent provides it) */
-	hideHeader?: boolean
+	hideHeader?: boolean;
 	/** Additional CSS classes */
-	className?: string
+	className?: string;
 }
 
 export function OnboardingDashboard({
@@ -51,11 +51,11 @@ export function OnboardingDashboard({
 }: OnboardingDashboardProps) {
 	// Determine current phase
 	// Plan phase requires: context (company + goals) AND interview prompts
-	const phase1Complete = hasGoals && hasPrompts
-	const phase2Complete = hasConversations
-	const _phase3Complete = hasAppliedLenses
+	const phase1Complete = hasGoals && hasPrompts;
+	const phase2Complete = hasConversations;
+	const _phase3Complete = hasAppliedLenses;
 
-	const currentPhase = phase1Complete ? (phase2Complete ? 3 : 2) : 1
+	const currentPhase = phase1Complete ? (phase2Complete ? 3 : 2) : 1;
 
 	return (
 		<div className={cn("mx-auto max-w-2xl", className)}>
@@ -188,7 +188,7 @@ export function OnboardingDashboard({
 				</Link>
 			</div>
 		</div>
-	)
+	);
 }
 
-export default OnboardingDashboard
+export default OnboardingDashboard;

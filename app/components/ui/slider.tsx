@@ -1,7 +1,7 @@
-import * as SliderPrimitive from "@radix-ui/react-slider"
-import * as React from "react"
+import * as SliderPrimitive from "@radix-ui/react-slider";
+import * as React from "react";
 
-import { cn } from "~/lib/utils"
+import { cn } from "~/lib/utils";
 
 function Slider({
 	className,
@@ -12,14 +12,14 @@ function Slider({
 	...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
 	// Determine controlled vs uncontrolled to avoid passing both value and defaultValue
-	const isControlled = value !== undefined
+	const isControlled = value !== undefined;
 
 	// Stable list length for rendering thumbs (do not generate new arrays unnecessarily)
 	const _values = React.useMemo(() => {
-		if (isControlled && Array.isArray(value)) return value
-		if (!isControlled && Array.isArray(defaultValue)) return defaultValue
-		return [min]
-	}, [isControlled, value, defaultValue, min])
+		if (isControlled && Array.isArray(value)) return value;
+		if (!isControlled && Array.isArray(defaultValue)) return defaultValue;
+		return [min];
+	}, [isControlled, value, defaultValue, min]);
 
 	return (
 		<SliderPrimitive.Root
@@ -52,7 +52,7 @@ function Slider({
 				/>
 			))}
 		</SliderPrimitive.Root>
-	)
+	);
 }
 
-export { Slider }
+export { Slider };

@@ -1,4 +1,4 @@
-import slugify from "@sindresorhus/slugify"
+import slugify from "@sindresorhus/slugify";
 import {
 	Building2,
 	Check,
@@ -13,12 +13,12 @@ import {
 	Twitter,
 	User,
 	X,
-} from "lucide-react"
-import { useMemo, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
-import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog"
-import { PageContainer } from "~/components/layout/PageContainer"
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useFetcher, useLoaderData, useNavigation } from "react-router-dom";
+import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog";
+import { PageContainer } from "~/components/layout/PageContainer";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -29,48 +29,48 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-} from "~/components/ui/alert-dialog"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { MediaInput } from "~/components/ui/MediaInput"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
+} from "~/components/ui/alert-dialog";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { MediaInput } from "~/components/ui/MediaInput";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
 import {
 	createOrganization,
 	getOrganizations,
 	linkPersonToOrganization,
 	unlinkPersonFromOrganization,
-} from "~/features/organizations/db"
-import { deletePerson, getPersonById, updatePerson } from "~/features/people/db"
-import { getPersonas } from "~/features/personas/db"
-import { getFacetCatalog } from "~/lib/database/facets.server"
-import { userContext } from "~/server/user-context"
-import { createProjectRoutes } from "~/utils/routes.server"
+} from "~/features/organizations/db";
+import { deletePerson, getPersonById, updatePerson } from "~/features/people/db";
+import { getPersonas } from "~/features/personas/db";
+import { getFacetCatalog } from "~/lib/database/facets.server";
+import { userContext } from "~/server/user-context";
+import { createProjectRoutes } from "~/utils/routes.server";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `Edit ${data?.person?.name || "Person"} | Insights` },
 		{ name: "description", content: "Edit person details" },
-	]
-}
+	];
+};
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const personId = params.personId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const personId = params.personId;
 
 	if (!accountId || !projectId || !personId) {
 		throw new Response("Account ID, Project ID, and Person ID are required", {
 			status: 400,
-		})
+		});
 	}
 
 	try {
@@ -84,10 +84,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			getPersonas({ supabase, accountId, projectId }),
 			getFacetCatalog({ db: supabase, accountId, projectId }),
 			getOrganizations({ supabase, accountId, projectId }),
-		])
+		]);
 
 		if (!person) {
-			throw new Response("Person not found", { status: 404 })
+			throw new Response("Person not found", { status: 404 });
 		}
 
 		return {
@@ -97,29 +97,29 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			organizations: organizations || [],
 			accountId,
 			projectId,
-		}
+		};
 	} catch {
-		throw new Response("Failed to load person", { status: 500 })
+		throw new Response("Failed to load person", { status: 500 });
 	}
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const ctx = context.get(userContext);
+	const supabase = ctx.supabase;
 
 	// Both from URL params - consistent, explicit, RESTful
-	const accountId = params.accountId
-	const projectId = params.projectId
-	const personId = params.personId
+	const accountId = params.accountId;
+	const projectId = params.projectId;
+	const personId = params.personId;
 	if (!accountId || !projectId || !personId) {
 		throw new Response("Account ID, Project ID, and Person ID are required", {
 			status: 400,
-		})
+		});
 	}
-	const routes = createProjectRoutes(accountId, projectId)
+	const routes = createProjectRoutes(accountId, projectId);
 
-	const formData = await request.formData()
-	const intent = formData.get("intent") as string
+	const formData = await request.formData();
+	const intent = formData.get("intent") as string;
 
 	if (intent === "delete") {
 		try {
@@ -128,26 +128,26 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				id: personId,
 				accountId,
 				projectId,
-			})
+			});
 
-			return redirect(routes.people.index())
+			return redirect(routes.people.index());
 		} catch (err) {
-			console.error("Delete person action error:", err)
+			console.error("Delete person action error:", err);
 			return {
 				error: err instanceof Error ? err.message : "Failed to delete person",
-			}
+			};
 		}
 	}
 
 	// Handle organization linking
-	const _action = formData.get("_action") as string
+	const _action = formData.get("_action") as string;
 
 	if (_action === "link-organization") {
-		const organizationId = formData.get("organization_id") as string
-		const role = formData.get("role") as string
+		const organizationId = formData.get("organization_id") as string;
+		const role = formData.get("role") as string;
 
 		if (!organizationId) {
-			return { error: "Organization is required" }
+			return { error: "Organization is required" };
 		}
 
 		try {
@@ -159,22 +159,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				organizationId,
 				role: role || null,
 				isPrimary: true,
-			})
-			return { success: true }
+			});
+			return { success: true };
 		} catch (err) {
 			return {
 				error: err instanceof Error ? err.message : "Failed to link organization",
-			}
+			};
 		}
 	}
 
 	if (_action === "create-and-link-organization") {
-		const name = formData.get("name") as string
-		const location = formData.get("headquarters_location") as string
-		const role = formData.get("role") as string
+		const name = formData.get("name") as string;
+		const location = formData.get("headquarters_location") as string;
+		const role = formData.get("role") as string;
 
 		if (!name?.trim()) {
-			return { error: "Organization name is required" }
+			return { error: "Organization name is required" };
 		}
 
 		try {
@@ -187,10 +187,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 					name: name.trim(),
 					headquarters_location: location?.trim() || null,
 				},
-			})
+			});
 
 			if (createError || !newOrg) {
-				throw new Error(createError?.message || "Failed to create organization")
+				throw new Error(createError?.message || "Failed to create organization");
 			}
 
 			// Link the person to the new organization
@@ -202,21 +202,21 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				organizationId: newOrg.id,
 				role: role || null,
 				isPrimary: true,
-			})
+			});
 
-			return { success: true }
+			return { success: true };
 		} catch (err) {
 			return {
 				error: err instanceof Error ? err.message : "Failed to create and link organization",
-			}
+			};
 		}
 	}
 
 	if (_action === "unlink-organization") {
-		const organizationId = formData.get("organization_id") as string
+		const organizationId = formData.get("organization_id") as string;
 
 		if (!organizationId) {
-			return { error: "Organization is required" }
+			return { error: "Organization is required" };
 		}
 
 		try {
@@ -226,65 +226,65 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				projectId,
 				personId,
 				organizationId,
-			})
-			return { success: true }
+			});
+			return { success: true };
 		} catch (err) {
 			return {
 				error: err instanceof Error ? err.message : "Failed to unlink organization",
-			}
+			};
 		}
 	}
 
 	// Handle update
-	const firstname = formData.get("firstname") as string
-	const lastname = formData.get("lastname") as string
-	const description = formData.get("description") as string
-	const segment = formData.get("segment") as string
-	const image_url = formData.get("image_url") as string
-	const personaId = formData.get("persona_id") as string
+	const firstname = formData.get("firstname") as string;
+	const lastname = formData.get("lastname") as string;
+	const description = formData.get("description") as string;
+	const segment = formData.get("segment") as string;
+	const image_url = formData.get("image_url") as string;
+	const personaId = formData.get("persona_id") as string;
 
 	// Contact info fields
-	const primary_email = formData.get("primary_email") as string
-	const primary_phone = formData.get("primary_phone") as string
-	const title = formData.get("title") as string
+	const primary_email = formData.get("primary_email") as string;
+	const primary_phone = formData.get("primary_phone") as string;
+	const title = formData.get("title") as string;
 	// Note: company field removed from form - now handled via organization linking
-	const linkedin_url = formData.get("linkedin_url") as string
-	const website_url = formData.get("website_url") as string
+	const linkedin_url = formData.get("linkedin_url") as string;
+	const website_url = formData.get("website_url") as string;
 
 	// Social profiles (stored in contact_info JSONB)
-	const twitter = formData.get("twitter") as string
-	const instagram = formData.get("instagram") as string
+	const twitter = formData.get("twitter") as string;
+	const instagram = formData.get("instagram") as string;
 	const selectedFacetRefs = formData
 		.getAll("facetRefs")
 		.map((value) => value.toString())
-		.filter((value) => value.trim().length)
-	const newFacetKind = formData.get("newFacetKind")?.toString().trim() ?? ""
-	const newFacetLabel = formData.get("newFacetLabel")?.toString().trim() ?? ""
-	const newFacetSynonyms = formData.get("newFacetSynonyms")?.toString().trim() ?? ""
-	const _newFacetNotes = formData.get("newFacetNotes")?.toString().trim() ?? ""
+		.filter((value) => value.trim().length);
+	const newFacetKind = formData.get("newFacetKind")?.toString().trim() ?? "";
+	const newFacetLabel = formData.get("newFacetLabel")?.toString().trim() ?? "";
+	const newFacetSynonyms = formData.get("newFacetSynonyms")?.toString().trim() ?? "";
+	const _newFacetNotes = formData.get("newFacetNotes")?.toString().trim() ?? "";
 
 	if (!firstname?.trim()) {
-		return { error: "First name is required" }
+		return { error: "First name is required" };
 	}
 
 	try {
 		// Fetch existing person to merge contact_info
-		const { data: existingPerson } = await supabase.from("people").select("contact_info").eq("id", personId).single()
+		const { data: existingPerson } = await supabase.from("people").select("contact_info").eq("id", personId).single();
 
 		// Build contact_info JSONB by merging with existing data
-		const existingContactInfo = (existingPerson?.contact_info as Record<string, string>) || {}
-		const contactInfo: Record<string, string> = { ...existingContactInfo }
+		const existingContactInfo = (existingPerson?.contact_info as Record<string, string>) || {};
+		const contactInfo: Record<string, string> = { ...existingContactInfo };
 
 		// Update or remove social profiles based on form input
 		if (twitter?.trim()) {
-			contactInfo.twitter = twitter.trim()
+			contactInfo.twitter = twitter.trim();
 		} else {
-			delete contactInfo.twitter
+			delete contactInfo.twitter;
 		}
 		if (instagram?.trim()) {
-			contactInfo.instagram = instagram.trim()
+			contactInfo.instagram = instagram.trim();
 		} else {
-			delete contactInfo.instagram
+			delete contactInfo.instagram;
 		}
 
 		// Update person basic info (no longer includes persona or company fields)
@@ -307,10 +307,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				website_url: website_url?.trim() || null,
 				contact_info: Object.keys(contactInfo).length > 0 ? contactInfo : null,
 			},
-		})
+		});
 
 		if (!data) {
-			return { error: "Failed to update person" }
+			return { error: "Failed to update person" };
 		}
 
 		// Handle persona assignment via junction table
@@ -321,38 +321,38 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 					persona_id: personaId,
 				},
 				{ onConflict: "person_id,persona_id" }
-			)
+			);
 		} else {
 			// Remove all persona assignments if "none" is selected
-			await supabase.from("people_personas").delete().eq("person_id", personId)
+			await supabase.from("people_personas").delete().eq("person_id", personId);
 		}
 
 		// Synchronize facet assignments
 		let selectedFacetAccountIds = selectedFacetRefs
 			.map((ref) => {
-				const match = /^a:(\d+)$/.exec(ref)
-				return match ? Number.parseInt(match[1], 10) : null
+				const match = /^a:(\d+)$/.exec(ref);
+				return match ? Number.parseInt(match[1], 10) : null;
 			})
-			.filter((value): value is number => Number.isFinite(value))
+			.filter((value): value is number => Number.isFinite(value));
 
 		if (newFacetKind && newFacetLabel) {
 			const synonyms = newFacetSynonyms
 				.split(",")
 				.map((value) => value.trim())
-				.filter(Boolean)
+				.filter(Boolean);
 			const { data: kindRow, error: kindError } = await supabase
 				.from("facet_kind_global")
 				.select("id")
 				.eq("slug", newFacetKind)
-				.maybeSingle()
+				.maybeSingle();
 			if (kindError) {
-				return { error: `Failed to resolve facet kind: ${kindError.message}` }
+				return { error: `Failed to resolve facet kind: ${kindError.message}` };
 			}
 			if (!kindRow?.id) {
-				return { error: "Unknown facet kind selected" }
+				return { error: "Unknown facet kind selected" };
 			}
 
-			const facetSlug = slugify(newFacetLabel, { separator: "_" }).toLowerCase() || `facet_${Date.now()}`
+			const facetSlug = slugify(newFacetLabel, { separator: "_" }).toLowerCase() || `facet_${Date.now()}`;
 			const insertPayload = {
 				account_id: accountId,
 				kind_id: kindRow.id,
@@ -360,18 +360,18 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				slug: facetSlug,
 				synonyms,
 				is_active: true,
-			}
+			};
 
 			const { data: upsertedFacet, error: facetInsertError } = await supabase
 				.from("facet_account")
 				.upsert(insertPayload, { onConflict: "account_id,kind_id,slug" })
 				.select("id")
-				.single()
+				.single();
 			if (facetInsertError) {
-				return { error: `Failed to create facet: ${facetInsertError.message}` }
+				return { error: `Failed to create facet: ${facetInsertError.message}` };
 			}
 			if (upsertedFacet?.id) {
-				selectedFacetAccountIds = Array.from(new Set([...selectedFacetAccountIds, upsertedFacet.id]))
+				selectedFacetAccountIds = Array.from(new Set([...selectedFacetAccountIds, upsertedFacet.id]));
 			}
 		}
 
@@ -379,22 +379,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			.from("person_facet")
 			.select("facet_account_id")
 			.eq("person_id", personId)
-			.eq("project_id", projectId)
+			.eq("project_id", projectId);
 		if (existingFacetError) {
 			return {
 				error: `Failed to load existing facets: ${existingFacetError.message}`,
-			}
+			};
 		}
 
 		const existingIds = new Set(
 			(existingFacetRows ?? [])
 				.map((row) => row.facet_account_id)
 				.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
-		)
-		const desiredIds = new Set(selectedFacetAccountIds)
+		);
+		const desiredIds = new Set(selectedFacetAccountIds);
 
-		const toInsert = selectedFacetAccountIds.filter((id) => !existingIds.has(id))
-		const toRemove = Array.from(existingIds).filter((id) => !desiredIds.has(id))
+		const toInsert = selectedFacetAccountIds.filter((id) => !existingIds.has(id));
+		const toRemove = Array.from(existingIds).filter((id) => !desiredIds.has(id));
 
 		if (toInsert.length) {
 			const insertPayload = toInsert.map((facetId) => ({
@@ -404,12 +404,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				facet_account_id: facetId,
 				source: "manual" as const,
 				confidence: 0.8,
-			}))
+			}));
 			const { error: insertError } = await supabase
 				.from("person_facet")
-				.upsert(insertPayload, { onConflict: "person_id,facet_account_id" })
+				.upsert(insertPayload, { onConflict: "person_id,facet_account_id" });
 			if (insertError) {
-				return { error: `Failed to add facets: ${insertError.message}` }
+				return { error: `Failed to add facets: ${insertError.message}` };
 			}
 		}
 
@@ -419,94 +419,94 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				.delete()
 				.eq("person_id", personId)
 				.eq("project_id", projectId)
-				.in("facet_account_id", toRemove)
+				.in("facet_account_id", toRemove);
 			if (deleteError) {
-				return { error: `Failed to remove facets: ${deleteError.message}` }
+				return { error: `Failed to remove facets: ${deleteError.message}` };
 			}
 		}
 
-		return redirect(routes.people.detail(data.id))
+		return redirect(routes.people.detail(data.id));
 	} catch (error) {
 		// Log error for debugging without using console
 		if (typeof window !== "undefined") {
-			const globalWindow = window as typeof window & { debugError?: unknown }
-			globalWindow.debugError = error
+			const globalWindow = window as typeof window & { debugError?: unknown };
+			globalWindow.debugError = error;
 		}
-		return { error: "Failed to update person" }
+		return { error: "Failed to update person" };
 	}
 }
 
 export default function EditPerson() {
-	const { person, personas, catalog, organizations } = useLoaderData<typeof loader>()
-	const actionData = useActionData<typeof action>()
-	const navigation = useNavigation()
-	const fetcher = useFetcher()
+	const { person, personas, catalog, organizations } = useLoaderData<typeof loader>();
+	const actionData = useActionData<typeof action>();
+	const navigation = useNavigation();
+	const fetcher = useFetcher();
 
-	const isSubmitting = navigation.state === "submitting"
-	const isDeleting = navigation.state === "submitting" && navigation.formData?.get("intent") === "delete"
+	const isSubmitting = navigation.state === "submitting";
+	const isDeleting = navigation.state === "submitting" && navigation.formData?.get("intent") === "delete";
 
 	// Get current persona from junction table
-	const people_personas = person.people_personas || []
-	const currentPersona = people_personas.length > 0 ? people_personas[0].personas : null
+	const people_personas = person.people_personas || [];
+	const currentPersona = people_personas.length > 0 ? people_personas[0].personas : null;
 
 	// Get linked organizations
-	const linkedOrganizations = person.people_organizations || []
+	const linkedOrganizations = person.people_organizations || [];
 
 	// Get available organizations (not already linked)
 	const availableOrganizations = useMemo(() => {
-		const linkedIds = new Set(linkedOrganizations.map((po) => po.organization?.id).filter(Boolean))
-		return organizations.filter((org) => !linkedIds.has(org.id))
-	}, [organizations, linkedOrganizations])
+		const linkedIds = new Set(linkedOrganizations.map((po) => po.organization?.id).filter(Boolean));
+		return organizations.filter((org) => !linkedIds.has(org.id));
+	}, [organizations, linkedOrganizations]);
 
 	// Parse existing contact_info for social profiles
 	const existingContactInfo = useMemo(() => {
-		const info = person.contact_info as Record<string, string> | null
+		const info = person.contact_info as Record<string, string> | null;
 		return {
 			twitter: info?.twitter || "",
 			instagram: info?.instagram || "",
-		}
-	}, [person.contact_info])
+		};
+	}, [person.contact_info]);
 
 	const initialFacetRefs = useMemo(() => {
 		return (person.person_facet ?? [])
 			.map((facet) => {
 				if (typeof facet.facet_account_id === "number") {
-					return `a:${facet.facet_account_id}`
+					return `a:${facet.facet_account_id}`;
 				}
-				return null
+				return null;
 			})
-			.filter((value): value is string => Boolean(value))
-	}, [person.person_facet])
+			.filter((value): value is string => Boolean(value));
+	}, [person.person_facet]);
 
 	// Use state for facets selection to enable controlled multi-select UI
-	const [selectedFacetRefs, setSelectedFacetRefs] = useState<string[]>(initialFacetRefs)
-	const [facetPopoverOpen, setFacetPopoverOpen] = useState(false)
+	const [selectedFacetRefs, setSelectedFacetRefs] = useState<string[]>(initialFacetRefs);
+	const [facetPopoverOpen, setFacetPopoverOpen] = useState(false);
 
-	const accountFacetOptions = catalog.facets
+	const accountFacetOptions = catalog.facets;
 
 	// Build a lookup map for selected facets to show their labels
 	const selectedFacetLabels = useMemo(() => {
-		const labelMap = new Map<string, { label: string; kind: string }>()
+		const labelMap = new Map<string, { label: string; kind: string }>();
 		for (const facet of accountFacetOptions) {
-			const ref = `a:${facet.facet_account_id}`
+			const ref = `a:${facet.facet_account_id}`;
 			if (selectedFacetRefs.includes(ref)) {
-				const kind = catalog.kinds.find((k) => k.slug === facet.kind_slug)
+				const kind = catalog.kinds.find((k) => k.slug === facet.kind_slug);
 				labelMap.set(ref, {
 					label: facet.alias || facet.label,
 					kind: kind?.label || facet.kind_slug,
-				})
+				});
 			}
 		}
-		return labelMap
-	}, [selectedFacetRefs, accountFacetOptions, catalog.kinds])
+		return labelMap;
+	}, [selectedFacetRefs, accountFacetOptions, catalog.kinds]);
 
 	const toggleFacet = (ref: string) => {
-		setSelectedFacetRefs((prev) => (prev.includes(ref) ? prev.filter((r) => r !== ref) : [...prev, ref]))
-	}
+		setSelectedFacetRefs((prev) => (prev.includes(ref) ? prev.filter((r) => r !== ref) : [...prev, ref]));
+	};
 
 	const removeFacet = (ref: string) => {
-		setSelectedFacetRefs((prev) => prev.filter((r) => r !== ref))
-	}
+		setSelectedFacetRefs((prev) => prev.filter((r) => r !== ref));
+	};
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
@@ -599,7 +599,7 @@ export default function EditPerson() {
 													organization_id: link.organization?.id || "",
 												},
 												{ method: "post" }
-											)
+											);
 										}}
 									>
 										<X className="h-4 w-4" />
@@ -776,7 +776,7 @@ export default function EditPerson() {
 					{selectedFacetRefs.length > 0 && (
 						<div className="mt-2 flex flex-wrap gap-1.5">
 							{selectedFacetRefs.map((ref) => {
-								const info = selectedFacetLabels.get(ref)
+								const info = selectedFacetLabels.get(ref);
 								return (
 									<Badge key={ref} variant="secondary" className="gap-1 pr-1">
 										<span className="text-muted-foreground text-xs">{info?.kind}:</span>
@@ -789,7 +789,7 @@ export default function EditPerson() {
 											<X className="size-3" />
 										</button>
 									</Badge>
-								)
+								);
 							})}
 						</div>
 					)}
@@ -816,13 +816,13 @@ export default function EditPerson() {
 								<CommandList>
 									<CommandEmpty>No facets found.</CommandEmpty>
 									{catalog.kinds.map((kind) => {
-										const options = catalog.facets.filter((facet) => facet.kind_slug === kind.slug)
-										if (!options.length) return null
+										const options = catalog.facets.filter((facet) => facet.kind_slug === kind.slug);
+										if (!options.length) return null;
 										return (
 											<CommandGroup key={kind.slug} heading={kind.label}>
 												{options.map((facet) => {
-													const ref = `a:${facet.facet_account_id}`
-													const isSelected = selectedFacetRefs.includes(ref)
+													const ref = `a:${facet.facet_account_id}`;
+													const isSelected = selectedFacetRefs.includes(ref);
 													return (
 														<CommandItem
 															key={facet.facet_account_id}
@@ -832,10 +832,10 @@ export default function EditPerson() {
 															<Check className={`mr-2 size-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
 															{facet.alias || facet.label}
 														</CommandItem>
-													)
+													);
 												})}
 											</CommandGroup>
-										)
+										);
 									})}
 								</CommandList>
 							</Command>
@@ -959,5 +959,5 @@ export default function EditPerson() {
 				</div>
 			</div>
 		</PageContainer>
-	)
+	);
 }

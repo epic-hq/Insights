@@ -7,89 +7,89 @@
  * - Imported Data section for survey_response facets
  */
 
-import { ClipboardList, FileIcon, FolderOpen, MessageCircle, StickyNote, Video } from "lucide-react"
-import { useMemo, useState } from "react"
-import { Link } from "react-router"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
+import { ClipboardList, FileIcon, FolderOpen, MessageCircle, StickyNote, Video } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 
 /** Source type filter values */
-type SourceFilter = "all" | "interviews" | "notes" | "surveys" | "chats" | "assets"
+type SourceFilter = "all" | "interviews" | "notes" | "surveys" | "chats" | "assets";
 
 /** Sort options */
-type SortOption = "recent" | "oldest"
+type SortOption = "recent" | "oldest";
 
 interface InterviewLink {
-	id: string | number
+	id: string | number;
 	interviews: {
-		id: string
-		title: string | null
-		source_type: string | null
-		media_type: string | null
-		created_at: string | null
-	} | null
+		id: string;
+		title: string | null;
+		source_type: string | null;
+		media_type: string | null;
+		created_at: string | null;
+	} | null;
 }
 
 interface RelatedAsset {
-	id: string
-	title: string
-	asset_type: string
-	created_at: string
-	description: string | null
-	relationship_type: string | null
+	id: string;
+	title: string;
+	asset_type: string;
+	created_at: string;
+	description: string | null;
+	relationship_type: string | null;
 }
 
 interface SurveyResponse {
-	interviewId: string
-	interviewTitle: string
+	interviewId: string;
+	interviewTitle: string;
 	responses: Array<{
-		id: string
-		question: string
-		answer: string
-		createdAt: string
-	}>
+		id: string;
+		question: string;
+		answer: string;
+		createdAt: string;
+	}>;
 }
 
 interface ResearchLinkQuestion {
-	id: string
-	prompt: string
-	type: string
-	options?: string[]
-	likertScale?: number
-	likertLabels?: { low: string; high: string }
+	id: string;
+	prompt: string;
+	type: string;
+	options?: string[];
+	likertScale?: number;
+	likertLabels?: { low: string; high: string };
 }
 
 interface ResearchLinkResponse {
-	id: string
-	email: string
-	responses: Record<string, unknown> | null
-	completed: boolean
-	created_at: string
-	updated_at: string
+	id: string;
+	email: string;
+	responses: Record<string, unknown> | null;
+	completed: boolean;
+	created_at: string;
+	updated_at: string;
 	research_links: {
-		id: string
-		name: string
-		slug: string
-		questions: ResearchLinkQuestion[] | null
-	} | null
+		id: string;
+		name: string;
+		slug: string;
+		questions: ResearchLinkQuestion[] | null;
+	} | null;
 }
 
 interface PersonEvidenceTabProps {
 	/** All interview/source links from interview_people */
-	allInterviewLinks: InterviewLink[]
+	allInterviewLinks: InterviewLink[];
 	/** Assets linked via junction table */
-	relatedAssets: RelatedAsset[]
+	relatedAssets: RelatedAsset[];
 	/** Grouped survey Q&A responses from evidence_facet */
-	surveyResponses: SurveyResponse[]
+	surveyResponses: SurveyResponse[];
 	/** Research link responses from ask links */
-	researchLinkResponses: ResearchLinkResponse[]
+	researchLinkResponses: ResearchLinkResponse[];
 	/** Route helpers */
 	routes: {
-		interviews: { detail: (id: string) => string }
-		assets: { detail: (id: string) => string }
-	}
+		interviews: { detail: (id: string) => string };
+		assets: { detail: (id: string) => string };
+	};
 }
 
 /** Normalize a source to its filter category */
@@ -98,30 +98,30 @@ function getSourceCategory(
 	mediaType: string | null
 ): Exclude<SourceFilter, "all" | "assets"> {
 	if (sourceType === "note" || mediaType === "voice_memo") {
-		return "notes"
+		return "notes";
 	}
 	if (sourceType === "survey_response") {
-		return "surveys"
+		return "surveys";
 	}
 	if (sourceType === "public_chat") {
-		return "chats"
+		return "chats";
 	}
-	return "interviews"
+	return "interviews";
 }
 
 /** Get icon component for a source type */
 function getSourceIcon(category: Exclude<SourceFilter, "all">) {
 	switch (category) {
 		case "interviews":
-			return Video
+			return Video;
 		case "notes":
-			return StickyNote
+			return StickyNote;
 		case "surveys":
-			return ClipboardList
+			return ClipboardList;
 		case "chats":
-			return MessageCircle
+			return MessageCircle;
 		case "assets":
-			return FileIcon
+			return FileIcon;
 	}
 }
 
@@ -129,26 +129,26 @@ function getSourceIcon(category: Exclude<SourceFilter, "all">) {
 function getSourceLabel(category: Exclude<SourceFilter, "all">) {
 	switch (category) {
 		case "interviews":
-			return "Interview"
+			return "Interview";
 		case "notes":
-			return "Note"
+			return "Note";
 		case "surveys":
-			return "Survey"
+			return "Survey";
 		case "chats":
-			return "Chat"
+			return "Chat";
 		case "assets":
-			return "Asset"
+			return "Asset";
 	}
 }
 
 /** Unified evidence item for the list */
 interface EvidenceItem {
-	id: string
-	title: string
-	category: Exclude<SourceFilter, "all">
-	date: Date | null
-	linkTo: string
-	subtitle?: string
+	id: string;
+	title: string;
+	category: Exclude<SourceFilter, "all">;
+	date: Date | null;
+	linkTo: string;
+	subtitle?: string;
 }
 
 export function PersonEvidenceTab({
@@ -158,18 +158,18 @@ export function PersonEvidenceTab({
 	researchLinkResponses,
 	routes,
 }: PersonEvidenceTabProps) {
-	const [filter, setFilter] = useState<SourceFilter>("all")
-	const [sort, setSort] = useState<SortOption>("recent")
+	const [filter, setFilter] = useState<SourceFilter>("all");
+	const [sort, setSort] = useState<SortOption>("recent");
 
 	// Transform all sources into a unified list
 	const allEvidence = useMemo(() => {
-		const items: EvidenceItem[] = []
+		const items: EvidenceItem[] = [];
 
 		// Add interview links (includes notes, surveys, chats based on source_type)
 		for (const link of allInterviewLinks) {
-			if (!link.interviews?.id) continue
-			const interview = link.interviews
-			const category = getSourceCategory(interview.source_type, interview.media_type)
+			if (!link.interviews?.id) continue;
+			const interview = link.interviews;
+			const category = getSourceCategory(interview.source_type, interview.media_type);
 
 			items.push({
 				id: String(link.id),
@@ -177,7 +177,7 @@ export function PersonEvidenceTab({
 				category,
 				date: interview.created_at ? new Date(interview.created_at) : null,
 				linkTo: routes.interviews.detail(interview.id),
-			})
+			});
 		}
 
 		// Add assets
@@ -189,11 +189,11 @@ export function PersonEvidenceTab({
 				date: new Date(asset.created_at),
 				linkTo: routes.assets.detail(asset.id),
 				subtitle: asset.asset_type,
-			})
+			});
 		}
 
-		return items
-	}, [allInterviewLinks, relatedAssets, routes])
+		return items;
+	}, [allInterviewLinks, relatedAssets, routes]);
 
 	// Count by category for filter badges
 	const counts = useMemo(() => {
@@ -204,36 +204,36 @@ export function PersonEvidenceTab({
 			surveys: 0,
 			chats: 0,
 			assets: 0,
-		}
+		};
 
 		for (const item of allEvidence) {
-			result[item.category]++
+			result[item.category]++;
 		}
 
-		return result
-	}, [allEvidence])
+		return result;
+	}, [allEvidence]);
 
 	// Filter and sort
 	const filteredEvidence = useMemo(() => {
-		let items = allEvidence
+		let items = allEvidence;
 
 		if (filter !== "all") {
-			items = items.filter((item) => item.category === filter)
+			items = items.filter((item) => item.category === filter);
 		}
 
 		// Sort by date
 		items = [...items].sort((a, b) => {
-			const dateA = a.date?.getTime() ?? 0
-			const dateB = b.date?.getTime() ?? 0
-			return sort === "recent" ? dateB - dateA : dateA - dateB
-		})
+			const dateA = a.date?.getTime() ?? 0;
+			const dateB = b.date?.getTime() ?? 0;
+			return sort === "recent" ? dateB - dateA : dateA - dateB;
+		});
 
-		return items
-	}, [allEvidence, filter, sort])
+		return items;
+	}, [allEvidence, filter, sort]);
 
 	// Check if we have any imported data to show
-	const hasImportedData = surveyResponses.length > 0
-	const hasAskLinkResponses = researchLinkResponses.length > 0
+	const hasImportedData = surveyResponses.length > 0;
+	const hasAskLinkResponses = researchLinkResponses.length > 0;
 
 	// Empty state
 	if (allEvidence.length === 0 && !hasImportedData && !hasAskLinkResponses) {
@@ -245,7 +245,7 @@ export function PersonEvidenceTab({
 					Link conversations, notes, or assets to this person to see them here.
 				</p>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -329,7 +329,7 @@ export function PersonEvidenceTab({
 			{filteredEvidence.length > 0 && (
 				<div className="space-y-2">
 					{filteredEvidence.map((item) => {
-						const Icon = getSourceIcon(item.category)
+						const Icon = getSourceIcon(item.category);
 						return (
 							<Link
 								key={item.id}
@@ -355,7 +355,7 @@ export function PersonEvidenceTab({
 									})}
 								</div>
 							</Link>
-						)
+						);
 					})}
 				</div>
 			)}
@@ -405,14 +405,14 @@ export function PersonEvidenceTab({
 						Survey Responses
 					</h3>
 					{researchLinkResponses.map((response) => {
-						const responsesData = response.responses as Record<string, unknown> | null
-						const questions = response.research_links?.questions ?? []
+						const responsesData = response.responses as Record<string, unknown> | null;
+						const questions = response.research_links?.questions ?? [];
 
 						// Get answered questions in order
 						const answeredQuestions = questions.filter(
 							(q) =>
 								responsesData?.[q.id] !== undefined && responsesData?.[q.id] !== null && responsesData?.[q.id] !== ""
-						)
+						);
 
 						return (
 							<Card key={response.id}>
@@ -436,7 +436,7 @@ export function PersonEvidenceTab({
 								<CardContent className="space-y-3">
 									{answeredQuestions.length > 0 ? (
 										answeredQuestions.map((question) => {
-											const answer = responsesData?.[question.id]
+											const answer = responsesData?.[question.id];
 											const formattedAnswer =
 												typeof answer === "string"
 													? answer
@@ -446,24 +446,24 @@ export function PersonEvidenceTab({
 															? question.type === "likert"
 																? `${answer}/${question.likertScale || 5}`
 																: String(answer)
-															: JSON.stringify(answer)
+															: JSON.stringify(answer);
 
 											return (
 												<div key={question.id} className="space-y-1">
 													<p className="text-muted-foreground text-sm">{question.prompt}</p>
 													<p className="text-foreground text-sm">{formattedAnswer}</p>
 												</div>
-											)
+											);
 										})
 									) : (
 										<p className="text-muted-foreground text-sm">No responses recorded</p>
 									)}
 								</CardContent>
 							</Card>
-						)
+						);
 					})}
 				</div>
 			)}
 		</div>
-	)
+	);
 }
