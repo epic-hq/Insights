@@ -14,7 +14,7 @@
 -- Create billing schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS billing;
 
--- Grant schema access: run manually via supabase/migrations/imperative.sql
+-- Grant schema access: run manually via supabase/snippets/imperative.sql
 
 /**
  * -------------------------------------------------------
@@ -117,7 +117,7 @@ CREATE POLICY "Account members can view usage events"
     TO authenticated
     USING (account_id IN (SELECT accounts.get_accounts_with_role()));
 
--- GRANT statements: run manually via supabase/migrations/imperative.sql
+-- GRANT statements: run manually via supabase/snippets/imperative.sql
 
 /**
  * -------------------------------------------------------
@@ -179,7 +179,7 @@ CREATE POLICY "Account members can view credit ledger"
     TO authenticated
     USING (account_id IN (SELECT accounts.get_accounts_with_role()));
 
--- GRANT statements: run manually via supabase/migrations/imperative.sql
+-- GRANT statements: run manually via supabase/snippets/imperative.sql
 
 /**
  * -------------------------------------------------------
@@ -227,7 +227,7 @@ CREATE POLICY "Account members can view entitlements"
     TO authenticated
     USING (account_id IN (SELECT accounts.get_accounts_with_role()));
 
--- GRANT statements: run manually via supabase/migrations/imperative.sql
+-- GRANT statements: run manually via supabase/snippets/imperative.sql
 
 /**
  * -------------------------------------------------------
@@ -553,4 +553,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- GRANT statements: run manually via supabase/migrations/imperative.sql
+-- GRANT statements: run manually via supabase/snippets/imperative.sql

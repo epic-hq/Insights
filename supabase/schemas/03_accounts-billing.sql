@@ -49,9 +49,9 @@ create table if not exists accounts.billing_customers
 );
 
 -- Open up access to billing_customers
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.billing_customers TO service_role;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT ON TABLE accounts.billing_customers TO authenticated;
 
 
@@ -101,9 +101,9 @@ create table if not exists accounts.billing_subscriptions
 );
 
 -- Open up access to billing_subscriptions
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.billing_subscriptions TO service_role;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT ON TABLE accounts.billing_subscriptions TO authenticated;
 
 -- enable RLS for billing_subscriptions
@@ -237,5 +237,5 @@ BEGIN
 end;
 $$ LANGUAGE plpgsql;
 
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT EXECUTE ON FUNCTION public.service_role_upsert_customer_subscription(uuid, jsonb, jsonb) TO service_role;

@@ -72,7 +72,7 @@ ALTER TABLE accounts.accounts
         );
 
 -- Open up access to accounts
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.accounts TO authenticated, service_role;
 
 /**
@@ -174,7 +174,7 @@ create table if not exists accounts.account_user
     constraint account_user_pkey primary key (user_id, account_id)
 );
 
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.account_user TO authenticated, service_role;
 
 

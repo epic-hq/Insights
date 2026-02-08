@@ -2,7 +2,7 @@
  * Imperative SQL Statements
  *
  * These statements are NOT handled by `supabase db diff` and must be run manually.
- * Run after migrations: psql $DATABASE_URL -f supabase/migrations/imperative.sql
+ * Run after migrations: psql $DATABASE_URL -f supabase/snippets/imperative.sql
  *
  * @see docs/30-howtos/supabase-howto.md
  */
