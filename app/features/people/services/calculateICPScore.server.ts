@@ -25,8 +25,8 @@ type PersonWithOrg = {
   id: string;
   name: string | null;
   title: string | null;
+  role: string | null;
   company: string | null;
-  facets: Record<string, any> | null;
   organizations: {
     id: string;
     name: string | null;
@@ -66,7 +66,7 @@ function scoreRoleMatch(
   if (targetRoles.length === 0) return { score: 0.5 }; // Neutral if no criteria
 
   const title = person.title?.toLowerCase() || "";
-  const jobFunction = person.facets?.job_function?.toLowerCase() || "";
+  const role = person.role?.toLowerCase() || "";
 
   // Exact substring match in title (1.0)
   for (const targetRole of targetRoles) {
@@ -76,10 +76,10 @@ function scoreRoleMatch(
     }
   }
 
-  // Fuzzy match via job_function facet (0.7)
+  // Fuzzy match via role field (0.7)
   for (const targetRole of targetRoles) {
     const target = targetRole.toLowerCase();
-    if (jobFunction.includes(target)) {
+    if (role.includes(target)) {
       return { score: 0.7, matched: targetRole };
     }
   }
@@ -178,7 +178,7 @@ function calculateConfidence(person: PersonWithOrg): number {
   if (person.title) confidence += 0.3;
   if (person.company || person.organizations?.name) confidence += 0.3;
   if (person.organizations?.id) confidence += 0.2; // Has org link
-  if (person.facets && Object.keys(person.facets).length > 0) confidence += 0.2;
+  if (person.role) confidence += 0.2; // Has role field
 
   return Math.min(confidence, 1.0);
 }
@@ -206,7 +206,7 @@ export async function getICPCriteria(opts: {
   const { data: account, error: accountError } = await opts.supabase
     .schema("accounts")
     .from("accounts")
-    .select("target_orgs, target_roles, target_size_ranges")
+    .select("target_orgs, target_roles, target_company_sizes")
     .eq("id", opts.accountId)
     .single();
 
@@ -219,7 +219,7 @@ export async function getICPCriteria(opts: {
     .from("project_sections")
     .select("kind, meta")
     .eq("project_id", opts.projectId)
-    .in("kind", ["target_orgs", "target_roles", "target_size_ranges"]);
+    .in("kind", ["target_orgs", "target_roles", "target_company_sizes"]);
 
   if (sectionsError) {
     consola.warn("Failed to fetch project ICP overrides:", sectionsError);
@@ -229,7 +229,7 @@ export async function getICPCriteria(opts: {
   const targetOrgsSection = sections?.find((s) => s.kind === "target_orgs");
   const targetRolesSection = sections?.find((s) => s.kind === "target_roles");
   const targetSizesSection = sections?.find(
-    (s) => s.kind === "target_size_ranges",
+    (s) => s.kind === "target_company_sizes",
   );
 
   return {
@@ -242,8 +242,8 @@ export async function getICPCriteria(opts: {
       account?.target_roles ||
       [],
     target_size_ranges:
-      (targetSizesSection?.meta as any)?.target_size_ranges ||
-      account?.target_size_ranges ||
+      (targetSizesSection?.meta as any)?.target_company_sizes ||
+      account?.target_company_sizes ||
       [],
   };
 }
@@ -278,8 +278,8 @@ export async function calculateICPScore(opts: {
 			id,
 			name,
 			title,
+			role,
 			company,
-			facets,
 			organizations:default_organization_id (
 				id,
 				name,
