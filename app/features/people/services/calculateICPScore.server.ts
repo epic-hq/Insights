@@ -280,7 +280,7 @@ export async function calculateICPScore(opts: {
 			title,
 			company,
 			facets,
-			organizations:organization_id (
+			organizations:default_organization_id (
 				id,
 				name,
 				industry,
