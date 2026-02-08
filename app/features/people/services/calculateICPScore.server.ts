@@ -31,14 +31,14 @@ type PersonWithOrg = {
     id: string;
     name: string | null;
     industry: string | null;
-    company_size: string | null;
+    size_range: string | null;
   } | null;
 };
 
 export interface ICPCriteria {
   target_roles: string[];
   target_orgs: string[];
-  target_company_sizes: string[];
+  target_size_ranges: string[];
 }
 
 export interface ICPScoreBreakdown {
@@ -143,7 +143,7 @@ function scoreSizeMatch(
 ): { score: number; matched?: string } {
   if (targetSizes.length === 0) return { score: 0.5 }; // Neutral if no criteria
 
-  const companySize = person.organizations?.company_size?.toLowerCase() || "";
+  const companySize = person.organizations?.size_range?.toLowerCase() || "";
   if (!companySize) return { score: 0 }; // No data
 
   // Exact match (1.0)
@@ -206,7 +206,7 @@ export async function getICPCriteria(opts: {
   const { data: account, error: accountError } = await opts.supabase
     .schema("accounts")
     .from("accounts")
-    .select("target_orgs, target_roles, target_company_sizes")
+    .select("target_orgs, target_roles, target_size_ranges")
     .eq("id", opts.accountId)
     .single();
 
@@ -219,7 +219,7 @@ export async function getICPCriteria(opts: {
     .from("project_sections")
     .select("kind, meta")
     .eq("project_id", opts.projectId)
-    .in("kind", ["target_orgs", "target_roles", "target_company_sizes"]);
+    .in("kind", ["target_orgs", "target_roles", "target_size_ranges"]);
 
   if (sectionsError) {
     consola.warn("Failed to fetch project ICP overrides:", sectionsError);
@@ -229,7 +229,7 @@ export async function getICPCriteria(opts: {
   const targetOrgsSection = sections?.find((s) => s.kind === "target_orgs");
   const targetRolesSection = sections?.find((s) => s.kind === "target_roles");
   const targetSizesSection = sections?.find(
-    (s) => s.kind === "target_company_sizes",
+    (s) => s.kind === "target_size_ranges",
   );
 
   return {
@@ -241,9 +241,9 @@ export async function getICPCriteria(opts: {
       (targetRolesSection?.meta as any)?.target_roles ||
       account?.target_roles ||
       [],
-    target_company_sizes:
-      (targetSizesSection?.meta as any)?.target_company_sizes ||
-      account?.target_company_sizes ||
+    target_size_ranges:
+      (targetSizesSection?.meta as any)?.target_size_ranges ||
+      account?.target_size_ranges ||
       [],
   };
 }
@@ -284,7 +284,7 @@ export async function calculateICPScore(opts: {
 				id,
 				name,
 				industry,
-				company_size
+				size_range
 			)
 		`,
     )
@@ -304,7 +304,7 @@ export async function calculateICPScore(opts: {
   const orgMatch = scoreOrgMatch(person as PersonWithOrg, criteria.target_orgs);
   const sizeMatch = scoreSizeMatch(
     person as PersonWithOrg,
-    criteria.target_company_sizes,
+    criteria.target_size_ranges,
   );
 
   // Calculate weighted average (0.4, 0.3, 0.3)
