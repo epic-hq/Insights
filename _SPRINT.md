@@ -6,6 +6,7 @@ Two parallel tracks. 2 primary goals per track + a Tier 2 list for bugs and quic
 
 1. [ ] **Desktop Realtime Agent** — Align realtime evidence pipeline with post-analysis Trigger.dev flow (Insights-xph, Insights-32v, Insights-65r)
 2. [ ] **Surveys Quick Win** — Get survey builder to "wow" state: voice responses or personalized invites (Insights-4ud)
+3. [ ] Insights-3ml (ICP Match Lens & Recommendation Engine)
 
 **Tier 2** (from `bv --robot-triage`, pick when blocked):
 
@@ -15,7 +16,9 @@ Two parallel tracks. 2 primary goals per track + a Tier 2 list for bugs and quic
 
 ## Business Track (Operator)
 
-1. [ ] **CRM Dogfood Spec** — Run `/bmad-quick-spec` for CRM MVP (gap analysis ready at `docs/90-roadmap/crm-dogfood-kickoff.md`)
+1. [ ] **CRM Dogfood Spec** — Run `/bmad-quick-spec` for CRM MVP 
+	1. [ ] related to good data quality in service of ICP focus Insights-3ml (ICP)
+	2. [ ] (gap analysis ready at `docs/90-roadmap/crm-dogfood-kickoff.md`)
 2. [ ] **GTM Outreach Start** — Landing page copy + demo flow script draft
 3. [ ] Survey script demo recording (crp)
 

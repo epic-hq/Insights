@@ -39,106 +39,111 @@ import { researchAgent } from "./research-agent";
 import { taskAgent } from "./task-agent";
 
 function auditToolSchemas(agent_name: string, tools: Record<string, unknown>) {
-	try {
-		const tool_entries = Object.entries(tools);
-		const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> = [];
+  try {
+    const tool_entries = Object.entries(tools);
+    const issues: Array<{ tool: string; issue: string; ownProps?: string[] }> =
+      [];
 
-		for (const [tool_name, tool] of tool_entries) {
-			if (!tool || typeof tool !== "object") {
-				issues.push({
-					tool: tool_name,
-					issue: `tool is not an object (${typeof tool})`,
-				});
-				continue;
-			}
+    for (const [tool_name, tool] of tool_entries) {
+      if (!tool || typeof tool !== "object") {
+        issues.push({
+          tool: tool_name,
+          issue: `tool is not an object (${typeof tool})`,
+        });
+        continue;
+      }
 
-			const own_props = Object.getOwnPropertyNames(tool);
-			const has_input_schema = own_props.includes("inputSchema");
-			const has_output_schema = own_props.includes("outputSchema");
+      const own_props = Object.getOwnPropertyNames(tool);
+      const has_input_schema = own_props.includes("inputSchema");
+      const has_output_schema = own_props.includes("outputSchema");
 
-			const input_schema = (tool as any).inputSchema;
-			const output_schema = (tool as any).outputSchema;
-			const input_is_zod =
-				!!input_schema && typeof input_schema === "object" && typeof input_schema.safeParse === "function";
-			const output_is_zod =
-				!!output_schema && typeof output_schema === "object" && typeof output_schema.safeParse === "function";
+      const input_schema = (tool as any).inputSchema;
+      const output_schema = (tool as any).outputSchema;
+      const input_is_zod =
+        !!input_schema &&
+        typeof input_schema === "object" &&
+        typeof input_schema.safeParse === "function";
+      const output_is_zod =
+        !!output_schema &&
+        typeof output_schema === "object" &&
+        typeof output_schema.safeParse === "function";
 
-			if (!has_input_schema || !input_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-			if (!has_output_schema || !output_is_zod) {
-				issues.push({
-					tool: tool_name,
-					issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
-					ownProps: own_props,
-				});
-			}
-		}
+      if (!has_input_schema || !input_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid inputSchema (hasProp=${has_input_schema}, isZod=${input_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+      if (!has_output_schema || !output_is_zod) {
+        issues.push({
+          tool: tool_name,
+          issue: `invalid outputSchema (hasProp=${has_output_schema}, isZod=${output_is_zod})`,
+          ownProps: own_props,
+        });
+      }
+    }
 
-		if (issues.length > 0) {
-			consola.warn("[mastra-schema-audit] tool schema issues", {
-				agent: agent_name,
-				issueCount: issues.length,
-				issues,
-			});
-		} else {
-			consola.info("[mastra-schema-audit] all tool schemas look valid", {
-				agent: agent_name,
-				toolCount: tool_entries.length,
-			});
-		}
-	} catch (error) {
-		consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
-	}
+    if (issues.length > 0) {
+      consola.warn("[mastra-schema-audit] tool schema issues", {
+        agent: agent_name,
+        issueCount: issues.length,
+        issues,
+      });
+    } else {
+      consola.info("[mastra-schema-audit] all tool schemas look valid", {
+        agent: agent_name,
+        toolCount: tool_entries.length,
+      });
+    }
+  } catch (error) {
+    consola.error("[mastra-schema-audit] failed", { agent: agent_name, error });
+  }
 }
 
 const project_status_agent_tools = {
-	getCurrentDate: getCurrentDateTool,
-	fetchProjectStatusContext: fetchProjectStatusContextTool,
-	fetchEvidence: fetchEvidenceTool,
-	semanticSearchEvidence: semanticSearchEvidenceTool,
-	semanticSearchAssets: semanticSearchAssetsTool,
-	fetchProjectGoals: fetchProjectGoalsTool,
-	fetchThemes: fetchThemesTool,
-	fetchPainMatrixCache: fetchPainMatrixCacheTool,
-	fetchSegments: fetchSegmentsTool,
-	fetchConversationLenses: fetchConversationLensesTool,
-	generateProjectRoutes: generateProjectRoutesTool,
-	generateDocumentLink: generateDocumentLinkTool,
-	importVideoFromUrl: importVideoFromUrlTool,
-	fetchWebContent: fetchWebContentTool,
-	manageDocuments: manageDocumentsTool,
-	capabilityLookup: capabilityLookupTool,
-	suggestNextSteps: suggestionTool,
-	webResearch: webResearchTool,
-	findSimilarPages: findSimilarPagesTool,
-	parseSpreadsheet: parseSpreadsheetTool,
-	saveTableToAssets: saveTableToAssetsTool,
-	updateTableAsset: updateTableAssetTool,
-	importPeopleFromTable: importPeopleFromTableTool,
-	importOpportunitiesFromTable: importOpportunitiesFromTableTool,
-	recommendNextActions: recommendNextActionsTool,
-	// Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
-	"recommend-next-actions": recommendNextActionsTool,
-	generateResearchRecommendations: generateResearchRecommendationsTool,
-	"generate-research-recommendations": generateResearchRecommendationsTool,
+  getCurrentDate: getCurrentDateTool,
+  fetchProjectStatusContext: fetchProjectStatusContextTool,
+  fetchEvidence: fetchEvidenceTool,
+  semanticSearchEvidence: semanticSearchEvidenceTool,
+  semanticSearchAssets: semanticSearchAssetsTool,
+  fetchProjectGoals: fetchProjectGoalsTool,
+  fetchThemes: fetchThemesTool,
+  fetchPainMatrixCache: fetchPainMatrixCacheTool,
+  fetchSegments: fetchSegmentsTool,
+  fetchConversationLenses: fetchConversationLensesTool,
+  generateProjectRoutes: generateProjectRoutesTool,
+  generateDocumentLink: generateDocumentLinkTool,
+  importVideoFromUrl: importVideoFromUrlTool,
+  fetchWebContent: fetchWebContentTool,
+  manageDocuments: manageDocumentsTool,
+  capabilityLookup: capabilityLookupTool,
+  suggestNextSteps: suggestionTool,
+  webResearch: webResearchTool,
+  findSimilarPages: findSimilarPagesTool,
+  parseSpreadsheet: parseSpreadsheetTool,
+  saveTableToAssets: saveTableToAssetsTool,
+  updateTableAsset: updateTableAssetTool,
+  importPeopleFromTable: importPeopleFromTableTool,
+  importOpportunitiesFromTable: importOpportunitiesFromTableTool,
+  recommendNextActions: recommendNextActionsTool,
+  // Alias: Mastra network routing agent may use kebab-case tool ID instead of camelCase key
+  "recommend-next-actions": recommendNextActionsTool,
+  generateResearchRecommendations: generateResearchRecommendationsTool,
+  "generate-research-recommendations": generateResearchRecommendationsTool,
 };
 
 auditToolSchemas("projectStatusAgent", project_status_agent_tools);
 
 export const projectStatusAgent = new Agent({
-	id: "project-status-agent",
-	name: "projectStatusAgent",
-	instructions: async ({ requestContext }) => {
-		try {
-			const projectId = requestContext.get("project_id");
-			const accountId = requestContext.get("account_id");
-			const userId = requestContext.get("user_id");
-			return `
+  id: "project-status-agent",
+  name: "projectStatusAgent",
+  instructions: async ({ requestContext }) => {
+    try {
+      const projectId = requestContext.get("project_id");
+      const accountId = requestContext.get("account_id");
+      const userId = requestContext.get("user_id");
+      return `
 You are Uppy, a senior executive assistant, sales and marketing expert, business coach and researcher. You help product teams make confident decisions by synthesizing customer evidence into actionable insights.
 
 project_id=${projectId || "<unknown>"}, account_id=${accountId || "<unknown>"}, user_id=${userId || "<unknown>"}
@@ -213,6 +218,12 @@ Call "getCurrentDate" first for any date/time questions.
 **Understanding People & Segments**:
 - People requests are handled by the PeopleAgent sub-agent (search, updates, org links, deletes)
 - "fetchSegments" for bullseye scores showing which segments are most likely to buy
+
+**ICP Match Data**:
+- People data from "fetchProjectStatusContext" includes icpMatch (band, score, confidence) per person
+- icpSummary shows distribution (HIGH/MEDIUM/LOW/unscored) and how many people are missing data needed for scoring
+- When users ask about ICP or who to talk to, surface the data quality: e.g. "12 of 30 people can't be scored because they're missing job title or company. Edit them in the People tab to improve your ICP matching."
+- Use "generateResearchRecommendations" for actionable next-step recommendations based on ICP scores
 
 **Finding Evidence & Patterns**:
 - "semanticSearchEvidence" with natural language query—searches quotes AND structured facets (pains, gains, thinks, feels) from INTERVIEWS only
@@ -337,30 +348,30 @@ Do NOT add a "Next steps" section in the text response. Rely on the suggestion w
 ## Chief of Staff
 For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
 `;
-		} catch (error) {
-			consola.error("Error in project status agent instructions:", error);
-			return `
+    } catch (error) {
+      consola.error("Error in project status agent instructions:", error);
+      return `
 Sorry, I'm experiencing technical difficulties right now.
 
 Please try:
 
 1. Refreshing the page and trying again
 2. Contacting support if the issue persists`;
-		}
-	},
-	model: openai("gpt-4.1"),
-	tools: wrapToolsWithStatusEvents(project_status_agent_tools),
-	agents: {
-		taskAgent,
-		peopleAgent,
-		researchAgent,
-		opsAgent,
-		chiefOfStaffAgent,
-	},
-	memory: new Memory({
-		storage: getSharedPostgresStore(),
-	}),
-	// TokenLimiterProcessor prevents context window overflow
-	// Note: Using number format for Zod v4 compatibility
-	outputProcessors: [new TokenLimiterProcessor(100_000)],
+    }
+  },
+  model: openai("gpt-4.1"),
+  tools: wrapToolsWithStatusEvents(project_status_agent_tools),
+  agents: {
+    taskAgent,
+    peopleAgent,
+    researchAgent,
+    opsAgent,
+    chiefOfStaffAgent,
+  },
+  memory: new Memory({
+    storage: getSharedPostgresStore(),
+  }),
+  // TokenLimiterProcessor prevents context window overflow
+  // Note: Using number format for Zod v4 compatibility
+  outputProcessors: [new TokenLimiterProcessor(100_000)],
 });

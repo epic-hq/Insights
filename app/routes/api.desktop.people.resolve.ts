@@ -10,7 +10,7 @@
  */
 
 import type { ActionFunctionArgs } from "react-router";
-import { resolveOrCreatePerson, type PersonResolutionInput } from "~/lib/people/resolution.server";
+import { type PersonResolutionInput, resolveOrCreatePerson } from "~/lib/people/resolution.server";
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 interface ResolvePersonRequest {

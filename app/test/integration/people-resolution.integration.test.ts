@@ -3,10 +3,10 @@
  * Tests email matching, platform ID matching, name+company fuzzy matching, and idempotency
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { testDb, TEST_ACCOUNT_ID } from "~/test/utils/testDb";
-import { resolveOrCreatePerson, type PersonResolutionInput } from "~/lib/people/resolution.server";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "~/../supabase/types";
+import { type PersonResolutionInput, resolveOrCreatePerson } from "~/lib/people/resolution.server";
+import { TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"];
 

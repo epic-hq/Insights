@@ -5410,6 +5410,7 @@ export type Database = {
           response_mode: string
           responses: Json
           updated_at: string
+          utm_params: Json | null
           video_url: string | null
         }
         Insert: {
@@ -5424,6 +5425,7 @@ export type Database = {
           response_mode?: string
           responses?: Json
           updated_at?: string
+          utm_params?: Json | null
           video_url?: string | null
         }
         Update: {
@@ -5438,6 +5440,7 @@ export type Database = {
           response_mode?: string
           responses?: Json
           updated_at?: string
+          utm_params?: Json | null
           video_url?: string | null
         }
         Relationships: [
