@@ -226,6 +226,9 @@ execute: async (input) => {
 - **Debounced saves**: 1000ms debounce for DB writes from user interactions
 - **External data**: Always post-process API responses to ensure unique IDs (`crypto.randomUUID()` fallback)
 - **Dark mode**: Build in from the start with `dark:` variants — retrofitting is painful
+- **Person resolution**: Use shared `resolveOrCreatePerson()` for all ingestion paths (desktop, BAML, import) — prevents duplicates
+- **Idempotent creation**: Try-insert-catch-find pattern with constraint violation (code 23505) handling — safe for retries
+- **Platform IDs**: Store in `contact_info` JSONB for cross-meeting identity — supports multiple platforms without migrations
 
 ### Patterns To Avoid
 

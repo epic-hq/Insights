@@ -289,7 +289,59 @@ See `tests/e2e/README.md` for GitHub Actions setup and CI considerations.
 
 ## Writing Integration Tests
 
-Test real database operations with seeded data to catch schema/query issues:
+Test real database operations with seeded data to catch schema/query issues.
+
+### Person Resolution Integration Tests (2026-02-07)
+
+The unified person resolution system has comprehensive integration tests covering all matching strategies and edge cases:
+
+**Location**: `app/test/integration/people-resolution.integration.test.ts` (537 lines, 37 tests)
+
+**Test Coverage**:
+- Email matching (case-insensitive, priority)
+- Platform ID matching (Zoom, Teams, Meet)
+- Name + company fuzzy matching
+- Person creation with full data
+- Idempotency (concurrent requests, retries)
+- Match priority order
+- Edge cases (null, whitespace, missing fields)
+
+**Status**: Tests require database connection to run. Code structure verified via successful builds.
+
+**Run Tests**:
+```bash
+# Requires database connection
+dotenvx run -- vitest run app/test/integration/people-resolution.integration.test.ts
+```
+
+**Example Test Pattern**:
+```typescript
+describe('Person Resolution - Email Matching', () => {
+  beforeAll(async () => {
+    await seedTestData()
+    // Seed person with email
+    await testDb.from('people').insert({
+      id: 'person-1',
+      account_id: TEST_ACCOUNT_ID,
+      name: 'Jane Doe',
+      primary_email: 'jane@example.com'
+    })
+  })
+
+  it('matches by email (highest priority)', async () => {
+    const result = await resolveOrCreatePerson(testDb, TEST_ACCOUNT_ID, null, {
+      name: 'Jane Doe',
+      primary_email: 'jane@example.com'
+    })
+
+    expect(result.person.id).toBe('person-1')
+    expect(result.matchedBy).toBe('email')
+    expect(result.person.created).toBe(false)
+  })
+})
+```
+
+### General Integration Test Pattern
 
    ```ts
    // backfill.integration.test.ts
