@@ -2,12 +2,13 @@
  * ICP Match Section - Editable ICP criteria and scoring for people
  *
  * Shows current ICP criteria, allows editing, and triggers re-scoring.
- * Displays distribution of ICP match scores.
+ * Displays distribution of ICP match scores with matched people names.
+ * Shows data quality warnings when people records are missing fields.
  */
 
-import { Pencil, Target } from "lucide-react";
+import { AlertTriangle, Pencil, Target } from "lucide-react";
 import { useState } from "react";
-import { useFetcher, useRevalidator } from "react-router";
+import { useRevalidator } from "react-router";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -29,6 +30,15 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 
+type ScoredPerson = {
+  name: string;
+  title: string | null;
+  company: string | null;
+  band: string | null;
+  score: number | null;
+  confidence: number | null;
+};
+
 type ICPMatchSectionProps = {
   accountId: string;
   projectId: string;
@@ -43,13 +53,50 @@ type ICPMatchSectionProps = {
     LOW: number;
     NONE: number;
   };
+  scoredPeople: ScoredPerson[];
+  dataQuality: {
+    totalPeople: number;
+    withTitle: number;
+    withCompany: number;
+  };
 };
+
+function BandBadge({ band }: { band: string | null }) {
+  switch (band) {
+    case "HIGH":
+      return (
+        <Badge className="bg-green-100 px-1.5 py-0 text-[10px] text-green-700 dark:bg-green-950/30 dark:text-green-300">
+          High
+        </Badge>
+      );
+    case "MEDIUM":
+      return (
+        <Badge className="bg-yellow-100 px-1.5 py-0 text-[10px] text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300">
+          Medium
+        </Badge>
+      );
+    case "LOW":
+      return (
+        <Badge className="bg-orange-100 px-1.5 py-0 text-[10px] text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
+          Low
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+          No match
+        </Badge>
+      );
+  }
+}
 
 export function ICPMatchSection({
   accountId,
   projectId,
   initialCriteria,
   distribution,
+  scoredPeople,
+  dataQuality,
 }: ICPMatchSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
@@ -63,7 +110,6 @@ export function ICPMatchSection({
   );
 
   const handleSaveCriteria = async () => {
-    // Save to project_sections (project-level overrides)
     try {
       const res = await fetch(`/a/${accountId}/${projectId}/api/icp-criteria`, {
         method: "POST",
@@ -90,8 +136,6 @@ export function ICPMatchSection({
         toast.success("ICP criteria saved");
         setIsEditing(false);
         revalidator.revalidate();
-
-        // Trigger re-scoring after save
         await handleScoreICP();
       } else {
         toast.error("Failed to save criteria");
@@ -118,7 +162,6 @@ export function ICPMatchSection({
         toast.success("ICP scoring started", {
           description: "People will be scored against your ICP criteria",
         });
-        // Revalidate after a delay to show updated scores
         setTimeout(() => revalidator.revalidate(), 3000);
       } else {
         toast.error(data.error || "Failed to start ICP scoring");
@@ -131,13 +174,19 @@ export function ICPMatchSection({
     }
   };
 
-  const hasDistribution =
-    distribution &&
-    distribution.HIGH +
-      distribution.MEDIUM +
-      distribution.LOW +
-      distribution.NONE >
-      0;
+  const totalScored = scoredPeople.length;
+  const hasCriteria =
+    initialCriteria.target_roles.length > 0 ||
+    initialCriteria.target_orgs.length > 0 ||
+    initialCriteria.target_company_sizes.length > 0;
+
+  // Data quality checks
+  const missingTitle = dataQuality.totalPeople - dataQuality.withTitle;
+  const missingCompany = dataQuality.totalPeople - dataQuality.withCompany;
+  const hasDataQualityIssues =
+    dataQuality.totalPeople > 0 &&
+    (missingTitle / dataQuality.totalPeople > 0.3 ||
+      missingCompany / dataQuality.totalPeople > 0.3);
 
   return (
     <>
@@ -174,7 +223,7 @@ export function ICPMatchSection({
           {/* Current Criteria */}
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <p className="mb-1.5 font-medium text-xs text-foreground/60">
+              <p className="mb-1.5 font-medium text-foreground/60 text-xs">
                 Target Roles
               </p>
               <div className="flex flex-wrap gap-1">
@@ -192,14 +241,14 @@ export function ICPMatchSection({
               </div>
             </div>
             <div>
-              <p className="mb-1.5 font-medium text-xs text-foreground/60">
+              <p className="mb-1.5 font-medium text-foreground/60 text-xs">
                 Target Organizations
               </p>
               <div className="flex flex-wrap gap-1">
                 {initialCriteria.target_orgs.length > 0 ? (
-                  initialCriteria.target_orgs.slice(0, 2).map((org) => (
+                  initialCriteria.target_orgs.map((org) => (
                     <Badge key={org} variant="secondary" className="text-xs">
-                      {org.length > 30 ? `${org.slice(0, 30)}...` : org}
+                      {org}
                     </Badge>
                   ))
                 ) : (
@@ -207,15 +256,10 @@ export function ICPMatchSection({
                     (not set)
                   </span>
                 )}
-                {initialCriteria.target_orgs.length > 2 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{initialCriteria.target_orgs.length - 2} more
-                  </Badge>
-                )}
               </div>
             </div>
             <div>
-              <p className="mb-1.5 font-medium text-xs text-foreground/60">
+              <p className="mb-1.5 font-medium text-foreground/60 text-xs">
                 Target Company Sizes
               </p>
               <div className="flex flex-wrap gap-1">
@@ -234,50 +278,127 @@ export function ICPMatchSection({
             </div>
           </div>
 
-          {/* Distribution */}
-          {hasDistribution && (
-            <div className="border-t pt-4">
-              <p className="mb-2 font-medium text-xs text-foreground/60">
-                Match Distribution
-              </p>
-              <div className="flex gap-3">
-                {distribution!.HIGH > 0 && (
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-semibold text-green-600 text-lg dark:text-green-400">
-                      {distribution!.HIGH}
+          {/* Data Quality Warning */}
+          {hasDataQualityIssues && (
+            <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50/50 p-3 dark:border-yellow-800/50 dark:bg-yellow-950/20">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+              <div className="text-xs">
+                <p className="font-medium text-yellow-800 dark:text-yellow-300">
+                  Scoring accuracy limited by missing data
+                </p>
+                <p className="mt-0.5 text-yellow-700 dark:text-yellow-400">
+                  {missingTitle > 0 && (
+                    <span>
+                      {missingTitle}/{dataQuality.totalPeople} people missing
+                      job title.{" "}
                     </span>
-                    <span className="text-muted-foreground text-xs">High</span>
-                  </div>
-                )}
-                {distribution!.MEDIUM > 0 && (
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-semibold text-yellow-600 text-lg dark:text-yellow-400">
-                      {distribution!.MEDIUM}
+                  )}
+                  {missingCompany > 0 && (
+                    <span>
+                      {missingCompany}/{dataQuality.totalPeople} missing
+                      company.{" "}
                     </span>
-                    <span className="text-muted-foreground text-xs">
-                      Medium
-                    </span>
-                  </div>
-                )}
-                {distribution!.LOW > 0 && (
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-semibold text-orange-600 text-lg dark:text-orange-400">
-                      {distribution!.LOW}
-                    </span>
-                    <span className="text-muted-foreground text-xs">Low</span>
-                  </div>
-                )}
-                {distribution!.NONE > 0 && (
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-semibold text-muted-foreground text-lg">
-                      {distribution!.NONE}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      No match
-                    </span>
-                  </div>
-                )}
+                  )}
+                  Add titles and companies to people records for better ICP
+                  matching.
+                </p>
               </div>
+            </div>
+          )}
+
+          {/* Distribution - always show all buckets */}
+          {totalScored > 0 && (
+            <div className="border-t pt-4">
+              <p className="mb-2 font-medium text-foreground/60 text-xs">
+                Match Distribution ({totalScored} scored)
+              </p>
+              <div className="flex gap-4">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-semibold text-green-600 text-lg dark:text-green-400">
+                    {distribution?.HIGH || 0}
+                  </span>
+                  <span className="text-muted-foreground text-xs">High</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-semibold text-lg text-yellow-600 dark:text-yellow-400">
+                    {distribution?.MEDIUM || 0}
+                  </span>
+                  <span className="text-muted-foreground text-xs">Medium</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-semibold text-lg text-orange-600 dark:text-orange-400">
+                    {distribution?.LOW || 0}
+                  </span>
+                  <span className="text-muted-foreground text-xs">Low</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-semibold text-lg text-muted-foreground">
+                    {distribution?.NONE || 0}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    No match
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Matched People Detail */}
+          {scoredPeople.length > 0 && (
+            <div className="border-t pt-4">
+              <p className="mb-2 font-medium text-foreground/60 text-xs">
+                People Scores
+              </p>
+              <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                {scoredPeople.map((person, i) => (
+                  <div
+                    key={`${person.name}-${i}`}
+                    className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-muted/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{person.name}</span>
+                      {(person.title || person.company) && (
+                        <span className="ml-1.5 text-foreground/50">
+                          {[person.title, person.company]
+                            .filter(Boolean)
+                            .join(" @ ")}
+                        </span>
+                      )}
+                      {!person.title && !person.company && (
+                        <span className="ml-1.5 italic text-foreground/30">
+                          no title/company
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                      <span className="tabular-nums text-foreground/50">
+                        {person.score != null
+                          ? `${Math.round(person.score * 100)}%`
+                          : "—"}
+                      </span>
+                      <BandBadge band={person.band} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No scores yet */}
+          {totalScored === 0 && hasCriteria && (
+            <div className="border-t pt-4">
+              <p className="text-center text-muted-foreground text-xs">
+                No scores yet. Click "Score All" to run ICP matching.
+              </p>
+            </div>
+          )}
+
+          {!hasCriteria && (
+            <div className="border-t pt-4">
+              <p className="text-center text-muted-foreground text-xs">
+                No ICP criteria defined. Click "Edit Criteria" to set your
+                target roles, organizations, and company sizes.
+              </p>
             </div>
           )}
         </CardContent>
