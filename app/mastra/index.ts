@@ -25,6 +25,21 @@ import { weatherWorkflow } from "./workflows/weather-workflow";
 
 // Create global SupabaseClient for workflows
 const _supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+const DEFAULT_MASTRA_PORT = 4111;
+
+function resolveMastraPort(): number {
+	const rawPort = process.env.MASTRA_PORT;
+	if (!rawPort) return DEFAULT_MASTRA_PORT;
+
+	const parsed = Number(rawPort);
+	if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
+		return parsed;
+	}
+
+	return DEFAULT_MASTRA_PORT;
+}
+
+const mastraPort = resolveMastraPort();
 
 export type UserContext = {
 	user_id: string;
@@ -66,7 +81,7 @@ export const mastra = new Mastra({
 			allowMethods: ["*"],
 			allowHeaders: ["*"],
 		},
-		port: 4111,
+		port: mastraPort,
 		middleware: [
 			async (c, next) => {
 				// Use lowercase header names (case-insensitive per spec; some adapters normalize to lowercase)

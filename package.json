@@ -211,7 +211,7 @@
     "db:types": "supabase gen types --project-id rbginqvgkonnoktrttqv --schema public,accounts,billing typescript > supabase/types.ts",
     "dev": "concurrently -n \"Vite,Mastra\" --c green,cyan \"pnpm run dev:vite\" \"pnpm run dev:mastra\"",
     "dev:agent": "dotenvx run -- tsx agents/livekit/agent.ts dev",
-    "dev:mastra": "dotenvx run -- npx mastra dev --dir app/mastra",
+    "dev:mastra": "dotenvx run -- tsx scripts/dev-mastra.ts",
     "dev:vite": "mkdir -p build/client && PORT=4280 dotenvx run -- react-router dev",
     "dev:with-agent": "concurrently -n \"Vite,Mastra,Agent\" --c green,cyan,magenta \"pnpm run dev:vite\" \"pnpm run dev:mastra\" \"pnpm run dev:agent\"",
     "email": "email dev",
