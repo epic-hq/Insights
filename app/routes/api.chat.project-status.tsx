@@ -37,15 +37,34 @@ function getLastUserText(messages: Array<{ role?: string; content?: unknown; par
 	return "";
 }
 
-const routingTargetAgents = ["projectStatusAgent", "chiefOfStaffAgent", "researchAgent", "projectSetupAgent"] as const;
+const routingTargetAgents = [
+	"projectStatusAgent",
+	"chiefOfStaffAgent",
+	"researchAgent",
+	"projectSetupAgent",
+	"howtoAgent",
+] as const;
 type RoutingTargetAgent = (typeof routingTargetAgents)[number];
-type RoutingResponseMode = "normal" | "fast_standardized" | "theme_people_snapshot" | "survey_quick_create";
+type RoutingResponseMode =
+	| "normal"
+	| "fast_standardized"
+	| "theme_people_snapshot"
+	| "survey_quick_create"
+	| "ux_research_mode"
+	| "gtm_mode";
 
 const intentRoutingSchema = z.object({
 	targetAgentId: z.enum(routingTargetAgents),
 	confidence: z.number().min(0).max(1),
 	responseMode: z
-		.enum(["normal", "fast_standardized", "theme_people_snapshot", "survey_quick_create"])
+		.enum([
+			"normal",
+			"fast_standardized",
+			"theme_people_snapshot",
+			"survey_quick_create",
+			"ux_research_mode",
+			"gtm_mode",
+		])
 		.default("normal" satisfies RoutingResponseMode),
 	rationale: z.string().max(240).optional(),
 });
@@ -63,6 +82,7 @@ const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	chiefOfStaffAgent: 4,
 	researchAgent: 5,
 	projectSetupAgent: 5,
+	howtoAgent: 4,
 };
 
 const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
@@ -70,7 +90,17 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	chiefOfStaffAgent: "gpt-4o-mini",
 	researchAgent: "gpt-4o",
 	projectSetupAgent: "gpt-5.1",
+	howtoAgent: "gpt-4o-mini",
 };
+
+const HOWTO_REQUIRED_SECTION_HEADERS = [
+	"direct answer",
+	"do this now",
+	"prompt template",
+	"quick links",
+	"if stuck",
+] as const;
+const HOWTO_MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:https?:\/\/|\/)[^)]+\)/i;
 
 type FastGuidanceCacheEntry = {
 	text: string;
@@ -159,6 +189,80 @@ function normalizeMessagesForExecution(
 	});
 }
 
+function buildHowtoQuickLinks(accountId: string, projectId: string): string {
+	const projectBase = accountId && projectId ? `/a/${accountId}/${projectId}` : "";
+	if (projectBase) {
+		return `- [People](${projectBase}/people)\n- [Insights](${projectBase}/insights)\n- [Ask](${projectBase}/ask)`;
+	}
+	return "- [Docs](/docs)\n- [Help](/help)";
+}
+
+function buildHowtoContractPatchText(
+	existingText: string,
+	accountId: string,
+	projectId: string
+): string | null {
+	const normalized = existingText.toLowerCase();
+	const missingSections = HOWTO_REQUIRED_SECTION_HEADERS.filter((header) => !normalized.includes(header));
+	const hasMarkdownLink = HOWTO_MARKDOWN_LINK_REGEX.test(existingText);
+	if (missingSections.length === 0 && hasMarkdownLink) return null;
+
+	const quickLinksList = buildHowtoQuickLinks(accountId, projectId);
+	const patches: string[] = [];
+
+	for (const section of missingSections) {
+		if (section === "direct answer") {
+			patches.push("**Direct answer**\nUse the smallest clear step that produces evidence before scaling effort.");
+			continue;
+		}
+		if (section === "do this now") {
+			patches.push("**Do this now**\n- Define the user + outcome in one sentence.\n- Run one bounded test this week.\n- Capture result + next decision in project notes.");
+			continue;
+		}
+		if (section === "prompt template") {
+			patches.push(
+				'**Prompt template**\n```text\nAct as my coach for {{goal}}. Context: {{context}}. Constraints: {{constraints}}. Give me 3 steps, 1 risk, and 1 metric to track.\n```'
+			);
+			continue;
+		}
+		if (section === "quick links") {
+			patches.push(`**Quick links**\n${quickLinksList}`);
+			continue;
+		}
+		if (section === "if stuck") {
+			patches.push("**If stuck**\nReply with your current blocker, available data, and deadline, and I will tighten the plan.");
+		}
+	}
+
+	if (!hasMarkdownLink && !missingSections.includes("quick links")) {
+		patches.push(`**Quick links**\n${quickLinksList}`);
+	}
+
+	return patches.length > 0 ? `\n\n${patches.join("\n\n")}` : null;
+}
+
+function buildHowtoFallbackResponse(accountId: string, projectId: string): string {
+	const quickLinksList = buildHowtoQuickLinks(accountId, projectId);
+	return `**Direct answer**
+I can still give you a working starting point even without full context.
+
+**Do this now**
+- Define the specific outcome you want in one sentence.
+- Choose one experiment you can run in the next 48 hours.
+- Decide the metric that will prove progress.
+
+**Prompt template**
+\`\`\`text
+Help me with {{goal}}. Context: {{context}}. Constraints: {{constraints}}. Return 3 concrete steps, 1 risk, and 1 success metric.
+\`\`\`
+
+**Quick links**
+${quickLinksList}
+
+**If stuck**
+Share your blocker, timeline, and available data and I will give you a tighter playbook.`;
+}
+
 type StreamLike = ReadableStream<Record<string, unknown>>;
 
 function augmentStreamForReliability(
@@ -168,6 +272,8 @@ function augmentStreamForReliability(
 		targetAgentId: RoutingTargetAgent;
 		targetMaxSteps: number;
 		responseMode: RoutingResponseMode;
+		accountId: string;
+		projectId: string;
 	}
 ) {
 	if (!stream || typeof (stream as { pipeThrough?: unknown }).pipeThrough !== "function") {
@@ -179,6 +285,8 @@ function augmentStreamForReliability(
 	let injectedSafetyMessage = false;
 	let appendedDebugTrace = false;
 	let sawFinishChunk = false;
+	let appendedHowtoContractPatch = false;
+	let accumulatedAssistantText = "";
 
 	const enqueueAssistantText = (
 		controller: TransformStreamDefaultController<Record<string, unknown>>,
@@ -197,9 +305,23 @@ function augmentStreamForReliability(
 
 	const maybeEnqueueSafetyMessage = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
 		if (!sawTextDelta && !injectedSafetyMessage) {
-			enqueueAssistantText(controller, FALLBACK_EMPTY_RESPONSE_TEXT, "fallback");
+			const fallbackText =
+				options.targetAgentId === "howtoAgent"
+					? buildHowtoFallbackResponse(options.accountId, options.projectId)
+					: FALLBACK_EMPTY_RESPONSE_TEXT;
+			enqueueAssistantText(controller, fallbackText, "fallback");
+			accumulatedAssistantText += `\n${fallbackText}`;
 			injectedSafetyMessage = true;
 		}
+	};
+
+	const maybeEnqueueHowtoContractPatch = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
+		if (options.targetAgentId !== "howtoAgent" || appendedHowtoContractPatch) return;
+		const patchText = buildHowtoContractPatchText(accumulatedAssistantText, options.accountId, options.projectId);
+		if (!patchText) return;
+		enqueueAssistantText(controller, patchText, "howto-contract");
+		accumulatedAssistantText += patchText;
+		appendedHowtoContractPatch = true;
 	};
 
 	const maybeEnqueueDebugTrace = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
@@ -222,6 +344,7 @@ function augmentStreamForReliability(
 			transform(chunk, controller) {
 				if (chunk?.type === "text-delta" && typeof chunk.delta === "string" && chunk.delta.trim().length > 0) {
 					sawTextDelta = true;
+					accumulatedAssistantText += chunk.delta;
 				}
 
 				if (chunk?.type === "tool-input-available" && typeof chunk.toolName === "string") {
@@ -235,6 +358,7 @@ function augmentStreamForReliability(
 				if (chunk?.type === "finish") {
 					sawFinishChunk = true;
 					maybeEnqueueSafetyMessage(controller);
+					maybeEnqueueHowtoContractPatch(controller);
 					maybeEnqueueDebugTrace(controller);
 				}
 
@@ -242,6 +366,7 @@ function augmentStreamForReliability(
 			},
 			flush(controller) {
 				maybeEnqueueSafetyMessage(controller);
+				maybeEnqueueHowtoContractPatch(controller);
 				maybeEnqueueDebugTrace(controller);
 				if (!sawFinishChunk) {
 					controller.enqueue({ type: "finish", finishReason: "stop" });
@@ -257,6 +382,44 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 	const prompt = lastUserText.trim().toLowerCase();
 	if (!prompt) return null;
 	const hasAny = (...tokens: string[]) => tokens.some((token) => prompt.includes(token));
+	const startsWithHowTo = /^(how do i|how can i|where do i|what is the best way to|teach me)\b/.test(prompt);
+	const asksHowToGuidance =
+		startsWithHowTo || hasAny("how do i", "where do i", "best way to", "teach me", "walk me through");
+	const hasGtmSignal = hasAny(
+		"gtm",
+		"go to market",
+		"go-to-market",
+		"positioning",
+		"messaging",
+		"distribution",
+		"acquisition",
+		"activation",
+		"pipeline",
+		"launch",
+		"pricing",
+		"sales"
+	);
+	const hasUxResearchSignal = hasAny(
+		"ux",
+		"user research",
+		"usability",
+		"interview",
+		"discovery",
+		"validation",
+		"prototype",
+		"persona",
+		"journey",
+		"insight"
+	);
+
+	if (asksHowToGuidance) {
+		return {
+			targetAgentId: "howtoAgent",
+			confidence: 1,
+			responseMode: hasGtmSignal && !hasUxResearchSignal ? "gtm_mode" : "ux_research_mode",
+			rationale: "deterministic routing for how-to guidance prompts",
+		};
+	}
 
 	const asksForTopThemesWithPeople =
 		hasAny("theme", "themes") && hasAny("top", "most common") && hasAny("who", "people");
@@ -470,12 +633,15 @@ Choose exactly one target:
 - projectSetupAgent: onboarding, setup, research goals, company context capture.
 - chiefOfStaffAgent: strategic guidance and prioritization only (for "what should I do next", sequencing, focus).
 - researchAgent: creating/managing surveys, interview prompts, interview operations.
+- howtoAgent: procedural "how do I / where do I / best way to / teach me" coaching requests.
 - projectStatusAgent: data lookups and factual status questions (themes, ICP counts/distribution, people, evidence, interviews).
 
 Set responseMode="fast_standardized" only when the user asks broad strategic guidance without asking for execution details.
 Set responseMode="theme_people_snapshot" when user asks for top/common themes and who has those themes.
 Never set responseMode="theme_people_snapshot" for people-comparison prompts (e.g., "what do X and Y have in common", "compare these two people", "how are they different"). For those, use responseMode="normal".
 Set responseMode="survey_quick_create" when user asks to create/build/generate a survey or waitlist.
+Set responseMode="gtm_mode" when howtoAgent request is primarily go-to-market (positioning, messaging, launch, distribution, sales).
+Set responseMode="ux_research_mode" for howtoAgent requests about UX, product discovery/research, or general product how-to prompts.
 Message: """${prompt.slice(0, 1200)}"""`,
 		});
 		return result.object;
@@ -893,6 +1059,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		targetAgentId,
 		targetMaxSteps,
 		responseMode: resolvedResponseMode,
+		accountId,
+		projectId,
 	});
 
 	return createUIMessageStreamResponse({ stream: reliableStream });
