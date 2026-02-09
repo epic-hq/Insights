@@ -7,6 +7,7 @@ export default defineConfig({
 		globals: true,
 		css: true,
 		environment: "node",
+		fileParallelism: false,
 		testTimeout: 30000, // Longer timeout for DB operations
 		setupFiles: ["./app/test/setup/integration.setup.ts"],
 		include: ["app/test/integration/**/*.test.ts"],

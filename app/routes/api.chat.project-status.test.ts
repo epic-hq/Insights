@@ -379,7 +379,7 @@ describe("api.chat.project-status", () => {
 		expect(call.agentId).toBe("projectStatusAgent");
 		expect(call.params.requestContext.get("response_mode")).toBe("normal");
 		const routingPrompt = (mockedGenerateObject.mock.calls.at(-1)?.[0] as any)?.prompt as string;
-		expect(routingPrompt).toContain("Never set responseMode=\"theme_people_snapshot\" for people-comparison prompts");
+		expect(routingPrompt).toContain('Never set responseMode="theme_people_snapshot" for people-comparison prompts');
 	});
 
 	it("deterministically routes ICP lookup prompts to projectStatusAgent", async () => {

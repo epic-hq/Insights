@@ -39,7 +39,7 @@ export interface PersonResolutionInput {
 	// Metadata
 	role?: string; // 'interviewer' | 'participant'
 	person_type?: "internal" | null;
-	source: string; // 'desktop_meeting' | 'baml_extraction' | 'manual'
+	source: string; // 'desktop_meeting' | 'baml_extraction' | 'manual' (routing metadata only)
 }
 
 export interface PersonResolutionResult {
@@ -49,6 +49,43 @@ export interface PersonResolutionResult {
 		created: boolean; // True if newly created
 	};
 	matchedBy: "email" | "platform_id" | "name_company" | "created";
+}
+
+function normalizeNameParts(input: Pick<PersonResolutionInput, "firstname" | "lastname" | "name">): {
+	firstname: string | null;
+	lastname: string | null;
+	fullName: string;
+} {
+	const first = input.firstname?.trim() || "";
+	const last = input.lastname?.trim() || "";
+
+	if (first || last) {
+		return {
+			firstname: first || null,
+			lastname: last || null,
+			fullName: `${first} ${last}`.trim(),
+		};
+	}
+
+	const full = input.name?.trim() || "";
+	if (!full) {
+		return { firstname: null, lastname: null, fullName: "" };
+	}
+
+	const parts = full
+		.split(" ")
+		.map((part) => part.trim())
+		.filter(Boolean);
+
+	if (parts.length === 0) {
+		return { firstname: null, lastname: null, fullName: "" };
+	}
+
+	return {
+		firstname: parts[0] || null,
+		lastname: parts.length > 1 ? parts.slice(1).join(" ") : null,
+		fullName: full,
+	};
 }
 
 /**
@@ -185,6 +222,8 @@ export async function resolveOrCreatePerson(
 	projectId: string,
 	input: PersonResolutionInput
 ): Promise<PersonResolutionResult> {
+	const normalized = normalizeNameParts(input);
+
 	// 1. Email match (highest priority)
 	if (input.primary_email) {
 		const existing = await findByEmail(supabase, accountId, input.primary_email);
@@ -207,13 +246,9 @@ export async function resolveOrCreatePerson(
 		}
 	}
 
-	// 3. Resolve company text -> org UUID (needed for matching and creation)
-	const orgId = input.company ? await resolveOrganization(supabase, accountId, input.company) : null;
-
-	// 4. Name + org match
-	const name = input.name || `${input.firstname || ""} ${input.lastname || ""}`.trim();
-	if (name) {
-		const existing = await findByNameOrg(supabase, accountId, name, orgId);
+	// 3. Name + company fuzzy match
+	if (normalized.fullName) {
+		const existing = await findByNameCompany(supabase, accountId, normalized.fullName, input.company);
 		if (existing) {
 			return {
 				person: { ...existing, created: false },
@@ -226,16 +261,14 @@ export async function resolveOrCreatePerson(
 	const insertPayload: PeopleInsert = {
 		account_id: accountId,
 		project_id: projectId,
-		firstname: input.firstname,
-		lastname: input.lastname,
-		name,
+		firstname: normalized.firstname,
+		lastname: normalized.lastname,
 		primary_email: input.primary_email,
 		primary_phone: input.primary_phone,
 		company: input.company || "", // Mirror text for backwards compat
 		default_organization_id: orgId,
 		title: input.title,
 		person_type: input.person_type,
-		source: input.source,
 		// Store platform user ID in contact_info JSONB
 		contact_info: input.platform_user_id
 			? {

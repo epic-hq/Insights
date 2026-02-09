@@ -14,7 +14,12 @@ type ToolResult = {
 		name: string;
 		evidenceCount: number;
 		peopleCount: number;
-		people: Array<{ personId: string; name: string | null; mentionCount: number }>;
+		people: Array<{
+			personId: string;
+			name: string | null;
+			mentionCount: number;
+			url: string | null;
+		}>;
 		url: string | null;
 	}>;
 };
@@ -33,6 +38,9 @@ vi.mock("~/utils/route-definitions", () => ({
 	createRouteDefinitions: vi.fn((projectPath: string) => ({
 		themes: {
 			detail: (themeId: string) => `${projectPath}/insights/${themeId}`,
+		},
+		people: {
+			detail: (personId: string) => `${projectPath}/people/${personId}`,
 		},
 	})),
 }));

@@ -64,6 +64,7 @@ const mocks = vi.hoisted(() => {
 	const mockPolar = {
 		checkouts: { create: vi.fn() },
 		subscriptions: { update: vi.fn() },
+		customerSessions: { create: vi.fn() },
 	};
 
 	const mockBillingFns = {
@@ -117,7 +118,9 @@ vi.mock("~/env.server", () => ({
 }));
 
 vi.mock("@polar-sh/sdk", () => ({
-	Polar: vi.fn(() => mocks.mockPolar),
+	Polar: vi.fn(function PolarMock() {
+		return mocks.mockPolar;
+	}),
 }));
 
 vi.mock("@polar-sh/hono", () => ({
@@ -197,8 +200,12 @@ beforeEach(() => {
 	mocks.billingCustomersBuilder.reset();
 	mocks.mockPolar.checkouts.create.mockReset();
 	mocks.mockPolar.subscriptions.update.mockReset();
+	mocks.mockPolar.customerSessions.create.mockReset();
 	Object.values(mocks.mockBillingFns).forEach((fn) => fn.mockReset());
 	mocks.mockGetAuthenticatedUser.mockReset();
+	mocks.mockPolar.customerSessions.create.mockResolvedValue({
+		customerPortalUrl: "https://sandbox.polar.sh/portal?customer_id=cust_1",
+	});
 });
 
 describe("Billing checkout", () => {

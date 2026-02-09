@@ -79,6 +79,15 @@ type FastGuidanceCacheEntry = {
 
 const fastGuidanceCache = new Map<string, FastGuidanceCacheEntry>();
 
+/**
+ * Sticky routing: remembers the last agent routed per resource so follow-up
+ * messages in an ongoing conversation stay with the same agent (e.g., a user
+ * answering a projectSetupAgent question doesn't get re-routed to chiefOfStaff).
+ */
+type StickyRoutingEntry = { agentId: RoutingTargetAgent; timestamp: number };
+const lastRoutedAgentMap = new Map<string, StickyRoutingEntry>();
+const STICKY_ROUTING_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 function hashString(input: string): string {
 	let hash = 2166136261;
 	for (let index = 0; index < input.length; index += 1) {
@@ -348,9 +357,21 @@ function buildDeterministicSurveyDraft(prompt: string) {
 			name: "Profile Completion Survey",
 			description: "Collect missing profile data and a short context update to improve ICP scoring.",
 			questions: [
-				{ prompt: "What is your current job title?", type: "short_text", required: true },
-				{ prompt: "What company are you currently at?", type: "short_text", required: true },
-				{ prompt: "What is your primary goal right now related to this problem?", type: "auto", required: false },
+				{
+					prompt: "What is your current job title?",
+					type: "short_text",
+					required: true,
+				},
+				{
+					prompt: "What company are you currently at?",
+					type: "short_text",
+					required: true,
+				},
+				{
+					prompt: "What is your primary goal right now related to this problem?",
+					type: "auto",
+					required: false,
+				},
 				{
 					prompt: "How urgent is solving this in the next 3 months?",
 					type: "likert",
@@ -366,7 +387,11 @@ function buildDeterministicSurveyDraft(prompt: string) {
 			name: "Beta Waitlist Survey",
 			description: "Qualify waitlist signups and understand urgency and expected outcomes.",
 			questions: [
-				{ prompt: "What is your biggest challenge right now?", type: "auto", required: true },
+				{
+					prompt: "What is your biggest challenge right now?",
+					type: "auto",
+					required: true,
+				},
 				{
 					prompt: "How urgent is this problem for you today?",
 					type: "likert",
@@ -374,7 +399,11 @@ function buildDeterministicSurveyDraft(prompt: string) {
 					likertLabels: { low: "Not urgent", high: "Very urgent" },
 					required: true,
 				},
-				{ prompt: "What outcome would make this an obvious win for you?", type: "auto", required: false },
+				{
+					prompt: "What outcome would make this an obvious win for you?",
+					type: "auto",
+					required: false,
+				},
 			],
 		};
 	}
@@ -383,8 +412,16 @@ function buildDeterministicSurveyDraft(prompt: string) {
 		name: "Customer Discovery Survey",
 		description: "Gather structured feedback from target users.",
 		questions: [
-			{ prompt: "What problem are you trying to solve right now?", type: "auto", required: true },
-			{ prompt: "What are you using today to solve it?", type: "auto", required: false },
+			{
+				prompt: "What problem are you trying to solve right now?",
+				type: "auto",
+				required: true,
+			},
+			{
+				prompt: "What are you using today to solve it?",
+				type: "auto",
+				required: false,
+			},
 			{
 				prompt: "How painful is this problem for you?",
 				type: "likert",
@@ -396,12 +433,31 @@ function buildDeterministicSurveyDraft(prompt: string) {
 	};
 }
 
-async function routeAgentByIntent(lastUserText: string): Promise<z.infer<typeof intentRoutingSchema> | null> {
+async function routeAgentByIntent(
+	lastUserText: string,
+	resourceId?: string
+): Promise<z.infer<typeof intentRoutingSchema> | null> {
 	const prompt = lastUserText.trim();
 	if (!prompt) return null;
 
 	const deterministicRoute = routeByDeterministicPrompt(prompt);
 	if (deterministicRoute) return deterministicRoute;
+
+	// Sticky routing: if the last routed agent was projectSetupAgent and no
+	// deterministic rule explicitly matched a different agent, keep routing to
+	// projectSetupAgent. This prevents follow-up answers (e.g. "buyer dynamics
+	// inside companies") from being misrouted by the LLM to chiefOfStaffAgent.
+	if (resourceId) {
+		const sticky = lastRoutedAgentMap.get(resourceId);
+		if (sticky && sticky.agentId === "projectSetupAgent" && Date.now() - sticky.timestamp < STICKY_ROUTING_TTL_MS) {
+			return {
+				targetAgentId: "projectSetupAgent",
+				confidence: 0.95,
+				responseMode: "normal",
+				rationale: "sticky routing — continuing projectSetupAgent conversation",
+			};
+		}
+	}
 
 	try {
 		const result = await generateObject({
@@ -490,15 +546,15 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const debugRequested = DEBUG_PREFIX_REGEX.test(lastUserTextRaw);
 	const lastUserText = debugRequested ? stripDebugPrefix(lastUserTextRaw) : lastUserTextRaw;
 	const runtimeMessagesForExecution = normalizeMessagesForExecution(runtimeMessages, debugRequested);
-	const routeDecision = await routeAgentByIntent(lastUserText);
+	const resourceId = `projectStatusAgent-${userId}-${projectId}`;
+	const routeDecision = await routeAgentByIntent(lastUserText, resourceId);
 	const resolvedResponseMode: RoutingResponseMode =
 		(routeDecision?.responseMode as RoutingResponseMode | undefined) ?? "normal";
 	const targetAgentId: RoutingTargetAgent =
 		routeDecision && routeDecision.confidence >= ROUTING_CONFIDENCE_THRESHOLD
 			? routeDecision.targetAgentId
 			: "projectStatusAgent";
-	const isFastStandardized =
-		targetAgentId === "chiefOfStaffAgent" && resolvedResponseMode === "fast_standardized";
+	const isFastStandardized = targetAgentId === "chiefOfStaffAgent" && resolvedResponseMode === "fast_standardized";
 	const targetMaxSteps = isFastStandardized
 		? Math.min(MAX_STEPS_BY_AGENT[targetAgentId], FAST_STANDARDIZED_MAX_STEPS)
 		: MAX_STEPS_BY_AGENT[targetAgentId];
@@ -515,6 +571,12 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		});
 	}
 
+	// Store routing decision for sticky routing
+	lastRoutedAgentMap.set(resourceId, {
+		agentId: targetAgentId,
+		timestamp: Date.now(),
+	});
+
 	consola.info("project-status: intent routing", {
 		targetAgentId,
 		targetMaxSteps,
@@ -524,8 +586,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		rawResponseMode: routeDecision?.responseMode ?? "normal",
 		rationale: routeDecision?.rationale ?? null,
 	});
-
-	const resourceId = `projectStatusAgent-${userId}-${projectId}`;
 
 	const threads = await memory.listThreadsByResourceId({
 		resourceId,

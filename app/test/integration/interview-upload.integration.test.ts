@@ -4,7 +4,19 @@
  */
 
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { getTestDbState, mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
+import {
+	getTestDbState,
+	mockTestAuth,
+	seedTestData,
+	TEST_ACCOUNT_ID,
+	TEST_INSIGHT_1_ID,
+	TEST_INSIGHT_2_ID,
+	TEST_INTERVIEW_1_ID,
+	TEST_PERSON_1_ID,
+	TEST_TAG_1_ID,
+	TEST_TAG_3_ID,
+	testDb,
+} from "~/test/utils/testDb";
 
 // Mock only Supabase server client for auth context
 vi.mock("~/lib/supabase/client.server", () => ({
@@ -34,12 +46,11 @@ describe("Database Integration Tests", () => {
               segment
             )
           ),
-          insights (
+          themes (
             name,
             insight_tags (
               tags (
-                tag,
-                category
+                tag
               )
             )
           )
@@ -50,11 +61,11 @@ describe("Database Integration Tests", () => {
 			expect(complexQuery).toHaveLength(3);
 
 			// Verify structure of joined data
-			const interviewWithPerson = complexQuery?.find((i) => i.id === "interview-1");
+			const interviewWithPerson = complexQuery?.find((i) => i.id === TEST_INTERVIEW_1_ID);
 			expect(interviewWithPerson?.people).toHaveLength(1);
 			expect(interviewWithPerson?.people[0].people.name).toBe("Sarah Chen");
-			expect(interviewWithPerson?.insights).toHaveLength(1);
-			expect(interviewWithPerson?.insights[0].insight_tags).toHaveLength(2);
+			expect(interviewWithPerson?.themes).toHaveLength(1);
+			expect(interviewWithPerson?.themes[0].insight_tags).toHaveLength(2);
 		});
 
 		it("should maintain junction table relationships during operations", async () => {
@@ -65,8 +76,8 @@ describe("Database Integration Tests", () => {
 			// Add new insight-tag relationship
 			await testDb.from("insight_tags").insert({
 				account_id: TEST_ACCOUNT_ID,
-				insight_id: "insight-2",
-				tag: "tag-3", // Link insight-2 to enterprise tag
+				insight_id: TEST_INSIGHT_2_ID,
+				tag_id: TEST_TAG_3_ID, // Link insight-2 to enterprise tag
 			});
 
 			// Verify junction tables are updated correctly
@@ -79,7 +90,7 @@ describe("Database Integration Tests", () => {
 				.select(`
           *,
           insight_tags (
-            insights (*)
+            themes (*)
           )
         `)
 				.eq("account_id", TEST_ACCOUNT_ID);
@@ -93,8 +104,8 @@ describe("Database Integration Tests", () => {
 		it("should enforce foreign key constraints", async () => {
 			// Try to create interview-people link with invalid interview ID
 			const { error } = await testDb.from("interview_people").insert({
-				interview_id: "non-existent-interview",
-				person_id: "person-1",
+				interview_id: crypto.randomUUID(),
+				person_id: TEST_PERSON_1_ID,
 				role: "participant",
 			});
 
@@ -107,8 +118,8 @@ describe("Database Integration Tests", () => {
 			// Try to create duplicate insight-tag relationship
 			const { error } = await testDb.from("insight_tags").insert({
 				account_id: TEST_ACCOUNT_ID,
-				insight_id: "insight-1",
-				tag: "tag-1", // This combination already exists in seed data
+				insight_id: TEST_INSIGHT_1_ID,
+				tag_id: TEST_TAG_1_ID, // This combination already exists in seed data
 			});
 
 			// Should fail due to unique constraint
@@ -121,7 +132,7 @@ describe("Database Integration Tests", () => {
 			const { data: crossAccountPeople } = await testDb
 				.from("people")
 				.select("*")
-				.eq("account_id", "different-account-id");
+				.eq("account_id", crypto.randomUUID());
 
 			// Should return empty due to RLS
 			expect(crossAccountPeople).toHaveLength(0);
@@ -147,10 +158,10 @@ describe("Database Integration Tests", () => {
               segment
             )
           ),
-          insights (
+          themes (
             name,
             insight_tags (
-              tag
+              tag_id
             )
           )
         `)
@@ -160,18 +171,18 @@ describe("Database Integration Tests", () => {
 			expect(complexQuery).toHaveLength(3);
 
 			// Verify structure of joined data
-			const interviewWithPerson = complexQuery?.find((i) => i.id === "interview-1");
+			const interviewWithPerson = complexQuery?.find((i) => i.id === TEST_INTERVIEW_1_ID);
 			expect(interviewWithPerson?.people).toHaveLength(1);
 			expect(interviewWithPerson?.people[0].people.name).toBe("Sarah Chen");
-			expect(interviewWithPerson?.insights).toHaveLength(1);
-			expect(interviewWithPerson?.insights[0].insight_tags).toHaveLength(2);
+			expect(interviewWithPerson?.themes).toHaveLength(1);
+			expect(interviewWithPerson?.themes[0].insight_tags).toHaveLength(2);
 		});
 
 		it("should handle aggregations across junction tables", async () => {
 			// Test aggregation query - simplified version
 			const { data: tagCounts, error } = await testDb
 				.from("insight_tags")
-				.select("tag, insight_id")
+				.select("tag_id, insight_id")
 				.eq("account_id", TEST_ACCOUNT_ID);
 
 			expect(error).toBeNull();

@@ -10,6 +10,7 @@ import {
 	mockTestAuth,
 	seedTestData,
 	TEST_ACCOUNT_ID,
+	TEST_PERSON_1_ID,
 	testDb,
 } from "~/test/utils/testDb";
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server";
@@ -90,7 +91,7 @@ describe("Backfill Integration Tests", () => {
 			expect(finalState.interviewPeopleLinks).toHaveLength(3); // 1 existing + 2 created
 
 			// Verify person names follow fallback logic
-			const newPeople = finalState.people.filter((p) => p.id !== "person-1");
+			const newPeople = finalState.people.filter((p) => p.id !== TEST_PERSON_1_ID);
 			expect(newPeople).toHaveLength(2);
 
 			// Should use date fallback for interview-2 (generic title)
@@ -162,7 +163,7 @@ describe("Backfill Integration Tests", () => {
 				.select(`
           *,
           insight_tags (
-            tag
+            tag_id
           )
         `)
 				.eq("account_id", TEST_ACCOUNT_ID);
@@ -175,10 +176,36 @@ describe("Backfill Integration Tests", () => {
 	describe("RLS Policy Enforcement", () => {
 		it("should respect account isolation in backfill operations", async () => {
 			// Seed data for different account
-			const OTHER_ACCOUNT_ID = "other-account-456";
+			const { data: ownerRows } = await testDb
+				.from("user_settings")
+				.select("user_id")
+				.not("user_id", "is", null)
+				.limit(1);
+			const ownerUserId = ownerRows?.[0]?.user_id;
+			if (!ownerUserId) {
+				throw new Error("Missing owner user for isolation test");
+			}
+
+			const { data: OTHER_ACCOUNT_ID, error: accountError } = await testDb.rpc("create_account_id", {
+				primary_owner_user_id: ownerUserId,
+				slug: `other-${crypto.randomUUID().slice(0, 8)}`,
+				name: "Other Account For Isolation Test",
+			});
+			expect(accountError).toBeNull();
+			expect(OTHER_ACCOUNT_ID).toBeTruthy();
+
+			const OTHER_PROJECT_ID = crypto.randomUUID();
+			const OTHER_INTERVIEW_ID = crypto.randomUUID();
+			await testDb.from("projects").insert({
+				id: OTHER_PROJECT_ID,
+				account_id: OTHER_ACCOUNT_ID!,
+				name: "Other Project",
+			});
+
 			await testDb.from("interviews").insert({
-				account_id: OTHER_ACCOUNT_ID,
-				project_id: "other-project-1",
+				id: OTHER_INTERVIEW_ID,
+				account_id: OTHER_ACCOUNT_ID!,
+				project_id: OTHER_PROJECT_ID,
 				title: "Other Account Interview",
 				participant_pseudonym: "Other Person",
 				segment: "other",
@@ -201,10 +228,10 @@ describe("Backfill Integration Tests", () => {
 			const { data: otherAccountInterviews } = await testDb
 				.from("interviews")
 				.select("*")
-				.eq("account_id", OTHER_ACCOUNT_ID);
+				.eq("account_id", OTHER_ACCOUNT_ID!);
 
 			expect(otherAccountInterviews).toHaveLength(1);
-			expect(otherAccountInterviews?.[0].id).toBe("other-interview-1");
+			expect(otherAccountInterviews?.[0].id).toBe(OTHER_INTERVIEW_ID);
 		});
 	});
 });
