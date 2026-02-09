@@ -553,36 +553,39 @@ ALTER TABLE people DROP COLUMN IF EXISTS occupation;
 ### Implementation Order and Checkpoints
 
 ```
-Sub-Phase 3A: Data Migration (SQL)
-  |-- Run migration
+Sub-Phase 3A: Data Migration (SQL) — SAFE RESTING POINT
+  |-- Normalize company text (strip junk, dedupe variants)
+  |-- Run migration (create orgs, link people, backfill industry)
+  |-- Tag auto-created orgs for rollback identification
   |-- CHECKPOINT: Verify 0 people with company text and no org link
   |-- CHECKPOINT: Verify no duplicate violations in new index scheme
+  |-- CHECKPOINT: Run findDuplicates() and compare with pre-migration baseline
   |
-Sub-Phase 3B: Code Changes (TypeScript)
+Sub-Phase 3B+3C: Code Changes + Index Swap (DEPLOY TOGETHER)
   |-- 3B-1: resolution.server.ts (resolveOrCreatePerson pipeline)
   |-- 3B-2: peopleNormalization.server.ts (upsert conflict handler)
   |-- 3B-3: deduplicate.ts (dedup grouping logic)
-  |-- 3B-4: Mastra tools (upsert-person, import-people-from-table)
+  |-- 3B-4: Mastra tools (upsert-person, import-people-from-table, manage-person-organizations)
   |-- 3B-5: enrichPerson trigger (org linking)
+  |-- NOTE: 3B code MUST still write company text as mirror until 3C index swap
   |-- CHECKPOINT: Integration tests pass
-  |-- CHECKPOINT: Manual test: create person from interview, verify org link
-  |
-Sub-Phase 3C: Index Swap (SQL)
-  |-- Create new index CONCURRENTLY
+  |-- 3C: Create new index CONCURRENTLY
   |-- CHECKPOINT: New index is valid
-  |-- Drop old index
+  |-- 3C: Drop old index
+  |-- 3C: Change FK to ON DELETE RESTRICT
   |-- CHECKPOINT: Person creation still works (try-insert-catch-find)
+  |-- CHECKPOINT: Manual test matrix passes
   |
-Sub-Phase 3D: UI + Display Changes (TypeScript)
+Sub-Phase 3D: UI + Display Changes (TypeScript) — SAFE RESTING POINT
   |-- Update all components to read org name
   |-- Remove company from forms/edit UIs
   |-- Update BAML inputs
   |-- CHECKPOINT: No TypeScript errors
   |-- CHECKPOINT: UI shows org names correctly
   |
-Sub-Phase 3E: Drop Column (SQL, irreversible)
+Sub-Phase 3E: Drop Column (SQL, IRREVERSIBLE)
   |-- Safety check query
-  |-- Drop column
+  |-- Drop columns: company, occupation, industry
   |-- Regenerate types: pnpm db:types
   |-- CHECKPOINT: App builds with no errors
   |-- CHECKPOINT: Full test suite passes
@@ -599,15 +602,14 @@ Sub-Phase 3E: Drop Column (SQL, irreversible)
 | 3E: Drop column | 1 SQL file + types | LOW | NO |
 | **Total** | **~38 files** | | |
 
-### Key Principle: Every Sub-Phase is Independently Deployable
+### Key Principle: Safe Resting Points Between Deployment Groups
 
-- After 3A: App works identically (company text still exists, org links now populated)
-- After 3B: App uses org FK for resolution but company text still written as backup
-- After 3C: New index enforces org-based uniqueness
-- After 3D: UI reads from org, company field ignored
-- After 3E: Column gone, clean schema
+- After **3A**: App works identically (company text still exists, org links now populated). Safe resting point.
+- After **3B+3C** (deploy together): App uses org FK for resolution AND new index enforces it. 3B continues writing `company` text as mirror until 3C swaps the index. **3B without 3C is NOT safe** — see Adversarial Critique.
+- After **3D**: UI reads from org, company field ignored. Safe resting point.
+- After **3E**: Column gone, clean schema. Irreversible.
 
-**You can stop at any sub-phase and the app works correctly.** This is what reduces the risk — each step is a safe resting point.
+**You can stop at 3A, 3B+3C, or 3D and the app works correctly.** Only 3E is irreversible.
 
 ### Testing Strategy
 
@@ -625,6 +627,96 @@ Sub-Phase 3E: Drop Column (SQL, irreversible)
 6. **After 3D:** Visual QA of all people-related UI pages
 7. **After 3E:** Full `pnpm build && pnpm test` must pass
 
+### Adversarial Critique — Known Risks & Mitigations
+
+> Added 2026-02-09 after adversarial review of the spec.
+
+#### CRITICAL: 3B-without-3C data corruption window
+
+**Problem:** `company` is `NOT NULL DEFAULT ''`. After 3B stops writing company text, new inserts get `company = ''` while the OLD index (`uniq_people_account_name_company_email`) still uses company. Two people at different orgs would both have `company = ''`, making the old index treat them as identical.
+
+**Fix:** Sub-phase 3B MUST continue writing `company` text (as a redundant mirror of the org name) until 3C swaps the index. Add to 3B code: `company: orgName || ""` alongside `default_organization_id: orgId`. Only stop writing company AFTER 3C completes.
+
+**This means 3B and 3C should deploy together, not independently.** Revise the "independently deployable" claim: 3A is independent, 3B+3C deploy as a unit, 3D is independent, 3E is independent.
+
+#### CRITICAL: `ON DELETE SET NULL` on default_organization_id FK
+
+**Problem:** The FK is `references organizations(id) ON DELETE SET NULL`. If an org is deleted, all people pointing to it get `default_organization_id = NULL`, collapsing to `COALESCE(..., '')` in the new index. If two people from the same (now-deleted) org had the same name and no email, they'd violate the unique constraint.
+
+**Fix:** Change FK to `ON DELETE RESTRICT` in the 3C migration:
+```sql
+ALTER TABLE people DROP CONSTRAINT people_default_organization_id_fkey;
+ALTER TABLE people ADD CONSTRAINT people_default_organization_id_fkey
+  FOREIGN KEY (default_organization_id)
+  REFERENCES organizations(id)
+  ON DELETE RESTRICT;
+```
+This prevents org deletion when people reference it. Add a UI guard: "Cannot delete organization with linked people. Reassign them first."
+
+#### HIGH: Fuzzy company name matching creates org duplicates
+
+**Problem:** `resolveOrganization()` uses `ilike("name", normalized)` for exact case-insensitive match. But company text varies: "Acme Corp" vs "Acme Corp." vs "Acme Corporation" vs "ACME". The 3A migration will create separate orgs for each variant, splitting people who should be grouped together.
+
+**Fix:** Add company name normalization BEFORE 3A migration:
+1. Pre-migration cleanup script: normalize company text (strip trailing periods, standardize "Inc"/"Inc."/"Incorporated", trim whitespace)
+2. OR: Use fuzzy matching (`similarity()` from pg_trgm) in the 3A org-matching query with a threshold
+3. Post-3A: Run dedup on organizations table to merge near-duplicates
+4. In `resolveOrganization()`: normalize input before lookup (same rules)
+
+#### HIGH: `manage-person-organizations.ts` missing from file inventory
+
+**Problem:** This Mastra tool has its own `ensureOrganization()` function and writes to `people_organizations`. It's not in the Phase 3 file list. After Phase 3, it should also set `default_organization_id` on the person when linking to a primary org (currently only creates the junction link).
+
+**Fix:** Add to 3B-4 file list. When `is_primary = true`, also update `people.default_organization_id`.
+
+#### MEDIUM: `people.industry` drop needs backfill
+
+**Problem:** The spec says drop `people.industry` in 3E but doesn't backfill the data to organizations first. If people have industry values but their org doesn't, data is lost.
+
+**Fix:** Add to 3A migration:
+```sql
+-- Backfill industry from people to their default organization
+UPDATE organizations o
+SET industry = p.industry
+FROM people p
+WHERE p.default_organization_id = o.id
+  AND p.industry IS NOT NULL
+  AND p.industry != ''
+  AND (o.industry IS NULL OR o.industry = '');
+```
+
+#### MEDIUM: No rollback tagging for auto-created orgs
+
+**Problem:** 3A creates organizations from raw company text. Some will be junk ("N/A", "-", "self", "freelance"). No way to identify and clean them up.
+
+**Fix:** Add a description tag to auto-created orgs:
+```sql
+description: 'Auto-created from people.company during Phase 3A schema cleanup [2026-02-10]'
+```
+Rollback: `DELETE FROM organizations WHERE description LIKE 'Auto-created from people.company%' AND id NOT IN (SELECT default_organization_id FROM people WHERE default_organization_id IS NOT NULL);`
+
+#### MEDIUM: Organizations are project-scoped but resolveOrganization() isn't
+
+**Problem:** The `organizations` table has a `project_id` column. Two projects in the same account could each have an "Acme Corp" org. The proposed `resolveOrganization()` only filters by `account_id`, potentially matching the wrong project's org.
+
+**Fix:** `resolveOrganization()` should prefer project-scoped match, then fall back to account-scoped:
+```typescript
+// Try project-scoped first
+let query = supabase.from("organizations").select("id")
+  .eq("account_id", accountId)
+  .eq("project_id", projectId)
+  .ilike("name", normalized);
+// If no match, try account-wide
+```
+
+#### LOW: Org rename changes all people's displayed company instantly
+
+**Problem:** After Phase 3, company display comes from org name. Renaming an org changes display for all linked people — feature for most cases, but a surprise if done accidentally.
+
+**Accepted risk.** This is the correct behavior for a normalized schema. Mitigate with audit logging on org name changes (future work, not blocking).
+
+---
+
 ### Open Questions
 
 1. **Should `people.company` become a computed/virtual column during transition?**
@@ -633,8 +725,11 @@ Sub-Phase 3E: Drop Column (SQL, irreversible)
 
 2. **What about `people.industry`?**
    Currently duplicated on people and organizations. Should follow same pattern (resolve from org).
-   **Recommendation:** Include in 3E drop: `ALTER TABLE people DROP COLUMN IF EXISTS industry;`
+   **Recommendation:** Backfill to orgs in 3A, then drop in 3E: `ALTER TABLE people DROP COLUMN IF EXISTS industry;`
 
 3. **What about `people.segment`?**
    Already deprecated in Phase 1. Should be dropped in a separate Phase 4.
    **Recommendation:** Not in scope for Phase 3.
+
+4. **Should 3B and 3C be a single atomic deployment?**
+   **Recommendation:** Yes. The data corruption window makes independent deployment unsafe. Deploy 3B+3C together.
