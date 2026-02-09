@@ -8,6 +8,7 @@ import { setActiveBillingContext, userBillingContext } from "~/lib/billing/instr
 import { recordUsageOnly } from "~/lib/billing/usage.server";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { createSurveyTool } from "~/mastra/tools/create-survey";
 import { fetchTopThemesWithPeopleTool } from "~/mastra/tools/fetch-top-themes-with-people";
 import { action } from "./api.chat.project-status";
 
@@ -18,7 +19,12 @@ vi.mock("@mastra/ai-sdk", () => ({
 
 vi.mock("ai", () => ({
 	generateObject: vi.fn(),
-	createUIMessageStream: vi.fn(() => ({ kind: "cached-stream" })),
+	createUIMessageStream: vi.fn(
+		(options?: { execute?: (args: { writer: { write: (chunk: unknown) => void } }) => Promise<void> }) => ({
+			kind: "cached-stream",
+			options,
+		})
+	),
 	createUIMessageStreamResponse: vi.fn(({ stream }) => {
 		return new Response(JSON.stringify({ ok: true, stream }), {
 			status: 200,
@@ -71,6 +77,12 @@ vi.mock("~/mastra/tools/fetch-top-themes-with-people", () => ({
 	},
 }));
 
+vi.mock("~/mastra/tools/create-survey", () => ({
+	createSurveyTool: {
+		execute: vi.fn(),
+	},
+}));
+
 vi.mock("~/mastra/tools/navigate-to-page", () => ({
 	navigateToPageTool: {},
 }));
@@ -93,6 +105,7 @@ const mockedSetActiveBillingContext = vi.mocked(setActiveBillingContext);
 const mockedUserBillingContext = vi.mocked(userBillingContext);
 const mockedResolveAccountIdFromProject = vi.mocked(resolveAccountIdFromProject);
 const mockedFetchTopThemesWithPeopleToolExecute = vi.mocked(fetchTopThemesWithPeopleTool.execute);
+const mockedCreateSurveyToolExecute = vi.mocked(createSurveyTool.execute);
 
 type MockedMemory = {
 	listThreadsByResourceId: ReturnType<typeof vi.fn>;
@@ -142,6 +155,55 @@ function buildArgs(options?: {
 	} as unknown as ActionFunctionArgs;
 }
 
+async function readStreamChunks(stream: any) {
+	const chunks: Record<string, unknown>[] = [];
+
+	if (stream && typeof stream.getReader === "function") {
+		const reader = stream.getReader();
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			if (value) {
+				chunks.push(value);
+			}
+		}
+		return chunks;
+	}
+
+	const execute = stream?.options?.execute;
+	if (typeof execute === "function") {
+		await execute({
+			writer: {
+				write: (chunk: Record<string, unknown>) => chunks.push(chunk),
+			},
+		});
+		return chunks;
+	}
+
+	return chunks;
+}
+
+function makeTextStream(options: { text?: string; toolName?: string; emitFinish?: boolean }) {
+	return new ReadableStream<Record<string, unknown>>({
+		start(controller) {
+			controller.enqueue({ type: "start" });
+			controller.enqueue({ type: "start-step" });
+			if (options.toolName) {
+				controller.enqueue({ type: "tool-input-available", toolName: options.toolName });
+			}
+			if (options.text) {
+				controller.enqueue({ type: "text-start", id: "chunk-a" });
+				controller.enqueue({ type: "text-delta", id: "chunk-a", delta: options.text });
+				controller.enqueue({ type: "text-end", id: "chunk-a" });
+			}
+			if (options.emitFinish ?? true) {
+				controller.enqueue({ type: "finish", finishReason: "stop" });
+			}
+			controller.close();
+		},
+	});
+}
+
 describe("api.chat.project-status", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -181,6 +243,13 @@ describe("api.chat.project-status", () => {
 					],
 				},
 			],
+		} as any);
+		mockedCreateSurveyToolExecute.mockResolvedValue({
+			success: true,
+			message: "Created survey",
+			surveyId: "survey-1",
+			editUrl: "/a/acct-1/project-1/ask/survey-1/edit",
+			publicUrl: "/research/survey-1",
 		} as any);
 	});
 
@@ -289,5 +358,235 @@ describe("api.chat.project-status", () => {
 		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 		expect(mockedCreateUIMessageStream).toHaveBeenCalledTimes(1);
+	});
+
+	it("routes people-comparison prompts through normal flow when classifier selects normal mode", async () => {
+		mockedGenerateObject.mockResolvedValue({
+			object: {
+				targetAgentId: "projectStatusAgent",
+				confidence: 0.9,
+				responseMode: "normal",
+				rationale: "people comparison requires normal analysis",
+			},
+		} as any);
+
+		const response = await action(buildArgs({ message: "what do john rubey and jered lish have in common" }));
+		expect(response.status).toBe(200);
+		expect(mockedFetchTopThemesWithPeopleToolExecute).not.toHaveBeenCalled();
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("projectStatusAgent");
+		expect(call.params.requestContext.get("response_mode")).toBe("normal");
+		const routingPrompt = (mockedGenerateObject.mock.calls.at(-1)?.[0] as any)?.prompt as string;
+		expect(routingPrompt).toContain("Never set responseMode=\"theme_people_snapshot\" for people-comparison prompts");
+	});
+
+	it("deterministically routes ICP lookup prompts to projectStatusAgent", async () => {
+		const response = await action(buildArgs({ message: "what icp matches do i have?" }));
+		expect(response.status).toBe(200);
+
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("projectStatusAgent");
+	});
+
+	it("injects a fallback message when stream finishes without assistant text", async () => {
+		mockedGenerateObject.mockResolvedValue({
+			object: {
+				targetAgentId: "chiefOfStaffAgent",
+				confidence: 0.9,
+				responseMode: "fast_standardized",
+				rationale: "strategy guidance",
+			},
+		} as any);
+		mockedHandleChatStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({ type: "start-step" });
+					controller.enqueue({ type: "tool-input-available", toolName: "recommendNextActions" });
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(buildArgs({ message: "help me prioritize" }));
+		expect(response.status).toBe(200);
+
+		const call = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const stream = call?.stream as ReadableStream<Record<string, unknown>>;
+		expect(stream).toBeInstanceOf(ReadableStream);
+
+		const chunks = await readStreamChunks(stream);
+		const deltas = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""));
+		expect(deltas.join("\n")).toContain("Sorry, I couldn't answer that just now. Please try again.");
+	});
+
+	it("supports /debug prefix, strips it from execution prompt, and appends a debug trace", async () => {
+		mockedGenerateObject.mockResolvedValue({
+			object: {
+				targetAgentId: "chiefOfStaffAgent",
+				confidence: 0.9,
+				responseMode: "fast_standardized",
+				rationale: "strategy guidance",
+			},
+		} as any);
+		mockedHandleChatStream.mockResolvedValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue({ type: "start" });
+					controller.enqueue({ type: "text-start", id: "chunk-a" });
+					controller.enqueue({ type: "text-delta", id: "chunk-a", delta: "Prioritize ICP cleanup first." });
+					controller.enqueue({ type: "text-end", id: "chunk-a" });
+					controller.enqueue({ type: "tool-input-available", toolName: "recommendNextActions" });
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+					controller.close();
+				},
+			}) as any
+		);
+
+		const response = await action(buildArgs({ message: "/debug help me prioritize this sprint" }));
+		expect(response.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const chatCall = mockedHandleChatStream.mock.calls[0][0] as any;
+		expect(chatCall.params.messages[0].content).toBe("help me prioritize this sprint");
+
+		const call = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const stream = call?.stream as ReadableStream<Record<string, unknown>>;
+		const chunks = await readStreamChunks(stream);
+		const deltas = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""));
+		const merged = deltas.join("\n");
+		expect(merged).toContain("Debug Trace:");
+		expect(merged).toContain("- routed_to: chiefOfStaffAgent");
+		expect(merged).toContain("- tool_calls: recommendNextActions");
+	});
+
+	it("handles survey creation prompts via deterministic quick-create path", async () => {
+		const response = await action(buildArgs({ message: "create a waitlist survey for our beta launch" }));
+		expect(response.status).toBe(200);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedCreateSurveyToolExecute).toHaveBeenCalledTimes(1);
+		expect(mockedHandleChatStream).not.toHaveBeenCalled();
+		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+
+		const createPayload = mockedCreateSurveyToolExecute.mock.calls[0][0] as any;
+		expect(createPayload.projectId).toBe("project-1");
+		expect(createPayload.name).toContain("Waitlist");
+		expect(createPayload.questions?.length).toBeGreaterThan(0);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+		expect(text).toContain("Created **");
+		expect(text).toContain("Open Survey");
+	});
+
+	it("returns usable fallback and debug trace when deterministic survey create fails", async () => {
+		mockedCreateSurveyToolExecute.mockResolvedValueOnce({
+			success: false,
+			message: "validation failed: name is required",
+		} as any);
+
+		const response = await action(
+			buildArgs({ message: "/debug create a survey to learn more from those people without data" })
+		);
+		expect(response.status).toBe(200);
+		expect(mockedCreateSurveyToolExecute).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+		expect(text).toContain("I couldn't create the survey automatically right now.");
+		expect(text).toContain("Debug Trace:");
+		expect(text).toContain("deterministic_survey_quick_create");
+	});
+
+	it("routes setup prompts to projectSetupAgent and returns non-empty chat output", async () => {
+		mockedHandleChatStream.mockResolvedValue(
+			makeTextStream({
+				text: "Let’s define your company context and research goals first.",
+				toolName: "saveProjectSectionsData",
+			}) as any
+		);
+
+		const response = await action(buildArgs({ message: "help me set up project and define research goals" }));
+		expect(response.status).toBe(200);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("projectSetupAgent");
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n")
+			.trim();
+		expect(text.length).toBeGreaterThan(0);
+	});
+
+	it("routes people and task operational prompts through projectStatusAgent network", async () => {
+		mockedHandleNetworkStream.mockResolvedValue(
+			makeTextStream({
+				text: "Found 5 people missing title or company and queued 2 follow-up tasks.",
+				toolName: "fetchProjectStatusContext",
+			}) as any
+		);
+
+		const peopleResponse = await action(buildArgs({ message: "show people missing company and title" }));
+		expect(peopleResponse.status).toBe(200);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
+		expect((mockedHandleNetworkStream.mock.calls[0][0] as any).agentId).toBe("projectStatusAgent");
+
+		mockedHandleNetworkStream.mockResolvedValue(
+			makeTextStream({
+				text: "Created a follow-up task for Mona with due date tomorrow.",
+				toolName: "taskAgent",
+			}) as any
+		);
+		const taskResponse = await action(buildArgs({ message: "create a task to follow up with Mona tomorrow" }));
+		expect(taskResponse.status).toBe(200);
+		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(2);
+		expect((mockedHandleNetworkStream.mock.calls[1][0] as any).agentId).toBe("projectStatusAgent");
+	});
+
+	it("injects fallback even when upstream stream closes without finish chunk", async () => {
+		mockedHandleChatStream.mockResolvedValue(makeTextStream({ emitFinish: false }) as any);
+		mockedGenerateObject.mockResolvedValue({
+			object: {
+				targetAgentId: "chiefOfStaffAgent",
+				confidence: 0.91,
+				responseMode: "fast_standardized",
+				rationale: "strategy guidance",
+			},
+		} as any);
+
+		const response = await action(buildArgs({ message: "help me prioritize" }));
+		expect(response.status).toBe(200);
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+		expect(text).toContain("Sorry, I couldn't answer that just now. Please try again.");
+		expect(chunks.some((chunk) => chunk.type === "finish")).toBe(true);
 	});
 });

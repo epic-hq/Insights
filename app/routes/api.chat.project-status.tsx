@@ -16,6 +16,7 @@ import { getLangfuseClient } from "~/lib/langfuse.server";
 import { mastra } from "~/mastra";
 import { memory } from "~/mastra/memory";
 import { resolveAccountIdFromProject } from "~/mastra/tools/context-utils";
+import { createSurveyTool } from "~/mastra/tools/create-survey";
 import { fetchTopThemesWithPeopleTool } from "~/mastra/tools/fetch-top-themes-with-people";
 import { navigateToPageTool } from "~/mastra/tools/navigate-to-page";
 import { switchAgentTool } from "~/mastra/tools/switch-agent";
@@ -38,11 +39,14 @@ function getLastUserText(messages: Array<{ role?: string; content?: unknown; par
 
 const routingTargetAgents = ["projectStatusAgent", "chiefOfStaffAgent", "researchAgent", "projectSetupAgent"] as const;
 type RoutingTargetAgent = (typeof routingTargetAgents)[number];
+type RoutingResponseMode = "normal" | "fast_standardized" | "theme_people_snapshot" | "survey_quick_create";
 
 const intentRoutingSchema = z.object({
 	targetAgentId: z.enum(routingTargetAgents),
 	confidence: z.number().min(0).max(1),
-	responseMode: z.enum(["normal", "fast_standardized", "theme_people_snapshot"]).default("normal"),
+	responseMode: z
+		.enum(["normal", "fast_standardized", "theme_people_snapshot", "survey_quick_create"])
+		.default("normal" satisfies RoutingResponseMode),
 	rationale: z.string().max(240).optional(),
 });
 
@@ -51,6 +55,8 @@ const FAST_STANDARDIZED_MAX_STEPS = 2;
 const FAST_STANDARDIZED_CACHE_TTL_MS = 3 * 60 * 1000;
 const MAX_SYSTEM_CONTEXT_CHARS = 3000;
 const MAX_FAST_SYSTEM_CONTEXT_CHARS = 800;
+const DEBUG_PREFIX_REGEX = /^\s*\/debug\b[:\s-]*/i;
+const FALLBACK_EMPTY_RESPONSE_TEXT = "Sorry, I couldn't answer that just now. Please try again.";
 
 const MAX_STEPS_BY_AGENT: Record<RoutingTargetAgent, number> = {
 	projectStatusAgent: 6,
@@ -97,9 +103,305 @@ function streamPlainAssistantText(text: string) {
 	});
 }
 
+function stripDebugPrefix(prompt: string): string {
+	const stripped = prompt.replace(DEBUG_PREFIX_REGEX, "").trim();
+	return stripped.length > 0 ? stripped : "what should I do next";
+}
+
+function normalizeMessagesForExecution(
+	messages: Array<{ role?: string; content?: unknown; parts?: unknown[] }>,
+	debugRequested: boolean
+) {
+	if (!debugRequested) return messages;
+
+	let cleanedFirstUserMessage = false;
+	return messages.map((message) => {
+		if (!message || message.role !== "user" || cleanedFirstUserMessage) return message;
+
+		if (typeof message.content === "string") {
+			cleanedFirstUserMessage = true;
+			return {
+				...message,
+				content: stripDebugPrefix(message.content),
+			};
+		}
+
+		if (Array.isArray(message.parts)) {
+			const parts = message.parts.map((part) => {
+				if (!part || typeof part !== "object") return part;
+				if ((part as { type?: string }).type !== "text") return part;
+				const text = (part as { text?: unknown }).text;
+				if (typeof text !== "string") return part;
+				if (cleanedFirstUserMessage) return part;
+				cleanedFirstUserMessage = true;
+				return {
+					...part,
+					text: stripDebugPrefix(text),
+				};
+			});
+
+			return {
+				...message,
+				parts,
+			};
+		}
+
+		return message;
+	});
+}
+
+type StreamLike = ReadableStream<Record<string, unknown>>;
+
+function augmentStreamForReliability(
+	stream: Awaited<ReturnType<typeof handleNetworkStream>> | Awaited<ReturnType<typeof handleChatStream>>,
+	options: {
+		debugRequested: boolean;
+		targetAgentId: RoutingTargetAgent;
+		targetMaxSteps: number;
+		responseMode: RoutingResponseMode;
+	}
+) {
+	if (!stream || typeof (stream as { pipeThrough?: unknown }).pipeThrough !== "function") {
+		return stream;
+	}
+
+	const toolCalls: string[] = [];
+	let sawTextDelta = false;
+	let injectedSafetyMessage = false;
+	let appendedDebugTrace = false;
+	let sawFinishChunk = false;
+
+	const enqueueAssistantText = (
+		controller: TransformStreamDefaultController<Record<string, unknown>>,
+		text: string,
+		idPrefix: string
+	) => {
+		const clean = text.trim();
+		if (!clean) return;
+		const id = `${idPrefix}-${Date.now().toString(36)}`;
+		controller.enqueue({ type: "start-step" });
+		controller.enqueue({ type: "text-start", id });
+		controller.enqueue({ type: "text-delta", id, delta: clean });
+		controller.enqueue({ type: "text-end", id });
+		controller.enqueue({ type: "finish-step" });
+	};
+
+	const maybeEnqueueSafetyMessage = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
+		if (!sawTextDelta && !injectedSafetyMessage) {
+			enqueueAssistantText(controller, FALLBACK_EMPTY_RESPONSE_TEXT, "fallback");
+			injectedSafetyMessage = true;
+		}
+	};
+
+	const maybeEnqueueDebugTrace = (controller: TransformStreamDefaultController<Record<string, unknown>>) => {
+		if (!options.debugRequested || appendedDebugTrace) return;
+		const uniqueTools = Array.from(new Set(toolCalls));
+		const debugText = [
+			"",
+			"Debug Trace:",
+			`- routed_to: ${options.targetAgentId}`,
+			`- response_mode: ${options.responseMode}`,
+			`- max_steps: ${options.targetMaxSteps}`,
+			`- tool_calls: ${uniqueTools.length > 0 ? uniqueTools.join(", ") : "none"}`,
+		].join("\n");
+		enqueueAssistantText(controller, debugText, "debug");
+		appendedDebugTrace = true;
+	};
+
+	const transformed = (stream as StreamLike).pipeThrough(
+		new TransformStream<Record<string, unknown>, Record<string, unknown>>({
+			transform(chunk, controller) {
+				if (chunk?.type === "text-delta" && typeof chunk.delta === "string" && chunk.delta.trim().length > 0) {
+					sawTextDelta = true;
+				}
+
+				if (chunk?.type === "tool-input-available" && typeof chunk.toolName === "string") {
+					toolCalls.push(chunk.toolName);
+				}
+
+				if (chunk?.type === "error") {
+					maybeEnqueueSafetyMessage(controller);
+				}
+
+				if (chunk?.type === "finish") {
+					sawFinishChunk = true;
+					maybeEnqueueSafetyMessage(controller);
+					maybeEnqueueDebugTrace(controller);
+				}
+
+				controller.enqueue(chunk);
+			},
+			flush(controller) {
+				maybeEnqueueSafetyMessage(controller);
+				maybeEnqueueDebugTrace(controller);
+				if (!sawFinishChunk) {
+					controller.enqueue({ type: "finish", finishReason: "stop" });
+				}
+			},
+		})
+	);
+
+	return transformed;
+}
+
+function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intentRoutingSchema> | null {
+	const prompt = lastUserText.trim().toLowerCase();
+	if (!prompt) return null;
+	const hasAny = (...tokens: string[]) => tokens.some((token) => prompt.includes(token));
+
+	const asksForTopThemesWithPeople =
+		hasAny("theme", "themes") && hasAny("top", "most common") && hasAny("who", "people");
+	if (asksForTopThemesWithPeople) {
+		return {
+			targetAgentId: "projectStatusAgent",
+			confidence: 1,
+			responseMode: "theme_people_snapshot",
+			rationale: "deterministic keyword routing for top themes with people attribution",
+		};
+	}
+
+	const asksForIcpData =
+		hasAny("icp", "ideal customer profile") ||
+		(hasAny("match", "matches", "score", "scored", "scoring") && hasAny("person", "people", "who"));
+	if (asksForIcpData) {
+		return {
+			targetAgentId: "projectStatusAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic keyword routing for ICP lookup",
+		};
+	}
+
+	const asksForSurveyCreate =
+		hasAny("survey", "waitlist", "ask link", "questionnaire") && hasAny("create", "make", "build", "draft", "generate");
+	if (asksForSurveyCreate) {
+		return {
+			targetAgentId: "researchAgent",
+			confidence: 1,
+			responseMode: "survey_quick_create",
+			rationale: "deterministic routing for direct survey creation",
+		};
+	}
+
+	const asksForInterviewOps =
+		hasAny("interview", "interviews") && hasAny("create", "draft", "generate", "write", "questions", "prompt");
+	if (asksForInterviewOps) {
+		return {
+			targetAgentId: "researchAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for interview operations",
+		};
+	}
+
+	const asksForProjectSetup =
+		hasAny("set up project", "setup project", "tell me about your company", "define research goals") ||
+		(hasAny("project setup", "onboarding") && hasAny("help", "start", "begin"));
+	if (asksForProjectSetup) {
+		return {
+			targetAgentId: "projectSetupAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for project setup/onboarding",
+		};
+	}
+
+	const asksForPeopleOrTaskOps =
+		(hasAny("people", "person", "contacts") && hasAny("missing", "update", "find", "show", "list")) ||
+		(hasAny("task", "tasks", "todo", "to-do") && hasAny("create", "add", "update", "complete", "done", "close"));
+	if (asksForPeopleOrTaskOps) {
+		return {
+			targetAgentId: "projectStatusAgent",
+			confidence: 1,
+			responseMode: "normal",
+			rationale: "deterministic routing for people/task operations via project status network",
+		};
+	}
+
+	const asksForStandardNextStep =
+		prompt === "what should i do next" ||
+		prompt === "what should i do next?" ||
+		prompt === "what do i do next" ||
+		prompt === "what do i do next?";
+	if (asksForStandardNextStep) {
+		return {
+			targetAgentId: "chiefOfStaffAgent",
+			confidence: 1,
+			responseMode: "fast_standardized",
+			rationale: "deterministic routing for canonical next-step prompt",
+		};
+	}
+
+	return null;
+}
+
+function buildDeterministicSurveyDraft(prompt: string) {
+	const lower = prompt.toLowerCase();
+	const isWaitlist = lower.includes("waitlist") || lower.includes("beta");
+	const isMissingProfileData =
+		lower.includes("missing data") ||
+		lower.includes("without data") ||
+		(lower.includes("icp") && (lower.includes("missing") || lower.includes("unscored")));
+
+	if (isMissingProfileData) {
+		return {
+			name: "Profile Completion Survey",
+			description: "Collect missing profile data and a short context update to improve ICP scoring.",
+			questions: [
+				{ prompt: "What is your current job title?", type: "short_text", required: true },
+				{ prompt: "What company are you currently at?", type: "short_text", required: true },
+				{ prompt: "What is your primary goal right now related to this problem?", type: "auto", required: false },
+				{
+					prompt: "How urgent is solving this in the next 3 months?",
+					type: "likert",
+					likertScale: 10,
+					required: false,
+				},
+			],
+		};
+	}
+
+	if (isWaitlist) {
+		return {
+			name: "Beta Waitlist Survey",
+			description: "Qualify waitlist signups and understand urgency and expected outcomes.",
+			questions: [
+				{ prompt: "What is your biggest challenge right now?", type: "auto", required: true },
+				{
+					prompt: "How urgent is this problem for you today?",
+					type: "likert",
+					likertScale: 10,
+					likertLabels: { low: "Not urgent", high: "Very urgent" },
+					required: true,
+				},
+				{ prompt: "What outcome would make this an obvious win for you?", type: "auto", required: false },
+			],
+		};
+	}
+
+	return {
+		name: "Customer Discovery Survey",
+		description: "Gather structured feedback from target users.",
+		questions: [
+			{ prompt: "What problem are you trying to solve right now?", type: "auto", required: true },
+			{ prompt: "What are you using today to solve it?", type: "auto", required: false },
+			{
+				prompt: "How painful is this problem for you?",
+				type: "likert",
+				likertScale: 10,
+				likertLabels: { low: "Low pain", high: "Severe pain" },
+				required: false,
+			},
+		],
+	};
+}
+
 async function routeAgentByIntent(lastUserText: string): Promise<z.infer<typeof intentRoutingSchema> | null> {
 	const prompt = lastUserText.trim();
 	if (!prompt) return null;
+
+	const deterministicRoute = routeByDeterministicPrompt(prompt);
+	if (deterministicRoute) return deterministicRoute;
 
 	try {
 		const result = await generateObject({
@@ -110,12 +412,14 @@ async function routeAgentByIntent(lastUserText: string): Promise<z.infer<typeof 
 
 Choose exactly one target:
 - projectSetupAgent: onboarding, setup, research goals, company context capture.
-- chiefOfStaffAgent: strategic guidance, prioritization, "what should I do next", project-level recommendations.
+- chiefOfStaffAgent: strategic guidance and prioritization only (for "what should I do next", sequencing, focus).
 - researchAgent: creating/managing surveys, interview prompts, interview operations.
-- projectStatusAgent: default catch-all for project status and general requests.
+- projectStatusAgent: data lookups and factual status questions (themes, ICP counts/distribution, people, evidence, interviews).
 
 Set responseMode="fast_standardized" only when the user asks broad strategic guidance without asking for execution details.
 Set responseMode="theme_people_snapshot" when user asks for top/common themes and who has those themes.
+Never set responseMode="theme_people_snapshot" for people-comparison prompts (e.g., "what do X and Y have in common", "compare these two people", "how are they different"). For those, use responseMode="normal".
+Set responseMode="survey_quick_create" when user asks to create/build/generate a survey or waitlist.
 Message: """${prompt.slice(0, 1200)}"""`,
 		});
 		return result.object;
@@ -182,14 +486,19 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	// This ensures we always send at least the new user message to the agent.
 	const runtimeMessages = lastUserIndex >= 0 ? sanitizedMessages.slice(lastUserIndex) : sanitizedMessages;
 
-	const lastUserText = getLastUserText(sanitizedMessages);
+	const lastUserTextRaw = getLastUserText(sanitizedMessages);
+	const debugRequested = DEBUG_PREFIX_REGEX.test(lastUserTextRaw);
+	const lastUserText = debugRequested ? stripDebugPrefix(lastUserTextRaw) : lastUserTextRaw;
+	const runtimeMessagesForExecution = normalizeMessagesForExecution(runtimeMessages, debugRequested);
 	const routeDecision = await routeAgentByIntent(lastUserText);
+	const resolvedResponseMode: RoutingResponseMode =
+		(routeDecision?.responseMode as RoutingResponseMode | undefined) ?? "normal";
 	const targetAgentId: RoutingTargetAgent =
 		routeDecision && routeDecision.confidence >= ROUTING_CONFIDENCE_THRESHOLD
 			? routeDecision.targetAgentId
 			: "projectStatusAgent";
 	const isFastStandardized =
-		targetAgentId === "chiefOfStaffAgent" && routeDecision?.responseMode === "fast_standardized";
+		targetAgentId === "chiefOfStaffAgent" && resolvedResponseMode === "fast_standardized";
 	const targetMaxSteps = isFastStandardized
 		? Math.min(MAX_STEPS_BY_AGENT[targetAgentId], FAST_STANDARDIZED_MAX_STEPS)
 		: MAX_STEPS_BY_AGENT[targetAgentId];
@@ -211,7 +520,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		targetMaxSteps,
 		isFastStandardized,
 		routingConfidence: routeDecision?.confidence ?? null,
-		responseMode: routeDecision?.responseMode ?? "normal",
+		responseMode: resolvedResponseMode,
+		rawResponseMode: routeDecision?.responseMode ?? "normal",
 		rationale: routeDecision?.rationale ?? null,
 	});
 
@@ -247,11 +557,12 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (userTimezone) {
 		requestContext.set("user_timezone", userTimezone);
 	}
-	if (routeDecision?.responseMode) {
-		requestContext.set("response_mode", routeDecision.responseMode);
+	requestContext.set("response_mode", resolvedResponseMode);
+	if (debugRequested) {
+		requestContext.set("debug_mode", true);
 	}
 
-	if (routeDecision?.responseMode === "theme_people_snapshot") {
+	if (resolvedResponseMode === "theme_people_snapshot") {
 		const topThemesResult = await fetchTopThemesWithPeopleTool.execute(
 			{
 				projectId,
@@ -277,13 +588,49 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				: "I couldn't find any themes with evidence links yet in this project."
 			: "I couldn't load theme data right now. Please try again.";
 
+		const debugSuffix = debugRequested
+			? "\n\nDebug Trace:\n- routed_to: deterministic_theme_people_snapshot\n- tool_calls: fetchTopThemesWithPeople\n- max_steps: 0"
+			: "";
+
 		return createUIMessageStreamResponse({
-			stream: streamPlainAssistantText(message),
+			stream: streamPlainAssistantText(`${message}${debugSuffix}`),
 		});
 	}
-	const fastGuidanceCacheKey = isFastStandardized
-		? `${projectId}:${hashString(lastUserText.trim().toLowerCase())}:${hashString(systemContext)}`
-		: null;
+
+	if (resolvedResponseMode === "survey_quick_create") {
+		const draft = buildDeterministicSurveyDraft(lastUserText);
+		const surveyResult = await createSurveyTool.execute(
+			{
+				projectId,
+				name: draft.name,
+				description: draft.description,
+				questions: draft.questions,
+				isLive: true,
+			},
+			{ requestContext }
+		);
+
+		const message = surveyResult.success
+			? `Created **${draft.name}** with ${draft.questions.length} questions.${
+					surveyResult.editUrl ? `\n\nEdit it here: [Open Survey](${surveyResult.editUrl})` : ""
+				}`
+			: `I couldn't create the survey automatically right now. ${
+					surveyResult.message || "Please try again."
+				}\n\nI can still draft it manually for you:\n1. Job title\n2. Company\n3. Current goal\n4. Urgency (1-10)`;
+
+		const debugSuffix = debugRequested
+			? "\n\nDebug Trace:\n- routed_to: deterministic_survey_quick_create\n- response_mode: survey_quick_create\n- max_steps: 0\n- tool_calls: createSurvey"
+			: "";
+
+		return createUIMessageStreamResponse({
+			stream: streamPlainAssistantText(`${message}${debugSuffix}`),
+		});
+	}
+
+	const fastGuidanceCacheKey =
+		isFastStandardized && !debugRequested
+			? `${projectId}:${hashString(lastUserText.trim().toLowerCase())}:${hashString(systemContext)}`
+			: null;
 
 	if (fastGuidanceCacheKey) {
 		const cached = fastGuidanceCache.get(fastGuidanceCacheKey);
@@ -340,7 +687,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	};
 
 	const buildAgentParams = (useThreadId: string) => ({
-		messages: runtimeMessages,
+		messages: runtimeMessagesForExecution,
 		maxSteps: targetMaxSteps,
 		clientTools: {
 			navigateToPage: navigateToPageTool,
@@ -351,14 +698,25 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			resource: resourceId,
 		},
 		requestContext,
-		context: system
-			? [
-					{
-						role: "system" as const,
-						content: `## Context from the client's UI:\n${systemContext}`,
-					},
-				]
-			: undefined,
+		context: [
+			...(system
+				? ([
+						{
+							role: "system" as const,
+							content: `## Context from the client's UI:\n${systemContext}`,
+						},
+					] as const)
+				: []),
+			...(debugRequested
+				? ([
+						{
+							role: "system" as const,
+							content:
+								'DEBUG MODE: Answer normally first. Then append a brief "Debug Trace" listing tools called and why.',
+						},
+					] as const)
+				: []),
+		],
 		onFinish: async (data: {
 			usage?: { inputTokens?: number; outputTokens?: number };
 			finishReason?: string;
@@ -366,7 +724,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			text?: string;
 			steps?: unknown[];
 		}) => {
-			if (isFastStandardized && fastGuidanceCacheKey && data.text?.trim()) {
+			if (isFastStandardized && !debugRequested && fastGuidanceCacheKey && data.text?.trim()) {
 				fastGuidanceCache.set(fastGuidanceCacheKey, {
 					text: data.text.trim(),
 					expiresAt: Date.now() + FAST_STANDARDIZED_CACHE_TTL_MS,
@@ -456,9 +814,26 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 							sendSources: !isFastStandardized,
 						});
 		} else {
-			throw error;
+			consola.error("project-status: failed to initialize stream", {
+				error: errorMessage,
+				targetAgentId,
+				projectId,
+			});
+			const debugSuffix = debugRequested
+				? `\n\nDebug Trace:\n- routed_to: ${targetAgentId}\n- response_mode: ${resolvedResponseMode}\n- max_steps: ${targetMaxSteps}\n- tool_calls: none (stream init failed)`
+				: "";
+			return createUIMessageStreamResponse({
+				stream: streamPlainAssistantText(`${FALLBACK_EMPTY_RESPONSE_TEXT}${debugSuffix}`),
+			});
 		}
 	}
 
-	return createUIMessageStreamResponse({ stream });
+	const reliableStream = augmentStreamForReliability(stream, {
+		debugRequested,
+		targetAgentId,
+		targetMaxSteps,
+		responseMode: resolvedResponseMode,
+	});
+
+	return createUIMessageStreamResponse({ stream: reliableStream });
 }

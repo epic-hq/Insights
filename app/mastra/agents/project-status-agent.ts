@@ -13,8 +13,8 @@ import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
 import { fetchSegmentsTool } from "../tools/fetch-segments";
-import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { fetchThemesTool } from "../tools/fetch-themes";
+import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateDocumentLinkTool } from "../tools/generate-document-link";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
@@ -214,6 +214,7 @@ Call "getCurrentDate" first for any date/time questions.
 
 **Understanding People & Segments**:
 - People requests are handled by the PeopleAgent sub-agent (search, updates, org links, deletes)
+- For comparison questions about specific people (e.g., "what do X and Y have in common?", "how are these contacts different?"), delegate to PeopleAgent first, then synthesize concise findings.
 - "fetchSegments" for bullseye scores showing which segments are most likely to buy
 
 **ICP Match Data**:
