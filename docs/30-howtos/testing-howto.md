@@ -98,9 +98,10 @@ If a dev branch is `ACTIVE_HEALTHY` but appears to be missing newer tables/featu
 
 - Deploy workflow currently gates on `test:agents` only.
 - Integration tests are intentionally not in the deploy job while environment and schema-drift stability work is in progress.
+- Current integration baseline is green on staging test DB: `11 passed suites`, `1 skipped suite` (`processInterview.server.integration.test.ts`), `85 passed tests`, `2 skipped`.
 - A workflow parser failure was fixed by removing direct `secrets.*` expression checks in job-step `if` conditions.
 - `vitest.workspace.ts` was adjusted for compatibility with current Vitest config usage.
-- Integration suite failures are currently dominated by schema drift from people/organizations normalization, fixture UUID assumptions, and a few stale mocks/RLS assumptions.
+- Recent schema-drift fixes aligned onboarding and people/org normalization tests with the consolidated `interviews.conversation_analysis` pipeline.
 
 ### Safe Migration Drift Recovery (When Remote Is Ahead)
 
@@ -148,6 +149,9 @@ pnpm run test:integration
 
 # Integration tests with env vars (dedicated test/staging Supabase)
 dotenvx run -- vitest run app/test/integration/survey-response-save.integration.test.ts
+
+# Agent smoke prompts against a running app (captures JSON snapshot)
+pnpm run test:agents:smoke -- --account-id <accountId> --project-id <projectId> --base-url http://localhost:4280
 
 # All tests (unit + integration)
 npm run test:all

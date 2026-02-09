@@ -42,13 +42,13 @@ type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & 
 };
 type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & {
 	person?:
-	| (Database["public"]["Tables"]["people"]["Row"] & {
-		people_personas?: Array<{
-			persona_id: string | null;
-			personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
-		}> | null;
-	})
-	| null;
+		| (Database["public"]["Tables"]["people"]["Row"] & {
+				people_personas?: Array<{
+					persona_id: string | null;
+					personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
+				}> | null;
+		  })
+		| null;
 };
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"];
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
@@ -1014,10 +1014,10 @@ export const fetchProjectStatusContextTool = createTool({
 							evidence: evidenceSnippets,
 							icpMatch: icpByPerson.get(personId)
 								? {
-									band: icpByPerson.get(personId)!.band,
-									score: icpByPerson.get(personId)!.score,
-									confidence: icpByPerson.get(personId)!.confidence,
-								}
+										band: icpByPerson.get(personId)!.band,
+										score: icpByPerson.get(personId)!.score,
+										confidence: icpByPerson.get(personId)!.confidence,
+									}
 								: null,
 							url: projectPath ? `${HOST}${routes.people.detail(personId)}` : null,
 						};
@@ -1200,13 +1200,13 @@ export const fetchProjectStatusContextTool = createTool({
 					const interviewIds = interviews?.map((i) => i.id) || [];
 					const [evidenceRows, insightRows] = interviewIds.length
 						? await Promise.all([
-							supabase.from("evidence").select("id, interview_id").in("interview_id", interviewIds),
-							supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
-						])
+								supabase.from("evidence").select("id, interview_id").in("interview_id", interviewIds),
+								supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
+							])
 						: [
-							{ data: [], error: null },
-							{ data: [], error: null },
-						];
+								{ data: [], error: null },
+								{ data: [], error: null },
+							];
 
 					const evidenceMap = new Map<string, number>();
 					evidenceRows?.data?.forEach((row) => {

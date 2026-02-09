@@ -290,7 +290,7 @@ ${transcript}`,
 
 						if (e.action === "update" && e.updates_gist) {
 							// Update existing evidence record by matching gist
-							const { error: updateError } = await supabase
+							const { data: updatedEvidenceRows, error: updateError } = await supabase
 								.from("evidence")
 								.update({
 									verbatim,
@@ -299,10 +299,40 @@ ${transcript}`,
 									anchors,
 								})
 								.eq("interview_id", interviewId)
-								.eq("gist", e.updates_gist);
+								.eq("gist", e.updates_gist)
+								.select("id");
 
 							if (updateError) {
 								consola.warn(`[desktop-realtime-evidence] Failed to update evidence: ${updateError.message}`);
+							} else if (speakerPersonId && updatedEvidenceRows?.length) {
+								const updatedEvidenceIds = updatedEvidenceRows.map((row) => row.id);
+								const evidencePeopleRows = updatedEvidenceIds.map((evidenceId) => ({
+									account_id,
+									project_id,
+									evidence_id: evidenceId,
+									person_id: speakerPersonId,
+									role: "speaker",
+									confidence: 0.9,
+								}));
+								const { error: evidencePeopleError } = await supabase
+									.from("evidence_people")
+									.upsert(evidencePeopleRows, { onConflict: "evidence_id,person_id,account_id" });
+								if (evidencePeopleError) {
+									consola.warn(
+										`[desktop-realtime-evidence] Failed to backfill evidence_people for updates: ${evidencePeopleError.message}`
+									);
+								}
+
+								const { error: facetPersonError } = await supabase
+									.from("evidence_facet")
+									.update({ person_id: speakerPersonId })
+									.in("evidence_id", updatedEvidenceIds)
+									.is("person_id", null);
+								if (facetPersonError) {
+									consola.warn(
+										`[desktop-realtime-evidence] Failed to backfill evidence_facet.person_id for updates: ${facetPersonError.message}`
+									);
+								}
 							}
 						} else {
 							// Insert new evidence
@@ -342,6 +372,7 @@ ${transcript}`,
 									evidence_id: savedEvidence.id,
 									account_id,
 									project_id,
+									person_id: speakerPersonId,
 									kind_slug: e.category,
 									facet_account_id: facetAccountId,
 									label: e.category,

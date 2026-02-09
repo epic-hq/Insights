@@ -28,7 +28,7 @@ Two parallel tracks. 2 primary goals per track + a Tier 2 list for bugs and quic
 - [ ] Smart email CTA redirects — `/go/:destination` resolver, unblocks email imagery (Insights-3qt, score 0.19)
 - [ ] Set up lifecycle nurture workflows in Brevo (Insights-aim, blocked by Insights-y2v)
 
-## Today (scratchpad)
+## Today 2/7 -8 (scratchpad)
 
 Jot notes here as you work. Close beads with `bd close`. When you ask me to update the sprint, I'll read this + `bv --robot-triage` to refresh everything.
 
@@ -45,11 +45,28 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 - 43a agentic orchestration improvements: lower token and tool count to agents
   - picked up some more optimizations via codex
 
-2/8
-- people-org schema confusion needs to be cleared up. this is impacting facets, ICP functions - no bead or doc yet. Claude analysis https://claude.ai/code/session_01M8nLXmam7dhmxrzpM1oRyw 
-  
-## Yikes: Agent Testing quality 
 
+## Yikes: Agent Testing quality 
+```
+
+## Sunday 2/8
+2/8
+- **people-org schema confusion** needs to be cleared up. this is impacting facets, ICP functions - no bead or doc yet. Claude analysis https://claude.ai/code/session_01M8nLXmam7dhmxrzpM1oRyw 
+  - phase 3e currently removing old references to fields (2/9)
+
+## Monday 2/9
+```
+- Agent Orchestrator perf & delegation (43a)
+  - new HowTo UX Researcher and GTM agent (Insights-7a00) DONE
+    
+- Bryan Rill UX Researcher feedback digestion into plan
+  - taxonomy architecture audit (Codex)
+    [ux-research-party-mode-analysis-2026-02-09.md](app://-/index.html# "/Users/richardmoy/Code/ai/Insights/_bmad-output/ux-research-party-mode-analysis-2026-02-09.md (line 1)")
+	- UI refactor Interview page monolith, light touch on Evidence Correction in this (r713 and 64cp)
+	  **MAJOR** doing now
+	  
+- UI Refactoring with BMAD UX for mobile & person page to make more insightful & actionable
+  
 ```
 
 ## Parking Lot (not this sprint)

@@ -269,29 +269,62 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const facetsByEvidence = new Map<string, EvidenceFacetSummary[]>();
 	if (rows.length) {
 		const evidenceIds = rows.map((e) => e.id);
-
 		const { data: facetRows, error: facetErr } = await supabase
 			.from("evidence_facet")
-			.select(
-				`
-				evidence_id,
-				kind_slug,
-				label,
-				facet_account_id,
-				person:person_id(id, name)
-			`
-			)
+			.select("evidence_id, kind_slug, label, facet_account_id, person_id")
 			.eq("project_id", projectId)
 			.in("evidence_id", evidenceIds);
-		if (facetErr) throw new Error(`Failed to load evidence facets: ${facetErr.message}`);
 
-		for (const row of (facetRows ?? []) as Array<{
+		const { data: evp, error: epErr } = await supabase
+			.from("evidence_people")
+			.select("evidence_id, role, person_id")
+			.eq("project_id", projectId)
+			.in("evidence_id", evidenceIds);
+		if (facetErr) {
+			consola.warn(`[evidence/index] Failed to load evidence facets: ${facetErr.message}`);
+		}
+		if (epErr) {
+			consola.warn(`[evidence/index] Failed to load evidence_people: ${epErr.message}`);
+		}
+
+		const facetRowsSafe = (facetRows ?? []) as Array<{
 			evidence_id: string;
 			kind_slug: string | null;
 			label: string | null;
 			facet_account_id: number | null;
-			person: { id: string; name: string | null } | null;
-		}>) {
+			person_id: string | null;
+		}>;
+		const evpRowsSafe = (evp ?? []) as Array<{
+			evidence_id: string;
+			role: string | null;
+			person_id: string | null;
+		}>;
+
+		// Get all person IDs to fetch their personas
+		const linkedPersonIds = new Set<string>();
+		for (const row of facetRowsSafe) {
+			if (row.person_id) linkedPersonIds.add(row.person_id);
+		}
+		for (const row of evpRowsSafe) {
+			if (row.person_id) linkedPersonIds.add(row.person_id);
+		}
+
+		const personNameById = new Map<string, string | null>();
+		if (linkedPersonIds.size > 0) {
+			const { data: personRows, error: personErr } = await supabase
+				.from("people")
+				.select("id, name")
+				.eq("project_id", projectId)
+				.in("id", Array.from(linkedPersonIds));
+			if (personErr) {
+				consola.warn(`[evidence/index] Failed to load facet/people names: ${personErr.message}`);
+			}
+			for (const row of (personRows ?? []) as Array<{ id: string; name: string | null }>) {
+				personNameById.set(row.id, row.name ?? null);
+			}
+		}
+
+		for (const row of facetRowsSafe) {
 			if (!row.evidence_id || !row.kind_slug || !row.label) continue;
 			if (!row.facet_account_id) continue;
 			const list = facetsByEvidence.get(row.evidence_id) ?? [];
@@ -299,35 +332,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				kind_slug: row.kind_slug,
 				label: row.label,
 				facet_account_id: row.facet_account_id,
-				person: row.person,
+				person: row.person_id ? { id: row.person_id, name: personNameById.get(row.person_id) ?? null } : null,
 			});
 			facetsByEvidence.set(row.evidence_id, list);
 		}
 
-		const { data: evp, error: epErr } = await supabase
-			.from("evidence_people")
-			.select(
-				`
-				evidence_id,
-				role,
-				people:person_id!inner(
-					id,
-					name
-				)
-			`
-			)
-			.eq("project_id", projectId)
-			.in("evidence_id", evidenceIds);
-		if (epErr) throw new Error(`Failed to load evidence_people: ${epErr.message}`);
-
 		// Get all person IDs to fetch their personas
 		const personIds = new Set<string>();
-		for (const row of (evp ?? []) as Array<{
-			evidence_id: string;
-			role: string | null;
-			people: { id: string; name: string | null } | null;
-		}>) {
-			if (row.people) personIds.add(row.people.id);
+		for (const row of evpRowsSafe) {
+			if (row.person_id) personIds.add(row.person_id);
 		}
 
 		// Fetch personas for all people
@@ -338,7 +351,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				.select("person_id, personas:persona_id!inner(id, name)")
 				.eq("project_id", projectId)
 				.in("person_id", Array.from(personIds));
-			if (ppErr) throw new Error(`Failed to load people_personas: ${ppErr.message}`);
+			if (ppErr) {
+				consola.warn(`[evidence/index] Failed to load people_personas: ${ppErr.message}`);
+			}
 
 			for (const row of (pp ?? []) as Array<{
 				person_id: string;
@@ -352,18 +367,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		}
 
 		// Build the final people map with personas
-		for (const row of (evp ?? []) as Array<{
-			evidence_id: string;
-			role: string | null;
-			people: { id: string; name: string | null } | null;
-		}>) {
-			if (!row.people) continue;
+		for (const row of evpRowsSafe) {
+			if (!row.person_id) continue;
 			const list = peopleByEvidence.get(row.evidence_id) ?? [];
 			list.push({
-				id: row.people.id,
-				name: row.people.name ?? null,
+				id: row.person_id,
+				name: personNameById.get(row.person_id) ?? null,
 				role: row.role ?? null,
-				personas: personasByPerson.get(row.people.id) ?? [],
+				personas: personasByPerson.get(row.person_id) ?? [],
 			});
 			peopleByEvidence.set(row.evidence_id, list);
 		}

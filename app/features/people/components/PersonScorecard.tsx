@@ -9,7 +9,6 @@ import {
 	ClipboardList,
 	Loader2,
 	MessageCircle,
-	Mic,
 	MoreHorizontal,
 	Pencil,
 	RefreshCw,
@@ -248,18 +247,11 @@ export function PersonScorecard({
 
 				{/* Quick actions row */}
 				<div className="mt-5 flex flex-wrap items-center gap-2">
-					{/* Quick Update - disabled Phase 1 placeholder */}
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<span tabIndex={0}>
-								<Button disabled size="sm">
-									<Mic className="size-4" />
-									Quick Update
-								</Button>
-							</span>
-						</TooltipTrigger>
-						<TooltipContent>Coming soon</TooltipContent>
-					</Tooltip>
+					{/* Quick Note */}
+					<Button variant="outline" size="sm" onClick={onLogNote}>
+						<StickyNote className="size-4" />
+						Quick Note
+					</Button>
 
 					{/* Send Survey - Phase 2 placeholder */}
 					<Tooltip>
@@ -273,12 +265,6 @@ export function PersonScorecard({
 						</TooltipTrigger>
 						<TooltipContent>Coming soon</TooltipContent>
 					</Tooltip>
-
-					{/* Log Note */}
-					<Button variant="outline" size="sm" onClick={onLogNote}>
-						<StickyNote className="size-4" />
-						Log Note
-					</Button>
 
 					{/* Overflow menu */}
 					<DropdownMenu>

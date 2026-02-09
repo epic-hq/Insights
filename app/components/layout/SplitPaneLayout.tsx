@@ -36,136 +36,125 @@ import { useOnboarding } from "../onboarding";
 import { AIAssistantPanel } from "./AIAssistantPanel";
 
 interface AccountRecord {
-  account_id: string;
-  name?: string | null;
-  personal_account?: boolean | null;
-  projects?: Array<{
-    id: string;
-    account_id: string;
-    name?: string | null;
-    slug?: string | null;
-  }> | null;
+	account_id: string;
+	name?: string | null;
+	personal_account?: boolean | null;
+	projects?: Array<{
+		id: string;
+		account_id: string;
+		name?: string | null;
+		slug?: string | null;
+	}> | null;
 }
 
 interface ProtectedLayoutData {
-  accounts?: AccountRecord[] | null;
-  user_settings?: {
-    last_used_account_id?: string | null;
-    last_used_project_id?: string | null;
-  } | null;
+	accounts?: AccountRecord[] | null;
+	user_settings?: {
+		last_used_account_id?: string | null;
+		last_used_project_id?: string | null;
+	} | null;
 }
 
 interface SplitPaneLayoutProps {
-  /** System context for AI chat */
-  systemContext?: string;
-  /** Whether to show the journey navigation (onboarding) */
-  showJourneyNav?: boolean;
+	/** System context for AI chat */
+	systemContext?: string;
+	/** Whether to show the journey navigation (onboarding) */
+	showJourneyNav?: boolean;
 }
 
-export function SplitPaneLayout({
-  systemContext = "",
-  showJourneyNav = true,
-}: SplitPaneLayoutProps) {
-  const { isMobile } = useDeviceDetection();
-  const [searchParams] = useSearchParams();
-  const { accountId, projectId } = useCurrentProject();
-  const routes = useProjectRoutesFromIds(accountId, projectId);
-  const protectedData = useRouteLoaderData(
-    "routes/_ProtectedLayout",
-  ) as ProtectedLayoutData | null;
-  const { aiContext: onboardingContext } = useOnboarding();
+export function SplitPaneLayout({ systemContext = "", showJourneyNav = true }: SplitPaneLayoutProps) {
+	const { isMobile } = useDeviceDetection();
+	const [searchParams] = useSearchParams();
+	const { accountId, projectId } = useCurrentProject();
+	const routes = useProjectRoutesFromIds(accountId, projectId);
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null;
+	const { aiContext: onboardingContext } = useOnboarding();
 
-  // Combine system context with onboarding context for personalized AI
-  const combinedSystemContext = [systemContext, onboardingContext]
-    .filter(Boolean)
-    .join("\n\n");
+	// Combine system context with onboarding context for personalized AI
+	const combinedSystemContext = [systemContext, onboardingContext].filter(Boolean).join("\n\n");
 
-  const isOnboarding = searchParams.get("onboarding") === "true";
-  const isWelcomeFlow = searchParams.get("welcome") === "1";
+	const isOnboarding = searchParams.get("onboarding") === "true";
+	const isWelcomeFlow = searchParams.get("welcome") === "1";
 
-  // AI Panel state - persisted to localStorage
-  const [isAIPanelOpen, setIsAIPanelOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const stored = localStorage.getItem("ai-panel-open");
-    // Default to closed so floating button is visible first
-    return stored === "true";
-  });
+	// AI Panel state - persisted to localStorage
+	const [isAIPanelOpen, setIsAIPanelOpen] = useState(() => {
+		if (typeof window === "undefined") return false;
+		const stored = localStorage.getItem("ai-panel-open");
+		// Default to closed so floating button is visible first
+		return stored === "true";
+	});
 
-  // Collapse panel when entering welcome flow
-  useEffect(() => {
-    if (isWelcomeFlow) {
-      setIsAIPanelOpen(false);
-    }
-  }, [isWelcomeFlow]);
+	// Collapse panel when entering welcome flow
+	useEffect(() => {
+		if (isWelcomeFlow) {
+			setIsAIPanelOpen(false);
+		}
+	}, [isWelcomeFlow]);
 
-  const showMainNav = !isOnboarding;
+	const showMainNav = !isOnboarding;
 
-  // Should we show the mobile navigation?
-  const showMobileNav = isMobile && showJourneyNav && showMainNav;
+	// Should we show the mobile navigation?
+	const showMobileNav = isMobile && showJourneyNav && showMainNav;
 
-  const accounts = protectedData?.accounts?.filter(Boolean) ?? [];
+	const accounts = protectedData?.accounts?.filter(Boolean) ?? [];
 
-  // Track AI panel width for dynamic content padding
-  const [aiPanelWidth, setAIPanelWidth] = useState(440);
-  const handleAIPanelWidthChange = useCallback((width: number) => {
-    setAIPanelWidth(width);
-  }, []);
+	// Track AI panel width for dynamic content padding
+	const [aiPanelWidth, setAIPanelWidth] = useState(440);
+	const handleAIPanelWidthChange = useCallback((width: number) => {
+		setAIPanelWidth(width);
+	}, []);
 
-  const handleAIPanelOpenChange = useCallback((open: boolean) => {
-    setIsAIPanelOpen(open);
-  }, []);
+	const handleAIPanelOpenChange = useCallback((open: boolean) => {
+		setIsAIPanelOpen(open);
+	}, []);
 
-  // Show AI panel on desktop when nav is visible
-  const showAIPanel = showMainNav && !isMobile;
+	// Show AI panel on desktop when nav is visible
+	const showAIPanel = showMainNav && !isMobile;
 
-  return (
-    <SidebarProvider>
-      <ProjectStatusAgentProvider>
-        <div className="flex min-h-0 w-full flex-1 flex-col">
-          {/* Top Navigation - shown on both desktop and mobile */}
-          {showMainNav && <TopNavigation accounts={accounts} />}
+	return (
+		<SidebarProvider>
+			<ProjectStatusAgentProvider>
+				<div className="flex min-h-0 w-full flex-1 flex-col">
+					{/* Top Navigation - shown on both desktop and mobile */}
+					{showMainNav && <TopNavigation accounts={accounts} />}
 
-          {/* Main content - shifts right when AI panel is expanded */}
-          <main
-            className={cn(
-              "flex min-h-0 flex-1 flex-col overflow-auto transition-[padding] duration-200",
-              showMobileNav ? "pb-[72px]" : "",
-            )}
-            style={
-              showAIPanel && isAIPanelOpen
-                ? { paddingLeft: aiPanelWidth + 20 }
-                : undefined
-            }
-          >
-            <Outlet />
-          </main>
+					{/* Main content - shifts right when AI panel is expanded */}
+					<main
+						className={cn(
+							"flex min-h-0 flex-1 flex-col overflow-auto transition-[padding] duration-200",
+							showMobileNav ? "pb-[72px]" : ""
+						)}
+						style={showAIPanel && isAIPanelOpen ? { paddingLeft: aiPanelWidth + 20 } : undefined}
+					>
+						<Outlet />
+					</main>
 
-          {/* Floating AI Assistant (outside layout flow) */}
-          {showAIPanel && (
-            <AIAssistantPanel
-              isOpen={isAIPanelOpen}
-              onOpenChange={handleAIPanelOpenChange}
-              onWidthChange={handleAIPanelWidthChange}
-              accounts={accounts}
-              systemContext={combinedSystemContext}
-              suppressPersistence={isWelcomeFlow}
-            />
-          )}
+					{/* Floating AI Assistant (outside layout flow) */}
+					{showAIPanel && (
+						<AIAssistantPanel
+							isOpen={isAIPanelOpen}
+							onOpenChange={handleAIPanelOpenChange}
+							onWidthChange={handleAIPanelWidthChange}
+							accounts={accounts}
+							systemContext={combinedSystemContext}
+							suppressPersistence={isWelcomeFlow}
+						/>
+					)}
 
-          {/* Mobile Bottom Tab Bar */}
-          {showMobileNav && (
-            <BottomTabBar
-              routes={{
-                chat: routes.projects.assistant(),
-                upload: routes.interviews.upload(),
-                people: routes.people.index(),
-              }}
-            />
-          )}
-        </div>
-      </ProjectStatusAgentProvider>
-    </SidebarProvider>
-  );
+					{/* Mobile Bottom Tab Bar */}
+					{showMobileNav && (
+						<BottomTabBar
+							routes={{
+								chat: routes.projects.assistant(),
+								upload: routes.interviews.upload(),
+								people: routes.people.index(),
+							}}
+						/>
+					)}
+				</div>
+			</ProjectStatusAgentProvider>
+		</SidebarProvider>
+	);
 }
 
 export default SplitPaneLayout;

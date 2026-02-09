@@ -8,6 +8,7 @@ import { openai } from "../../lib/billing/instrumented-openai.server";
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details";
 import { fetchPersonasTool } from "../tools/fetch-personas";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
+import { importPeopleFromTableTool } from "../tools/import-people-from-table";
 import { managePeopleTool } from "../tools/manage-people";
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations";
 import { semanticSearchPeopleTool } from "../tools/semantic-search-people";
@@ -47,6 +48,7 @@ If the request is about tasks, interviews, themes, evidence, surveys, or documen
 - fetchPeopleDetails: retrieve people + related data
 - semanticSearchPeople: find people by traits/roles
 - fetchPersonas: list personas
+- importPeopleFromTable: import contact spreadsheets into people/org records
 - upsertPerson: update contact info
 - upsertPersonFacets: update traits/facets
 - managePersonOrganizations: manage org links
@@ -68,6 +70,7 @@ If the request is about tasks, interviews, themes, evidence, surveys, or documen
 		fetchPeopleDetails: fetchPeopleDetailsTool,
 		semanticSearchPeople: semanticSearchPeopleTool,
 		fetchPersonas: fetchPersonasTool,
+		importPeopleFromTable: importPeopleFromTableTool,
 		upsertPerson: upsertPersonTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,

@@ -174,7 +174,7 @@ function useAnnotations({
 // VOTING HOOKS
 // =============================================================================
 
-function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+export function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
 	const fetcher = useFetcher();
 	const { projectPath } = useCurrentProject();
 	const routes = useProjectRoutes(projectPath);
@@ -293,7 +293,7 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 // ENTITY FLAGS HOOKS
 // =============================================================================
 
-function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+export function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
 	const fetcher = useFetcher();
 	const { projectPath } = useCurrentProject();
 	const routes = useProjectRoutes(projectPath);

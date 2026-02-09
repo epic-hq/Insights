@@ -7,10 +7,7 @@
  * 3. Cancel Analysis Run API
  */
 
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { action as cancelAnalysisAction } from "~/routes/api.cancel-analysis-run";
-import { action as reanalyzeThemesAction } from "~/routes/api.reanalyze-themes";
-import { action as reprocessEvidenceAction } from "~/routes/api.reprocess-evidence";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
 const { mockTrigger, mockRunsCancel } = vi.hoisted(() => ({
@@ -51,6 +48,16 @@ vi.mock("~/utils/transcript/sanitizeTranscriptData.server", () => ({
 }));
 
 describe("API Routes - Conversation Analysis Consolidation", () => {
+	let cancelAnalysisAction: (args: unknown) => Promise<Response>;
+	let reanalyzeThemesAction: (args: unknown) => Promise<Response>;
+	let reprocessEvidenceAction: (args: unknown) => Promise<Response>;
+
+	beforeAll(async () => {
+		({ action: cancelAnalysisAction } = await import("~/routes/api.cancel-analysis-run"));
+		({ action: reanalyzeThemesAction } = await import("~/routes/api.reanalyze-themes"));
+		({ action: reprocessEvidenceAction } = await import("~/routes/api.reprocess-evidence"));
+	});
+
 	beforeEach(async () => {
 		await seedTestData();
 		vi.clearAllMocks();
