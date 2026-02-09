@@ -13,6 +13,11 @@ import { action as reanalyzeThemesAction } from "~/routes/api.reanalyze-themes";
 import { action as reprocessEvidenceAction } from "~/routes/api.reprocess-evidence";
 import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
 
+const { mockTrigger, mockRunsCancel } = vi.hoisted(() => ({
+	mockTrigger: vi.fn().mockResolvedValue({ id: "run_test123" }),
+	mockRunsCancel: vi.fn().mockResolvedValue({}),
+}));
+
 // Mock Supabase server client
 vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: vi.fn(() => ({ client: testDb })),
@@ -21,13 +26,12 @@ vi.mock("~/lib/supabase/client.server", () => ({
 }));
 
 // Mock Trigger.dev
-const mockTrigger = vi.fn().mockResolvedValue({ id: "run_test123" });
 vi.mock("@trigger.dev/sdk", () => ({
 	tasks: {
 		trigger: mockTrigger,
 	},
 	runs: {
-		cancel: vi.fn().mockResolvedValue({}),
+		cancel: mockRunsCancel,
 	},
 }));
 
