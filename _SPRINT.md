@@ -48,7 +48,7 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 2/8
 - people-org schema confusion needs to be cleared up. this is impacting facets, ICP functions - no bead or doc yet. Claude analysis https://claude.ai/code/session_01M8nLXmam7dhmxrzpM1oRyw 
   
-Yikes: explain this query result:
+## Yikes: 1. explain this query result:
 You
 
 what do john rubey and jered lish have in common
@@ -59,6 +59,28 @@ Top themes right now:
 
 1. [Enhance Integration with Existing Tools](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/insights/e21f0093-2d10-48b1-9712-213f510640ae) (22 mentions) — People: Fatima A, Rick Moy, Rick, John Rubey
 2. [Enhance Survey and Interview Customization](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/insights/9bd813ad-aa30-4aa1-9f72-e2cf5898c113) (18 mentions) — People: Rick Moy, Rick, Mona Fendereski, Mona Fendereski • Dec 26, 2025, Fatima A, John Rubey
+   
+   YIKES 2:
+   You
+
+who are best likely customers
+
+Uppy Assistant
+
+Best likely customers are those who match segments with the highest bullseye (fit) scores and strong evidence from your research. Top segments (bullseye score: 38, evidence count: 41) include:
+
+- [Pitch professors as expert sources](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/segments/4762)
+- [Avoid manual Google News scrolling](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/segments/4777)
+- [SEO management tools/processes](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/segments/4792)
+- [Assesses degree by ROI](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/segments/4822)
+- [Drone for field filming](http://localhost:4280/a/d7b69d5e-a952-41a6-931f-e2fed1d82e85/6dbcbb68-0662-4ebc-9f84-dd13b8ff758d/segments/4847)
+
+What this means:
+
+- These segments have the most supporting evidence and highest fit, so prospects matching these needs, workflows, or values are your best likely customers.
+- For example, customers who want to pitch professors as expert sources, automate news research, or use advanced SEO tools are strong fits.
+
+Evidence: Each segment is backed by 41 evidence items, indicating high confidence in their fit.
 ```
 
 ## Parking Lot (not this sprint)
