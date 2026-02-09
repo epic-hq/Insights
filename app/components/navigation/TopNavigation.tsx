@@ -8,7 +8,7 @@
  * - Responsive: collapses to hamburger on mobile
  */
 
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { Badge } from "~/components/ui/badge";
@@ -245,42 +245,39 @@ export function TopNavigation({ accounts = [], className }: TopNavigationProps) 
 
 			{/* Mobile Navigation Sheet */}
 			<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-				<SheetContent side="left" className="w-80 p-0">
-					<SheetHeader className="border-b p-4">
-						<div className="flex items-center justify-between">
-							<SheetTitle>
-								<LogoBrand />
-							</SheetTitle>
-							<Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-								<X className="h-5 w-5" />
-							</Button>
-						</div>
+				<SheetContent side="left" className="flex h-dvh w-[min(20rem,100vw)] flex-col p-0 sm:w-80">
+					<SheetHeader className="border-b p-4 pr-12">
+						<SheetTitle>
+							<LogoBrand />
+						</SheetTitle>
 					</SheetHeader>
-					<div className="flex flex-col gap-6 p-4">
-						{/* Team Switcher */}
-						<TeamSwitcher accounts={accounts} collapsed={false} />
+					<div className="flex min-h-0 flex-1 flex-col">
+						<div className="min-h-0 flex-1 overflow-y-auto p-4">
+							<div className="flex min-h-full flex-col gap-6">
+								{/* Team Switcher */}
+								<TeamSwitcher accounts={accounts} collapsed={false} />
 
-						{/* Navigation Categories */}
-						{filteredCategories.map((category) => (
-							<div key={category.key}>
-								<h3 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-									{category.title}
-								</h3>
-								<div className="flex flex-col gap-1">
-									{category.items.map((item) => (
-										<MobileNavItem
-											key={item.key}
-											item={item}
-											routes={routes}
-											onClose={() => setMobileMenuOpen(false)}
-										/>
-									))}
-								</div>
+								{/* Navigation Categories */}
+								{filteredCategories.map((category) => (
+									<div key={category.key}>
+										<h3 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+											{category.title}
+										</h3>
+										<div className="flex flex-col gap-1">
+											{category.items.map((item) => (
+												<MobileNavItem
+													key={item.key}
+													item={item}
+													routes={routes}
+													onClose={() => setMobileMenuOpen(false)}
+												/>
+											))}
+										</div>
+									</div>
+								))}
 							</div>
-						))}
-
-						{/* User Profile at bottom */}
-						<div className="mt-auto border-t pt-4">
+						</div>
+						<div className="border-t p-4">
 							<UserProfile />
 						</div>
 					</div>

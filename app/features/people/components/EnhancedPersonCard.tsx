@@ -92,9 +92,12 @@ export default function EnhancedPersonCard({
 		<Link to={routes.people.detail(person.id)} tabIndex={0} aria-label={`View details for ${name}`}>
 			<motion.div
 				className={cn(
-					"group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-background",
+					"group relative cursor-pointer overflow-hidden rounded-xl border border-border/90 bg-card shadow-sm",
+					"dark:border-white/15 dark:bg-[linear-gradient(180deg,hsla(240,8%,14%,0.96)_0%,hsla(240,7%,11%,0.96)_100%)]",
+					"dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)]",
 					"transition-all duration-300 ease-out",
-					"hover:shadow-black/10 hover:shadow-lg dark:hover:shadow-white/5",
+					"hover:border-border hover:shadow-black/10 hover:shadow-md",
+					"dark:hover:border-white/25 dark:hover:shadow-[0_14px_30px_-16px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.12)]",
 					className
 				)}
 				onMouseEnter={() => setIsHovered(true)}
@@ -119,7 +122,7 @@ export default function EnhancedPersonCard({
 					<CardHeader className="pb-3">
 						<div className="flex items-start">
 							<motion.div className="relative" whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-								<Avatar className="h-16 w-16 border-2" style={{ borderColor: themeColor }}>
+								<Avatar className="h-14 w-14 border-2 sm:h-16 sm:w-16" style={{ borderColor: themeColor }}>
 									{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
 									<AvatarFallback className="font-medium text-lg text-white" style={{ backgroundColor: themeColor }}>
 										{initials}
@@ -137,7 +140,7 @@ export default function EnhancedPersonCard({
 							<div className="flex w-full items-start justify-between">
 								<div>
 									<motion.h3
-										className="mb-3 ml-4 font-bold text-foreground text-xl leading-tight"
+										className="mb-2 ml-3 font-bold text-foreground text-lg leading-tight sm:ml-4 sm:text-xl"
 										style={{ color: isHovered ? themeColor : undefined }}
 										transition={{ duration: 0.3 }}
 									>
@@ -145,7 +148,7 @@ export default function EnhancedPersonCard({
 									</motion.h3>
 									{persona?.name && (
 										<div
-											className="mt-1 ml-4 inline-block rounded-full px-2 py-0.5 font-semibold text-xs"
+											className="mt-1 ml-3 inline-block rounded-full px-2 py-0.5 font-semibold text-xs sm:ml-4"
 											style={{
 												backgroundColor: `${themeColor}22`,
 												color: themeColor,
@@ -170,7 +173,7 @@ export default function EnhancedPersonCard({
 							</div>
 						)}
 						{/* Description, segment, etc. */}
-						<p className="mb-3 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
+						<p className="mb-3 line-clamp-2 text-foreground/80 text-sm leading-relaxed dark:text-foreground/90">
 							{person.description || "No description yet."}
 						</p>
 						{/* Segment data badges */}
@@ -209,10 +212,14 @@ export default function EnhancedPersonCard({
 						)}
 						<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
 							{typeof conversationCount === "number" && (
-								<span className="rounded bg-muted px-2 py-0.5">{conversationCount} conversations</span>
+								<span className="rounded border border-transparent bg-muted/80 px-2 py-0.5 text-foreground/80 dark:border-white/10 dark:bg-white/10 dark:text-foreground/90">
+									{conversationCount} conversations
+								</span>
 							)}
 							{typeof evidenceCount === "number" && (
-								<span className="rounded bg-muted px-2 py-0.5">{evidenceCount} evidence</span>
+								<span className="rounded border border-transparent bg-muted/80 px-2 py-0.5 text-foreground/80 dark:border-white/10 dark:bg-white/10 dark:text-foreground/90">
+									{evidenceCount} evidence
+								</span>
 							)}
 						</div>
 					</CardContent>

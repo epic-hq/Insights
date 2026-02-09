@@ -9,7 +9,7 @@ import { formatDistance } from "date-fns";
 import { FileSpreadsheet, FileText, FolderOpen, HelpCircle, Search, StickyNote, Table, Upload } from "lucide-react";
 import { useState } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData, useRevalidator } from "react-router";
 import { PageContainer } from "~/components/layout/PageContainer";
 import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
 import { Button } from "~/components/ui/button";
@@ -101,7 +101,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function SourcesIndex() {
 	const { notes, projectAssets } = useLoaderData<typeof loader>();
-	const { projectPath, projectId } = useCurrentProject();
+	const revalidator = useRevalidator();
+	const { projectPath } = useCurrentProject();
 	const routes = useProjectRoutes(projectPath);
 	const [sourceTab, setSourceTab] = useState<"notes" | "files">("notes");
 	const [fileSearchQuery, setFileSearchQuery] = useState("");
@@ -146,6 +147,8 @@ export default function SourcesIndex() {
 			console.error("Failed to save note:", errorData);
 			throw new Error(errorData.details || errorData.error || "Failed to save note");
 		}
+
+		revalidator.revalidate();
 	};
 
 	return (
