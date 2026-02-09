@@ -69,6 +69,10 @@ Jot notes here as you work. Close beads with `bd close`. When you ask me to upda
 	  
 - UI Refactoring with BMAD UX for mobile & person page to make more insightful & actionable
   
+DJ
+- survey responses. column people
+- url uploads
+- not deleting
 ```
 
 ## Parking Lot (not this sprint)
