@@ -5,6 +5,12 @@ import consola from "consola";
 import type { ActionFunctionArgs } from "react-router";
 import { z } from "zod";
 import {
+	buildHowtoContractPatchText,
+	buildHowtoFallbackResponse,
+	evaluateHowtoResponseContract,
+} from "~/features/project-chat/howto-contract";
+import { detectHowtoPromptMode } from "~/features/project-chat/howto-routing";
+import {
 	clearActiveBillingContext,
 	estimateOpenAICost,
 	openai as instrumentedOpenai,
@@ -93,15 +99,6 @@ const BILLING_MODEL_BY_AGENT: Record<RoutingTargetAgent, string> = {
 	howtoAgent: "gpt-4o-mini",
 };
 
-const HOWTO_REQUIRED_SECTION_HEADERS = [
-	"direct answer",
-	"do this now",
-	"prompt template",
-	"quick links",
-	"if stuck",
-] as const;
-const HOWTO_MARKDOWN_LINK_REGEX = /\[[^\]]+\]\((?:https?:\/\/|\/)[^)]+\)/i;
-
 type FastGuidanceCacheEntry = {
 	text: string;
 	expiresAt: number;
@@ -117,6 +114,7 @@ const fastGuidanceCache = new Map<string, FastGuidanceCacheEntry>();
 type StickyRoutingEntry = { agentId: RoutingTargetAgent; timestamp: number };
 const lastRoutedAgentMap = new Map<string, StickyRoutingEntry>();
 const STICKY_ROUTING_TTL_MS = 10 * 60 * 1000; // 10 minutes
+type RoutingSource = "deterministic" | "classifier" | "fallback";
 
 function hashString(input: string): string {
 	let hash = 2166136261;
@@ -189,80 +187,6 @@ function normalizeMessagesForExecution(
 	});
 }
 
-function buildHowtoQuickLinks(accountId: string, projectId: string): string {
-	const projectBase = accountId && projectId ? `/a/${accountId}/${projectId}` : "";
-	if (projectBase) {
-		return `- [People](${projectBase}/people)\n- [Insights](${projectBase}/insights)\n- [Ask](${projectBase}/ask)`;
-	}
-	return "- [Docs](/docs)\n- [Help](/help)";
-}
-
-function buildHowtoContractPatchText(
-	existingText: string,
-	accountId: string,
-	projectId: string
-): string | null {
-	const normalized = existingText.toLowerCase();
-	const missingSections = HOWTO_REQUIRED_SECTION_HEADERS.filter((header) => !normalized.includes(header));
-	const hasMarkdownLink = HOWTO_MARKDOWN_LINK_REGEX.test(existingText);
-	if (missingSections.length === 0 && hasMarkdownLink) return null;
-
-	const quickLinksList = buildHowtoQuickLinks(accountId, projectId);
-	const patches: string[] = [];
-
-	for (const section of missingSections) {
-		if (section === "direct answer") {
-			patches.push("**Direct answer**\nUse the smallest clear step that produces evidence before scaling effort.");
-			continue;
-		}
-		if (section === "do this now") {
-			patches.push("**Do this now**\n- Define the user + outcome in one sentence.\n- Run one bounded test this week.\n- Capture result + next decision in project notes.");
-			continue;
-		}
-		if (section === "prompt template") {
-			patches.push(
-				'**Prompt template**\n```text\nAct as my coach for {{goal}}. Context: {{context}}. Constraints: {{constraints}}. Give me 3 steps, 1 risk, and 1 metric to track.\n```'
-			);
-			continue;
-		}
-		if (section === "quick links") {
-			patches.push(`**Quick links**\n${quickLinksList}`);
-			continue;
-		}
-		if (section === "if stuck") {
-			patches.push("**If stuck**\nReply with your current blocker, available data, and deadline, and I will tighten the plan.");
-		}
-	}
-
-	if (!hasMarkdownLink && !missingSections.includes("quick links")) {
-		patches.push(`**Quick links**\n${quickLinksList}`);
-	}
-
-	return patches.length > 0 ? `\n\n${patches.join("\n\n")}` : null;
-}
-
-function buildHowtoFallbackResponse(accountId: string, projectId: string): string {
-	const quickLinksList = buildHowtoQuickLinks(accountId, projectId);
-	return `**Direct answer**
-I can still give you a working starting point even without full context.
-
-**Do this now**
-- Define the specific outcome you want in one sentence.
-- Choose one experiment you can run in the next 48 hours.
-- Decide the metric that will prove progress.
-
-**Prompt template**
-\`\`\`text
-Help me with {{goal}}. Context: {{context}}. Constraints: {{constraints}}. Return 3 concrete steps, 1 risk, and 1 success metric.
-\`\`\`
-
-**Quick links**
-${quickLinksList}
-
-**If stuck**
-Share your blocker, timeline, and available data and I will give you a tighter playbook.`;
-}
-
 type StreamLike = ReadableStream<Record<string, unknown>>;
 
 function augmentStreamForReliability(
@@ -274,6 +198,8 @@ function augmentStreamForReliability(
 		responseMode: RoutingResponseMode;
 		accountId: string;
 		projectId: string;
+		routingSource: RoutingSource;
+		routingConfidence: number | null;
 	}
 ) {
 	if (!stream || typeof (stream as { pipeThrough?: unknown }).pipeThrough !== "function") {
@@ -287,6 +213,7 @@ function augmentStreamForReliability(
 	let sawFinishChunk = false;
 	let appendedHowtoContractPatch = false;
 	let accumulatedAssistantText = "";
+	let loggedHowtoTelemetry = false;
 
 	const enqueueAssistantText = (
 		controller: TransformStreamDefaultController<Record<string, unknown>>,
@@ -339,6 +266,23 @@ function augmentStreamForReliability(
 		appendedDebugTrace = true;
 	};
 
+	const maybeLogHowtoStreamTelemetry = () => {
+		if (options.targetAgentId !== "howtoAgent" || loggedHowtoTelemetry) return;
+		const quality = evaluateHowtoResponseContract(accumulatedAssistantText);
+		consola.info("project-status: howto stream telemetry", {
+			responseMode: options.responseMode,
+			routingSource: options.routingSource,
+			routingConfidence: options.routingConfidence,
+			responseChars: accumulatedAssistantText.trim().length,
+			contractPatched: appendedHowtoContractPatch,
+			fallbackInjected: injectedSafetyMessage,
+			contractPassed: quality.passes,
+			missingSections: quality.missingSections,
+			hasMarkdownLink: quality.hasMarkdownLink,
+		});
+		loggedHowtoTelemetry = true;
+	};
+
 	const transformed = (stream as StreamLike).pipeThrough(
 		new TransformStream<Record<string, unknown>, Record<string, unknown>>({
 			transform(chunk, controller) {
@@ -360,6 +304,7 @@ function augmentStreamForReliability(
 					maybeEnqueueSafetyMessage(controller);
 					maybeEnqueueHowtoContractPatch(controller);
 					maybeEnqueueDebugTrace(controller);
+					maybeLogHowtoStreamTelemetry();
 				}
 
 				controller.enqueue(chunk);
@@ -368,6 +313,7 @@ function augmentStreamForReliability(
 				maybeEnqueueSafetyMessage(controller);
 				maybeEnqueueHowtoContractPatch(controller);
 				maybeEnqueueDebugTrace(controller);
+				maybeLogHowtoStreamTelemetry();
 				if (!sawFinishChunk) {
 					controller.enqueue({ type: "finish", finishReason: "stop" });
 				}
@@ -382,41 +328,12 @@ function routeByDeterministicPrompt(lastUserText: string): z.infer<typeof intent
 	const prompt = lastUserText.trim().toLowerCase();
 	if (!prompt) return null;
 	const hasAny = (...tokens: string[]) => tokens.some((token) => prompt.includes(token));
-	const startsWithHowTo = /^(how do i|how can i|where do i|what is the best way to|teach me)\b/.test(prompt);
-	const asksHowToGuidance =
-		startsWithHowTo || hasAny("how do i", "where do i", "best way to", "teach me", "walk me through");
-	const hasGtmSignal = hasAny(
-		"gtm",
-		"go to market",
-		"go-to-market",
-		"positioning",
-		"messaging",
-		"distribution",
-		"acquisition",
-		"activation",
-		"pipeline",
-		"launch",
-		"pricing",
-		"sales"
-	);
-	const hasUxResearchSignal = hasAny(
-		"ux",
-		"user research",
-		"usability",
-		"interview",
-		"discovery",
-		"validation",
-		"prototype",
-		"persona",
-		"journey",
-		"insight"
-	);
-
-	if (asksHowToGuidance) {
+	const howtoRouting = detectHowtoPromptMode(prompt);
+	if (howtoRouting.isHowto) {
 		return {
 			targetAgentId: "howtoAgent",
 			confidence: 1,
-			responseMode: hasGtmSignal && !hasUxResearchSignal ? "gtm_mode" : "ux_research_mode",
+			responseMode: howtoRouting.responseMode,
 			rationale: "deterministic routing for how-to guidance prompts",
 		};
 	}
@@ -720,6 +637,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		routeDecision && routeDecision.confidence >= ROUTING_CONFIDENCE_THRESHOLD
 			? routeDecision.targetAgentId
 			: "projectStatusAgent";
+	const routingSource: RoutingSource = !routeDecision
+		? "fallback"
+		: routeDecision.rationale?.startsWith("deterministic")
+			? "deterministic"
+			: "classifier";
 	const isFastStandardized = targetAgentId === "chiefOfStaffAgent" && resolvedResponseMode === "fast_standardized";
 	const targetMaxSteps = isFastStandardized
 		? Math.min(MAX_STEPS_BY_AGENT[targetAgentId], FAST_STANDARDIZED_MAX_STEPS)
@@ -747,11 +669,23 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		targetAgentId,
 		targetMaxSteps,
 		isFastStandardized,
+		routingSource,
 		routingConfidence: routeDecision?.confidence ?? null,
 		responseMode: resolvedResponseMode,
 		rawResponseMode: routeDecision?.responseMode ?? "normal",
 		rationale: routeDecision?.rationale ?? null,
 	});
+
+	if (targetAgentId === "howtoAgent") {
+		consola.info("project-status: howto routing telemetry", {
+			projectId,
+			accountId,
+			resourceId,
+			responseMode: resolvedResponseMode,
+			routingSource,
+			routingConfidence: routeDecision?.confidence ?? null,
+		});
+	}
 
 	const threads = await memory.listThreadsByResourceId({
 		resourceId,
@@ -784,6 +718,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		requestContext.set("user_timezone", userTimezone);
 	}
 	requestContext.set("response_mode", resolvedResponseMode);
+	requestContext.set("routing_source", routingSource);
 	if (debugRequested) {
 		requestContext.set("debug_mode", true);
 	}
@@ -985,6 +920,24 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 				});
 			}
 
+			if (targetAgentId === "howtoAgent") {
+				const rawQuality = evaluateHowtoResponseContract(data.text ?? "");
+				consola.info("project-status: howto model telemetry", {
+					projectId,
+					accountId,
+					responseMode: resolvedResponseMode,
+					routingSource,
+					routingConfidence: routeDecision?.confidence ?? null,
+					finishReason: data.finishReason ?? null,
+					inputTokens: usage?.inputTokens ?? 0,
+					outputTokens: usage?.outputTokens ?? 0,
+					rawResponseChars: (data.text ?? "").trim().length,
+					rawContractPassed: rawQuality.passes,
+					rawMissingSections: rawQuality.missingSections,
+					rawHasMarkdownLink: rawQuality.hasMarkdownLink,
+				});
+			}
+
 			clearActiveBillingContext();
 
 			consola.debug("project-status: finished", {
@@ -1061,6 +1014,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		responseMode: resolvedResponseMode,
 		accountId,
 		projectId,
+		routingSource,
+		routingConfidence: routeDecision?.confidence ?? null,
 	});
 
 	return createUIMessageStreamResponse({ stream: reliableStream });
