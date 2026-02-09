@@ -40,6 +40,7 @@ yarn.lock
 t?mp
 .t?mp
 *.t?mp
+desktop/.tmp/
 
 # Docusaurus cache and generated files
 .docusaurus
