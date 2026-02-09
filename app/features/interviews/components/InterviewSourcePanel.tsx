@@ -176,9 +176,10 @@ export function InterviewSourcePanel({
               return (
                 <button
                   key={item.id}
+                  id={`evidence-${item.id}`}
                   type="button"
                   onClick={() => onEvidenceSelect(item.id)}
-                  className="group flex w-full items-start gap-2 rounded-md border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/40"
+                  className="group flex w-full items-start gap-2 rounded-md border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/40 scroll-mt-4"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-foreground text-sm">
