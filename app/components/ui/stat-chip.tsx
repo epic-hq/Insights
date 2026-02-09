@@ -3,16 +3,22 @@
  * Shows icon + count + label. Ghost variant when count is zero.
  */
 
+import type { LucideIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
 
 interface StatChipProps {
-  icon: string;
+  icon: LucideIcon;
   count: number;
   label: string;
   className?: string;
 }
 
-export function StatChip({ icon, count, label, className }: StatChipProps) {
+export function StatChip({
+  icon: Icon,
+  count,
+  label,
+  className,
+}: StatChipProps) {
   const isGhost = count === 0;
 
   return (
@@ -25,7 +31,7 @@ export function StatChip({ icon, count, label, className }: StatChipProps) {
         className,
       )}
     >
-      <span className="text-base">{icon}</span>
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="font-bold text-foreground">{count}</span>
       <span className="text-muted-foreground text-xs">{label}</span>
     </div>

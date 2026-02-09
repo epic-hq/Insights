@@ -1,5 +1,5 @@
 import consola from "consola";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
@@ -14,11 +14,13 @@ import {
   useParams,
 } from "react-router-dom";
 import { PageContainer } from "~/components/layout/PageContainer";
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog";
 import { useCurrentProject } from "~/contexts/current-project-context";
 import {
   getOrganizations,
   linkPersonToOrganization,
   unlinkPersonFromOrganization,
+  updateOrganization,
 } from "~/features/organizations/db";
 import {
   deletePerson,
@@ -39,7 +41,6 @@ import { generatePersonFacetSummaries } from "../services/generatePersonFacetSum
 
 // New single-scroll section components
 import { PersonActivityTimeline } from "../components/PersonActivityTimeline";
-import { PersonContactSection } from "../components/PersonContactSection";
 import { PersonDetailNav } from "../components/PersonDetailNav";
 import { PersonInsights } from "../components/PersonInsights";
 import { PersonProfileSection } from "../components/PersonProfileSection";
@@ -617,6 +618,26 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return { success: true, field };
   }
 
+  if (intent === "update-org-field") {
+    const organizationId = formData.get("organizationId") as string;
+    const field = formData.get("field") as string;
+    const value = formData.get("value") as string;
+
+    const allowedOrgFields = ["size_range"];
+    if (!organizationId || !allowedOrgFields.includes(field)) {
+      return { error: `Organization field ${field} is not editable` };
+    }
+
+    await updateOrganization({
+      supabase,
+      accountId,
+      id: organizationId,
+      data: { [field]: value || null },
+    });
+
+    return { success: true, field };
+  }
+
   if (intent === "create-and-link-organization") {
     const name = (formData.get("name") as string | null)?.trim();
     if (!name) {
@@ -886,6 +907,42 @@ export default function PersonDetail() {
     }
   };
 
+  // ---- Quick Note dialog ----
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+
+  const handleSaveNote = useCallback(
+    async (note: {
+      title: string;
+      content: string;
+      noteType: string;
+      associations: Record<string, unknown>;
+      tags: string[];
+    }) => {
+      if (!projectId) throw new Error("Project ID is required");
+
+      const response = await fetch("/api/notes/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          title: note.title,
+          content: note.content,
+          noteType: note.noteType,
+          associations: {
+            ...note.associations,
+            people: [person.id],
+          },
+          tags: note.tags,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save note");
+      }
+    },
+    [projectId, person.id],
+  );
+
   // ---- Render: single-scroll layout with anchor sections ----
   return (
     <div className="relative min-h-screen bg-muted/20">
@@ -914,6 +971,7 @@ export default function PersonDetail() {
             routes={routes}
             onRefreshDescription={handleRefreshDescription}
             onDelete={handleDelete}
+            onLogNote={() => setNoteDialogOpen(true)}
             isRefreshing={isRefreshingDescription}
           />
         </section>
@@ -944,7 +1002,7 @@ export default function PersonDetail() {
           />
         </section>
 
-        {/* Section 4: Profile & Attributes */}
+        {/* Section 4: Profile, Contact & Attributes */}
         <section id="profile">
           <PersonProfileSection
             person={person}
@@ -962,17 +1020,18 @@ export default function PersonDetail() {
             }
             sortedLinkedOrganizations={sortedLinkedOrganizations}
             routes={routes}
-            onManageOrganizations={() =>
-              navigate(routes.people.edit(person.id))
-            }
+            availableOrganizations={organizations}
           />
         </section>
-
-        {/* Section 5: Contact */}
-        <section id="contact">
-          <PersonContactSection person={person} />
-        </section>
       </PageContainer>
+
+      <QuickNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        onSave={handleSaveNote}
+        projectId={projectId}
+        defaultAssociations={{ people: [person.id] }}
+      />
     </div>
   );
 }

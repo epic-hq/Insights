@@ -358,42 +358,39 @@ export function PersonActivityTimeline({
 
       {/* Timeline items */}
       {visibleItems.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {visibleItems.map((item) => {
             const Icon = getSourceIcon(item.category);
             return (
               <Link
                 key={item.id}
                 to={item.linkTo}
-                className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30 hover:bg-muted/50"
+                className="group relative grid grid-cols-[4rem_1rem_1fr] items-center gap-x-2 rounded-md py-2.5 px-2 transition-colors hover:bg-muted/50"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-foreground">
-                      {item.title}
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 text-[10px] uppercase tracking-wide"
-                    >
-                      {getSourceLabel(item.category)}
-                    </Badge>
-                  </div>
-                  {item.subtitle && (
-                    <p className="mt-0.5 text-muted-foreground text-sm capitalize">
-                      {item.subtitle}
-                    </p>
-                  )}
-                </div>
-                <span className="shrink-0 text-muted-foreground text-sm">
+                {/* Date on left */}
+                <span className="text-right text-muted-foreground text-xs tabular-nums">
                   {item.date?.toLocaleDateString(undefined, {
                     month: "short",
                     day: "numeric",
                   })}
                 </span>
+                {/* Dot column with vertical line */}
+                <div className="relative flex justify-center">
+                  <div className="h-2.5 w-2.5 rounded-full border-2 border-border bg-background group-hover:border-primary" />
+                </div>
+                {/* Content */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {item.title}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 text-[10px] uppercase tracking-wide"
+                  >
+                    {getSourceLabel(item.category)}
+                  </Badge>
+                </div>
               </Link>
             );
           })}

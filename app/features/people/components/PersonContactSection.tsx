@@ -35,6 +35,8 @@ interface PersonContactSectionProps {
     linkedin_url: string | null;
     contact_info: Record<string, string> | null;
   };
+  /** When true, renders without the card wrapper (for embedding inside another card) */
+  embedded?: boolean;
 }
 
 /** Parsed contact item for display */
@@ -154,20 +156,22 @@ function parseContactItems(
 // Main component
 // ────────────────────────────────────────────────────────────────────────────
 
-export function PersonContactSection({ person }: PersonContactSectionProps) {
+export function PersonContactSection({
+  person,
+  embedded = false,
+}: PersonContactSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   const contactItems = parseContactItems(person);
   const hasAnyContact = contactItems.length > 0;
 
-  return (
-    <div className="rounded-xl border border-border/60 bg-card px-5 py-4">
+  const content = (
+    <>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-foreground">Contact</h3>
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Contact
+        </p>
         <button
           type="button"
           onClick={() => setIsEditing(!isEditing)}
@@ -281,6 +285,14 @@ export function PersonContactSection({ person }: PersonContactSectionProps) {
           No contact info — add some
         </button>
       )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card px-5 py-4">
+      {content}
     </div>
   );
 }

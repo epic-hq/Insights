@@ -18,7 +18,6 @@ const DEFAULT_SECTIONS = [
   { id: "insights", label: "Insights" },
   { id: "activity", label: "Activity" },
   { id: "profile", label: "Profile" },
-  { id: "contact", label: "Contact" },
 ];
 
 export function PersonDetailNav({

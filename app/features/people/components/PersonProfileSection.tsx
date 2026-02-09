@@ -36,12 +36,15 @@ import {
   CollapsibleTrigger,
 } from "~/components/ui/collapsible";
 import {
+  COMPANY_SIZE_RANGES,
   INDUSTRIES,
   JOB_FUNCTIONS,
   SENIORITY_LEVELS,
 } from "~/lib/constants/options";
 import { getOptionLabel } from "~/lib/constants/options";
 import { cn } from "~/lib/utils";
+import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog";
+import { PersonContactSection } from "./PersonContactSection";
 import { PersonFacetLenses } from "./PersonFacetLenses";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -96,7 +99,11 @@ interface PersonProfileSectionProps {
     contact_info: Record<string, string> | null;
   };
   /** Primary org for fallback industry and company size */
-  primaryOrg: { industry: string | null; size_range: string | null } | null;
+  primaryOrg: {
+    id: string;
+    industry: string | null;
+    size_range: string | null;
+  } | null;
   /** Attribute lens groups (Pain, Goals, Workflow, etc.) */
   facetLensGroups: FacetGroupLens[];
   /** Available facets keyed by kind slug for adding signals */
@@ -116,8 +123,12 @@ interface PersonProfileSectionProps {
   routes: {
     organizations: { detail: (id: string) => string };
   };
-  /** Optional callback to open the Link Organization dialog */
-  onManageOrganizations?: () => void;
+  /** All available organizations for the link dialog */
+  availableOrganizations?: Array<{
+    id: string;
+    name: string;
+    headquarters_location?: string | null;
+  }>;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -247,7 +258,7 @@ export function PersonProfileSection({
   personScale: _personScale,
   sortedLinkedOrganizations,
   routes,
-  onManageOrganizations,
+  availableOrganizations = [],
 }: PersonProfileSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [expandedLenses, setExpandedLenses] = useState<Set<string>>(new Set());
@@ -317,78 +328,212 @@ export function PersonProfileSection({
         <h3 className="text-sm font-semibold text-foreground">Profile</h3>
       </div>
 
-      {/* ── Demographics ────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Demographics
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsEditing(!isEditing)}
-            className="text-xs text-primary cursor-pointer hover:underline"
-          >
-            {isEditing ? "Done" : "Edit"}
-          </button>
-        </div>
+      {/* ── Organizations ───────────────────────────────────────────── */}
+      {hasOrganizations ? (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Organizations
+            </p>
+            <LinkOrganizationDialog
+              personId={person.id}
+              availableOrganizations={availableOrganizations}
+              triggerButton={
+                <button
+                  type="button"
+                  className="text-xs text-primary cursor-pointer hover:underline"
+                >
+                  Manage
+                </button>
+              }
+            />
+          </div>
 
-        {isEditing ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Job Function
-              </label>
-              <InlineEditableField
-                value={person.job_function}
-                entityId={person.id}
-                entityIdKey="personId"
-                field="job_function"
-                placeholder="Select function"
-                type="select"
-                options={JOB_FUNCTIONS}
-                className="text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Seniority
-              </label>
-              <InlineEditableField
-                value={person.seniority_level}
-                entityId={person.id}
-                entityIdKey="personId"
-                field="seniority_level"
-                placeholder="Select level"
-                type="select"
-                options={SENIORITY_LEVELS}
-                className="text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Industry
-              </label>
-              <InlineEditableField
-                value={person.industry}
-                entityId={person.id}
-                entityIdKey="personId"
-                field="industry"
-                placeholder="Select industry"
-                type="select"
-                options={INDUSTRIES}
-                className="text-sm"
-              />
-            </div>
+          <div className="space-y-1">
+            {sortedLinkedOrganizations.map((link) => {
+              const org = link.organization;
+              if (!org) return null;
+
+              return (
+                <div key={link.id} className="flex items-center gap-2 py-2">
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                  <Link
+                    to={routes.organizations.detail(org.id)}
+                    className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  >
+                    {org.name || "Unnamed"}
+                  </Link>
+                  {link.job_title && (
+                    <>
+                      <span className="text-muted-foreground/50 text-xs">
+                        &middot;
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {link.job_title}
+                      </span>
+                    </>
+                  )}
+                  {link.is_primary && (
+                    <Badge
+                      variant="outline"
+                      className="ml-1 text-[10px] uppercase px-1.5 py-0"
+                    >
+                      Primary
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <DemographicStat label="Function" value={jobFunctionLabel} />
-            <DemographicStat label="Seniority" value={seniorityLabel} />
-            <DemographicStat label="Industry" value={industryLabel} />
-            <DemographicStat label="Company Size" value={companySizeLabel} />
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Organizations
+            </p>
+            <LinkOrganizationDialog
+              personId={person.id}
+              availableOrganizations={availableOrganizations}
+              triggerButton={
+                <button
+                  type="button"
+                  className="text-xs text-primary cursor-pointer hover:underline"
+                >
+                  Link
+                </button>
+              }
+            />
           </div>
-        )}
-      </div>
+          <p className="text-sm text-muted-foreground/60 italic">
+            No organizations linked yet.
+          </p>
+        </div>
+      )}
+
+      {/* Divider */}
+      <div className="h-px bg-border my-4" />
+
+      {/* ── Contact Info (embedded) ───────────────────────────────── */}
+      <PersonContactSection person={person} embedded />
+
+      {/* Divider */}
+      <div className="h-px bg-border my-4" />
+
+      {/* ── Demographics ────────────────────────────────────────────── */}
+      {hasDemographics || isEditing ? (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Demographics
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsEditing(!isEditing)}
+              className="text-xs text-primary cursor-pointer hover:underline"
+            >
+              {isEditing ? "Done" : "Edit"}
+            </button>
+          </div>
+
+          {isEditing ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="space-y-1">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Job Function
+                </label>
+                <InlineEditableField
+                  value={person.job_function}
+                  entityId={person.id}
+                  entityIdKey="personId"
+                  field="job_function"
+                  placeholder="Select function"
+                  type="select"
+                  options={JOB_FUNCTIONS}
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Seniority
+                </label>
+                <InlineEditableField
+                  value={person.seniority_level}
+                  entityId={person.id}
+                  entityIdKey="personId"
+                  field="seniority_level"
+                  placeholder="Select level"
+                  type="select"
+                  options={SENIORITY_LEVELS}
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Industry
+                </label>
+                <InlineEditableField
+                  value={person.industry}
+                  entityId={person.id}
+                  entityIdKey="personId"
+                  field="industry"
+                  placeholder="Select industry"
+                  type="select"
+                  options={INDUSTRIES}
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Company Size
+                </label>
+                {primaryOrg ? (
+                  <InlineEditableField
+                    value={primaryOrg.size_range}
+                    entityId={primaryOrg.id}
+                    entityIdKey="organizationId"
+                    field="size_range"
+                    actionName="update-org-field"
+                    placeholder="Select size"
+                    type="select"
+                    options={COMPANY_SIZE_RANGES}
+                    className="text-sm"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground/60 italic">---</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <DemographicStat label="Function" value={jobFunctionLabel} />
+              <DemographicStat label="Seniority" value={seniorityLabel} />
+              <DemographicStat label="Industry" value={industryLabel} />
+              <DemographicStat label="Company Size" value={companySizeLabel} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Demographics
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="text-xs text-primary cursor-pointer hover:underline flex items-center gap-1"
+            >
+              <Pencil className="h-3 w-3" />
+              Add
+            </button>
+          </div>
+          <p className="text-sm text-muted-foreground/60 italic pb-2">
+            No demographic data. Click &ldquo;Add&rdquo; to set job function,
+            seniority, or industry.
+          </p>
+        </div>
+      )}
 
       {/* Divider */}
       {hasLenses && <div className="h-px bg-border my-4" />}
@@ -486,114 +631,6 @@ export function PersonProfileSection({
             })}
           </div>
         </div>
-      )}
-
-      {/* Divider */}
-      {hasOrganizations && <div className="h-px bg-border my-4" />}
-
-      {/* ── Organizations ───────────────────────────────────────────── */}
-      {hasOrganizations && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Organizations
-            </p>
-            {onManageOrganizations && (
-              <button
-                type="button"
-                onClick={onManageOrganizations}
-                className="text-xs text-primary cursor-pointer hover:underline"
-              >
-                Manage
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            {sortedLinkedOrganizations.map((link) => {
-              const org = link.organization;
-              if (!org) return null;
-
-              return (
-                <div key={link.id} className="flex items-center gap-2 py-2">
-                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-                  <Link
-                    to={routes.organizations.detail(org.id)}
-                    className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                  >
-                    {org.name || "Unnamed"}
-                  </Link>
-                  {link.job_title && (
-                    <>
-                      <span className="text-muted-foreground/50 text-xs">
-                        &middot;
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {link.job_title}
-                      </span>
-                    </>
-                  )}
-                  {link.is_primary && (
-                    <Badge
-                      variant="outline"
-                      className="ml-1 text-[10px] uppercase px-1.5 py-0"
-                    >
-                      Primary
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Empty sub-sections ─────────────────────────────────────── */}
-      {!hasDemographics && !isEditing && (
-        <>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Demographics
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="text-xs text-primary cursor-pointer hover:underline flex items-center gap-1"
-            >
-              <Pencil className="h-3 w-3" />
-              Add
-            </button>
-          </div>
-          <p className="text-sm text-muted-foreground/60 italic pb-2">
-            No demographic data. Click "Add" to set job function, seniority, or
-            industry.
-          </p>
-        </>
-      )}
-
-      {!hasOrganizations && (
-        <>
-          {(hasDemographics || hasLenses) && (
-            <div className="h-px bg-border my-4" />
-          )}
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Organizations
-            </p>
-            {onManageOrganizations && (
-              <button
-                type="button"
-                onClick={onManageOrganizations}
-                className="text-xs text-primary cursor-pointer hover:underline"
-              >
-                Link
-              </button>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground/60 italic">
-            No organizations linked yet.
-          </p>
-        </>
       )}
     </div>
   );

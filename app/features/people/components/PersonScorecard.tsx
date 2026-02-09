@@ -8,6 +8,7 @@ import { formatDistance } from "date-fns";
 import {
   ClipboardList,
   Loader2,
+  MessageCircle,
   Mic,
   MoreHorizontal,
   Pencil,
@@ -16,6 +17,7 @@ import {
   StickyNote,
   Trash2,
   Upload,
+  Video,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -78,6 +80,7 @@ interface PersonScorecardProps {
   };
   onRefreshDescription: () => void;
   onDelete: () => void;
+  onLogNote?: () => void;
   isRefreshing?: boolean;
 }
 
@@ -121,6 +124,7 @@ export function PersonScorecard({
   routes,
   onRefreshDescription,
   onDelete,
+  onLogNote,
   isRefreshing = false,
 }: PersonScorecardProps) {
   const persona = person.people_personas?.[0]?.personas;
@@ -215,14 +219,14 @@ export function PersonScorecard({
         {/* Activity stats row */}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
+            <StatChip icon={Video} count={interviewCount} label="Convos" />
             <StatChip
-              icon="\uD83D\uDCF9"
-              count={interviewCount}
-              label="Convos"
+              icon={ClipboardList}
+              count={surveyCount}
+              label="Surveys"
             />
-            <StatChip icon="\uD83D\uDCCB" count={surveyCount} label="Surveys" />
-            <StatChip icon="\uD83D\uDCDD" count={noteCount} label="Notes" />
-            <StatChip icon="\uD83D\uDCAC" count={chatCount} label="Chats" />
+            <StatChip icon={StickyNote} count={noteCount} label="Notes" />
+            <StatChip icon={MessageCircle} count={chatCount} label="Chats" />
           </div>
 
           {/* Last contact */}
@@ -276,11 +280,9 @@ export function PersonScorecard({
           </Button>
 
           {/* Log Note */}
-          <Button variant="outline" size="sm" asChild>
-            <Link to={routes.interviews.upload()}>
-              <StickyNote className="size-4" />
-              Log Note
-            </Link>
+          <Button variant="outline" size="sm" onClick={onLogNote}>
+            <StickyNote className="size-4" />
+            Log Note
           </Button>
 
           {/* Overflow menu */}
