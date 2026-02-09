@@ -122,7 +122,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 				await Promise.all([
 					supabase
 						.from("interview_people")
-						.select("id, people(id, name, company, segment)")
+						.select("id, people(id, name, segment)")
 						.eq("interview_id", interview.id),
 					supabase.from("people").select("id, name").eq("project_id", projectId).order("name", { ascending: true }),
 				]);
@@ -136,7 +136,6 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 							const person = row.people as {
 								id: string;
 								name: string | null;
-								company?: string | null;
 								segment?: string | null;
 							} | null;
 							if (!person?.id) return null;
@@ -144,7 +143,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 								id: person.id,
 								linkId: String(row.id),
 								label: person.name || "Unnamed",
-								company: person.company ?? null,
+								company: null,
 								segment: person.segment ?? null,
 							} satisfies LinkedItem;
 						})
@@ -681,7 +680,7 @@ export function NoteViewer({ interview, projectId, className }: NoteViewerProps)
 									label: p.label,
 									link_id: p.linkId,
 									href: routes.people.detail(p.id),
-									company: p.company ?? null,
+									company: null,
 									segment: p.segment ?? null,
 								})),
 								available_items: available_people,

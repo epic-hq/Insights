@@ -98,7 +98,6 @@ export const inferSegmentsTask = schemaTask({
       title: string | null;
       job_function: string | null;
       seniority_level: string | null;
-      company: string | null;
       people_organizations?: Array<{
         job_title: string | null;
         is_primary: boolean | null;
@@ -113,7 +112,7 @@ export const inferSegmentsTask = schemaTask({
 
     // Include people_organizations to get job_title from primary org link as fallback
     const selectFields =
-      "id, name, title, job_function, seniority_level, company, default_organization:organizations!default_organization_id(name), people_organizations(job_title, is_primary)";
+      "id, name, title, job_function, seniority_level, default_organization:organizations!default_organization_id(name), people_organizations(job_title, is_primary)";
 
     let queryResult: { data: PersonRow[] | null; error: Error | null };
 
@@ -237,7 +236,7 @@ export const inferSegmentsTask = schemaTask({
             traceName: "people.infer-segments",
             input: {
               title: effectiveTitle,
-              hasCompany: !!(person as any).default_organization?.name || !!person.company,
+              hasCompany: !!(person as any).default_organization?.name,
             },
             metadata: {
               personId: person.id,
@@ -250,7 +249,7 @@ export const inferSegmentsTask = schemaTask({
               client.InferPersonSegments({
                 title: effectiveTitle,
                 role: null,
-                company: (person as any).default_organization?.name || person.company,
+                company: (person as any).default_organization?.name ?? null,
               }),
           },
           `person:${person.id}:infer-segments`,

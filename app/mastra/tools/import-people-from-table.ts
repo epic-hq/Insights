@@ -780,10 +780,6 @@ The tool will:
 					}
 					// Note: people.role is deprecated. Role data from imports flows to
 					// people_organizations.job_title (junction table) and role facets instead.
-					if (mapping.industry) {
-						const industry = getValue(row, mapping.industry);
-						if (industry) updateFields.industry = industry;
-					}
 					if (mapping.location) {
 						const location = getValue(row, mapping.location);
 						if (location) updateFields.location = location;
@@ -799,8 +795,7 @@ The tool will:
 						if (lifecycleStage) updateFields.lifecycle_stage = lifecycleStage;
 					}
 
-					// Company name - update if present
-					if (companyName) updateFields.company = companyName;
+					// Company name now flows through organization FK, not people.company
 
 					// Update organization link if we have one
 					if (organizationId) updateFields.default_organization_id = organizationId;

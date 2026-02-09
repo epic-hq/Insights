@@ -24,7 +24,7 @@ type ToolInput = z.infer<typeof toolInputSchema>;
 
 type PersonListRow = Pick<
 	Database["public"]["Tables"]["people"]["Row"],
-	"id" | "name" | "title" | "company" | "primary_email" | "segment" | "project_id" | "account_id"
+	"id" | "name" | "title" | "primary_email" | "segment" | "project_id" | "account_id"
 >;
 
 const toolOutputSchema = z.object({
@@ -129,7 +129,7 @@ export const managePeopleTool = createTool({
 
 				const { data: person_row, error } = await supabase
 					.from("people")
-					.select("id, name, title, company, primary_email, segment, account_id, project_id, default_organization:organizations!default_organization_id(name)")
+					.select("id, name, title, primary_email, segment, account_id, project_id, default_organization:organizations!default_organization_id(name)")
 					.eq("id", personId)
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
@@ -146,7 +146,7 @@ export const managePeopleTool = createTool({
 						id: person_row.id,
 						name: person_row.name,
 						title: person_row.title,
-						company: (person_row.default_organization as { name: string | null } | null)?.name || person_row.company,
+						company: (person_row.default_organization as { name: string | null } | null)?.name ?? null,
 						primary_email: person_row.primary_email,
 						segment: person_row.segment,
 					},
@@ -157,7 +157,7 @@ export const managePeopleTool = createTool({
 				const resolved_limit = limit ?? 50;
 				let query = supabase
 					.from("people")
-					.select("id, name, title, company, primary_email, segment, default_organization:organizations!default_organization_id(name)")
+					.select("id, name, title, primary_email, segment, default_organization:organizations!default_organization_id(name)")
 					.eq("account_id", resolved_account_id)
 					.eq("project_id", resolved_project_id)
 					.order("updated_at", { ascending: false })
@@ -186,7 +186,7 @@ export const managePeopleTool = createTool({
 							id: row.id,
 							name: row.name,
 							title: row.title,
-							company: row.default_organization?.name || row.company,
+							company: row.default_organization?.name ?? null,
 							primary_email: row.primary_email,
 							segment: row.segment,
 						})) ?? [],

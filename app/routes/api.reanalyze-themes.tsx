@@ -161,7 +161,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		);
 
 		const { data: peopleRows } = personIds.length
-			? await userDb.from("people").select("id, name, description, role, company, segment, default_organization:organizations!default_organization_id(name)").in("id", personIds)
+			? await userDb.from("people").select("id, name, description, role, segment, default_organization:organizations!default_organization_id(name)").in("id", personIds)
 			: { data: [] };
 
 		let primaryPersonId = participantPersonId ?? peopleRows?.[0]?.id ?? null;
@@ -183,7 +183,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					},
 					{ onConflict: "account_id,name_hash" }
 				)
-				.select("id, name, description, role, company, segment")
+				.select("id, name, description, role, segment")
 				.single();
 			if (ensureErr || !ensuredPerson) {
 				return Response.json({ error: "Failed to ensure participant record" }, { status: 500 });

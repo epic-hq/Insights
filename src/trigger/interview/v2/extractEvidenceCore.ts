@@ -23,6 +23,7 @@ import {
   ensureInterviewInterviewerLink,
   resolveInternalPerson,
 } from "~/features/people/services/internalPeople.server";
+import { upsertPersonWithOrgAwareConflict } from "~/features/interviews/peopleNormalization.server";
 // Extracted modules for cleaner separation of concerns
 import {
   coerceSeconds,
@@ -1557,7 +1558,6 @@ export async function extractEvidenceAndPeopleCore({
       description: overrides.description ?? null,
       segment: overrides.segment ?? metadata.segment ?? null,
       contact_info: overrides.contact_info ?? null,
-      company: overrides.company || "", // DB has NOT NULL default ''
       role: overrides.role ?? null,
     };
     if (peopleHooks?.upsertPerson) {
@@ -1568,15 +1568,7 @@ export async function extractEvidenceAndPeopleCore({
       return { id: result.id, name: result.name ?? fullName.trim() };
     }
 
-    const { data: upserted, error: upsertErr } = await db
-      .from("people")
-      .upsert(payload, { onConflict: "account_id,name_hash,company" })
-      .select("id, name, firstname, lastname")
-      .single();
-    if (upsertErr)
-      throw new Error(
-        `Failed to upsert person ${fullName}: ${upsertErr.message}`,
-      );
+    const upserted = await upsertPersonWithOrgAwareConflict(db, payload);
     if (!upserted?.id)
       throw new Error(`Person upsert returned no id for ${fullName}`);
     return { id: upserted.id, name: upserted.name ?? fullName.trim() };
@@ -2166,15 +2158,10 @@ async function ensureFallbackPerson(
     project_id: metadata.projectId,
     firstname: firstname || null,
     lastname: lastname || null,
-    company: metadata.participantOrganization || "", // DB has NOT NULL default ''
   };
-  const { data, error } = await db
-    .from("people")
-    .upsert(payload, { onConflict: "account_id,name_hash,company" })
-    .select("id")
-    .single();
-  if (error || !data?.id) {
-    throw new Error(`Failed to ensure fallback person: ${error?.message}`);
+  const data = await upsertPersonWithOrgAwareConflict(db, payload);
+  if (!data?.id) {
+    throw new Error(`Failed to ensure fallback person`);
   }
   const linkPayload: InterviewPeopleInsert = {
     interview_id: interviewRecord.id,

@@ -216,7 +216,7 @@ export function PersonProfileTab({
 	// Segment/demographic data
 	const jobFunctionLabel = getOptionLabel(JOB_FUNCTIONS, person.job_function);
 	const seniorityLabel = getOptionLabel(SENIORITY_LEVELS, person.seniority_level);
-	const industryValue = primaryOrg?.industry || person.industry || null;
+	const industryValue = primaryOrg?.industry || null;
 	const industryLabel = getOptionLabel(INDUSTRIES, industryValue);
 
 	// ICP match data

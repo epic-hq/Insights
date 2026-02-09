@@ -81,7 +81,7 @@ function buildSearchableText(row: ProjectPeopleRow): string {
 	append(person?.name);
 	append(person?.title);
 	append(person?.role);
-	append(person?.company);
+	append((person as any)?.default_organization?.name);
 	append(person?.segment);
 	append(row.role);
 
@@ -257,7 +257,7 @@ export const fetchPeopleDetailsTool = createTool({
 								person_id: people[0].id,
 								name: people[0].name,
 								title: people[0].title,
-								company: people[0].company,
+								company: (people[0] as any).default_organization?.name ?? null,
 							}
 						: null,
 			});
@@ -271,7 +271,7 @@ export const fetchPeopleDetailsTool = createTool({
 					const nameMatch = person.name?.toLowerCase().includes(searchLower);
 					const titleMatch = person.title?.toLowerCase().includes(searchLower);
 					const orgName = (person as any).default_organization?.name;
-					const companyMatch = orgName?.toLowerCase().includes(searchLower) || person.company?.toLowerCase().includes(searchLower);
+					const companyMatch = orgName?.toLowerCase().includes(searchLower);
 					const roleMatch = person.role?.toLowerCase().includes(searchLower);
 
 					return nameMatch || titleMatch || companyMatch || roleMatch;
@@ -504,11 +504,11 @@ export const fetchPeopleDetailsTool = createTool({
 						gender: person.gender,
 						pronouns: person.pronouns,
 						title: person.title,
-						company: (person as any).default_organization?.name || person.company,
-						occupation: person.occupation,
+						company: (person as any).default_organization?.name ?? null,
+						occupation: null,
 						role: person.role,
 						segment: person.segment,
-						industry: person.industry,
+						industry: null,
 						income: person.income,
 						location: person.location,
 						timezone: person.timezone,

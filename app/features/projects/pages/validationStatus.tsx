@@ -203,7 +203,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			person.id,
 			{
 				name: person.name || "Unknown",
-				company: (person as any).default_organization?.name || person.company || "",
+				company: (person as any).default_organization?.name || "",
 				contactInfo: person.contact_info as Record<string, unknown> | null,
 			},
 		])
@@ -318,7 +318,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				participants.push({
 					id: person.id,
 					name: person.name || "Unknown",
-					company: person.company || "",
+					company: peopleMap.get(person.id)?.company || "",
 					outcome: manualOutcome,
 					stage: stageByOutcome[manualOutcome],
 					keyInsight: (contactInfo.key_insight as string) || "",
@@ -331,7 +331,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				participants.push({
 					id: person.id,
 					name: person.name || "Unknown",
-					company: person.company || "",
+					company: peopleMap.get(person.id)?.company || "",
 					outcome: 1,
 					stage: stageByOutcome[1],
 					keyInsight: "No interview data available",
@@ -413,7 +413,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants.push({
 				id: person.id,
 				name: person.name || "Unknown",
-				company: person.company || "",
+				company: peopleMap.get(person.id)?.company || "",
 				outcome,
 				stage: stageByOutcome[outcome],
 				keyInsight,

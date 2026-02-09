@@ -213,7 +213,7 @@ export function ICPMatchSection({
 
 	const handlePersonSaved = (personId: string) => {
 		// Advance to the next person with missing data for a to-do list feel
-		const missingDataPeople = scoredPeople.filter((p) => (!p.title || !p.company) && p.person_id !== personId);
+		const missingDataPeople = scoredPeople.filter((p) => !p.title && p.person_id !== personId);
 		if (missingDataPeople.length > 0) {
 			setEditingPersonId(missingDataPeople[0].person_id);
 		} else {

@@ -105,7 +105,7 @@ export function QuickNoteDialog({
 			setIsLoadingPeople(true);
 			supabase
 				.from("people")
-				.select("id, name, company, default_organization:organizations!default_organization_id(name)")
+				.select("id, name, default_organization:organizations!default_organization_id(name)")
 				.eq("project_id", projectId)
 				.order("name")
 				.then(({ data }) => {
@@ -215,11 +215,9 @@ export function QuickNoteDialog({
 	const filteredPeople = searchQuery.trim()
 		? people.filter(
 				(p) => {
-					const orgName = p.default_organization?.name;
 					return (
 						p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						orgName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+						p.default_organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
 					);
 				}
 			)
@@ -326,8 +324,8 @@ export function QuickNoteDialog({
 													</div>
 													<div className="min-w-0 flex-1">
 														<p className="truncate font-medium text-sm">{person.name}</p>
-														{(person.default_organization?.name || person.company) && (
-															<p className="truncate text-muted-foreground text-xs">{person.default_organization?.name || person.company}</p>
+														{person.default_organization?.name && (
+															<p className="truncate text-muted-foreground text-xs">{person.default_organization?.name}</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
