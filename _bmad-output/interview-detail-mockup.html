@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interview Detail Mockup - UpSight</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e5e7eb;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Header and Layout Tabs */
+    .header {
+      background: #1a1d27;
+      border-bottom: 1px solid #2a2d37;
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .layout-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: #0f1117;
+      padding: 0.25rem;
+      border-radius: 8px;
+    }
+
+    .layout-tab {
+      padding: 0.5rem 1.5rem;
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .layout-tab.active {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .info-banner {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Split Pane Layout */
+    .split-layout {
+      display: flex;
+      height: calc(100vh - 140px);
+      gap: 1px;
+      background: #2a2d37;
+    }
+
+    .left-panel {
+      width: 60%;
+      background: #0f1117;
+      overflow-y: auto;
+      padding: 2rem;
+    }
+
+    .right-panel {
+      width: 40%;
+      background: #1a1d27;
+      overflow-y: auto;
+      padding: 2rem;
+      position: sticky;
+      top: 140px;
+      height: calc(100vh - 140px);
+    }
+
+    /* Drawer Layout */
+    .drawer-layout {
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .evidence-drawer {
+      position: fixed;
+      top: 0;
+      right: -600px;
+      width: 600px;
+      height: 100vh;
+      background: #1a1d27;
+      border-left: 1px solid #2a2d37;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+      transition: right 0.3s ease;
+      z-index: 200;
+      overflow-y: auto;
+    }
+
+    .evidence-drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #2a2d37;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: #1a1d27;
+      z-index: 10;
+    }
+
+    .drawer-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .drawer-tab {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+
+    .drawer-tab.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    .drawer-content {
+      padding: 1.5rem;
+    }
+
+    .close-drawer {
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .close-drawer:hover {
+      background: #2a2d37;
+      color: white;
+    }
+
+    /* Scorecard */
+    .scorecard {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .scorecard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1.5rem;
+    }
+
+    .scorecard-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 0.5rem;
+    }
+
+    .scorecard-meta {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.875rem;
+      color: #9ca3af;
+    }
+
+    .scorecard-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .takeaways {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .takeaway-chip {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .priority-badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .priority-high {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .priority-medium {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fcd34d;
+    }
+
+    .priority-low {
+      background: rgba(107, 114, 128, 0.2);
+      color: #9ca3af;
+    }
+
+    /* Lenses Section */
+    .lenses-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .lens-card {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .lens-header {
+      padding: 1rem 1.5rem;
+      background: #1e293b;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .lens-header:hover {
+      background: #243447;
+    }
+
+    .lens-title {
+      font-weight: 600;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .lens-count {
+      background: #3b82f6;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .lens-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .lens-content.expanded {
+      max-height: 2000px;
+    }
+
+    .evidence-item {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #2a2d37;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .evidence-item:hover {
+      background: #1e293b;
+    }
+
+    .evidence-item.verified {
+      border-left: 3px solid #10b981;
+    }
+
+    .evidence-item.rejected {
+      border-left: 3px solid #ef4444;
+      opacity: 0.6;
+    }
+
+    .evidence-summary {
+      font-size: 0.875rem;
+      color: #e5e7eb;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .evidence-quote {
+      font-style: italic;
+      color: #9ca3af;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1rem;
+      border-left: 2px solid #3b82f6;
+    }
+
+    .evidence-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .evidence-timestamp {
+      color: #3b82f6;
+      font-size: 0.75rem;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .evidence-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .evidence-action {
+      background: transparent;
+      border: 1px solid #2a2d37;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      color: #9ca3af;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+    }
+
+    .evidence-action:hover {
+      background: #2a2d37;
+      color: white;
+    }
+
+    .evidence-action.verify:hover {
+      border-color: #10b981;
+      color: #10b981;
+    }
+
+    .evidence-action.reject:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    /* Transcript */
+    .transcript-section {
+      background: #0f1117;
+    }
+
+    .audio-player {
+      background: #1e293b;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .play-button {
+      background: #3b82f6;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      transition: background 0.2s;
+    }
+
+    .play-button:hover {
+      background: #2563eb;
+    }
+
+    .waveform {
+      flex: 1;
+      height: 40px;
+      background: #334155;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .waveform-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 35%;
+      background: #3b82f6;
+      opacity: 0.3;
+    }
+
+    .transcript-entry {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      border-radius: 6px;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .transcript-entry.highlighted {
+      background: #1e293b;
+      border: 1px solid #3b82f6;
+    }
+
+    .transcript-entry::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      border-radius: 2px;
+    }
+
+    .transcript-entry.has-evidence::before {
+      background: #3b82f6;
+    }
+
+    .transcript-entry.has-evidence-high::before {
+      background: #ef4444;
+    }
+
+    .transcript-speaker {
+      font-weight: 600;
+      color: #3b82f6;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .transcript-time {
+      color: #6b7280;
+      font-size: 0.75rem;
+    }
+
+    .transcript-text {
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .transcript-text .highlight {
+      background: rgba(59, 130, 246, 0.2);
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+
+    /* Floating Actions */
+    .floating-actions {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      z-index: 150;
+    }
+
+    .floating-button {
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s;
+    }
+
+    .floating-button:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .floating-button.audit-active {
+      background: #f59e0b;
+    }
+
+    .chat-toggle {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      position: fixed;
+      bottom: 2rem;
+      left: 2rem;
+      z-index: 150;
+    }
+
+    .chat-panel {
+      position: fixed;
+      bottom: 2rem;
+      left: 2rem;
+      width: 400px;
+      height: 500px;
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      display: none;
+      flex-direction: column;
+      z-index: 150;
+    }
+
+    .chat-panel.open {
+      display: flex;
+    }
+
+    .chat-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #2a2d37;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .chat-message {
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    .chat-message-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    /* Audit Mode Overlay */
+    .audit-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 180;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .audit-overlay.active {
+      display: flex;
+    }
+
+    .audit-panel {
+      background: #1a1d27;
+      border: 1px solid #2a2d37;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 90%;
+    }
+
+    .audit-panel h3 {
+      color: white;
+      margin-bottom: 1rem;
+    }
+
+    .audit-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .audit-stat {
+      background: #0f1117;
+      border: 1px solid #2a2d37;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .audit-stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #3b82f6;
+      display: block;
+    }
+
+    .audit-stat-label {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .coverage-bar {
+      height: 8px;
+      background: #2a2d37;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .coverage-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #3b82f6);
+      width: 68%;
+    }
+
+    /* Utility Classes */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1a1d27;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2a2d37;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="layout-tabs">
+        <button class="layout-tab active" data-layout="split">
+          <span>Split Pane</span>
+        </button>
+        <button class="layout-tab" data-layout="drawer">
+          <span>Drawer</span>
+        </button>
+      </div>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <span style="color: #9ca3af; font-size: 0.875rem;">Interview Detail Mockup</span>
+      </div>
+    </div>
+    <div class="info-banner">
+      <i data-lucide="info" style="width: 16px; height: 16px; color: #3b82f6;"></i>
+      <span><strong>Progressive Disclosure:</strong> Glance → Review → Audit → Configure</span>
+    </div>
+  </div>
+
+  <!-- Split Pane Layout -->
+  <div id="split-layout" class="split-layout">
+    <div class="left-panel">
+      <!-- Scorecard -->
+      <div class="scorecard">
+        <div class="scorecard-header">
+          <div>
+            <h1 class="scorecard-title">Discovery Call: Skincare Routine Habits</h1>
+            <div class="scorecard-meta">
+              <div class="scorecard-meta-item">
+                <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+                <span>Dr. Sarah Chen, Dermatologist at GlowMed Health</span>
+              </div>
+              <div class="scorecard-meta-item">
+                <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                <span>Feb 5, 2026</span>
+              </div>
+              <div class="scorecard-meta-item">
+                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                <span>47 minutes</span>
+              </div>
+              <div class="scorecard-meta-item">
+                <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+                <span>12 evidence points</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="takeaways">
+          <div class="takeaway-chip">
+            <span class="priority-badge priority-high">HIGH</span>
+            <span>Clinical validation gap in anti-aging products</span>
+          </div>
+          <div class="takeaway-chip">
+            <span class="priority-badge priority-medium">MEDIUM</span>
+            <span>Willing to pay $200/mo for trusted verification service</span>
+          </div>
+          <div class="takeaway-chip">
+            <span class="priority-badge priority-low">LOW</span>
+            <span>Currently uses personal spreadsheet system</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lenses Section -->
+      <div class="lenses-section">
+        <h2 class="section-title">
+          <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
+          Conversation Lenses
+        </h2>
+
+        <!-- Problem Validation Lens -->
+        <div class="lens-card">
+          <div class="lens-header" onclick="toggleLens('lens-1')">
+            <div class="lens-title">
+              <i data-lucide="alert-circle" style="width: 18px; height: 18px; color: #ef4444;"></i>
+              <span>Problem Validation</span>
+              <span class="lens-count">4</span>
+            </div>
+            <i data-lucide="chevron-down" style="width: 18px; height: 18px;" id="chevron-lens-1"></i>
+          </div>
+          <div class="lens-content expanded" id="lens-1">
+            <div class="evidence-item" data-evidence="1" data-timestamp="3:24" onclick="highlightTranscript('t1')">
+              <div class="evidence-summary">Primary concern about anti-aging products lacking clinical backing</div>
+              <div class="evidence-quote">"The biggest issue I see is that most anti-aging products make claims that aren't supported by peer-reviewed research. My patients trust me to guide them, but I don't have a good way to verify these claims quickly."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t1')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  3:24
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="2" data-timestamp="8:47" onclick="highlightTranscript('t3')">
+              <div class="evidence-summary">Frustration with inconsistent ingredient labeling across brands</div>
+              <div class="evidence-quote">"Every brand labels their ingredients differently. What one calls 'retinol complex' another calls 'vitamin A derivative.' It's incredibly frustrating when I'm trying to compare products."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t3')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  8:47
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="3" data-timestamp="15:02" onclick="highlightTranscript('t5')">
+              <div class="evidence-summary">Patients frequently ask about products she can't recommend confidently</div>
+              <div class="evidence-quote">"Multiple times a week, patients ask me about products they saw on Instagram or TikTok. I want to give them good guidance, but I can't keep up with every new product launch."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t5')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  15:02
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="4" data-timestamp="22:15" onclick="highlightTranscript('t8')">
+              <div class="evidence-summary">Current process of reviewing products takes 2-3 hours per week</div>
+              <div class="evidence-quote">"I'd say I spend 2-3 hours every week just researching products. That's time I could be spending with patients or on clinical research."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t8')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  22:15
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Discovery Lens -->
+        <div class="lens-card">
+          <div class="lens-header" onclick="toggleLens('lens-2')">
+            <div class="lens-title">
+              <i data-lucide="search" style="width: 18px; height: 18px; color: #3b82f6;"></i>
+              <span>Customer Discovery</span>
+              <span class="lens-count">4</span>
+            </div>
+            <i data-lucide="chevron-down" style="width: 18px; height: 18px;" id="chevron-lens-2"></i>
+          </div>
+          <div class="lens-content expanded" id="lens-2">
+            <div class="evidence-item" data-evidence="5" data-timestamp="12:33" onclick="highlightTranscript('t4')">
+              <div class="evidence-summary">Would pay for a trusted verification service — mentioned $200/mo budget</div>
+              <div class="evidence-quote">"If there was a service that could provide me with evidence-based product evaluations, I'd absolutely pay for it. Maybe $200 a month? That would save me so much time."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t4')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  12:33
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="6" data-timestamp="18:45" onclick="highlightTranscript('t7')">
+              <div class="evidence-summary">Currently relies on PubMed searches and colleague recommendations</div>
+              <div class="evidence-quote">"Right now I'm manually searching PubMed for studies on specific ingredients, or I'll text colleagues to see what they're recommending. It's not scalable."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t7')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  18:45
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="7" data-timestamp="28:10">
+              <div class="evidence-summary">Interested in patient-facing content she could share from a trusted source</div>
+              <div class="evidence-quote">"If I could share curated content with my patients — like 'here's what the evidence says about this ingredient' — that would be incredibly valuable."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  28:10
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="8" data-timestamp="35:42">
+              <div class="evidence-summary">Skeptical of existing AI-powered skincare recommendation tools</div>
+              <div class="evidence-quote">"I've seen some AI skincare apps, but they feel like black boxes. I need to understand how they're reaching their conclusions — where's the evidence?"</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  35:42
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Behavioral Patterns Lens -->
+        <div class="lens-card">
+          <div class="lens-header" onclick="toggleLens('lens-3')">
+            <div class="lens-title">
+              <i data-lucide="activity" style="width: 18px; height: 18px; color: #10b981;"></i>
+              <span>Behavioral Patterns</span>
+              <span class="lens-count">4</span>
+            </div>
+            <i data-lucide="chevron-down" style="width: 18px; height: 18px;" id="chevron-lens-3"></i>
+          </div>
+          <div class="lens-content expanded" id="lens-3">
+            <div class="evidence-item" data-evidence="9" data-timestamp="5:55" onclick="highlightTranscript('t2')">
+              <div class="evidence-summary">Reviews 15-20 new products monthly from patient inquiries</div>
+              <div class="evidence-quote">"I probably look at 15 to 20 new products every month based on what patients are asking about."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t2')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  5:55
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="10" data-timestamp="19:30" onclick="highlightTranscript('t6')">
+              <div class="evidence-summary">Uses a personal spreadsheet to track product ingredients</div>
+              <div class="evidence-quote">"I actually maintain a spreadsheet where I track products, their key ingredients, and any studies I've found. It's pretty rudimentary but it's what I've got."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp" onclick="event.preventDefault(); highlightTranscript('t6')">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  19:30
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="11" data-timestamp="31:15">
+              <div class="evidence-summary">Refers patients to 3 specific brands she's personally tested</div>
+              <div class="evidence-quote">"There are three brands I consistently recommend because I've done the research on them and even tested some products myself."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  31:15
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="evidence-item" data-evidence="12" data-timestamp="40:08">
+              <div class="evidence-summary">Spends weekends reading dermatology journals for product research</div>
+              <div class="evidence-quote">"On weekends I often find myself reading dermatology journals, looking for new studies on ingredients. It's become part of my routine."</div>
+              <div class="evidence-meta">
+                <a href="#" class="evidence-timestamp">
+                  <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                  40:08
+                </a>
+                <div class="evidence-actions">
+                  <button class="evidence-action verify" onclick="event.stopPropagation(); verifyEvidence(this)">
+                    <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                    Verify
+                  </button>
+                  <button class="evidence-action" onclick="event.stopPropagation()">
+                    <i data-lucide="edit" style="width: 12px; height: 12px;"></i>
+                    Edit
+                  </button>
+                  <button class="evidence-action reject" onclick="event.stopPropagation(); rejectEvidence(this)">
+                    <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Notes -->
+      <div class="lenses-section">
+        <h2 class="section-title">
+          <i data-lucide="file-text" style="width: 20px; height: 20px;"></i>
+          User Notes
+        </h2>
+        <div style="background: #1a1d27; border: 1px solid #2a2d37; border-radius: 8px; padding: 1.5rem;">
+          <textarea
+            style="width: 100%; min-height: 120px; background: #0f1117; border: 1px solid #2a2d37; border-radius: 6px; padding: 1rem; color: #e5e7eb; font-family: inherit; resize: vertical;"
+            placeholder="Add your notes about this interview...">Strong product-market fit signals. Dr. Chen represents a clear persona: busy practitioners who value evidence but lack time. The $200/mo willingness to pay is significant. Follow up on the spreadsheet workflow — could be a good template for initial features.</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="transcript-section">
+        <h2 class="section-title">
+          <i data-lucide="mic" style="width: 20px; height: 20px;"></i>
+          Transcript
+        </h2>
+
+        <!-- Audio Player -->
+        <div class="audio-player">
+          <button class="play-button">
+            <i data-lucide="play" style="width: 20px; height: 20px;"></i>
+          </button>
+          <div class="waveform">
+            <div class="waveform-progress"></div>
+          </div>
+          <span style="color: #9ca3af; font-size: 0.875rem;">16:28 / 47:00</span>
+        </div>
+
+        <!-- Transcript Entries -->
+        <div class="transcript-entry has-evidence-high" id="t1">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">3:24</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">The biggest issue I see is that most anti-aging products make claims that aren't supported by peer-reviewed research. My patients trust me to guide them, but I don't have a good way to verify these claims quickly.</span>
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t2">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">5:55</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">I probably look at 15 to 20 new products every month based on what patients are asking about.</span> It's a constant stream of new launches and reformulations.
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t3">
+          <div class="transcript-speaker">
+            Rick
+            <span class="transcript-time">8:15</span>
+          </div>
+          <div class="transcript-text">
+            How do you currently evaluate products when patients ask about them?
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t3">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">8:47</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">Every brand labels their ingredients differently. What one calls 'retinol complex' another calls 'vitamin A derivative.' It's incredibly frustrating when I'm trying to compare products.</span>
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence-high" id="t4">
+          <div class="transcript-speaker">
+            Rick
+            <span class="transcript-time">11:50</span>
+          </div>
+          <div class="transcript-text">
+            If there was a solution that could help you evaluate products more efficiently, what would that be worth to you?
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence-high" id="t4">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">12:33</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">If there was a service that could provide me with evidence-based product evaluations, I'd absolutely pay for it. Maybe $200 a month? That would save me so much time.</span>
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence-high" id="t5">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">15:02</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">Multiple times a week, patients ask me about products they saw on Instagram or TikTok. I want to give them good guidance, but I can't keep up with every new product launch.</span>
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t6">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">19:30</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">I actually maintain a spreadsheet where I track products, their key ingredients, and any studies I've found. It's pretty rudimentary but it's what I've got.</span> I started it about two years ago and now it has hundreds of entries.
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t7">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">18:45</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">Right now I'm manually searching PubMed for studies on specific ingredients, or I'll text colleagues to see what they're recommending. It's not scalable.</span>
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t8">
+          <div class="transcript-speaker">
+            Rick
+            <span class="transcript-time">21:45</span>
+          </div>
+          <div class="transcript-text">
+            How much time would you say you spend on this product research each week?
+          </div>
+        </div>
+
+        <div class="transcript-entry has-evidence" id="t8">
+          <div class="transcript-speaker">
+            Dr. Sarah Chen
+            <span class="transcript-time">22:15</span>
+          </div>
+          <div class="transcript-text">
+            <span class="highlight">I'd say I spend 2-3 hours every week just researching products. That's time I could be spending with patients or on clinical research.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer Layout -->
+  <div id="drawer-layout" class="drawer-layout hidden">
+    <div class="scorecard">
+      <div class="scorecard-header">
+        <div>
+          <h1 class="scorecard-title">Discovery Call: Skincare Routine Habits</h1>
+          <div class="scorecard-meta">
+            <div class="scorecard-meta-item">
+              <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+              <span>Dr. Sarah Chen, Dermatologist at GlowMed Health</span>
+            </div>
+            <div class="scorecard-meta-item">
+              <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+              <span>Feb 5, 2026</span>
+            </div>
+            <div class="scorecard-meta-item">
+              <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+              <span>47 minutes</span>
+            </div>
+            <div class="scorecard-meta-item">
+              <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+              <span>12 evidence points</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="takeaways">
+        <div class="takeaway-chip">
+          <span class="priority-badge priority-high">HIGH</span>
+          <span>Clinical validation gap in anti-aging products</span>
+        </div>
+        <div class="takeaway-chip">
+          <span class="priority-badge priority-medium">MEDIUM</span>
+          <span>Willing to pay $200/mo for trusted verification service</span>
+        </div>
+        <div class="takeaway-chip">
+          <span class="priority-badge priority-low">LOW</span>
+          <span>Currently uses personal spreadsheet system</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="lenses-section">
+      <h2 class="section-title">
+        <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
+        Conversation Lenses
+      </h2>
+
+      <div class="lens-card">
+        <div class="lens-header" onclick="toggleLens('lens-1-drawer')">
+          <div class="lens-title">
+            <i data-lucide="alert-circle" style="width: 18px; height: 18px; color: #ef4444;"></i>
+            <span>Problem Validation</span>
+            <span class="lens-count">4</span>
+          </div>
+          <i data-lucide="chevron-down" style="width: 18px; height: 18px;" id="chevron-lens-1-drawer"></i>
+        </div>
+        <div class="lens-content expanded" id="lens-1-drawer">
+          <div class="evidence-item" onclick="openDrawer()">
+            <div class="evidence-summary">Primary concern about anti-aging products lacking clinical backing</div>
+            <div class="evidence-quote">"The biggest issue I see is that most anti-aging products make claims that aren't supported by peer-reviewed research..."</div>
+            <div class="evidence-meta">
+              <a href="#" class="evidence-timestamp" onclick="event.preventDefault()">
+                <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                3:24
+              </a>
+              <span style="color: #9ca3af; font-size: 0.75rem;">Click to audit →</span>
+            </div>
+          </div>
+          <div class="evidence-item" onclick="openDrawer()">
+            <div class="evidence-summary">Frustration with inconsistent ingredient labeling</div>
+            <div class="evidence-quote">"Every brand labels their ingredients differently..."</div>
+            <div class="evidence-meta">
+              <a href="#" class="evidence-timestamp" onclick="event.preventDefault()">
+                <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                8:47
+              </a>
+              <span style="color: #9ca3af; font-size: 0.75rem;">Click to audit →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lens-card">
+        <div class="lens-header" onclick="toggleLens('lens-2-drawer')">
+          <div class="lens-title">
+            <i data-lucide="search" style="width: 18px; height: 18px; color: #3b82f6;"></i>
+            <span>Customer Discovery</span>
+            <span class="lens-count">4</span>
+          </div>
+          <i data-lucide="chevron-down" style="width: 18px; height: 18px;" id="chevron-lens-2-drawer"></i>
+        </div>
+        <div class="lens-content expanded" id="lens-2-drawer">
+          <div class="evidence-item" onclick="openDrawer()">
+            <div class="evidence-summary">Would pay $200/mo for trusted verification service</div>
+            <div class="evidence-quote">"If there was a service that could provide evidence-based evaluations..."</div>
+            <div class="evidence-meta">
+              <a href="#" class="evidence-timestamp" onclick="event.preventDefault()">
+                <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                12:33
+              </a>
+              <span style="color: #9ca3af; font-size: 0.75rem;">Click to audit →</span>
+            </div>
+          </div>
+          <div class="evidence-item" onclick="openDrawer()">
+            <div class="evidence-summary">Currently relies on PubMed searches and colleague recommendations</div>
+            <div class="evidence-quote">"Right now I'm manually searching PubMed..."</div>
+            <div class="evidence-meta">
+              <a href="#" class="evidence-timestamp" onclick="event.preventDefault()">
+                <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                18:45
+              </a>
+              <span style="color: #9ca3af; font-size: 0.75rem;">Click to audit →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lens-card">
+        <div class="lens-header" onclick="toggleLens('lens-3-drawer')">
+          <div class="lens-title">
+            <i data-lucide="activity" style="width: 18px; height: 18px; color: #10b981;"></i>
+            <span>Behavioral Patterns</span>
+            <span class="lens-count">4</span>
+          </div>
+          <i data-lucide="chevron-down" style="width: 18px; height: 18px;" id="chevron-lens-3-drawer"></i>
+        </div>
+        <div class="lens-content expanded" id="lens-3-drawer">
+          <div class="evidence-item" onclick="openDrawer()">
+            <div class="evidence-summary">Reviews 15-20 new products monthly from patient inquiries</div>
+            <div class="evidence-quote">"I probably look at 15 to 20 new products every month..."</div>
+            <div class="evidence-meta">
+              <a href="#" class="evidence-timestamp" onclick="event.preventDefault()">
+                <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                5:55
+              </a>
+              <span style="color: #9ca3af; font-size: 0.75rem;">Click to audit →</span>
+            </div>
+          </div>
+          <div class="evidence-item" onclick="openDrawer()">
+            <div class="evidence-summary">Uses a personal spreadsheet to track product ingredients</div>
+            <div class="evidence-quote">"I actually maintain a spreadsheet..."</div>
+            <div class="evidence-meta">
+              <a href="#" class="evidence-timestamp" onclick="event.preventDefault()">
+                <i data-lucide="play-circle" style="width: 12px; height: 12px;"></i>
+                19:30
+              </a>
+              <span style="color: #9ca3af; font-size: 0.75rem;">Click to audit →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evidence Drawer -->
+  <div id="evidence-drawer" class="evidence-drawer">
+    <div class="drawer-header">
+      <div>
+        <h3 style="color: white; margin: 0;">Evidence Audit</h3>
+        <div class="drawer-tabs">
+          <button class="drawer-tab active" onclick="switchDrawerTab('focused')">Focused</button>
+          <button class="drawer-tab" onclick="switchDrawerTab('context')">In Context</button>
+          <button class="drawer-tab" onclick="switchDrawerTab('full')">Full Audit</button>
+        </div>
+      </div>
+      <button class="close-drawer" onclick="closeDrawer()">
+        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+      </button>
+    </div>
+
+    <div class="drawer-content" id="drawer-tab-focused">
+      <div style="background: #0f1117; border: 1px solid #2a2d37; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: start; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: #1e293b; padding: 0.5rem; border-radius: 6px;">
+            <i data-lucide="alert-circle" style="width: 20px; height: 20px; color: #ef4444;"></i>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;">Problem Validation</div>
+            <div style="font-weight: 600; color: white; margin-bottom: 0.5rem;">Primary concern about anti-aging products lacking clinical backing</div>
+            <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.875rem; color: #9ca3af;">
+              <span style="display: flex; align-items: center; gap: 0.25rem;">
+                <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                3:24
+              </span>
+              <span class="priority-badge priority-high">HIGH</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: #1a1d27; border-left: 3px solid #3b82f6; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+          <div style="font-style: italic; color: #cbd5e1; line-height: 1.7;">
+            "The biggest issue I see is that most anti-aging products make claims that aren't supported by peer-reviewed research. My patients trust me to guide them, but I don't have a good way to verify these claims quickly."
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button style="flex: 1; background: #10b981; border: none; color: white; padding: 0.75rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600;">
+            <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+            Verify Evidence
+          </button>
+          <button style="flex: 1; background: #2a2d37; border: 1px solid #3b82f6; color: #3b82f6; padding: 0.75rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600;">
+            <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+            Edit Classification
+          </button>
+          <button style="background: #2a2d37; border: 1px solid #ef4444; color: #ef4444; padding: 0.75rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1rem; font-size: 0.875rem; color: #cbd5e1;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+          <strong style="color: white;">AI Classification Reasoning</strong>
+        </div>
+        This passage was classified as "Problem Validation" because it explicitly describes a pain point in the participant's current workflow: the inability to quickly verify product claims against research. The frustration with the process and the mention of patient trust indicate a significant problem worth solving.
+      </div>
+    </div>
+
+    <div class="drawer-content hidden" id="drawer-tab-context">
+      <div style="background: #0f1117; border: 1px solid #2a2d37; border-radius: 8px; padding: 1.5rem;">
+        <div style="color: #9ca3af; font-size: 0.875rem; margin-bottom: 1rem;">
+          <i data-lucide="info" style="width: 14px; height: 14px;"></i>
+          Showing evidence in surrounding context
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.5rem;">
+            Rick <span style="color: #6b7280; font-weight: normal;">2:50</span>
+          </div>
+          <div style="color: #9ca3af; line-height: 1.7;">
+            Can you tell me about the biggest challenges you face when your patients ask about skincare products?
+          </div>
+        </div>
+
+        <div style="background: #1e293b; border: 1px solid #3b82f6; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.5rem;">
+            Dr. Sarah Chen <span style="color: #6b7280; font-weight: normal;">3:24</span>
+          </div>
+          <div style="color: #e5e7eb; line-height: 1.7;">
+            <span style="background: rgba(59, 130, 246, 0.3); padding: 0 4px; border-radius: 2px;">"The biggest issue I see is that most anti-aging products make claims that aren't supported by peer-reviewed research. My patients trust me to guide them, but I don't have a good way to verify these claims quickly."</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.5rem;">
+            Rick <span style="color: #6b7280; font-weight: normal;">4:10</span>
+          </div>
+          <div style="color: #9ca3af; line-height: 1.7;">
+            How often does this come up in your practice?
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-content hidden" id="drawer-tab-full">
+      <div style="background: #0f1117; border: 1px solid #2a2d37; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <div style="color: white; font-weight: 600; margin-bottom: 0.25rem;">Full Transcript Audit View</div>
+            <div style="color: #9ca3af; font-size: 0.875rem;">12 evidence items across 3 lenses</div>
+          </div>
+          <div style="display: flex; gap: 0.75rem; font-size: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 2px;"></div>
+              <span style="color: #9ca3af;">Problem (4)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div style="width: 12px; height: 12px; background: #3b82f6; border-radius: 2px;"></div>
+              <span style="color: #9ca3af;">Discovery (4)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div style="width: 12px; height: 12px; background: #10b981; border-radius: 2px;"></div>
+              <span style="color: #9ca3af;">Behavioral (4)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="coverage-bar">
+          <div class="coverage-fill"></div>
+        </div>
+        <div style="color: #9ca3af; font-size: 0.875rem; margin-bottom: 1.5rem;">68% transcript coverage</div>
+
+        <div style="max-height: 600px; overflow-y: auto; padding-right: 0.5rem;">
+          <div style="margin-bottom: 1rem; padding: 0.75rem; border-left: 3px solid #ef4444; background: rgba(239, 68, 68, 0.1); border-radius: 4px;">
+            <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.25rem;">
+              Dr. Sarah Chen <span style="color: #6b7280; font-weight: normal;">3:24</span>
+            </div>
+            <div style="color: #cbd5e1; line-height: 1.6;">
+              The biggest issue I see is that most anti-aging products make claims that aren't supported by peer-reviewed research...
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #9ca3af;">
+              <span style="color: #ef4444;">Problem Validation</span> • HIGH priority
+            </div>
+          </div>
+
+          <div style="margin-bottom: 1rem; padding: 0.75rem; border-left: 3px solid #10b981; background: rgba(16, 185, 129, 0.1); border-radius: 4px;">
+            <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.25rem;">
+              Dr. Sarah Chen <span style="color: #6b7280; font-weight: normal;">5:55</span>
+            </div>
+            <div style="color: #cbd5e1; line-height: 1.6;">
+              I probably look at 15 to 20 new products every month based on what patients are asking about...
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #9ca3af;">
+              <span style="color: #10b981;">Behavioral Patterns</span> • MEDIUM priority
+            </div>
+          </div>
+
+          <div style="margin-bottom: 1rem; padding: 0.75rem; background: #1a1d27; border-radius: 4px; opacity: 0.5;">
+            <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.25rem;">
+              Rick <span style="color: #6b7280; font-weight: normal;">8:15</span>
+            </div>
+            <div style="color: #9ca3af; line-height: 1.6; font-style: italic;">
+              [Uncoded passage] How do you currently evaluate products when patients ask about them?
+            </div>
+          </div>
+
+          <div style="margin-bottom: 1rem; padding: 0.75rem; border-left: 3px solid #3b82f6; background: rgba(59, 130, 246, 0.1); border-radius: 4px;">
+            <div style="font-weight: 600; color: #3b82f6; font-size: 0.875rem; margin-bottom: 0.25rem;">
+              Dr. Sarah Chen <span style="color: #6b7280; font-weight: normal;">12:33</span>
+            </div>
+            <div style="color: #cbd5e1; line-height: 1.6;">
+              If there was a service that could provide me with evidence-based product evaluations, I'd absolutely pay for it...
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #9ca3af;">
+              <span style="color: #3b82f6;">Customer Discovery</span> • HIGH priority
+            </div>
+          </div>
+
+          <div style="background: #1e293b; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem; font-size: 0.875rem; color: #f59e0b;">
+            <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i>
+            Coverage gap detected: 8 minutes of conversation between 22:00-30:00 with no evidence items
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Actions -->
+  <div class="floating-actions">
+    <button class="floating-button" id="audit-button" onclick="toggleAuditMode()">
+      <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
+      Start Audit
+    </button>
+  </div>
+
+  <!-- Chat Toggle -->
+  <button class="floating-button chat-toggle" onclick="toggleChat()">
+    <i data-lucide="message-circle" style="width: 18px; height: 18px;"></i>
+  </button>
+
+  <!-- Chat Panel -->
+  <div class="chat-panel" id="chat-panel">
+    <div class="chat-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="bot" style="width: 20px; height: 20px; color: #f59e0b;"></i>
+        <span style="font-weight: 600; color: white;">AI Assistant</span>
+      </div>
+      <button class="close-drawer" onclick="toggleChat()">
+        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+      </button>
+    </div>
+    <div class="chat-messages">
+      <div class="chat-message">
+        <div class="chat-message-header">
+          <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+          AI Assistant
+        </div>
+        <div>
+          I reclassified the evidence about sunscreen preferences — it's actually about product switching behavior, not skincare routine. The participant was describing how they evaluate alternatives when their preferred product is unavailable.
+        </div>
+      </div>
+      <div class="chat-message">
+        <div class="chat-message-header">
+          <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+          AI Assistant
+        </div>
+        <div>
+          I noticed a potential coverage gap between 22:00-30:00. Would you like me to re-analyze that section with different lens criteria?
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Mode Overlay -->
+  <div class="audit-overlay" id="audit-overlay">
+    <div class="audit-panel">
+      <h3>Audit Mode Active</h3>
+      <div class="audit-stats">
+        <div class="audit-stat">
+          <span class="audit-stat-value">68%</span>
+          <span class="audit-stat-label">Coverage</span>
+        </div>
+        <div class="audit-stat">
+          <span class="audit-stat-value">12</span>
+          <span class="audit-stat-label">Evidence Items</span>
+        </div>
+        <div class="audit-stat">
+          <span class="audit-stat-value">3</span>
+          <span class="audit-stat-label">Gaps</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <div style="color: #9ca3af; font-size: 0.875rem; margin-bottom: 0.5rem;">Transcript Coverage</div>
+        <div class="coverage-bar">
+          <div class="coverage-fill"></div>
+        </div>
+      </div>
+
+      <div style="background: #0f1117; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <i data-lucide="alert-triangle" style="width: 16px; height: 16px; color: #f59e0b;"></i>
+          <strong style="color: #f59e0b;">Coverage Gaps Detected</strong>
+        </div>
+        <ul style="margin-left: 1.5rem; color: #cbd5e1; font-size: 0.875rem; line-height: 1.7;">
+          <li>22:00-30:00 (8 minutes) - No evidence captured</li>
+          <li>35:00-38:00 (3 minutes) - Low confidence region</li>
+          <li>43:00-45:00 (2 minutes) - Potential missed insight</li>
+        </ul>
+      </div>
+
+      <button
+        style="width: 100%; background: #3b82f6; border: none; color: white; padding: 0.75rem; border-radius: 6px; cursor: pointer; font-weight: 600;"
+        onclick="toggleAuditMode()">
+        Close Audit View
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    let auditMode = false;
+    let currentLayout = 'split';
+
+    // Layout switching
+    document.querySelectorAll('.layout-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const layout = tab.dataset.layout;
+        switchLayout(layout);
+      });
+    });
+
+    function switchLayout(layout) {
+      currentLayout = layout;
+
+      document.querySelectorAll('.layout-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`[data-layout="${layout}"]`).classList.add('active');
+
+      if (layout === 'split') {
+        document.getElementById('split-layout').classList.remove('hidden');
+        document.getElementById('drawer-layout').classList.add('hidden');
+      } else {
+        document.getElementById('split-layout').classList.add('hidden');
+        document.getElementById('drawer-layout').classList.remove('hidden');
+      }
+    }
+
+    // Lens toggling
+    function toggleLens(id) {
+      const content = document.getElementById(id);
+      const chevron = document.getElementById('chevron-' + id);
+      content.classList.toggle('expanded');
+
+      if (content.classList.contains('expanded')) {
+        chevron.style.transform = 'rotate(0deg)';
+      } else {
+        chevron.style.transform = 'rotate(-90deg)';
+      }
+
+      // Re-initialize icons
+      lucide.createIcons();
+    }
+
+    // Transcript highlighting
+    function highlightTranscript(id) {
+      const transcriptPanel = document.querySelector('.right-panel');
+      const entry = document.getElementById(id);
+
+      // Remove previous highlights
+      document.querySelectorAll('.transcript-entry').forEach(e => e.classList.remove('highlighted'));
+
+      // Highlight target
+      entry.classList.add('highlighted');
+
+      // Scroll into view
+      entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Evidence actions
+    function verifyEvidence(button) {
+      const item = button.closest('.evidence-item');
+      item.classList.add('verified');
+      item.classList.remove('rejected');
+      button.innerHTML = '<i data-lucide="check" style="width: 12px; height: 12px;"></i> Verified';
+      button.style.background = '#10b981';
+      button.style.color = 'white';
+      button.style.borderColor = '#10b981';
+      lucide.createIcons();
+    }
+
+    function rejectEvidence(button) {
+      const item = button.closest('.evidence-item');
+      item.classList.add('rejected');
+      item.classList.remove('verified');
+    }
+
+    // Drawer functions
+    function openDrawer() {
+      document.getElementById('evidence-drawer').classList.add('open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('evidence-drawer').classList.remove('open');
+    }
+
+    function switchDrawerTab(tab) {
+      // Update tab buttons
+      document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Hide all tab contents
+      document.querySelectorAll('.drawer-content').forEach(c => c.classList.add('hidden'));
+
+      // Show selected tab
+      document.getElementById('drawer-tab-' + tab).classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+
+    // Chat toggle
+    function toggleChat() {
+      document.getElementById('chat-panel').classList.toggle('open');
+      lucide.createIcons();
+    }
+
+    // Audit mode
+    function toggleAuditMode() {
+      auditMode = !auditMode;
+      const overlay = document.getElementById('audit-overlay');
+      const button = document.getElementById('audit-button');
+
+      if (auditMode) {
+        overlay.classList.add('active');
+        button.classList.add('audit-active');
+        button.innerHTML = '<i data-lucide="shield-check" style="width: 18px; height: 18px;"></i> Exit Audit';
+      } else {
+        overlay.classList.remove('active');
+        button.classList.remove('audit-active');
+        button.innerHTML = '<i data-lucide="shield-check" style="width: 18px; height: 18px;"></i> Start Audit';
+      }
+
+      lucide.createIcons();
+    }
+
+    // Initialize icons on load
+    window.addEventListener('load', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
