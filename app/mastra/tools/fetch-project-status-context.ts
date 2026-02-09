@@ -69,8 +69,9 @@ type IcpScoreRow = Pick<
 	Database["public"]["Tables"]["person_scale"]["Row"],
 	"person_id" | "score" | "band" | "confidence"
 >;
+type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company">;
 type ProjectPeopleSummaryRow = Pick<Database["public"]["Tables"]["project_people"]["Row"], "person_id"> & {
-	person?: Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company"> | null;
+	person?: ProjectPersonSummary | ProjectPersonSummary[] | null;
 };
 
 function normalizeDate(value: unknown) {
@@ -86,6 +87,12 @@ function toStringArray(value: unknown): string[] {
 		.map((item) => (typeof item === "string" ? item.trim() : ""))
 		.filter((item): item is string => Boolean(item));
 	return Array.from(new Set(cleaned));
+}
+
+function resolveSummaryPerson(value: ProjectPeopleSummaryRow["person"]): ProjectPersonSummary | null {
+	if (!value) return null;
+	if (Array.isArray(value)) return value[0] ?? null;
+	return value;
 }
 
 const projectStatusSchema = z.object({
@@ -1034,11 +1041,18 @@ export const fetchProjectStatusContextTool = createTool({
 						consola.warn("fetch-project-status-context: failed to load full people summary scope", summaryPeopleError);
 					}
 					const summaryPeople = (summaryPeopleRows as ProjectPeopleSummaryRow[] | null) ?? [];
-					const summaryPersonIds = Array.from(
-						new Set(
-							summaryPeople.map((row) => row.person?.id ?? row.person_id).filter((id): id is string => Boolean(id))
-						)
-					);
+					const summaryProfileByPersonId = new Map<string, { hasTitle: boolean; hasCompany: boolean }>();
+					for (const row of summaryPeople) {
+						const summaryPerson = resolveSummaryPerson(row.person);
+						const personId = summaryPerson?.id ?? row.person_id;
+						if (!personId) continue;
+						const existing = summaryProfileByPersonId.get(personId) ?? { hasTitle: false, hasCompany: false };
+						summaryProfileByPersonId.set(personId, {
+							hasTitle: existing.hasTitle || Boolean(summaryPerson?.title),
+							hasCompany: existing.hasCompany || Boolean(summaryPerson?.company),
+						});
+					}
+					const summaryPersonIds = Array.from(summaryProfileByPersonId.keys());
 					const summaryPersonIdSet = new Set(summaryPersonIds);
 					const uniqueScoredPeople = new Set<string>();
 					const distribution = { HIGH: 0, MEDIUM: 0, LOW: 0 };
@@ -1052,10 +1066,10 @@ export const fetchProjectStatusContextTool = createTool({
 						else if (score.band === "LOW") distribution.LOW += 1;
 					}
 
-					const missingDataCount = summaryPeople.filter((person) => {
-						const title = person.person?.title;
-						const company = person.person?.company;
-						return !title || !company;
+					const missingDataCount = summaryPersonIds.filter((personId) => {
+						const profile = summaryProfileByPersonId.get(personId);
+						if (!profile) return true;
+						return !profile.hasTitle || !profile.hasCompany;
 					}).length;
 					const scored = uniqueScoredPeople.size;
 					const total = summaryPersonIds.length;
