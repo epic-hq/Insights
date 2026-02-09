@@ -97,18 +97,6 @@ export const enrichPersonDataTool = createTool({
       };
     }
 
-    // If person already has all key fields, skip
-    if (person.title && person.company) {
-      return {
-        success: true,
-        enriched: false,
-        fieldsUpdated: [],
-        source: "none",
-        confidence: 1,
-        data: {},
-      };
-    }
-
     // Get org name if linked
     let orgName: string | null = null;
     if (person.default_organization_id) {
@@ -120,6 +108,18 @@ export const enrichPersonDataTool = createTool({
       orgName = org?.name ?? null;
     }
 
+    // If person already has all key fields, skip
+    if (person.title && (orgName || person.company)) {
+      return {
+        success: true,
+        enriched: false,
+        fieldsUpdated: [],
+        source: "none",
+        confidence: 1,
+        data: {},
+      };
+    }
+
     // Run enrichment
     const result = await enrichPersonData({
       personId: person.id,
@@ -129,7 +129,7 @@ export const enrichPersonDataTool = createTool({
         [person.firstname, person.lastname].filter(Boolean).join(" ") ||
         null,
       knownEmail: person.primary_email,
-      knownCompany: person.company || orgName,
+      knownCompany: orgName || person.company,
       knownTitle: person.title,
       knownLinkedIn: person.linkedin_url,
     });

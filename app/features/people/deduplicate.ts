@@ -331,8 +331,10 @@ function calculateCompleteness(person: Person): number {
 	if (person.title) score += 5;
 	if (person.job_function) score += 5;
 	if (person.seniority_level) score += 5;
-	if (person.company) score += 5;
-	if (person.industry) score += 3;
+	const orgs = person.people_organizations as Array<{ organization: { name: string | null; industry?: string | null } | null }> | null;
+	const pOrg = orgs?.[0]?.organization;
+	if (pOrg?.name || person.company) score += 5;
+	if (pOrg?.industry || person.industry) score += 3;
 
 	// Additional info
 	if (person.description) score += 3;

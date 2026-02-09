@@ -110,7 +110,7 @@ export function EditPersonDataSheet({
   const selectedOrgName = useMemo(() => {
     if (!person) return null;
     if (newOrgName) return newOrgName;
-    if (!selectedOrgId) return person.company || null;
+    if (!selectedOrgId) return person.org_name || person.company || null;
     const org = organizations.find((o) => o.id === selectedOrgId);
     return org?.name || person.org_name || null;
   }, [selectedOrgId, organizations, person, newOrgName]);

@@ -441,7 +441,7 @@ export default function UploadScreen({
 				console.log("[UploadScreen] Fetching people for accountId:", effectiveAccountId);
 				const { data, error: fetchError } = await supabase
 					.from("people")
-					.select("id, name, company, person_type")
+					.select("id, name, company, person_type, default_organization:organizations!default_organization_id(name)")
 					.eq("account_id", effectiveAccountId)
 					.order("name")
 					.limit(50);
@@ -507,7 +507,7 @@ export default function UploadScreen({
 				// Search for people with similar names
 				const { data } = await supabase
 					.from("people")
-					.select("id, name, company, person_type")
+					.select("id, name, company, person_type, default_organization:organizations!default_organization_id(name)")
 					.eq("account_id", effectiveAccountId)
 					.ilike("name", `%${searchName}%`)
 					.limit(5);
@@ -681,8 +681,8 @@ export default function UploadScreen({
 																</span>
 															)}
 														</div>
-														{person.company && (
-															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
+														{((person as any).default_organization?.name || person.company) && (
+															<p className="truncate text-muted-foreground text-xs">{(person as any).default_organization?.name || person.company}</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
@@ -820,7 +820,7 @@ export default function UploadScreen({
 											>
 												<Users className="h-4 w-4 text-amber-600" />
 												<span>{person.name}</span>
-												{person.company && <span className="text-muted-foreground">at {person.company}</span>}
+												{((person as any).default_organization?.name || person.company) && <span className="text-muted-foreground">at {(person as any).default_organization?.name || person.company}</span>}
 											</button>
 										))}
 									</div>

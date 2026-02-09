@@ -161,7 +161,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		);
 
 		const { data: peopleRows } = personIds.length
-			? await userDb.from("people").select("id, name, description, role, company, segment").in("id", personIds)
+			? await userDb.from("people").select("id, name, description, role, company, segment, default_organization:organizations!default_organization_id(name)").in("id", personIds)
 			: { data: [] };
 
 		let primaryPersonId = participantPersonId ?? peopleRows?.[0]?.id ?? null;

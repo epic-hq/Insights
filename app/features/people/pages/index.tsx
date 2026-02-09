@@ -747,7 +747,7 @@ export default function PeopleIndexPage() {
                           )}
                         </div>
                         <div className="truncate text-muted-foreground text-sm">
-                          {[person.title, person.company, person.primary_email]
+                          {[person.title, (person as any).people_organizations?.[0]?.organization?.name || person.company, person.primary_email]
                             .filter(Boolean)
                             .join(" · ")}
                         </div>

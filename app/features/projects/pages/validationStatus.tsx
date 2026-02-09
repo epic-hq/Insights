@@ -139,6 +139,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					name,
 					company,
 					contact_info,
+					default_organization:organizations!default_organization_id(name),
 					interview_people (
 						interviews (
 							id,
@@ -202,7 +203,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			person.id,
 			{
 				name: person.name || "Unknown",
-				company: person.company || "",
+				company: (person as any).default_organization?.name || person.company || "",
 				contactInfo: person.contact_info as Record<string, unknown> | null,
 			},
 		])
