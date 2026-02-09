@@ -143,7 +143,7 @@ async function checkDatabaseState() {
 	consola.box("Sample People");
 	const { data: samplePeople } = await supabase
 		.from("people")
-		.select("id, name, segment, role, title, industry, company")
+		.select("id, name, segment, role, title")
 		.limit(3);
 
 	if (samplePeople && samplePeople.length > 0) {
@@ -152,7 +152,7 @@ async function checkDatabaseState() {
 				segment: person.segment,
 				role: person.role,
 				title: person.title,
-				industry: person.industry,
+				industry: (person as any).default_organization?.industry ?? null,
 			});
 		}
 	}

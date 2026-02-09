@@ -231,7 +231,6 @@ export async function resolveOrCreatePerson(
 		name,
 		primary_email: input.primary_email,
 		primary_phone: input.primary_phone,
-		company: input.company || "", // Mirror text for backwards compat
 		default_organization_id: orgId,
 		title: input.title,
 		person_type: input.person_type,

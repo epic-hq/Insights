@@ -36,7 +36,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 	let query = ctx.supabase
 		.from("people")
-		.select("id, name, primary_email, company, project_id, default_organization:organizations!default_organization_id(name)")
+		.select("id, name, primary_email, project_id, default_organization:organizations!default_organization_id(name)")
 		.eq("account_id", ctx.account_id)
 		.order("updated_at", { ascending: false })
 		.limit(limit);
@@ -67,7 +67,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 				id: person.id,
 				name: person.name,
 				email: person.primary_email,
-				company: orgName || person.company,
+				company: orgName ?? null,
 				projectId: person.project_id,
 			};
 		}),

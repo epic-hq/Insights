@@ -173,7 +173,7 @@ export async function loadAnalysisPageData(
 		// 6. People in project with basic info
 		db
 			.from("people")
-			.select("id, firstname, lastname, name, title, company, image_url, created_at, default_organization:organizations!default_organization_id(name)")
+			.select("id, firstname, lastname, name, title, image_url, created_at, default_organization:organizations!default_organization_id(name)")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false }),
 
@@ -494,7 +494,7 @@ export async function loadAnalysisPageData(
 			firstname: p.firstname,
 			lastname: p.lastname,
 			title: p.title,
-			company: (p as any).default_organization?.name || p.company,
+			company: (p as any).default_organization?.name ?? null,
 			imageUrl: p.image_url,
 			interviewCount: personInterviewCount,
 			surveyResponseCount: surveyCountByPerson.get(p.id) || 0,

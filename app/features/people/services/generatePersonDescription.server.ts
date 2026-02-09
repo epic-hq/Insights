@@ -52,8 +52,8 @@ function buildQuickFacts(person: PersonRecord): string[] {
 	const primaryOrg = person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization ?? person.people_organizations?.[0]?.organization;
 	append("Segment", person.segment);
 	append("Title", person.title);
-	append("Company", (primaryOrg as { name?: string | null } | null)?.name ?? person.company);
-	append("Industry", (primaryOrg as { industry?: string | null } | null)?.industry ?? person.industry);
+	append("Company", (primaryOrg as { name?: string | null } | null)?.name ?? null);
+	append("Industry", (primaryOrg as { industry?: string | null } | null)?.industry ?? null);
 	append("Location", person.location);
 	append("Age", typeof person.age === "number" ? `${person.age}` : null);
 	append("Education", person.education);
@@ -190,7 +190,7 @@ function mapPersonToProfile(
 		name: person.name ?? null,
 		title: person.title ?? null,
 		role: null, // DEPRECATED: people.role no longer populated
-		company: (person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization as { name?: string | null } | null)?.name ?? person.company ?? null,
+		company: (person.people_organizations?.find((po: { is_primary?: boolean | null }) => po.is_primary)?.organization as { name?: string | null } | null)?.name ?? null,
 		segment: person.segment ?? null,
 		persona: person.people_personas?.[0]?.personas?.name ?? null,
 		quick_facts: quickFacts,

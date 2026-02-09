@@ -60,8 +60,8 @@ function buildQuickFacts(person: PersonRecord): string[] {
 	append("Segment", person.segment);
 	append("Title", person.title || person.role);
 	append("Role", person.role && person.role !== person.title ? person.role : null);
-	append("Company", (primaryOrg as { name?: string | null } | null)?.name ?? person.company);
-	append("Industry", (primaryOrg as { industry?: string | null } | null)?.industry ?? person.industry);
+	append("Company", (primaryOrg as { name?: string | null } | null)?.name ?? null);
+	append("Industry", (primaryOrg as { industry?: string | null } | null)?.industry ?? null);
 	append("Location", person.location);
 
 	return facts;
@@ -219,7 +219,7 @@ export async function generatePersonFacetSummaries({
 			person_id: person.id,
 			name: person.name ?? null,
 			title: person.title ?? person.role ?? null,
-			company: (primaryOrgForPayload as { name?: string | null } | null)?.name ?? person.company ?? null,
+			company: (primaryOrgForPayload as { name?: string | null } | null)?.name ?? null,
 			segment: person.segment ?? null,
 			persona: person.people_personas?.[0]?.personas?.name ?? null,
 			quick_facts: buildQuickFacts(person),

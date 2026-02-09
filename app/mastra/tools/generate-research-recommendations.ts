@@ -136,7 +136,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 						firstname,
 						lastname,
 						title,
-						company
+						default_organization:organizations!default_organization_id(name)
 					)
 				`
 				)
@@ -180,7 +180,7 @@ Returns recommendations sorted by priority (1 = highest) with full reasoning and
 								person_id: personId,
 								name: `${personData.firstname} ${personData.lastname}`.trim(),
 								title: personData.title || undefined,
-								company: personData.company || undefined,
+								company: (personData as any).default_organization?.name || undefined,
 								days_since: daysSince,
 								last_interview_date: lastDate.toISOString(),
 							});

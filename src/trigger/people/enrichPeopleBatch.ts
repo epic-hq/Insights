@@ -164,7 +164,7 @@ export const enrichPeopleBatchTask = task({
       const personOrgName = person.default_organization_id
           ? (orgNameMap.get(person.default_organization_id) ?? null)
           : null;
-      if (person.title && (personOrgName || person.company)) {
+      if (person.title && personOrgName) {
         result.skipped++;
         result.processed++;
         continue;
@@ -188,7 +188,7 @@ export const enrichPeopleBatchTask = task({
             [person.firstname, person.lastname].filter(Boolean).join(" ") ||
             null,
           knownEmail: person.primary_email,
-          knownCompany: orgName || person.company,
+          knownCompany: orgName,
           knownTitle: person.title,
           knownLinkedIn: person.linkedin_url,
         });
@@ -212,9 +212,6 @@ export const enrichPeopleBatchTask = task({
         const updates: Record<string, string> = {};
         if (enrichResult.data.title && !person.title) {
           updates.title = enrichResult.data.title;
-        }
-        if (enrichResult.data.company && !person.company) {
-          updates.company = enrichResult.data.company;
         }
         if (enrichResult.data.role && !person.role) {
           updates.role = enrichResult.data.role;

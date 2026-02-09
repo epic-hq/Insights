@@ -246,7 +246,6 @@ describe("resolveOrCreatePerson", () => {
 			expect(stored?.firstname).toBe("Rick");
 			expect(stored?.lastname).toBe("Moy");
 			expect(stored?.primary_email).toBe("rick@example.com");
-			expect(stored?.company).toBe("Acme Corp");
 			expect(stored?.title).toBe("CEO");
 			expect(stored?.person_type).toBe("internal");
 			expect(stored?.contact_info).toEqual({

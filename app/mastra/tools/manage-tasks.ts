@@ -108,7 +108,6 @@ type AccountMember = {
 type ProjectPerson = {
 	id: string;
 	name: string | null;
-	company: string;
 	user_id: string | null;
 };
 
@@ -151,7 +150,7 @@ async function fetchProjectPeople({
 }): Promise<ProjectPerson[]> {
 	const { data, error } = await supabase
 		.from("people")
-		.select("id, name, company, user_id, default_organization:organizations!default_organization_id(name)")
+		.select("id, name, user_id, default_organization:organizations!default_organization_id(name)")
 		.eq("account_id", accountId)
 		.eq("project_id", projectId);
 
@@ -212,7 +211,7 @@ async function resolveAssignees({
 			if (!name_matches) return false;
 			if (!company) return true;
 			const personOrgName = normalizeName((p as any).default_organization?.name);
-			return personOrgName === company || normalizeName(p.company) === company;
+			return personOrgName === company;
 		});
 
 		if (matches.length === 0) return undefined;

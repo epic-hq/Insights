@@ -823,7 +823,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 							id: person.id,
 							name: person.name,
 							segment: person.segment,
-							company: (person as any).default_organization?.name || person.company,
+							company: (person as any).default_organization?.name ?? null,
 							project_id: person.project_id,
 							person_type: person.person_type ?? null,
 							people_personas: Array.isArray(person.people_personas)
@@ -2274,7 +2274,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 														>
 															{person.name}
 														</Link>
-														{person.company && <span className="text-muted-foreground">({person.company})</span>}
+														{(person as any).default_organization?.name && <span className="text-muted-foreground">({(person as any).default_organization?.name})</span>}
 														{person.segment && person.segment !== "Unknown" && (
 															<Badge variant="outline" className="text-xs">
 																{person.segment}

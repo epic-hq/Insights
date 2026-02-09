@@ -145,7 +145,7 @@ export async function buildInitialSalesLensExtraction(
 	if (personIds.length > 0) {
 		const { data: people, error: peopleError } = await db
 			.from("people")
-			.select("id, name, role, title, company, primary_email, default_organization_id, default_organization:organizations!default_organization_id(name)")
+			.select("id, name, role, title, primary_email, default_organization_id, default_organization:organizations!default_organization_id(name)")
 			.in("id", personIds);
 		if (peopleError) {
 			consola.warn("Failed to load people for sales lens", peopleError);
@@ -156,7 +156,7 @@ export async function buildInitialSalesLensExtraction(
 					name: person.name ?? null,
 					role: person.role ?? null,
 					title: person.title ?? null,
-					company: orgName || person.company ?? null,
+					company: orgName ?? null,
 					primary_email: person.primary_email ?? null,
 					default_organization_id: person.default_organization_id ?? null,
 				});

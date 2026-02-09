@@ -97,7 +97,7 @@ function PersonCard({ person, onClick }: { person: PersonAnalysisSummary; onClic
 							<div>
 								<h3 className="font-semibold text-sm leading-tight">{person.name}</h3>
 								<p className="text-foreground/60 text-xs">
-									{[person.title, person.company].filter(Boolean).join(" @ ") || "No title"}
+									{person.title || "No title"}
 								</p>
 							</div>
 							<div className="flex flex-shrink-0 items-center gap-1.5">
@@ -186,7 +186,7 @@ export function AnalysisByPersonTab({
 		const q = searchQuery.toLowerCase();
 		return people.filter(
 			(p) =>
-				p.name.toLowerCase().includes(q) || p.title?.toLowerCase().includes(q) || p.company?.toLowerCase().includes(q)
+				p.name.toLowerCase().includes(q) || p.title?.toLowerCase().includes(q)
 		);
 	}, [people, searchQuery]);
 

@@ -214,7 +214,7 @@ export async function findDuplicates({
 				organization: { id: string; name: string | null } | null;
 			}> | null;
 			const primaryOrg = orgs?.[0]?.organization?.name;
-			const company = normalize(primaryOrg || person.company);
+			const company = normalize(primaryOrg);
 
 			if (company) {
 				const key = `${name}|${company}`;
@@ -248,7 +248,7 @@ export async function findDuplicates({
 				organization: { id: string; name: string | null } | null;
 			}> | null;
 			const primaryOrg = orgs?.[0]?.organization?.name;
-			const company = normalize(primaryOrg || person.company);
+			const company = normalize(primaryOrg);
 
 			if (company) {
 				const key = `${firstname}|${company}`;
@@ -333,8 +333,8 @@ function calculateCompleteness(person: Person): number {
 	if (person.seniority_level) score += 5;
 	const orgs = person.people_organizations as Array<{ organization: { name: string | null; industry?: string | null } | null }> | null;
 	const pOrg = orgs?.[0]?.organization;
-	if (pOrg?.name || person.company) score += 5;
-	if (pOrg?.industry || person.industry) score += 3;
+	if (pOrg?.name) score += 5;
+	if (pOrg?.industry) score += 3;
 
 	// Additional info
 	if (person.description) score += 3;
