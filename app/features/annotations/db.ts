@@ -10,7 +10,15 @@ export type AnnotationInsert = DB["Tables"]["annotations"]["Insert"];
 type AnnotationUpdate = DB["Tables"]["annotations"]["Update"];
 
 // Entity types that can have annotations
-export type EntityType = "insight" | "persona" | "opportunity" | "interview" | "person" | "project" | "task";
+export type EntityType =
+	| "insight"
+	| "persona"
+	| "opportunity"
+	| "interview"
+	| "person"
+	| "project"
+	| "task"
+	| "evidence";
 export type AnnotationType = "comment" | "ai_suggestion" | "flag" | "note" | "todo" | "reaction";
 export type FlagType = "hidden" | "archived" | "starred" | "priority";
 
@@ -121,7 +129,12 @@ export async function getUserFlagsForEntities({
 
 		const byId = new Map<string, UserFlags>();
 		for (const id of entityIds) {
-			byId.set(id, { hidden: false, archived: false, starred: false, priority: false });
+			byId.set(id, {
+				hidden: false,
+				archived: false,
+				starred: false,
+				priority: false,
+			});
 		}
 
 		for (const row of rows || []) {
@@ -486,7 +499,10 @@ export async function getUserFlagsForEntity({
 		};
 
 		if (Array.isArray(data)) {
-			const casted = data as Array<{ flag_type?: string; flag_value?: unknown }>;
+			const casted = data as Array<{
+				flag_type?: string;
+				flag_value?: unknown;
+			}>;
 			for (const flag of casted) {
 				if (!flag.flag_type || !(flag.flag_type in flags)) continue;
 				const key = flag.flag_type as keyof UserFlags;
