@@ -246,7 +246,7 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 			return Response.json(
 				{
 					error:
-						"A person with this name already exists at this company. Use the deduplication feature to merge duplicate records.",
+						"A person with this name already exists at this organization. Use the deduplication feature to merge duplicate records.",
 				},
 				{ status: 409 }
 			);
