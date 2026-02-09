@@ -44,13 +44,9 @@ function normalizeDate(value: string | null): string | null {
 
 export const fetchTopThemesWithPeopleTool = createTool({
 	id: "fetch-top-themes-with-people",
-	description:
-		"Deterministically fetch top themes (by evidence mentions) and the people associated with each theme.",
+	description: "Deterministically fetch top themes (by evidence mentions) and the people associated with each theme.",
 	inputSchema: z.object({
-		projectId: z
-			.string()
-			.nullish()
-			.describe("Project ID to analyze. Defaults to runtime context project_id."),
+		projectId: z.string().nullish().describe("Project ID to analyze. Defaults to runtime context project_id."),
 		limit: z.number().int().min(1).max(10).nullish().describe("How many top themes to return. Default 2."),
 		peoplePerTheme: z
 			.number()
@@ -79,6 +75,7 @@ export const fetchTopThemesWithPeopleTool = createTool({
 						personId: z.string(),
 						name: z.string().nullable(),
 						mentionCount: z.number(),
+						url: z.string().nullable(),
 					})
 				),
 			})
@@ -295,6 +292,7 @@ export const fetchTopThemesWithPeopleTool = createTool({
 						personId,
 						name: peopleById.get(personId)?.name ?? null,
 						mentionCount,
+						url: routes ? `${HOST}${routes.people.detail(personId)}` : null,
 					}));
 
 				return {

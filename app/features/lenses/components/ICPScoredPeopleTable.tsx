@@ -42,7 +42,8 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				cell: ({ row }) => (
 					<Link
 						to={routes.people.detail(row.original.person_id)}
-						className="font-medium text-sm hover:underline"
+						className="block truncate font-medium text-sm hover:underline"
+						title={row.original.name}
 						onClick={(e) => e.stopPropagation()}
 					>
 						{row.original.name}
@@ -62,7 +63,11 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 							</span>
 						);
 					}
-					return <span className="text-foreground/70 text-xs">{val}</span>;
+					return (
+						<span className="block truncate text-foreground/70 text-xs" title={val}>
+							{val}
+						</span>
+					);
 				},
 				enableSorting: false,
 			},
@@ -78,7 +83,11 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 							</span>
 						);
 					}
-					return <span className="text-foreground/70 text-xs">{val}</span>;
+					return (
+						<span className="block truncate text-foreground/70 text-xs" title={val}>
+							{val}
+						</span>
+					);
 				},
 				enableSorting: false,
 			},
@@ -103,33 +112,22 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				accessorKey: "score",
 				header: "ICP Score",
 				cell: ({ row }) => {
-					const { score, confidence } = row.original;
+					const { score, confidence, band } = row.original;
 					if (confidence === 0 || score == null) {
 						return <span className="text-muted-foreground text-xs">—</span>;
 					}
-					return <span className="font-medium text-xs tabular-nums">{Math.round(score * 100)}%</span>;
+					return (
+						<span className="inline-flex items-center gap-1.5">
+							<span className="font-medium text-xs tabular-nums">{Math.round(score * 100)}%</span>
+							{band === "HIGH" || band === "MEDIUM" || band === "LOW" ? <BandBadge band={band} /> : null}
+						</span>
+					);
 				},
 				enableSorting: true,
 				sortingFn: (a, b) => {
 					const aScore = a.original.confidence === 0 ? -1 : (a.original.score ?? -1);
 					const bScore = b.original.confidence === 0 ? -1 : (b.original.score ?? -1);
 					return aScore - bScore;
-				},
-			},
-			{
-				id: "status",
-				header: "Status",
-				cell: ({ row }) => <BandBadge band={row.original.band} confidence={row.original.confidence} />,
-				enableSorting: true,
-				sortingFn: (a, b) => {
-					const order: Record<string, number> = {
-						HIGH: 4,
-						MEDIUM: 3,
-						LOW: 2,
-					};
-					const aVal = a.original.band ? (order[a.original.band] ?? 1) : a.original.confidence === 0 ? 0 : 1;
-					const bVal = b.original.band ? (order[b.original.band] ?? 1) : b.original.confidence === 0 ? 0 : 1;
-					return aVal - bVal;
 				},
 			},
 		],
@@ -149,9 +147,37 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 		return null;
 	}
 
+	const headerCellClass = (columnId: string) => {
+		switch (columnId) {
+			case "name":
+				return "w-[28%]";
+			case "title":
+				return "w-[22%]";
+			case "company":
+				return "w-[22%]";
+			case "evidence_count":
+				return "w-[10%]";
+			case "score":
+				return "w-[18%]";
+			default:
+				return "";
+		}
+	};
+
+	const bodyCellClass = (columnId: string) => {
+		switch (columnId) {
+			case "name":
+			case "title":
+			case "company":
+				return "py-1.5 align-middle";
+			default:
+				return "py-1.5 align-middle whitespace-nowrap";
+		}
+	};
+
 	return (
 		<div className="overflow-hidden rounded-lg border bg-background">
-			<Table>
+			<Table className="w-full table-fixed">
 				<TableHeader>
 					{table.getHeaderGroups().map((headerGroup) => (
 						<TableRow key={headerGroup.id}>
@@ -159,7 +185,12 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 								<TableHead
 									key={header.id}
 									onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
-									className={header.column.getCanSort() ? "cursor-pointer select-none text-xs" : "text-xs"}
+									className={[
+										header.column.getCanSort() ? "cursor-pointer select-none text-xs" : "text-xs",
+										headerCellClass(header.column.id),
+									]
+										.filter(Boolean)
+										.join(" ")}
 								>
 									{flexRender(header.column.columnDef.header, header.getContext())}
 									{header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
@@ -176,7 +207,7 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 							onClick={() => onEditPerson(row.original)}
 						>
 							{row.getVisibleCells().map((cell) => (
-								<TableCell key={cell.id} className="py-1.5">
+								<TableCell key={cell.id} className={bodyCellClass(cell.column.id)}>
 									{flexRender(cell.column.columnDef.cell, cell.getContext())}
 								</TableCell>
 							))}

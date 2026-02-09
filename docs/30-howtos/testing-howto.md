@@ -42,16 +42,61 @@ Our testing approach prioritizes **business logic validation** and **database in
 
 - **Target**: Database operations, loaders, actions, complex queries, schema changes, edge functions, job queues, AI/LLM/BAML services
 - **Location**: `app/test/integration/`
-- **Real Database**: Tests run against the production Supabase instance using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from `.env` via `dotenvx`
+- **Real Database**: Tests run against a dedicated non-production Supabase test/staging instance using `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, and (for admin flows) `TEST_SUPABASE_SERVICE_ROLE_KEY` via `dotenvx`
 - **Examples**: Survey response save workflow (`survey-response-save.integration.test.ts`), interview upload, backfill operations
 - **Runtime**: ~500ms per test, focuses on high-risk areas
 - **Pattern**: Each test creates unique test data (UUIDs, timestamped slugs), cleans up in `afterAll`
 
 ## Test Setup
 
+## Staging Test DB Plan (To-Do)
+
+Goal: run integration tests against a dedicated non-production Supabase project.
+
+### Safety Guardrails (must-have)
+
+- Never run integration tests against production.
+- Use a dedicated test/staging project only (separate project ref, separate keys).
+- Keep credentials in CI secrets and local `.env` only (never commit keys).
+- Add a preflight check in integration setup that refuses to run if URL/project ref matches production.
+
+### Environment Variables
+
+- `TEST_SUPABASE_URL` - URL for dedicated test/staging Supabase project
+- `TEST_SUPABASE_ANON_KEY` - anon/publishable key for that project
+- `TEST_SUPABASE_SERVICE_ROLE_KEY` - service role key for that project
+- Optional: `TEST_SUPABASE_PROJECT_REF` for explicit safety checks/logging
+
+### Execution Strategy
+
+1. Unit tests (`test`, `test:agents`) stay hermetic and do not require Supabase env vars.
+2. Integration tests (`test:integration`) use only `TEST_SUPABASE_*` env vars.
+3. Browser/E2E tests run under Playwright only; do not mix into Node Vitest unit runs.
+4. CI deploy gate should continue to require `test:agents`; add a stable test subset gate as confidence grows.
+
+### Near-Term To-Do
+
+1. Split test commands into `test:unit`, `test:browser`, `test:integration`, `test:e2e`.
+2. Update Vitest include/exclude patterns so browser/e2e files are not run by `vitest run`.
+3. Add integration preflight assertions (non-production ref + required env vars).
+4. Add seeded fixtures/reset workflow for integration DB tests.
+5. Make integration workflow conditional on `TEST_SUPABASE_*` secrets in CI.
+
+### Supabase Branch Parity Checklist
+
+If a dev branch is `ACTIVE_HEALTHY` but appears to be missing newer tables/features, verify migration parity explicitly:
+
+1. Check applied migration count/version on branch:
+   - `psql "$TEST_SUPABASE_DB_URL" -Atc "select count(*), max(version) from supabase_migrations.schema_migrations;"`
+2. Compare against local valid migration files (`supabase/migrations/*.sql` with timestamped names).
+3. If branch is behind, push migrations directly to the branch DB URL.
+4. For pooler URLs, disable statement cache to avoid prepared-statement collisions:
+   - append `?statement_cache_capacity=0` (or `&statement_cache_capacity=0`).
+5. Re-check parity before running integration tests.
+
 ### Integration Test Environment
 
-Integration tests use the real Supabase instance (not a local emulator). Environment variables are injected via `dotenvx`:
+Integration tests should use a dedicated Supabase test/staging instance (not production, not local emulator unless explicitly intended). Environment variables are injected via `dotenvx`:
 
 ```bash
 # Run a specific integration test
@@ -61,14 +106,14 @@ dotenvx run -- vitest run app/test/integration/survey-response-save.integration.
 Tests create an admin client directly from env vars and mock only the Supabase client factory so the action under test uses the same connection:
 
 ```typescript
-const adminDb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const adminDb = createClient(process.env.TEST_SUPABASE_URL!, process.env.TEST_SUPABASE_SERVICE_ROLE_KEY!);
 
 vi.mock("~/lib/supabase/client.server", () => ({
   createSupabaseAdminClient: () => adminDb,
 }));
 ```
 
-**Note**: The `testDb` helper in `app/test/utils/testDb.ts` uses `TEST_SUPABASE_URL` which points to a local Supabase instance (`127.0.0.1:54321`). For integration tests against the real database, create the client directly from `SUPABASE_URL` as shown above.
+**Note**: The `testDb` helper in `app/test/utils/testDb.ts` is TEST-only now (`TEST_SUPABASE_URL` + `TEST_SUPABASE_ANON_KEY`) and refuses runs when TEST and default project refs/URLs overlap.
 
 ## Running Tests
 
@@ -84,7 +129,7 @@ pnpm run test
 npm run test:integration
 pnpm run test:integration
 
-# Integration tests with env vars (for tests using real Supabase)
+# Integration tests with env vars (dedicated test/staging Supabase)
 dotenvx run -- vitest run app/test/integration/survey-response-save.integration.test.ts
 
 # All tests (unit + integration)
@@ -374,3 +419,7 @@ describe('Person Resolution - Email Matching', () => {
      })
    })
    ```
+
+
+## Testing branch on supabase & MCP access
+setup 2/8 for codex to create testing environment and automate tests in CI/CD pipeline

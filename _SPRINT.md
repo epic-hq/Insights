@@ -33,32 +33,48 @@ Two parallel tracks. 2 primary goals per track + a Tier 2 list for bugs and quic
 Jot notes here as you work. Close beads with `bd close`. When you ask me to update the sprint, I'll read this + `bv --robot-triage` to refresh everything.
 
 ```
-2/7 
-- building sprint management plan
-- CRM-dogfooding spec
-  
-- Survey script demo recording (crp)
-- QA Interview Upload flow. 
-  - issues: 
+2/7 Work Done
+- built sprint management plan
+- CRM-dogfooding spec & starting to do it
+- Survey script demo recording (crp): Drafted script
+- Fixed QA on Interview Upload flow. 
     - no progress. bc going straight to R2?
+    - open: no thumbnails - Insights-hf26
+- applied biome linting entire 1100 file codebase
+- Desktop app testing & person upsert fixes in APIs
+- 43a agentic orchestration improvements: lower token and tool count to agents
+  - picked up some more optimizations via codex
+
+2/8
+- people-org schema confusion needs to be cleared up. this is impacting facets, ICP functions - no bead or doc yet. Claude analysis https://claude.ai/code/session_01M8nLXmam7dhmxrzpM1oRyw 
+  
+## Yikes: Agent Testing quality 
+
 ```
 
 ## Parking Lot (not this sprint)
 
-- Smarter agent loop / recommendation memory (next sprint)
+- Smarter agent loop / recommendation memory (next sprint) -- ha, kinda doing it now a bit.
 - Actionable insights for ICP (next sprint)
 - Gen-UI component expansion (backlog)
 - Code quality / lint cleanup (backlog)
-- PLG email sequences in Brevo (backlog)
+- PLG email sequences in Brevo (backlog)**NEED at least onboarding**
+
+NEW & RAW TODO:
+- Simple person detail should have a nicer experience. user wants to see pithy udnerstanding of the user and "next steps" field. But data quality is an issue, and nobody likes data entry into CRMs. HMW make this more pleasant and useful?  Solution ideas: Make display of key data more prominent. waste less space by rearranging the layout. have UX expert review it. Offer a Nice "Record updates" via voice widget prominently. Make frequent actions more obvious in the UI. Those would be: update, make a task, send a survey link or meeting request (& copy to email)
+- QA Test Agent responses;
+	- ```
+	  watch out for stock answers
+	  ```
 
 ## BMad Spec Queue
 
 Run each in a **fresh session** (Cmd+N). Output goes to `_bmad-output/`.
 
-| Feature | Command | Context to Load | Status |
-|---------|---------|-----------------|--------|
-| CRM Dogfood MVP | `/bmad-quick-spec` | `docs/90-roadmap/crm-dogfood-kickoff.md` + CRM docs | Queued |
-| Desktop Pipeline Alignment | `/bmad-quick-spec` | `docs/features/desktop-speaker-identification.md` | Queued |
+| Feature                    | Command            | Context to Load                                     | Status                                         |
+| -------------------------- | ------------------ | --------------------------------------------------- | ---------------------------------------------- |
+| CRM Dogfood MVP            | `/bmad-quick-spec` | `docs/90-roadmap/crm-dogfood-kickoff.md` + CRM docs | Queued                                         |
+| Desktop Pipeline Alignment | `/bmad-quick-spec` | `docs/features/desktop-speaker-identification.md`   | Working on people ID. Need to test it. {CODEX} |
 
 ## Completed This Sprint
 

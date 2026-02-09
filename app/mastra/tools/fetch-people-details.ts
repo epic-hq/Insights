@@ -522,7 +522,7 @@ export const fetchPeopleDetailsTool = createTool({
 						contactInfo: person.contact_info as z.infer<typeof contactInfoSchema> | null,
 						primary_email: person.primary_email,
 						primary_phone: person.primary_phone,
-						projectRole: person.role, // Use person.role instead of project_people.role
+						projectRole: null, // DEPRECATED: people.role no longer populated
 						interviewCount: personInterviews.length, // Calculate from actual interviews
 						firstSeenAt: null, // Not available without project_people junction
 						lastSeenAt: null, // Not available without project_people junction

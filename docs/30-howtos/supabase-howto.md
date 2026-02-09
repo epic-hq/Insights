@@ -12,7 +12,7 @@ Certain statements (GRANT) are not handled by `db diff` and [must be run manuall
 Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain extension/permission statements) are not handled by Supabase's declarative schema system or `supabase db diff`. To ensure these changes are applied consistently, follow this process:
 
 1. **Keep all imperative/manual SQL in a single file:**
-   Place a file named `supabase/migrations/imperative.sql` in your repo.
+   Place a file named `supabase/snippets/imperative.sql` in your repo.
 
 2. **What to put in `imperative.sql`:**
    - Any SQL statements that are not picked up by `db diff` (e.g., GRANT, REVOKE, CREATE/ALTER POLICY, extension DDL, etc.).
@@ -24,7 +24,7 @@ Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain ex
    - After running all migrations (`supabase db push` or `supabase migrations up`), always run:
 
      ```
-     psql $DATABASE_URL -f supabase/migrations/imperative.sql
+     psql $DATABASE_URL -f supabase/snippets/imperative.sql
      ```
 
    - This ensures all manual changes are applied to your local or remote DB.
@@ -33,7 +33,7 @@ Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain ex
    - If you move a statement from a schema file to `imperative.sql`, add a comment in the original schema file:
 
      ```
-     -- run manually: see supabase/migrations/imperative.sql
+     -- run manually: see supabase/snippets/imperative.sql
      ```
 
 5. **Version control:**
@@ -52,7 +52,7 @@ Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain ex
 The complete, required declarative loop:
 
 1. Edit `supabase/schemas/*.sql` (or add a new one).
-2. Add/update any non-declarative statements to `supabase/migrations/imperative.sql`
+2. Add/update any non-declarative statements to `supabase/snippets/imperative.sql`
 3. `supabase db diff -f <brief_name>`
 → auto-generates a new file in `supabase/migrations/`
 4. `supabase migrations up`

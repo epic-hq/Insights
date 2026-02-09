@@ -42,7 +42,7 @@ import {
 	unlinkPersonFromOrganization,
 	updateOrganization,
 } from "~/features/organizations/db";
-import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server";
+import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav";
 import { useProjectRoutes } from "~/hooks/useProjectRoutes";
 import { COMPANY_SIZE_RANGES, COMPANY_TYPES, FUNDING_STAGES } from "~/lib/constants/options";
@@ -171,7 +171,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { error: "Person is required" };
 		}
 
-		const role = (formData.get("role") as string | null)?.trim() || null;
+		const jobTitle = (formData.get("role") as string | null)?.trim() || null; // form field still named "role"
 		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null;
 		const notes = (formData.get("notes") as string | null)?.trim() || null;
 
@@ -181,7 +181,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			organizationId,
 			personId,
-			role,
+			jobTitle,
 			relationshipStatus,
 			notes,
 		});
@@ -223,7 +223,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		const { firstname, lastname } = parseFullName(name);
 		const primaryEmail = (formData.get("primary_email") as string | null)?.trim() || null;
 		const title = (formData.get("title") as string | null)?.trim() || null;
-		const role = (formData.get("role") as string | null)?.trim() || null;
+		const orgJobTitle = (formData.get("role") as string | null)?.trim() || null; // form field still named "role"
 		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null;
 		const notes = (formData.get("notes") as string | null)?.trim() || null;
 
@@ -253,7 +253,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 		// If title was provided, sync it to job_function facet
 		if (title) {
-			await syncTitleToJobFunctionFacet({
+			await syncTitleToJobTitleFacet({
 				supabase,
 				personId: newPerson.id,
 				accountId,
@@ -268,7 +268,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			organizationId,
 			personId: newPerson.id,
-			role,
+			jobTitle: orgJobTitle,
 			relationshipStatus,
 			notes,
 		});

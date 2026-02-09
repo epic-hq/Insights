@@ -15,7 +15,7 @@ export const getOrganizations = async ({ supabase, projectId }: ProjectScopedPar
                         *,
                         people_organizations (
                                 id,
-                                role,
+                                job_title,
                                 relationship_status,
                                 is_primary,
                                 person:people (
@@ -39,7 +39,7 @@ export const getOrganizationById = async ({ supabase, projectId, id }: ProjectSc
                         *,
                         people_organizations (
                                 id,
-                                role,
+                                job_title,
                                 relationship_status,
                                 is_primary,
                                 notes,
@@ -91,14 +91,14 @@ export const linkPersonToOrganization = async ({
 	projectId,
 	personId,
 	organizationId,
-	role,
+	jobTitle,
 	relationshipStatus,
 	isPrimary = false,
 	notes,
 }: ProjectScopedParams & {
 	personId: string;
 	organizationId: string;
-	role?: string | null;
+	jobTitle?: string | null;
 	relationshipStatus?: string | null;
 	isPrimary?: boolean;
 	notes?: string | null;
@@ -109,7 +109,7 @@ export const linkPersonToOrganization = async ({
 			project_id: projectId,
 			person_id: personId,
 			organization_id: organizationId,
-			role: role ?? null,
+			job_title: jobTitle ?? null,
 			relationship_status: relationshipStatus ?? null,
 			is_primary: isPrimary,
 			notes: notes ?? null,

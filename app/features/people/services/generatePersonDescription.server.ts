@@ -50,8 +50,7 @@ function buildQuickFacts(person: PersonRecord): string[] {
 	};
 
 	append("Segment", person.segment);
-	append("Title", person.title || person.role);
-	append("Role", person.role && person.role !== person.title ? person.role : null);
+	append("Title", person.title);
 	append("Company", person.company);
 	append("Industry", person.industry);
 	append("Location", person.location);
@@ -189,7 +188,7 @@ function mapPersonToProfile(
 		person_id: person.id,
 		name: person.name ?? null,
 		title: person.title ?? null,
-		role: person.role ?? null,
+		role: null, // DEPRECATED: people.role no longer populated
 		company: person.company ?? null,
 		segment: person.segment ?? null,
 		persona: person.people_personas?.[0]?.personas?.name ?? null,

@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import consola from "consola";
 import { type AccountSettingsMetadata, PLATFORM_DEFAULT_LENS_KEYS } from "~/features/opportunities/stage-config";
 import type { Database } from "~/types/supabase.types";
+import { getImageUrl } from "~/utils/storeImage.server";
 import type { LensTemplate } from "./loadLensAnalyses.server";
 
 // ============================================================================
@@ -240,6 +241,12 @@ export async function loadAnalysisPageData(
 	}));
 
 	const templateMap = new Map(templates.map((t) => [t.template_key, t]));
+
+	// Normalize person avatars:
+	// - Convert R2 keys to presigned URLs for rendering
+	// - Repair legacy "/a/.../images/..." values
+	// - Remove broken image references from DB when assets are missing
+	const normalizedPersonImages = await normalizePersonImageUrls(db, peopleResult.data || []);
 
 	// Build synthesis map (per-lens)
 	const synthesisMap = new Map<string, LensSynthesisSummary>();
@@ -495,7 +502,7 @@ export async function loadAnalysisPageData(
 			lastname: p.lastname,
 			title: p.title,
 			company: p.company,
-			imageUrl: p.image_url,
+			imageUrl: normalizedPersonImages.get(p.id) ?? null,
 			interviewCount: personInterviewCount,
 			surveyResponseCount: surveyCountByPerson.get(p.id) || 0,
 			keyPains: Array.from(pains).slice(0, 5),
@@ -578,4 +585,127 @@ async function loadEnabledLenses(
 	}
 
 	return enabledLenses;
+}
+
+function extractImageKey(rawValue: string): string | null {
+	const trimmed = rawValue.trim();
+	if (!trimmed) return null;
+
+	if (trimmed.startsWith("images/")) return trimmed;
+
+	const marker = "/images/";
+	const markerIndex = trimmed.indexOf(marker);
+	if (markerIndex >= 0) {
+		return trimmed.slice(markerIndex + 1);
+	}
+
+	return null;
+}
+
+function isAbsoluteHttpUrl(value: string): boolean {
+	return /^https?:\/\//i.test(value);
+}
+
+async function resolvePersonImageUrl(
+	rawValue: string | null
+): Promise<{ url: string | null; normalizedKey: string | null; shouldClear: boolean }> {
+	if (!rawValue) {
+		return { url: null, normalizedKey: null, shouldClear: false };
+	}
+
+	const trimmed = rawValue.trim();
+	if (!trimmed) {
+		return { url: null, normalizedKey: null, shouldClear: true };
+	}
+
+	if (isAbsoluteHttpUrl(trimmed)) {
+		return { url: trimmed, normalizedKey: null, shouldClear: false };
+	}
+
+	const key = extractImageKey(trimmed);
+	if (!key) {
+		return { url: null, normalizedKey: null, shouldClear: true };
+	}
+
+	const presigned = getImageUrl(key);
+	if (!presigned) {
+		return { url: null, normalizedKey: key, shouldClear: false };
+	}
+
+	const assetExists = await checkR2ImageExists(presigned);
+	if (assetExists === false) {
+		return { url: null, normalizedKey: key, shouldClear: true };
+	}
+
+	// If existence cannot be confirmed, still return the signed URL for best-effort rendering.
+	return { url: presigned, normalizedKey: key, shouldClear: false };
+}
+
+async function normalizePersonImageUrls(
+	db: SupabaseClient<Database>,
+	people: Array<{ id: string; image_url: string | null }>
+): Promise<Map<string, string | null>> {
+	const imageMap = new Map<string, string | null>();
+	const idsToClear: string[] = [];
+	const keysToRepair: Array<{ id: string; key: string }> = [];
+
+	await Promise.all(
+		people.map(async (person) => {
+			const original = person.image_url;
+			const resolved = await resolvePersonImageUrl(original);
+			imageMap.set(person.id, resolved.url);
+
+			if (!original) return;
+			if (resolved.shouldClear) {
+				idsToClear.push(person.id);
+				return;
+			}
+
+			if (resolved.normalizedKey && original !== resolved.normalizedKey) {
+				keysToRepair.push({ id: person.id, key: resolved.normalizedKey });
+			}
+		})
+	);
+
+	if (idsToClear.length > 0) {
+		const { error } = await db.from("people").update({ image_url: null }).in("id", idsToClear);
+		if (error) {
+			consola.warn("[analysis] Failed to clear broken person image references", error.message);
+		}
+	}
+
+	if (keysToRepair.length > 0) {
+		const repairResults = await Promise.all(
+			keysToRepair.map((repair) =>
+				db.from("people").update({ image_url: repair.key }).eq("id", repair.id).select("id").single()
+			)
+		);
+		const repairFailures = repairResults.filter((result) => result.error);
+		if (repairFailures.length > 0) {
+			consola.warn("[analysis] Failed to repair some legacy person image references", {
+				count: repairFailures.length,
+			});
+		}
+	}
+
+	return imageMap;
+}
+
+async function checkR2ImageExists(presignedUrl: string): Promise<boolean | null> {
+	try {
+		const response = await fetch(presignedUrl, {
+			method: "GET",
+			headers: {
+				Range: "bytes=0-0",
+			},
+		});
+
+		if (response.status === 404) return false;
+		if (response.ok || response.status === 206 || response.status === 304) return true;
+
+		// Non-404 failures can be transient (network, auth edge cases, etc).
+		return null;
+	} catch {
+		return null;
+	}
 }

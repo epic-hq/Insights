@@ -5,6 +5,7 @@ import { Agent } from "@mastra/core/agent";
 import { TokenLimiterProcessor } from "@mastra/core/processors";
 import consola from "consola";
 import { openai } from "../../lib/billing/instrumented-openai.server";
+import { generateProjectRoutesTool } from "../tools/generate-project-routes";
 import { manageAnnotationsTool } from "../tools/manage-annotations";
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities";
 import { researchOrganizationTool } from "../tools/research-organization";
@@ -40,6 +41,11 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 - Use researchOrganization when user requests company research or enrichment.
 - Prefer internal evidence first; use external research only when needed.
 
+# Linking & Navigation
+- When referencing opportunities or organizations, format as \`[Name](url)\` markdown link.
+- Tools may return \`url\` fields — use them directly.
+- For entities without tool URLs, call generateProjectRoutes with entityType (opportunity, organization) and the entityId.
+
 # Context
 - Account: ${accountId}
 - Project: ${projectId}
@@ -57,6 +63,7 @@ If the request is about interviews, surveys, people, tasks, or documents, return
 		updateOpportunity: updateOpportunityTool,
 		researchOrganization: researchOrganizationTool,
 		manageAnnotations: manageAnnotationsTool,
+		generateProjectRoutes: generateProjectRoutesTool,
 	}),
 	outputProcessors: [new TokenLimiterProcessor(20_000)],
 });

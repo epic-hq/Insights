@@ -13,8 +13,8 @@ import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache";
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals";
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context";
 import { fetchSegmentsTool } from "../tools/fetch-segments";
-import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { fetchThemesTool } from "../tools/fetch-themes";
+import { fetchTopThemesWithPeopleTool } from "../tools/fetch-top-themes-with-people";
 import { fetchWebContentTool } from "../tools/fetch-web-content";
 import { generateDocumentLinkTool } from "../tools/generate-document-link";
 import { generateProjectRoutesTool } from "../tools/generate-project-routes";
@@ -214,6 +214,7 @@ Call "getCurrentDate" first for any date/time questions.
 
 **Understanding People & Segments**:
 - People requests are handled by the PeopleAgent sub-agent (search, updates, org links, deletes)
+- For comparison questions about specific people (e.g., "what do X and Y have in common?", "how are these contacts different?"), delegate to PeopleAgent first, then synthesize concise findings.
 - "fetchSegments" for bullseye scores showing which segments are most likely to buy
 
 **ICP Match Data**:
@@ -329,11 +330,11 @@ Call "getCurrentDate" first for any date/time questions.
 
 ## Linking & Navigation (CRITICAL)
 **ALWAYS include clickable links when you reference ANY record** - People, Insights, Interviews, Opportunities, Organizations, Themes, Evidence.
-- Call "generateProjectRoutes" with the record type and ID to get the URL
-- Format as markdown link: **[Record Name](url)** so users can click to view details
-- Example: "**[Jane Smith](/a/{accountId}/{projectId}/people/{personId})** mentioned budget concerns in her interview"
-- This applies to EVERY mention of a record in your response - never just reference by name without a link
-- If you're citing evidence, link to both the person AND the interview/evidence source
+1. **Use tool-returned URLs first**: Tools like fetchEvidence, fetchTopThemesWithPeople, and fetchPeopleDetails return "url", "interviewUrl", "personUrl" fields — use these directly in markdown links without extra tool calls.
+2. **Fallback**: For entities without tool URLs, call "generateProjectRoutes" with entityType (person, theme, evidence, interview, organization, opportunity, survey, persona, segment) and entityId.
+3. Format as markdown link: **[Record Name](url)** so users can click to view details
+4. This applies to EVERY mention of a record in your response - never just reference by name without a link
+5. If you're citing evidence, link to both the person AND the interview/evidence source
 
 Call "navigateToPage" to proactively open relevant screens when users ask to view something.
 

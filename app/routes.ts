@@ -133,9 +133,10 @@ const routes = [
 				// Mentionable users API for @mentions (needs project context)
 				route("api/mentionable-users", "./routes/api/mentionable-users.ts"),
 
-				// ICP scoring API (project-scoped)
+				// ICP scoring & enrichment API (project-scoped)
 				route("api/score-icp-matches", "./routes/api.score-icp-matches.tsx"),
 				route("api/icp-criteria", "./routes/api.icp-criteria.tsx"),
+				route("api/enrich-people", "./routes/api.enrich-people.tsx"),
 
 				// Realtime interviews APIs (project-scoped)
 				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),

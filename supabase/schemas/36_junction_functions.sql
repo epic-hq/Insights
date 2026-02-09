@@ -209,11 +209,11 @@ CREATE TRIGGER trigger_auto_link_persona_insights_on_insert
     FOR EACH ROW EXECUTE FUNCTION trigger_auto_link_persona_insights();
 
 -- Grant permissions
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT EXECUTE ON FUNCTION sync_insight_tags(UUID, TEXT[], UUID) TO authenticated;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT EXECUTE ON FUNCTION sync_opportunity_insights(UUID, UUID[]) TO authenticated;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT EXECUTE ON FUNCTION update_project_people_stats(UUID, UUID) TO authenticated;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT EXECUTE ON FUNCTION auto_link_persona_insights(UUID) TO authenticated;

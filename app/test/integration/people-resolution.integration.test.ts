@@ -3,16 +3,26 @@
  * Tests email matching, platform ID matching, name+company fuzzy matching, and idempotency
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "~/../supabase/types";
 import { type PersonResolutionInput, resolveOrCreatePerson } from "~/lib/people/resolution.server";
-import { TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server";
 
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"];
 
 describe("resolveOrCreatePerson", () => {
-	const supabase = testDb;
-	const TEST_PROJECT_ID = "test-project-" + crypto.randomUUID();
+	const supabase = createSupabaseAdminClient();
+	let testAccountId = "";
+	let testProjectId = "";
+
+	beforeAll(async () => {
+		const { data: scope, error } = await supabase.from("projects").select("id, account_id").limit(1).single();
+		if (error || !scope) {
+			throw new Error(`Failed to discover project scope for people-resolution tests: ${error?.message || "none"}`);
+		}
+		testAccountId = scope.account_id;
+		testProjectId = scope.id;
+	});
 
 	// Track created people for cleanup
 	const createdPeopleIds: string[] = [];
@@ -29,15 +39,31 @@ describe("resolveOrCreatePerson", () => {
 		}
 	});
 
+	function splitName(name: string): { firstname: string | null; lastname: string | null } {
+		const parts = name
+			.trim()
+			.split(" ")
+			.map((part) => part.trim())
+			.filter(Boolean);
+		if (parts.length === 0) return { firstname: null, lastname: null };
+		return {
+			firstname: parts[0] || null,
+			lastname: parts.length > 1 ? parts.slice(1).join(" ") : null,
+		};
+	}
+
 	async function createPerson(payload: Partial<PeopleInsert>): Promise<{ id: string; name: string | null }> {
+		const { name, firstname, lastname, ...rest } = payload;
+		const derivedName = splitName(name || "Test Person");
 		const { data, error } = await supabase
 			.from("people")
 			.insert({
-				account_id: TEST_ACCOUNT_ID,
-				project_id: TEST_PROJECT_ID,
-				name: "Test Person",
-				company: "",
-				...payload,
+				account_id: testAccountId,
+				project_id: testProjectId,
+				company: payload.company ?? `test-${crypto.randomUUID().slice(0, 8)}`,
+				firstname: firstname ?? derivedName.firstname,
+				lastname: lastname ?? derivedName.lastname,
+				...rest,
 			})
 			.select("id, name")
 			.single();
@@ -54,7 +80,7 @@ describe("resolveOrCreatePerson", () => {
 				primary_email: "john@example.com",
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "J. Smith", // Different name
 				primary_email: "john@example.com",
 				source: "desktop_meeting",
@@ -71,7 +97,7 @@ describe("resolveOrCreatePerson", () => {
 				primary_email: "jane@example.com",
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Jane Doe",
 				primary_email: "JANE@EXAMPLE.COM", // Different case
 				source: "desktop_meeting",
@@ -87,7 +113,7 @@ describe("resolveOrCreatePerson", () => {
 				primary_email: "test@example.com",
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Test Person",
 				// No email provided
 				source: "desktop_meeting",
@@ -106,7 +132,7 @@ describe("resolveOrCreatePerson", () => {
 				contact_info: { zoom: { user_id: "zoom-12345" } },
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Jane D", // Abbreviated in second meeting
 				platform: "zoom",
 				platform_user_id: "zoom-12345",
@@ -128,7 +154,7 @@ describe("resolveOrCreatePerson", () => {
 				contact_info: { zoom: { user_id: "zoom-99999" } },
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Test Person",
 				primary_email: "priority@example.com", // Should match this
 				platform: "zoom",
@@ -146,7 +172,7 @@ describe("resolveOrCreatePerson", () => {
 				contact_info: { zoom: { user_id: "zoom-12345" } },
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Platform Person",
 				// No platform data
 				source: "desktop_meeting",
@@ -164,7 +190,7 @@ describe("resolveOrCreatePerson", () => {
 				company: "Acme Corp",
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Alice Johnson",
 				company: "Acme Corp",
 				source: "baml_extraction",
@@ -180,7 +206,7 @@ describe("resolveOrCreatePerson", () => {
 				company: "",
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Bob Smith",
 				source: "desktop_meeting",
 			});
@@ -195,7 +221,7 @@ describe("resolveOrCreatePerson", () => {
 				company: "Test Inc",
 			});
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "charlie brown", // lowercase
 				company: "Test Inc",
 				source: "desktop_meeting",
@@ -208,7 +234,7 @@ describe("resolveOrCreatePerson", () => {
 
 	describe("person creation", () => {
 		it("should create new person when no match", async () => {
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "New Person",
 				primary_email: "new@example.com",
 				source: "desktop_meeting",
@@ -222,20 +248,26 @@ describe("resolveOrCreatePerson", () => {
 		});
 
 		it("should create person with full data including platform ID", async () => {
+			const uniqueToken = crypto.randomUUID().slice(0, 8);
+			const uniqueEmail = `rick-${uniqueToken}@example.com`;
+			const uniqueFirstName = `Rick${uniqueToken}`;
+			const uniqueLastName = `Moy${uniqueToken}`;
+			const uniqueCompany = `Acme ${uniqueToken}`;
+			const uniquePlatformUserId = `zoom-${uniqueToken}`;
 			const input: PersonResolutionInput = {
-				firstname: "Rick",
-				lastname: "Moy",
-				primary_email: "rick@example.com",
-				company: "Acme Corp",
+				firstname: uniqueFirstName,
+				lastname: uniqueLastName,
+				primary_email: uniqueEmail,
+				company: uniqueCompany,
 				title: "CEO",
 				role: "interviewer",
 				platform: "zoom",
-				platform_user_id: "zoom-abc123",
+				platform_user_id: uniquePlatformUserId,
 				person_type: "internal",
 				source: "desktop_meeting",
 			};
 
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, input);
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, input);
 
 			expect(result.person.created).toBe(true);
 			expect(result.matchedBy).toBe("created");
@@ -243,21 +275,21 @@ describe("resolveOrCreatePerson", () => {
 			// Verify stored data
 			const { data: stored } = await supabase.from("people").select("*").eq("id", result.person.id).single();
 
-			expect(stored?.firstname).toBe("Rick");
-			expect(stored?.lastname).toBe("Moy");
-			expect(stored?.primary_email).toBe("rick@example.com");
-			expect(stored?.company).toBe("Acme Corp");
+			expect(stored?.firstname).toBe(uniqueFirstName);
+			expect(stored?.lastname).toBe(uniqueLastName);
+			expect(stored?.primary_email).toBe(uniqueEmail);
+			expect(stored?.company).toBe(uniqueCompany.toLowerCase());
 			expect(stored?.title).toBe("CEO");
 			expect(stored?.person_type).toBe("internal");
 			expect(stored?.contact_info).toEqual({
-				zoom: { user_id: "zoom-abc123" },
+				zoom: { user_id: uniquePlatformUserId },
 			});
 
 			createdPeopleIds.push(result.person.id);
 		});
 
 		it("should construct name from firstname and lastname", async () => {
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				firstname: "John",
 				lastname: "Doe",
 				source: "desktop_meeting",
@@ -268,7 +300,7 @@ describe("resolveOrCreatePerson", () => {
 		});
 
 		it("should use name field when firstname/lastname not provided", async () => {
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Single Name Person",
 				source: "baml_extraction",
 			});
@@ -288,9 +320,9 @@ describe("resolveOrCreatePerson", () => {
 
 			// Simulate 3 simultaneous requests
 			const results = await Promise.allSettled([
-				resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, input),
-				resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, input),
-				resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, input),
+				resolveOrCreatePerson(supabase, testAccountId, testProjectId, input),
+				resolveOrCreatePerson(supabase, testAccountId, testProjectId, input),
+				resolveOrCreatePerson(supabase, testAccountId, testProjectId, input),
 			]);
 
 			expect(results.every((r) => r.status === "fulfilled")).toBe(true);
@@ -312,12 +344,12 @@ describe("resolveOrCreatePerson", () => {
 			};
 
 			// First call
-			const result1 = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, input);
+			const result1 = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, input);
 			expect(result1.person.created).toBe(true);
 			expect(result1.matchedBy).toBe("created");
 
 			// Second call (retry scenario)
-			const result2 = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, input);
+			const result2 = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, input);
 			expect(result2.person.id).toBe(result1.person.id);
 			expect(result2.person.created).toBe(false);
 			expect(result2.matchedBy).toBe("email");
@@ -337,7 +369,7 @@ describe("resolveOrCreatePerson", () => {
 			});
 
 			// Test 1: Email match (highest)
-			const emailResult = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const emailResult = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Different Name",
 				primary_email: "priority@example.com",
 				source: "desktop_meeting",
@@ -346,7 +378,7 @@ describe("resolveOrCreatePerson", () => {
 			expect(emailResult.matchedBy).toBe("email");
 
 			// Test 2: Platform ID match (no email)
-			const platformResult = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const platformResult = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Different Name",
 				platform: "zoom",
 				platform_user_id: "zoom-priority",
@@ -356,7 +388,7 @@ describe("resolveOrCreatePerson", () => {
 			expect(platformResult.matchedBy).toBe("platform_id");
 
 			// Test 3: Name+company match (no email or platform)
-			const nameResult = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const nameResult = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Priority Test",
 				company: "Test Corp",
 				source: "baml_extraction",
@@ -368,7 +400,7 @@ describe("resolveOrCreatePerson", () => {
 
 	describe("edge cases", () => {
 		it("should handle missing name gracefully", async () => {
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				primary_email: "noname@example.com",
 				source: "desktop_meeting",
 			});
@@ -378,7 +410,7 @@ describe("resolveOrCreatePerson", () => {
 		});
 
 		it("should handle whitespace in names", async () => {
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				firstname: "  John  ",
 				lastname: "  Doe  ",
 				source: "desktop_meeting",
@@ -389,7 +421,7 @@ describe("resolveOrCreatePerson", () => {
 		});
 
 		it("should handle null/undefined values", async () => {
-			const result = await resolveOrCreatePerson(supabase, TEST_ACCOUNT_ID, TEST_PROJECT_ID, {
+			const result = await resolveOrCreatePerson(supabase, testAccountId, testProjectId, {
 				name: "Minimal Person",
 				primary_email: undefined,
 				company: undefined,

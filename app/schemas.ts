@@ -138,9 +138,12 @@ export const evidenceDetailSchema = z.object({
 	interviewDate: z.string().nullable(),
 	interviewStatus: z.string().nullable(),
 	personName: z.string().nullable(),
+	personId: nullableString,
 	personRole: z.string().nullable(),
 	insightCount: z.number().nullable(),
 	url: nullableString,
+	interviewUrl: nullableString,
+	personUrl: nullableString,
 });
 
 // Project goals schema (used by fetch-project-goals tool)

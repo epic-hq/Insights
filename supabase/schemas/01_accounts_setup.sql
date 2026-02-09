@@ -25,9 +25,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC REVOKE EXECUTE ON FUNCTIONS FROM anon,
 
 -- Create accounts schema
 CREATE SCHEMA IF NOT EXISTS accounts;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT USAGE ON SCHEMA accounts to authenticated;
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT USAGE ON SCHEMA accounts to service_role;
 
 /**
@@ -92,11 +92,11 @@ INSERT INTO accounts.config (enable_team_accounts, enable_personal_account_billi
 VALUES (true, true, true);
 
 -- enable select on the config table
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 GRANT SELECT ON accounts.config TO authenticated, service_role;
 
 -- enable RLS on config
--- run manually: see supabase/migrations/imperative.sql
+-- run manually: see supabase/snippets/imperative.sql
 ALTER TABLE accounts.config
     ENABLE ROW LEVEL SECURITY;
 

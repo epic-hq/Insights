@@ -65,6 +65,13 @@ type InterviewPeopleRow = Database["public"]["Tables"]["interview_people"]["Row"
 		"id" | "title" | "interview_date" | "status"
 	> | null;
 };
+type IcpScoreRow = Pick<
+	Database["public"]["Tables"]["person_scale"]["Row"],
+	"person_id" | "score" | "band" | "confidence"
+>;
+type ProjectPeopleSummaryRow = Pick<Database["public"]["Tables"]["project_people"]["Row"], "person_id"> & {
+	person?: Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company"> | null;
+};
 
 function normalizeDate(value: unknown) {
 	if (!value) return null;
@@ -851,19 +858,23 @@ export const fetchProjectStatusContextTool = createTool({
 					const personIds = peopleRows
 						.map((row) => row.person?.id ?? row.person_id)
 						.filter((id): id is string => Boolean(id));
+					const personIdSet = new Set(personIds);
 
-					// Fetch ICP scores for all people in one query
-					const { data: icpScores } =
-						personIds.length > 0
-							? await supabase
-									.from("person_scale")
-									.select("person_id, score, band, confidence")
-									.eq("project_id", projectId)
-									.eq("kind_slug", "icp_match")
-									.in("person_id", personIds)
-							: { data: null };
+					// Fetch all ICP scores in project for consistent person-level and summary-level calculations.
+					const { data: allIcpScores, error: allIcpScoresError } = await supabase
+						.from("person_scale")
+						.select("person_id, score, band, confidence")
+						.eq("project_id", projectId)
+						.eq("kind_slug", "icp_match");
+					if (allIcpScoresError) {
+						consola.warn("fetch-project-status-context: failed to load person_scale rows", allIcpScoresError);
+					}
 
-					const icpByPerson = new Map((icpScores ?? []).map((s) => [s.person_id, s]));
+					const icpByPerson = new Map(
+						((allIcpScores as IcpScoreRow[] | null) ?? [])
+							.filter((score) => score.person_id && personIdSet.has(score.person_id))
+							.map((score) => [score.person_id, score])
+					);
 
 					const interviewPeopleMap = new Map<string, InterviewPeopleRow[]>();
 					const interviewIds = new Set<string>();
@@ -1014,16 +1025,48 @@ export const fetchProjectStatusContextTool = createTool({
 
 					data.people = serialized;
 
-					// Build ICP summary for the people scope
-					const missingDataCount = serialized.filter((p) => !p.title || !p.company).length;
+					// Build ICP summary from full project people, not the limited/filtered people payload.
+					const { data: summaryPeopleRows, error: summaryPeopleError } = await supabase
+						.from("project_people")
+						.select("person_id, person:person_id(id, title, company)")
+						.eq("project_id", projectId);
+					if (summaryPeopleError) {
+						consola.warn("fetch-project-status-context: failed to load full people summary scope", summaryPeopleError);
+					}
+					const summaryPeople = (summaryPeopleRows as ProjectPeopleSummaryRow[] | null) ?? [];
+					const summaryPersonIds = Array.from(
+						new Set(
+							summaryPeople.map((row) => row.person?.id ?? row.person_id).filter((id): id is string => Boolean(id))
+						)
+					);
+					const summaryPersonIdSet = new Set(summaryPersonIds);
+					const uniqueScoredPeople = new Set<string>();
+					const distribution = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+
+					for (const score of (allIcpScores as IcpScoreRow[] | null) ?? []) {
+						if (!score.person_id || !summaryPersonIdSet.has(score.person_id)) continue;
+						if (uniqueScoredPeople.has(score.person_id)) continue;
+						uniqueScoredPeople.add(score.person_id);
+						if (score.band === "HIGH") distribution.HIGH += 1;
+						else if (score.band === "MEDIUM") distribution.MEDIUM += 1;
+						else if (score.band === "LOW") distribution.LOW += 1;
+					}
+
+					const missingDataCount = summaryPeople.filter((person) => {
+						const title = person.person?.title;
+						const company = person.person?.company;
+						return !title || !company;
+					}).length;
+					const scored = uniqueScoredPeople.size;
+					const total = summaryPersonIds.length;
 					data.icpSummary = {
-						scored: icpScores?.length ?? 0,
-						total: personIds.length,
+						scored,
+						total,
 						distribution: {
-							HIGH: icpScores?.filter((s) => s.band === "HIGH").length ?? 0,
-							MEDIUM: icpScores?.filter((s) => s.band === "MEDIUM").length ?? 0,
-							LOW: icpScores?.filter((s) => s.band === "LOW").length ?? 0,
-							unscored: personIds.length - (icpScores?.length ?? 0),
+							HIGH: distribution.HIGH,
+							MEDIUM: distribution.MEDIUM,
+							LOW: distribution.LOW,
+							unscored: Math.max(total - scored, 0),
 						},
 						missingDataCount,
 					};

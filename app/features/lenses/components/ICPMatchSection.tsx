@@ -6,7 +6,7 @@
  * Shows data quality warnings when people records are missing fields.
  */
 
-import { AlertTriangle, Pencil, Target } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil, Sparkles, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useRevalidator } from "react-router";
 import { toast } from "sonner";
@@ -102,6 +102,7 @@ export function ICPMatchSection({
 }: ICPMatchSectionProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isScoring, setIsScoring] = useState(false);
+	const [isEnriching, setIsEnriching] = useState(false);
 	const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
 	const revalidator = useRevalidator();
 
@@ -176,6 +177,33 @@ export function ICPMatchSection({
 			toast.error("Failed to start ICP scoring");
 		} finally {
 			setIsScoring(false);
+		}
+	};
+
+	const handleEnrichPeople = async () => {
+		setIsEnriching(true);
+		try {
+			const res = await fetch(`/a/${accountId}/${projectId}/api/enrich-people`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ projectId, rescore: true }),
+			});
+			const data = await res.json();
+			if (data.success) {
+				toast.success("Enrichment started", {
+					description: "Researching people with missing data. Scores will auto-update when done.",
+				});
+				// Poll for completion - revalidate after a delay
+				setTimeout(() => revalidator.revalidate(), 8000);
+				setTimeout(() => revalidator.revalidate(), 20000);
+			} else {
+				toast.error(data.error || "Failed to start enrichment");
+			}
+		} catch (error) {
+			console.error("Failed to trigger enrichment:", error);
+			toast.error("Failed to start enrichment");
+		} finally {
+			setIsEnriching(false);
 		}
 	};
 
@@ -294,7 +322,7 @@ export function ICPMatchSection({
 					{hasDataQualityIssues && (
 						<div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50/50 p-3 dark:border-yellow-800/50 dark:bg-yellow-950/20">
 							<AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
-							<div className="text-xs">
+							<div className="flex-1 text-xs">
 								<p className="font-medium text-yellow-800 dark:text-yellow-300">
 									Scoring accuracy limited by missing data
 								</p>
@@ -309,9 +337,22 @@ export function ICPMatchSection({
 											{missingCompany}/{dataQuality.totalPeople} missing company.{" "}
 										</span>
 									)}
-									Edit people below to fill in missing data.
 								</p>
 							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleEnrichPeople}
+								disabled={isEnriching}
+								className="shrink-0 border-yellow-300 text-yellow-800 hover:bg-yellow-100 dark:border-yellow-700 dark:text-yellow-300 dark:hover:bg-yellow-950/40"
+							>
+								{isEnriching ? (
+									<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+								) : (
+									<Sparkles className="mr-1.5 h-3.5 w-3.5" />
+								)}
+								{isEnriching ? "Enriching..." : "Enrich Data"}
+							</Button>
 						</div>
 					)}
 

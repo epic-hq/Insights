@@ -262,11 +262,13 @@ describe("fetchProjectStatusContextTool", () => {
 					return builder;
 				}
 				case "person_scale": {
-					const builder: any = {};
-					builder.select = () => builder;
-					builder.eq = () => builder;
-					builder.in = () => Promise.resolve({ data: [], error: null });
-					return builder;
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => Promise.resolve({ data: [], error: null }),
+							}),
+						}),
+					};
 				}
 				default:
 					throw new Error(`Unexpected table ${table}`);
@@ -288,6 +290,149 @@ describe("fetchProjectStatusContextTool", () => {
 		expect(person?.name).toBe("Jane Doe");
 		expect(person?.evidence?.[0]?.verbatim).toBe("The onboarding flow takes me 3 tries every time.");
 		expect(person?.interviews?.[0]?.title).toBe("Kickoff Interview");
+	});
+
+	it("computes icpSummary using all project people, not only the limited people payload", async () => {
+		const now = new Date().toISOString();
+		const limitedPeopleRows = [
+			{
+				id: "pp-1",
+				person_id: "person-1",
+				role: "Buyer",
+				interview_count: 8,
+				first_seen_at: now,
+				last_seen_at: now,
+				created_at: now,
+				updated_at: now,
+				person: {
+					id: "person-1",
+					name: "Alice",
+					segment: null,
+					role: "Founder",
+					title: "Founder",
+					company: "Acme",
+					description: null,
+					location: null,
+					image_url: null,
+					contact_info: null,
+					people_personas: [],
+				},
+			},
+			{
+				id: "pp-2",
+				person_id: "person-2",
+				role: "Buyer",
+				interview_count: 7,
+				first_seen_at: now,
+				last_seen_at: now,
+				created_at: now,
+				updated_at: now,
+				person: {
+					id: "person-2",
+					name: "Bob",
+					segment: null,
+					role: "Operator",
+					title: null,
+					company: "BetaCo",
+					description: null,
+					location: null,
+					image_url: null,
+					contact_info: null,
+					people_personas: [],
+				},
+			},
+		];
+		const summaryPeopleRows = [
+			{ person_id: "person-1", person: { id: "person-1", title: "Founder", company: "Acme" } },
+			{ person_id: "person-2", person: { id: "person-2", title: null, company: "BetaCo" } },
+			{ person_id: "person-3", person: { id: "person-3", title: "Consultant", company: null } },
+			{ person_id: "person-4", person: { id: "person-4", title: null, company: null } },
+		];
+		const icpScores = [
+			{ person_id: "person-1", score: 0.92, band: "HIGH", confidence: 0.9 },
+			{ person_id: "person-3", score: 0.44, band: "LOW", confidence: 0.8 },
+			{ person_id: "person-x", score: 0.8, band: "HIGH", confidence: 0.6 },
+		];
+
+		mockSupabase.from.mockImplementation((table: string) => {
+			switch (table) {
+				case "projects":
+					return {
+						select: () => ({
+							eq: () => ({
+								maybeSingle: () =>
+									Promise.resolve({
+										data: {
+											id: "project-123",
+											account_id: "account-123",
+											name: "Test Project",
+											description: null,
+											created_at: now,
+											updated_at: now,
+										},
+										error: null,
+									}),
+							}),
+						}),
+					};
+				case "project_people":
+					return {
+						select: (columns: string) => {
+							if (columns.includes("interview_count")) {
+								const builder: any = {};
+								builder.eq = () => builder;
+								builder.order = () => ({
+									limit: () => Promise.resolve({ data: limitedPeopleRows, error: null }),
+								});
+								return builder;
+							}
+							return {
+								eq: () => Promise.resolve({ data: summaryPeopleRows, error: null }),
+							};
+						},
+					};
+				case "interview_people": {
+					const builder: any = {};
+					builder.select = () => builder;
+					builder.eq = () => builder;
+					builder.in = () => builder;
+					builder.order = () => Promise.resolve({ data: [], error: null });
+					return builder;
+				}
+				case "person_scale":
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => Promise.resolve({ data: icpScores, error: null }),
+							}),
+						}),
+					};
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+
+		const requestContext = new RequestContext();
+		requestContext.set("account_id", "account-123");
+
+		const result = (await fetchProjectStatusContextTool.execute(
+			{ projectId: "project-123", scopes: ["people"], peopleLimit: 2 },
+			{ requestContext }
+		)) as ToolResult;
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.people).toHaveLength(2);
+		expect((result.data as any)?.icpSummary).toEqual({
+			scored: 2,
+			total: 4,
+			distribution: {
+				HIGH: 1,
+				MEDIUM: 0,
+				LOW: 1,
+				unscored: 2,
+			},
+			missingDataCount: 3,
+		});
 	});
 
 	it("defaults to lean scopes (status + sections) when scopes are omitted", async () => {

@@ -59,6 +59,7 @@ export function EditPersonDataSheet({
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 	const [orgSearch, setOrgSearch] = useState("");
 	const [orgPopoverOpen, setOrgPopoverOpen] = useState(false);
+	const [newOrgName, setNewOrgName] = useState<string | null>(null);
 	const [industry, setIndustry] = useState("");
 	const [sizeRange, setSizeRange] = useState("");
 
@@ -72,16 +73,18 @@ export function EditPersonDataSheet({
 			setIndustry(person.org_industry || "");
 			setSizeRange(person.org_size_range || "");
 			setOrgSearch("");
+			setNewOrgName(null);
 		}
 	}, [person]);
 
 	// All hooks must be called before any early return (React rules of hooks)
 	const selectedOrgName = useMemo(() => {
 		if (!person) return null;
+		if (newOrgName) return newOrgName;
 		if (!selectedOrgId) return person.company || null;
 		const org = organizations.find((o) => o.id === selectedOrgId);
 		return org?.name || person.org_name || null;
-	}, [selectedOrgId, organizations, person]);
+	}, [selectedOrgId, organizations, person, newOrgName]);
 
 	const filteredOrgs = useMemo(() => {
 		if (!orgSearch) return organizations;
@@ -95,17 +98,14 @@ export function EditPersonDataSheet({
 
 	const handleSelectOrg = (orgId: string) => {
 		setSelectedOrgId(orgId);
-		const org = organizations.find((o) => o.id === orgId);
-		if (org) {
-			// Pre-fill company name from org
-		}
+		setNewOrgName(null);
 		setOrgPopoverOpen(false);
 		setOrgSearch("");
 	};
 
 	const handleCreateOrg = () => {
 		if (!orgSearch.trim()) return;
-		// Will be handled during save — we pass newOrganizationName
+		setNewOrgName(orgSearch.trim());
 		setSelectedOrgId(null);
 		setOrgPopoverOpen(false);
 	};
@@ -150,7 +150,8 @@ export function EditPersonDataSheet({
 
 			// 2. Organization link change
 			const orgChanged = selectedOrgId !== person.default_organization_id;
-			const isNewOrg = !selectedOrgId && orgSearch.trim() && orgSearch.trim() !== (person.company || "");
+			const isNewOrg = !!newOrgName;
+			let createdOrgId: string | undefined;
 
 			if (orgChanged && selectedOrgId) {
 				const res = await fetch(updateEndpoint, {
@@ -174,7 +175,7 @@ export function EditPersonDataSheet({
 					body: JSON.stringify({
 						personId: person.person_id,
 						field: "organization",
-						newOrganizationName: orgSearch.trim(),
+						newOrganizationName: newOrgName,
 						value: "",
 					}),
 				});
@@ -182,10 +183,12 @@ export function EditPersonDataSheet({
 					const data = await res.json();
 					throw new Error(data.error || "Failed to create organization");
 				}
+				const result = await res.json();
+				createdOrgId = result.organizationId;
 			}
 
 			// 3. Org field updates (industry, size_range) — only if we have an org linked
-			const targetOrgId = selectedOrgId || person.default_organization_id;
+			const targetOrgId = createdOrgId || selectedOrgId || person.default_organization_id;
 			if (targetOrgId) {
 				if ((industry || "") !== (person.org_industry || "")) {
 					const res = await fetch(updateEndpoint, {

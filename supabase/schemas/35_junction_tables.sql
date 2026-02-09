@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS project_people (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     person_id UUID NOT NULL REFERENCES people(id) ON DELETE CASCADE,
-    role TEXT, -- e.g., 'primary_user', 'stakeholder', 'expert'
+    relationship_type TEXT, -- e.g., 'primary_user', 'stakeholder', 'expert'
     first_seen_at TIMESTAMPTZ DEFAULT NOW(),
     last_seen_at TIMESTAMPTZ DEFAULT NOW(),
     interview_count INTEGER DEFAULT 0,

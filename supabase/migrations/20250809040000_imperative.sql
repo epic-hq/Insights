@@ -1,7 +1,7 @@
 -- ===================================================================
 -- IMPERATIVE MIGRATIONS: Statements not handled by supabase db diff
 -- Run this file manually after applying all declarative migrations:
---   psql $DATABASE_URL -f supabase/migrations/imperative.sql
+--   psql $DATABASE_URL -f supabase/snippets/imperative.sql
 -- ===================================================================
 
 -- =============================================================================

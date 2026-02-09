@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb";
+import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, TEST_PROJECT_ID, testDb } from "~/test/utils/testDb";
 
 /**
- * Integration tests for persona-insight relationships and junction tables
- * This test should have caught the `pe.persona` column error
+ * Integration tests for persona-insight relationships against normalized schema.
+ * Uses people_personas junction (not people.persona_id).
  */
 describe("Persona-Insight Integration Tests", () => {
 	beforeEach(async () => {
@@ -11,185 +11,166 @@ describe("Persona-Insight Integration Tests", () => {
 		await seedTestData();
 	});
 
-	it("should create persona-insight relationships when insights are created", async () => {
-		// Use direct testDb client with basic primitives
+	it("should create persona-insight relationships when a linked person has a persona", async () => {
 		const supabase = testDb;
 
-		// 1. Create a person with a persona
-		const { data: persona } = await supabase
+		const interviewId = crypto.randomUUID();
+
+		const { data: persona, error: personaError } = await supabase
 			.from("personas")
 			.insert({
 				name: "Tech-Savvy User",
 				description: "Users who are comfortable with technology",
 				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
 			})
 			.select()
 			.single();
-
+		expect(personaError).toBeNull();
 		expect(persona).toBeTruthy();
 
-		const { data: person } = await supabase
+		const { data: person, error: personError } = await supabase
 			.from("people")
 			.insert({
 				firstname: "John",
 				lastname: "Doe",
-				persona_id: persona.id,
 				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
 			})
 			.select()
 			.single();
-
+		expect(personError).toBeNull();
 		expect(person).toBeTruthy();
-		expect(person.persona_id).toBe(persona.id);
 
-		// 2. Create an interview
-		const { data: interview } = await supabase
-			.from("interviews")
-			.insert({
-				title: "User Research Session",
-				account_id: TEST_ACCOUNT_ID,
-			})
-			.select()
-			.single();
-
-		expect(interview).toBeTruthy();
-
-		// 3. Link person to interview
-		await supabase.from("interview_people").insert({
-			interview_id: interview.id,
-			person_id: person.id,
+		const { error: interviewError } = await supabase.from("interviews").insert({
+			id: interviewId,
+			title: "User Research Session",
 			account_id: TEST_ACCOUNT_ID,
+			project_id: TEST_PROJECT_ID,
+			status: "ready",
 		});
+		expect(interviewError).toBeNull();
 
-		// 4. Create an insight
-		const { data: insight } = await supabase
+		const { error: interviewPersonError } = await supabase.from("interview_people").insert({
+			interview_id: interviewId,
+			person_id: person!.id,
+		});
+		expect(interviewPersonError).toBeNull();
+
+		const { error: peoplePersonaError } = await supabase.from("people_personas").insert({
+			interview_id: interviewId,
+			person_id: person!.id,
+			persona_id: persona!.id,
+			project_id: TEST_PROJECT_ID,
+		});
+		expect(peoplePersonaError).toBeNull();
+
+		const { data: insight, error: insightError } = await supabase
 			.from("themes")
 			.insert({
 				name: "Users prefer simple interfaces",
 				category: "UX",
-				interview_id: interview.id,
+				interview_id: interviewId,
 				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
 			})
 			.select()
 			.single();
-
+		expect(insightError).toBeNull();
 		expect(insight).toBeTruthy();
 
-		// 5. Test the persona-insight relationship function
-		// This should call the function that was failing with "pe.persona does not exist"
 		const { data: personaInsights, error } = await supabase.rpc("auto_link_persona_insights", {
-			p_insight_id: insight.id,
+			p_insight_id: insight!.id,
 		});
 
-		// This test should catch the schema error if it exists
 		expect(error).toBeNull();
 		expect(personaInsights).toBeDefined();
 
-		// 6. Verify the persona_insights junction table was populated
-		const { data: junctionRecords } = await supabase
+		const { data: junctionRecords, error: junctionError } = await supabase
 			.from("persona_insights")
 			.select("*")
-			.eq("insight_id", insight.id)
-			.eq("account_id", TEST_ACCOUNT_ID);
+			.eq("insight_id", insight!.id);
 
+		expect(junctionError).toBeNull();
 		expect(junctionRecords).toBeTruthy();
-		expect(junctionRecords.length).toBeGreaterThan(0);
-		expect(junctionRecords[0].persona_id).toBe(persona.id);
+		expect(junctionRecords!.length).toBeGreaterThan(0);
+		expect(junctionRecords![0].persona_id).toBe(persona!.id);
 	});
 
-	it("should handle people without personas gracefully", async () => {
-		// Use direct testDb client with basic primitives
+	it("should handle people without persona links gracefully", async () => {
 		const supabase = testDb;
+		const interviewId = crypto.randomUUID();
 
-		// 1. Create a person WITHOUT a persona
-		const { data: person } = await supabase
+		const { data: person, error: personError } = await supabase
 			.from("people")
 			.insert({
 				firstname: "Jane",
 				lastname: "Smith",
-				persona_id: null, // No persona assigned
 				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
 			})
 			.select()
 			.single();
-
+		expect(personError).toBeNull();
 		expect(person).toBeTruthy();
-		expect(person.persona_id).toBeNull();
 
-		// 2. Create an interview and link the person
-		const { data: interview } = await supabase
-			.from("interviews")
-			.insert({
-				title: "Another Research Session",
-				account_id: TEST_ACCOUNT_ID,
-			})
-			.select()
-			.single();
-
-		await supabase.from("interview_people").insert({
-			interview_id: interview.id,
-			person_id: person.id,
+		const { error: interviewError } = await supabase.from("interviews").insert({
+			id: interviewId,
+			title: "Another Research Session",
 			account_id: TEST_ACCOUNT_ID,
+			project_id: TEST_PROJECT_ID,
+			status: "ready",
 		});
+		expect(interviewError).toBeNull();
 
-		// 3. Create an insight
-		const { data: insight } = await supabase
+		const { error: interviewPersonError } = await supabase.from("interview_people").insert({
+			interview_id: interviewId,
+			person_id: person!.id,
+		});
+		expect(interviewPersonError).toBeNull();
+
+		const { data: insight, error: insightError } = await supabase
 			.from("themes")
 			.insert({
 				name: "Users need better onboarding",
 				category: "UX",
-				interview_id: interview.id,
+				interview_id: interviewId,
 				account_id: TEST_ACCOUNT_ID,
+				project_id: TEST_PROJECT_ID,
 			})
 			.select()
 			.single();
+		expect(insightError).toBeNull();
 
-		// 4. Test the function with a person who has no persona
-		// This should not fail and should handle null persona_id gracefully
 		const { error } = await supabase.rpc("auto_link_persona_insights", {
-			p_insight_id: insight.id,
+			p_insight_id: insight!.id,
 		});
-
 		expect(error).toBeNull();
 
-		// 5. Verify no persona_insights records were created (since no persona)
-		const { data: junctionRecords } = await supabase
+		const { data: junctionRecords, error: junctionError } = await supabase
 			.from("persona_insights")
 			.select("*")
-			.eq("insight_id", insight.id)
-			.eq("account_id", TEST_ACCOUNT_ID);
+			.eq("insight_id", insight!.id);
 
+		expect(junctionError).toBeNull();
 		expect(junctionRecords).toBeTruthy();
-		expect(junctionRecords.length).toBe(0); // No records since no persona
+		expect(junctionRecords!.length).toBe(0);
 	});
 
-	it("should validate persona-people relationship schema", async () => {
-		const mockRequest = new Request("http://localhost:3000", {
-			headers: {
-				authorization: `Bearer ${process.env.TEST_SUPABASE_ANON_KEY}`,
-			},
-		});
+	it("should validate schema expectations for normalized persona links", async () => {
+		const { data: peopleRows, error: peopleError } = await testDb.from("people").select("id").limit(1);
+		expect(peopleError).toBeNull();
+		expect(Array.isArray(peopleRows)).toBe(true);
 
-		const { client: supabase } = getServerClient(mockRequest);
+		// people.persona_id no longer exists in normalized schema
+		const { error: personaIdError } = await testDb.from("people").select("persona_id").limit(1);
+		expect(personaIdError).toBeDefined();
 
-		// Test that people table has persona_id column (not persona)
-		const { data: tableInfo, error } = await supabase.rpc("get_table_columns", {
-			table_name: "people",
-		});
-
-		if (error) {
-			// If the RPC doesn't exist, test with a direct query
-			const { data: person, error: queryError } = await supabase.from("people").select("persona_id").limit(1);
-
-			expect(queryError).toBeNull();
-		} else {
-			// Verify persona_id column exists
-			const personaIdColumn = tableInfo?.find((col: any) => col.column_name === "persona_id");
-			expect(personaIdColumn).toBeTruthy();
-
-			// Verify persona column does NOT exist (this was the bug)
-			const personaColumn = tableInfo?.find((col: any) => col.column_name === "persona");
-			expect(personaColumn).toBeFalsy();
-		}
+		const { data: linkRows, error: linksError } = await testDb
+			.from("people_personas")
+			.select("person_id, persona_id")
+			.limit(1);
+		expect(linksError).toBeNull();
+		expect(Array.isArray(linkRows)).toBe(true);
 	});
 });
