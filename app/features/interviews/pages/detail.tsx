@@ -69,7 +69,7 @@ import {
 	loadLensTemplates,
 } from "~/features/lenses/lib/loadLensAnalyses.server";
 import type { InterviewLensView } from "~/features/lenses/types";
-import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server";
+import { syncTitleToJobTitleFacet } from "~/features/people/syncTitleToFacet.server";
 import { ResourceShareMenu } from "~/features/sharing/components/ResourceShareMenu";
 import { useInterviewProgress } from "~/hooks/useInterviewProgress";
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag";
@@ -448,7 +448,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 
 				// If title was provided, sync it to job_function facet
 				if (title) {
-					await syncTitleToJobFunctionFacet({
+					await syncTitleToJobTitleFacet({
 						supabase,
 						personId: newPerson.id,
 						accountId,

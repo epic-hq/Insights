@@ -251,7 +251,7 @@ create table if not exists people_organizations (
   project_id uuid references projects(id) on delete cascade,
   person_id uuid not null references people(id) on delete cascade,
   organization_id uuid not null references organizations(id) on delete cascade,
-  role text,
+  job_title text,
   relationship_status text,
   is_primary boolean default false,
   notes text,

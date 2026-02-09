@@ -100,7 +100,7 @@ export const inferSegmentsTask = schemaTask({
       seniority_level: string | null;
       company: string | null;
       people_organizations?: Array<{
-        role: string | null;
+        job_title: string | null;
         is_primary: boolean | null;
       }> | null;
     };
@@ -111,9 +111,9 @@ export const inferSegmentsTask = schemaTask({
     const db = client as any;
     const peopleTable = db.from("people");
 
-    // Include people_organizations to get role from primary org link as fallback
+    // Include people_organizations to get job_title from primary org link as fallback
     const selectFields =
-      "id, name, title, job_function, seniority_level, company, people_organizations(role, is_primary)";
+      "id, name, title, job_function, seniority_level, company, people_organizations(job_title, is_primary)";
 
     let queryResult: { data: PersonRow[] | null; error: Error | null };
 
@@ -177,18 +177,18 @@ export const inferSegmentsTask = schemaTask({
       let titleFromOrg = false;
 
       if (!effectiveTitle && person.people_organizations) {
-        // Find primary org role, or use first org role if none is primary
+        // Find primary org job_title, or use first org job_title if none is primary
         const primaryOrg = person.people_organizations.find(
-          (o) => o.is_primary && o.role,
+          (o) => o.is_primary && o.job_title,
         );
-        const anyOrgWithRole = person.people_organizations.find((o) => o.role);
-        const orgRole = primaryOrg?.role || anyOrgWithRole?.role || null;
+        const anyOrgWithTitle = person.people_organizations.find((o) => o.job_title);
+        const orgJobTitle = primaryOrg?.job_title || anyOrgWithTitle?.job_title || null;
 
-        if (orgRole) {
-          effectiveTitle = orgRole;
+        if (orgJobTitle) {
+          effectiveTitle = orgJobTitle;
           titleFromOrg = true;
           consola.info(
-            `[inferSegments] Using org role as title for ${person.name}: ${orgRole}`,
+            `[inferSegments] Using org job_title as title for ${person.name}: ${orgJobTitle}`,
           );
         }
       }

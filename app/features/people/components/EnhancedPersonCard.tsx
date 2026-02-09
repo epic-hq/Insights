@@ -31,7 +31,7 @@ interface PersonWithPersonas {
 			name: string | null;
 			website_url: string | null;
 		};
-		role?: string | null;
+		job_title?: string | null;
 	}>;
 }
 
@@ -84,8 +84,8 @@ export default function EnhancedPersonCard({
 	const primaryOrganization = person.people_organizations?.[0]?.organization;
 	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined;
 	const primaryRole =
-		person.people_organizations?.find((link) => link.is_primary)?.role ??
-		person.people_organizations?.[0]?.role ??
+		person.people_organizations?.find((link) => link.is_primary)?.job_title ??
+		person.people_organizations?.[0]?.job_title ??
 		null;
 
 	return (

@@ -4110,12 +4110,12 @@ export type Database = {
 					created_at: string;
 					id: string;
 					is_primary: boolean | null;
+					job_title: string | null;
 					notes: string | null;
 					organization_id: string;
 					person_id: string;
 					project_id: string | null;
 					relationship_status: string | null;
-					role: string | null;
 					updated_at: string;
 				};
 				Insert: {
@@ -4123,12 +4123,12 @@ export type Database = {
 					created_at?: string;
 					id?: string;
 					is_primary?: boolean | null;
+					job_title?: string | null;
 					notes?: string | null;
 					organization_id: string;
 					person_id: string;
 					project_id?: string | null;
 					relationship_status?: string | null;
-					role?: string | null;
 					updated_at?: string;
 				};
 				Update: {
@@ -4136,12 +4136,12 @@ export type Database = {
 					created_at?: string;
 					id?: string;
 					is_primary?: boolean | null;
+					job_title?: string | null;
 					notes?: string | null;
 					organization_id?: string;
 					person_id?: string;
 					project_id?: string | null;
 					relationship_status?: string | null;
-					role?: string | null;
 					updated_at?: string;
 				};
 				Relationships: [
@@ -5030,7 +5030,7 @@ export type Database = {
 					last_seen_at: string | null;
 					person_id: string;
 					project_id: string;
-					role: string | null;
+					relationship_type: string | null;
 					updated_at: string | null;
 					updated_by: string | null;
 				};
@@ -5043,7 +5043,7 @@ export type Database = {
 					last_seen_at?: string | null;
 					person_id: string;
 					project_id: string;
-					role?: string | null;
+					relationship_type?: string | null;
 					updated_at?: string | null;
 					updated_by?: string | null;
 				};
@@ -5056,7 +5056,7 @@ export type Database = {
 					last_seen_at?: string | null;
 					person_id?: string;
 					project_id?: string;
-					role?: string | null;
+					relationship_type?: string | null;
 					updated_at?: string | null;
 					updated_by?: string | null;
 				};

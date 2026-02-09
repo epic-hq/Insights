@@ -392,7 +392,7 @@ export default function PeopleIndexPage() {
 					? {
 							id: primaryOrganization.id,
 							name: primaryOrganization.name || primaryOrganization.website_url || null,
-							role: primaryOrgLink?.role ?? null,
+							job_title: primaryOrgLink?.job_title ?? null,
 						}
 					: null,
 				conversationCount: person.interview_people?.length ?? 0,

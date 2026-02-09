@@ -171,7 +171,7 @@ async function upsertPersonOrganizationLink(
 		project_id: projectId,
 		person_id: personId,
 		organization_id: organizationId,
-		role: relationship.role ?? null,
+		job_title: relationship.role ?? null,
 		relationship_status: relationship.relationshipStatus ?? null,
 		is_primary: relationship.isPrimary ?? defaultIsPrimary ?? false,
 		notes: relationship.notes ?? null,

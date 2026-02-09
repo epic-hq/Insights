@@ -778,10 +778,8 @@ The tool will:
 						const title = getValue(row, mapping.title);
 						if (title) updateFields.title = title;
 					}
-					if (mapping.role) {
-						const role = getValue(row, mapping.role);
-						if (role) updateFields.role = role;
-					}
+					// Note: people.role is deprecated. Role data from imports flows to
+					// people_organizations.job_title (junction table) and role facets instead.
 					if (mapping.industry) {
 						const industry = getValue(row, mapping.industry);
 						if (industry) updateFields.industry = industry;
@@ -856,7 +854,7 @@ The tool will:
 							linkedin_url: getValue(row, mapping.linkedin),
 							title: getValue(row, mapping.title),
 							company: companyName || "", // NOT NULL with default '' - must provide value
-							role: getValue(row, mapping.role),
+							// role: DEPRECATED - role data flows to people_organizations.job_title instead
 							industry: getValue(row, mapping.industry),
 							location: getValue(row, mapping.location),
 							segment: getValue(row, mapping.segment),
@@ -891,7 +889,7 @@ The tool will:
 						await (supabase as any).from("people_organizations").insert({
 							person_id: personId,
 							organization_id: organizationId,
-							role: getValue(row, mapping.title) || getValue(row, mapping.role),
+							job_title: getValue(row, mapping.title) || getValue(row, mapping.role),
 							is_primary: true,
 						});
 					}

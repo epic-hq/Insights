@@ -144,7 +144,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 	if (_action === "link-organization") {
 		const organizationId = formData.get("organization_id") as string;
-		const role = formData.get("role") as string;
+		const jobTitle = formData.get("role") as string; // form field still named "role" for backwards compat
 
 		if (!organizationId) {
 			return { error: "Organization is required" };
@@ -157,7 +157,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				projectId,
 				personId,
 				organizationId,
-				role: role || null,
+				jobTitle: jobTitle || null,
 				isPrimary: true,
 			});
 			return { success: true };
@@ -171,7 +171,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	if (_action === "create-and-link-organization") {
 		const name = formData.get("name") as string;
 		const location = formData.get("headquarters_location") as string;
-		const role = formData.get("role") as string;
+		const jobTitle = formData.get("role") as string; // form field still named "role" for backwards compat
 
 		if (!name?.trim()) {
 			return { error: "Organization name is required" };
@@ -200,7 +200,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				projectId,
 				personId,
 				organizationId: newOrg.id,
-				role: role || null,
+				jobTitle: jobTitle || null,
 				isPrimary: true,
 			});
 

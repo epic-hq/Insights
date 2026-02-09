@@ -109,7 +109,7 @@ export const getPeople = async ({
                         ),
                         people_organizations (
                                 id,
-                                role,
+                                job_title,
                                 relationship_status,
                                 is_primary,
                                 organization:organizations (
@@ -204,7 +204,7 @@ export const getPersonById = async ({
                         ),
                         people_organizations (
                                 id,
-                                role,
+                                job_title,
                                 relationship_status,
                                 is_primary,
                                 notes,

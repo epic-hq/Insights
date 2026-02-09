@@ -92,14 +92,14 @@ async function upsertPersonOrganizationLink(
 		projectId,
 		personId,
 		organizationId,
-		role,
+		jobTitle,
 		isPrimary,
 	}: {
 		accountId: string;
 		projectId: string;
 		personId: string;
 		organizationId: string;
-		role?: string | null;
+		jobTitle?: string | null;
 		isPrimary: boolean;
 	}
 ) {
@@ -108,7 +108,7 @@ async function upsertPersonOrganizationLink(
 		project_id: projectId,
 		person_id: personId,
 		organization_id: organizationId,
-		role: role ?? null,
+		job_title: jobTitle ?? null,
 		is_primary: isPrimary,
 		relationship_status: null,
 		notes: null,
@@ -230,7 +230,7 @@ export const upsertPersonTool = createTool({
 			if (title !== undefined) updateData.title = title;
 			if (jobFunction !== undefined) updateData.job_function = jobFunction;
 			if (seniorityLevel !== undefined) updateData.seniority_level = seniorityLevel;
-			if (role !== undefined) updateData.role = role;
+			// role: DEPRECATED - people.role no longer populated
 			if (company !== undefined) {
 				const normalized_company = normalizeOrganizationName(company);
 				updateData.company = normalized_company ? normalized_company : null;
@@ -441,7 +441,7 @@ export const upsertPersonTool = createTool({
 							projectId,
 							personId: result.id,
 							organizationId: organization_linked.id,
-							role: (role ?? title ?? null) as string | null,
+							jobTitle: (role ?? title ?? null) as string | null,
 							isPrimary: true,
 						});
 

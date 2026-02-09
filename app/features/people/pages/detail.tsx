@@ -393,7 +393,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { organization: { error: "Organization is required" } };
 		}
 
-		const role = (formData.get("role") as string | null)?.trim() || null;
+		const jobTitle = (formData.get("role") as string | null)?.trim() || null; // form field still named "role"
 		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null;
 		const notes = (formData.get("notes") as string | null)?.trim() || null;
 
@@ -403,7 +403,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			personId,
 			organizationId,
-			role,
+			jobTitle,
 			relationshipStatus,
 			notes,
 		});
@@ -613,7 +613,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		}
 
 		const headquartersLocation = (formData.get("headquarters_location") as string | null)?.trim() || null;
-		const role = (formData.get("role") as string | null)?.trim() || null;
+		const jobTitle = (formData.get("role") as string | null)?.trim() || null; // form field still named "role"
 
 		// Create the organization
 		const { data: newOrg, error: createError } = await supabase
@@ -638,7 +638,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			projectId,
 			personId,
 			organizationId: newOrg.id,
-			role,
+			jobTitle,
 			relationshipStatus: null,
 			notes: null,
 		});

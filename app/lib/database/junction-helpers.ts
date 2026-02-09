@@ -30,7 +30,7 @@ export interface PersonaInsightsLink {
 export interface ProjectPeopleStats {
 	projectId: string;
 	personId: string;
-	role?: string;
+	relationshipType?: string;
 }
 
 /**
@@ -289,7 +289,7 @@ export class ProjectPeopleHelper {
 	/**
 	 * Update project-people stats (usually called automatically via triggers)
 	 */
-	async updateStats({ projectId, personId, role }: ProjectPeopleStats) {
+	async updateStats({ projectId, personId, relationshipType }: ProjectPeopleStats) {
 		// Get interview stats for this person in this project
 		const { data: interviewStats } = await this.db
 			.from("interviews")
@@ -312,7 +312,7 @@ export class ProjectPeopleHelper {
 				{
 					project_id: projectId,
 					person_id: personId,
-					role,
+					relationship_type: relationshipType,
 					interview_count: interviewCount,
 					first_seen_at: new Date(firstSeen).toISOString(),
 					last_seen_at: new Date(lastSeen).toISOString(),
@@ -335,7 +335,7 @@ export class ProjectPeopleHelper {
 			.from("project_people")
 			.select(`
         person_id,
-        role,
+        relationship_type,
         interview_count,
         first_seen_at,
         last_seen_at,
@@ -361,7 +361,7 @@ export class ProjectPeopleHelper {
 			.from("project_people")
 			.select(`
         project_id,
-        role,
+        relationship_type,
         interview_count,
         first_seen_at,
         last_seen_at,

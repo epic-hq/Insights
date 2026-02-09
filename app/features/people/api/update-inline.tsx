@@ -144,10 +144,10 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 			return Response.json({ success: true, organizationId: targetOrgId });
 		}
 
-		// Handle organization field updates (like size_range, role in people_organizations)
+		// Handle organization field updates (like size_range, job_title in people_organizations)
 		if (orgField && organizationId) {
 			const allowedOrgFields = ["size_range", "employee_count", "industry"];
-			const allowedLinkFields = ["role", "title"];
+			const allowedLinkFields = ["job_title", "title"];
 
 			if (allowedOrgFields.includes(orgField)) {
 				// Update organization table directly
@@ -171,7 +171,7 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 			}
 
 			if (allowedLinkFields.includes(orgField)) {
-				// Update people_organizations link table (role/title at org)
+				// Update people_organizations link table (job_title at org)
 				const { error: updateError } = await supabase
 					.from("people_organizations")
 					.update({ [orgField]: value || null })
