@@ -7,9 +7,9 @@ import { Clock, Eye, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { VoteCounts } from "~/features/annotations/db";
 import { Badge } from "~/components/ui/badge";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
-import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList";
 import { cn } from "~/lib/utils";
 import type { Evidence } from "~/types";
+import { InterviewChapters } from "./InterviewChapters";
 import { InterviewQuestionsAccordion } from "./InterviewQuestionsAccordion";
 import { LazyTranscriptResults } from "./LazyTranscriptResults";
 
@@ -144,7 +144,7 @@ export function InterviewSourcePanel({
       )}
 
       {/* Evidence Timeline (Chapters) */}
-      {evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} />}
+      {evidence.length > 0 && <InterviewChapters evidence={evidence} />}
 
       {/* Evidence items with verification affordance */}
       {evidence.length > 0 && onEvidenceSelect && (
