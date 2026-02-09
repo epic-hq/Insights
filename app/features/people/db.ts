@@ -468,7 +468,6 @@ const _getPeopleWithValidation = async ({
       `
 			id,
 			name,
-			company,
 			contact_info,
 			person_facet (
 				facet_account_id,

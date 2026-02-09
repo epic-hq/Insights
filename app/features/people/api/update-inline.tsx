@@ -206,7 +206,6 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 			"email",
 			"phone",
 			"linkedin_url",
-			"company",
 		];
 
 		if (!allowedFields.includes(field)) {

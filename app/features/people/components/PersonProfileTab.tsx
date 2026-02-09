@@ -216,7 +216,7 @@ export function PersonProfileTab({
 	// Segment/demographic data
 	const jobFunctionLabel = getOptionLabel(JOB_FUNCTIONS, person.job_function);
 	const seniorityLabel = getOptionLabel(SENIORITY_LEVELS, person.seniority_level);
-	const industryValue = person.industry || primaryOrg?.industry || null;
+	const industryValue = primaryOrg?.industry || null;
 	const industryLabel = getOptionLabel(INDUSTRIES, industryValue);
 
 	// ICP match data
@@ -306,7 +306,7 @@ export function PersonProfileTab({
 						<div className="space-y-1">
 							<label className="text-muted-foreground text-xs uppercase tracking-wide">Industry</label>
 							<InlineEditableField
-								value={person.industry}
+								value={industryValue}
 								entityId={person.id}
 								entityIdKey="personId"
 								field="industry"

@@ -123,8 +123,6 @@ function applyProfileUpdates({
 	setIfChanged("image_url", profile.imageUrl);
 	setIfChanged("title", profile.title);
 	setIfChanged("role", profile.role);
-	setIfChanged("company", profile.company);
-	setIfChanged("industry", profile.industry);
 
 	return update;
 }
@@ -262,8 +260,6 @@ export async function resolveInternalPerson({
 		image_url: profile.imageUrl,
 		title: profile.title,
 		role: profile.role,
-		company: profile.company,
-		industry: profile.industry,
 	};
 
 	const { data: created, error: createError } = await supabase

@@ -298,7 +298,6 @@ export default function UploadScreen({
 							person_type: "internal" as const,
 							firstname: first || null,
 							lastname: last,
-							company: memberSel.company ?? null,
 							primary_email: memberSel.email ?? null,
 						};
 						const { data: inserted, error: insertErr } = await supabase
@@ -441,7 +440,7 @@ export default function UploadScreen({
 				console.log("[UploadScreen] Fetching people for accountId:", effectiveAccountId);
 				const { data, error: fetchError } = await supabase
 					.from("people")
-					.select("id, name, company, person_type")
+					.select("id, name, person_type, default_organization:organizations!default_organization_id(name)")
 					.eq("account_id", effectiveAccountId)
 					.order("name")
 					.limit(50);
@@ -507,7 +506,7 @@ export default function UploadScreen({
 				// Search for people with similar names
 				const { data } = await supabase
 					.from("people")
-					.select("id, name, company, person_type")
+					.select("id, name, person_type, default_organization:organizations!default_organization_id(name)")
 					.eq("account_id", effectiveAccountId)
 					.ilike("name", `%${searchName}%`)
 					.limit(5);
@@ -518,12 +517,12 @@ export default function UploadScreen({
 					// Check for exact duplicate (same name + company)
 					const companyLower = (newPersonCompany.trim() || "").toLowerCase();
 					const exactMatch = data.find(
-						(p) => p.name?.toLowerCase() === searchName && (p.company || "").toLowerCase() === companyLower
+						(p) => p.name?.toLowerCase() === searchName && ((p as any).default_organization?.name || "").toLowerCase() === companyLower
 					);
 
 					if (exactMatch) {
 						setDuplicateError(
-							`"${exactMatch.name}"${exactMatch.company ? ` at ${exactMatch.company}` : ""} already exists`
+							`"${exactMatch.name}"${(exactMatch as any).default_organization?.name ? ` at ${(exactMatch as any).default_organization.name}` : ""} already exists`
 						);
 					}
 				} else {
@@ -544,7 +543,7 @@ export default function UploadScreen({
 		? people.filter(
 				(p) =>
 					p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					p.company?.toLowerCase().includes(searchQuery.toLowerCase())
+					(p as any).default_organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 		: people.slice(0, 8);
 	const filteredMembers =
@@ -681,8 +680,8 @@ export default function UploadScreen({
 																</span>
 															)}
 														</div>
-														{person.company && (
-															<p className="truncate text-muted-foreground text-xs">{person.company}</p>
+														{(person as any).default_organization?.name && (
+															<p className="truncate text-muted-foreground text-xs">{(person as any).default_organization?.name}</p>
 														)}
 													</div>
 													{isSelected && <CheckCircle className="h-5 w-5 flex-shrink-0 text-blue-500" />}
@@ -820,7 +819,7 @@ export default function UploadScreen({
 											>
 												<Users className="h-4 w-4 text-amber-600" />
 												<span>{person.name}</span>
-												{person.company && <span className="text-muted-foreground">at {person.company}</span>}
+												{(person as any).default_organization?.name && <span className="text-muted-foreground">at {(person as any).default_organization?.name}</span>}
 											</button>
 										))}
 									</div>

@@ -19,7 +19,7 @@ import type {
 	PersonScaleInput,
 } from "~/../baml_client/types";
 import type { Json } from "~/../supabase/types";
-import { upsertPersonWithCompanyAwareConflict } from "~/features/interviews/peopleNormalization.server";
+import { upsertPersonWithOrgAwareConflict } from "~/features/interviews/peopleNormalization.server";
 import {
 	ensureInterviewInterviewerLink,
 	resolveInternalPerson,
@@ -1483,7 +1483,6 @@ export async function extractEvidenceAndPeopleCore({
 			description: overrides.description ?? null,
 			segment: overrides.segment ?? metadata.segment ?? null,
 			contact_info: overrides.contact_info ?? null,
-			company: overrides.company ?? null,
 			role: overrides.role ?? null,
 		};
 		if (peopleHooks?.upsertPerson) {
@@ -1494,7 +1493,7 @@ export async function extractEvidenceAndPeopleCore({
 			return { id: result.id, name: result.name ?? fullName.trim() };
 		}
 
-		const upserted = await upsertPersonWithCompanyAwareConflict(db, payload, payload.person_type ?? null);
+		const upserted = await upsertPersonWithOrgAwareConflict(db, payload);
 		if (!upserted?.id) throw new Error(`Person upsert returned no id for ${fullName}`);
 		return { id: upserted.id, name: upserted.name ?? fullName.trim() };
 	};
@@ -2583,9 +2582,8 @@ async function ensureFallbackPerson(
 		project_id: metadata.projectId,
 		firstname: firstname || null,
 		lastname: lastname || null,
-		company: null,
 	};
-	const data = await upsertPersonWithCompanyAwareConflict(db, payload, null);
+	const data = await upsertPersonWithOrgAwareConflict(db, payload);
 	if (!data?.id) throw new Error("Failed to ensure fallback person");
 	const linkPayload: InterviewPeopleInsert = {
 		interview_id: interviewRecord.id,

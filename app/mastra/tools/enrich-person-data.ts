@@ -108,13 +108,25 @@ export const enrichPersonDataTool = createTool({
 			orgName = org?.name ?? null;
 		}
 
+		// If person already has all key fields, skip
+		if (person.title && orgName) {
+			return {
+				success: true,
+				enriched: false,
+				fieldsUpdated: [],
+				source: "none",
+				confidence: 1,
+				data: {},
+			};
+		}
+
 		// Run enrichment
 		const result = await enrichPersonData({
 			personId: person.id,
 			accountId,
 			knownName: person.name || [person.firstname, person.lastname].filter(Boolean).join(" ") || null,
 			knownEmail: person.primary_email,
-			knownCompany: person.company || orgName,
+			knownCompany: orgName,
 			knownTitle: person.title,
 			knownLinkedIn: person.linkedin_url,
 		});
@@ -126,9 +138,6 @@ export const enrichPersonDataTool = createTool({
 			// Only fill null fields — never overwrite existing data
 			if (result.data.title && !person.title) {
 				updates.title = result.data.title;
-			}
-			if (result.data.company && !person.company) {
-				updates.company = result.data.company;
 			}
 			if (result.data.role && !person.role) {
 				updates.role = result.data.role;

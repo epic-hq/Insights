@@ -131,7 +131,7 @@ async function reprocessThemes(options: ScriptOptions = {}) {
 		// Get interview people for metadata
 		const { data: interviewPeople, error: peopleError } = await supabase
 			.from("interview_people")
-			.select("person_id, role, people:person_id(id, name, firstname, lastname, segment, company, description)")
+			.select("person_id, role, people:person_id(id, name, firstname, lastname, segment, description)")
 			.eq("interview_id", interviewId)
 			.limit(1)
 			.single();
@@ -158,7 +158,7 @@ async function reprocessThemes(options: ScriptOptions = {}) {
 			primaryPersonName: primaryPerson?.name || null,
 			primaryPersonRole: interviewPeople?.role || null,
 			primaryPersonDescription: primaryPerson?.description || null,
-			primaryPersonOrganization: primaryPerson?.company || null,
+			primaryPersonOrganization: (primaryPerson as any)?.default_organization?.name || null,
 			primaryPersonSegments: primaryPerson?.segment ? [primaryPerson.segment] : [],
 			insertedEvidenceIds: evidenceUnits.map((e) => e.id),
 			evidenceUnits: evidenceUnits as any[], // Cast to match expected type

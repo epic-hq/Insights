@@ -40,9 +40,11 @@ type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & 
 		"id" | "gist" | "context_summary" | "verbatim" | "modality" | "created_at" | "interview_id"
 	> | null;
 };
+type OrganizationNameSummary = Pick<Database["public"]["Tables"]["organizations"]["Row"], "name">;
 type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & {
 	person?:
 		| (Database["public"]["Tables"]["people"]["Row"] & {
+				default_organization?: OrganizationNameSummary | OrganizationNameSummary[] | null;
 				people_personas?: Array<{
 					persona_id: string | null;
 					personas?: Database["public"]["Tables"]["personas"]["Row"] | null;
@@ -69,7 +71,9 @@ type IcpScoreRow = Pick<
 	Database["public"]["Tables"]["person_scale"]["Row"],
 	"person_id" | "score" | "band" | "confidence"
 >;
-type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company">;
+type ProjectPersonSummary = Pick<Database["public"]["Tables"]["people"]["Row"], "id" | "title" | "company"> & {
+	default_organization?: OrganizationNameSummary | OrganizationNameSummary[] | null;
+};
 type ProjectPeopleSummaryRow = Pick<Database["public"]["Tables"]["project_people"]["Row"], "person_id"> & {
 	person?: ProjectPersonSummary | ProjectPersonSummary[] | null;
 };
@@ -93,6 +97,14 @@ function resolveSummaryPerson(value: ProjectPeopleSummaryRow["person"]): Project
 	if (!value) return null;
 	if (Array.isArray(value)) return value[0] ?? null;
 	return value;
+}
+
+function resolveOrganizationName(
+	value: OrganizationNameSummary | OrganizationNameSummary[] | null | undefined
+): string | null {
+	if (!value) return null;
+	if (Array.isArray(value)) return value[0]?.name ?? null;
+	return value.name ?? null;
 }
 
 const projectStatusSchema = z.object({
@@ -845,7 +857,7 @@ export const fetchProjectStatusContextTool = createTool({
 					let peopleQuery = supabase
 						.from("project_people")
 						.select(
-							"id, person_id, role, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, role, title, company, description, location, image_url, contact_info, people_personas(persona_id, personas(id, name, color_hex)))"
+							"id, person_id, role, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, role, title, description, location, image_url, contact_info, default_organization:organizations!default_organization_id(name), people_personas(persona_id, personas(id, name, color_hex)))"
 						)
 						.eq("project_id", projectId);
 
@@ -1008,7 +1020,7 @@ export const fetchProjectStatusContextTool = createTool({
 							segment: person?.segment ?? null,
 							role: row.role ?? person?.role ?? null,
 							title: (person as { title?: string | null })?.title ?? null,
-							company: (person as { company?: string | null })?.company ?? null,
+							company: resolveOrganizationName(person?.default_organization) ?? person?.company ?? null,
 							description: person?.description ?? null,
 							location: person?.location ?? null,
 							image_url: person?.image_url ?? null,
@@ -1035,7 +1047,7 @@ export const fetchProjectStatusContextTool = createTool({
 					// Build ICP summary from full project people, not the limited/filtered people payload.
 					const { data: summaryPeopleRows, error: summaryPeopleError } = await supabase
 						.from("project_people")
-						.select("person_id, person:person_id(id, title, company)")
+						.select("person_id, person:person_id(id, title, default_organization:organizations!default_organization_id(name))")
 						.eq("project_id", projectId);
 					if (summaryPeopleError) {
 						consola.warn("fetch-project-status-context: failed to load full people summary scope", summaryPeopleError);
@@ -1047,9 +1059,11 @@ export const fetchProjectStatusContextTool = createTool({
 						const personId = summaryPerson?.id ?? row.person_id;
 						if (!personId) continue;
 						const existing = summaryProfileByPersonId.get(personId) ?? { hasTitle: false, hasCompany: false };
+						const summaryCompanyName =
+							resolveOrganizationName(summaryPerson?.default_organization) ?? summaryPerson?.company ?? null;
 						summaryProfileByPersonId.set(personId, {
 							hasTitle: existing.hasTitle || Boolean(summaryPerson?.title),
-							hasCompany: existing.hasCompany || Boolean(summaryPerson?.company),
+							hasCompany: existing.hasCompany || Boolean(summaryCompanyName),
 						});
 					}
 					const summaryPersonIds = Array.from(summaryProfileByPersonId.keys());

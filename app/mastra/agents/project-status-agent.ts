@@ -25,6 +25,7 @@ import { semanticSearchEvidenceTool } from "../tools/semantic-search-evidence";
 import { suggestionTool } from "../tools/suggestion-tool";
 import { wrapToolsWithStatusEvents } from "../tools/tool-status-events";
 import { chiefOfStaffAgent } from "./chief-of-staff-agent";
+import { howtoAgent } from "./howto-agent";
 import { opsAgent } from "./ops-agent";
 import { peopleAgent } from "./people-agent";
 import { researchAgent } from "./research-agent";
@@ -256,6 +257,9 @@ Do NOT add a "Next steps" section in the text response. Rely on the suggestion w
 
 ## Chief of Staff
 For strategic planning, task prioritization, or "what should I do next?", delegate to the ChiefOfStaffAgent sub-agent.
+
+## How-To Guidance
+For "how do I", "where do I", "best way to", and "teach me" guidance requests, delegate to the howtoAgent sub-agent.
 `;
 		} catch (error) {
 			consola.error("Error in project status agent instructions:", error);
@@ -276,6 +280,7 @@ Please try:
 		researchAgent,
 		opsAgent,
 		chiefOfStaffAgent,
+		howtoAgent,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

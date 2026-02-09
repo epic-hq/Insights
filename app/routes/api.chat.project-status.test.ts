@@ -298,7 +298,7 @@ describe("api.chat.project-status", () => {
 		expect(mockedCreateUIMessageStreamResponse).toHaveBeenCalled();
 	});
 
-	it("routes top-theme questions through normal projectStatus network flow", async () => {
+	it("routes top-theme questions through deterministic projectStatus network flow", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "projectStatusAgent",
@@ -310,7 +310,7 @@ describe("api.chat.project-status", () => {
 
 		const response = await action(buildArgs({ message: "what are top 2 themes and who has them?" }));
 		expect(response.status).toBe(200);
-		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 	});
@@ -336,7 +336,7 @@ describe("api.chat.project-status", () => {
 		expect(routingPrompt).toContain('Use responseMode="normal" for all other requests.');
 	});
 
-	it("routes ICP lookup prompts to projectStatusAgent via intent classifier", async () => {
+	it("routes ICP lookup prompts to projectStatusAgent via deterministic routing", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "projectStatusAgent",
@@ -349,11 +349,56 @@ describe("api.chat.project-status", () => {
 		const response = await action(buildArgs({ message: "what icp matches do i have?" }));
 		expect(response.status).toBe(200);
 
-		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
 		expect(mockedHandleChatStream).not.toHaveBeenCalled();
 		const call = mockedHandleNetworkStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectStatusAgent");
+	});
+
+	it("routes how-to prompts to howtoAgent with ux_research_mode", async () => {
+		const response = await action(buildArgs({ message: "How do I run better user interviews?" }));
+		expect(response.status).toBe(200);
+
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("howtoAgent");
+		expect(call.params.requestContext.get("response_mode")).toBe("ux_research_mode");
+	});
+
+	it("routes how-to GTM prompts to howtoAgent with gtm_mode", async () => {
+		const response = await action(buildArgs({ message: "Best way to position and launch this product?" }));
+		expect(response.status).toBe(200);
+
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+		const call = mockedHandleChatStream.mock.calls[0][0] as any;
+		expect(call.agentId).toBe("howtoAgent");
+		expect(call.params.requestContext.get("response_mode")).toBe("gtm_mode");
+	});
+
+	it("enforces howto response contract sections and markdown links when missing", async () => {
+		mockedHandleChatStream.mockResolvedValue(makeTextStream({ text: "Try a focused test this week." }) as any);
+
+		const response = await action(buildArgs({ message: "teach me how to improve our onboarding UX" }));
+		expect(response.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+
+		expect(text.toLowerCase()).toContain("direct answer");
+		expect(text.toLowerCase()).toContain("do this now");
+		expect(text.toLowerCase()).toContain("prompt template");
+		expect(text.toLowerCase()).toContain("quick links");
+		expect(text.toLowerCase()).toContain("if stuck");
+		expect(text).toMatch(/\[[^\]]+\]\(\/a\/acct-1\/project-1\/people\)/);
 	});
 
 	it("injects a fallback message when stream finishes without assistant text", async () => {
@@ -389,6 +434,24 @@ describe("api.chat.project-status", () => {
 			.filter((chunk) => chunk.type === "text-delta")
 			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""));
 		expect(deltas.join("\n")).toContain("Sorry, I couldn't answer that just now. Please try again.");
+	});
+
+	it("returns non-empty howto fallback contract with links when upstream emits no text", async () => {
+		mockedHandleChatStream.mockResolvedValue(makeTextStream({ emitFinish: true }) as any);
+
+		const response = await action(buildArgs({ message: "how do i validate product demand quickly?" }));
+		expect(response.status).toBe(200);
+		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
+
+		const responseCall = mockedCreateUIMessageStreamResponse.mock.calls.at(-1)?.[0] as any;
+		const chunks = await readStreamChunks(responseCall.stream as ReadableStream<Record<string, unknown>>);
+		const text = chunks
+			.filter((chunk) => chunk.type === "text-delta")
+			.map((chunk) => String((chunk as { delta?: unknown }).delta ?? ""))
+			.join("\n");
+		expect(text.length).toBeGreaterThan(0);
+		expect(text.toLowerCase()).toContain("quick links");
+		expect(text).toMatch(/\[[^\]]+\]\(\/a\/acct-1\/project-1\/(people|insights|ask)\)/);
 	});
 
 	it("supports /debug prefix, strips it from execution prompt, and appends a debug trace", async () => {
@@ -433,7 +496,7 @@ describe("api.chat.project-status", () => {
 		expect(merged).toContain("- tool_calls: recommendNextActions");
 	});
 
-	it("routes survey creation prompts to researchAgent through classifier flow", async () => {
+	it("routes survey creation prompts to researchAgent through deterministic flow", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "researchAgent",
@@ -451,7 +514,7 @@ describe("api.chat.project-status", () => {
 
 		const response = await action(buildArgs({ message: "create a waitlist survey for our beta launch" }));
 		expect(response.status).toBe(200);
-		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 		expect(mockedHandleNetworkStream).not.toHaveBeenCalled();
 	});
@@ -482,7 +545,7 @@ describe("api.chat.project-status", () => {
 		expect(text).toContain("- routed_to: researchAgent");
 	});
 
-	it("routes setup prompts to projectSetupAgent and returns non-empty chat output", async () => {
+	it("routes setup prompts to projectSetupAgent through deterministic flow and returns non-empty chat output", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "projectSetupAgent",
@@ -500,7 +563,7 @@ describe("api.chat.project-status", () => {
 
 		const response = await action(buildArgs({ message: "help me set up project and define research goals" }));
 		expect(response.status).toBe(200);
-		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleChatStream).toHaveBeenCalledTimes(1);
 		const call = mockedHandleChatStream.mock.calls[0][0] as any;
 		expect(call.agentId).toBe("projectSetupAgent");
@@ -515,7 +578,7 @@ describe("api.chat.project-status", () => {
 		expect(text.length).toBeGreaterThan(0);
 	});
 
-	it("routes people and task operational prompts through projectStatusAgent network", async () => {
+	it("routes people and task operational prompts through deterministic projectStatus network", async () => {
 		mockedGenerateObject.mockResolvedValue({
 			object: {
 				targetAgentId: "projectStatusAgent",
@@ -535,7 +598,7 @@ describe("api.chat.project-status", () => {
 			buildArgs({ message: "show people missing company and title", userId: "user-people-ops" })
 		);
 		expect(peopleResponse.status).toBe(200);
-		expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+		expect(mockedGenerateObject).not.toHaveBeenCalled();
 		expect(mockedHandleNetworkStream).toHaveBeenCalledTimes(1);
 		expect((mockedHandleNetworkStream.mock.calls[0][0] as any).agentId).toBe("projectStatusAgent");
 

@@ -75,7 +75,7 @@ export function ICPScoredPeopleTable({ people, projectPath, onEditPerson }: ICPS
 				id: "company",
 				header: "Company",
 				cell: ({ row }) => {
-					const val = row.original.org_name || row.original.company;
+					const val = row.original.org_name || null;
 					if (!val) {
 						return (
 							<span className="rounded bg-yellow-50 px-1.5 py-0.5 text-xs text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400">

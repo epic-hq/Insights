@@ -215,7 +215,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		// Only fetch CRM data if autonomy allows using it
 		const { data: person } = await supabase
 			.from("people")
-			.select("name, title, company, segment, job_function, person_scale(score, band, confidence, kind_slug)")
+			.select("name, title, segment, job_function, person_scale(score, band, confidence, kind_slug), default_organization:organizations!default_organization_id(name)")
 			.eq("id", responseRecord.person_id)
 			.maybeSingle();
 
@@ -246,14 +246,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			const missingFields: string[] = [];
 			if (!person.name) missingFields.push("name");
 			if (!person.title) missingFields.push("title");
-			if (!person.company) missingFields.push("company");
+			const orgName = (person as any).default_organization?.name;
+			if (!orgName) missingFields.push("company");
 			if (!person.segment) missingFields.push("segment");
 			if (!person.job_function) missingFields.push("job_function");
 
 			personContext = {
 				name: person.name ?? undefined,
 				title: person.title ?? undefined,
-				company: person.company ?? undefined,
+				company: orgName ?? undefined,
 				segment: person.segment ?? undefined,
 				jobFunction: person.job_function ?? undefined,
 				pastInterviewCount: interviewResult.count ?? 0,

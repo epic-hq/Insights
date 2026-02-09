@@ -41,7 +41,7 @@ async function checkICPScores() {
 		const person = s.people as any;
 		console.log(`${i + 1}. ${person?.name || "Unknown"}`);
 		console.log(`   Title: ${person?.title || "N/A"}`);
-		console.log(`   Company: ${person?.company || "N/A"}`);
+		console.log(`   Company: ${(person as any)?.default_organization?.name || "N/A"}`);
 		console.log(
 			`   Score: ${(s.score * 100).toFixed(1)}% | Band: ${s.band || "NONE"} | Confidence: ${(s.confidence * 100).toFixed(0)}%`
 		);

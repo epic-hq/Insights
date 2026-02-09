@@ -230,11 +230,7 @@ export const upsertPersonTool = createTool({
 			if (title !== undefined) updateData.title = title;
 			if (jobFunction !== undefined) updateData.job_function = jobFunction;
 			if (seniorityLevel !== undefined) updateData.seniority_level = seniorityLevel;
-			// role: DEPRECATED - people.role no longer populated
-			if (company !== undefined) {
-				const normalized_company = normalizeOrganizationName(company);
-				updateData.company = normalized_company ? normalized_company : null;
-			}
+			// company/industry: Now stored on organizations table, not people
 			if (description !== undefined) updateData.description = description;
 			if (primaryEmail !== undefined) updateData.primary_email = primaryEmail;
 			if (primaryPhone !== undefined) updateData.primary_phone = primaryPhone;
@@ -242,7 +238,6 @@ export const upsertPersonTool = createTool({
 			if (linkedinUrl !== undefined) updateData.linkedin_url = linkedinUrl;
 			if (websiteUrl !== undefined) updateData.website_url = websiteUrl;
 			if (segment !== undefined) updateData.segment = segment;
-			if (industry !== undefined) updateData.industry = industry;
 			if (timezone !== undefined) updateData.timezone = timezone;
 			if (pronouns !== undefined) updateData.pronouns = pronouns;
 			if (lifecycleStage !== undefined) updateData.lifecycle_stage = lifecycleStage;
@@ -271,7 +266,6 @@ export const upsertPersonTool = createTool({
 				id: string;
 				name: string | null;
 				title: string | null;
-				company: string | null;
 				primary_email: string | null;
 				primary_phone: string | null;
 			};
@@ -291,7 +285,7 @@ export const upsertPersonTool = createTool({
 					.update(updateData)
 					.eq("id", personId)
 					.eq("account_id", accountId)
-					.select("id, name, title, company, primary_email, primary_phone")
+					.select("id, name, title, primary_email, primary_phone")
 					.single();
 
 				if (error) {
@@ -320,7 +314,7 @@ export const upsertPersonTool = createTool({
 				const { data: insertedData, error: insertError } = await supabase
 					.from("people")
 					.insert(insertPayload)
-					.select("id, name, title, company, primary_email, primary_phone")
+					.select("id, name, title, primary_email, primary_phone")
 					.single();
 
 				if (insertError) {
@@ -328,24 +322,16 @@ export const upsertPersonTool = createTool({
 					if (insertError.code === "23505") {
 						consola.debug("upsert-person: duplicate detected, finding existing person");
 
-						// Find the existing person by name_hash (generated column), company, and email
+						// Find the existing person by name and email
 						const { firstname, lastname } = parseFullName(name);
-						const nameHash = `${firstname ?? ""} ${lastname ?? ""}`.toLowerCase().trim();
-						const normalizedCompany = normalizeOrganizationName(company)?.toLowerCase() || null;
 						const normalizedEmail = primaryEmail?.toLowerCase() || null;
 
 						// Build query to find existing person
 						let findQuery = supabase
 							.from("people")
-							.select("id, name, title, company, primary_email, primary_phone")
+							.select("id, name, title, primary_email, primary_phone")
 							.eq("account_id", accountId)
 							.ilike("name", `${firstname ?? ""}%${lastname ?? ""}%`.trim());
-
-						if (normalizedCompany) {
-							findQuery = findQuery.ilike("company", normalizedCompany);
-						} else {
-							findQuery = findQuery.is("company", null);
-						}
 
 						if (normalizedEmail) {
 							findQuery = findQuery.ilike("primary_email", normalizedEmail);
@@ -357,7 +343,7 @@ export const upsertPersonTool = createTool({
 							consola.error("upsert-person: could not find duplicate person to update", findError);
 							return {
 								success: false,
-								message: `Person with this name${normalizedCompany ? ` at ${company}` : ""}${normalizedEmail ? ` (${primaryEmail})` : ""} already exists but could not be found for update`,
+								message: `Person with this name${normalizedEmail ? ` (${primaryEmail})` : ""} already exists but could not be found for update`,
 								person: null,
 							};
 						}
@@ -370,7 +356,7 @@ export const upsertPersonTool = createTool({
 							.update(updateData)
 							.eq("id", existingPerson.id)
 							.eq("account_id", accountId)
-							.select("id, name, title, company, primary_email, primary_phone")
+							.select("id, name, title, primary_email, primary_phone")
 							.single();
 
 						if (updateError) {
@@ -479,7 +465,7 @@ export const upsertPersonTool = createTool({
 					id: result.id,
 					name: result.name,
 					title: result.title,
-					company: result.company,
+					company: organization_linked?.name ?? null,
 					primaryEmail: result.primary_email,
 					primaryPhone: result.primary_phone,
 				},
