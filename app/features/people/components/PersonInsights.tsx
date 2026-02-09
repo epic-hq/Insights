@@ -26,8 +26,10 @@ interface Theme {
 }
 
 interface NextStep {
+	id: string;
 	text: string;
 	context: string;
+	action: "score-icp" | "open-responses" | "upload-conversation" | "log-note" | "open-activity";
 }
 
 interface PersonInsightsProps {
@@ -46,11 +48,19 @@ interface PersonInsightsProps {
 	/** Route helpers for linking to theme detail pages */
 	routes: {
 		themes: { detail: (id: string) => string };
+		interviews: { upload: () => string };
+		responses: { index: () => string };
 	};
 	/** Callback to regenerate the AI description */
 	onRefreshDescription: () => void;
+	/** Callback to score ICP in-place */
+	onScoreICP?: () => void;
+	/** Callback to log a quick note */
+	onLogNote?: () => void;
 	/** Whether the description is currently being regenerated */
 	isRefreshing?: boolean;
+	/** Whether ICP scoring is currently in progress */
+	isScoringICP?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,15 +85,19 @@ function generateNextSteps({
 	// 1. Follow-up based on recency of last contact
 	if (lastContactDate === null) {
 		steps.push({
+			id: "initial-contact",
 			text: "Make initial contact",
 			context: "no conversations recorded yet",
+			action: "upload-conversation",
 		});
 	} else {
 		const daysSince = differenceInDays(new Date(), lastContactDate);
 		if (daysSince > 14) {
 			steps.push({
+				id: "follow-up",
 				text: "Schedule a follow-up call",
 				context: `last contact was ${daysSince} days ago`,
+				action: "log-note",
 			});
 		}
 	}
@@ -92,13 +106,17 @@ function generateNextSteps({
 	if (steps.length < MAX_STEPS) {
 		if (surveyCount === 0) {
 			steps.push({
+				id: "survey-send",
 				text: "Send a survey to gather structured feedback",
 				context: "no survey data collected yet",
+				action: "open-responses",
 			});
 		} else {
 			steps.push({
+				id: "survey-review",
 				text: "Review latest survey responses",
 				context: `${surveyCount} survey${surveyCount === 1 ? "" : "s"} with actionable feedback`,
+				action: "open-responses",
 			});
 		}
 	}
@@ -106,24 +124,30 @@ function generateNextSteps({
 	// 4. ICP scoring
 	if (steps.length < MAX_STEPS && icpMatch === null) {
 		steps.push({
+			id: "icp-score",
 			text: "Run ICP scoring to assess prospect fit",
 			context: "no ICP score calculated yet",
+			action: "score-icp",
 		});
 	}
 
 	// 5. Discovery depth
 	if (steps.length < MAX_STEPS && conversationCount < 2) {
 		steps.push({
+			id: "discovery-call",
 			text: "Schedule a discovery call to deepen understanding",
 			context: `only ${conversationCount} conversation${conversationCount === 1 ? "" : "s"} so far`,
+			action: "upload-conversation",
 		});
 	}
 
 	// 6. Fallback
 	if (steps.length < MAX_STEPS) {
 		steps.push({
+			id: "log-notes",
 			text: "Add notes from your last interaction",
 			context: "keep the record up to date",
+			action: "log-note",
 		});
 	}
 
@@ -145,9 +169,56 @@ export function PersonInsights({
 	icpMatch,
 	routes,
 	onRefreshDescription,
+	onScoreICP,
+	onLogNote,
 	isRefreshing = false,
+	isScoringICP = false,
 }: PersonInsightsProps) {
 	const [showAllThemes, setShowAllThemes] = useState(false);
+
+	const handleJumpToActivity = () => {
+		const section = document.getElementById("activity");
+		if (section) {
+			section.scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+	};
+
+	const renderStepAction = (step: NextStep) => {
+		switch (step.action) {
+			case "score-icp":
+				return (
+					<Button size="sm" variant="secondary" onClick={onScoreICP} disabled={!onScoreICP || isScoringICP}>
+						{isScoringICP ? "Scoring..." : "Score ICP"}
+					</Button>
+				);
+			case "open-responses":
+				return (
+					<Button asChild size="sm" variant="outline">
+						<Link to={routes.responses.index()}>Open Responses</Link>
+					</Button>
+				);
+			case "upload-conversation":
+				return (
+					<Button asChild size="sm" variant="outline">
+						<Link to={routes.interviews.upload()}>Attach Recording</Link>
+					</Button>
+				);
+			case "open-activity":
+				return (
+					<Button size="sm" variant="outline" onClick={handleJumpToActivity}>
+						View Activity
+					</Button>
+				);
+			case "log-note":
+				return (
+					<Button size="sm" variant="outline" onClick={onLogNote} disabled={!onLogNote}>
+						Log Note
+					</Button>
+				);
+			default:
+				return null;
+		}
+	};
 
 	const hasDescription = description && description.trim().length > 0;
 	const hasThemes = themes.length > 0;
@@ -215,14 +286,18 @@ export function PersonInsights({
 					</h3>
 					<ul className="space-y-2">
 						{nextSteps.map((step) => (
-							<li key={step.text} className="flex items-start gap-2.5">
+							<li
+								key={step.id}
+								className="flex items-start justify-between gap-3 rounded-md border border-border/40 p-2.5"
+							>
 								<span className="mt-0.5 shrink-0 font-medium text-primary text-sm" aria-hidden="true">
 									&rarr;
 								</span>
-								<div className="min-w-0">
+								<div className="min-w-0 flex-1">
 									<span className="text-foreground text-sm">{step.text}</span>
 									<span className="ml-1.5 text-muted-foreground text-xs">({step.context})</span>
 								</div>
+								<div className="shrink-0">{renderStepAction(step)}</div>
 							</li>
 						))}
 					</ul>
