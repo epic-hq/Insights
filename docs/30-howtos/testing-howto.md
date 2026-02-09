@@ -80,7 +80,7 @@ Goal: run integration tests against a dedicated non-production Supabase project.
 2. Update Vitest include/exclude patterns so browser/e2e files are not run by `vitest run`.
 3. Add integration preflight assertions (non-production ref + required env vars).
 4. Add seeded fixtures/reset workflow for integration DB tests.
-5. Make integration workflow conditional on `TEST_SUPABASE_*` secrets in CI.
+5. Run integration tests in a dedicated CI workflow/job (separate from deploy) with runtime env checks inside `run` steps, not workflow-expression checks against secrets.
 
 ### Supabase Branch Parity Checklist
 
@@ -93,6 +93,23 @@ If a dev branch is `ACTIVE_HEALTHY` but appears to be missing newer tables/featu
 4. For pooler URLs, disable statement cache to avoid prepared-statement collisions:
    - append `?statement_cache_capacity=0` (or `&statement_cache_capacity=0`).
 5. Re-check parity before running integration tests.
+
+### Current Status Snapshot (2026-02-09)
+
+- Deploy workflow currently gates on `test:agents` only.
+- Integration tests are intentionally not in the deploy job while environment and schema-drift stability work is in progress.
+- A workflow parser failure was fixed by removing direct `secrets.*` expression checks in job-step `if` conditions.
+- `vitest.workspace.ts` was adjusted for compatibility with current Vitest config usage.
+- Integration suite failures are currently dominated by schema drift from people/organizations normalization, fixture UUID assumptions, and a few stale mocks/RLS assumptions.
+
+### Safe Migration Drift Recovery (When Remote Is Ahead)
+
+If remote has a few migration versions not present locally:
+
+1. Do **not** keep broad rewrite output from `supabase migration fetch` if it modifies historical migration files.
+2. Revert rewritten tracked files.
+3. Recover/keep only the missing migration files by exact version.
+4. Verify with `supabase migration list` before commit/push.
 
 ### Integration Test Environment
 
