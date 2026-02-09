@@ -1012,7 +1012,10 @@ export default function PersonDetail() {
 						icpMatch={icpMatch}
 						routes={routes}
 						onRefreshDescription={handleRefreshDescription}
+						onScoreICP={handleScoreICP}
+						onLogNote={() => setNoteDialogOpen(true)}
 						isRefreshing={isRefreshingDescription}
+						isScoringICP={isScoringICP}
 					/>
 				</section>
 
