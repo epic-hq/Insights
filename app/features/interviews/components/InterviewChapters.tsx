@@ -4,7 +4,7 @@
  * Replaces the older PlayByPlayTimeline with a more visual, scannable design.
  */
 
-import { Clock, List } from "lucide-react";
+import { List } from "lucide-react";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 import type { Evidence } from "~/types";
@@ -122,7 +122,7 @@ export function InterviewChapters({
       </div>
 
       {/* Chapter cards */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {chapters.map((chapter, index) => {
           const isActive = activeIndex === index;
           return (
@@ -131,23 +131,27 @@ export function InterviewChapters({
               type="button"
               onClick={() => handleChapterClick(index, chapter.time)}
               className={cn(
-                "group w-full rounded-lg border p-3 text-left transition-all",
+                "group w-full rounded-md border px-3 py-2 text-left transition-all",
                 isActive
                   ? "border-primary bg-primary/10"
                   : "border-border bg-card hover:border-primary/50 hover:bg-muted/50",
               )}
             >
-              {/* Time badge */}
-              <div className="mb-2 flex items-center gap-2">
-                <Clock
+              {/* Title with inline time */}
+              <div className="flex items-baseline justify-between gap-2">
+                <div
                   className={cn(
-                    "h-3 w-3",
-                    isActive ? "text-primary" : "text-muted-foreground",
+                    "flex-1 font-semibold text-sm leading-tight",
+                    isActive
+                      ? "text-primary"
+                      : "text-foreground group-hover:text-primary",
                   )}
-                />
+                >
+                  {chapter.topic}
+                </div>
                 <span
                   className={cn(
-                    "font-mono text-xs",
+                    "shrink-0 font-mono text-xs",
                     isActive ? "text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -155,28 +159,11 @@ export function InterviewChapters({
                     ? formatTimestamp(chapter.time)
                     : "—:—"}
                 </span>
-                {chapter.count > 1 && (
-                  <span className="text-muted-foreground text-xs">
-                    ({chapter.count} items)
-                  </span>
-                )}
-              </div>
-
-              {/* Title */}
-              <div
-                className={cn(
-                  "mb-1 font-semibold text-sm",
-                  isActive
-                    ? "text-primary"
-                    : "text-foreground group-hover:text-primary",
-                )}
-              >
-                {chapter.topic}
               </div>
 
               {/* Description */}
               {chapter.description && (
-                <div className="line-clamp-2 text-muted-foreground text-xs leading-relaxed">
+                <div className="mt-1 line-clamp-1 text-muted-foreground text-xs">
                   {chapter.description}
                 </div>
               )}

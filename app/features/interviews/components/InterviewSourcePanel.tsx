@@ -4,6 +4,7 @@
  * Evidence items include "Verify" affordance that opens the verification drawer.
  */
 import { Clock, Eye, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useState } from "react";
 import type { VoteCounts } from "~/features/annotations/db";
 import { Badge } from "~/components/ui/badge";
 import { MediaPlayer } from "~/components/ui/MediaPlayer";
@@ -125,6 +126,14 @@ export function InterviewSourcePanel({
   onSpeakerClick,
   onEvidenceSelect,
 }: InterviewSourcePanelProps) {
+  const [playbackTime, setPlaybackTime] = useState<number | null>(null);
+
+  const handleChapterClick = (seconds: number | null) => {
+    if (seconds !== null) {
+      setPlaybackTime(seconds);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Media Player */}
@@ -133,6 +142,7 @@ export function InterviewSourcePanel({
           <MediaPlayer
             mediaUrl={interview.media_url}
             thumbnailUrl={interview.thumbnail_url}
+            startTime={playbackTime ?? undefined}
             mediaType={deriveMediaFormat(
               interview.file_extension,
               interview.source_type,
@@ -144,7 +154,12 @@ export function InterviewSourcePanel({
       )}
 
       {/* Evidence Timeline (Chapters) */}
-      {evidence.length > 0 && <InterviewChapters evidence={evidence} />}
+      {evidence.length > 0 && (
+        <InterviewChapters
+          evidence={evidence}
+          onChapterClick={handleChapterClick}
+        />
+      )}
 
       {/* Evidence items with verification affordance */}
       {evidence.length > 0 && onEvidenceSelect && (
