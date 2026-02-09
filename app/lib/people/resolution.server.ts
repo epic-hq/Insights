@@ -170,6 +170,57 @@ async function findByNameOrg(
 }
 
 /**
+ * Legacy fallback during org FK rollout:
+ * match by name + company text when rows were created before org linking.
+ */
+async function findByNameCompanyLegacy(
+	supabase: SupabaseClient<Database>,
+	accountId: string,
+	name: string,
+	company?: string
+): Promise<{ id: string; name: string | null } | null> {
+	const normalizedName = name.trim().toLowerCase();
+	const normalizedCompany = company?.trim().toLowerCase() || "";
+
+	if (normalizedCompany) {
+		const { data, error } = await supabase
+			.from("people")
+			.select("id, name")
+			.eq("account_id", accountId)
+			.ilike("name", normalizedName)
+			.ilike("company", normalizedCompany)
+			.limit(1)
+			.single();
+
+		if (error || !data) return null;
+		return data;
+	}
+
+	const { data, error } = await supabase
+		.from("people")
+		.select("id, name")
+		.eq("account_id", accountId)
+		.ilike("name", normalizedName)
+		.eq("company", "")
+		.limit(1)
+		.single();
+
+	if (!error && data) return data;
+
+	const { data: nullCompanyData, error: nullCompanyError } = await supabase
+		.from("people")
+		.select("id, name")
+		.eq("account_id", accountId)
+		.ilike("name", normalizedName)
+		.is("company", null)
+		.limit(1)
+		.single();
+
+	if (nullCompanyError || !nullCompanyData) return null;
+	return nullCompanyData;
+}
+
+/**
  * Resolve company text to an organization UUID.
  * Creates the organization if it doesn't exist.
  */
@@ -223,6 +274,7 @@ export async function resolveOrCreatePerson(
 	input: PersonResolutionInput
 ): Promise<PersonResolutionResult> {
 	const normalized = normalizeNameParts(input);
+	const orgId = input.company ? await resolveOrganization(supabase, accountId, input.company) : null;
 
 	// 1. Email match (highest priority)
 	if (input.primary_email) {
@@ -246,12 +298,20 @@ export async function resolveOrCreatePerson(
 		}
 	}
 
-	// 3. Name + company fuzzy match
+	// 3. Name + org match (with legacy company fallback during migration)
 	if (normalized.fullName) {
-		const existing = await findByNameCompany(supabase, accountId, normalized.fullName, input.company);
-		if (existing) {
+		const orgMatch = await findByNameOrg(supabase, accountId, normalized.fullName, orgId);
+		if (orgMatch) {
 			return {
-				person: { ...existing, created: false },
+				person: { ...orgMatch, created: false },
+				matchedBy: "name_company",
+			};
+		}
+
+		const legacyMatch = await findByNameCompanyLegacy(supabase, accountId, normalized.fullName, input.company);
+		if (legacyMatch) {
+			return {
+				person: { ...legacyMatch, created: false },
 				matchedBy: "name_company",
 			};
 		}
